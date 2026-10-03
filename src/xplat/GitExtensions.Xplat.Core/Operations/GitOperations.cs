@@ -62,6 +62,9 @@ public sealed class GitOperations : IGitOperations
             Execute(module.GitExecutable, Commands.Branch(name, module.GetCurrentCheckout(), checkout));
         });
 
+    public Task CheckoutRemoteAsync(string repositoryPath, string remoteBranch)
+        => Run(repositoryPath, _ => new GitArgumentBuilder("checkout") { "--track", remoteBranch.Quote() });
+
     public Task CheckoutAsync(string repositoryPath, string branch)
         => Run(repositoryPath, _ => Commands.Checkout(branch, LocalChangesAction.DontChange));
 

@@ -151,6 +151,22 @@ internal sealed class GitOperationsTests
         GitProcess.Run(target, "log", "-1", "--format=%s").Trim().Should().Be("third");
     }
 
+    [AvaloniaTest]
+    public void CheckoutRemote_creates_a_tracking_branch_with_the_remote_name()
+    {
+        string remote = CreateBareRemote();
+        _repo.Run("remote", "add", "origin", remote);
+        _repo.Run("branch", "feature");
+        Wait(_operations.PushAsync(_repo.Path, "origin", "feature"));
+        _repo.Run("checkout", "-q", "--detach");
+        _repo.Run("branch", "-D", "feature");
+
+        Wait(_operations.CheckoutRemoteAsync(_repo.Path, "origin/feature"));
+
+        _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature");
+        _repo.Run("config", "branch.feature.remote").Trim().Should().Be("origin");
+    }
+
     private static void Wait(Task task) => task.GetAwaiter().GetResult();
 
     private string CreateBareRemote()

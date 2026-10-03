@@ -25,6 +25,8 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task CheckoutAsync(string repositoryPath, string branch) => Record("Checkout", $"{repositoryPath} {branch}");
 
+    public Task CheckoutRemoteAsync(string repositoryPath, string remoteBranch) => Record("CheckoutRemote", $"{repositoryPath} {remoteBranch}");
+
     public Task DeleteBranchAsync(string repositoryPath, string branch, bool force) => Record("DeleteBranch", $"{repositoryPath} {branch} force={force}");
 
     public Task FetchAsync(string repositoryPath, string remote) => Record("Fetch", $"{repositoryPath} {remote}");

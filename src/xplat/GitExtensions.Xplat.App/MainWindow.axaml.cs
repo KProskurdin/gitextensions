@@ -40,10 +40,12 @@ public partial class MainWindow : Window
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
         CommitButton.Click += OnCommitClick;
         CreateBranchButton.Click += OnCreateBranchClick;
-        CheckoutButton.Click +=
-            (_, _) => RunOnSelectedBranch(branch => _actions.CheckoutAsync(branch.Path, branch.Name));
-        DeleteBranchButton.Click += (_, _) =>
-            RunOnSelectedBranch(branch => _actions.DeleteBranchAsync(branch.Path, branch.Name, force: false));
+        CheckoutButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => branch.IsRemote
+            ? _actions.CheckoutRemoteAsync(path, branch.Name)
+            : _actions.CheckoutAsync(path, branch.Name));
+        DeleteBranchButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => branch.IsRemote
+            ? Task.FromResult(false)
+            : _actions.DeleteBranchAsync(path, branch.Name, force: false));
         CommitList.SelectionChanged += OnCommitSelectionChanged;
         _commits.PropertyChanged += (_, e) => OnCommitsChanged(e.PropertyName);
         _repository.PropertyChanged += (_, e) => OnRepositoryChanged(e.PropertyName);
@@ -196,15 +198,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void RunOnSelectedBranch(Func<(string Path, string Name), Task<bool>> action)
+    // Checkout and delete never act on the checked-out branch; delete never acts on a remote branch.
+    private async void RunOnSelectedBranch(Func<string, BranchInfo, Task<bool>> action)
     {
         if (_commits.RepositoryPath is not { } path || BranchList.SelectedItem is not BranchInfo branch ||
-            branch.IsRemote || branch.IsCurrent)
+            branch.IsCurrent)
         {
             return;
         }
 
-        await action((path, branch.Name));
+        await action(path, branch);
     }
 
     private async void OnActionRepositoryChanged(object? sender, RepositoryChangedEventArgs e)

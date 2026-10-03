@@ -57,7 +57,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             return Invalid("Enter a commit message.");
         }
 
-        return RunAsync(amend ? "Amended" : "Committed", repositoryPath, () => _operations.CommitAsync(repositoryPath, message, amend));
+        return RunAsync(amend ? "Amended" : "Committed", repositoryPath,
+            () => _operations.CommitAsync(repositoryPath, message, amend));
     }
 
     public Task<bool> CreateBranchAsync(string repositoryPath, string name, bool checkout)
@@ -67,14 +68,23 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             return Invalid("Enter a branch name.");
         }
 
-        return RunAsync($"Created {name.Trim()}", repositoryPath, () => _operations.CreateBranchAsync(repositoryPath, name.Trim(), checkout));
+        return RunAsync($"Created {name.Trim()}", repositoryPath,
+            () => _operations.CreateBranchAsync(repositoryPath, name.Trim(), checkout));
     }
 
     public Task<bool> CheckoutAsync(string repositoryPath, string branch)
         => RunAsync($"Checked out {branch}", repositoryPath, () => _operations.CheckoutAsync(repositoryPath, branch));
 
+    /// <summary>
+    ///  Checks out <paramref name="remoteBranch"/> as a local tracking branch with the same name after the remote.
+    /// </summary>
+    public Task<bool> CheckoutRemoteAsync(string repositoryPath, string remoteBranch)
+        => RunAsync($"Checked out {remoteBranch}", repositoryPath,
+            () => _operations.CheckoutRemoteAsync(repositoryPath, remoteBranch));
+
     public Task<bool> DeleteBranchAsync(string repositoryPath, string branch, bool force)
-        => RunAsync($"Deleted {branch}", repositoryPath, () => _operations.DeleteBranchAsync(repositoryPath, branch, force));
+        => RunAsync($"Deleted {branch}", repositoryPath,
+            () => _operations.DeleteBranchAsync(repositoryPath, branch, force));
 
     public Task<bool> FetchAsync(string repositoryPath, string remote)
         => RunAsync("Fetched", repositoryPath, () => _operations.FetchAsync(repositoryPath, remote));

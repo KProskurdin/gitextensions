@@ -117,6 +117,18 @@ internal sealed class RepositoryOperationsViewModelTests
     }
 
     [Test]
+    public async Task CheckoutRemoteAsync_passes_the_remote_branch_and_reports_the_change()
+    {
+        Task<bool> checkout = _viewModel.CheckoutRemoteAsync(RepositoryPath, "origin/feature");
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} origin/feature");
+        _git.Complete(0);
+
+        (await checkout).Should().BeTrue();
+        _viewModel.StatusMessage.Should().Be("Checked out origin/feature");
+        _changedPaths.Should().Equal(RepositoryPath);
+    }
+
+    [Test]
     public async Task FetchAsync_pull_and_push_report_the_repository_changed()
     {
         Task fetch = _viewModel.FetchAsync(RepositoryPath, "origin");

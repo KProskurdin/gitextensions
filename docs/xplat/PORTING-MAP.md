@@ -22,8 +22,15 @@ what keeps a reimplementation traceable to the upstream code it copies.
 
 | Upstream file | New file | Based on | Status |
 |---|---|---|---|
-| `src/app/GitUI/CommandsDialogs/FormBrowse.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.axaml.cs` (view); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (state) | `0174ba1cc` | partial |
-| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitList`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (reads); `CommitListViewModel.cs` | `0174ba1cc` | partial |
+| `src/app/GitUI/CommandsDialogs/FormBrowse.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.axaml.cs` (view); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (state) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitList`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (reads); `CommitListViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCommit.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (commit), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (commit panel) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Push) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (pull), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Pull) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormClone.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (clone), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (new branch box) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (checkout, remote checkout), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Checkout) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -42,3 +49,37 @@ and sorting, paging past 500 commits, filters and search, refs labels, and the c
   new code in `App.axaml.cs` and `XplatGitDiscovery.cs`.
 - The `RevisionReader` and `GitModule` engine code is used as-is from the shadow projects, not
   reimplemented, so it has no row.
+
+**FormCommit** (`partial`). Ported: stage and unstage of selected changes, commit with a message, amend,
+and the repository refresh after the commit. Not ported: the file diff preview, author override, sign-off,
+GPG signing, skipping hooks, commit templates, commit scripts, and the amend-from-HEAD message load.
+
+**FormPush** (`partial`). Ported: push of the current branch to `origin`, with upstream tracking. Not ported:
+destination branch and remote choice, force push, pushing tags, recursive submodules, and the push progress dialog.
+
+**FormPull** (`partial`). Ported: pull of the current branch from `origin`, merge or rebase. Not ported: remote
+and branch choice, prune, fetch tags, unshallow, and the progress dialog.
+
+**FormClone** (`partial`). Ported: clone from a URL or local path into a new folder, then open it. Not ported:
+branch choice, depth, recursive submodules, and the folder browser.
+
+**FormCreateBranch** (`partial`). Ported: create a branch at HEAD and check it out. Not ported: creating from a
+specific revision, the branch name rules shown in the form, and the no-checkout option.
+
+**FormCheckoutBranch** (`partial`). Ported: check out a local branch, and a remote branch as a tracking branch.
+Not ported: local-change handling (merge or reset), and checkout of tags or revisions.
+
+**FormDeleteBranch** (`partial`). Ported: delete a local branch that is not checked out, with an optional force
+flag that the window leaves off. Not ported: deleting remote branches, the merged-branches list, and the
+confirmation dialog.
+
+## Review against upstream 52d08e996 (2026-10-03)
+
+Upstream changes to the mapped files between `0174ba1cc` and `52d08e996` were read and found to be outside the
+reimplemented behavior, so the rows now use `52d08e996` as their base:
+
+- `f425acf4a`, `35ae6a77f` (GPG verification display in `FormBrowse` and `RevisionGpgInfoControl`): skipped,
+  the commit details panel does not show signatures.
+- `1c98cad37` (grid tooltip in `RevisionGridControl`): skipped, the commit list has no tooltips.
+- `36d8b34f6`, `d2b1e3528` (`FormCommit` focus scrolling and status bar height): skipped, layout of the WinForms file lists.
+- `af375e1be` (`FormClone` option to init submodules): skipped, the clone form does not expose submodule options.

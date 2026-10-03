@@ -206,9 +206,12 @@ URL and folder), stage and unstage of selected changes, commit with amend, creat
 branches. Buttons are enabled only when their action can run. Tests: 34 core tests (fake operations) and 27 app
 tests, including an end-to-end stage-and-commit through the window.
 
-Still open in M2: stash; the platform services (pickers, folder and terminal launch, clipboard, credentials,
-notifications); the UI-thread abstraction; tags; checking out remote branches; the `PORTING-MAP.md` rows for
-these operations. The clone dialog has no automated test yet.
+Added 2026-10-03: checkout of remote branches as tracking branches; headless tests for the clone dialog (URL and
+folder, cancel, and staying open when the folder is missing); `PORTING-MAP.md` rows for the seven upstream
+write-operation forms, reviewed against upstream `52d08e996` in `SYNC-LOG.md`.
+
+Still open in M2: stash; tags; the platform services (pickers, folder and terminal launch, clipboard,
+credentials, notifications); the UI-thread abstraction.
 
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.

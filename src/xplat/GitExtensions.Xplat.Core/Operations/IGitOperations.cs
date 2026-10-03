@@ -16,6 +16,11 @@ public interface IGitOperations
 
     Task CheckoutAsync(string repositoryPath, string branch);
 
+    /// <summary>
+    ///  Creates a local branch that tracks <paramref name="remoteBranch"/> (e.g. "origin/feature") and checks it out.
+    /// </summary>
+    Task CheckoutRemoteAsync(string repositoryPath, string remoteBranch);
+
     Task DeleteBranchAsync(string repositoryPath, string branch, bool force);
 
     Task FetchAsync(string repositoryPath, string remote);

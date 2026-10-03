@@ -11,7 +11,13 @@ public partial class CloneWindow : Window
     {
         InitializeComponent();
         CancelButton.Click += (_, _) => Close(null);
-        CloneButton.Click += (_, _) => Close(CreateRequest());
+        CloneButton.Click += (_, _) =>
+        {
+            if (CreateRequest() is { } request)
+            {
+                Close(request);
+            }
+        };
     }
 
     private CloneRequest? CreateRequest()
