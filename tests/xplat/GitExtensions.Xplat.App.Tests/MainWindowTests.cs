@@ -97,6 +97,19 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Open_folder_and_terminal_need_an_open_repository()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        Find<Button>(window, "OpenFolderButton").IsEnabled.Should().BeFalse();
+        Find<Button>(window, "TerminalButton").IsEnabled.Should().BeFalse();
+
+        Open(window, _repo.Path);
+
+        Find<Button>(window, "OpenFolderButton").IsEnabled.Should().BeTrue();
+        Find<Button>(window, "TerminalButton").IsEnabled.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
     public void Staging_and_committing_from_the_window_adds_a_commit()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");

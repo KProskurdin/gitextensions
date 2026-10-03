@@ -173,7 +173,7 @@ internal sealed class CommitListViewModelTests
     }
 
     [Test]
-    public void Property_changes_are_raised_for_the_state_a_view_shows()
+    public async Task Property_changes_are_raised_for_the_state_a_view_shows()
     {
         List<string?> changed = [];
         _viewModel.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
@@ -181,7 +181,7 @@ internal sealed class CommitListViewModelTests
         Task open = _viewModel.OpenAsync(RepositoryPath);
         _history.CompletePage(0, Page(hasMore: false, "aaa1"));
 
-        open.Wait();
+        await open;
         changed.Should().Contain(nameof(CommitListViewModel.IsLoading));
         changed.Should().Contain(nameof(CommitListViewModel.Rows));
         changed.Should().Contain(nameof(CommitListViewModel.Status));

@@ -8,6 +8,7 @@ using GitCommands;
 using GitExtensions.Xplat.Core;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
@@ -22,10 +23,16 @@ public partial class MainWindow : Window
     private readonly CommitListViewModel _commits = new(new GitCommitHistory());
     private readonly RepositoryViewModel _repository = new(new GitRepositoryService());
     private readonly RepositoryOperationsViewModel _actions = new(new GitOperations());
+    private readonly IProcessLauncher _launcher = new SystemProcessLauncher();
+    private readonly IFileManager _fileManager;
+    private readonly ITerminalLauncher _terminal;
 
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
+        _fileManager = new SystemFileManager(_launcher, HostPlatform.Current);
+        _terminal = new SystemTerminalLauncher(_launcher,
+            TerminalCommand.Default(HostPlatform.Current, Environment.GetEnvironmentVariable("TERMINAL")));
         InitializeComponent();
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://GitExtensions/Assets/git-extensions-logo-256px.png")));
         OpenButton.Click += OnOpenClick;
@@ -36,6 +43,8 @@ public partial class MainWindow : Window
         PushButton.Click += (_, _) =>
             RunOnCurrentBranch((path, branch) => _actions.PushAsync(path, RemoteName, branch));
         CloneButton.Click += OnCloneClick;
+        OpenFolderButton.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
+        TerminalButton.Click += (_, _) => RunOnRepositoryFolder(path => _terminal.OpenTerminal(path));
         StageButton.Click += (_, _) => StageSelected(staged: false);
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
         CommitButton.Click += OnCommitClick;
@@ -119,6 +128,24 @@ public partial class MainWindow : Window
     private async void OnCommitSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         await _commits.SelectAsync(CommitList.SelectedItem as CommitRow);
+    }
+
+    // Launching a file manager or terminal is a local action; a failure is shown like any other error.
+    private void RunOnRepositoryFolder(Action<string> action)
+    {
+        if (_commits.RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        try
+        {
+            action(path);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
     }
 
     private async void OnCloneClick(object? sender, RoutedEventArgs e)
@@ -321,6 +348,8 @@ public partial class MainWindow : Window
         CreateBranchButton.IsEnabled = open;
         CheckoutButton.IsEnabled = open;
         DeleteBranchButton.IsEnabled = open;
+        OpenFolderButton.IsEnabled = open;
+        TerminalButton.IsEnabled = open;
     }
 
     private void ShowDetails()

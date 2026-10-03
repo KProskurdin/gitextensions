@@ -210,8 +210,15 @@ Added 2026-10-03: checkout of remote branches as tracking branches; headless tes
 folder, cancel, and staying open when the folder is missing); `PORTING-MAP.md` rows for the seven upstream
 write-operation forms, reviewed against upstream `52d08e996` in `SYNC-LOG.md`.
 
-Still open in M2: stash; tags; the platform services (pickers, folder and terminal launch, clipboard,
-credentials, notifications); the UI-thread abstraction.
+Platform services, 2026-10-03: `Platform/` in the core holds `HostPlatform`, `IProcessLauncher` (no shell, does not
+wait), `IFileManager` (Explorer, Finder via `open`, `xdg-open`) and `ITerminalLauncher` with a per-OS default
+terminal (`cmd.exe`; Terminal on macOS; `$TERMINAL` or `x-terminal-emulator` on Linux). The window has Open folder
+and Terminal buttons. The clone dialog has a folder picker (Avalonia storage provider) that names the new folder
+after the repository. Tests: 44 core tests (recording fake launcher, one case per OS) and 32 app tests.
+Not tested: the Avalonia folder picker and the real launches (they need a desktop session and would open windows).
+
+Still open in M2: stash; tags; clipboard; credentials (decision 6: git's own helpers first); notifications; the
+UI-thread abstraction.
 
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.

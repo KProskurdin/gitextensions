@@ -16,6 +16,8 @@
       <Button x:Name="PullButton" Content="Pull" Margin="0,0,8,4" />
       <Button x:Name="PushButton" Content="Push" Margin="0,0,8,4" />
       <Button x:Name="CloneButton" Content="Clone..." Margin="0,0,8,4" />
+      <Button x:Name="OpenFolderButton" Content="Open folder" Margin="0,0,8,4" />
+      <Button x:Name="TerminalButton" Content="Terminal" Margin="0,0,8,4" />
       <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,4" />
       <TextBlock x:Name="OperationStatusText" VerticalAlignment="Center" Margin="8,0,0,4" Foreground="DarkGreen" />
     </WrapPanel>

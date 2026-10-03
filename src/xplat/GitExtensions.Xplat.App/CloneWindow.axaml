@@ -7,7 +7,10 @@
     <TextBlock Text="Repository URL or local path" />
     <TextBox x:Name="UrlBox" PlaceholderText="https://github.com/owner/repo.git" />
     <TextBlock Text="Clone into folder" />
-    <TextBox x:Name="TargetBox" PlaceholderText="Folder to create" />
+    <DockPanel LastChildFill="True">
+      <Button x:Name="BrowseButton" DockPanel.Dock="Right" Content="Browse..." Margin="8,0,0,0" />
+      <TextBox x:Name="TargetBox" PlaceholderText="Folder to create" />
+    </DockPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
       <Button x:Name="CancelButton" Content="Cancel" />
       <Button x:Name="CloneButton" Content="Clone" />

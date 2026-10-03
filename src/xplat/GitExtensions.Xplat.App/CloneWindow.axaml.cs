@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 
 namespace GitExtensions.Xplat.App;
 
@@ -7,6 +9,8 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class CloneWindow : Window
 {
+    private const string FallbackFolderName = "repo";
+
     public CloneWindow()
     {
         InitializeComponent();
@@ -18,6 +22,29 @@ public partial class CloneWindow : Window
                 Close(request);
             }
         };
+        BrowseButton.Click += OnBrowseClick;
+    }
+
+    /// <summary>
+    ///  Picks the folder that will contain the clone, and names the new folder after the repository in the URL.
+    /// </summary>
+    private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+    {
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Clone into folder", AllowMultiple = false,
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } parent)
+        {
+            TargetBox.Text = Path.Combine(parent, RepositoryFolderName(UrlBox.Text ?? ""));
+        }
+    }
+
+    private static string RepositoryFolderName(string url)
+    {
+        string name = Path.GetFileNameWithoutExtension(url.Trim().TrimEnd('/', '\\'));
+        return name.Length == 0 ? FallbackFolderName : name;
     }
 
     private CloneRequest? CreateRequest()

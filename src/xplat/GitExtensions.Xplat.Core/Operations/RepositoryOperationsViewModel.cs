@@ -54,7 +54,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(message))
         {
-            return Invalid("Enter a commit message.");
+            return RejectAsync("Enter a commit message.");
         }
 
         return RunAsync(amend ? "Amended" : "Committed", repositoryPath,
@@ -65,7 +65,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            return Invalid("Enter a branch name.");
+            return RejectAsync("Enter a branch name.");
         }
 
         return RunAsync($"Created {name.Trim()}", repositoryPath,
@@ -103,18 +103,18 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(sourceUrl))
         {
-            return Invalid("Enter a repository URL or path to clone.");
+            return RejectAsync("Enter a repository URL or path to clone.");
         }
 
         if (string.IsNullOrWhiteSpace(targetPath))
         {
-            return Invalid("Enter a folder to clone into.");
+            return RejectAsync("Enter a folder to clone into.");
         }
 
         return RunAsync("Cloned", targetPath, () => _operations.CloneAsync(sourceUrl.Trim(), targetPath.Trim()));
     }
 
-    private Task<bool> Invalid(string message)
+    private Task<bool> RejectAsync(string message)
     {
         ErrorMessage = null;
         ErrorMessage = message;

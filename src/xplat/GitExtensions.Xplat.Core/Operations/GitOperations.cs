@@ -1,8 +1,8 @@
 using GitCommands;
-using GitExtUtils;
 using GitCommands.Git;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
+using GitExtUtils;
 
 namespace GitExtensions.Xplat.Core.Operations;
 
@@ -13,7 +13,7 @@ namespace GitExtensions.Xplat.Core.Operations;
 public sealed class GitOperations : IGitOperations
 {
     public Task StageAsync(string repositoryPath, IReadOnlyList<string> paths)
-        => Run(repositoryPath, _ =>
+        => RunAsync(repositoryPath, _ =>
         {
             GitArgumentBuilder arguments = new("add") { "--" };
             foreach (string path in paths)
@@ -25,7 +25,7 @@ public sealed class GitOperations : IGitOperations
         });
 
     public Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths)
-        => Run(repositoryPath, _ =>
+        => RunAsync(repositoryPath, _ =>
         {
             GitArgumentBuilder arguments = new("reset") { "-q", "--" };
             foreach (string path in paths)
@@ -63,13 +63,13 @@ public sealed class GitOperations : IGitOperations
         });
 
     public Task CheckoutRemoteAsync(string repositoryPath, string remoteBranch)
-        => Run(repositoryPath, _ => new GitArgumentBuilder("checkout") { "--track", remoteBranch.Quote() });
+        => RunAsync(repositoryPath, _ => new GitArgumentBuilder("checkout") { "--track", remoteBranch.Quote() });
 
     public Task CheckoutAsync(string repositoryPath, string branch)
-        => Run(repositoryPath, _ => Commands.Checkout(branch, LocalChangesAction.DontChange));
+        => RunAsync(repositoryPath, _ => Commands.Checkout(branch, LocalChangesAction.DontChange));
 
     public Task DeleteBranchAsync(string repositoryPath, string branch, bool force)
-        => Run(repositoryPath, _ => new GitArgumentBuilder("branch") { force ? "-D" : "-d", branch.Quote() });
+        => RunAsync(repositoryPath, _ => new GitArgumentBuilder("branch") { force ? "-D" : "-d", branch.Quote() });
 
     public Task FetchAsync(string repositoryPath, string remote)
         => Task.Run(() =>
@@ -86,7 +86,7 @@ public sealed class GitOperations : IGitOperations
         });
 
     public Task PushAsync(string repositoryPath, string remote, string branch)
-        => Run(repositoryPath,
+        => RunAsync(repositoryPath,
             _ => Commands.Push(remote, branch, toBranch: null, ForcePushOptions.DoNotForce, track: true,
                 recursiveSubmodules: 0));
 
@@ -103,7 +103,7 @@ public sealed class GitOperations : IGitOperations
             Execute(new Executable(AppSettings.GitCommand, parent), clone);
         });
 
-    private static Task Run(string repositoryPath, Func<GitModule, ArgumentString> build)
+    private static Task RunAsync(string repositoryPath, Func<GitModule, ArgumentString> build)
         => Task.Run(() =>
         {
             GitModule module = CreateModule(repositoryPath);
