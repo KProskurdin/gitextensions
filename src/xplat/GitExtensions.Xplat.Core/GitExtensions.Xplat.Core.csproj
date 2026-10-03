@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- The shared xplat props add WinForms/Drawing namespaces to every project; the core must not depend on them. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GitCommands\GitCommands.csproj" />
+  </ItemGroup>
+
+</Project>

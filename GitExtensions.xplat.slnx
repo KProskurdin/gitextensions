@@ -10,11 +10,13 @@
     <Project Path="src/xplat/ResourceManager/ResourceManager.csproj" />
   </Folder>
   <Folder Name="/src/xplat/app/">
+    <Project Path="src/xplat/GitExtensions.Xplat.Core/GitExtensions.Xplat.Core.csproj" />
     <Project Path="src/xplat/GitExtensions.Xplat.App/GitExtensions.Xplat.App.csproj" />
   </Folder>
   <Folder Name="/tests/xplat/">
     <Project Path="tests/xplat/CommonTestUtils/CommonTestUtils.csproj" />
     <Project Path="tests/xplat/GitCommands.Tests/GitCommands.Tests.csproj" />
+    <Project Path="tests/xplat/GitExtensions.Xplat.Core.Tests/GitExtensions.Xplat.Core.Tests.csproj" />
     <Project Path="tests/xplat/GitExtensions.Xplat.App.Tests/GitExtensions.Xplat.App.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">

@@ -5,7 +5,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using GitCommands;
-using GitCommands.Git;
+using GitExtensions.Xplat.Core;
+using GitExtensions.Xplat.Core.CommitHistory;
 
 namespace GitExtensions.Xplat.App;
 
@@ -15,9 +16,7 @@ public partial class MainWindow : Window
     private const string ScreenshotEnvironmentVariable = "XPLAT_SCREENSHOT";
 
     private readonly GitDiscoveryResult? _git;
-    private string? _repoPath;
-    private int _pages;
-    private int _detailsRequest;
+    private readonly CommitListViewModel _commits = new(new GitCommitHistory());
 
     public MainWindow(GitDiscoveryResult? git)
     {
@@ -27,6 +26,7 @@ public partial class MainWindow : Window
         OpenButton.Click += OnOpenClick;
         LoadMoreButton.Click += OnLoadMoreClick;
         CommitList.SelectionChanged += OnCommitSelectionChanged;
+        _commits.PropertyChanged += (_, e) => OnCommitsChanged(e.PropertyName);
         Opened += OnOpened;
         ShowGitProblem();
     }
@@ -59,7 +59,7 @@ public partial class MainWindow : Window
         }
 
         PathBox.Text = initial;
-        await OpenRepositoryAsync(initial);
+        await _commits.OpenAsync(initial);
 
         string? screenshot = Environment.GetEnvironmentVariable(ScreenshotEnvironmentVariable);
         if (!string.IsNullOrEmpty(screenshot))
@@ -74,87 +74,70 @@ public partial class MainWindow : Window
 
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
     {
-        await OpenRepositoryAsync(PathBox.Text?.Trim() ?? "");
+        await _commits.OpenAsync(PathBox.Text?.Trim() ?? "");
     }
 
     private async void OnLoadMoreClick(object? sender, RoutedEventArgs e)
     {
-        if (_repoPath is null)
-        {
-            return;
-        }
-
-        await LoadPagesAsync(_repoPath, _pages + 1);
-    }
-
-    private Task OpenRepositoryAsync(string path) => LoadPagesAsync(path, pages: 1);
-
-    private async Task LoadPagesAsync(string path, int pages)
-    {
-        OpenButton.IsEnabled = false;
-        LoadMoreButton.IsEnabled = false;
-        StatusText.Text = "Loading...";
-        ClearDetails();
-
-        try
-        {
-            CommitPage page = await Task.Run(() => CommitHistory.LoadPage(path, pages * CommitHistory.PageSize));
-            _repoPath = path;
-            _pages = pages;
-            Title = $"{Path.GetFileName(path.TrimEnd('/', '\\'))} - Git Extensions";
-            CommitList.ItemsSource = page.Rows;
-            LoadMoreButton.IsVisible = page.HasMore;
-            StatusText.Text = page.HasMore
-                ? $"{page.Rows.Count} commits, more available"
-                : $"{page.Rows.Count} commits";
-        }
-        catch (Exception ex)
-        {
-            _repoPath = null;
-            _pages = 0;
-            CommitList.ItemsSource = null;
-            LoadMoreButton.IsVisible = false;
-            StatusText.Text = "";
-            await new ErrorWindow(ex.Message).ShowDialog(this);
-        }
-        finally
-        {
-            OpenButton.IsEnabled = true;
-            LoadMoreButton.IsEnabled = true;
-        }
+        await _commits.LoadMoreAsync();
     }
 
     private async void OnCommitSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (CommitList.SelectedItem is not CommitRow row || _repoPath is null)
-        {
-            ClearDetails();
-            return;
-        }
+        await _commits.SelectAsync(CommitList.SelectedItem as CommitRow);
+    }
 
-        int request = ++_detailsRequest;
-        string repoPath = _repoPath;
+    private void OnCommitsChanged(string? propertyName)
+    {
+        switch (propertyName)
+        {
+            case nameof(CommitListViewModel.Rows):
+                CommitList.ItemsSource = _commits.Rows;
+                break;
+            case nameof(CommitListViewModel.Status):
+                StatusText.Text = _commits.Status;
+                break;
+            case nameof(CommitListViewModel.RepositoryName):
+                Title = _commits.RepositoryName.Length == 0
+                    ? "Git Extensions"
+                    : $"{_commits.RepositoryName} - Git Extensions";
+                break;
+            case nameof(CommitListViewModel.HasMore):
+                LoadMoreButton.IsVisible = _commits.HasMore;
+                break;
+            case nameof(CommitListViewModel.IsLoading):
+                OpenButton.IsEnabled = !_commits.IsLoading;
+                LoadMoreButton.IsEnabled = !_commits.IsLoading;
+                break;
+            case nameof(CommitListViewModel.Details):
+            case nameof(CommitListViewModel.DetailsError):
+                ShowDetails();
+                break;
+            case nameof(CommitListViewModel.ErrorMessage):
+                if (_commits.ErrorMessage is { } message)
+                {
+                    _commits.ClearError();
+                    ShowError(message);
+                }
 
-        try
-        {
-            CommitDetails details = await Task.Run(() => CommitHistory.LoadDetails(repoPath, row.Hash));
-            if (request == _detailsRequest)
-            {
-                ShowDetails(details);
-            }
-        }
-        catch (Exception ex)
-        {
-            if (request == _detailsRequest)
-            {
-                ClearDetails();
-                DetailMessage.Text = ex.Message;
-            }
+                break;
         }
     }
 
-    private void ShowDetails(CommitDetails details)
+    private void ShowDetails()
     {
+        CommitDetails? details = _commits.Details;
+        if (details is null)
+        {
+            DetailHash.Text = "";
+            DetailAuthor.Text = "";
+            DetailAuthorDate.Text = "";
+            DetailCommitDate.Text = "";
+            DetailParents.Text = "";
+            DetailMessage.Text = _commits.DetailsError;
+            return;
+        }
+
         DetailHash.Text = details.Hash;
         DetailAuthor.Text = details.Author;
         DetailAuthorDate.Text = $"Authored: {details.AuthorDate}";
@@ -163,14 +146,8 @@ public partial class MainWindow : Window
         DetailMessage.Text = details.Message;
     }
 
-    private void ClearDetails()
+    private void ShowError(string message)
     {
-        _detailsRequest++;
-        DetailHash.Text = "";
-        DetailAuthor.Text = "";
-        DetailAuthorDate.Text = "";
-        DetailCommitDate.Text = "";
-        DetailParents.Text = "";
-        DetailMessage.Text = "";
+        _ = new ErrorWindow(message).ShowDialog(this);
     }
 }

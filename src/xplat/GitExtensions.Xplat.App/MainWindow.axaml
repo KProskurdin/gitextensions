@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
         x:Class="GitExtensions.Xplat.App.MainWindow"
         Title="Git Extensions"
         Width="1100" Height="640">
@@ -15,7 +16,7 @@
     <Grid ColumnDefinitions="*,12,360">
       <ListBox x:Name="CommitList" Grid.Column="0">
         <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="local:CommitRow">
+          <DataTemplate x:DataType="core:CommitRow">
             <Grid ColumnDefinitions="90,*,200,140" Margin="4,2">
               <TextBlock Grid.Column="0" Text="{Binding ShortHash}" FontFamily="monospace" />
               <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />

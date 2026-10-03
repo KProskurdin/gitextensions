@@ -183,6 +183,15 @@ Estimate: 3 to 4 weeks (the settings and git-discovery items were not in the ear
 Exit: every operation the UI needs is available as a service with no WinForms dependency, and the
 WinForms shell calls the same services where practical.
 
+Started 2026-10-03: `src/xplat/GitExtensions.Xplat.Core` holds `ICommitHistory` with `GitCommitHistory`
+(the history reads, moved out of the app), `CommitListViewModel` (commit list, paging, selection,
+details, errors, with no UI types) and `ObservableObject`. The app's window is a view over the view model.
+Tests: `tests/xplat/GitExtensions.Xplat.Core.Tests` (12, against a fake history) and the app's headless
+tests (10, against real repositories). `GitCommands` grants friend access to the core in
+`src/xplat/GitCommands/XplatFriends.cs`. Still open in M2: repository, refs, status and write services;
+the platform services (pickers, folder and terminal launch, clipboard, credentials, notifications); the
+UI-thread abstraction; the `PORTING-MAP.md` rows that these services replace.
+
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.
 - Each service delegates to `GitCommands`. Where the logic lives in a WinForms form today, the

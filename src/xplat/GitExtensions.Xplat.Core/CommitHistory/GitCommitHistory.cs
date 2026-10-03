@@ -3,22 +3,22 @@ using GitCommands;
 using GitCommands.Git;
 using GitUIPluginInterfaces;
 
-namespace GitExtensions.Xplat.App;
+namespace GitExtensions.Xplat.Core.CommitHistory;
 
 /// <summary>
-///  Reads commits with the shared git engine. Methods block; callers run them off the UI thread.
+///  Reads commits with the shared git engine. Each call runs on the thread pool.
 /// </summary>
-public static class CommitHistory
+public sealed class GitCommitHistory : ICommitHistory
 {
-    public const int PageSize = 500;
-
     private const string DateFormat = "yyyy-MM-dd HH:mm";
 
-    /// <summary>
-    ///  Reads the first <paramref name="limit"/> commits reachable from HEAD. Reading stops as soon as one more commit is seen,
-    ///  so a long history is not loaded in full. <see cref="CommitPage.HasMore"/> tells whether the history goes further.
-    /// </summary>
-    public static CommitPage LoadPage(string path, int limit)
+    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit)
+        => Task.Run(() => LoadPage(repositoryPath, limit));
+
+    public Task<CommitDetails> LoadDetailsAsync(string repositoryPath, string hash)
+        => Task.Run(() => LoadDetails(repositoryPath, hash));
+
+    private static CommitPage LoadPage(string path, int limit)
     {
         GitModule module = CreateModule(path);
         if (!module.IsValidGitWorkingDir())
@@ -26,6 +26,7 @@ public static class CommitHistory
             throw new InvalidOperationException($"Not a git repository: {path}");
         }
 
+        // Reading stops once one commit beyond the limit is seen, so a long history is not loaded in full.
         CancellationTokenSource stopReading = new();
         List<GitRevision> revisions = [];
         IObserver<IReadOnlyList<GitRevision>> observer = Observer.Create<IReadOnlyList<GitRevision>>(batch =>
@@ -56,12 +57,11 @@ public static class CommitHistory
         return new CommitPage(rows, HasMore: revisions.Count > limit);
     }
 
-    public static CommitDetails LoadDetails(string path, string hash)
+    private static CommitDetails LoadDetails(string path, string hash)
     {
         GitRevision revision = new RevisionReader(CreateModule(path))
-                                   .GetRevision(hash, hasNotes: false, throwOnError: true,
-                                       cancellationToken: CancellationToken.None)
-                               ?? throw new InvalidOperationException($"Commit not found: {hash}");
+            .GetRevision(hash, hasNotes: false, throwOnError: true, cancellationToken: CancellationToken.None)
+            ?? throw new InvalidOperationException($"Commit not found: {hash}");
 
         return new CommitDetails(
             Hash: revision.ObjectId.ToString(),
@@ -75,15 +75,3 @@ public static class CommitHistory
     private static GitModule CreateModule(string path)
         => new(new GitExecutorProvider(new GitDirectoryResolver()), path);
 }
-
-public sealed record CommitPage(IReadOnlyList<CommitRow> Rows, bool HasMore);
-
-public sealed record CommitRow(string Hash, string ShortHash, string Subject, string Author, string Date);
-
-public sealed record CommitDetails(
-    string Hash,
-    string Author,
-    string AuthorDate,
-    string CommitDate,
-    string Parents,
-    string Message);

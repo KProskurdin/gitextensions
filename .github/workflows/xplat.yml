@@ -36,7 +36,10 @@ jobs:
       - name: Build and test shadow projects
         run: bash tests/xplat/run-tests.sh
 
-      - name: Build and test app (headless)
+      - name: Test app core (no UI)
+        run: dotnet test tests/xplat/GitExtensions.Xplat.Core.Tests -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-core/"
+
+      - name: Test app (headless)
         run: dotnet test tests/xplat/GitExtensions.Xplat.App.Tests -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-app/"
 
   app-screenshot:
