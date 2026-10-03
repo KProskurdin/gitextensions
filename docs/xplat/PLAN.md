@@ -25,7 +25,7 @@ criterion, and the milestones beyond M4 are estimates only.
 | Shared core tests | Done with a gap | Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03) |
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
-| Settings persistence | Not on Linux or macOS | Seam S1 keeps settings in memory off Windows, so nothing the app stores survives a restart there. Fixed in M1 |
+| Settings persistence | Linux done 2026-10-03; macOS by CI only | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
 | Avalonia app | Read-only commit list | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Not run on macOS |
 | Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master 52d08e996). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
 | CI | Written, not run on GitHub | `.github/workflows/xplat.yml`: shadow tests on Windows and Ubuntu, nightly upstream check. No macOS job. The app is not built in CI |
@@ -103,7 +103,7 @@ by an additive file.
 
 | # | Where | Change | Why | Upstream fix candidate |
 |---|---|---|---|---|
-| S1 | `AppSettings.cs` | Registry key replaced by `XplatRegistryKey` (real registry on Windows, in-memory elsewhere) | Settings are read from the registry in the static constructor | Yes, a cross-platform settings store would be an upstream discussion |
+| S1 | `AppSettings.cs` | Registry key replaced by `XplatRegistryKey` (real registry on Windows, `EmulatedRegistryStore` JSON file elsewhere) | Settings are read from the registry in the static constructor | Yes, a cross-platform settings store would be an upstream discussion |
 | S2 | `AppSettings.SaveSettings` | Named mutex name avoids `/` on non-Windows | `/` makes `Mutex` throw, upstream swallows the error, so settings were never saved | Yes, real bug on Linux |
 | S3 | `DebugHelpers.cs` | `IsTestRunning` also detects NUnit | Only `testhost.exe` was recognized | Yes, real bug on Linux |
 | S4 | `PathEqualityComparer.cs` | Trims `Path.DirectorySeparatorChar` instead of `'\'` | `/repo/` and `/repo` compared unequal on Linux | Yes, real bug on Linux |
@@ -152,7 +152,7 @@ Remaining:
 1. Commit selection shows the message, author, date and parents (uses `RevisionReader.GetRevision`).
 2. Virtualized commit list that does not load the whole history; paging through `GetLog` with a limit.
 3. Headless UI tests (Avalonia.Headless) for the list and the selection.
-4. **Settings persistence off Windows.** Replace the in-memory store behind seam S1 with a file in
+4. **Settings persistence off Windows (done on Linux 2026-10-03; macOS pending CI).** Replace the in-memory store behind seam S1 with a file in
    the platform's user-config directory (XDG on Linux, Application Support on macOS). Windows keeps
    the registry-plus-settings-file behavior it has upstream. Recent repositories must survive a restart.
 5. **Git discovery.** Find the `git` executable per OS (PATH, then known locations; macOS Command Line

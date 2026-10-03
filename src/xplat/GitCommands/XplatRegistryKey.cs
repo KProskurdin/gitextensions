@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using System.Globalization;
 using Microsoft.Win32;
 
 namespace GitCommands;
@@ -6,14 +6,12 @@ namespace GitCommands;
 /// <summary>
 ///  Stands in for the <c>HKCU\Software\GitExtensions</c> registry key that <see cref="AppSettings"/> uses for a few machine-level
 ///  values (git command, ssh path, install dir, ...). On Windows it wraps the real key so behavior is unchanged; elsewhere it
-///  keeps the values in memory.
+///  keeps the values in <see cref="EmulatedRegistryStore"/>, in the same per-user directory as the settings file.
 /// </summary>
-/// <remarks>
-///  TODO(Phase 2): persist the emulated values, e.g. below the XDG config directory, once the settings location is decided.
-/// </remarks>
 internal sealed class XplatRegistryKey
 {
-    private static readonly ConcurrentDictionary<string, object> _emulatedValues = new();
+    private static readonly Lazy<EmulatedRegistryStore> _emulatedStore = new(() => new EmulatedRegistryStore(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitExtensions")));
 
     private readonly RegistryKey? _key;
 
@@ -26,7 +24,9 @@ internal sealed class XplatRegistryKey
     {
         if (OperatingSystem.IsWindows())
         {
-            RegistryKey key = Registry.CurrentUser.CreateSubKey("Software\\GitExtensions", RegistryKeyPermissionCheck.ReadWriteSubTree)
+            RegistryKey key =
+                Registry.CurrentUser.CreateSubKey("Software\\GitExtensions",
+                    RegistryKeyPermissionCheck.ReadWriteSubTree)
                 ?? throw new InvalidOperationException("Cannot open the GitExtensions registry key.");
             return new XplatRegistryKey(key);
         }
@@ -43,7 +43,7 @@ internal sealed class XplatRegistryKey
             return _key.GetValue(name, defaultValue);
         }
 
-        return _emulatedValues.TryGetValue(name, out object? value) ? value : defaultValue;
+        return _emulatedStore.Value.TryGet(name, out string? value) ? value : defaultValue;
     }
 
     public void SetValue(string name, object value)
@@ -54,7 +54,7 @@ internal sealed class XplatRegistryKey
             return;
         }
 
-        _emulatedValues[name] = value;
+        _emulatedStore.Value.Set(name, Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
     }
 
     public XplatRegistryKey? OpenSubKey(string name)
@@ -76,6 +76,6 @@ internal sealed class XplatRegistryKey
             return _key.GetValueNames();
         }
 
-        return [.. _emulatedValues.Keys];
+        return _emulatedStore.Value.GetNames();
     }
 }
