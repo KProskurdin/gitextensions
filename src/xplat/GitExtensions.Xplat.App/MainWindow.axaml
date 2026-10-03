@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.MainWindow"
+        Title="Git Extensions"
+        Width="960" Height="640">
+  <DockPanel Margin="12" LastChildFill="True">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+      <TextBox x:Name="PathBox" Width="640" Watermark="Path to a git repository" />
+      <Button x:Name="OpenButton" Content="Open" />
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,0" />
+    </StackPanel>
+    <ListBox x:Name="CommitList">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:CommitRow">
+          <Grid ColumnDefinitions="90,*,200,140" Margin="4,2">
+            <TextBlock Grid.Column="0" Text="{Binding ShortHash}" FontFamily="monospace" />
+            <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="2" Text="{Binding Author}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="3" Text="{Binding Date}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

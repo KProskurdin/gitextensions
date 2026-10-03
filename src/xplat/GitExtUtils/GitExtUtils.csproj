@@ -7,6 +7,10 @@
 
   <Import Project="..\eng\SharedSources.targets" />
 
+  <ItemGroup>
+    <Compile Include="..\eng\XplatFriends.cs" Link="XplatFriends.cs" />
+  </ItemGroup>
+
   <!-- WinForms-only helpers (renderers, ListView/ToolStrip/ImageList/PropertyGrid extensions); the cross-platform UI has its own. -->
   <ItemGroup>
     <Compile Remove="$(UpstreamDir)GitUI\ComboBoxExtensions.cs" />

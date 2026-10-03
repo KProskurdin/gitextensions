@@ -1,0 +1,55 @@
+<Solution>
+  <!-- Cross-platform shadow projects: the shared core compiled unchanged as net10.0, plus its tests.
+       Kept separate from GitExtensions.slnx so upstream edits to that file do not conflict with this one. -->
+  <Folder Name="/src/xplat/">
+    <Project Path="src/xplat/WinFormsShim/GitExtensions.Xplat.WinFormsShim.csproj" />
+    <Project Path="src/xplat/GitExtensions.Extensibility/GitExtensions.Extensibility.csproj" />
+    <Project Path="src/xplat/GitUIPluginInterfaces/GitUIPluginInterfaces.csproj" />
+    <Project Path="src/xplat/GitExtUtils/GitExtUtils.csproj" />
+    <Project Path="src/xplat/GitCommands/GitCommands.csproj" />
+    <Project Path="src/xplat/ResourceManager/ResourceManager.csproj" />
+  </Folder>
+  <Folder Name="/src/xplat/app/">
+    <Project Path="src/xplat/GitExtensions.Xplat.App/GitExtensions.Xplat.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/xplat/">
+    <Project Path="tests/xplat/CommonTestUtils/CommonTestUtils.csproj" />
+    <Project Path="tests/xplat/GitCommands.Tests/GitCommands.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="CommonAssemblyInfo.cs" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="CLAUDE.md" />
+  </Folder>
+  <Folder Name="/Solution Items/eng/">
+    <File Path="eng/BannedSymbols.txt" />
+    <File Path="eng/GitExtensions.ruleset" />
+    <File Path="eng/GitExtensionsTest.ruleset" />
+    <File Path="eng/RepoLayout.props" />
+    <File Path="eng/Tests.props" />
+    <File Path="eng/Tests.targets" />
+    <File Path="eng/stylecop.json" />
+    <File Path="eng/vs-threading.MainThreadAssertingMethods.txt" />
+    <File Path="eng/vs-threading.MainThreadSwitchingMethods.txt" />
+    <File Path="eng/vs-threading.TypesRequiringMainThread.txt" />
+  </Folder>
+  <Folder Name="/Solution Items/xplat/">
+    <File Path="src/xplat/Directory.Build.props" />
+    <File Path="src/xplat/Directory.Packages.props" />
+    <File Path="src/xplat/eng/SharedSources.targets" />
+    <File Path="src/xplat/eng/XplatPatch.targets" />
+    <File Path="src/xplat/eng/SupportedOSPlatforms.cs" />
+    <File Path="src/xplat/eng/Generate-KeysShim.ps1" />
+    <File Path="tests/xplat/Directory.Build.props" />
+    <File Path="tests/xplat/Directory.Packages.props" />
+    <File Path="tests/xplat/run-tests.sh" />
+    <File Path="tests/xplat/verify-upstream.sh" />
+    <File Path=".github/workflows/xplat.yml" />
+  </Folder>
+</Solution>

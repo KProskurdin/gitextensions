@@ -43,3 +43,16 @@ Deeper agent-oriented docs live in `.github/copilot-docs/` (start with `L0-found
 - Tests: NUnit + NSubstitute + AwesomeAssertions (never `ClassicAssert`, Moq or MSTest attributes). Name tests `MethodUnderTest_should_do_x`. No Arrange/Act/Assert comments. Substitute `IExecutable`/`IProcess` so tests don't spawn `git`. Private members are reached through a class's `TestAccessor` (no xmldoc on those). `Verify.NUnit` `.verified.*` snapshots must be reviewed when they change. Fix flaky tests at the root cause; don't add `[Ignore]`.
 - Comments explain *why*, not *what*; extract magic numbers and repeated string literals to named `const`s. Non-private APIs get XML docs (multi-line `<summary>`); don't add them to plain interface/abstract implementations.
 - Commit messages follow Conventional Commits (e.g. `fix(diff): ...`). Note in the message when `GitExtensions.Extensibility/` is touched.
+
+## Cross-platform fork (`src/xplat`, `tests/xplat`, `docs/xplat`)
+
+This repository is a fork that must stay mergeable with upstream (`gitextensions/gitextensions`) for as long as it lives, including after cross-platform development ends and even if the work is never accepted upstream. Treat mergeability as a requirement of every change, not only during development.
+
+- Do not edit upstream files to make the fork work. New code goes under `src/xplat`, `tests/xplat`, `docs/xplat` or `GitExtensions.xplat.slnx`. The only exceptions are the seams listed in `docs/xplat/PLAN.md` section 5.
+- A new seam must be added to that table with its reason, and must be carried by `XplatPatch` (or an additive file), never by a manual edit of the upstream file.
+- Do not rename, move, reformat or "tidy" upstream code, even when it looks wrong. Such changes conflict with every upstream merge.
+- Do not add new public types or members to upstream projects, and do not change `GitExtensions.Extensibility` (its interface version is public).
+- Windows-only tests are ignored with a reason in `XplatPlatformSkips.cs`; Linux expectations are separate `XplatLinux*.cs` tests. Do not change upstream test files.
+- Every milestone's exit criteria include: `tests/xplat/verify-upstream.sh` passes on the current `upstream/master`, and the seam count has not grown without a table entry.
+- When an upstream change breaks a seam anchor, the build must fail loudly. Fix the seam in `src/xplat`; do not copy the upstream file.
+- Never move local `master` or create/commit branches on the user's behalf. The user commits and moves `master`.
