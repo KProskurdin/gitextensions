@@ -18,17 +18,40 @@ public partial class MainWindow : Window
     // Developer aid: when set, the window is saved to this PNG once the initial repository has loaded, and the app exits.
     private const string ScreenshotEnvironmentVariable = "XPLAT_SCREENSHOT";
 
-    public MainWindow()
+    private readonly GitDiscoveryResult? _git;
+
+    public MainWindow(GitDiscoveryResult? git)
     {
+        _git = git;
         InitializeComponent();
         OpenButton.Click += OnOpenClick;
         Opened += OnOpened;
+        ShowGitProblem();
+    }
+
+    private void ShowGitProblem()
+    {
+        switch (_git?.Status)
+        {
+            case GitDiscoveryStatus.NotFound:
+                GitProblemText.Text = OperatingSystem.IsMacOS()
+                    ? "git was not found. Install the Command Line Tools with 'xcode-select --install', then restart."
+                    : "git was not found. Install git, then restart.";
+                OpenButton.IsEnabled = false;
+                break;
+            case GitDiscoveryStatus.TooOld:
+                GitProblemText.Text =
+                    $"git {_git.Version} is older than the supported minimum. Install a newer git, then restart.";
+                break;
+            case GitDiscoveryStatus.Found or null:
+                break;
+        }
     }
 
     private async void OnOpened(object? sender, EventArgs e)
     {
         string? initial = Program.InitialRepository;
-        if (initial is null)
+        if (initial is null || _git?.Status == GitDiscoveryStatus.NotFound)
         {
             return;
         }

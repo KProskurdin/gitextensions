@@ -5,6 +5,7 @@
         Title="Git Extensions"
         Width="960" Height="640">
   <DockPanel Margin="12" LastChildFill="True">
+    <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
       <TextBox x:Name="PathBox" Width="640" Watermark="Path to a git repository" />
       <Button x:Name="OpenButton" Content="Open" />

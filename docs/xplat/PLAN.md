@@ -155,7 +155,7 @@ Remaining:
 4. **Settings persistence off Windows (done on Linux 2026-10-03; macOS pending CI).** Replace the in-memory store behind seam S1 with a file in
    the platform's user-config directory (XDG on Linux, Application Support on macOS). Windows keeps
    the registry-plus-settings-file behavior it has upstream. Recent repositories must survive a restart.
-5. **Git discovery.** Find the `git` executable per OS (PATH, then known locations; macOS Command Line
+5. **Git discovery (done on Linux 2026-10-03; macOS rules unit-tested, not yet run on a Mac).** Find the `git` executable per OS (PATH, then known locations; macOS Command Line
    Tools), validate its version against the minimum the shared core expects, and show a clear message
    when it is missing. Upstream has a `gitcommand` setting; the new shell reads it and does not
    invent a second one.
