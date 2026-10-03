@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'ResourceManager'))</UpstreamDir>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+  </PropertyGroup>
+
+  <Import Project="..\eng\SharedSources.targets" />
+
+  <!-- Real Control/Form subclasses (translation + hotkey plumbing for WinForms); the cross-platform UI has its own base classes. -->
+  <ItemGroup>
+    <Compile Remove="$(UpstreamDir)GitExtensionsControl.cs" />
+    <Compile Remove="$(UpstreamDir)GitExtensionsControlInitialiser.cs" />
+    <Compile Remove="$(UpstreamDir)GitExtensionsFormBase.cs" />
+    <Compile Remove="$(UpstreamDir)TranslatedControl.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)GitExtensionsControl.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\app\GitExtUtils\Validates.cs" Link="Utils\Validates.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="SmartFormat" />
+    <PackageReference Include="System.Resources.Extensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GitCommands\GitCommands.csproj" />
+    <ProjectReference Include="..\GitExtUtils\GitExtUtils.csproj" />
+    <ProjectReference Include="..\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+  </ItemGroup>
+
+</Project>

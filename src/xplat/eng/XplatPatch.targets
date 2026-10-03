@@ -1,0 +1,59 @@
+<Project>
+  <!--
+    Merge-safe way to carry unavoidable one-line changes to upstream source files.
+
+    Declare, in the shadow project (several items may name the same file):
+      <XplatPatch Include="Relative\Path\In\Upstream\Project.cs" Old="exact text within one line" New="replacement" />
+
+    At build time each file is copied to obj\xplat-patched\ with every Old replaced by its New (first occurrence) and that
+    copy is compiled instead of the original. The upstream file is never edited, so git merges stay conflict-free. If an
+    upstream change alters an anchor the build fails with a message naming the file, which is the cue to re-evaluate
+    (or upstream) the seam.
+  -->
+  <UsingTask TaskName="XplatPatchFile" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Source ParameterType="System.String" Required="true" />
+      <Destination ParameterType="System.String" Required="true" />
+      <Patches ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        string text = System.IO.File.ReadAllText(Source);
+        foreach (Microsoft.Build.Framework.ITaskItem patch in Patches)
+        {
+            string old = patch.GetMetadata("Old");
+            int index = text.IndexOf(old, System.StringComparison.Ordinal);
+            if (index < 0)
+            {
+                Log.LogError("XplatPatch anchor not found in {0}: {1}", Source, old);
+                return false;
+            }
+
+            text = text.Substring(0, index) + patch.GetMetadata("New") + text.Substring(index + old.Length);
+        }
+
+        if (!System.IO.File.Exists(Destination) || System.IO.File.ReadAllText(Destination) != text)
+        {
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Destination));
+            System.IO.File.WriteAllText(Destination, text, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="ApplyXplatPatches" BeforeTargets="CoreCompile" Condition="'@(XplatPatch)' != ''">
+    <PropertyGroup>
+      <_XplatPatchedDir>$(IntermediateOutputPath)xplat-patched\</_XplatPatchedDir>
+    </PropertyGroup>
+
+    <!-- Batched per patched file, so Patches holds only the items that name that file. -->
+    <XplatPatchFile Source="$(UpstreamDir)%(XplatPatch.Identity)"
+                    Destination="$(_XplatPatchedDir)%(XplatPatch.Identity)"
+                    Patches="@(XplatPatch)" />
+
+    <ItemGroup>
+      <Compile Remove="@(XplatPatch->'$(UpstreamDir)%(Identity)')" />
+      <Compile Include="@(XplatPatch->'$(_XplatPatchedDir)%(Identity)'->Distinct())" />
+    </ItemGroup>
+  </Target>
+</Project>

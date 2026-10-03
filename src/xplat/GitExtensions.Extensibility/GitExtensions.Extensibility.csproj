@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'GitExtensions.Extensibility'))</UpstreamDir>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <Import Project="..\eng\SharedSources.targets" />
+
+  <!-- IsTestRunning only recognizes the Windows test host (testhost.exe); the Linux host has no extension. -->
+  <ItemGroup>
+    <XplatPatch Include="DebugHelpers.cs"
+                Old="=> Application.ExecutablePath.EndsWith(&quot;testhost.exe&quot;);"
+                New="=> Application.ExecutablePath.EndsWith(&quot;testhost.exe&quot;) || AppDomain.CurrentDomain.GetAssemblies().Any(a =&gt; a.GetName().Name == &quot;nunit.framework&quot;);" />
+  </ItemGroup>
+
+  <!-- A real WinForms control; replaced by CredentialsControl.Stub.cs. -->
+  <ItemGroup>
+    <Compile Remove="$(UpstreamDir)Settings\UserControls\CredentialsControl*.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)Settings\UserControls\CredentialsControl.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AdysTech.CredentialManager" />
+    <PackageReference Include="StrongOf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinFormsShim\GitExtensions.Xplat.WinFormsShim.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'GitCommands'))</UpstreamDir>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>$(DefineConstants);TRACE_REVISIONREADER</DefineConstants>
+  </PropertyGroup>
+
+  <Import Project="..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <Compile Include="..\..\app\GitExtUtils\Validates.cs" Link="Validates.cs" />
+  </ItemGroup>
+
+  <!-- Seams: one-line changes to upstream files that cannot be expressed as a stand-in. Keep this list short. -->
+  <ItemGroup>
+    <!-- A named Mutex may not contain '/' on Unix (IOException), which SaveSettings swallows: no setting is ever saved.
+         Unchanged on Windows so the name still matches a regular install's. -->
+    <XplatPatch Include="Settings\AppSettings.cs"
+                Old="name: @$&quot;Global\Mutex{SettingsFilePath.ToPosixPath()}&quot;"
+                New="name: @$&quot;Global\Mutex{(OperatingSystem.IsWindows() ? SettingsFilePath.ToPosixPath() : SettingsFilePath.ToPosixPath().Replace('/', '_'))}&quot;" />
+
+    <!-- Trailing separators: PathEqualityComparer only trims '\', so on Linux "/repo/" and "/repo" compare unequal.
+         On Windows DirectorySeparatorChar is '\', so behavior there is unchanged. -->
+    <XplatPatch Include="PathEqualityComparer.cs"
+                Old="path1 = Path.GetFullPath(path1).TrimEnd('\\');"
+                New="path1 = Path.GetFullPath(path1).TrimEnd(Path.DirectorySeparatorChar);" />
+    <XplatPatch Include="PathEqualityComparer.cs"
+                Old="path2 = Path.GetFullPath(path2).TrimEnd('\\');"
+                New="path2 = Path.GetFullPath(path2).TrimEnd(Path.DirectorySeparatorChar);" />
+    <XplatPatch Include="PathEqualityComparer.cs"
+                Old="path = Path.GetFullPath(path).TrimEnd('\\');"
+                New="path = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);" />
+
+    <!-- AppSettings keeps a few machine-level values in HKCU\Software\GitExtensions; route them through XplatRegistryKey. -->
+    <XplatPatch Include="Settings\AppSettings.cs"
+                Old="private static RegistryKey? _versionIndependentRegKey;"
+                New="private static XplatRegistryKey? _versionIndependentRegKey;" />
+    <XplatPatch Include="Settings\AppSettings.cs"
+                Old="private static RegistryKey VersionIndependentRegKey"
+                New="private static XplatRegistryKey VersionIndependentRegKey" />
+    <XplatPatch Include="Settings\AppSettings.cs"
+                Old="Registry.CurrentUser.CreateSubKey(&quot;Software\\GitExtensions&quot;, RegistryKeyPermissionCheck.ReadWriteSubTree)"
+                New="XplatRegistryKey.OpenVersionIndependentKey()" />
+    <XplatPatch Include="Settings\AppSettings.cs"
+                Old="RegistryKey? oldSettings = VersionIndependentRegKey.OpenSubKey(&quot;GitExtensions&quot;);"
+                New="XplatRegistryKey? oldSettings = VersionIndependentRegKey.OpenSubKey(&quot;GitExtensions&quot;);" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" />
+    <PackageReference Include="System.IO.Abstractions" />
+    <PackageReference Include="System.Reactive.Linq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GitExtensions.Extensibility\GitExtensions.Extensibility.csproj" />
+    <ProjectReference Include="..\GitExtUtils\GitExtUtils.csproj" />
+    <ProjectReference Include="..\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+  </ItemGroup>
+
+</Project>

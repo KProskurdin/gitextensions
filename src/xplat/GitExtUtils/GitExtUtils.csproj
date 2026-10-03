@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'GitExtUtils'))</UpstreamDir>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <Import Project="..\eng\SharedSources.targets" />
+
+  <!-- WinForms-only helpers (renderers, ListView/ToolStrip/ImageList/PropertyGrid extensions); the cross-platform UI has its own. -->
+  <ItemGroup>
+    <Compile Remove="$(UpstreamDir)GitUI\ComboBoxExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ControlDpiExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ControlTagExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\HighDpiMouseCursors.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\TableLayoutPanelExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ControlHotkeyExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ControlUtil.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\IMenuItemBackgroundFilter.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ImageListExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ListViewExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\PropertyGridExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ToolStripExProfessionalRenderer.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ToolStripExSystemRenderer.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ToolStripExtensions.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\ToolStripUtil.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\Theming\TabControlPaintContext.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\Theming\TabControlRenderer.cs" />
+    <Compile Remove="$(UpstreamDir)GitUI\Theming\ThemeFix.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\app\GitUI\Interops\BOOL.cs" Link="GitUI\Interops\BOOL.cs" />
+    <Compile Include="..\..\app\GitUI\Interops\RECT.cs" Link="GitUI\Interops\RECT.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AdysTech.CredentialManager" />
+    <PackageReference Include="Ben.Demystifier" />
+    <PackageReference Include="JetBrains.Annotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GitExtensions.Extensibility\GitExtensions.Extensibility.csproj" />
+  </ItemGroup>
+
+</Project>

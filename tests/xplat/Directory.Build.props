@@ -1,0 +1,20 @@
+<Project>
+  <!-- Shadow projects share their name with the upstream project they compile, so keep their outputs apart. -->
+  <PropertyGroup>
+    <OutDirName>xplat\$(MSBuildProjectName)</OutDirName>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)..\..\src\xplat\Directory.Build.props" />
+
+  <!-- Same settings as tests\Directory.Build.props, which the shadow projects bypass. -->
+  <PropertyGroup>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <DebugType>full</DebugType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <CodeAnalysisRuleSet>$(RepoRoot)\eng\GitExtensionsTest.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="AwesomeAssertions" />
+  </ItemGroup>
+</Project>

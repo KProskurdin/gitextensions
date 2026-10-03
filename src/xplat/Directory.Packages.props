@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Packages.props', '$(MSBuildThisFileDirectory)..\'))" />
+
+  <ItemGroup>
+    <!-- Only for the type definitions (Font, Image, Graphics) that upstream sources reference; not usable off Windows. -->
+    <PackageVersion Include="System.Drawing.Common" Version="10.0.0" />
+    <!-- Image resources in .resx files need this at build time; the WinForms SDK adds it implicitly upstream. -->
+    <PackageVersion Include="System.Resources.Extensions" Version="10.0.0" />
+    <!-- Supplied implicitly by the WinForms SDK upstream (Settings.Designer.cs). -->
+    <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.0" />
+  </ItemGroup>
+</Project>

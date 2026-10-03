@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'UnitTests', 'GitCommands.Tests'))</UpstreamDir>
+    <!-- Embedded resource names are derived from this; upstream's UnitTests props derive it from the project name. -->
+    <RootNamespace>GitCommandsTests</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>UNIT_TEST</DefineConstants>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\xplat\GitCommands\GitCommands.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\GitExtUtils\GitExtUtils.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\ResourceManager\ResourceManager.csproj" />
+    <ProjectReference Include="..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+  <!-- Mirrors upstream's GitCommands.Tests.csproj item for item; Link keeps manifest names and output paths identical. -->
+  <ItemGroup>
+    <EmbeddedResource Include="$(UpstreamDir)ExternalLinks\MockData\level3_roaming_GitExtensions.settings.xml" Link="ExternalLinks\MockData\level3_roaming_GitExtensions.settings.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)ExternalLinks\MockData\level1_repogit_GitExtensions.settings.xml" Link="ExternalLinks\MockData\level1_repogit_GitExtensions.settings.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)ExternalLinks\MockData\level2_repodist_GitExtensions.settings.xml" Link="ExternalLinks\MockData\level2_repodist_GitExtensions.settings.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)Helpers\MockData\MacLines.bin" Link="Helpers\MockData\MacLines.bin" />
+    <EmbeddedResource Include="$(UpstreamDir)Helpers\MockData\UnixLines.bin" Link="Helpers\MockData\UnixLines.bin" />
+    <EmbeddedResource Include="$(UpstreamDir)Helpers\MockData\WindowsLines.bin" Link="Helpers\MockData\WindowsLines.bin" />
+    <EmbeddedResource Include="$(UpstreamDir)MockData\Too_long_lines.txt" Link="MockData\Too_long_lines.txt" />
+    <EmbeddedResource Include="$(UpstreamDir)MockData\Too_many_lines.txt" Link="MockData\Too_many_lines.txt" />
+    <EmbeddedResource Include="$(UpstreamDir)Settings\MockData\level1_repogit_GitExtensions.settings.xml" Link="Settings\MockData\level1_repogit_GitExtensions.settings.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)Settings\MockData\level2_repodist_GitExtensions.settings.xml" Link="Settings\MockData\level2_repodist_GitExtensions.settings.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)Settings\MockData\level3_roaming_GitExtensions.settings.xml" Link="Settings\MockData\level3_roaming_GitExtensions.settings.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)UserRepositoryHistory\Legacy\MockData\CategorisedRepositories01.xml" Link="UserRepositoryHistory\Legacy\MockData\CategorisedRepositories01.xml" />
+    <EmbeddedResource Include="$(UpstreamDir)UserRepositoryHistory\Legacy\MockData\CategorisedRepositories02.xml" Link="UserRepositoryHistory\Legacy\MockData\CategorisedRepositories02.xml" />
+
+    <None Include="$(UpstreamDir)Patches\testdata\*" CopyToOutputDirectory="PreserveNewest" Link="Patches\testdata\%(Filename)%(Extension)" />
+    <None Include="$(UpstreamDir)TestData\RevisionReader\*" CopyToOutputDirectory="PreserveNewest" Link="TestData\RevisionReader\%(Filename)%(Extension)" />
+    <None Include="$(UpstreamDir)TestData\README.blame" CopyToOutputDirectory="PreserveNewest" Link="TestData\README.blame" />
+  </ItemGroup>
+
+</Project>

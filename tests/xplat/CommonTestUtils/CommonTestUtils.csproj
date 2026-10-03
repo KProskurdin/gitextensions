@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'CommonTestUtils'))</UpstreamDir>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TestProject>false</TestProject>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <!-- Uses a named Semaphore, unsupported on Unix; replaced by TestAppSettingsAttribute.cs next to this project. -->
+  <ItemGroup>
+    <Compile Remove="$(UpstreamDir)TestAppSettingsAttribute.cs" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'true'">
+    <DefineConstants>$(DefineConstants);CI_BUILD</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibGit2Sharp" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="JetBrains.Annotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\xplat\GitCommands\GitCommands.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\GitExtUtils\GitExtUtils.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Depends on NUnit, which adds the TestContainer capability, but this is not a test project. -->
+    <ProjectCapability Remove="TestContainer" />
+  </ItemGroup>
+
+</Project>

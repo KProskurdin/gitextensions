@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Stand-ins for the few WinForms types that the shared layers name in their signatures. -->
+  <PropertyGroup>
+    <RootNamespace>System.Windows.Forms</RootNamespace>
+    <EnableStyleCopAnalyzers>false</EnableStyleCopAnalyzers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" />
+  </ItemGroup>
+
+</Project>

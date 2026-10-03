@@ -1,0 +1,20 @@
+<Project>
+  <!--
+    Compiles the sources of an upstream project unchanged, so a plain git merge of upstream keeps working.
+    The importing project sets UpstreamDir (with trailing slash) and removes what cannot compile.
+  -->
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+  </PropertyGroup>
+
+  <Import Project="XplatPatch.targets" />
+
+  <ItemGroup>
+    <!-- Sources that belong to the shadow project itself (stand-ins, shims). -->
+    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+    <Compile Include="$(UpstreamDir)**\*.cs" Exclude="$(UpstreamDir)bin\**;$(UpstreamDir)obj\**" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="$(UpstreamDir)**\*.resx" Exclude="$(UpstreamDir)bin\**;$(UpstreamDir)obj\**" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

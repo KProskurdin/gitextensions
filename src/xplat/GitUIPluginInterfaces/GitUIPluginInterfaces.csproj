@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'plugins', 'GitUIPluginInterfaces'))</UpstreamDir>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <Import Project="..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <Compile Include="..\..\app\GitExtUtils\Validates.cs" Link="Validates.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="Microsoft.VisualStudio.Composition" />
+    <PackageReference Include="System.Reactive.Interfaces" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GitExtUtils\GitExtUtils.csproj" />
+  </ItemGroup>
+
+</Project>
