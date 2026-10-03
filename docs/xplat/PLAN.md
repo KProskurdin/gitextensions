@@ -165,7 +165,7 @@ Remaining:
    artifact (item 8) are still to come. Until a Mac is available this is the macOS evidence,
    and every status report says so.
 8. CI job for the app on Windows and Linux, with screenshot artifacts.
-9. `docs/xplat/PORTING-MAP.md` created with the rows for the forms the app already replaces
+9. `docs/xplat/PORTING-MAP.md` created 2026-10-03 with rows for the forms the app already replaces (`FormBrowse`, `RevisionGridControl`, both `partial`)
    (the commit list replaces `FormBrowse`'s revision grid, the window replaces `FormBrowse`).
 10. `tests/xplat/port-drift.sh` and `tests/xplat/xplat-drift.sh` (section 4), run by the nightly job.
 
