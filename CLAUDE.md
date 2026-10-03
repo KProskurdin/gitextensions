@@ -51,6 +51,8 @@ This repository is a fork that must stay mergeable with upstream (`gitextensions
 - Do not edit upstream files to make the fork work. New code goes under `src/xplat`, `tests/xplat`, `docs/xplat` or `GitExtensions.xplat.slnx`. The only exceptions are the seams listed in `docs/xplat/PLAN.md` section 5.
 - A new seam must be added to that table with its reason, and must be carried by `XplatPatch` (or an additive file), never by a manual edit of the upstream file.
 - Do not rename, move, reformat or "tidy" upstream code, even when it looks wrong. Such changes conflict with every upstream merge.
+- Logic inside upstream WinForms forms is reimplemented in the new shell, never moved out of the form. Every reimplementation gets a row in `docs/xplat/PORTING-MAP.md`.
+- Upstream settings keys, registry names and file formats are read as they are; the fork does not rename or migrate them.
 - Do not add new public types or members to upstream projects, and do not change `GitExtensions.Extensibility` (its interface version is public).
 - Windows-only tests are ignored with a reason in `XplatPlatformSkips.cs`; Linux expectations are separate `XplatLinux*.cs` tests. Do not change upstream test files.
 - Every milestone's exit criteria include: `tests/xplat/verify-upstream.sh` passes on the current `upstream/master`, and the seam count has not grown without a table entry.

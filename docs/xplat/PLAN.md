@@ -1,6 +1,12 @@
 # Cross-platform Git Extensions: implementation plan
 
-Status: draft, 2026-10-03. Owner: KProskurdin. Working branch: `feature/cross-os-ui`.
+Status: revised 2026-10-03 after the goal update. Owner: KProskurdin. Working branch: `feature/cross-os-ui`.
+
+Goals this plan serves (both are hard requirements):
+1. **A cross-platform application**, not only passing tests: Git Extensions runs as a usable app on
+   Windows, Linux and macOS.
+2. **Cheap upstream merges for the life of the fork**, including the case where the fork is never
+   merged upstream (section 11).
 
 ## 1. Goal
 
@@ -16,9 +22,10 @@ criterion, and the milestones beyond M4 are estimates only.
 | Area | State | Evidence |
 |---|---|---|
 | Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) compiles as `net10.0` | Done | `src/xplat/*` shadow projects, 0 errors on Windows and Linux |
-| Shared core tests | Done with a gap | Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3365 pass, 0 fail, 144 ignored with reasons |
-| Upstream files | Untouched | All changes are additive or carried as seams (section 5) |
-| Seams | 5 | `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs` and `SupportedOSPlatforms.cs` |
+| Shared core tests | Done with a gap | Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03) |
+| Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
+| Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
+| Settings persistence | Not on Linux or macOS | Seam S1 keeps settings in memory off Windows, so nothing the app stores survives a restart there. Fixed in M1 |
 | Avalonia app | Read-only commit list | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Not run on macOS |
 | Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master 52d08e996). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
 | CI | Written, not run on GitHub | `.github/workflows/xplat.yml`: shadow tests on Windows and Ubuntu, nightly upstream check. No macOS job. The app is not built in CI |
@@ -43,9 +50,11 @@ changes most often. That is why the plan keeps the WinForms UI untouched and bui
 1. **Additive fork.** Never edit an upstream file to make the fork work. New code lives under
    `src/xplat`, `tests/xplat`, `docs/xplat` and `GitExtensions.xplat.slnx`. Exceptions are
    listed as seams (section 5).
-2. **One engine, two shells.** The git engine and the domain logic stay shared. The WinForms
-   shell and the Avalonia shell both call them. Logic that is currently inside WinForms forms is
-   reimplemented in the new shell, and the reimplementation is traceable (section 6).
+2. **One engine, two shells.** The git engine stays shared and is used as-is. The WinForms shell and
+   the Avalonia shell both call it. Logic that is currently inside WinForms forms is
+   **reimplemented** in the new shell, never moved out of the upstream form: moving it would edit an
+   upstream file. Each reimplementation is traceable (section 6), and upstream changes to the
+   original are tracked, so the copy is not silently left behind.
 3. **Platform differences are explicit.** Each Windows-only expectation is marked as ignored with
    a reason (`XplatPlatformSkips.cs`), and the Linux expectation is written as its own test
    (`XplatLinux*.cs`). Nothing is silently excluded.
@@ -73,8 +82,17 @@ tests/
     CommonTestUtils/        shadow of upstream test helpers, plus TestAppSettingsAttribute replacement
     GitCommands.Tests/      shadow of upstream tests, XplatPlatformSkips.cs, XplatLinux*.cs
     GitExtensions.Xplat.App.Tests/  NEW in M1: Avalonia headless tests
-docs/xplat/PLAN.md          this file
+tests/xplat/
+  run-tests.sh             builds and tests the shadow projects (Windows via cmd.exe; Linux/macOS directly)
+  verify-upstream.sh       runs the same against upstream/master in a temporary worktree
+  port-drift.sh            NEW in M1: lists upstream commits that touched ported files since the recorded commit
+  xplat-drift.sh           NEW in M1: flags XplatLinux*/XplatPlatformSkips entries whose upstream test changed
+docs/xplat/
+  PLAN.md                  this file
+  SYNC-LOG.md              one entry per upstream check or merge
+  PORTING-MAP.md           NEW in M1: one row per ported upstream file
 GitExtensions.xplat.slnx    solution for everything above
+.github/workflows/xplat.yml CI: shadow tests on Windows, Linux and macOS (macOS added in M1), nightly upstream check
 ```
 
 ## 5. Seams: the complete list
@@ -99,10 +117,14 @@ candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on L
 ## 6. Mapping WinForms to the new shell
 
 For every upstream form or control that gets ported, the port is recorded in
-`docs/xplat/PORTING-MAP.md` (to be created in M2) with four columns: upstream file, new file,
-upstream commit the port was based on, and status. This table is what makes upstream merges
-manageable. A weekly script lists upstream commits that touched mapped files since the recorded
-commit, so each one can be ported or consciously skipped.
+`docs/xplat/PORTING-MAP.md` (created in M1) with four columns: upstream file, new file,
+upstream commit the port was based on, and status (`ported`, `partial`, `skipped: <reason>`,
+`windows-only`). This table is what makes upstream merges manageable.
+
+`tests/xplat/port-drift.sh` (built in M1) reads the table and lists upstream commits that touched
+a mapped file since its recorded commit. Each listed commit must end as a row update: ported,
+skipped with a reason, or the row is marked `stale`. It runs with the nightly verify job, so
+drift is visible without anyone remembering to look.
 
 ## 7. Milestones
 
@@ -120,8 +142,9 @@ Exit: shared core builds and tests on Windows and Linux; fork has an upstream re
 
 ### M1. Application shell and first read-only view (started)
 
-Exit: the app opens a repository on Windows, Linux and macOS, lists commits, and shows the
-selected commit's details.
+Exit: the app opens a repository on Windows, Linux and macOS, lists commits, shows the selected
+commit's details, and remembers its state across restarts. On macOS the exit is verified by CI
+(build, headless tests, screenshot artifact); a run on real hardware follows when a Mac is available.
 
 Done: window, path box, commit list (read-only), developer screenshot aid.
 
@@ -129,11 +152,23 @@ Remaining:
 1. Commit selection shows the message, author, date and parents (uses `RevisionReader.GetRevision`).
 2. Virtualized commit list that does not load the whole history; paging through `GetLog` with a limit.
 3. Headless UI tests (Avalonia.Headless) for the list and the selection.
-4. Application icon, window title from the repository name, error dialog instead of status text.
-5. CI job for the app on the three OSes, with screenshot artifacts.
-6. macOS verification: build, run, and a screenshot from a Mac. This needs a Mac; see section 10.
+4. **Settings persistence off Windows.** Replace the in-memory store behind seam S1 with a file in
+   the platform's user-config directory (XDG on Linux, Application Support on macOS). Windows keeps
+   the registry-plus-settings-file behavior it has upstream. Recent repositories must survive a restart.
+5. **Git discovery.** Find the `git` executable per OS (PATH, then known locations; macOS Command Line
+   Tools), validate its version against the minimum the shared core expects, and show a clear message
+   when it is missing. Upstream has a `gitcommand` setting; the new shell reads it and does not
+   invent a second one.
+6. Application icon, window title from the repository name, an error dialog instead of status text.
+7. **macOS in CI.** Add `macos-latest` to `.github/workflows/xplat.yml`: shadow tests, app build,
+   headless tests, and a screenshot artifact. Until a Mac is available this is the macOS evidence,
+   and every status report says so.
+8. CI job for the app on Windows and Linux, with screenshot artifacts.
+9. `docs/xplat/PORTING-MAP.md` created with the rows for the forms the app already replaces
+   (the commit list replaces `FormBrowse`'s revision grid, the window replaces `FormBrowse`).
+10. `tests/xplat/port-drift.sh` and `tests/xplat/xplat-drift.sh` (section 4), run by the nightly job.
 
-Estimate: 2 to 3 weeks.
+Estimate: 3 to 4 weeks (the settings and git-discovery items were not in the earlier estimate).
 
 ### M2. Engine services for UI (the boundary)
 
@@ -143,12 +178,20 @@ WinForms shell calls the same services where practical.
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.
 - Each service delegates to `GitCommands`. Where the logic lives in a WinForms form today, the
-  logic is moved to the core and the form calls it. That move is an upstream change, so it
-  happens only where the shared logic is small and self-contained; otherwise the core
-  reimplements it and the port is recorded in `PORTING-MAP.md`.
+  core **reimplements** it against `GitCommands`. The upstream form is not changed. The port is
+  recorded in `PORTING-MAP.md` (section 6), so upstream changes to the form show up in the drift check.
 - View models (`CommitListViewModel`, `CommitDetailsViewModel`, ...) in the core, with no UI types.
 - Threading: one UI-thread abstraction, built on the existing `ThreadHelper` and `AsyncLoader`
   (both in the shared core). Replace the Avalonia dispatcher calls with it.
+- **Platform services**, each with a Windows implementation and a POSIX one, behind interfaces in
+  the core:
+  - file and folder pickers (Avalonia storage provider);
+  - open a folder in the file manager (Explorer, Finder, `xdg-open`);
+  - open a terminal in a folder (per OS, configurable; section 9, question 10);
+  - clipboard;
+  - credential store (section 9, question 6);
+  - notifications and message boxes, replacing the `MessageBox` stand-in's host hook.
+- Each interface gets a unit test with a fake implementation, so the core does not depend on any OS.
 
 Estimate: 3 to 4 weeks.
 
@@ -197,9 +240,15 @@ Estimate: 6 to 8 weeks.
 
 Exit: user settings are editable in the new shell; themes apply; hotkeys are configurable.
 
-- Settings: keep the existing `GitExtensions.settings` format on Windows. On other OSes, use the
-  XDG (Linux) or Application Support (macOS) directory. `XplatRegistryKey` (S1) gets a real store
-  here.
+- Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
+  values that upstream keeps in the Windows registry (through S1, read-only on Windows).
+- External tools: diff and merge tools are configured per OS. Upstream's presets are Windows
+  programs (WinMerge, Beyond Compare, P4Merge, ...); the new shell detects the ones that exist
+  on the current OS (Meld and Kdiff3 on Linux, FileMerge and Beyond Compare on macOS) and lets
+  the user add others. The `DiffMergeTools` code in the shared core stays as it is.
+- Shell integration: the Windows terminal and shell launch (`CmdShell`, `PowerShellShell`,
+  `BashShell`, ConEmu) has POSIX equivalents (`$SHELL`, the configured terminal). Only the launch
+  is ported; ConEmu and Mintty embedding stay Windows-only.
 - Themes: map `AppColor` to Avalonia resources. The upstream theme files are CSS-like and are
   loaded by `ThemeLoader`, so the same files can be read.
 - Hotkeys: `HotkeyCommand` model reused; key names differ per OS (Cmd on macOS).
@@ -247,8 +296,9 @@ Not planned in detail. Full parity is the largest unknown and depends on section
 | Upstream merge check | `tests/xplat/verify-upstream.sh` | Linux (CI nightly) | Builds and tests shadow projects against `upstream/master` in a temporary worktree |
 | App unit tests (view models) | NUnit | Windows, Linux, macOS | Start in M2 |
 | App UI tests | Avalonia.Headless | Windows, Linux, macOS | Start in M1 |
-| App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux | Manual review, and an artifact in CI from M1 |
-| Git behavior | Real temporary repositories (`ReferenceRepository`) | Windows, Linux | As upstream does |
+| App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux, macOS (CI) | Manual review, and an artifact in CI from M1. The macOS screenshot comes from a CI runner until a Mac is available |
+| Git behavior | Real temporary repositories (`ReferenceRepository`) | Windows, Linux, macOS | As upstream does. macOS needs the Command Line Tools on the runner |
+| Drift checks | `port-drift.sh`, `xplat-drift.sh`, `verify-upstream.sh` | Linux (nightly) | Upstream changes to ported files and to mirrored tests are reported, not discovered by accident |
 
 Principle: no test is excluded silently. A Windows-only test is an `XplatPlatformSkips.cs` entry
 with a reason. A Linux-only expectation is an `XplatLinux*.cs` test.
@@ -278,6 +328,12 @@ These change the plan. Each has a recommendation, but the choice is the user's.
    behavior"): confirm, or change to one fixed set on every OS.
 8. **Apple developer account** for signing and notarization (M7).
 9. **Who maintains the xplat track** after the first milestones, and how often it syncs with upstream.
+10. **Terminal on Linux and macOS:** which terminal to launch when the user asks for one. Options:
+    `$TERMINAL` or `$SHELL` with a configurable command, or a fixed list per OS.
+    *Recommendation:* configurable command, with a default detected from the OS.
+11. **macOS evidence until a Mac exists:** accept CI-only evidence (build, headless tests, screenshot
+    artifact) as the macOS exit for M1 and M2, with a real run before any macOS release?
+    *Recommendation:* yes. A macOS release must not ship without a run on hardware.
 
 ## 10. Risks
 
@@ -291,6 +347,12 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 | Upstream test changes make Linux counterparts stale | Medium | Verify script runs nightly; `XplatLinux*.cs` tests have the upstream test name in their comment |
 | WinForms-only features (shell extension, ConEmu, WiX) confuse users on other OSes | Low | Document them as Windows-only; hide the menu items on other OSes |
 | Credential storage differs per OS | Medium | Section 9, question 6 |
+| Settings lost on Linux and macOS until M1 item 4 | High | Fix first in M1; until then, say in every status report that nothing persists off Windows |
+| `git` not found or too old on a user's machine (especially macOS without Command Line Tools) | High | M1 item 5: detection, version check, clear message |
+| Reimplemented form logic drifts from upstream without anyone noticing | High | `port-drift.sh` in the nightly job; `PORTING-MAP.md` rows marked `stale` block the milestone exit |
+| `XplatLinux*` counterparts go stale when the upstream test changes | Medium | `xplat-drift.sh` in the nightly job flags them (section 4) |
+| `WinFormsShim` grows with every new shared use of WinForms, and its stand-ins drift from real behavior | Medium | Measure the member count (11.2); each new member needs a note on what the real type does |
+| Terminal, diff-tool and shell launch behave differently on each OS | Medium | Section 9, question 10; per-OS tests where the OS allows |
 
 ## 11. Long-term mergeability
 
@@ -308,6 +370,10 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
   expectations are separate tests.
 - All new code is in fork-owned folders, and fork-owned folders never import upstream code by
   copying it.
+- Logic in upstream forms is reimplemented, never moved out. Moving it edits an upstream file, and
+  the copy in the fork then diverges silently. Every reimplementation has a `PORTING-MAP.md` row.
+- Upstream settings keys, registry names and file formats are read as they are. The fork does not
+  rename or migrate them in the shared core.
 
 ### 11.2 Measures (checked on every sync)
 
@@ -319,6 +385,9 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
 | Shadow build and tests on current upstream | pass | `tests/xplat/verify-upstream.sh` |
 | Time to sync one upstream batch | under 1 day for a batch of 50 commits | Recorded in the sync log |
 | Ported forms out of date | listed | `PORTING-MAP.md` rows whose upstream file changed since the recorded commit |
+| Mirrored tests out of date | listed | `xplat-drift.sh` output: `XplatLinux*` and `XplatPlatformSkips` entries whose upstream test changed |
+| `WinFormsShim` member count | not growing faster than the ported surface | Count of public members in `Shim.cs` and the `WinFormsShim` folder, recorded in `SYNC-LOG.md` |
+| Upstream WinForms references in shared projects | 0 new per sync | `git grep` of `System.Windows.Forms` in the shared upstream folders, compared to the last sync |
 
 ### 11.3 Sync cadence and procedure
 
@@ -328,7 +397,10 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
   1. Fetch `upstream/master`.
   2. Run `tests/xplat/verify-upstream.sh`. Read the failures before merging anything.
   3. If the shadow build or a seam fails, fix it in `src/xplat` on the fork branch first.
-  4. Merge `upstream/master` into the fork branch (merge, not rebase, so history is kept).
+  4. Merge `upstream/master` into the fork branch (merge, not rebase, so history is kept). Branch
+     model: `master` mirrors `upstream/master` and is moved by the user only (fast-forward);
+     `xplat/main` is the fork's integration branch; feature work branches from `xplat/main`. The
+     sync merges `master` into `xplat/main`. Automation does not create, move or commit branches.
   5. Run the Windows and Linux test suites.
   6. For each upstream commit that touched a ported form, update `PORTING-MAP.md`: port it, or
      record that it was deliberately skipped, with the reason.
@@ -366,9 +438,12 @@ sync that was done during the milestone.
 
 ## 12. Immediate next steps
 
-1. Answer the decisions in section 9, at least 1, 2 and 3.
-2. Commit the current work (user action).
-3. Start M1 item 1: commit details in the Avalonia app, with a headless test.
-4. Create `docs/xplat/PORTING-MAP.md` with the rows for the forms already used by the app
-   (the commit list maps to `FormBrowse`'s revision grid).
-5. Get access to a Mac, or decide to defer macOS, so M1 item 6 has an owner.
+1. Answer the decisions in section 9, at least 1, 2, 3 and 11.
+2. Commit the current work and move `master` to `upstream/master` (user actions).
+3. M1 item 4: settings persistence off Windows. It blocks any real use, so it comes before the
+   commit details.
+4. M1 item 5: git discovery per OS, with a test for the missing and too-old cases.
+5. M1 item 7: add `macos-latest` to CI, so macOS is checked from the next push.
+6. M1 item 9: create `docs/xplat/PORTING-MAP.md`.
+7. M1 item 1: commit details in the Avalonia app, with a headless test.
+8. Decide who owns the Mac, or whether macOS waits for hardware (section 9, question 11).
