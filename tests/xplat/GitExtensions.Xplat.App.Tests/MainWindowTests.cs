@@ -97,6 +97,28 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Staging_and_committing_from_the_window_adds_a_commit()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        Open(window, _repo.Path);
+        ListBox changes = Find<ListBox>(window, "ChangeList");
+        WaitUntil(() => changes.ItemCount == 1);
+
+        changes.SelectedIndex = 0;
+        Click(window, "StageButton");
+        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Staged");
+
+        Find<TextBox>(window, "CommitMessageBox").Text = "add new";
+        WaitUntil(() => Find<Button>(window, "CommitButton").IsEnabled);
+        Click(window, "CommitButton");
+        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Committed");
+
+        _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("add new");
+        Find<TextBox>(window, "CommitMessageBox").Text.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
     public void Selecting_a_commit_shows_its_details()
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
@@ -130,6 +152,9 @@ internal sealed class MainWindowTests
         Find<Button>(window, "OpenButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
     }
+
+    private static void Click(Window window, string buttonName)
+        => Find<Button>(window, buttonName).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");

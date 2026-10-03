@@ -5,34 +5,59 @@
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.MainWindow"
         Title="Git Extensions"
-        Width="1100" Height="640">
+        Width="1100" Height="680">
   <DockPanel Margin="12" LastChildFill="True">
     <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
-    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-      <TextBox x:Name="PathBox" Width="640" PlaceholderText="Path to a git repository" />
-      <Button x:Name="OpenButton" Content="Open" />
-      <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" />
-      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,0" />
-    </StackPanel>
-    <Grid ColumnDefinitions="240,12,*,12,360">
-      <Grid Grid.Column="0" RowDefinitions="Auto,160,Auto,*">
-        <TextBlock Grid.Row="0" x:Name="BranchText" FontWeight="Bold" Margin="0,0,0,4" />
-        <ListBox Grid.Row="1" x:Name="BranchList">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="repo:BranchInfo">
-              <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-        <TextBlock Grid.Row="2" Text="Changes" FontWeight="Bold" Margin="0,8,0,4" />
-        <ListBox Grid.Row="3" x:Name="ChangeList">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="repo:FileChange">
-              <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </Grid>
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <TextBox x:Name="PathBox" Width="420" Margin="0,0,8,4" PlaceholderText="Path to a git repository" />
+      <Button x:Name="OpenButton" Content="Open" Margin="0,0,8,4" />
+      <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" Margin="0,0,8,4" />
+      <Button x:Name="FetchButton" Content="Fetch" Margin="0,0,8,4" />
+      <Button x:Name="PullButton" Content="Pull" Margin="0,0,8,4" />
+      <Button x:Name="PushButton" Content="Push" Margin="0,0,8,4" />
+      <Button x:Name="CloneButton" Content="Clone..." Margin="0,0,8,4" />
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,4" />
+      <TextBlock x:Name="OperationStatusText" VerticalAlignment="Center" Margin="8,0,0,4" Foreground="DarkGreen" />
+    </WrapPanel>
+    <Grid ColumnDefinitions="260,12,*,12,360">
+      <ScrollViewer Grid.Column="0">
+        <StackPanel Spacing="6">
+          <TextBlock x:Name="BranchText" FontWeight="Bold" />
+          <ListBox x:Name="BranchList" Height="150">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="repo:BranchInfo">
+                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <WrapPanel>
+            <Button x:Name="CheckoutButton" Content="Checkout" Margin="0,0,6,4" />
+            <Button x:Name="DeleteBranchButton" Content="Delete" Margin="0,0,6,4" />
+          </WrapPanel>
+          <WrapPanel>
+            <TextBox x:Name="NewBranchBox" Width="150" Margin="0,0,6,4" PlaceholderText="New branch name" />
+            <Button x:Name="CreateBranchButton" Content="Create" Margin="0,0,6,4" />
+          </WrapPanel>
+          <TextBlock Text="Changes" FontWeight="Bold" Margin="0,8,0,0" />
+          <ListBox x:Name="ChangeList" Height="200" SelectionMode="Multiple">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="repo:FileChange">
+                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <WrapPanel>
+            <Button x:Name="StageButton" Content="Stage" Margin="0,0,6,4" />
+            <Button x:Name="UnstageButton" Content="Unstage" Margin="0,0,6,4" />
+          </WrapPanel>
+          <TextBox x:Name="CommitMessageBox" Height="90" AcceptsReturn="True" TextWrapping="Wrap"
+                   PlaceholderText="Commit message" />
+          <WrapPanel>
+            <CheckBox x:Name="AmendCheck" Content="Amend" Margin="0,0,12,4" />
+            <Button x:Name="CommitButton" Content="Commit" Margin="0,0,6,4" />
+          </WrapPanel>
+        </StackPanel>
+      </ScrollViewer>
       <ListBox x:Name="CommitList" Grid.Column="2">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="core:CommitRow">

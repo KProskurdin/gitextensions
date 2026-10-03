@@ -197,9 +197,18 @@ Write services, 2026-10-03: `Operations/IGitOperations` with `GitOperations`: st
 amend), create and check out branches, delete branches, fetch, pull, push and clone. Each builds its command
 with the upstream builders (`Commands.*`, `GitModule.FetchCmd/PullCmd`) and runs it through the same
 executor. A failed exit raises `GitOperationException` with git's own message. Tested against real
-repositories and a bare remote (26 app tests in total, including these). Still open in M2: a view model and
-window controls for these operations; stash; the platform services (pickers, folder and terminal launch,
-clipboard, credentials, notifications); the UI-thread abstraction; tags; the `PORTING-MAP.md` rows for them.
+repositories and a bare remote.
+
+Operations view model and window, 2026-10-03: `Operations/RepositoryOperationsViewModel` runs each operation,
+reports its status and error, and raises `RepositoryChanged` with the repository path so the window reloads it
+(for clone, the new folder). The window has Fetch, Pull and Push (origin, current branch), Clone (a dialog for
+URL and folder), stage and unstage of selected changes, commit with amend, create, check out and delete of
+branches. Buttons are enabled only when their action can run. Tests: 34 core tests (fake operations) and 27 app
+tests, including an end-to-end stage-and-commit through the window.
+
+Still open in M2: stash; the platform services (pickers, folder and terminal launch, clipboard, credentials,
+notifications); the UI-thread abstraction; tags; checking out remote branches; the `PORTING-MAP.md` rows for
+these operations. The clone dialog has no automated test yet.
 
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.
