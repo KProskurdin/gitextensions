@@ -83,6 +83,20 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Open_shows_the_current_branch_and_the_changed_files()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+
+        Open(window, _repo.Path);
+        ListBox changes = Find<ListBox>(window, "ChangeList");
+        WaitUntil(() => changes.ItemCount == 1);
+
+        string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        Find<TextBlock>(window, "BranchText").Text.Should().Be($"Branch: {current}");
+    }
+
+    [AvaloniaTest]
     public void Selecting_a_commit_shows_its_details()
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
@@ -114,7 +128,7 @@ internal sealed class MainWindowTests
     {
         Find<TextBox>(window, "PathBox").Text = path;
         Find<Button>(window, "OpenButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        WaitUntil(() => Find<TextBlock>(window, "StatusText").Text != "Loading...");
+        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

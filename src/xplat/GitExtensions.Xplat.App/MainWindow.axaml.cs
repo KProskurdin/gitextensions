@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
 
@@ -17,6 +18,7 @@ public partial class MainWindow : Window
 
     private readonly GitDiscoveryResult? _git;
     private readonly CommitListViewModel _commits = new(new GitCommitHistory());
+    private readonly RepositoryViewModel _repository = new(new GitRepositoryService());
 
     public MainWindow(GitDiscoveryResult? git)
     {
@@ -27,6 +29,7 @@ public partial class MainWindow : Window
         LoadMoreButton.Click += OnLoadMoreClick;
         CommitList.SelectionChanged += OnCommitSelectionChanged;
         _commits.PropertyChanged += (_, e) => OnCommitsChanged(e.PropertyName);
+        _repository.PropertyChanged += (_, e) => OnRepositoryChanged(e.PropertyName);
         Opened += OnOpened;
         ShowGitProblem();
     }
@@ -59,7 +62,7 @@ public partial class MainWindow : Window
         }
 
         PathBox.Text = initial;
-        await _commits.OpenAsync(initial);
+        await OpenRepositoryAsync(initial);
 
         string? screenshot = Environment.GetEnvironmentVariable(ScreenshotEnvironmentVariable);
         if (!string.IsNullOrEmpty(screenshot))
@@ -74,7 +77,16 @@ public partial class MainWindow : Window
 
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
     {
-        await _commits.OpenAsync(PathBox.Text?.Trim() ?? "");
+        await OpenRepositoryAsync(PathBox.Text?.Trim() ?? "");
+    }
+
+    private async Task OpenRepositoryAsync(string path)
+    {
+        await _commits.OpenAsync(path);
+        if (_commits.RepositoryPath is { } repositoryPath)
+        {
+            await _repository.RefreshAsync(repositoryPath);
+        }
     }
 
     private async void OnLoadMoreClick(object? sender, RoutedEventArgs e)
@@ -106,8 +118,7 @@ public partial class MainWindow : Window
                 LoadMoreButton.IsVisible = _commits.HasMore;
                 break;
             case nameof(CommitListViewModel.IsLoading):
-                OpenButton.IsEnabled = !_commits.IsLoading;
-                LoadMoreButton.IsEnabled = !_commits.IsLoading;
+                UpdateBusyState();
                 break;
             case nameof(CommitListViewModel.Details):
             case nameof(CommitListViewModel.DetailsError):
@@ -122,6 +133,41 @@ public partial class MainWindow : Window
 
                 break;
         }
+    }
+
+    private void OnRepositoryChanged(string? propertyName)
+    {
+        switch (propertyName)
+        {
+            case nameof(RepositoryViewModel.CurrentBranch):
+                BranchText.Text = _repository.CurrentBranch.Length == 0 ? "" : $"Branch: {_repository.CurrentBranch}";
+                break;
+            case nameof(RepositoryViewModel.Branches):
+                BranchList.ItemsSource = _repository.Branches;
+                break;
+            case nameof(RepositoryViewModel.Changes):
+                ChangeList.ItemsSource = _repository.Changes;
+                break;
+            case nameof(RepositoryViewModel.IsLoading):
+                UpdateBusyState();
+                break;
+            case nameof(RepositoryViewModel.ErrorMessage):
+                if (_repository.ErrorMessage is { } message)
+                {
+                    _repository.ClearError();
+                    ShowError(message);
+                }
+
+                break;
+        }
+    }
+
+    // Open and Load more stay disabled while either the commit list or the repository panel is reading.
+    private void UpdateBusyState()
+    {
+        bool busy = _commits.IsLoading || _repository.IsLoading;
+        OpenButton.IsEnabled = !busy && _git?.Status != GitDiscoveryStatus.NotFound;
+        LoadMoreButton.IsEnabled = !busy;
     }
 
     private void ShowDetails()

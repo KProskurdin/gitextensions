@@ -186,11 +186,20 @@ WinForms shell calls the same services where practical.
 Started 2026-10-03: `src/xplat/GitExtensions.Xplat.Core` holds `ICommitHistory` with `GitCommitHistory`
 (the history reads, moved out of the app), `CommitListViewModel` (commit list, paging, selection,
 details, errors, with no UI types) and `ObservableObject`. The app's window is a view over the view model.
-Tests: `tests/xplat/GitExtensions.Xplat.Core.Tests` (12, against a fake history) and the app's headless
-tests (10, against real repositories). `GitCommands` grants friend access to the core in
-`src/xplat/GitCommands/XplatFriends.cs`. Still open in M2: repository, refs, status and write services;
-the platform services (pickers, folder and terminal launch, clipboard, credentials, notifications); the
-UI-thread abstraction; the `PORTING-MAP.md` rows that these services replace.
+Continued 2026-10-03: `Repository/IRepositoryService` with `GitRepositoryService` (snapshot: current branch,
+local and remote branches, changed files with kind and staged state) and `RepositoryViewModel`. The window
+shows the branch and the changes in a left panel. Open stays disabled while either panel is loading.
+Tests: `tests/xplat/GitExtensions.Xplat.Core.Tests` (22, against fakes, including the status mapping) and the
+app's headless tests. `GitCommands` grants friend access to the core in
+`src/xplat/GitCommands/XplatFriends.cs`.
+
+Write services, 2026-10-03: `Operations/IGitOperations` with `GitOperations`: stage, unstage, commit (with
+amend), create and check out branches, delete branches, fetch, pull, push and clone. Each builds its command
+with the upstream builders (`Commands.*`, `GitModule.FetchCmd/PullCmd`) and runs it through the same
+executor. A failed exit raises `GitOperationException` with git's own message. Tested against real
+repositories and a bare remote (26 app tests in total, including these). Still open in M2: a view model and
+window controls for these operations; stash; the platform services (pickers, folder and terminal launch,
+clipboard, credentials, notifications); the UI-thread abstraction; tags; the `PORTING-MAP.md` rows for them.
 
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.

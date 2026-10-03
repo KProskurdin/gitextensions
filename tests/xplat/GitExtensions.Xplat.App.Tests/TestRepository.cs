@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace GitExtensions.Xplat.App.Tests;
 
 /// <summary>
@@ -23,40 +21,7 @@ internal sealed class TestRepository : IDisposable
 
     public string Path { get; }
 
-    public string Run(params string[] arguments)
-    {
-        ProcessStartInfo info = new("git")
-        {
-            WorkingDirectory = Path,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true
-        };
-        foreach (string argument in arguments)
-        {
-            info.ArgumentList.Add(argument);
-        }
+    public string Run(params string[] arguments) => GitProcess.Run(Path, arguments);
 
-        using Process process = Process.Start(info) ?? throw new InvalidOperationException("git did not start");
-        string output = process.StandardOutput.ReadToEnd();
-        process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        process.ExitCode.Should().Be(0);
-        return output;
-    }
-
-    public void Dispose()
-    {
-        if (!Directory.Exists(Path))
-        {
-            return;
-        }
-
-        // git writes read-only object files, which Windows refuses to delete.
-        foreach (string file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories))
-        {
-            File.SetAttributes(file, FileAttributes.Normal);
-        }
-
-        Directory.Delete(Path, recursive: true);
-    }
+    public void Dispose() => GitProcess.DeleteFolder(Path);
 }

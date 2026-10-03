@@ -30,6 +30,11 @@ public sealed class CommitListViewModel : ObservableObject
         _history = history;
     }
 
+    /// <summary>
+    ///  The repository whose history is shown, or null when none could be opened.
+    /// </summary>
+    public string? RepositoryPath => _repositoryPath;
+
     public IReadOnlyList<CommitRow> Rows
     {
         get => _rows;

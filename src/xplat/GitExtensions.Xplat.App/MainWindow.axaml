@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+        xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.MainWindow"
         Title="Git Extensions"
         Width="1100" Height="640">
@@ -13,8 +14,26 @@
       <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" />
       <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,0" />
     </StackPanel>
-    <Grid ColumnDefinitions="*,12,360">
-      <ListBox x:Name="CommitList" Grid.Column="0">
+    <Grid ColumnDefinitions="240,12,*,12,360">
+      <Grid Grid.Column="0" RowDefinitions="Auto,160,Auto,*">
+        <TextBlock Grid.Row="0" x:Name="BranchText" FontWeight="Bold" Margin="0,0,0,4" />
+        <ListBox Grid.Row="1" x:Name="BranchList">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="repo:BranchInfo">
+              <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Grid.Row="2" Text="Changes" FontWeight="Bold" Margin="0,8,0,4" />
+        <ListBox Grid.Row="3" x:Name="ChangeList">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="repo:FileChange">
+              <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+      <ListBox x:Name="CommitList" Grid.Column="2">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="core:CommitRow">
             <Grid ColumnDefinitions="90,*,200,140" Margin="4,2">
@@ -26,7 +45,7 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-      <Border Grid.Column="2" BorderBrush="LightGray" BorderThickness="1" Padding="10" CornerRadius="4">
+      <Border Grid.Column="4" BorderBrush="LightGray" BorderThickness="1" Padding="10" CornerRadius="4">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
             <TextBlock x:Name="DetailHash" FontFamily="monospace" TextWrapping="Wrap" />
