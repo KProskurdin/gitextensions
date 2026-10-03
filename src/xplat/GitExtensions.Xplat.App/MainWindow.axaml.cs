@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -49,6 +50,9 @@ public partial class MainWindow : Window
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
         CommitButton.Click += OnCommitClick;
         CreateBranchButton.Click += OnCreateBranchClick;
+        StashButton.Click += OnStashClick;
+        PopStashButton.Click += (_, _) => RunOnRepository(path => _actions.PopStashAsync(path));
+        CopyHashButton.Click += OnCopyHashClick;
         CheckoutButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => branch.IsRemote
             ? _actions.CheckoutRemoteAsync(path, branch.Name)
             : _actions.CheckoutAsync(path, branch.Name));
@@ -349,7 +353,25 @@ public partial class MainWindow : Window
         CheckoutButton.IsEnabled = open;
         DeleteBranchButton.IsEnabled = open;
         OpenFolderButton.IsEnabled = open;
+        StashButton.IsEnabled = open;
+        PopStashButton.IsEnabled = open;
         TerminalButton.IsEnabled = open;
+    }
+
+    private async void OnStashClick(object? sender, RoutedEventArgs e)
+    {
+        if (_commits.RepositoryPath is { } path && await _actions.StashAsync(path, StashMessageBox.Text ?? ""))
+        {
+            StashMessageBox.Text = "";
+        }
+    }
+
+    private async void OnCopyHashClick(object? sender, RoutedEventArgs e)
+    {
+        if (_commits.Details is { } details && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(details.Hash);
+        }
     }
 
     private void ShowDetails()
@@ -363,6 +385,7 @@ public partial class MainWindow : Window
             DetailCommitDate.Text = "";
             DetailParents.Text = "";
             DetailMessage.Text = _commits.DetailsError;
+            CopyHashButton.IsEnabled = false;
             return;
         }
 
@@ -372,6 +395,7 @@ public partial class MainWindow : Window
         DetailCommitDate.Text = $"Committed: {details.CommitDate}";
         DetailParents.Text = string.IsNullOrEmpty(details.Parents) ? "No parents" : $"Parents: {details.Parents}";
         DetailMessage.Text = details.Message;
+        CopyHashButton.IsEnabled = true;
     }
 
     private void ShowError(string message)

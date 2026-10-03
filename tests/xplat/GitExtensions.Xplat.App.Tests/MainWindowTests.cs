@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitCommands;
@@ -107,6 +108,45 @@ internal sealed class MainWindowTests
 
         Find<Button>(window, "OpenFolderButton").IsEnabled.Should().BeTrue();
         Find<Button>(window, "TerminalButton").IsEnabled.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void Copy_hash_puts_the_selected_commit_hash_on_the_clipboard()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        Open(window, _repo.Path);
+        Find<ListBox>(window, "CommitList").SelectedIndex = 0;
+        WaitUntil(() => Find<Button>(window, "CopyHashButton").IsEnabled);
+
+        Click(window, "CopyHashButton");
+        Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
+        WaitUntil(() => text.IsCompleted);
+
+        text.Result.Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Stash_and_pop_from_the_window_restore_the_change()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        Open(window, _repo.Path);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        Click(window, "OpenButton");
+        ListBox changes = Find<ListBox>(window, "ChangeList");
+        WaitUntil(() => changes.ItemCount == 1);
+
+        Find<TextBox>(window, "StashMessageBox").Text = "wip";
+        Click(window, "StashButton");
+        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Stashed");
+        WaitUntil(() => changes.ItemCount == 0);
+        _repo.Run("stash", "list").Should().Contain("wip");
+
+        Click(window, "PopStashButton");
+        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Stash popped");
+        WaitUntil(() => changes.ItemCount == 1);
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("changed");
     }
 
     [AvaloniaTest]

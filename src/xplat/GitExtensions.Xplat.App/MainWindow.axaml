@@ -58,6 +58,12 @@
             <CheckBox x:Name="AmendCheck" Content="Amend" Margin="0,0,12,4" />
             <Button x:Name="CommitButton" Content="Commit" Margin="0,0,6,4" />
           </WrapPanel>
+          <TextBlock Text="Stash" FontWeight="Bold" Margin="0,8,0,0" />
+          <TextBox x:Name="StashMessageBox" PlaceholderText="Stash message (optional)" />
+          <WrapPanel>
+            <Button x:Name="StashButton" Content="Stash" Margin="0,0,6,4" />
+            <Button x:Name="PopStashButton" Content="Pop stash" Margin="0,0,6,4" />
+          </WrapPanel>
         </StackPanel>
       </ScrollViewer>
       <ListBox x:Name="CommitList" Grid.Column="2">
@@ -80,6 +86,7 @@
             <TextBlock x:Name="DetailAuthorDate" />
             <TextBlock x:Name="DetailCommitDate" />
             <TextBlock x:Name="DetailParents" FontFamily="monospace" TextWrapping="Wrap" />
+            <Button x:Name="CopyHashButton" Content="Copy hash" HorizontalAlignment="Left" Margin="0,4,0,0" />
           </StackPanel>
           <ScrollViewer>
             <TextBlock x:Name="DetailMessage" TextWrapping="Wrap" />

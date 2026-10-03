@@ -95,6 +95,12 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> PushAsync(string repositoryPath, string remote, string branch)
         => RunAsync("Pushed", repositoryPath, () => _operations.PushAsync(repositoryPath, remote, branch));
 
+    public Task<bool> StashAsync(string repositoryPath, string message)
+        => RunAsync("Stashed", repositoryPath, () => _operations.StashAsync(repositoryPath, message.Trim()));
+
+    public Task<bool> PopStashAsync(string repositoryPath)
+        => RunAsync("Stash popped", repositoryPath, () => _operations.PopStashAsync(repositoryPath));
+
     /// <summary>
     ///  Clones <paramref name="sourceUrl"/> into <paramref name="targetPath"/>. The clone is reported through
     ///  <see cref="RepositoryChanged"/> with the target path, so a view can open it.

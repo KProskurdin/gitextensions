@@ -90,6 +90,12 @@ public sealed class GitOperations : IGitOperations
             _ => Commands.Push(remote, branch, toBranch: null, ForcePushOptions.DoNotForce, track: true,
                 recursiveSubmodules: 0));
 
+    public Task StashAsync(string repositoryPath, string message)
+        => RunAsync(repositoryPath, _ => Commands.StashSave(untracked: false, keepIndex: false, message, selectedFiles: null));
+
+    public Task PopStashAsync(string repositoryPath)
+        => RunAsync(repositoryPath, _ => new GitArgumentBuilder("stash") { "pop" });
+
     public Task CloneAsync(string sourceUrl, string targetPath)
         => Task.Run(() =>
         {

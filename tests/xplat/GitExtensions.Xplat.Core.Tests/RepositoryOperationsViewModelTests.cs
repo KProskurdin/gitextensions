@@ -167,6 +167,29 @@ internal sealed class RepositoryOperationsViewModelTests
     }
 
     [Test]
+    public async Task StashAsync_trims_the_message_and_reports_the_change()
+    {
+        Task<bool> stash = _viewModel.StashAsync(RepositoryPath, "  work in progress ");
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} work in progress");
+        _git.Complete(0);
+
+        (await stash).Should().BeTrue();
+        _viewModel.StatusMessage.Should().Be("Stashed");
+        _changedPaths.Should().Equal(RepositoryPath);
+    }
+
+    [Test]
+    public async Task PopStashAsync_reports_the_change()
+    {
+        Task<bool> pop = _viewModel.PopStashAsync(RepositoryPath);
+        _git.Complete(0);
+
+        (await pop).Should().BeTrue();
+        _viewModel.StatusMessage.Should().Be("Stash popped");
+        _changedPaths.Should().Equal(RepositoryPath);
+    }
+
+    [Test]
     public async Task ClearError_removes_the_message()
     {
         await _viewModel.CommitAsync(RepositoryPath, "", amend: false);

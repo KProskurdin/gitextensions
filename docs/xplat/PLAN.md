@@ -217,8 +217,17 @@ and Terminal buttons. The clone dialog has a folder picker (Avalonia storage pro
 after the repository. Tests: 44 core tests (recording fake launcher, one case per OS) and 32 app tests.
 Not tested: the Avalonia folder picker and the real launches (they need a desktop session and would open windows).
 
-Still open in M2: stash; tags; clipboard; credentials (decision 6: git's own helpers first); notifications; the
-UI-thread abstraction.
+Stash and clipboard, 2026-10-03: stash save (with an optional message) and pop of the top stash, through the same
+operations layer; the window has the stash controls and a Copy hash button for the selected commit (Avalonia
+clipboard). Tests: 46 core tests, 35 app tests, including a stash round trip and a clipboard check in headless.
+
+Credentials: no new service yet. Upstream's `EnvironmentConfiguration` runs before every git start, so `SSH_ASKPASS`
+and `DISPLAY` are already set for the shadow process. HTTPS and SSH authentication therefore rely on git's own
+credential helpers (decision 6). Without a helper, a GUI push to an HTTPS remote fails with git's message instead
+of prompting. This is untested against a real remote.
+
+Still open in M2: tags; notifications; the UI-thread abstraction (the view models do not marshal, so it is not
+needed yet); a credential store for Linux and macOS, if git's helpers are not enough.
 
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.

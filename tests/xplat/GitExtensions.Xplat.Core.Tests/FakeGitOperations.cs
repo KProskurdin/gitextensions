@@ -37,6 +37,10 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task CloneAsync(string sourceUrl, string targetPath) => Record("Clone", $"{sourceUrl} {targetPath}");
 
+    public Task StashAsync(string repositoryPath, string message) => Record("Stash", $"{repositoryPath} {message}");
+
+    public Task PopStashAsync(string repositoryPath) => Record("PopStash", repositoryPath);
+
     public void Complete(int index) => _calls[index].Completion.SetResult();
 
     public void Fail(int index, Exception exception) => _calls[index].Completion.SetException(exception);

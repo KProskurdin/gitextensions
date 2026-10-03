@@ -167,6 +167,22 @@ internal sealed class GitOperationsTests
         _repo.Run("config", "branch.feature.remote").Trim().Should().Be("origin");
     }
 
+    [AvaloniaTest]
+    public void Stash_saves_the_working_changes_with_the_message_and_pop_restores_them()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+
+        Wait(_operations.StashAsync(_repo.Path, "work in progress"));
+
+        _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
+        _repo.Run("stash", "list").Should().Contain("work in progress");
+
+        Wait(_operations.PopStashAsync(_repo.Path));
+
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("changed");
+        _repo.Run("stash", "list").Trim().Should().BeEmpty();
+    }
+
     private static void Wait(Task task) => task.GetAwaiter().GetResult();
 
     private string CreateBareRemote()
