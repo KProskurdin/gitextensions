@@ -37,4 +37,8 @@ internal sealed class FakeCommitHistory : ICommitHistory
     public void CompleteDetails(int index, CommitDetails details) => _detailReads[index].SetResult(details);
 
     public void FailDetails(int index, Exception exception) => _detailReads[index].SetException(exception);
+
+    public IReadOnlyList<CommitFile> Files { get; set; } = [];
+
+    public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash) => Task.FromResult(Files);
 }

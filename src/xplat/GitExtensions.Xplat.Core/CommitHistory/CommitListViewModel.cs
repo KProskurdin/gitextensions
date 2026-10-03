@@ -24,6 +24,7 @@ public sealed class CommitListViewModel : ObservableObject
     private bool _isLoading;
     private string? _errorMessage;
     private string? _detailsError;
+    private IReadOnlyList<CommitFile> _commitFiles = [];
 
     public CommitListViewModel(ICommitHistory history)
     {
@@ -57,6 +58,15 @@ public sealed class CommitListViewModel : ObservableObject
     {
         get => _detailsError ?? "";
         private set => SetProperty(ref _detailsError, value);
+    }
+
+    /// <summary>
+    ///  Files changed by the selected commit.
+    /// </summary>
+    public IReadOnlyList<CommitFile> CommitFiles
+    {
+        get => _commitFiles;
+        private set => SetProperty(ref _commitFiles, value);
     }
 
     public string Status
@@ -108,6 +118,7 @@ public sealed class CommitListViewModel : ObservableObject
         if (row is null || repositoryPath is null)
         {
             Details = null;
+            CommitFiles = [];
             DetailsError = "";
             return;
         }
@@ -115,10 +126,12 @@ public sealed class CommitListViewModel : ObservableObject
         try
         {
             CommitDetails details = await _history.LoadDetailsAsync(repositoryPath, row.Hash);
+            IReadOnlyList<CommitFile> files = await _history.LoadFilesAsync(repositoryPath, row.Hash);
             if (version == _detailsVersion)
             {
                 DetailsError = "";
                 Details = details;
+                CommitFiles = files;
             }
         }
         catch (Exception ex)
@@ -126,6 +139,7 @@ public sealed class CommitListViewModel : ObservableObject
             if (version == _detailsVersion)
             {
                 Details = null;
+                CommitFiles = [];
                 DetailsError = ex.Message;
             }
         }

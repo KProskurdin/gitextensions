@@ -1,6 +1,9 @@
 using System.Reactive;
 using GitCommands;
 using GitCommands.Git;
+using GitExtensions.Extensibility;
+using GitExtensions.Xplat.Core.Operations;
+using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
@@ -17,6 +20,27 @@ public sealed class GitCommitHistory : ICommitHistory
 
     public Task<CommitDetails> LoadDetailsAsync(string repositoryPath, string hash)
         => Task.Run(() => LoadDetails(repositoryPath, hash));
+
+    public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash)
+        => Task.Run(() => LoadFiles(repositoryPath, hash));
+
+    private static IReadOnlyList<CommitFile> LoadFiles(string path, string hash)
+    {
+        ExecutionResult result = CreateModule(path).GitExecutable.Execute(
+            new GitArgumentBuilder("show") { "--format=", "--name-status", "--no-color", hash },
+            throwOnErrorExit: false);
+        if (!result.ExitedSuccessfully)
+        {
+            throw new GitOperationException(result.StandardError.Trim());
+        }
+
+        return result.StandardOutput
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Split('\t'))
+            .Where(fields => fields.Length >= 2)
+            .Select(fields => new CommitFile(fields[0][..1], fields[^1].TrimEnd('\r')))
+            .ToList();
+    }
 
     private static CommitPage LoadPage(string path, int limit)
     {
@@ -60,8 +84,9 @@ public sealed class GitCommitHistory : ICommitHistory
     private static CommitDetails LoadDetails(string path, string hash)
     {
         GitRevision revision = new RevisionReader(CreateModule(path))
-            .GetRevision(hash, hasNotes: false, throwOnError: true, cancellationToken: CancellationToken.None)
-            ?? throw new InvalidOperationException($"Commit not found: {hash}");
+                                   .GetRevision(hash, hasNotes: false, throwOnError: true,
+                                       cancellationToken: CancellationToken.None)
+                               ?? throw new InvalidOperationException($"Commit not found: {hash}");
 
         return new CommitDetails(
             Hash: revision.ObjectId.ToString(),

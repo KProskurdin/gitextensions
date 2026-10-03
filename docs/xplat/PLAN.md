@@ -254,6 +254,15 @@ Estimate: 3 to 4 weeks.
 Exit: a user can browse history, see a diff for any commit, browse the file tree at a commit,
 and view blame and file history.
 
+Started 2026-10-03: a changed-file list for each selected commit with a Show diff action, and a diff window for
+a commit file or a working-tree file (staged or unstaged). Diff lines are colored by kind (added, removed, hunk,
+header). The diff is `Core/Diff` (`DiffParser`, `GitDiffService`, `DiffViewModel`); the window is `DiffWindow`.
+Tests: 52 core tests and 40 app tests, including real-git diffs for a commit, the working tree and the index.
+
+Decision, 2026-10-03: AvaloniaEdit is not used. Its newest NuGet release is 0.10.12, built for Avalonia 0.10, so it
+does not load with Avalonia 12. The diff is shown with native list items, which is enough for a read-only view.
+Syntax highlighting and line numbers are not done; they can be revisited if a control for Avalonia 12 appears.
+
 Components, in suggested order:
 1. Diff viewer. Editor control: AvaloniaEdit (not yet checked: current version and maintenance;
    the NuGet index lists 0.10.12). Syntax highlighting and line numbers. Patch parsing reuses

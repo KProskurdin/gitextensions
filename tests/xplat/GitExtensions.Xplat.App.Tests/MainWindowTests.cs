@@ -128,6 +128,29 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Show_diff_of_a_commit_file_opens_the_diff_window_with_its_lines()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        Open(window, _repo.Path);
+        Find<ListBox>(window, "CommitList").SelectedIndex = 0;
+        ListBox files = Find<ListBox>(window, "CommitFilesList");
+        WaitUntil(() => files.ItemCount == 1);
+
+        files.SelectedIndex = 0;
+        Click(window, "ShowCommitDiffButton");
+        WaitUntil(() => window.OwnedWindows.OfType<DiffWindow>().Any());
+
+        DiffWindow diff = window.OwnedWindows.OfType<DiffWindow>().Single();
+        WaitUntil(() => diff.FindControl<ListBox>("DiffList")?.ItemCount > 0);
+        ((List<DiffLineItem>)diff.FindControl<ListBox>("DiffList")!.ItemsSource!).Should()
+            .Contain(line => line.Text == "+two");
+        diff.Title.Should().EndWith("a.txt");
+        diff.Close();
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void Stash_and_pop_from_the_window_restore_the_change()
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));

@@ -51,6 +51,7 @@
           <WrapPanel>
             <Button x:Name="StageButton" Content="Stage" Margin="0,0,6,4" />
             <Button x:Name="UnstageButton" Content="Unstage" Margin="0,0,6,4" />
+            <Button x:Name="ShowChangeDiffButton" Content="Diff" Margin="0,0,6,4" />
           </WrapPanel>
           <TextBox x:Name="CommitMessageBox" Height="90" AcceptsReturn="True" TextWrapping="Wrap"
                    PlaceholderText="Commit message" />
@@ -87,6 +88,15 @@
             <TextBlock x:Name="DetailCommitDate" />
             <TextBlock x:Name="DetailParents" FontFamily="monospace" TextWrapping="Wrap" />
             <Button x:Name="CopyHashButton" Content="Copy hash" HorizontalAlignment="Left" Margin="0,4,0,0" />
+            <TextBlock Text="Changed files" FontWeight="Bold" Margin="0,8,0,0" />
+            <ListBox x:Name="CommitFilesList" Height="120">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="core:CommitFile">
+                  <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button x:Name="ShowCommitDiffButton" Content="Show diff" HorizontalAlignment="Left" Margin="0,4,0,0" />
           </StackPanel>
           <ScrollViewer>
             <TextBlock x:Name="DetailMessage" TextWrapping="Wrap" />

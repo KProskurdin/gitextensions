@@ -53,6 +53,8 @@ public partial class MainWindow : Window
         StashButton.Click += OnStashClick;
         PopStashButton.Click += (_, _) => RunOnRepository(path => _actions.PopStashAsync(path));
         CopyHashButton.Click += OnCopyHashClick;
+        ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
+        ShowChangeDiffButton.Click += (_, _) => ShowChangeDiff();
         CheckoutButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => branch.IsRemote
             ? _actions.CheckoutRemoteAsync(path, branch.Name)
             : _actions.CheckoutAsync(path, branch.Name));
@@ -271,6 +273,9 @@ public partial class MainWindow : Window
     {
         switch (propertyName)
         {
+            case nameof(CommitListViewModel.CommitFiles):
+                CommitFilesList.ItemsSource = _commits.CommitFiles;
+                break;
             case nameof(CommitListViewModel.Rows):
                 CommitList.ItemsSource = _commits.Rows;
                 break;
@@ -355,6 +360,7 @@ public partial class MainWindow : Window
         OpenFolderButton.IsEnabled = open;
         StashButton.IsEnabled = open;
         PopStashButton.IsEnabled = open;
+        ShowChangeDiffButton.IsEnabled = open;
         TerminalButton.IsEnabled = open;
     }
 
@@ -371,6 +377,23 @@ public partial class MainWindow : Window
         if (_commits.Details is { } details && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
         {
             await clipboard.SetTextAsync(details.Hash);
+        }
+    }
+
+    private void ShowCommitDiff()
+    {
+        if (_commits.RepositoryPath is { } path && _commits.Selected is { } row &&
+            CommitFilesList.SelectedItem is CommitFile file)
+        {
+            new DiffWindow(path, row.Hash, file.Path, staged: false).Show(this);
+        }
+    }
+
+    private void ShowChangeDiff()
+    {
+        if (_commits.RepositoryPath is { } path && ChangeList.SelectedItem is FileChange change)
+        {
+            new DiffWindow(path, commitHash: null, change.Path, change.Staged).Show(this);
         }
     }
 

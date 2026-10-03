@@ -31,6 +31,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (new branch box) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (checkout, remote checkout), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Checkout) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
+| `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/DiffWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -83,3 +85,11 @@ reimplemented behavior, so the rows now use `52d08e996` as their base:
 - `1c98cad37` (grid tooltip in `RevisionGridControl`): skipped, the commit list has no tooltips.
 - `36d8b34f6`, `d2b1e3528` (`FormCommit` focus scrolling and status bar height): skipped, layout of the WinForms file lists.
 - `af375e1be` (`FormClone` option to init submodules): skipped, the clone form does not expose submodule options.
+
+**FileViewer** (`partial`). Ported: the diff of one file, for a commit or the working tree (staged or unstaged), with
+added, removed, hunk and header lines colored. Not ported: syntax highlighting, line numbers, the editor's
+selection and patch-line actions, and the external diff tool.
+
+**RevisionDiffControl** (`partial`). Ported: the files a selected commit changed, with status letters, and a
+Show diff action for one file. Not ported: the per-file tree, filtering, the file history view, and the
+diff of merge commits against each parent.

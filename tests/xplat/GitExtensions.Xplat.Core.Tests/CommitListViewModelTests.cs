@@ -187,6 +187,19 @@ internal sealed class CommitListViewModelTests
         changed.Should().Contain(nameof(CommitListViewModel.Status));
     }
 
+    [Test]
+    public async Task SelectAsync_should_expose_the_files_the_commit_changed()
+    {
+        await OpenWithRows("aaa1");
+        _history.Files = [new CommitFile("M", "a.txt"), new CommitFile("A", "b.txt")];
+
+        Task select = _viewModel.SelectAsync(_viewModel.Rows[0]);
+        _history.CompleteDetails(0, Details("aaa1", "message"));
+        await select;
+
+        _viewModel.CommitFiles.Select(file => file.Display).Should().Equal("M a.txt", "A b.txt");
+    }
+
     private async Task OpenWithRows(params string[] hashes)
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);
@@ -195,7 +208,9 @@ internal sealed class CommitListViewModelTests
     }
 
     private static CommitPage Page(bool hasMore, params string[] hashes)
-        => new(hashes.Select(hash => new CommitRow(hash, hash[..4], "subject " + hash, "author", "2026-10-03 12:00")).ToList(), hasMore);
+        => new(
+            hashes.Select(hash => new CommitRow(hash, hash[..4], "subject " + hash, "author", "2026-10-03 12:00"))
+                .ToList(), hasMore);
 
     private static CommitDetails Details(string hash, string message)
         => new(hash, "author <a@example.com>", "2026-10-03 12:00", "2026-10-03 12:00", "", message);
