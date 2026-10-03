@@ -1,0 +1,86 @@
+using AwesomeAssertions;
+using GitCommands.Git;
+using GitCommands.UserRepositoryHistory;
+using NSubstitute;
+using NUnit.Framework;
+
+namespace GitCommandsTests.UserRepositoryHistory;
+
+/// <summary>
+///  POSIX counterparts of <c>RepositoryDescriptionProviderTests</c>, which build paths with '\'. Same structure and expectations.
+/// </summary>
+[Platform(Include = "Linux,MacOsX")]
+internal sealed class XplatLinuxRepositoryDescriptionProviderTests
+{
+    private string _tempDir = null!;
+
+    [SetUp]
+    public void Setup()
+    {
+        _tempDir = Directory.CreateTempSubdirectory().FullName;
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        Directory.Delete(_tempDir, recursive: true);
+    }
+
+    [Test]
+    public void RepositoryDescriptionProvider_should_handle_subrepos()
+    {
+        RepositoryDescriptionProvider repositoryDescriptionProvider = new(Substitute.For<IGitDirectoryResolver>());
+
+        string repo = Path.Combine(_tempDir, "test_repo");
+        string submodule = Path.Combine(repo, "submodule");
+        string nested = Path.Combine(submodule, "nested");
+        string subsubmodule = Path.Combine(nested, "subsubmodule");
+        string leafsubmodule = Path.Combine(nested, "leafsubmodule");
+        Directory.CreateDirectory(leafsubmodule);
+
+        repositoryDescriptionProvider.Get(repo, IsValidGitWorkingDir).Should().Be("test_repo");
+        repositoryDescriptionProvider.Get(submodule, IsValidGitWorkingDir).Should().Be("submodule < test_repo");
+        repositoryDescriptionProvider.Get(subsubmodule, IsValidGitWorkingDir).Should().Be("subsubmodule < test_repo");
+        repositoryDescriptionProvider.Get(leafsubmodule, IsValidGitWorkingDir).Should().Be("leafsubmodule < test_repo");
+    }
+
+    [Test]
+    public void RepositoryDescriptionProvider_should_skip_uninformative_submodule_name([Values("app", "repo", "repository")] string uninformative)
+    {
+        RepositoryDescriptionProvider repositoryDescriptionProvider = new(Substitute.For<IGitDirectoryResolver>());
+
+        string rootrepo = nameof(rootrepo);
+        string parent = nameof(parent);
+        string repo = Path.Combine(_tempDir, rootrepo, parent, uninformative);
+        Directory.CreateDirectory(repo);
+
+        repositoryDescriptionProvider.Get(repo, IsValidGitWorkingDir).Should().Be($"{parent} < {rootrepo}");
+    }
+
+    [Test]
+    public void RepositoryDescriptionProvider_should_not_skip_uninformative_submodule_name_to_parent_repo([Values("app", "repo", "repository")] string uninformative)
+    {
+        RepositoryDescriptionProvider repositoryDescriptionProvider = new(Substitute.For<IGitDirectoryResolver>());
+
+        string parentrepo = nameof(parentrepo);
+        string repo = Path.Combine(_tempDir, parentrepo, uninformative);
+        Directory.CreateDirectory(repo);
+
+        repositoryDescriptionProvider.Get(repo, IsValidGitWorkingDir).Should().Be($"{uninformative} < {parentrepo}");
+    }
+
+    [Test]
+    public void RepositoryDescriptionProvider_should_not_skip_uninformative_root_repo_name([Values("app", "repo", "repository")] string uninformative)
+    {
+        RepositoryDescriptionProvider repositoryDescriptionProvider = new(Substitute.For<IGitDirectoryResolver>());
+
+        string parent = nameof(parent);
+        string repo = Path.Combine(_tempDir, parent, uninformative);
+        Directory.CreateDirectory(repo);
+
+        repositoryDescriptionProvider.Get(repo, IsValidGitWorkingDir).Should().Be(uninformative);
+    }
+
+    private static bool IsValidGitWorkingDir(string path)
+        => path.EndsWith("submodule") || path.EndsWith("repo");
+}
