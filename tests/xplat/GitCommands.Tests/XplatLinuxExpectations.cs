@@ -9,6 +9,7 @@ namespace GitCommandsTests;
 ///  Linux (and macOS) expectations for behavior that upstream's tests only assert for Windows. The upstream tests remain
 ///  Windows-only (see XplatPlatformSkips.cs); these are the matching Linux assertions, so the behavior stays covered on both.
 /// </summary>
+// Mirrors: none (cross-cutting; the upstream tests it covers are PathEqualityComparerTests, GitBranchNameNormaliserTest, GitModuleTests, CommitMessageManagerTests)
 internal sealed class XplatLinuxExpectationsTests
 {
     private const string PosixPlatforms = "Linux,MacOsX";

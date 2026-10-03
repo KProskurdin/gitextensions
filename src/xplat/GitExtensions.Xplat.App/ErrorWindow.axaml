@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.ErrorWindow"
+        Title="Git Extensions"
+        Width="480" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="12">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+    <Button x:Name="OkButton" Content="OK" HorizontalAlignment="Right" />
+  </StackPanel>
+</Window>

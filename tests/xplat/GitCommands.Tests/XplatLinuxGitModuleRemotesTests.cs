@@ -12,6 +12,7 @@ namespace GitCommandsTests.Git;
 ///  Listing remotes does not query the git version, so this class stages no version output.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: GitModuleTests
 internal sealed class XplatLinuxGitModuleRemotesTests
 {
     [Test]

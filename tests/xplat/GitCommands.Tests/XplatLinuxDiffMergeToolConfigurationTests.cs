@@ -11,6 +11,7 @@ namespace GitCommandsTests.DiffMergeTools;
 ///  POSIX counterpart of the user-supplied-path case in <c>DiffMergeToolConfigurationManagerTests</c>.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: DiffMergeToolConfigurationManagerTests
 internal sealed class XplatLinuxDiffMergeToolConfigurationTests
 {
     [Test]

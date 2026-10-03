@@ -13,6 +13,7 @@ namespace GitCommandsTests.Git;
 ///  Git on Linux reports POSIX paths, which are returned as-is; upstream's Windows expectations convert 'C:/' to 'C:\'.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: GitModuleWorktreeTests
 internal sealed class XplatLinuxGitModuleWorktreeTests
 {
     private GitModule _gitModule = null!;

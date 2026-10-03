@@ -86,7 +86,8 @@ tests/xplat/
   run-tests.sh             builds and tests the shadow projects (Windows via cmd.exe; Linux/macOS directly)
   verify-upstream.sh       runs the same against upstream/master in a temporary worktree
   port-drift.sh            NEW in M1: lists upstream commits that touched ported files since the recorded commit
-  xplat-drift.sh           NEW in M1: flags XplatLinux*/XplatPlatformSkips entries whose upstream test changed
+  xplat-drift.sh           NEW in M1: flags mirrored upstream test classes (from each XplatLinux* file's
+                           "// Mirrors:" line and the XplatPlatformSkips.cs entries) that changed or disappeared
 docs/xplat/
   PLAN.md                  this file
   SYNC-LOG.md              one entry per upstream check or merge
@@ -149,9 +150,12 @@ commit's details, and remembers its state across restarts. On macOS the exit is 
 Done: window, path box, commit list (read-only), developer screenshot aid.
 
 Remaining:
-1. Commit selection shows the message, author, date and parents (uses `RevisionReader.GetRevision`).
-2. Virtualized commit list that does not load the whole history; paging through `GetLog` with a limit.
-3. Headless UI tests (Avalonia.Headless) for the list and the selection.
+1. Done 2026-10-03 (Windows and Linux): commit selection shows the message, author, dates and parents
+   (`RevisionReader.GetRevision`, off the UI thread).
+2. Done 2026-10-03 (Windows and Linux): the list reads one page of 500 commits at a time. Reading stops once the page is full (`CommitHistory.LoadPage`), "Load more" re-reads with a larger limit, and the list is virtualized by Avalonia. Not done: a skip-based page read, which needs `GetLog` to take a count or offset.
+3. Done 2026-10-03 (Windows and Linux): headless UI tests in `tests/xplat/GitExtensions.Xplat.App.Tests`
+   (Avalonia.Headless.NUnit, 5 tests: git missing, git too old, open a repository, select a commit,
+   root commit). CI runs them on all three OSes; macOS pending the first CI run.
 4. **Settings persistence off Windows (done on Linux 2026-10-03; macOS pending CI).** Replace the in-memory store behind seam S1 with a file in
    the platform's user-config directory (XDG on Linux, Application Support on macOS). Windows keeps
    the registry-plus-settings-file behavior it has upstream. Recent repositories must survive a restart.
@@ -159,15 +163,18 @@ Remaining:
    Tools), validate its version against the minimum the shared core expects, and show a clear message
    when it is missing. Upstream has a `gitcommand` setting; the new shell reads it and does not
    invent a second one.
-6. Application icon, window title from the repository name, an error dialog instead of status text.
+6. Done 2026-10-03 (Windows and Linux): window title from the repository folder, icon from `setup/assets/Logo` (linked, not copied), and an error dialog (`ErrorWindow`) for failed opens. The icon is set in code and not seen in a screenshot, because the screenshot aid renders the content only.
 7. **macOS in CI (workflow changed 2026-10-03; first green run pending a push).** `macos-latest` is in
    `.github/workflows/xplat.yml`: shadow tests and app build. Headless tests (item 3) and the screenshot
    artifact (item 8) are still to come. Until a Mac is available this is the macOS evidence,
    and every status report says so.
-8. CI job for the app on Windows and Linux, with screenshot artifacts.
+8. Done 2026-10-03, not yet run on GitHub: `app-screenshot` job in `.github/workflows/xplat.yml` builds, launches the app on the checkout (`xvfb-run` on Linux), and uploads a screenshot on all three OSes. The launch command was run locally in WSL; the workflow itself has not run.
 9. `docs/xplat/PORTING-MAP.md` created 2026-10-03 with rows for the forms the app already replaces (`FormBrowse`, `RevisionGridControl`, both `partial`)
    (the commit list replaces `FormBrowse`'s revision grid, the window replaces `FormBrowse`).
 10. `tests/xplat/port-drift.sh` and `tests/xplat/xplat-drift.sh` (section 4), run by the nightly job.
+    Done 2026-10-03. Against `upstream/master` today: port-drift lists 2 upstream commits touching the
+    two ported forms; xplat-drift flags `PathUtilTest` (648dd4cc7) and `GitModuleWorktreeTests` (065da3680).
+    Both need a decision before the next sync.
 
 Estimate: 3 to 4 weeks (the settings and git-discovery items were not in the earlier estimate).
 

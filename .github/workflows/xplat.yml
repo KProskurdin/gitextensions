@@ -36,8 +36,43 @@ jobs:
       - name: Build and test shadow projects
         run: bash tests/xplat/run-tests.sh
 
-      - name: Build app
-        run: dotnet build src/xplat/GitExtensions.Xplat.App -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-app/"
+      - name: Build and test app (headless)
+        run: dotnet test tests/xplat/GitExtensions.Xplat.App.Tests -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-app/"
+
+  app-screenshot:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install virtual display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Launch app on the repository and save a screenshot
+        env:
+          XPLAT_SCREENSHOT: ${{ runner.temp }}/app-screenshot.png
+        run: |
+          run_app() {
+            dotnet run --project src/xplat/GitExtensions.Xplat.App -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/" -- "$GITHUB_WORKSPACE"
+          }
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a bash -c "$(declare -f run_app); run_app"; else run_app; fi
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-screenshot-${{ matrix.os }}
+          path: ${{ runner.temp }}/app-screenshot.png
 
   upstream-merge-check:
     # Only meaningful on the fork: needs the upstream remote, which is added here.
@@ -57,3 +92,12 @@ jobs:
 
       - name: Verify shadow projects against upstream/master
         run: bash tests/xplat/verify-upstream.sh
+
+      - name: Fetch upstream/master for drift checks
+        run: git fetch --no-tags upstream master
+
+      - name: Ported forms changed upstream
+        run: bash tests/xplat/port-drift.sh
+
+      - name: Mirrored tests changed upstream
+        run: bash tests/xplat/xplat-drift.sh

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- The shared xplat props add WinForms/Drawing namespaces to every project; they clash with Avalonia's control names. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless.NUnit" />
+    <!-- Avalonia.Headless.NUnit needs NUnit 4.5.1; the shadow test projects stay on the version upstream pins. -->
+    <PackageReference Include="NUnit" VersionOverride="4.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\xplat\GitExtensions.Xplat.App\GitExtensions.Xplat.App.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\GitCommands\GitCommands.csproj" />
+  </ItemGroup>
+
+</Project>

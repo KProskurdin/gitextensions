@@ -27,14 +27,14 @@ what keeps a reimplementation traceable to the upstream code it copies.
 
 ## Notes per row
 
-**FormBrowse** (`partial`). Ported: repository open from a path, the commit list, the status line.
-Not ported: menus and toolbars, the commit details panel, the file tree, diff, the branch and remote
-trees, all dialogs launched from the form, and repository-changed refresh.
+**FormBrowse** (`partial`). Ported: repository open from a path, the commit list, the status line, and
+a commit details panel (full message, author, dates, parents). Not ported: menus and toolbars, the file
+tree, diff, the branch and remote trees, all dialogs launched from the form, and repository-changed refresh.
 
 **RevisionGridControl** (`partial`). Ported: a read-only list of the first 500 commits from `HEAD`,
-with short hash, subject, author and date, using the shared `RevisionReader.GetLog`. Not ported:
-the revision graph, column layout and sorting, paging past 500 commits, filters and search, refs
-labels, and the selection-driven details.
+with short hash, subject, author and date, using the shared `RevisionReader.GetLog`. Selecting a row
+loads its details through `RevisionReader.GetRevision`. Not ported: the revision graph, column layout
+and sorting, paging past 500 commits, filters and search, refs labels, and the changed-file list.
 
 ## Not in this map
 

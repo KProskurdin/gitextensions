@@ -8,6 +8,7 @@ namespace GitCommandsTests;
 ///  POSIX counterparts of <c>FullPathResolverTests</c>, which use Windows working directories. Same structure and expectations.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: FullPathResolverTests
 internal sealed class XplatLinuxFullPathResolverTests
 {
     private const string WorkingDir = "/dev/repo";

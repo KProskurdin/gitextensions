@@ -12,6 +12,7 @@ namespace GitCommandsTests.Git;
 ///  POSIX counterparts of the <c>GitDirectoryResolverTests</c> cases that build Windows paths.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: GitDirectoryResolverTests
 internal sealed class XplatLinuxGitDirectoryResolverTests
 {
     private const string WorkingDir = "/dev/repo";

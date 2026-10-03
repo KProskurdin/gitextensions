@@ -10,6 +10,7 @@ namespace GitCommandsTests.UserRepositoryHistory;
 ///  POSIX counterparts of <c>RepositoryDescriptionProviderTests</c>, which build paths with '\'. Same structure and expectations.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: RepositoryDescriptionProviderTests
 internal sealed class XplatLinuxRepositoryDescriptionProviderTests
 {
     private string _tempDir = null!;

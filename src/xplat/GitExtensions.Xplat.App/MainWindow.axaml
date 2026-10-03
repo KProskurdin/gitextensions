@@ -3,25 +3,42 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.MainWindow"
         Title="Git Extensions"
-        Width="960" Height="640">
+        Width="1100" Height="640">
   <DockPanel Margin="12" LastChildFill="True">
     <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-      <TextBox x:Name="PathBox" Width="640" Watermark="Path to a git repository" />
+      <TextBox x:Name="PathBox" Width="640" PlaceholderText="Path to a git repository" />
       <Button x:Name="OpenButton" Content="Open" />
+      <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" />
       <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,0" />
     </StackPanel>
-    <ListBox x:Name="CommitList">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="local:CommitRow">
-          <Grid ColumnDefinitions="90,*,200,140" Margin="4,2">
-            <TextBlock Grid.Column="0" Text="{Binding ShortHash}" FontFamily="monospace" />
-            <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Grid.Column="2" Text="{Binding Author}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Grid.Column="3" Text="{Binding Date}" />
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <Grid ColumnDefinitions="*,12,360">
+      <ListBox x:Name="CommitList" Grid.Column="0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:CommitRow">
+            <Grid ColumnDefinitions="90,*,200,140" Margin="4,2">
+              <TextBlock Grid.Column="0" Text="{Binding ShortHash}" FontFamily="monospace" />
+              <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="2" Text="{Binding Author}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="3" Text="{Binding Date}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <Border Grid.Column="2" BorderBrush="LightGray" BorderThickness="1" Padding="10" CornerRadius="4">
+        <DockPanel LastChildFill="True">
+          <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
+            <TextBlock x:Name="DetailHash" FontFamily="monospace" TextWrapping="Wrap" />
+            <TextBlock x:Name="DetailAuthor" TextWrapping="Wrap" />
+            <TextBlock x:Name="DetailAuthorDate" />
+            <TextBlock x:Name="DetailCommitDate" />
+            <TextBlock x:Name="DetailParents" FontFamily="monospace" TextWrapping="Wrap" />
+          </StackPanel>
+          <ScrollViewer>
+            <TextBlock x:Name="DetailMessage" TextWrapping="Wrap" />
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
   </DockPanel>
 </Window>

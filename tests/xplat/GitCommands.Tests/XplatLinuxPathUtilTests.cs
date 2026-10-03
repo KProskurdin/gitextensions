@@ -9,6 +9,7 @@ namespace GitCommandsTests.Helpers;
 ///  XplatPlatformSkips.cs).
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: PathUtilTest
 internal sealed class XplatLinuxPathUtilTests
 {
     // On POSIX '\' is an ordinary filename character, so only the characters the rule accepts on every platform differ.

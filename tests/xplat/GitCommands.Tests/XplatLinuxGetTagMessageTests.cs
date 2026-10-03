@@ -9,6 +9,7 @@ namespace GitCommandsTests.Git;
 ///  the messages come back with LF line endings, the platform's line ending.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: GitModuleTests
 internal sealed class XplatLinuxGetTagMessageTests
 {
     [TestCase("", "")] // empty message

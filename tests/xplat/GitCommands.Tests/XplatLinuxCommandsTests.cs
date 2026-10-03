@@ -12,6 +12,7 @@ namespace GitCommandsTests_Git;
 ///  paths through unchanged on Linux, so the expected argument strings are the same as upstream's.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: CommandsTests
 internal sealed class XplatLinuxCommandsTests
 {
     private static IEnumerable<TestCaseData> AddSubmoduleTestCases()

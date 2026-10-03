@@ -14,6 +14,7 @@ namespace GitCommandsTests.UserRepositoryHistory;
 ///  paths with a trailing '\'. Same structure and expectations.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: LocalRepositoryManagerTests
 internal sealed class XplatLinuxLocalRepositoryManagerTests
 {
     private const string KeyRecentHistory = "history";

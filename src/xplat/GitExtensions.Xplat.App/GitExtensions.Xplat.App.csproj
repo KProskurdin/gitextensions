@@ -14,6 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The logo lives in setup/ and is linked, not copied, so the upstream asset stays the single source. -->
+    <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-256px.png" Link="Assets\git-extensions-logo-256px.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />

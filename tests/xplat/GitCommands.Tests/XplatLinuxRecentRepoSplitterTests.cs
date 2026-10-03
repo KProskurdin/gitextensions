@@ -9,6 +9,7 @@ namespace GitCommandsTests.UserRepositoryHistory;
 ///  POSIX counterparts of <c>RecentRepoSplitterTests</c>, which uses Windows paths. Same structure and expectations.
 /// </summary>
 [Platform(Include = "Linux,MacOsX")]
+// Mirrors: RecentRepoSplitterTests
 internal sealed class XplatLinuxRecentRepoSplitterTests
 {
     private const string TopPath1 = "/this/is/a/repo_anchored_in_top_path1/";

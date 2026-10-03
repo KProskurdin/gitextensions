@@ -2,29 +2,31 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using GitCommands;
 using GitCommands.Git;
-using GitUIPluginInterfaces;
-using System.Reactive;
-using System.Reactive.Linq;
 
 namespace GitExtensions.Xplat.App;
 
 public partial class MainWindow : Window
 {
-    private const int MaxCommits = 500;
-
     // Developer aid: when set, the window is saved to this PNG once the initial repository has loaded, and the app exits.
     private const string ScreenshotEnvironmentVariable = "XPLAT_SCREENSHOT";
 
     private readonly GitDiscoveryResult? _git;
+    private string? _repoPath;
+    private int _pages;
+    private int _detailsRequest;
 
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
         InitializeComponent();
+        Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://GitExtensions/Assets/git-extensions-logo-256px.png")));
         OpenButton.Click += OnOpenClick;
+        LoadMoreButton.Click += OnLoadMoreClick;
+        CommitList.SelectionChanged += OnCommitSelectionChanged;
         Opened += OnOpened;
         ShowGitProblem();
     }
@@ -57,7 +59,7 @@ public partial class MainWindow : Window
         }
 
         PathBox.Text = initial;
-        await LoadAsync(initial);
+        await OpenRepositoryAsync(initial);
 
         string? screenshot = Environment.GetEnvironmentVariable(ScreenshotEnvironmentVariable);
         if (!string.IsNullOrEmpty(screenshot))
@@ -72,55 +74,103 @@ public partial class MainWindow : Window
 
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
     {
-        await LoadAsync(PathBox.Text?.Trim() ?? "");
+        await OpenRepositoryAsync(PathBox.Text?.Trim() ?? "");
     }
 
-    private async Task LoadAsync(string path)
+    private async void OnLoadMoreClick(object? sender, RoutedEventArgs e)
+    {
+        if (_repoPath is null)
+        {
+            return;
+        }
+
+        await LoadPagesAsync(_repoPath, _pages + 1);
+    }
+
+    private Task OpenRepositoryAsync(string path) => LoadPagesAsync(path, pages: 1);
+
+    private async Task LoadPagesAsync(string path, int pages)
     {
         OpenButton.IsEnabled = false;
+        LoadMoreButton.IsEnabled = false;
         StatusText.Text = "Loading...";
+        ClearDetails();
 
         try
         {
-            IReadOnlyList<CommitRow> rows = await Task.Run(() => LoadCommits(path));
-            CommitList.ItemsSource = rows;
-            StatusText.Text = $"{rows.Count} commits (up to {MaxCommits})";
+            CommitPage page = await Task.Run(() => CommitHistory.LoadPage(path, pages * CommitHistory.PageSize));
+            _repoPath = path;
+            _pages = pages;
+            Title = $"{Path.GetFileName(path.TrimEnd('/', '\\'))} - Git Extensions";
+            CommitList.ItemsSource = page.Rows;
+            LoadMoreButton.IsVisible = page.HasMore;
+            StatusText.Text = page.HasMore
+                ? $"{page.Rows.Count} commits, more available"
+                : $"{page.Rows.Count} commits";
         }
         catch (Exception ex)
         {
+            _repoPath = null;
+            _pages = 0;
             CommitList.ItemsSource = null;
-            StatusText.Text = ex.Message;
+            LoadMoreButton.IsVisible = false;
+            StatusText.Text = "";
+            await new ErrorWindow(ex.Message).ShowDialog(this);
         }
         finally
         {
             OpenButton.IsEnabled = true;
+            LoadMoreButton.IsEnabled = true;
         }
     }
 
-    /// <summary>
-    ///  Reads the history of <paramref name="path"/> with the shared git engine. Runs off the UI thread.
-    /// </summary>
-    private static IReadOnlyList<CommitRow> LoadCommits(string path)
+    private async void OnCommitSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), path);
-        if (!module.IsValidGitWorkingDir())
+        if (CommitList.SelectedItem is not CommitRow row || _repoPath is null)
         {
-            throw new InvalidOperationException($"Not a git repository: {path}");
+            ClearDetails();
+            return;
         }
 
-        List<GitRevision> revisions = [];
-        IObserver<IReadOnlyList<GitRevision>> observer =
-            Observer.Create<IReadOnlyList<GitRevision>>(batch => revisions.AddRange(batch));
+        int request = ++_detailsRequest;
+        string repoPath = _repoPath;
 
-        new RevisionReader(module).GetLog(observer, revisionFilter: "HEAD", pathFilter: "", hasNotes: false,
-            autostashLabel: "", cancellationToken: default);
+        try
+        {
+            CommitDetails details = await Task.Run(() => CommitHistory.LoadDetails(repoPath, row.Hash));
+            if (request == _detailsRequest)
+            {
+                ShowDetails(details);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (request == _detailsRequest)
+            {
+                ClearDetails();
+                DetailMessage.Text = ex.Message;
+            }
+        }
+    }
 
-        return revisions
-            .Take(MaxCommits)
-            .Select(r => new CommitRow(r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
-                r.CommitDate.ToString("yyyy-MM-dd HH:mm")))
-            .ToList();
+    private void ShowDetails(CommitDetails details)
+    {
+        DetailHash.Text = details.Hash;
+        DetailAuthor.Text = details.Author;
+        DetailAuthorDate.Text = $"Authored: {details.AuthorDate}";
+        DetailCommitDate.Text = $"Committed: {details.CommitDate}";
+        DetailParents.Text = string.IsNullOrEmpty(details.Parents) ? "No parents" : $"Parents: {details.Parents}";
+        DetailMessage.Text = details.Message;
+    }
+
+    private void ClearDetails()
+    {
+        _detailsRequest++;
+        DetailHash.Text = "";
+        DetailAuthor.Text = "";
+        DetailAuthorDate.Text = "";
+        DetailCommitDate.Text = "";
+        DetailParents.Text = "";
+        DetailMessage.Text = "";
     }
 }
-
-public sealed record CommitRow(string ShortHash, string Subject, string Author, string Date);
