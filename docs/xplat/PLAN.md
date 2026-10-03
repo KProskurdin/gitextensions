@@ -160,8 +160,9 @@ Remaining:
    when it is missing. Upstream has a `gitcommand` setting; the new shell reads it and does not
    invent a second one.
 6. Application icon, window title from the repository name, an error dialog instead of status text.
-7. **macOS in CI.** Add `macos-latest` to `.github/workflows/xplat.yml`: shadow tests, app build,
-   headless tests, and a screenshot artifact. Until a Mac is available this is the macOS evidence,
+7. **macOS in CI (workflow changed 2026-10-03; first green run pending a push).** `macos-latest` is in
+   `.github/workflows/xplat.yml`: shadow tests and app build. Headless tests (item 3) and the screenshot
+   artifact (item 8) are still to come. Until a Mac is available this is the macOS evidence,
    and every status report says so.
 8. CI job for the app on Windows and Linux, with screenshot artifacts.
 9. `docs/xplat/PORTING-MAP.md` created with the rows for the forms the app already replaces

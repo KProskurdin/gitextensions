@@ -1,4 +1,4 @@
-# Cross-platform shadow projects: builds and tests the shared core on Windows and Linux.
+# Cross-platform shadow projects: builds and tests the shared core, and builds the app, on Windows, Linux and macOS.
 # Upstream-merge verification runs on schedule and on demand against upstream/master.
 name: xplat
 
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ windows-latest, ubuntu-latest ]
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -35,6 +35,9 @@ jobs:
 
       - name: Build and test shadow projects
         run: bash tests/xplat/run-tests.sh
+
+      - name: Build app
+        run: dotnet build src/xplat/GitExtensions.Xplat.App -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-app/"
 
   upstream-merge-check:
     # Only meaningful on the fork: needs the upstream remote, which is added here.
