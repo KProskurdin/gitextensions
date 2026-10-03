@@ -221,8 +221,9 @@ Estimate: 1 to 2 weeks.
 
 ### M4. Write operations
 
-Exit: a user can stage and unstage files, commit (with amend), create, switch and delete branches,
-fetch, pull and push, stash and apply stashes, and see conflicts.
+Exit: a user can clone a repository, stage and unstage files, commit (with amend), create, switch and
+delete branches, fetch, pull and push, stash and apply stashes, and see conflicts. Clone is in
+scope from 2026-10-03 (section 9, question 1).
 
 Notes:
 - Each command goes through the shared `Commands`/`IGitCommand` path, which already declares
@@ -307,15 +308,18 @@ with a reason. A Linux-only expectation is an `XplatLinux*.cs` test.
 
 These change the plan. Each has a recommendation, but the choice is the user's.
 
-1. **Scope:** full parity with the WinForms app (M8), or a lighter client covering the daily
-   workflow (M1 to M5, with M6 and M7 as needed)?
-   *Recommendation:* lighter client first. It produces a usable app sooner and tells us which
-   WinForms features matter.
-2. **First target OS:** Linux, macOS, or both at once?
-   *Recommendation:* Linux first, because it is testable here; macOS once a Mac is available.
-3. **Upstream strategy:** shadow projects only, or also send seam PRs upstream (S2, S3, S4 first)?
-   *Recommendation:* send S2, S3 and S4 upstream. They are real bugs, and upstream acceptance
-   shrinks the seam list.
+1. **Scope.** *Decided 2026-10-03:* core UI workflows first: clone, commit, push, pull and branch
+   work. The new UI should stay as close as possible to the WinForms app, so later it can match
+   its look and behavior. Full parity (M8) stays optional. Clone is added to M4 (see below).
+   *Consequence:* M6 (plugins) and M7 (packaging) move after M4, and M8 remains optional.
+2. **First target OS.** *Decided 2026-10-03:* Windows, Linux and macOS together. Every milestone
+   from M1 on has to build and run on all three; the platform services in M2 and the terminal
+   and credentials choices are per OS from the start.
+3. **Upstream strategy.** *Decided 2026-10-03:* shadow projects only. No seam PRs are sent
+   upstream. S2, S3 and S4 stay as seams in `XplatPatch`.
+   *Consequence:* the seam count stays at 7 and must not grow without a table entry.
+4. **macOS hardware run.** *Decided 2026-10-03:* the user will test the macOS build on their own
+   laptop later. Until then, CI-only evidence (question 11) is what the milestones use.
 4. **Translations:** reuse the Transifex `.xlf` files, or start new?
    *Recommendation:* reuse. The strings already exist and translators already work on them.
    Needs a check of how `TranslationString` maps to the Avalonia side.
@@ -446,4 +450,5 @@ sync that was done during the milestone.
 5. M1 item 7: add `macos-latest` to CI, so macOS is checked from the next push.
 6. M1 item 9: create `docs/xplat/PORTING-MAP.md`.
 7. M1 item 1: commit details in the Avalonia app, with a headless test.
-8. Decide who owns the Mac, or whether macOS waits for hardware (section 9, question 11).
+8. macOS: the user runs the build on their own laptop later. Until then, CI-only evidence (section 9,
+   questions 4 and 11). Record the hardware run in `SYNC-LOG.md` when it happens.
