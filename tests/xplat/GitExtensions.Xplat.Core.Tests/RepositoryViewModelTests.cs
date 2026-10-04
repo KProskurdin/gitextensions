@@ -56,6 +56,16 @@ internal sealed class RepositoryViewModelTests
     }
 
     [Test]
+    public async Task RefreshAsync_should_show_whether_a_merge_is_in_progress()
+    {
+        Task refresh = _viewModel.RefreshAsync("/work/one");
+        _service.Complete(0, new RepositorySnapshot("main", [], [], IsMerging: true));
+        await refresh;
+
+        _viewModel.IsMerging.Should().BeTrue();
+    }
+
+    [Test]
     public async Task A_newer_refresh_wins_over_an_older_one_that_finishes_later()
     {
         Task older = _viewModel.RefreshAsync("/work/one");

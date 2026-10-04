@@ -20,6 +20,17 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
 
 ## Entries
 
+### 2026-10-04: mirrored test review, no merge
+
+- `xplat-drift.sh` flagged two mirrored classes against `upstream/master`, both changed after the fork base `0174ba1cc`.
+- `648dd4cc7` (`PathUtilTest`, "prefer configured LinuxToolsDir"): adds a Windows-only test of `bash.exe` lookup under the
+  Git for Windows install. Decision: no Linux counterpart; when this commit is merged, add the new method to
+  `XplatPlatformSkips.cs` with reason `WindowsOnlyFeature`. Its production change is in `PathUtil.cs`, a shared file.
+- `065da3680` (`GitModuleWorktreeTests`, "never offer to delete main worktree"): adds a platform-neutral test that the first
+  worktree is the main one. Decision: no skip needed; the behavior it protects is in the WinForms left panel, which the
+  shadow projects do not compile. Run it on Linux at the merge to confirm.
+- The drift report stays red until the merge brings these commits into the fork. Nothing in the fork changes for them now.
+
 ### 2026-10-03: porting map review against upstream, no merge
 
 - Upstream checked: `52d08e996`. `port-drift.sh` reported 4 of the 7 write-operation rows and the two read rows

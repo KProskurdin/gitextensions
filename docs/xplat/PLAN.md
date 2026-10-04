@@ -263,6 +263,16 @@ Decision, 2026-10-03: AvaloniaEdit is not used. Its newest NuGet release is 0.10
 does not load with Avalonia 12. The diff is shown with native list items, which is enough for a read-only view.
 Syntax highlighting and line numbers are not done; they can be revisited if a control for Avalonia 12 appears.
 
+File tree and file history, 2026-10-04: a Files window for the selected commit (or HEAD) lists every file in the tree,
+and selecting a file lists the commits that changed it, with Show diff for any of them. The core reads are
+`LoadTreeAsync` (`ls-tree -z`) and `LoadFileHistoryAsync` (the log reader with a path filter, paged). Renames are not
+followed and the tree is a flat list. Tests: 56 core tests and 43 app tests, including a real repository with a file
+added later.
+
+Blame, 2026-10-04: the Files window has a Blame button for the selected file. The blame window shows each line with
+its commit, author and day (`git blame --line-porcelain`, parsed by `BlameParser`). Tests: 60 core tests (parser) and
+48 app tests (real repository). The revision graph is still open (the spike, M3.5).
+
 Components, in suggested order:
 1. Diff viewer. Editor control: AvaloniaEdit (not yet checked: current version and maintenance;
    the NuGet index lists 0.10.12). Syntax highlighting and line numbers. Patch parsing reuses
@@ -288,6 +298,7 @@ Exit: a user can clone a repository, stage and unstage files, commit (with amend
 delete branches, fetch, pull and push, stash and apply stashes, and see conflicts. Clone is in
 scope from 2026-10-03 (section 9, question 1).
 
+Started 2026-10-04: merge the selected branch into the current one (fast-forward by default, as the upstream buildersets it), abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. A conflicting merge leaves thefiles in the Changes list as Conflict; resolving them is done outside the app for now, and Commit then completes themerge. Tests: 63 core tests and 48 app tests, including a fast-forward, a conflicting merge that is aborted, and theMerge button in the window. Still open in M4: stash list and apply-by-name, conflict resolution, rebase, cherry-pick,reset, tags, and the write operations' progress and failure output.
 Notes:
 - Each command goes through the shared `Commands`/`IGitCommand` path, which already declares
   `AccessesRemote` and `ChangesRepoState`. The new shell reuses that declaration to decide

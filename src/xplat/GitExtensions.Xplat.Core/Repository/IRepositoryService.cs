@@ -8,7 +8,7 @@ public interface IRepositoryService
     Task<RepositorySnapshot> GetSnapshotAsync(string repositoryPath);
 }
 
-public sealed record RepositorySnapshot(string? CurrentBranch, IReadOnlyList<BranchInfo> Branches, IReadOnlyList<FileChange> Changes);
+public sealed record RepositorySnapshot(string? CurrentBranch, IReadOnlyList<BranchInfo> Branches, IReadOnlyList<FileChange> Changes, bool IsMerging = false);
 
 public sealed record BranchInfo(string Name, bool IsRemote, bool IsCurrent)
 {

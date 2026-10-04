@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+        x:Class="GitExtensions.Xplat.App.BlameWindow"
+        Title="Blame"
+        Width="980" Height="620">
+  <DockPanel Margin="12" LastChildFill="True">
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
+    <ListBox x:Name="BlameList" FontFamily="monospace">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="core:BlameLine">
+          <Grid ColumnDefinitions="50,90,170,110,*" Margin="2,0">
+            <TextBlock Grid.Column="0" Text="{Binding LineNumber}" Foreground="Gray" />
+            <TextBlock Grid.Column="1" Text="{Binding Hash}" />
+            <TextBlock Grid.Column="2" Text="{Binding Author}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="3" Text="{Binding Date}" />
+            <TextBlock Grid.Column="4" Text="{Binding Content}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

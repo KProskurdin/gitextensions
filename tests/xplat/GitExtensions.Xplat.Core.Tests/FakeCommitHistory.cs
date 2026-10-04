@@ -40,5 +40,23 @@ internal sealed class FakeCommitHistory : ICommitHistory
 
     public IReadOnlyList<CommitFile> Files { get; set; } = [];
 
+    public IReadOnlyList<string> Tree { get; set; } = [];
+
+    public List<(string Hash, string FilePath)> FileHistoryRequests { get; } = [];
+
+    public IReadOnlyList<CommitRow> FileHistory { get; set; } = [];
+
+    public Task<IReadOnlyList<string>> LoadTreeAsync(string repositoryPath, string hash) => Task.FromResult(Tree);
+
+    public Task<CommitPage> LoadFileHistoryAsync(string repositoryPath, string hash, string filePath, int limit)
+    {
+        FileHistoryRequests.Add((hash, filePath));
+        return Task.FromResult(new CommitPage(FileHistory, HasMore: false));
+    }
+
+    public IReadOnlyList<BlameLine> Blame { get; set; } = [];
+
+    public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath) => Task.FromResult(Blame);
+
     public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash) => Task.FromResult(Files);
 }

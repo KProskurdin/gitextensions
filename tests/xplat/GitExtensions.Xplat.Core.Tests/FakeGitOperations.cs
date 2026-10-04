@@ -41,6 +41,10 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task PopStashAsync(string repositoryPath) => Record("PopStash", repositoryPath);
 
+    public Task MergeAsync(string repositoryPath, string branch) => Record("Merge", $"{repositoryPath} {branch}");
+
+    public Task AbortMergeAsync(string repositoryPath) => Record("AbortMerge", repositoryPath);
+
     public void Complete(int index) => _calls[index].Completion.SetResult();
 
     public void Fail(int index, Exception exception) => _calls[index].Completion.SetException(exception);

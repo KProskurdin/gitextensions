@@ -101,6 +101,12 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> PopStashAsync(string repositoryPath)
         => RunAsync("Stash popped", repositoryPath, () => _operations.PopStashAsync(repositoryPath));
 
+    public Task<bool> MergeAsync(string repositoryPath, string branch)
+        => RunAsync($"Merged {branch}", repositoryPath, () => _operations.MergeAsync(repositoryPath, branch));
+
+    public Task<bool> AbortMergeAsync(string repositoryPath)
+        => RunAsync("Merge aborted", repositoryPath, () => _operations.AbortMergeAsync(repositoryPath));
+
     /// <summary>
     ///  Clones <paramref name="sourceUrl"/> into <paramref name="targetPath"/>. The clone is reported through
     ///  <see cref="RepositoryChanged"/> with the target path, so a view can open it.

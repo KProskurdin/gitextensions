@@ -190,6 +190,33 @@ internal sealed class RepositoryOperationsViewModelTests
     }
 
     [Test]
+    public async Task MergeAsync_and_AbortMergeAsync_report_the_change()
+    {
+        Task<bool> merge = _viewModel.MergeAsync(RepositoryPath, "feature");
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} feature");
+        _git.Complete(0);
+        await merge;
+        _viewModel.StatusMessage.Should().Be("Merged feature");
+
+        Task<bool> abort = _viewModel.AbortMergeAsync(RepositoryPath);
+        _git.Complete(1);
+        await abort;
+
+        _viewModel.StatusMessage.Should().Be("Merge aborted");
+        _changedPaths.Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task A_failed_merge_sets_the_error_from_git()
+    {
+        Task<bool> merge = _viewModel.MergeAsync(RepositoryPath, "feature");
+        _git.Fail(0, new GitOperationException("Automatic merge failed; fix conflicts and then commit the result."));
+
+        (await merge).Should().BeFalse();
+        _viewModel.ErrorMessage.Should().StartWith("Automatic merge failed");
+    }
+
+    [Test]
     public async Task ClearError_removes_the_message()
     {
         await _viewModel.CommitAsync(RepositoryPath, "", amend: false);

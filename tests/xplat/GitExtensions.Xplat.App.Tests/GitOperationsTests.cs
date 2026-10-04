@@ -1,5 +1,6 @@
 using Avalonia.Headless.NUnit;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -54,7 +55,8 @@ internal sealed class GitOperationsTests
     {
         Func<Task> commit = () => _operations.CommitAsync(_repo.Path, "nothing", amend: false);
 
-        commit.Should().ThrowAsync<GitOperationException>();
+        Action act = () => Wait(commit());
+        act.Should().Throw<GitOperationException>();
     }
 
     [AvaloniaTest]
@@ -104,7 +106,8 @@ internal sealed class GitOperationsTests
 
         Func<Task> delete = () => _operations.DeleteBranchAsync(_repo.Path, current, force: false);
 
-        delete.Should().ThrowAsync<GitOperationException>();
+        Action act = () => Wait(delete());
+        act.Should().Throw<GitOperationException>();
     }
 
     [AvaloniaTest]
@@ -181,6 +184,67 @@ internal sealed class GitOperationsTests
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("changed");
         _repo.Run("stash", "list").Trim().Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void Merge_of_a_branch_ahead_of_the_current_one_fast_forwards()
+    {
+        string baseBranch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("checkout", "-q", "-b", "feature");
+        File.WriteAllText(Path.Combine(_repo.Path, "f.txt"), "feature");
+        _repo.Run("add", "f.txt");
+        _repo.Run("commit", "-q", "-m", "feature work");
+        _repo.Run("checkout", "-q", baseBranch);
+
+        Wait(_operations.MergeAsync(_repo.Path, "feature"));
+
+        _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
+    }
+
+    [AvaloniaTest]
+    public void Conflicting_merge_fails_and_can_be_aborted()
+    {
+        string baseBranch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("checkout", "-q", "-b", "feature");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "feature");
+        _repo.Run("commit", "-q", "-am", "feature edit");
+        _repo.Run("checkout", "-q", baseBranch);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "base");
+        _repo.Run("commit", "-q", "-am", "base edit");
+
+        Func<Task> merge = () => _operations.MergeAsync(_repo.Path, "feature");
+        Action act = () => Wait(merge());
+        act.Should().Throw<GitOperationException>();
+
+        _repo.Run("status", "--porcelain").Should().Contain("UU a.txt");
+        new GitRepositoryService().GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult().IsMerging.Should().BeTrue();
+
+        Wait(_operations.AbortMergeAsync(_repo.Path));
+
+        _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("base");
+    }
+
+    [AvaloniaTest]
+    public void Resolving_a_conflict_by_staging_and_committing_completes_the_merge()
+    {
+        string baseBranch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("checkout", "-q", "-b", "feature");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "feature");
+        _repo.Run("commit", "-q", "-am", "feature edit");
+        _repo.Run("checkout", "-q", baseBranch);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "base");
+        _repo.Run("commit", "-q", "-am", "base edit");
+        Action merge = () => Wait(_operations.MergeAsync(_repo.Path, "feature"));
+        merge.Should().Throw<GitOperationException>();
+
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "resolved");
+        Wait(_operations.StageAsync(_repo.Path, ["a.txt"]));
+        Wait(_operations.CommitAsync(_repo.Path, "merge feature", amend: false));
+
+        _repo.Run("rev-list", "--parents", "-n", "1", "HEAD").Trim().Split(' ').Should().HaveCount(3);
+        _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("merge feature");
+        new GitRepositoryService().GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult().IsMerging.Should().BeFalse();
     }
 
     private static void Wait(Task task) => task.GetAwaiter().GetResult();

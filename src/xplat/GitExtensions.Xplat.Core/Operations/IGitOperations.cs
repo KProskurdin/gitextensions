@@ -29,6 +29,10 @@ public interface IGitOperations
 
     Task PushAsync(string repositoryPath, string remote, string branch);
 
+    Task MergeAsync(string repositoryPath, string branch);
+
+    Task AbortMergeAsync(string repositoryPath);
+
     Task StashAsync(string repositoryPath, string message);
 
     Task PopStashAsync(string repositoryPath);

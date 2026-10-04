@@ -11,6 +11,7 @@ public sealed class RepositoryViewModel : ObservableObject
     private IReadOnlyList<BranchInfo> _branches = [];
     private IReadOnlyList<FileChange> _changes = [];
     private bool _isLoading;
+    private bool _isMerging;
     private string? _errorMessage;
 
     public RepositoryViewModel(IRepositoryService service)
@@ -37,6 +38,15 @@ public sealed class RepositoryViewModel : ObservableObject
     {
         get => _changes;
         private set => SetProperty(ref _changes, value);
+    }
+
+    /// <summary>
+    ///  True while a merge is stopped for conflicts or for a commit (MERGE_HEAD exists).
+    /// </summary>
+    public bool IsMerging
+    {
+        get => _isMerging;
+        private set => SetProperty(ref _isMerging, value);
     }
 
     public bool IsLoading
@@ -71,6 +81,7 @@ public sealed class RepositoryViewModel : ObservableObject
             CurrentBranch = snapshot.CurrentBranch ?? "";
             Branches = snapshot.Branches;
             Changes = snapshot.Changes;
+            IsMerging = snapshot.IsMerging;
         }
         catch (Exception ex)
         {

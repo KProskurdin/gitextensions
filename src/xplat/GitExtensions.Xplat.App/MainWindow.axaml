@@ -18,6 +18,7 @@
       <Button x:Name="CloneButton" Content="Clone..." Margin="0,0,8,4" />
       <Button x:Name="OpenFolderButton" Content="Open folder" Margin="0,0,8,4" />
       <Button x:Name="TerminalButton" Content="Terminal" Margin="0,0,8,4" />
+      <Button x:Name="FilesButton" Content="Files..." Margin="0,0,8,4" />
       <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,4" />
       <TextBlock x:Name="OperationStatusText" VerticalAlignment="Center" Margin="8,0,0,4" Foreground="DarkGreen" />
     </WrapPanel>
@@ -35,6 +36,8 @@
           <WrapPanel>
             <Button x:Name="CheckoutButton" Content="Checkout" Margin="0,0,6,4" />
             <Button x:Name="DeleteBranchButton" Content="Delete" Margin="0,0,6,4" />
+            <Button x:Name="MergeButton" Content="Merge into current" Margin="0,0,6,4" />
+            <Button x:Name="AbortMergeButton" Content="Abort merge" Margin="0,0,6,4" />
           </WrapPanel>
           <WrapPanel>
             <TextBox x:Name="NewBranchBox" Width="150" Margin="0,0,6,4" PlaceholderText="New branch name" />

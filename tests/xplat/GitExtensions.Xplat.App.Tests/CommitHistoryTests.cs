@@ -52,6 +52,47 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
+    public void LoadTree_lists_every_file_of_the_commit()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "dir name.txt"), "x");
+        _repo.Run("add", "dir name.txt");
+        _repo.Run("commit", "-q", "-m", "add file");
+        string head = _repo.Run("rev-parse", "HEAD").Trim();
+
+        IReadOnlyList<string> files = _history.LoadTreeAsync(_repo.Path, head).GetAwaiter().GetResult();
+
+        files.Should().Equal("a.txt", "dir name.txt");
+    }
+
+    [AvaloniaTest]
+    public void LoadFileHistory_lists_only_the_commits_that_changed_the_file()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "other.txt"), "x");
+        _repo.Run("add", "other.txt");
+        _repo.Run("commit", "-q", "-m", "other file");
+        string head = _repo.Run("rev-parse", "HEAD").Trim();
+
+        CommitPage aHistory = _history.LoadFileHistoryAsync(_repo.Path, head, "a.txt", limit: 10).GetAwaiter()
+            .GetResult();
+        CommitPage otherHistory = _history.LoadFileHistoryAsync(_repo.Path, head, "other.txt", limit: 10).GetAwaiter()
+            .GetResult();
+
+        aHistory.Rows.Select(row => row.Subject).Should().Equal("second", "first");
+        otherHistory.Rows.Select(row => row.Subject).Should().Equal("other file");
+    }
+
+    [AvaloniaTest]
+    public void LoadBlame_attributes_each_line_to_the_commit_that_last_changed_it()
+    {
+        string head = _repo.Run("rev-parse", "HEAD").Trim();
+
+        IReadOnlyList<BlameLine> lines = _history.LoadBlameAsync(_repo.Path, head, "a.txt").GetAwaiter().GetResult();
+
+        lines.Should().ContainSingle().Which.Should().BeEquivalentTo(
+            new { LineNumber = 1, Hash = head[..8], Author = "Test", Content = "two" });
+    }
+
+    [AvaloniaTest]
     public void LoadDetails_should_return_parents_and_message()
     {
         string head = _repo.Run("rev-parse", "HEAD").Trim();

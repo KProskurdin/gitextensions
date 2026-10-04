@@ -16,13 +16,35 @@ public sealed class GitCommitHistory : ICommitHistory
     private const string DateFormat = "yyyy-MM-dd HH:mm";
 
     public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit)
-        => Task.Run(() => LoadPage(repositoryPath, limit));
+        => Task.Run(() => ReadPage(repositoryPath, "HEAD", pathFilter: "", limit));
 
     public Task<CommitDetails> LoadDetailsAsync(string repositoryPath, string hash)
         => Task.Run(() => LoadDetails(repositoryPath, hash));
 
     public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash)
         => Task.Run(() => LoadFiles(repositoryPath, hash));
+
+    public Task<IReadOnlyList<string>> LoadTreeAsync(string repositoryPath, string hash)
+        => Task.Run(() => LoadTree(repositoryPath, hash));
+
+    public Task<CommitPage> LoadFileHistoryAsync(string repositoryPath, string hash, string filePath, int limit)
+        => Task.Run(() => ReadPage(repositoryPath, hash, pathFilter: filePath.Quote(), limit));
+
+    public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath)
+        => Task.Run(() => LoadBlame(repositoryPath, hash, filePath));
+
+    private static IReadOnlyList<BlameLine> LoadBlame(string path, string hash, string filePath)
+    {
+        ExecutionResult result = CreateModule(path).GitExecutable.Execute(
+            new GitArgumentBuilder("blame") { "--line-porcelain", hash, "--", filePath.Quote() },
+            throwOnErrorExit: false);
+        if (!result.ExitedSuccessfully)
+        {
+            throw new GitOperationException(result.StandardError.Trim());
+        }
+
+        return BlameParser.Parse(result.StandardOutput);
+    }
 
     private static IReadOnlyList<CommitFile> LoadFiles(string path, string hash)
     {
@@ -42,7 +64,28 @@ public sealed class GitCommitHistory : ICommitHistory
             .ToList();
     }
 
-    private static CommitPage LoadPage(string path, int limit)
+    private static IReadOnlyList<string> LoadTree(string path, string hash)
+    {
+        ExecutionResult result = CreateModule(path).GitExecutable.Execute(
+            new GitArgumentBuilder("ls-tree") { "-r", "--name-only", "-z", hash },
+            throwOnErrorExit: false);
+        if (!result.ExitedSuccessfully)
+        {
+            throw new GitOperationException(result.StandardError.Trim());
+        }
+
+        return result.StandardOutput
+            .Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    ///  Reads up to <paramref name="limit"/> commits reachable from <paramref name="revision"/>, optionally only those
+    ///  that touched <paramref name="pathFilter"/>. Reading stops once one commit beyond the limit is seen, so a long
+    ///  history is not loaded in full.
+    /// </summary>
+    private static CommitPage ReadPage(string path, string revision, string pathFilter, int limit)
     {
         GitModule module = CreateModule(path);
         if (!module.IsValidGitWorkingDir())
@@ -50,7 +93,6 @@ public sealed class GitCommitHistory : ICommitHistory
             throw new InvalidOperationException($"Not a git repository: {path}");
         }
 
-        // Reading stops once one commit beyond the limit is seen, so a long history is not loaded in full.
         CancellationTokenSource stopReading = new();
         List<GitRevision> revisions = [];
         IObserver<IReadOnlyList<GitRevision>> observer = Observer.Create<IReadOnlyList<GitRevision>>(batch =>
@@ -64,7 +106,8 @@ public sealed class GitCommitHistory : ICommitHistory
 
         try
         {
-            new RevisionReader(module).GetLog(observer, revisionFilter: "HEAD", pathFilter: "", hasNotes: false,
+            new RevisionReader(module).GetLog(observer, revisionFilter: revision, pathFilter: pathFilter,
+                hasNotes: false,
                 autostashLabel: "", cancellationToken: stopReading.Token);
         }
         catch (OperationCanceledException) when (stopReading.IsCancellationRequested)

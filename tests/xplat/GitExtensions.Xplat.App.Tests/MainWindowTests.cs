@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Xplat.App;
+using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -147,6 +148,77 @@ internal sealed class MainWindowTests
             .Contain(line => line.Text == "+two");
         diff.Title.Should().EndWith("a.txt");
         diff.Close();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Files_window_lists_the_files_at_head_and_the_history_of_the_selected_file()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        Open(window, _repo.Path);
+
+        Click(window, "FilesButton");
+        WaitUntil(() => window.OwnedWindows.OfType<FileBrowserWindow>().Any());
+
+        FileBrowserWindow files = window.OwnedWindows.OfType<FileBrowserWindow>().Single();
+        ListBox fileList = files.FindControl<ListBox>("FileList")!;
+        WaitUntil(() => fileList.ItemCount == 1);
+        fileList.SelectedIndex = 0;
+
+        ListBox history = files.FindControl<ListBox>("HistoryList")!;
+        WaitUntil(() => history.ItemCount == 2);
+        files.Close();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Blame_from_the_file_browser_opens_a_line_per_file_line()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        Open(window, _repo.Path);
+        Click(window, "FilesButton");
+        WaitUntil(() => window.OwnedWindows.OfType<FileBrowserWindow>().Any());
+        FileBrowserWindow files = window.OwnedWindows.OfType<FileBrowserWindow>().Single();
+        ListBox fileList = files.FindControl<ListBox>("FileList")!;
+        WaitUntil(() => fileList.ItemCount == 1);
+        fileList.SelectedIndex = 0;
+        WaitUntil(() => files.FindControl<Button>("BlameButton")!.IsEnabled);
+
+        Click(files, "BlameButton");
+        WaitUntil(() => files.OwnedWindows.OfType<BlameWindow>().Any());
+        BlameWindow blame = files.OwnedWindows.OfType<BlameWindow>().Single();
+        ListBox lines = blame.FindControl<ListBox>("BlameList")!;
+        WaitUntil(() => lines.ItemCount == 1);
+
+        blame.Close();
+        files.Close();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Merge_button_merges_the_selected_branch_into_the_current_one()
+    {
+        string baseBranch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("checkout", "-q", "-b", "feature");
+        File.WriteAllText(Path.Combine(_repo.Path, "f.txt"), "x");
+        _repo.Run("add", "f.txt");
+        _repo.Run("commit", "-q", "-m", "feature work");
+        _repo.Run("checkout", "-q", baseBranch);
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox branches = Find<ListBox>(window, "BranchList");
+        WaitUntil(() => branches.ItemCount > 1);
+
+        branches.SelectedIndex = ((IReadOnlyList<BranchInfo>)branches.ItemsSource!).ToList()
+            .FindIndex(branch => branch.Name == "feature");
+        Click(window, "MergeButton");
+        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Merged feature");
+
+        _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
+        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
         window.Close();
     }
 

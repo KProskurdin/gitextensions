@@ -90,6 +90,17 @@ public sealed class GitOperations : IGitOperations
             _ => Commands.Push(remote, branch, toBranch: null, ForcePushOptions.DoNotForce, track: true,
                 recursiveSubmodules: 0));
 
+    public Task MergeAsync(string repositoryPath, string branch)
+        => Task.Run(() =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            Execute(module.GitExecutable, Commands.MergeBranch(branch, allowFastForward: true, squash: false, noCommit: false, strategy: "",
+                allowUnrelatedHistories: false, mergeCommitFilePath: null, module.GetPathForGitExecution, log: null));
+        });
+
+    public Task AbortMergeAsync(string repositoryPath)
+        => RunAsync(repositoryPath, _ => Commands.AbortMerge());
+
     public Task StashAsync(string repositoryPath, string message)
         => RunAsync(repositoryPath, _ => Commands.StashSave(untracked: false, keepIndex: false, message, selectedFiles: null));
 

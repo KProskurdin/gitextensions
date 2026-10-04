@@ -66,7 +66,8 @@ internal sealed class RepositoryServiceTests
         {
             Func<Task> read = () => _service.GetSnapshotAsync(folder);
 
-            read.Should().ThrowAsync<InvalidOperationException>().WithMessage("Not a git repository: *");
+            Action act = () => read().GetAwaiter().GetResult();
+            act.Should().Throw<InvalidOperationException>().WithMessage("Not a git repository: *");
         }
         finally
         {

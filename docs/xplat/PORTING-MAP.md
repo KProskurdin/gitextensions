@@ -33,6 +33,9 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
 | `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/DiffWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`); `src/xplat/GitExtensions.Xplat.App/FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormBlame.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (`MergeAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Merge into current, Abort merge) | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -93,3 +96,17 @@ selection and patch-line actions, and the external diff tool.
 **RevisionDiffControl** (`partial`). Ported: the files a selected commit changed, with status letters, and a
 Show diff action for one file. Not ported: the per-file tree, filtering, the file history view, and the
 diff of merge commits against each parent.
+
+**FormFileHistory** (`partial`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
+and a diff of that file in a chosen commit. Not ported: renames followed with `--follow`, blame, the tree view with
+folders (the list is flat), the file's content view, and the branch and revision filters of the upstream form.
+
+**FormBlame** (`partial`). Ported: per-line blame of a file as of a commit (line number, short hash, author, date, text),
+read from `git blame --line-porcelain`. Not ported: the author margin and its coloring, jumping to the commit a line came
+from, the blame-ignore-whitespace and detect-moves options, and blame of a diff against the parent.
+
+**FormMergeBranch** (`partial`). Ported: merge the selected branch into the current one with git's fast-forward
+default, abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. Conflicting files appear in the
+Changes list with the Conflict kind. Not ported: the strategy and strategy options, squash, no-commit, the
+allow-unrelated-histories option, the merge message editor, and the conflict resolution dialog (conflicts are
+resolved outside the app for now).

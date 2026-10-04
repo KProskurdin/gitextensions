@@ -47,6 +47,7 @@ public sealed class GitRepositoryService : IRepositoryService
 
         List<FileChange> changes = [.. module.GetAllChangedFilesWithSubmodulesStatus().Select(ToFileChange)];
 
-        return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes);
+        bool isMerging = File.Exists(Path.Combine(module.WorkingDirGitDir, "MERGE_HEAD"));
+        return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes, isMerging);
     }
 }

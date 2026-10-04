@@ -55,9 +55,12 @@ public partial class MainWindow : Window
         CopyHashButton.Click += OnCopyHashClick;
         ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
         ShowChangeDiffButton.Click += (_, _) => ShowChangeDiff();
+        FilesButton.Click += (_, _) => ShowFiles();
         CheckoutButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => branch.IsRemote
             ? _actions.CheckoutRemoteAsync(path, branch.Name)
             : _actions.CheckoutAsync(path, branch.Name));
+        MergeButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => _actions.MergeAsync(path, branch.Name));
+        AbortMergeButton.Click += (_, _) => RunOnRepository(path => _actions.AbortMergeAsync(path));
         DeleteBranchButton.Click += (_, _) => RunOnSelectedBranch((path, branch) => branch.IsRemote
             ? Task.FromResult(false)
             : _actions.DeleteBranchAsync(path, branch.Name, force: false));
@@ -313,7 +316,8 @@ public partial class MainWindow : Window
         switch (propertyName)
         {
             case nameof(RepositoryViewModel.CurrentBranch):
-                BranchText.Text = _repository.CurrentBranch.Length == 0 ? "" : $"Branch: {_repository.CurrentBranch}";
+            case nameof(RepositoryViewModel.IsMerging):
+                UpdateBranchText();
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.Branches):
@@ -357,7 +361,10 @@ public partial class MainWindow : Window
         CreateBranchButton.IsEnabled = open;
         CheckoutButton.IsEnabled = open;
         DeleteBranchButton.IsEnabled = open;
+        MergeButton.IsEnabled = open;
+        AbortMergeButton.IsEnabled = open && _repository.IsMerging;
         OpenFolderButton.IsEnabled = open;
+        FilesButton.IsEnabled = open;
         StashButton.IsEnabled = open;
         PopStashButton.IsEnabled = open;
         ShowChangeDiffButton.IsEnabled = open;
@@ -386,6 +393,21 @@ public partial class MainWindow : Window
             CommitFilesList.SelectedItem is CommitFile file)
         {
             new DiffWindow(path, row.Hash, file.Path, staged: false).Show(this);
+        }
+    }
+
+    private void UpdateBranchText()
+    {
+        string branch = _repository.CurrentBranch;
+        BranchText.Text = branch.Length == 0 ? "" : _repository.IsMerging ? $"Branch: {branch} (merge in progress)" : $"Branch: {branch}";
+    }
+
+    // The files of the selected commit, or of HEAD when no commit is selected.
+    private void ShowFiles()
+    {
+        if (_commits.RepositoryPath is { } path)
+        {
+            new FileBrowserWindow(path, _commits.Selected?.Hash ?? "HEAD").Show(this);
         }
     }
 
