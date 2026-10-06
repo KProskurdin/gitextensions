@@ -12,6 +12,13 @@ public sealed class RepositoryViewModel : ObservableObject
     private IReadOnlyList<FileChange> _changes = [];
     private bool _isLoading;
     private bool _isMerging;
+    private bool _isRebasing;
+    private IReadOnlyList<string> _remotes = [];
+    private string? _trackingRemote;
+    private SyncStatus? _sync;
+    private IReadOnlyList<StashInfo> _stashes = [];
+    private IReadOnlyList<string> _tags = [];
+    private IReadOnlyList<SubmoduleInfo> _submodules = [];
     private string? _errorMessage;
 
     public RepositoryViewModel(IRepositoryService service)
@@ -49,6 +56,57 @@ public sealed class RepositoryViewModel : ObservableObject
         private set => SetProperty(ref _isMerging, value);
     }
 
+    public IReadOnlyList<StashInfo> Stashes
+    {
+        get => _stashes;
+        private set => SetProperty(ref _stashes, value);
+    }
+
+    /// <summary>
+    ///  Ahead and behind counts against the upstream branch, or null when the branch has no upstream.
+    /// </summary>
+    public SyncStatus? Sync
+    {
+        get => _sync;
+        private set => SetProperty(ref _sync, value);
+    }
+
+    /// <summary>
+    ///  The remote the checked-out branch is configured to track, or null when it has none.
+    /// </summary>
+    public string? TrackingRemote
+    {
+        get => _trackingRemote;
+        private set => SetProperty(ref _trackingRemote, value);
+    }
+
+    public IReadOnlyList<string> Remotes
+    {
+        get => _remotes;
+        private set => SetProperty(ref _remotes, value);
+    }
+
+    public IReadOnlyList<SubmoduleInfo> Submodules
+    {
+        get => _submodules;
+        private set => SetProperty(ref _submodules, value);
+    }
+
+    public IReadOnlyList<string> Tags
+    {
+        get => _tags;
+        private set => SetProperty(ref _tags, value);
+    }
+
+    /// <summary>
+    ///  True while a rebase is stopped for conflicts or for a commit (rebase-merge or rebase-apply exists).
+    /// </summary>
+    public bool IsRebasing
+    {
+        get => _isRebasing;
+        private set => SetProperty(ref _isRebasing, value);
+    }
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -66,6 +124,31 @@ public sealed class RepositoryViewModel : ObservableObject
 
     public void ClearError() => ErrorMessage = null;
 
+    /// <summary>
+    ///  Forgets the repository's state, e.g. when it is closed. A refresh still in flight is ignored when it completes.
+    /// </summary>
+    public void Clear()
+    {
+        _refreshVersion++;
+        ClearState();
+        IsMerging = false;
+        IsRebasing = false;
+        IsLoading = false;
+    }
+
+    private void ClearState()
+    {
+        CurrentBranch = "";
+        Branches = [];
+        Changes = [];
+        Stashes = [];
+        Tags = [];
+        Remotes = [];
+        Sync = null;
+        TrackingRemote = null;
+        Submodules = [];
+    }
+
     public async Task RefreshAsync(string repositoryPath)
     {
         int version = ++_refreshVersion;
@@ -82,14 +165,19 @@ public sealed class RepositoryViewModel : ObservableObject
             Branches = snapshot.Branches;
             Changes = snapshot.Changes;
             IsMerging = snapshot.IsMerging;
+            IsRebasing = snapshot.IsRebasing;
+            Stashes = snapshot.Stashes;
+            Tags = snapshot.Tags;
+            Remotes = snapshot.Remotes ?? [];
+            Sync = snapshot.Sync;
+            TrackingRemote = snapshot.TrackingRemote;
+            Submodules = snapshot.Submodules ?? [];
         }
         catch (Exception ex)
         {
             if (version == _refreshVersion)
             {
-                CurrentBranch = "";
-                Branches = [];
-                Changes = [];
+                ClearState();
                 ErrorMessage = ex.Message;
             }
         }

@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.CommandLogWindow"
+        Title="Git command log"
+        Width="1000" Height="560">
+  <Grid RowDefinitions="Auto,*,5,160" Margin="8">
+    <DockPanel Grid.Row="0" Margin="0,0,0,6" LastChildFill="False">
+      <TextBlock x:Name="CountText" DockPanel.Dock="Left" VerticalAlignment="Center" />
+      <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Clear" />
+      <Button x:Name="CopyButton" DockPanel.Dock="Right" Content="Copy command line" Margin="0,0,6,0" />
+    </DockPanel>
+    <ListBox x:Name="EntryList" Grid.Row="1" FontFamily="{DynamicResource DiffFontFamily}">
+      <ListBox.Styles>
+        <Style Selector="ListBoxItem">
+          <Setter Property="Padding" Value="4,0" />
+          <Setter Property="MinHeight" Value="0" />
+        </Style>
+      </ListBox.Styles>
+    </ListBox>
+    <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+    <ScrollViewer Grid.Row="3">
+      <SelectableTextBlock x:Name="DetailText" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+    </ScrollViewer>
+  </Grid>
+</Window>

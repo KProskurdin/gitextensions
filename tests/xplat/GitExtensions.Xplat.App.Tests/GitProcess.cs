@@ -13,6 +13,18 @@ internal static class GitProcess
 
     public static string Run(string workingDir, params string[] arguments)
     {
+        (int exitCode, string output, string error) = Execute(workingDir, arguments);
+        exitCode.Should().Be(0, error);
+        return output;
+    }
+
+    /// <summary>
+    ///  Runs git for a setup step that is expected to fail, such as a merge that stops for conflicts, and returns its exit code.
+    /// </summary>
+    public static int RunAllowingFailure(string workingDir, params string[] arguments) => Execute(workingDir, arguments).ExitCode;
+
+    private static (int ExitCode, string Output, string Error) Execute(string workingDir, string[] arguments)
+    {
         ProcessStartInfo info = new("git")
         {
             WorkingDirectory = workingDir, RedirectStandardOutput = true, RedirectStandardError = true
@@ -26,8 +38,7 @@ internal static class GitProcess
         string output = process.StandardOutput.ReadToEnd();
         string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
-        process.ExitCode.Should().Be(0, error);
-        return output;
+        return (process.ExitCode, output, error);
     }
 
     public static void DeleteFolder(string path)
@@ -44,7 +55,7 @@ internal static class GitProcess
         }
 
         // A git process that just exited can still hold its working directory for a moment, so retry briefly.
-        for (int attempt = 1;; attempt++)
+        for (int attempt = 1; ; attempt++)
         {
             try
             {

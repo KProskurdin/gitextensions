@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.PushWindow"
+        Title="Push"
+        Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream FormPush (the branch part): remote, local and remote branch, force options, tracking. -->
+  <StackPanel Margin="16" Spacing="8">
+    <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,Auto,Auto">
+      <TextBlock Grid.Row="0" Text="Remote" VerticalAlignment="Center" />
+      <ComboBox x:Name="RemoteBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="1" Text="Branch to push" VerticalAlignment="Center" />
+      <ComboBox x:Name="LocalBranchBox" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="2" Text="To remote branch" VerticalAlignment="Center" />
+      <TextBox x:Name="RemoteBranchBox" Grid.Row="2" Grid.Column="2" PlaceholderText="Same name" />
+    </Grid>
+    <TextBlock Text="Overwrite the remote branch" FontWeight="SemiBold" Margin="0,4,0,0" />
+    <RadioButton x:Name="NoForceRadio" GroupName="Force" Content="No: only push new commits" IsChecked="True" />
+    <RadioButton x:Name="ForceWithLeaseRadio" GroupName="Force" Content="Force with lease: only if nobody else pushed since the last fetch" />
+    <RadioButton x:Name="ForceRadio" GroupName="Force" Content="Force: replace the remote branch" />
+    <CheckBox x:Name="TrackCheck" Content="Set as the upstream of the branch (-u)" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="PushButton" Content="Push" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

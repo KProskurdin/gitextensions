@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 
@@ -24,9 +25,9 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task CommitAsync_runs_the_commit_and_reports_the_repository_changed()
     {
-        Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "add feature", amend: false);
+        Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "add feature", amend: false, signOff: false, author: "");
         _git.NameAt(0).Should().Be("Commit");
-        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} add feature amend=False");
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} add feature amend=False signOff=False author=");
         _git.Complete(0);
 
         (await commit).Should().BeTrue();
@@ -38,7 +39,7 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task CommitAsync_with_amend_reports_amended()
     {
-        Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "reword", amend: true);
+        Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "reword", amend: true, signOff: false, author: "");
         _git.Complete(0);
 
         await commit;
@@ -48,7 +49,7 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task CommitAsync_with_a_blank_message_does_not_run_git()
     {
-        bool committed = await _viewModel.CommitAsync(RepositoryPath, "   ", amend: false);
+        bool committed = await _viewModel.CommitAsync(RepositoryPath, "   ", amend: false, signOff: false, author: "");
 
         committed.Should().BeFalse();
         _git.Count.Should().Be(0);
@@ -59,7 +60,7 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task A_failing_operation_sets_the_error_and_does_not_report_a_change()
     {
-        Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "nothing staged", amend: false);
+        Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "nothing staged", amend: false, signOff: false, author: "");
         _git.Fail(0, new GitOperationException("nothing added to commit"));
 
         (await commit).Should().BeFalse();
@@ -131,7 +132,7 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task FetchAsync_pull_and_push_report_the_repository_changed()
     {
-        Task fetch = _viewModel.FetchAsync(RepositoryPath, "origin");
+        Task fetch = _viewModel.FetchAsync(RepositoryPath, "origin", prune: false);
         _git.Complete(0);
         await fetch;
 
@@ -169,8 +170,8 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task StashAsync_trims_the_message_and_reports_the_change()
     {
-        Task<bool> stash = _viewModel.StashAsync(RepositoryPath, "  work in progress ");
-        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} work in progress");
+        Task<bool> stash = _viewModel.StashAsync(RepositoryPath, "  work in progress ", includeUntracked: false, keepIndex: false);
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} work in progress untracked=False keepIndex=False paths=");
         _git.Complete(0);
 
         (await stash).Should().BeTrue();
@@ -179,14 +180,119 @@ internal sealed class RepositoryOperationsViewModelTests
     }
 
     [Test]
-    public async Task PopStashAsync_reports_the_change()
+    public async Task PopStashAsync_pops_the_named_stash_and_reports_the_change()
     {
-        Task<bool> pop = _viewModel.PopStashAsync(RepositoryPath);
+        Task<bool> pop = _viewModel.PopStashAsync(RepositoryPath, "stash@{1}");
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} stash@{{1}}");
         _git.Complete(0);
 
         (await pop).Should().BeTrue();
         _viewModel.StatusMessage.Should().Be("Stash popped");
         _changedPaths.Should().Equal(RepositoryPath);
+    }
+
+    [Test]
+    public async Task ApplyStashAsync_and_DropStashAsync_report_the_change()
+    {
+        Task<bool> apply = _viewModel.ApplyStashAsync(RepositoryPath, "stash@{0}");
+        _git.Complete(0);
+        await apply;
+        _viewModel.StatusMessage.Should().Be("Stash applied");
+
+        Task<bool> drop = _viewModel.DropStashAsync(RepositoryPath, "stash@{0}");
+        _git.NameAt(1).Should().Be("DropStash");
+        _git.Complete(1);
+        await drop;
+        _viewModel.StatusMessage.Should().Be("Stash dropped");
+        _changedPaths.Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task AddRemoteAsync_rejects_a_blank_url_without_running_git()
+    {
+        (await _viewModel.AddRemoteAsync(RepositoryPath, "upstream", " ")).Should().BeFalse();
+
+        _git.Count.Should().Be(0);
+        _viewModel.ErrorMessage.Should().Be("Enter a remote URL or path.");
+    }
+
+    [Test]
+    public async Task RenameBranchAsync_rejects_a_blank_name_without_running_git()
+    {
+        (await _viewModel.RenameBranchAsync(RepositoryPath, "main", " ")).Should().BeFalse();
+
+        _git.Count.Should().Be(0);
+        _viewModel.ErrorMessage.Should().Be("Enter a new branch name.");
+    }
+
+    [Test]
+    public async Task CreateTagAsync_rejects_a_blank_name_without_running_git()
+    {
+        (await _viewModel.CreateTagAsync(RepositoryPath, "  ", "HEAD", "")).Should().BeFalse();
+
+        _git.Count.Should().Be(0);
+        _viewModel.ErrorMessage.Should().Be("Enter a tag name.");
+    }
+
+    [Test]
+    public async Task CreateTagAsync_and_DeleteTagAsync_report_the_change()
+    {
+        Task<bool> create = _viewModel.CreateTagAsync(RepositoryPath, " v1.0 ", "abc123", "");
+        _git.ArgumentsAt(0).Should().Be($"{RepositoryPath} v1.0 abc123 message=");
+        _git.Complete(0);
+        await create;
+        _viewModel.StatusMessage.Should().Be("Created tag v1.0");
+
+        Task<bool> delete = _viewModel.DeleteTagAsync(RepositoryPath, "v1.0");
+        _git.Complete(1);
+        await delete;
+        _viewModel.StatusMessage.Should().Be("Deleted tag v1.0");
+    }
+
+    [Test]
+    public async Task RevertAsync_and_RebaseAsync_report_the_change()
+    {
+        Task<bool> revert = _viewModel.RevertAsync(RepositoryPath, "0123456789abcdef");
+        _git.Complete(0);
+        await revert;
+        _viewModel.StatusMessage.Should().Be("Reverted 01234567");
+
+        Task<bool> rebase = _viewModel.RebaseAsync(RepositoryPath, "main");
+        _git.ArgumentsAt(1).Should().Be($"{RepositoryPath} main");
+        _git.Complete(1);
+        await rebase;
+        _viewModel.StatusMessage.Should().Be("Rebased onto main");
+    }
+
+    [Test]
+    public async Task AbortRebaseAsync_and_ContinueRebaseAsync_report_the_change()
+    {
+        Task<bool> abort = _viewModel.AbortRebaseAsync(RepositoryPath);
+        _git.Complete(0);
+        await abort;
+        _viewModel.StatusMessage.Should().Be("Rebase aborted");
+
+        Task<bool> continueRebase = _viewModel.ContinueRebaseAsync(RepositoryPath);
+        _git.NameAt(1).Should().Be("ContinueRebase");
+        _git.Complete(1);
+        await continueRebase;
+        _viewModel.StatusMessage.Should().Be("Rebase continued");
+        _changedPaths.Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task CherryPickAsync_and_ResetAsync_name_the_short_commit()
+    {
+        Task<bool> pick = _viewModel.CherryPickAsync(RepositoryPath, "0123456789abcdef");
+        _git.Complete(0);
+        await pick;
+        _viewModel.StatusMessage.Should().Be("Cherry-picked 01234567");
+
+        Task<bool> reset = _viewModel.ResetAsync(RepositoryPath, "0123456789abcdef", ResetMode.Soft);
+        _git.ArgumentsAt(1).Should().Be($"{RepositoryPath} 0123456789abcdef Soft");
+        _git.Complete(1);
+        await reset;
+        _viewModel.StatusMessage.Should().Be("Reset to 01234567");
     }
 
     [Test]
@@ -219,7 +325,7 @@ internal sealed class RepositoryOperationsViewModelTests
     [Test]
     public async Task ClearError_removes_the_message()
     {
-        await _viewModel.CommitAsync(RepositoryPath, "", amend: false);
+        await _viewModel.CommitAsync(RepositoryPath, "", amend: false, signOff: false, author: "");
 
         _viewModel.ClearError();
 

@@ -4,14 +4,5 @@
         x:Class="GitExtensions.Xplat.App.DiffWindow"
         Title="Diff"
         Width="860" Height="620">
-  <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
-    <ListBox x:Name="DiffList" FontFamily="monospace">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="local:DiffLineItem">
-          <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-  </DockPanel>
+  <local:DiffView x:Name="Diff" Margin="12" />
 </Window>

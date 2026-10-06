@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.GitIgnoreWindow"
+        Title="Edit .gitignore"
+        Width="640" Height="520" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream FormGitIgnore (edit the file) and FormAddToGitIgnore (new patterns are already added below). -->
+  <DockPanel Margin="12" LastChildFill="True">
+    <TextBlock x:Name="HintText" DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8" Opacity="0.8"
+               Text="One pattern per line. A leading / anchors a pattern at the repository root; a trailing / matches folders only." />
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" />
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="SaveButton" Content="Save" />
+    </StackPanel>
+    <TextBox x:Name="ContentBox" AcceptsReturn="True" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="NoWrap" />
+  </DockPanel>
+</Window>

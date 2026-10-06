@@ -1,0 +1,69 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.SettingsWindow"
+        Title="Settings"
+        Width="640" Height="520" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="12" LastChildFill="True">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="SaveButton" Content="OK" IsDefault="True" />
+    </StackPanel>
+    <TabControl>
+      <TabItem Header="Appearance">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Theme" FontWeight="SemiBold" />
+          <!-- As upstream's appearance page: the CSS themes next to the app and the user's own, and the colorblind variation. -->
+          <ComboBox x:Name="ThemeBox" MinWidth="260" />
+          <CheckBox x:Name="ColorblindCheck" Content="Colorblind" />
+          <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="General">
+        <StackPanel Spacing="8" Margin="4,8">
+          <CheckBox x:Name="CloseAfterCommitCheck" Content="Close the commit window after a commit" />
+          <CheckBox x:Name="CloseProcessDialogCheck" Content="Close the output window when a fetch, pull or push succeeds" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Recent repositories to keep" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="RecentSizeBox" Minimum="1" Maximum="200" Increment="1" FormatString="0" Width="130" />
+          </StackPanel>
+          <TextBlock Text="Git executable (empty: look it up on PATH)" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <TextBox x:Name="GitCommandBox" />
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="Git config">
+        <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
+          <!-- As upstream's diff viewer settings page offers the tools git finds, a choice here fills the global value. -->
+          <TextBlock Grid.Row="0" Grid.Column="6" Text="Found on this computer" FontWeight="SemiBold" Margin="0,0,0,6" />
+          <ComboBox x:Name="MergeToolChoices" Grid.Row="3" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
+          <ComboBox x:Name="DiffToolChoices" Grid.Row="4" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
+          <TextBlock Grid.Row="0" Grid.Column="2" Text="Global (all repositories)" FontWeight="SemiBold" Margin="0,0,0,6" />
+          <TextBlock x:Name="LocalHeaderText" Grid.Row="0" Grid.Column="4" Text="This repository" FontWeight="SemiBold" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="User name" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalUserNameBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBox x:Name="LocalUserNameBox" Grid.Row="1" Grid.Column="4" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="User email" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalUserEmailBox" Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBox x:Name="LocalUserEmailBox" Grid.Row="2" Grid.Column="4" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Merge tool" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalMergeToolBox" Grid.Row="3" Grid.Column="2" Margin="0,0,0,6" PlaceholderText="e.g. meld, kdiff3, opendiff" />
+          <TextBox x:Name="LocalMergeToolBox" Grid.Row="3" Grid.Column="4" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="Diff tool" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalDiffToolBox" Grid.Row="4" Grid.Column="2" Margin="0,0,0,6" PlaceholderText="e.g. meld, kdiff3, opendiff" />
+          <TextBox x:Name="LocalDiffToolBox" Grid.Row="4" Grid.Column="4" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="7" Opacity="0.7" TextWrapping="Wrap" Margin="0,6,0,0"
+                     Text="These are git's own settings (git config). An empty repository value uses the global one." />
+        </Grid>
+      </TabItem>
+      <TabItem Header="Hotkeys">
+        <DockPanel Margin="4,8" LastChildFill="True">
+          <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8"
+                     Text="Click a box and press the new key combination. Shared with Git Extensions for Windows (its Browse window hotkeys); Ctrl is Cmd on macOS." />
+          <ScrollViewer>
+            <StackPanel x:Name="HotkeysPanel" Spacing="4" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

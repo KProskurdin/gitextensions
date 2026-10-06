@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ConflictsWindow"
+        Title="Solve merge conflicts"
+        Width="1000" Height="620">
+  <!-- Mirrors upstream FormResolveConflicts: the unresolved files on the left, the ways to resolve the selected one on the
+       right, and the combined diff of the selected file. -->
+  <Grid ColumnDefinitions="320,6,*" Margin="8">
+    <DockPanel Grid.Column="0" LastChildFill="True">
+      <TextBlock x:Name="HeaderText" DockPanel.Dock="Top" FontWeight="Bold" Margin="0,0,0,4" />
+      <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,6,0,0">
+        <Button x:Name="MergeToolButton" Content="Open in merge tool" HorizontalAlignment="Stretch" />
+        <Button x:Name="UseOursButton" Content="Choose ours (local)" HorizontalAlignment="Stretch" />
+        <Button x:Name="UseTheirsButton" Content="Choose theirs (remote)" HorizontalAlignment="Stretch" />
+        <Button x:Name="MarkResolvedButton" Content="Mark as resolved" HorizontalAlignment="Stretch"
+                ToolTip.Tip="Stage the file as it is in the working tree, after editing out the conflict markers" />
+        <TextBlock x:Name="DoneText" TextWrapping="Wrap" Margin="0,6,0,0" />
+      </StackPanel>
+      <ListBox x:Name="ConflictList" SelectionMode="Multiple" />
+    </DockPanel>
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+    <local:DiffView x:Name="Diff" Grid.Column="2" />
+  </Grid>
+</Window>

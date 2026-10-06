@@ -77,6 +77,59 @@ jobs:
           name: app-screenshot-${{ matrix.os }}
           path: ${{ runner.temp }}/app-screenshot.png
 
+      # Revision graph target (PLAN.md M3.5): load 5000 commits and scroll them; the frame times go to an artifact.
+      # CI runners have no GPU and Linux uses xvfb, so the numbers are a lower bound, not the desktop figure.
+      - name: Revision graph benchmark
+        env:
+          XPLAT_BENCHMARK: ${{ runner.temp }}/graph-benchmark.txt
+        run: |
+          bash tests/xplat/make-bench-repo.sh "$RUNNER_TEMP/bench-repo"
+          run_bench() {
+            dotnet run --project src/xplat/GitExtensions.Xplat.App -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/" -- "$RUNNER_TEMP/bench-repo"
+          }
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a bash -c "$(declare -f run_bench); run_bench"; else run_bench; fi
+          cat "$XPLAT_BENCHMARK"
+
+      - name: Upload benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-benchmark-${{ matrix.os }}
+          path: ${{ runner.temp }}/graph-benchmark.txt
+
+  # Self-contained app packages (PLAN.md M7, first step): unsigned, for testing on each OS.
+  app-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Publish and pack
+        run: bash src/xplat/eng/publish-app.sh ${{ matrix.rid }} "$RUNNER_TEMP/xplat-publish"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitextensions-xplat-${{ matrix.rid }}
+          path: |
+            ${{ runner.temp }}/xplat-publish/*.zip
+            ${{ runner.temp }}/xplat-publish/*.tar.gz
+
   upstream-merge-check:
     # Only meaningful on the fork: needs the upstream remote, which is added here.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

@@ -26,7 +26,7 @@ criterion, and the milestones beyond M4 are estimates only.
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS by CI only | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | Read-only commit list | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Not run on macOS |
+| Avalonia app | Browse, commit, branch, remote and conflict workflows; layout follows FormBrowse (2026-10-06) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Tests 2026-10-06: 127 core and 135 app on Windows (127 and 134 on Linux (WSL) before the commit message store). Not run on macOS |
 | Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master 52d08e996). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
 | CI | Written, not run on GitHub | `.github/workflows/xplat.yml`: shadow tests on Windows and Ubuntu, nightly upstream check. No macOS job. The app is not built in CI |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
@@ -175,6 +175,12 @@ Remaining:
     Done 2026-10-03. Against `upstream/master` today: port-drift lists 2 upstream commits touching the
     two ported forms; xplat-drift flags `PathUtilTest` (648dd4cc7) and `GitModuleWorktreeTests` (065da3680).
     Both need a decision before the next sync.
+11. Done 2026-10-06 (Windows and Linux): recent repositories survive a restart. They are read and written through
+    upstream's `RepositoryHistoryManager` (setting key `history`, upstream format), so the WinForms app and the new shell
+    share one list. While no repository is open the window shows them as a dashboard; Start > Recent repositories lists
+    them too. Theme and the other preferences are upstream keys as well (M5). Window size and position are not kept yet.
+    The headless tests replace the stores with in-memory ones (`AppServices`), so a test run never writes the user's
+    settings file or global git config.
 
 Estimate: 3 to 4 weeks (the settings and git-discovery items were not in the earlier estimate).
 
@@ -226,7 +232,7 @@ and `DISPLAY` are already set for the shadow process. HTTPS and SSH authenticati
 credential helpers (decision 6). Without a helper, a GUI push to an HTTPS remote fails with git's message instead
 of prompting. This is untested against a real remote.
 
-Still open in M2: tags; notifications; the UI-thread abstraction (the view models do not marshal, so it is not
+Still open in M2: notifications; the UI-thread abstraction (the view models do not marshal, so it is not
 needed yet); a credential store for Linux and macOS, if git's helpers are not enough.
 
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
@@ -292,6 +298,29 @@ layout code is either reused from upstream (if it is not WinForms-bound) or reim
 
 Estimate: 1 to 2 weeks.
 
+Exit met on Windows and Linux 2026-10-06; macOS pending (CI or the user's laptop). Lanes keep one color for their whole
+length (`GraphRow.Color`, `ActiveColors`, `ParentColors`; the palette follows the light or dark theme), and labels are typed
+(HEAD, branch, remote branch, tag) and colored by kind. Measured with the developer aid `XPLAT_BENCHMARK=<file>` (the app
+loads `XPLAT_BENCHMARK_COMMITS`, default 5000, then scrolls the grid 40 px per frame for 600 frames with the platform
+renderer; `ScrollBenchmark.cs`) on a generated repository of 5500 commits with 500 merges, Debug build:
+
+| OS | Load 5000 commits | Average frame | 95th percentile frame | Frames over 25 ms |
+|---|---|---|---|---|
+| Windows 11 (desktop) | 197 ms | 10.1 ms (99 fps) | 11.4 ms | 0.2% |
+| Linux (WSLg, openSUSE Tumbleweed) | 88 ms | 16.3 ms (61 fps, vsync) | 16.8 ms | 0.2% |
+| Linux (WSLg), second run | 77 ms | 17.2 ms (58 fps) | 16.8 ms | 1.7% |
+
+WSLg frame times vary between runs by a few percent; the 95th percentile stayed at one 60 Hz frame. CI now runs the same
+benchmark on Windows, Linux (xvfb) and macOS runners (`tests/xplat/make-bench-repo.sh`, artifact `graph-benchmark-<os>`);
+runners have no GPU, so those numbers are a lower bound.
+
+Layout of 5000 commits alone is unit-tested to stay under one second (`GraphLayoutTests`). The upstream graph layout code
+(`RevisionGraph`) was not reused: it lives in `GitUI` with WinForms painting mixed in, so `GraphLayout` reimplements the lane
+assignment. Still open: drawing styles of upstream (curved lines, the "artificial" working-tree rows) and the graph of a
+filtered or searched list (it is computed over the rows shown).
+
+Started 2026-10-04 as a spike. Done: `GraphLayout` in core assigns each commit a lane and the lanes open above it (pure code, 6 tests); each commit row carries its parent hashes and its branch and tag labels; the commit list draws the lanes with `GraphCell` and shows the labels in brackets. A screenshot on Windows of a repository with two merges and a tag shows the lanes and labels as expected. Not done: the 5000-commit target, the 60 fps measurement, colors per branch, and a check on Linux and macOS. The spike has only loaded commits (the first 500), so the graph covers that page.
+
 ### M4. Write operations
 
 Exit: a user can clone a repository, stage and unstage files, commit (with amend), create, switch and
@@ -299,6 +328,59 @@ delete branches, fetch, pull and push, stash and apply stashes, and see conflict
 scope from 2026-10-03 (section 9, question 1).
 
 Started 2026-10-04: merge the selected branch into the current one (fast-forward by default, as the upstream buildersets it), abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. A conflicting merge leaves thefiles in the Changes list as Conflict; resolving them is done outside the app for now, and Commit then completes themerge. Tests: 63 core tests and 48 app tests, including a fast-forward, a conflicting merge that is aborted, and theMerge button in the window. Still open in M4: stash list and apply-by-name, conflict resolution, rebase, cherry-pick,reset, tags, and the write operations' progress and failure output.
+
+Continued 2026-10-04: stash list with apply, pop and drop by name (the pop button acts on the selected stash, not the top one); lightweight tags (create at the selected commit or HEAD, delete); cherry-pick, revert and reset soft or mixed of the selected commit (hard reset is not exposed); rebase onto a selected branch with abort and continue once the conflicts are staged. Read of the rebase state uses git's rebase-merge and rebase-apply folders. Tests: 70 core tests and 61 app tests, with real-git tests for each operation, including the rebase conflict abort and continue and the apply and pop of an older stash. Still open in M4: the progress and failure output of write operations (only the git error text is shown), annotated tags, interactive rebase, and a dedicated conflict view. Also: include untracked files when stashing, rebase on pull (toolbar option), annotated tags when a tag message is entered, and deletion of a remote branch from the Delete button (`push --delete`, origin/HEAD excluded). Tests after these: 70 core, 64 app, on Windows and on Linux (WSL).
+
+Later on 2026-10-04: commit sign-off; amend starts from the HEAD message and unchecking restores the typed text; conflict resolution with ours or theirs for the selected conflicted files; branch rename (also the checked-out one); create a branch at the selected commit; the whole stash as a diff; a filter over the loaded commits; a Refresh button and F5; fetch with prune; push of all tags; stash of only the selected files; discard of the unstaged edits of selected tracked files, after a confirmation dialog (ConfirmWindow); hard reset behind the same confirmation; an optional commit author; "Working..." in the status line while a write runs; force delete of an unmerged branch behind the same dialog; remotes listed with add (name and URL) and remove behind a confirmation (FormRemotes); the branch label shows ahead and behind counts against the upstream when there is one; Ctrl+Enter in the message box commits; Stage all and Unstage all; Commit and push (the push runs only after a successful commit). Tests: 80 core and 99 app at the latest change, on Windows; search of the whole history by message (Search history box, Enter); abort of a merge or rebase asks first; Reflog window (HEAD history, reset mixed to an entry); Ignore whitespace in the diff window; delete of selected untracked files behind a confirmation; remote branch delete behind a confirmation; Copy message beside Copy hash; HEAD label on the first row; Init (git init in the path box); Keep index for stash; pull and push use the remote the branch tracks (origin when none; fetch still uses origin); the same core and app tests were also run on Linux (WSL) before the graph and filter changes.
+2026-10-06: the browse window was reorganized to follow FormBrowse (menu bar with upstream's default hotkeys, toolbar,
+left panel of branches, tags, stashes and remotes, revision grid with columns and a context menu for the commit actions,
+Commit and Diff tabs, status bar, a warning bar with Solve conflicts, Abort and Continue while a merge or rebase is
+stopped). Staging and committing moved into a Commit window laid out like FormCommit (unstaged above staged, inline diff,
+message below). New: a conflicts window (ours, theirs, merge tool, mark resolved), live git output with Abort for fetch,
+pull, push, push tags and clone (a process window, `GitOutputRunner`), and the git command log (upstream `CommandLog`).
+Later on 2026-10-06: staging and unstaging of selected diff lines of a tracked file (upstream's `PatchManager`, applied as
+upstream's FileViewer does); push and pull dialogs as upstream's FormPush and FormPull (remote, branches, force with lease,
+tracking; merge, rebase or fetch only, prune, auto stash), opened with Ctrl+Up and Ctrl+Down as upstream, while the toolbar
+buttons and Ctrl+Shift+Up/Down/P stay quick actions; the branch list became a tree grouped by folders and remotes; a File
+tree tab; old and new line numbers in every diff; window size and position kept across restarts. Then: the grid shows every
+branch by default as upstream does (upstream setting `ShowCurrentBranchOnly` switches to the current branch) with an advanced
+filter (author, committer, message, dates, path, no merges, first parent); a worktrees window; remote rename and URL change;
+tag deletion on the remote; Open in diff tool; Ignore... and a .gitignore editor; blame lines open their commit's change; the
+status is read again when the window is activated; a submodules section (update, sync, open); checkout asks what to do with local changes (keep, merge, stash, discard), and a commit
+can be checked out detached. Tests: 123 core and 133 app
+on Windows. Remaining in M4: interactive rebase, line staging for new files, and the authentication prompts (git's
+credential helpers are still relied on).
+
+Interactive rebase, 2026-10-06 (later): the grid menu "Rebase current branch on" > "Selected commit interactively..." runs
+`git rebase -i` with live output, and git opens the app itself as its editor, as upstream does: the app's `fileeditor <file>`
+verb shows only an editor window (upstream `FormEditor`) and exits 0, or -1 when the changes are discarded, which makes git
+abort. Upstream reaches the editor through the global `core.editor`; the new shell sets `GIT_SEQUENCE_EDITOR` and `GIT_EDITOR`
+for that git call only (`GitEditorCommand`), so the user's git config is not touched. The same editor opens for reworded and
+squashed messages, and on Continue and Skip; the warning bar gained Skip commit and Edit todo. Checked by hand on Windows:
+`git rebase -i` with the built app as the sequence editor showed the todo list and completed (the screenshot aid,
+`XPLAT_SCREENSHOT`, now also works in editor mode: it saves the window and accepts the file unchanged). Tests: real-git
+interactive rebases with a shell-script editor (drop, reword, a failing editor), skip of a conflicting commit, and headless
+tests of the editor window. Remaining in M4: line staging for new files and the authentication prompts.
+
+Line staging for new files, 2026-10-06 (later): lines of an untracked file can be staged (the file is added to the index
+with only those lines) and lines of a newly added file unstaged (the file stays staged with the rest), through upstream's
+`PatchManager` as before. Upstream builds the untracked case from the file's text; the new shell shows that file as a diff
+from /dev/null, whose "new file" header already gives the same patch.
+
+Authentication prompts, 2026-10-06 (later): the app is its own askpass program, the new shell's version of upstream's native
+`GitExtSshAskPass` (Windows-only upstream). Remote operations (fetch, pull, push, clone, submodule update, remote tag delete)
+run with `SSH_ASKPASS` set to the app, `SSH_ASKPASS_REQUIRE=force` and a marker variable (`GitAskPass`); ssh and git start
+the app with the prompt as the only argument, and the marker makes it show only a prompt window (hidden typing for passwords,
+passphrases and PINs) and print the answer, or exit 1 on Cancel. As upstream, `GIT_ASKPASS` is not set, so a user's own
+askpass, `core.askPass` and git's credential helpers still come first. Tests: a stand-in ssh (`core.sshCommand`) that asks
+`SSH_ASKPASS` during a real fetch, the prompt rules, and the prompt window headless. Checked by hand on Windows: `git
+credential fill` with no helper started the built app as the prompt. Not checked: a typed answer reaching git in a real run
+(no one at the screen; the headless test covers the window's answer), ssh on macOS, and that no console window flashes when
+git starts the app on Windows (the app is a console-subsystem executable).
+
+Tests after these (2026-10-06): 151 core and 150 app, on Windows and on Linux (WSL). With these, the M4 items listed above
+are done; M4's exit (all write operations) is met on Windows and Linux, macOS pending CI.
+
 Notes:
 - Each command goes through the shared `Commands`/`IGitCommand` path, which already declares
   `AccessesRemote` and `ChangesRepoState`. The new shell reuses that declaration to decide
@@ -314,6 +396,59 @@ Estimate: 6 to 8 weeks.
 ### M5. Settings, themes and hotkeys
 
 Exit: user settings are editable in the new shell; themes apply; hotkeys are configurable.
+
+Started 2026-10-06: a Settings window (Tools > Settings, Ctrl+,) edits the theme (light, dark, follow the system), the
+commit and output window options, the recent list size, the git executable, and git config `user.name`, `user.email` and
+`merge.tool` (global and per repository, through `GitConfigService`). Each app preference is an upstream key read and
+written through `AppSettings` (`IAppPreferences`), so nothing is migrated. The theme applies at once and at startup;
+meaning-carrying colors (diff, graph lanes, labels, warnings) come from `ThemeBrushes` with a light and a dark set. The UI
+font is Inter on every OS (`Avalonia.Fonts.Inter`), because some Linux installs have no sans-serif font. Hotkeys use
+upstream's defaults (`Hotkeys.cs`); since later on 2026-10-06 the browse window's hotkeys are editable in Settings > Hotkeys
+and stored in upstream's `SerializedHotkeys` setting (same XML, so both apps share them). Not done: the upstream CSS theme files,
+the other windows' hotkeys,
+external diff and merge tool presets per OS (diff.tool and merge.tool are set by name), and the other settings pages. With
+the theme, the settings editor and the browse hotkeys done, the M5 exit is met for the browse window on Windows and Linux.
+
+Diff and merge tool presets, 2026-10-06 (later): Settings > Git config offers the diff and merge tools found on this computer
+beside the tool boxes; a choice fills the global value. The list comes from upstream's `CustomDiffMergeToolCache`, used as
+is: it asks `git difftool --tool-help` (and mergetool), keeps the tools git reports as available (including user-defined
+ones) and leaves out the terminal-only ones. git checks each tool's program on the current OS, so Meld or KDiff3 on Linux and
+opendiff on macOS show up without a list of paths in the fork. Tests: 151 core and 152 app on Windows and Linux (WSL). Still
+open in M5: the upstream CSS theme files, the other windows' hotkeys, and the other settings pages.
+
+Upstream CSS themes, 2026-10-06 (later): the new shell reads upstream's theme files. Upstream's loader (`ThemeLoader`,
+`ThemeRepository`, `ThemePersistence`, `ThemeCssUrlResolver`, `ThemeFileReader` and the `IThemePathProvider` interface from
+`src/app/GitUI/Theming`) is compiled into the core by link, unchanged, with upstream's ExCSS version; it has no WinForms code.
+`ThemeModule`, which applies a theme to WinForms, is not linked. Upstream's `ThemePathProvider` is not used either: in Debug
+builds it asserts that the app is GitExtensions.exe, which fails on Linux and macOS, so `AppThemePaths` repeats its rules.
+The theme files themselves (`src/app/GitUI/Themes/*.css`) are linked into the app's Themes folder, as upstream ships them.
+Settings > Appearance lists the themes as upstream does (follow the operating system, the built-in themes, the user's own)
+with the colorblind variation; the choice is upstream's `uitheme_v2`, `uithemeisbuiltin_v2` and `uithemevariations`, so both
+apps share it. The colors that carry meaning come from the theme's `AppColor` values as upstream uses them: diff lines on
+the green and red terminal background colors, hunk headers on `DiffSection`, ref labels in `Branch`, `RemoteBranch` and
+`Tag`, graph lanes in `GraphBranch1` to `8`. A dark theme (dark panel background) switches Avalonia to its dark variant. A
+theme that fails to load falls back to upstream's default theme, as upstream does. Not applied: the panel, editor and
+selection backgrounds and upstream's system color overrides (Avalonia's Fluent theme draws the controls), and the graph and
+labels repaint only when the grid reloads after a theme change (upstream applies a theme only after a restart). Tests: 158
+core (upstream's CSS: dark, dark+ importing dark, colorblind, system mode, a broken user theme) and 153 app, on Windows and
+Linux (WSL). Checked by screenshot on Windows and with a Debug build on Linux (WSLg).
+
+Commit window hotkeys, 2026-10-06 (later): the commit window's keys follow upstream's FormCommit hotkey section (focus the
+unstaged, diff, staged and message panes, stage all, open in diff tool, refresh, next and previous file) and are editable in
+Settings > Hotkeys beside the browse window's (`HotkeyTable`, `HotkeyEditor`). Fixed on the way: the fork stored the browse
+hotkeys under the section name "FormBrowse", but upstream's section is "Browse" (`FormBrowse.HotkeySettingsName`), so hotkeys
+were not shared with the WinForms app as this plan said. The names are now upstream's, and a test reads them from upstream's
+source so they cannot drift again. Tests: 160 core and 154 app on Windows and Linux (WSL). Still open in M5: the other
+upstream hotkey sections (revision grid, file viewer, left panel, conflicts) and the other settings pages.
+
+More hotkey sections, 2026-10-06 (later): the commands the new shell has from upstream's RevisionGrid section (go to parent
+and child, select HEAD, open and reset the filter, all branches, current branch only, hide merges, first parent), FileViewer
+(next and previous change, ignore whitespace, S and U to stage and unstage the selected lines in the commit window),
+LeftPanel (Delete) and FormMergeConflicts (M, L, R, F5) work as upstream, with upstream's defaults, codes and section names,
+while the grid, the diff, the left panel or the conflicts window has the focus; all are editable in Settings > Hotkeys.
+The section-name test covers them too. Tests: 166 core and 156 app on Windows and Linux (WSL). Not ported: those sections'
+commands that the new shell has no feature for (compare, fixup commits, find, go to line, blame from the diff, ...), and the
+Stash, BrowseDiff and Scripts sections. Still open in M5: the other settings pages.
 
 - Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
   values that upstream keeps in the Windows registry (through S1, read-only on Windows).
@@ -356,6 +491,14 @@ Exit: installable builds for Windows (existing installer), Linux (AppImage, and 
 - Shell extension and ConEmu terminal are Windows-only and stay out of the Linux/macOS builds.
 
 Estimate: 2 to 3 weeks per platform, after the app works.
+
+Started 2026-10-06 (first step, unsigned): `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it
+per OS: a zip for Windows, a tarball with a `.desktop` entry and icon for Linux, and a zipped `Git Extensions.app` bundle
+(`Info.plist`, executable in `Contents/MacOS`) for macOS. The app project opts back into publishing (`IsPublishable`, which
+the repository turns off). Checked locally: the Windows zip and the Linux tarball (WSL) were unpacked and the app started from
+them without an installed .NET; the macOS bundle was built from Linux and its layout checked, not run (no Mac). CI job
+`app-packages` builds and uploads win-x64, linux-x64 and osx-arm64. Not done: signing and notarization, an `.icns` icon,
+AppImage, `.deb` or `.rpm`, a `.dmg`, and an installer for the Avalonia app on Windows.
 
 ### M8. Feature parity and retirement (optional)
 

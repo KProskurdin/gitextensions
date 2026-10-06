@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 
 namespace GitExtensions.Xplat.App;
@@ -22,13 +21,13 @@ public partial class CloneWindow : Window
                 Close(request);
             }
         };
-        BrowseButton.Click += OnBrowseClick;
+        BrowseButton.Click += (_, _) => UiActions.Run(BrowseAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
     }
 
     /// <summary>
     ///  Picks the folder that will contain the clone, and names the new folder after the repository in the URL.
     /// </summary>
-    private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+    private async Task BrowseAsync()
     {
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {

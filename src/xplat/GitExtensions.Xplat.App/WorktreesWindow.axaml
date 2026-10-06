@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+        x:Class="GitExtensions.Xplat.App.WorktreesWindow"
+        Title="Worktrees"
+        Width="720" Height="420" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream FormManageWorktree: the worktrees, open one, add, remove, prune. -->
+  <DockPanel Margin="12" LastChildFill="True">
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" />
+    <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+      <Button x:Name="OpenWorktreeButton" Content="Open" Margin="0,0,6,0" ToolTip.Tip="Open the selected worktree in this window" />
+      <Button x:Name="AddWorktreeButton" Content="Add..." Margin="0,0,6,0" />
+      <Button x:Name="RemoveWorktreeButton" Content="Remove..." Margin="0,0,6,0" />
+      <Button x:Name="PruneWorktreesButton" Content="Prune" Margin="0,0,6,0" ToolTip.Tip="Forget worktrees whose folders were deleted" />
+      <Button x:Name="CloseButton" Content="Close" IsCancel="True" />
+    </WrapPanel>
+    <ListBox x:Name="WorktreeList">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="repo:WorktreeInfo">
+          <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

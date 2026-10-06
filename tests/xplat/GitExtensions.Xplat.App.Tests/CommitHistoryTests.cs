@@ -1,5 +1,6 @@
 using Avalonia.Headless.NUnit;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -31,6 +32,50 @@ internal sealed class CommitHistoryTests
         page.Rows.Should().HaveCount(1);
         page.Rows[0].Subject.Should().Be("second");
         page.HasMore.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void LoadPage_should_label_commits_with_their_branches_and_tags()
+    {
+        _repo.Run("branch", "feature");
+        _repo.Run("tag", "v1", "HEAD~1");
+
+        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 5).GetAwaiter().GetResult();
+
+        page.Rows[0].Refs.Should().Contain("feature").And.Contain("HEAD");
+        page.Rows[1].Refs.Should().Equal("v1");
+    }
+
+    [AvaloniaTest]
+    public void Reflog_keeps_the_commit_a_hard_reset_moved_away_from()
+    {
+        string previous = _repo.Run("rev-parse", "HEAD").Trim();
+        _repo.Run("reset", "-q", "--hard", "HEAD~1");
+
+        IReadOnlyList<ReflogEntry> entries = Reflog.LoadAsync(_repo.Path, 10).GetAwaiter().GetResult();
+
+        entries[0].Message.Should().StartWith("reset:");
+        entries.Should().Contain(entry => entry.Hash == previous);
+    }
+
+    [AvaloniaTest]
+    public void Search_finds_only_the_commits_whose_message_contains_the_text()
+    {
+        CommitPage found = _history.SearchAsync(_repo.Path, "BODY LINE", 10).GetAwaiter().GetResult();
+        CommitPage none = _history.SearchAsync(_repo.Path, "no such text", 10).GetAwaiter().GetResult();
+
+        found.Rows.Should().ContainSingle().Which.Subject.Should().Be("second");
+        none.Rows.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void LoadPage_should_give_each_commit_its_parent_hashes()
+    {
+        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 5).GetAwaiter().GetResult();
+
+        string first = _repo.Run("rev-parse", "HEAD~1").Trim();
+        page.Rows[0].ParentHashes.Should().Equal(first);
+        page.Rows[1].ParentHashes.Should().BeEmpty();
     }
 
     [AvaloniaTest]

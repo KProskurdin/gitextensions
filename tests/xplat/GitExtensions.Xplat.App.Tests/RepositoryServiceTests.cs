@@ -58,6 +58,55 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
+    public void GetSnapshot_should_list_the_stashes_and_tags()
+    {
+        _repo.Run("tag", "v1.0");
+        _repo.Run("tag", "v0.9");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        _repo.Run("stash", "push", "-q", "-m", "work in progress");
+
+        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+
+        StashInfo stash = snapshot.Stashes.Should().ContainSingle().Which;
+        stash.Name.Should().Be("stash@{0}");
+        stash.Message.Should().EndWith("work in progress");
+        snapshot.Tags.Should().Equal("v0.9", "v1.0");
+    }
+
+    [AvaloniaTest]
+    public void GetSnapshot_should_count_the_commits_ahead_of_the_upstream()
+    {
+        string remote = Path.Combine(Path.GetTempPath(), "xplat-remote-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(remote);
+        try
+        {
+            GitProcess.Run(remote, "init", "--bare", "-q");
+            _repo.Run("remote", "add", "origin", remote);
+            _repo.Run("push", "-q", "-u", "origin", _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim());
+            File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "local");
+            _repo.Run("commit", "-q", "-am", "local");
+
+            RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+
+            snapshot.Sync.Should().Be(new SyncStatus(1, 0));
+            snapshot.TrackingRemote.Should().Be("origin");
+        }
+        finally
+        {
+            GitProcess.DeleteFolder(remote);
+        }
+    }
+
+    [AvaloniaTest]
+    public void GetSnapshot_should_report_no_sync_status_without_an_upstream()
+    {
+        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+
+        snapshot.Sync.Should().BeNull();
+        snapshot.TrackingRemote.Should().BeNull();
+    }
+
+    [AvaloniaTest]
     public void GetSnapshot_should_fail_for_a_folder_that_is_not_a_repository()
     {
         string folder = Path.Combine(Path.GetTempPath(), "xplat-not-a-repo-" + Guid.NewGuid().ToString("N"));

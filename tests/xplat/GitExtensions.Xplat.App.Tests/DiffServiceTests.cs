@@ -25,6 +25,47 @@ internal sealed class DiffServiceTests
     }
 
     [AvaloniaTest]
+    public void GetDiff_can_ignore_whitespace_only_changes()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "two   ");
+
+        IReadOnlyList<DiffLine> withWhitespace = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> ignoringWhitespace = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false, ignoreWhitespace: true).GetAwaiter().GetResult();
+
+        withWhitespace.Should().NotBeEmpty();
+        ignoringWhitespace.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void GetDiff_of_an_untracked_file_shows_its_content_as_added()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, null, "new.txt", staged: false).GetAwaiter().GetResult();
+
+        lines.Should().Contain(line => line.Kind == DiffLineKind.Added && line.Text == "+content");
+    }
+
+    [AvaloniaTest]
+    public void GetDiff_of_an_unchanged_tracked_file_is_empty()
+    {
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false).GetAwaiter().GetResult();
+
+        lines.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void GetDiff_without_a_file_shows_the_whole_stash()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        _repo.Run("stash", "push", "-q");
+
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, "stash@{0}", filePath: null, staged: false).GetAwaiter().GetResult();
+
+        lines.Should().Contain(line => line.Kind == DiffLineKind.Added && line.Text == "+changed");
+    }
+
+    [AvaloniaTest]
     public void GetDiff_for_a_commit_shows_what_it_changed()
     {
         string head = _repo.Run("rev-parse", "HEAD").Trim();

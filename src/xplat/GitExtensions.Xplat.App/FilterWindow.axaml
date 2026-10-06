@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.FilterWindow"
+        Title="Filter revisions"
+        Width="500" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream FormRevisionFilter: empty fields do not filter. -->
+  <StackPanel Margin="16" Spacing="8">
+    <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+      <TextBlock Grid.Row="0" Text="Author" VerticalAlignment="Center" />
+      <TextBox x:Name="AuthorBox" Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="1" Text="Committer" VerticalAlignment="Center" />
+      <TextBox x:Name="CommitterBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="2" Text="Message" VerticalAlignment="Center" />
+      <TextBox x:Name="MessageBox" Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="3" Text="Since" VerticalAlignment="Center" />
+      <CalendarDatePicker x:Name="SinceBox" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="4" Text="Until" VerticalAlignment="Center" />
+      <CalendarDatePicker x:Name="UntilBox" Grid.Row="4" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="5" Text="Path" VerticalAlignment="Center" />
+      <TextBox x:Name="PathBox" Grid.Row="5" Grid.Column="2" PlaceholderText="File or folder, relative to the repository" />
+    </Grid>
+    <CheckBox x:Name="NoMergesCheck" Content="Hide merge commits" />
+    <CheckBox x:Name="FirstParentCheck" Content="Show first parents only" />
+    <TextBlock Text="Text matches ignore case; author, committer and message are git regular expressions." Opacity="0.7" TextWrapping="Wrap" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="ClearButton" Content="Clear" />
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="ApplyButton" Content="Apply" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.PullWindow"
+        Title="Pull"
+        Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream FormPull: remote and branch, merge, rebase or fetch only, prune, auto stash. -->
+  <StackPanel Margin="16" Spacing="8">
+    <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,Auto">
+      <TextBlock Grid.Row="0" Text="Remote" VerticalAlignment="Center" />
+      <ComboBox x:Name="RemoteBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+      <TextBlock Grid.Row="1" Text="Remote branch" VerticalAlignment="Center" />
+      <TextBox x:Name="RemoteBranchBox" Grid.Row="1" Grid.Column="2" PlaceholderText="Empty: the branch's upstream (pull) or all branches (fetch)" />
+    </Grid>
+    <TextBlock Text="Then" FontWeight="SemiBold" Margin="0,4,0,0" />
+    <RadioButton x:Name="MergeRadio" GroupName="Action" Content="Merge the remote branch into the current branch" IsChecked="True" />
+    <RadioButton x:Name="RebaseRadio" GroupName="Action" Content="Rebase the current branch on the remote branch" />
+    <RadioButton x:Name="FetchRadio" GroupName="Action" Content="Do not merge, only fetch" />
+    <CheckBox x:Name="PruneCheck" Content="Prune remote branches deleted on the remote (fetch only)" />
+    <CheckBox x:Name="AutoStashCheck" Content="Auto stash: stash local changes first and restore them after" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="PullButton" Content="Pull" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

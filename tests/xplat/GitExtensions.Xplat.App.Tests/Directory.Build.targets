@@ -1,0 +1,10 @@
+<Project>
+  <!-- Replaces the root Directory.Build.targets for this project only, so the NUnit version can be raised after
+       eng/Tests.targets adds the reference. Avalonia.Headless.NUnit needs NUnit 4.5.1; the shadow test projects stay
+       on the version upstream pins. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\..\..\Directory.Build.targets" />
+
+  <ItemGroup>
+    <PackageReference Update="NUnit" VersionOverride="4.5.1" />
+  </ItemGroup>
+</Project>

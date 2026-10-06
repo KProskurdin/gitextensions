@@ -5,6 +5,8 @@
     <AssemblyName>GitExtensions</AssemblyName>
     <RootNamespace>GitExtensions.Xplat.App</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- The repository turns publishing off for every project; the cross-platform app is published (src/xplat/eng/publish-app.sh). -->
+    <IsPublishable>true</IsPublishable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,9 +21,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's theme files, linked into the Themes folder next to the app as upstream ships them (upstream's
+         ThemePathProvider looks there), so both apps read the same CSS. -->
+    <Content Include="..\..\app\GitUI\Themes\*.css;..\..\app\GitUI\Themes\README.md" Link="Themes\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
   </ItemGroup>
 
   <ItemGroup>

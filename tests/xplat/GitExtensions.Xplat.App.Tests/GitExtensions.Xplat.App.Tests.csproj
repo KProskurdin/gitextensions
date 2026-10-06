@@ -8,8 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless.NUnit" />
-    <!-- Avalonia.Headless.NUnit needs NUnit 4.5.1; the shadow test projects stay on the version upstream pins. -->
-    <PackageReference Include="NUnit" VersionOverride="4.5.1" />
+    <!-- NUnit is raised to the version Avalonia.Headless.NUnit needs in Directory.Build.targets beside this file. -->
   </ItemGroup>
 
   <ItemGroup>

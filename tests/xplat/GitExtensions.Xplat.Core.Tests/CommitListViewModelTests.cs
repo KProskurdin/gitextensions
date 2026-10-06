@@ -35,6 +35,38 @@ internal sealed class CommitListViewModelTests
     }
 
     [Test]
+    public async Task FilterText_should_narrow_the_visible_rows_to_matching_commits()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, Page(hasMore: false, "aaa1", "bbb2"));
+        await open;
+
+        _viewModel.FilterText = " BBB ";
+
+        _viewModel.VisibleRows.Select(item => item.Row.Hash).Should().Equal("bbb2");
+        _viewModel.Rows.Should().HaveCount(2);
+
+        _viewModel.FilterText = "";
+        _viewModel.VisibleRows.Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task SearchAsync_should_show_only_the_matching_commits_and_no_more_pages()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, Page(hasMore: false, "aaa1", "bbb2"));
+        await open;
+        _history.SearchResults = [new CommitRow("ccc3", "ccc3", "match", "author", "2026-10-03 12:00")];
+
+        await _viewModel.SearchAsync(" match ");
+
+        _history.SearchRequests.Should().Equal("match");
+        _viewModel.Rows.Select(row => row.Hash).Should().Equal("ccc3");
+        _viewModel.HasMore.Should().BeFalse();
+        _viewModel.Status.Should().Be("1 commit match");
+    }
+
+    [Test]
     public async Task OpenAsync_should_report_more_history_when_the_page_is_not_the_last()
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);
@@ -205,6 +237,44 @@ internal sealed class CommitListViewModelTests
         Task open = _viewModel.OpenAsync(RepositoryPath);
         _history.CompletePage(0, Page(hasMore: false, hashes));
         await open;
+    }
+
+    [Test]
+    public async Task ApplyFilterAsync_should_read_again_with_the_filter_and_say_the_list_is_filtered()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, Page(hasMore: false, "aaa1", "bbb2"));
+        await open;
+        RevisionFilter filter = new(Author: "ann");
+
+        Task apply = _viewModel.ApplyFilterAsync(filter);
+        _history.CompletePage(1, Page(hasMore: false, "aaa1"));
+        await apply;
+
+        _history.PageFilters.Should().Equal(RevisionFilter.AllBranches, filter);
+        _viewModel.Filter.Should().Be(filter);
+        _viewModel.Status.Should().Be("1 commit (filtered)");
+    }
+
+    [Test]
+    public async Task Parent_child_and_head_navigation_should_find_the_shown_rows()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+        [
+            new CommitRow("merge", "merg", "merge", "a", "d", ["side", "base"],
+                Labels: [new RefLabel("HEAD", RefKind.Head)]),
+            new CommitRow("side", "side", "side", "a", "d", ["base"]),
+            new CommitRow("base", "base", "base", "a", "d", ["root"]),
+        ], HasMore: true));
+        await open;
+        IReadOnlyList<CommitRow> rows = [.. _viewModel.VisibleRows.Select(item => item.Row)];
+
+        _viewModel.IndexOfParent(rows[0]).Should().Be(1, "the first parent");
+        _viewModel.IndexOfParent(rows[2]).Should().BeNull("the parent is not loaded");
+        _viewModel.IndexOfChild(rows[2]).Should().Be(1, "the nearest child above");
+        _viewModel.IndexOfChild(rows[0]).Should().BeNull();
+        _viewModel.IndexOfHead().Should().Be(0);
     }
 
     private static CommitPage Page(bool hasMore, params string[] hashes)

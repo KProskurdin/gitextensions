@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.ProcessWindow"
+        Title="Git Extensions"
+        Width="760" Height="420" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream FormRemoteProcess: git's output while it runs, Abort while it runs, Close when it is done. -->
+  <DockPanel Margin="10" LastChildFill="True">
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="True">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+        <Button x:Name="AbortButton" Content="Abort" />
+        <Button x:Name="CloseButton" Content="Close" IsDefault="True" />
+      </StackPanel>
+      <TextBlock x:Name="StateText" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+    </DockPanel>
+    <ListBox x:Name="OutputList" FontFamily="{DynamicResource DiffFontFamily}">
+      <ListBox.Styles>
+        <Style Selector="ListBoxItem">
+          <Setter Property="Padding" Value="4,0" />
+          <Setter Property="MinHeight" Value="0" />
+        </Style>
+      </ListBox.Styles>
+    </ListBox>
+  </DockPanel>
+</Window>

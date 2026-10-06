@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.CheckoutWindow"
+        Title="Checkout branch"
+        Width="500" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors the local-changes part of upstream FormCheckoutBranch. -->
+  <StackPanel Margin="16" Spacing="8">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+    <RadioButton x:Name="KeepRadio" GroupName="Changes" Content="Keep them (git refuses if they conflict with the branch)" />
+    <RadioButton x:Name="MergeRadio" GroupName="Changes" Content="Merge them into the branch" />
+    <RadioButton x:Name="StashRadio" GroupName="Changes" Content="Stash them, check out, then apply the stash" />
+    <RadioButton x:Name="ResetRadio" GroupName="Changes" Content="Discard them" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="CheckoutButton" Content="Checkout" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

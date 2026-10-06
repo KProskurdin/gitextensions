@@ -9,6 +9,10 @@ internal sealed class FakeRepositoryService : IRepositoryService
 {
     private readonly List<TaskCompletionSource<RepositorySnapshot>> _reads = [];
 
+    public Task<string> GetHeadMessageAsync(string repositoryPath) => Task.FromResult("");
+
+    public Task<IReadOnlyList<WorktreeInfo>> GetWorktreesAsync(string repositoryPath) => Task.FromResult<IReadOnlyList<WorktreeInfo>>([]);
+
     public Task<RepositorySnapshot> GetSnapshotAsync(string repositoryPath)
     {
         TaskCompletionSource<RepositorySnapshot> read = new();

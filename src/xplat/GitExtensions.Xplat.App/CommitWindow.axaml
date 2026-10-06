@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+        x:Class="GitExtensions.Xplat.App.CommitWindow"
+        Title="Commit"
+        Width="1100" Height="720">
+  <!-- Mirrors upstream FormCommit: unstaged files above staged files on the left, the selected file's diff on the right,
+       and the commit message below the diff. -->
+  <DockPanel Margin="8" LastChildFill="True">
+    <TextBlock x:Name="StateText" DockPanel.Dock="Top" Margin="0,0,0,6" FontWeight="SemiBold" IsVisible="False" />
+    <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,6,0,0" />
+    <Grid ColumnDefinitions="380,6,*">
+      <Grid Grid.Column="0" RowDefinitions="*,6,*">
+        <DockPanel Grid.Row="0" LastChildFill="True">
+          <TextBlock x:Name="UnstagedHeader" DockPanel.Dock="Top" Text="Unstaged changes" FontWeight="Bold" Margin="0,0,0,4" />
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
+            <Button x:Name="StageButton" Content="Stage" Margin="0,0,4,4" ToolTip.Tip="Stage the selected files" />
+            <Button x:Name="StageAllButton" Content="Stage all" Margin="0,0,4,4" ToolTip.Tip="Stage every unstaged change (Ctrl+S)" />
+            <Button x:Name="DiscardButton" Content="Discard..." Margin="0,0,4,4" ToolTip.Tip="Discard the unstaged edits of the selected tracked files" />
+            <Button x:Name="DeleteUntrackedButton" Content="Delete untracked..." Margin="0,0,4,4" />
+            <Button x:Name="UseOursButton" Content="Use ours" Margin="0,0,4,4" ToolTip.Tip="Resolve the selected conflicts with our version" />
+            <Button x:Name="UseTheirsButton" Content="Use theirs" Margin="0,0,4,4" ToolTip.Tip="Resolve the selected conflicts with their version" />
+            <Button x:Name="StashSelectedButton" Content="Stash selected" Margin="0,0,4,4" />
+            <Button x:Name="IgnoreButton" Content="Ignore..." Margin="0,0,4,4" ToolTip.Tip="Add the selected untracked files to .gitignore" />
+          </WrapPanel>
+          <ListBox x:Name="UnstagedList" SelectionMode="Multiple">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="repo:FileChange">
+                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+        <DockPanel Grid.Row="2" LastChildFill="True">
+          <TextBlock x:Name="StagedHeader" DockPanel.Dock="Top" Text="Staged changes" FontWeight="Bold" Margin="0,0,0,4" />
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
+            <Button x:Name="UnstageButton" Content="Unstage" Margin="0,0,4,4" ToolTip.Tip="Unstage the selected files" />
+            <Button x:Name="UnstageAllButton" Content="Unstage all" Margin="0,0,4,4" />
+          </WrapPanel>
+          <ListBox x:Name="StagedList" SelectionMode="Multiple">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="repo:FileChange">
+                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Grid>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <Grid Grid.Column="2" RowDefinitions="*,6,220">
+        <DockPanel Grid.Row="0" LastChildFill="True">
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
+            <Button x:Name="StageLinesButton" Content="Stage selected lines" Margin="0,0,6,0"
+                    ToolTip.Tip="Stage only the selected lines of this file (Ctrl+click or Shift+click to select several)" />
+            <Button x:Name="UnstageLinesButton" Content="Unstage selected lines" Margin="0,0,6,0" />
+            <Button x:Name="DiffToolButton" Content="Open in diff tool" Margin="0,0,6,0" ToolTip.Tip="Show this file in the diff tool configured in Settings (diff.tool)" />
+          </WrapPanel>
+          <local:DiffView x:Name="Diff" />
+        </DockPanel>
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+        <DockPanel Grid.Row="2" LastChildFill="True">
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
+            <Button x:Name="CommitButton" Content="Commit" Margin="0,0,6,4" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)" />
+            <Button x:Name="CommitAndPushButton" Content="Commit and push" Margin="0,0,12,4" />
+            <CheckBox x:Name="AmendCheck" Content="Amend commit" Margin="0,0,12,4" />
+            <CheckBox x:Name="SignOffCheck" Content="Sign-off" Margin="0,0,12,4" />
+            <TextBox x:Name="CommitAuthorBox" Width="260" Margin="0,0,6,4" PlaceholderText="Author (optional: Name &lt;email&gt;)" />
+          </WrapPanel>
+          <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
+                   FontFamily="{DynamicResource DiffFontFamily}" PlaceholderText="Commit message" />
+        </DockPanel>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

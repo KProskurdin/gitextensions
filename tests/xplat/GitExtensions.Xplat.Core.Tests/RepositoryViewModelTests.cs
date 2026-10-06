@@ -59,10 +59,22 @@ internal sealed class RepositoryViewModelTests
     public async Task RefreshAsync_should_show_whether_a_merge_is_in_progress()
     {
         Task refresh = _viewModel.RefreshAsync("/work/one");
-        _service.Complete(0, new RepositorySnapshot("main", [], [], IsMerging: true));
+        _service.Complete(0, new RepositorySnapshot("main", [], [], IsMerging: true, [], [], IsRebasing: false));
         await refresh;
 
         _viewModel.IsMerging.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task RefreshAsync_should_expose_the_stashes_and_tags()
+    {
+        Task refresh = _viewModel.RefreshAsync("/work/one");
+        _service.Complete(0, new RepositorySnapshot("main", [], [], IsMerging: false,
+            [new StashInfo("stash@{0}", "WIP on main")], ["v1.0"], IsRebasing: false));
+        await refresh;
+
+        _viewModel.Stashes.Should().ContainSingle().Which.Display.Should().Be("stash@{0}: WIP on main");
+        _viewModel.Tags.Should().Equal("v1.0");
     }
 
     [Test]
@@ -137,5 +149,5 @@ internal sealed class RepositoryViewModelTests
     }
 
     private static RepositorySnapshot Snapshot(string? branch, params BranchInfo[] branches)
-        => new(branch, branches, [new FileChange("a.txt", ChangeKind.Modified, Staged: false)]);
+        => new(branch, branches, [new FileChange("a.txt", ChangeKind.Modified, Staged: false)], IsMerging: false, [], [], IsRebasing: false);
 }

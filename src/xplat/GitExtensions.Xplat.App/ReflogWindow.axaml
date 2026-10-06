@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+        x:Class="GitExtensions.Xplat.App.ReflogWindow"
+        Title="Reflog"
+        Width="680" Height="480" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="12" LastChildFill="True">
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="ResetButton" Content="Reset branch here (mixed)" IsEnabled="False" />
+      <Button x:Name="CloseButton" Content="Close" />
+    </StackPanel>
+    <ListBox x:Name="EntryList" FontFamily="monospace">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="repo:ReflogEntry">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding ShortHash}" />
+            <TextBlock Text="{Binding Selector}" />
+            <TextBlock Text="{Binding Message}" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

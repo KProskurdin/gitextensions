@@ -1,9 +1,34 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <!-- The shared xplat props add WinForms/Drawing namespaces to every project; the core must not depend on them. -->
+    <!-- The shared xplat props add the WinForms namespace to every project; the core must not depend on it. System.Drawing
+         stays: the linked upstream theming files use its Color and KnownColor, which are cross-platform. -->
     <Using Remove="System.Windows.Forms" />
-    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Upstream's CSS theme loading, compiled as is (it has no WinForms code), so the new shell reads the same theme files,
+         user themes and variations as the WinForms app. ThemeModule, which applies a theme to WinForms, is not linked. -->
+    <Compile Include="..\..\app\GitUI\Theming\ThemeLoader.cs" Link="Upstream\Theming\ThemeLoader.cs" />
+    <Compile Include="..\..\app\GitUI\Theming\ThemeCssUrlResolver.cs" Link="Upstream\Theming\ThemeCssUrlResolver.cs" />
+    <Compile Include="..\..\app\GitUI\Theming\ThemeCssUrlResolverException.cs" Link="Upstream\Theming\ThemeCssUrlResolverException.cs" />
+    <Compile Include="..\..\app\GitUI\Theming\ThemeException.cs" Link="Upstream\Theming\ThemeException.cs" />
+    <Compile Include="..\..\app\GitUI\Theming\ThemeFileReader.cs" Link="Upstream\Theming\ThemeFileReader.cs" />
+    <!-- For IThemePathProvider. Its ThemePathProvider is not used: in Debug builds it asserts that the app is GitExtensions.exe,
+         which fails on Linux and macOS; AppThemePaths takes its place. -->
+    <Compile Include="..\..\app\GitUI\Theming\ThemePathProvider.cs" Link="Upstream\Theming\ThemePathProvider.cs" />
+    <Compile Include="..\..\app\GitUI\Theming\ThemePersistence.cs" Link="Upstream\Theming\ThemePersistence.cs" />
+    <Compile Include="..\..\app\GitUI\Theming\ThemeRepository.cs" Link="Upstream\Theming\ThemeRepository.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Upstream's script events, so the stored OnEvent values are read as upstream writes them. The rest of upstream's
+         scripts engine uses WinForms and IGitUICommands; Scripts/ reimplements it (PORTING-MAP.md). -->
+    <Compile Include="..\..\app\GitUI\ScriptsEngine\ScriptEvent.cs" Link="Upstream\ScriptsEngine\ScriptEvent.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ExCSS" />
   </ItemGroup>
 
   <ItemGroup>

@@ -19,19 +19,32 @@ public partial class BlameWindow : Window
         _hash = hash;
         _filePath = filePath;
         InitializeComponent();
+        WindowPlacementTracker.Attach(this, "Xplat.BlameWindow");
         Title = $"Blame: {filePath}";
-        Opened += OnOpened;
+        Opened += (_, _) => UiActions.Run(LoadAsync, ex => ErrorText.Text = ex.Message);
+        BlameList.DoubleTapped += (_, _) => ShowSelectedLineCommit();
+        BlameList.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Enter)
+            {
+                e.Handled = true;
+                ShowSelectedLineCommit();
+            }
+        };
     }
 
-    private async void OnOpened(object? sender, EventArgs e)
+    // Like upstream's blame, a line leads to the commit that last changed it: that commit's change to the file.
+    // Lines not committed yet carry git's all-zero hash and have no commit to show.
+    private void ShowSelectedLineCommit()
     {
-        try
+        if (BlameList.SelectedItem is BlameLine line && line.Hash.Any(c => c != '0'))
         {
-            BlameList.ItemsSource = await _history.LoadBlameAsync(_repositoryPath, _hash, _filePath);
+            new DiffWindow(_repositoryPath, line.Hash, _filePath, staged: false).Show(this);
         }
-        catch (Exception ex)
-        {
-            ErrorText.Text = ex.Message;
-        }
+    }
+
+    private async Task LoadAsync()
+    {
+        BlameList.ItemsSource = await _history.LoadBlameAsync(_repositoryPath, _hash, _filePath);
     }
 }

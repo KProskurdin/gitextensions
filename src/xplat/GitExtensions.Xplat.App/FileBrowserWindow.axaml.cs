@@ -18,23 +18,16 @@ public partial class FileBrowserWindow : Window
         _repositoryPath = repositoryPath;
         _hash = hash;
         InitializeComponent();
+        WindowPlacementTracker.Attach(this, "Xplat.FileBrowserWindow");
         Title = $"Files at {hash[..Math.Min(8, hash.Length)]}";
-        FileList.SelectionChanged += OnFileSelectionChanged;
+        FileList.SelectionChanged += (_, _) => Run(() => _viewModel.SelectFileAsync(FileList.SelectedItem as string));
         ShowHistoryDiffButton.Click += OnShowHistoryDiffClick;
         BlameButton.Click += OnBlameClick;
         _viewModel.PropertyChanged += (_, e) => OnViewModelChanged(e.PropertyName);
-        Opened += OnOpened;
+        Opened += (_, _) => Run(() => _viewModel.OpenAsync(_repositoryPath, _hash));
     }
 
-    private async void OnOpened(object? sender, EventArgs e)
-    {
-        await _viewModel.OpenAsync(_repositoryPath, _hash);
-    }
-
-    private async void OnFileSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        await _viewModel.SelectFileAsync(FileList.SelectedItem as string);
-    }
+    private void Run(Func<Task> action) => UiActions.Run(action, ex => ErrorText.Text = ex.Message);
 
     private void OnBlameClick(object? sender, RoutedEventArgs e)
     {

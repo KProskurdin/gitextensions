@@ -7,6 +7,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's theme files, so the theme tests read the real CSS wherever the build output goes (Linux builds go outside
+         the repository). -->
+    <Content Include="..\..\..\src\app\GitUI\Themes\*.css" Link="Themes\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\xplat\GitExtensions.Xplat.Core\GitExtensions.Xplat.Core.csproj" />
   </ItemGroup>
 

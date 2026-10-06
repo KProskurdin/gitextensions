@@ -14,9 +14,12 @@ internal sealed class FakeCommitHistory : ICommitHistory
 
     public List<string> DetailHashes { get; } = [];
 
-    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit)
+    public List<RevisionFilter?> PageFilters { get; } = [];
+
+    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null)
     {
         PageLimits.Add(limit);
+        PageFilters.Add(filter);
         TaskCompletionSource<CommitPage> read = new();
         _pageReads.Add(read);
         return read.Task;
@@ -54,9 +57,23 @@ internal sealed class FakeCommitHistory : ICommitHistory
         return Task.FromResult(new CommitPage(FileHistory, HasMore: false));
     }
 
+    public List<string> SearchRequests { get; } = [];
+
+    public IReadOnlyList<CommitRow> SearchResults { get; set; } = [];
+
+    public Task<CommitPage> SearchAsync(string repositoryPath, string text, int limit)
+    {
+        SearchRequests.Add(text);
+        return Task.FromResult(new CommitPage(SearchResults, HasMore: false));
+    }
+
     public IReadOnlyList<BlameLine> Blame { get; set; } = [];
 
     public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath) => Task.FromResult(Blame);
+
+    public string? FileText { get; set; } = "";
+
+    public Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath) => Task.FromResult(FileText);
 
     public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash) => Task.FromResult(Files);
 }

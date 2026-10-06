@@ -5,107 +5,363 @@
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.MainWindow"
         Title="Git Extensions"
-        Width="1100" Height="680">
-  <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
-    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-      <TextBox x:Name="PathBox" Width="420" Margin="0,0,8,4" PlaceholderText="Path to a git repository" />
-      <Button x:Name="OpenButton" Content="Open" Margin="0,0,8,4" />
-      <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" Margin="0,0,8,4" />
-      <Button x:Name="FetchButton" Content="Fetch" Margin="0,0,8,4" />
-      <Button x:Name="PullButton" Content="Pull" Margin="0,0,8,4" />
-      <Button x:Name="PushButton" Content="Push" Margin="0,0,8,4" />
-      <Button x:Name="CloneButton" Content="Clone..." Margin="0,0,8,4" />
-      <Button x:Name="OpenFolderButton" Content="Open folder" Margin="0,0,8,4" />
-      <Button x:Name="TerminalButton" Content="Terminal" Margin="0,0,8,4" />
-      <Button x:Name="FilesButton" Content="Files..." Margin="0,0,8,4" />
-      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="8,0,0,4" />
-      <TextBlock x:Name="OperationStatusText" VerticalAlignment="Center" Margin="8,0,0,4" Foreground="DarkGreen" />
-    </WrapPanel>
-    <Grid ColumnDefinitions="260,12,*,12,360">
-      <ScrollViewer Grid.Column="0">
-        <StackPanel Spacing="6">
-          <TextBlock x:Name="BranchText" FontWeight="Bold" />
-          <ListBox x:Name="BranchList" Height="150">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="repo:BranchInfo">
-                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <WrapPanel>
-            <Button x:Name="CheckoutButton" Content="Checkout" Margin="0,0,6,4" />
-            <Button x:Name="DeleteBranchButton" Content="Delete" Margin="0,0,6,4" />
-            <Button x:Name="MergeButton" Content="Merge into current" Margin="0,0,6,4" />
-            <Button x:Name="AbortMergeButton" Content="Abort merge" Margin="0,0,6,4" />
-          </WrapPanel>
-          <WrapPanel>
-            <TextBox x:Name="NewBranchBox" Width="150" Margin="0,0,6,4" PlaceholderText="New branch name" />
-            <Button x:Name="CreateBranchButton" Content="Create" Margin="0,0,6,4" />
-          </WrapPanel>
-          <TextBlock Text="Changes" FontWeight="Bold" Margin="0,8,0,0" />
-          <ListBox x:Name="ChangeList" Height="200" SelectionMode="Multiple">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="repo:FileChange">
-                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <WrapPanel>
-            <Button x:Name="StageButton" Content="Stage" Margin="0,0,6,4" />
-            <Button x:Name="UnstageButton" Content="Unstage" Margin="0,0,6,4" />
-            <Button x:Name="ShowChangeDiffButton" Content="Diff" Margin="0,0,6,4" />
-          </WrapPanel>
-          <TextBox x:Name="CommitMessageBox" Height="90" AcceptsReturn="True" TextWrapping="Wrap"
-                   PlaceholderText="Commit message" />
-          <WrapPanel>
-            <CheckBox x:Name="AmendCheck" Content="Amend" Margin="0,0,12,4" />
-            <Button x:Name="CommitButton" Content="Commit" Margin="0,0,6,4" />
-          </WrapPanel>
-          <TextBlock Text="Stash" FontWeight="Bold" Margin="0,8,0,0" />
-          <TextBox x:Name="StashMessageBox" PlaceholderText="Stash message (optional)" />
-          <WrapPanel>
-            <Button x:Name="StashButton" Content="Stash" Margin="0,0,6,4" />
-            <Button x:Name="PopStashButton" Content="Pop stash" Margin="0,0,6,4" />
-          </WrapPanel>
+        Width="1360" Height="820">
+  <!-- Layout follows upstream FormBrowse: menu and toolbar on top, repository objects on the left, the revision grid,
+       and the selected commit's tabs below it. -->
+  <DockPanel LastChildFill="True">
+    <Menu x:Name="MainMenu" DockPanel.Dock="Top">
+      <MenuItem Header="_Start">
+        <MenuItem x:Name="OpenMenuItem" Header="_Open..." />
+        <MenuItem x:Name="CloneMenuItem" Header="_Clone repository..." />
+        <MenuItem x:Name="InitMenuItem" Header="Create _new repository..." />
+        <MenuItem x:Name="RecentMenu" Header="_Recent repositories" />
+        <Separator />
+        <MenuItem x:Name="CloseRepositoryMenuItem" Header="Close repository" />
+        <MenuItem x:Name="ExitMenuItem" Header="E_xit" />
+      </MenuItem>
+      <MenuItem Header="_Repository">
+        <MenuItem x:Name="RefreshMenuItem" Header="_Refresh" />
+        <MenuItem x:Name="FileExplorerMenuItem" Header="File _explorer" />
+        <MenuItem x:Name="TerminalMenuItem" Header="Open _terminal" />
+        <Separator />
+        <MenuItem x:Name="FilesMenuItem" Header="_Browse files..." />
+        <MenuItem x:Name="ReflogMenuItem" Header="Show _reflog..." />
+        <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit ._gitignore..." />
+        <MenuItem x:Name="WorktreesMenuItem" Header="_Worktrees..." />
+      </MenuItem>
+      <MenuItem Header="_Commands">
+        <MenuItem x:Name="CommitMenuItem" Header="_Commit..." />
+        <MenuItem x:Name="PullDialogMenuItem" Header="_Pull/Fetch..." />
+        <MenuItem x:Name="PushDialogMenuItem" Header="P_ush..." />
+        <MenuItem x:Name="PullMenuItem" Header="Quick pull" />
+        <MenuItem x:Name="PushMenuItem" Header="Quick push" />
+        <MenuItem x:Name="FetchMenuItem" Header="Quick _fetch" />
+        <Separator />
+        <MenuItem x:Name="StashMenuItem" Header="_Stash changes" />
+        <MenuItem x:Name="StashPopMenuItem" Header="Stash p_op" />
+        <Separator />
+        <MenuItem x:Name="CreateBranchMenuItem" Header="Create _branch..." />
+        <MenuItem x:Name="MergeMenuItem" Header="_Merge selected branch" />
+        <MenuItem x:Name="RebaseMenuItem" Header="Re_base onto selected branch" />
+        <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." />
+        <Separator />
+        <MenuItem x:Name="ResolveConflictsMenuItem" Header="Solve _conflicts..." />
+      </MenuItem>
+      <MenuItem Header="_Tools">
+        <MenuItem x:Name="CommandLogMenuItem" Header="Git _command log..." />
+        <MenuItem x:Name="SettingsMenuItem" Header="_Settings..." />
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem x:Name="AboutMenuItem" Header="_About" />
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+      <WrapPanel>
+        <TextBox x:Name="PathBox" Width="340" Margin="0,0,4,2" PlaceholderText="Path to a git repository" />
+        <Button x:Name="OpenButton" Content="Open" Margin="0,0,4,2" />
+        <Button x:Name="RefreshButton" Content="Refresh" Margin="0,0,12,2" ToolTip.Tip="Refresh (F5)" />
+        <Button x:Name="CommitDialogButton" Content="Commit" Margin="0,0,4,2" FontWeight="SemiBold" ToolTip.Tip="Commit (Ctrl+Space)" />
+        <Button x:Name="PullButton" Content="Pull" Margin="0,0,2,2" ToolTip.Tip="Pull the current branch from the remote it tracks (Ctrl+Shift+P). Ctrl+Down opens the pull dialog." />
+        <CheckBox x:Name="RebaseOnPullCheck" Content="Rebase" Margin="0,0,8,2" ToolTip.Tip="Pull with rebase instead of merge" />
+        <Button x:Name="PushButton" Content="Push" Margin="0,0,4,2" ToolTip.Tip="Push the current branch to the remote it tracks (Ctrl+Shift+Up). Ctrl+Up opens the push dialog." />
+        <Button x:Name="PushTagsButton" Content="Push tags" Margin="0,0,4,2" />
+        <Button x:Name="FetchButton" Content="Fetch" Margin="0,0,2,2" ToolTip.Tip="Fetch from origin (Ctrl+Shift+Down)" />
+        <CheckBox x:Name="PruneCheck" Content="Prune" Margin="0,0,12,2" ToolTip.Tip="Remove remote-tracking branches that are gone on the remote" />
+        <Button x:Name="CloneButton" Content="Clone..." Margin="0,0,4,2" />
+        <Button x:Name="InitButton" Content="Init" Margin="0,0,4,2" ToolTip.Tip="Create a repository in the folder in the path box" />
+        <Button x:Name="OpenFolderButton" Content="Folder" Margin="0,0,4,2" ToolTip.Tip="Open the repository folder in the file manager" />
+        <Button x:Name="TerminalButton" Content="Terminal" Margin="0,0,4,2" ToolTip.Tip="Open a terminal in the repository (Ctrl+G)" />
+        <Button x:Name="FilesButton" Content="Files..." Margin="0,0,4,2" />
+        <Button x:Name="ReflogButton" Content="Reflog..." Margin="0,0,12,2" />
+        <!-- Upstream's user menu bar: the enabled scripts whose event is "show in user menu bar". -->
+        <StackPanel x:Name="UserScriptsPanel" Orientation="Horizontal" Spacing="4" Margin="0,0,12,2" />
+        <TextBox x:Name="FilterBox" Width="180" Margin="0,0,4,2" PlaceholderText="Filter loaded commits (Ctrl+E)" />
+        <TextBox x:Name="SearchBox" Width="180" Margin="0,0,4,2" PlaceholderText="Search history (Enter)" />
+        <ComboBox x:Name="BranchScopeBox" Margin="0,0,4,2" SelectedIndex="0" ToolTip.Tip="Which branches the grid shows">
+          <ComboBoxItem Content="All branches" />
+          <ComboBoxItem Content="Current branch" />
+        </ComboBox>
+        <Button x:Name="RevisionFilterButton" Content="Filter..." Margin="0,0,4,2" ToolTip.Tip="Filter by author, committer, message, date or path" />
+        <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" Margin="0,0,4,2" />
+      </WrapPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0" Padding="8,3">
+      <DockPanel LastChildFill="True">
+        <TextBlock x:Name="BranchText" DockPanel.Dock="Left" FontWeight="SemiBold" Margin="0,0,16,0" />
+        <TextBlock x:Name="StatusText" DockPanel.Dock="Left" Margin="0,0,16,0" />
+        <TextBlock x:Name="OperationStatusText" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+
+    <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="8,4" IsVisible="False" TextWrapping="Wrap" />
+
+    <!-- Shown while a merge or rebase is stopped, like upstream's warning bar above the grid. -->
+    <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3"
+            BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+      <WrapPanel>
+        <TextBlock x:Name="StateBannerText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" />
+        <Button x:Name="ResolveConflictsButton" Content="Solve conflicts..." Margin="0,0,6,0" />
+        <Button x:Name="AbortMergeButton" Content="Abort merge" Margin="0,0,6,0" />
+        <Button x:Name="ContinueRebaseButton" Content="Continue rebase" Margin="0,0,6,0" />
+        <Button x:Name="SkipRebaseButton" Content="Skip commit" Margin="0,0,6,0" ToolTip.Tip="Leave out the commit the rebase stopped at" />
+        <Button x:Name="EditRebaseTodoButton" Content="Edit todo" Margin="0,0,6,0" ToolTip.Tip="Edit the steps the rebase has not done yet" />
+        <Button x:Name="AbortRebaseButton" Content="Abort rebase" Margin="0,0,6,0" />
+      </WrapPanel>
+    </Border>
+
+    <Grid ColumnDefinitions="280,5,*" Margin="6">
+      <!-- Repository objects: upstream's left panel (RepoObjectsTree) as sections. -->
+      <ScrollViewer x:Name="LeftPanel" Grid.Column="0">
+        <StackPanel Spacing="4">
+          <Expander Header="Branches and remotes" IsExpanded="True" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="4">
+              <TreeView x:Name="BranchTreeView" Height="220">
+                <TreeView.Styles>
+                  <Style Selector="TreeViewItem" x:DataType="repo:BranchTreeNode">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="MinHeight" Value="22" />
+                  </Style>
+                </TreeView.Styles>
+                <TreeView.ItemTemplate>
+                  <TreeDataTemplate x:DataType="repo:BranchTreeNode" ItemsSource="{Binding Children}">
+                    <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+                  </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+              </TreeView>
+              <WrapPanel>
+                <Button x:Name="CheckoutButton" Content="Checkout" Margin="0,0,4,4" />
+                <Button x:Name="MergeButton" Content="Merge into current" Margin="0,0,4,4" ToolTip.Tip="Merge the selected branch into the current one (Ctrl+M)" />
+                <Button x:Name="RebaseButton" Content="Rebase onto" Margin="0,0,4,4" ToolTip.Tip="Rebase the current branch onto the selected one (Ctrl+Shift+E)" />
+                <Button x:Name="DeleteBranchButton" Content="Delete" Margin="0,0,4,4" />
+                <Button x:Name="ForceDeleteBranchButton" Content="Force delete" Margin="0,0,4,4" />
+              </WrapPanel>
+              <TextBox x:Name="NewBranchBox" PlaceholderText="New branch name (Ctrl+B)" />
+              <WrapPanel>
+                <Button x:Name="CreateBranchButton" Content="Create" Margin="0,0,4,4" ToolTip.Tip="Create the branch at HEAD and check it out" />
+                <Button x:Name="CreateBranchAtCommitButton" Content="Create at selected commit" Margin="0,0,4,4" />
+                <Button x:Name="RenameBranchButton" Content="Rename selected" Margin="0,0,4,4" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+          <Expander Header="Tags" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="4">
+              <ListBox x:Name="TagList" Height="110" />
+              <TextBox x:Name="NewTagBox" PlaceholderText="New tag name (Ctrl+T)" />
+              <TextBox x:Name="TagMessageBox" PlaceholderText="Message (optional: makes an annotated tag)" />
+              <WrapPanel>
+                <Button x:Name="CreateTagButton" Content="Create" Margin="0,0,4,4" ToolTip.Tip="Tag the selected commit, or HEAD" />
+                <Button x:Name="DeleteTagButton" Content="Delete" Margin="0,0,4,4" />
+                <Button x:Name="DeleteRemoteTagButton" Content="Delete on remote..." Margin="0,0,4,4" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+          <Expander Header="Stashes" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="4">
+              <ListBox x:Name="StashList" Height="110">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="repo:StashInfo">
+                    <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <WrapPanel>
+                <Button x:Name="ApplyStashButton" Content="Apply" Margin="0,0,4,4" />
+                <Button x:Name="PopStashButton" Content="Pop" Margin="0,0,4,4" />
+                <Button x:Name="DropStashButton" Content="Drop" Margin="0,0,4,4" />
+                <Button x:Name="StashDiffButton" Content="Show diff" Margin="0,0,4,4" />
+              </WrapPanel>
+              <TextBox x:Name="StashMessageBox" PlaceholderText="Stash message (optional)" />
+              <WrapPanel>
+                <Button x:Name="StashButton" Content="Stash changes" Margin="0,0,6,4" ToolTip.Tip="Ctrl+Alt+Up" />
+                <CheckBox x:Name="IncludeUntrackedCheck" Content="Untracked" Margin="0,0,6,4" />
+                <CheckBox x:Name="KeepIndexCheck" Content="Keep index" Margin="0,0,6,4" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+          <Expander x:Name="SubmodulesExpander" Header="Submodules" HorizontalAlignment="Stretch" IsVisible="False">
+            <StackPanel Spacing="4">
+              <ListBox x:Name="SubmoduleList" Height="100">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="repo:SubmoduleInfo">
+                    <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <WrapPanel>
+                <Button x:Name="OpenSubmoduleButton" Content="Open" Margin="0,0,4,4" ToolTip.Tip="Open the selected submodule in this window" />
+                <Button x:Name="UpdateSubmoduleButton" Content="Update" Margin="0,0,4,4" ToolTip.Tip="Initialize and update the selected submodule" />
+                <Button x:Name="UpdateSubmodulesButton" Content="Update all" Margin="0,0,4,4" />
+                <Button x:Name="SyncSubmodulesButton" Content="Sync" Margin="0,0,4,4" ToolTip.Tip="Copy the URLs from .gitmodules to the repository config" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
+          <Expander Header="Remotes" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="4">
+              <ListBox x:Name="RemoteList" Height="80" />
+              <TextBox x:Name="NewRemoteNameBox" PlaceholderText="Name" />
+              <TextBox x:Name="NewRemoteUrlBox" PlaceholderText="URL or path" />
+              <WrapPanel>
+                <Button x:Name="AddRemoteButton" Content="Add" Margin="0,0,4,4" />
+                <Button x:Name="RemoveRemoteButton" Content="Remove" Margin="0,0,4,4" />
+                <Button x:Name="RenameRemoteButton" Content="Rename..." Margin="0,0,4,4" />
+                <Button x:Name="SetRemoteUrlButton" Content="Set URL..." Margin="0,0,4,4" />
+              </WrapPanel>
+            </StackPanel>
+          </Expander>
         </StackPanel>
       </ScrollViewer>
-      <ListBox x:Name="CommitList" Grid.Column="2">
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="core:CommitRow">
-            <Grid ColumnDefinitions="90,*,200,140" Margin="4,2">
-              <TextBlock Grid.Column="0" Text="{Binding ShortHash}" FontFamily="monospace" />
-              <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Column="2" Text="{Binding Author}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Column="3" Text="{Binding Date}" />
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-      <Border Grid.Column="4" BorderBrush="LightGray" BorderThickness="1" Padding="10" CornerRadius="4">
-        <DockPanel LastChildFill="True">
-          <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,8">
-            <TextBlock x:Name="DetailHash" FontFamily="monospace" TextWrapping="Wrap" />
-            <TextBlock x:Name="DetailAuthor" TextWrapping="Wrap" />
-            <TextBlock x:Name="DetailAuthorDate" />
-            <TextBlock x:Name="DetailCommitDate" />
-            <TextBlock x:Name="DetailParents" FontFamily="monospace" TextWrapping="Wrap" />
-            <Button x:Name="CopyHashButton" Content="Copy hash" HorizontalAlignment="Left" Margin="0,4,0,0" />
-            <TextBlock Text="Changed files" FontWeight="Bold" Margin="0,8,0,0" />
-            <ListBox x:Name="CommitFilesList" Height="120">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="core:CommitFile">
-                  <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            <Button x:Name="ShowCommitDiffButton" Content="Show diff" HorizontalAlignment="Left" Margin="0,4,0,0" />
-          </StackPanel>
-          <ScrollViewer>
-            <TextBlock x:Name="DetailMessage" TextWrapping="Wrap" />
-          </ScrollViewer>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+
+      <Grid Grid.Column="2">
+        <!-- Dashboard: recent repositories, shown while no repository is open (upstream's Dashboard). -->
+        <DockPanel x:Name="DashboardPanel" LastChildFill="True" Margin="24,16">
+          <TextBlock DockPanel.Dock="Top" Text="Recent repositories" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" />
+          <TextBlock DockPanel.Dock="Top" Text="Double-click or press Enter to open. Start > Open, Clone or Create to begin with another one."
+                     Margin="0,0,0,12" TextWrapping="Wrap" Opacity="0.75" />
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button x:Name="RemoveRecentButton" Content="Remove from list" Margin="0,0,6,0" />
+          </WrapPanel>
+          <ListBox x:Name="RecentList" MaxWidth="900" HorizontalAlignment="Left">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="repo:RecentRepository">
+                <StackPanel Margin="2,3">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Path}" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
         </DockPanel>
-      </Border>
+
+        <Grid x:Name="BrowsePanel" RowDefinitions="Auto,*,5,300" IsVisible="False">
+          <!-- Column headers of the revision grid; the widths match the row template below. -->
+          <Grid Grid.Row="0" ColumnDefinitions="*,160,140,90" Margin="12,0,12,2">
+            <TextBlock Grid.Column="0" Text="Message" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="Author" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Text="Date" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="3" Text="Commit" FontWeight="SemiBold" />
+          </Grid>
+          <ListBox x:Name="CommitList" Grid.Row="1">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="4,0" />
+                <Setter Property="MinHeight" Value="22" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ContextMenu>
+              <ContextMenu x:Name="CommitContextMenu">
+                <MenuItem x:Name="CopyHashMenuItem" Header="Copy commit hash" />
+                <MenuItem x:Name="CopyMessageMenuItem" Header="Copy commit message" />
+                <Separator />
+                <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create branch here..." />
+                <MenuItem x:Name="CreateTagHereMenuItem" Header="Create tag here..." />
+                <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
+                <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout this commit (detached HEAD)" />
+                <Separator />
+                <MenuItem x:Name="CherryPickMenuItem" Header="Cherry-pick this commit" />
+                <MenuItem x:Name="RevertMenuItem" Header="Revert this commit" />
+                <MenuItem x:Name="RunScriptMenuItem" Header="Run script" />
+                <MenuItem Header="Rebase current branch on">
+                  <MenuItem x:Name="RebaseOnCommitMenuItem" Header="Selected commit" />
+                  <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit interactively..." />
+                </MenuItem>
+                <MenuItem Header="Reset current branch to here">
+                  <MenuItem x:Name="ResetSoftMenuItem" Header="Soft: keep index and working tree" />
+                  <MenuItem x:Name="ResetMixedMenuItem" Header="Mixed: keep working tree, reset index" />
+                  <MenuItem x:Name="ResetHardMenuItem" Header="Hard: discard all changes..." />
+                </MenuItem>
+              </ContextMenu>
+            </ListBox.ContextMenu>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="core:CommitListItem">
+                <Grid ColumnDefinitions="Auto,*,160,140,90">
+                  <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
+                    <ItemsControl ItemsSource="{Binding Labels}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="core:RefLabel">
+                          <Border BorderThickness="1" CornerRadius="3" Padding="4,0" Margin="0,0,4,0"
+                                  BorderBrush="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"
+                                       Foreground="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}" />
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Text="{Binding Row.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                  <TextBlock Grid.Column="3" Text="{Binding Row.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                  <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" FontFamily="{DynamicResource DiffFontFamily}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+
+          <TabControl x:Name="DetailTabs" Grid.Row="3" Padding="0,4,0,0">
+            <TabItem x:Name="CommitInfoTab" Header="Commit">
+              <Grid ColumnDefinitions="*,8,Auto">
+                <ScrollViewer Grid.Column="0">
+                  <StackPanel Spacing="3" Margin="4,0">
+                    <TextBlock x:Name="DetailHash" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailAuthor" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailAuthorDate" />
+                    <TextBlock x:Name="DetailCommitDate" />
+                    <TextBlock x:Name="DetailParents" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+                    <SelectableTextBlock x:Name="DetailMessage" TextWrapping="Wrap" Margin="0,8,0,0" />
+                  </StackPanel>
+                </ScrollViewer>
+                <StackPanel Grid.Column="2" Spacing="4">
+                  <Button x:Name="CopyHashButton" Content="Copy hash" HorizontalAlignment="Stretch" />
+                  <Button x:Name="CopyMessageButton" Content="Copy message" HorizontalAlignment="Stretch" />
+                </StackPanel>
+              </Grid>
+            </TabItem>
+            <TabItem x:Name="DiffTab" Header="Diff">
+              <Grid ColumnDefinitions="300,5,*">
+                <DockPanel Grid.Column="0" LastChildFill="True">
+                  <Button x:Name="CommitDiffToolButton" DockPanel.Dock="Bottom" Content="Open in diff tool" Margin="0,4,0,0"
+                          ToolTip.Tip="Show the selected file's change in the diff tool configured in Settings (diff.tool)" />
+                  <Button x:Name="ShowCommitDiffButton" DockPanel.Dock="Bottom" Content="Open in window" Margin="0,4,0,0"
+                          ToolTip.Tip="Show the selected file's diff in its own window" />
+                  <ListBox x:Name="CommitFilesList">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="core:CommitFile">
+                        <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </DockPanel>
+                <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+                <local:DiffView x:Name="CommitDiff" Grid.Column="2" />
+              </Grid>
+            </TabItem>
+            <TabItem x:Name="FileTreeTab" Header="File tree">
+              <Grid ColumnDefinitions="300,5,*">
+                <TreeView x:Name="FileTreeView" Grid.Column="0">
+                  <TreeView.ItemTemplate>
+                    <TreeDataTemplate x:DataType="core:FileTreeNode" ItemsSource="{Binding Children}">
+                      <TextBlock Text="{Binding Name}" />
+                    </TreeDataTemplate>
+                  </TreeView.ItemTemplate>
+                </TreeView>
+                <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+                <local:DiffView x:Name="FileContentView" Grid.Column="2" />
+              </Grid>
+            </TabItem>
+          </TabControl>
+        </Grid>
+      </Grid>
     </Grid>
   </DockPanel>
 </Window>

@@ -20,6 +20,22 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
 
 ## Entries
 
+### 2026-10-06: porting map review for the new rows, no merge
+
+- Upstream checked: `52d08e996` (unchanged since the last entry; `git fetch upstream` brought nothing new).
+- New rows written against the fork base and reviewed against `52d08e996`: `FormResolveConflicts` (`a4d51838f`, conflict
+  description texts: skipped, the port shows none), `FilterInfo` (`c16194306`, agent session refs: ported, the all-branches
+  view excludes them), `FormRevisionFilter` (`72373e530`, simplify merges only with full history: skipped, neither option is
+  ported). The other new rows (`FormGitCommandLog`, `FormRemoteProcess`/`FormProcess`, `FormSettings`, `FormAbout`,
+  `Dashboard`, `RepoObjectsTree`, `HotkeySettingsManager`, `FormGitIgnore`/`FormAddToGitIgnore`) had no upstream changes.
+- `port-drift.sh`: 34 rows, 0 with upstream changes since their base, 0 stale.
+- `xplat-drift.sh`: the two items decided on 2026-10-04 (`PathUtilTest`, `GitModuleWorktreeTests`); no new ones.
+- Measures (PLAN.md 11.2): upstream files modified 0 (`git status` of `src/app`, `src/plugins`, `tests/app`, `setup`, `eng`
+  is empty); seam count 7; no new upstream file read through reflection or copied. New reuse of upstream code as is:
+  `RepositoryHistoryManager`, `CommandLog`, `PatchManager.GetSelectedLinesAsPatch`, `Commands.Push`/`PushTag`,
+  `GitModule.PullCmd`/`FetchCmd`, and the upstream setting keys listed in `PORTING-MAP.md` (FormSettings row).
+- Local `master` not moved; nothing committed.
+
 ### 2026-10-04: mirrored test review, no merge
 
 - `xplat-drift.sh` flagged two mirrored classes against `upstream/master`, both changed after the fork base `0174ba1cc`.

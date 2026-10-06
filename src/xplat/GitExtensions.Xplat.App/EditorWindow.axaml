@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.EditorWindow"
+        Title="Editor"
+        Width="800" Height="560" WindowStartupLocation="CenterScreen">
+  <!-- Mirrors upstream FormEditor: a toolbar with Save, the file's text, and a question about unsaved changes on close. -->
+  <DockPanel LastChildFill="True">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8,6">
+      <Button x:Name="SaveButton" Content="Save" ToolTip.Tip="Save the file (Ctrl+S)" />
+      <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" />
+    </StackPanel>
+    <Border x:Name="SaveChangesBar" DockPanel.Dock="Bottom" IsVisible="False" Padding="8,6"
+            BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <TextBlock Text="Do you want to save changes?" VerticalAlignment="Center" FontWeight="SemiBold" />
+        <Button x:Name="SaveAndCloseButton" Content="Save" />
+        <Button x:Name="DiscardButton" Content="Don't save" />
+        <Button x:Name="KeepEditingButton" Content="Cancel" />
+      </StackPanel>
+    </Border>
+    <TextBox x:Name="ContentBox" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" BorderThickness="0"
+             FontFamily="{DynamicResource DiffFontFamily}" />
+  </DockPanel>
+</Window>
