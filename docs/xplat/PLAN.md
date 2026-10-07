@@ -450,6 +450,20 @@ The section-name test covers them too. Tests: 166 core and 156 app on Windows an
 commands that the new shell has no feature for (compare, fixup commits, find, go to line, blame from the diff, ...), and the
 Stash, BrowseDiff and Scripts sections. Still open in M5: the other settings pages.
 
+Confirmations page, 2026-10-07: Settings > Confirmations lists upstream's confirmation settings whose action the new shell
+has, with upstream's groups and labels: amend, commit with no branch checked out, rebase on the selected commit, fetch
+with prune, push of a branch the remote does not have, force delete of an unmerged branch, checkout from the left panel
+(off by default, as upstream), stash drop and worktree switch. Each is upstream's key (`DontConfirm...`, inverted, and
+`ConfirmBranchCheckout`), so both apps share them. The questions are upstream's texts and, as upstream's
+`ConfirmSuppressible`, offer "Don't show me this message again", which turns the question off whatever the answer. New
+questions for the user because of this: amend, a commit with no branch, the push of a new branch, fetch with prune, stash
+drop and worktree switch were not asked before; the force delete and rebase questions now use upstream's text. Not on the
+page: undo last commit, the tracking reference question, the stash pop after pull and checkout, conflict resolution, the
+second abort question and submodule update on checkout (the shell has no such action or asks differently). The detached
+commit question offers only Continue and Cancel; upstream also offers to check out or create a branch. A test reads
+upstream's page and texts, so a label or question changed upstream fails it. Tests: 201 core and 175 app on Windows and
+Linux (WSL).
+
 - Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
   values that upstream keeps in the Windows registry (through S1, read-only on Windows).
 - External tools: diff and merge tools are configured per OS. Upstream's presets are Windows
@@ -475,6 +489,33 @@ Exit: scripts (user commands on lifecycle events) run on all OSes; plugins load 
   (`src/app/GitExtensions.Extensibility`), so changes there must be additive and noted.
 - Upstream plugins that use WinForms (28 forms) are not ported in this milestone. They stay
   Windows-only until someone needs them on other OSes.
+
+Scripts, 2026-10-06 to 2026-10-07: the scripts half of the exit is met on Windows and Linux. The engine (`Core/Scripts`)
+reads and writes upstream's `ownScripts` setting, so both apps share the scripts, and expands every option of upstream's
+arguments help with upstream's prompts. Scripts run from the user menu bar, from the grid's Run script menu, on the before
+and after events of commit, pull, push, fetch, checkout and merge, and from their hotkeys. Settings > Scripts edits them
+(add, delete, reorder, every value but the icon) with upstream's arguments help. The hotkeys are upstream's "Scripts"
+section, editable in Settings > Hotkeys. Changed for this: stored hotkeys are now matched by command code, as upstream
+matches them, not by name, so a renamed script keeps its key. Not done: `ShowInFileList` scripts and script icons. Plugin
+commands in scripts (`plugin:name`, `{plugin:name}`) run the named plugin since the plugins load (below). Tests then: 190
+core and 162 app on Windows and Linux (WSL).
+
+Plugins, 2026-10-07 (non-UI plugins first, as recommended in section 9, question 5): the app loads plugins with upstream's
+`ManagedExtensibility`, unchanged, from the Plugins folder next to it and from the user's plugins folder, and registers them
+with the open repository as `FormBrowse` does (`Core/Plugins/PluginCatalog.cs`, `App/PluginHost.cs`). The plugins see a
+`PluginHost` as their `IGitUICommands`: the module, the change notifier, upstream's events where the shell has the action,
+and settings, commit and process windows; other dialogs report that they are not available. A Plugins menu runs them, and
+Settings > Plugins edits their settings under upstream's keys. Upstream's message boxes (shared core and plugins) are now
+shown and answered (`MessageBoxHost`); before, they returned no answer. Two upstream plugins have no WinForms forms and are
+built for the new shell by shadow projects in `src/xplat/plugins`, compiled unchanged: BackgroundFetch and
+AutoCompileSubmodules. Their only change is the bitmap resources, which cannot be created off Windows: a stand-in
+`Properties/Resources.cs` returns no bitmap, and the PNG icon is embedded for the new shell's menu. The app build copies them
+to `Plugins/<assembly>/`, so they ship in the published packages. Not done: the other upstream plugins (they use WinForms
+forms; GitHub3 and the build-server plugins need the repository-host and build-server UI first), commit templates from
+plugins, plugin settings levels and credentials settings. Third-party plugins built for the WinForms app reference WinForms
+types and are skipped by upstream's loader when their types do not resolve. Tests: 199 core and 171 app on Windows; on Linux (WSL)
+the plugin and script tests pass (25 core, 9 app). Not verified: macOS, and a run of the real app with the plugins on Linux.
+Next in M6: UI plugins by demand.
 
 Estimate: 3 to 4 weeks.
 
@@ -543,6 +584,8 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 5. **Plugins off Windows:** which plugins must work, and is it acceptable that WinForms-based
    plugins stay Windows-only?
    *Recommendation:* non-UI plugins first (M6); UI plugins later, by demand.
+   *Status 2026-10-07:* the recommendation is what M6 implemented (BackgroundFetch and AutoCompileSubmodules on every OS,
+   WinForms plugins Windows-only); the user has not confirmed it yet.
 6. **Credentials on Linux and macOS:** libsecret and Keychain, or plain git credential helpers?
    *Recommendation:* use git's own credential helpers, and add libsecret and Keychain later.
 7. **Branch-name rule and commit-message line endings** (decided earlier as "keep upstream

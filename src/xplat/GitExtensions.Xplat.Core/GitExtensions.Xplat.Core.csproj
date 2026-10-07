@@ -28,6 +28,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's plugin settings keys ("<plugin id>.<name>", and the older "<description><name>"), so plugins read the
+         values the WinForms app stored. The rest of upstream's PluginRegistry uses WinForms; Plugins/ reimplements it. -->
+    <Compile Include="..\..\app\GitUI\Plugin\GitPluginSettingsContainer.cs" Link="Upstream\Plugin\GitPluginSettingsContainer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ExCSS" />
   </ItemGroup>
 

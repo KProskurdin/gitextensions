@@ -1,4 +1,7 @@
+using System.Globalization;
+using System.Text;
 using Avalonia.Input;
+using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using WinFormsKeys = System.Windows.Forms.Keys;
 
@@ -101,22 +104,25 @@ public enum ConflictsCommand
 ///  applies in both. Ctrl becomes Cmd on macOS, the platform's command modifier.
 /// </summary>
 public sealed class HotkeyTable<TCommand>
-    where TCommand : struct, Enum
+    where TCommand : struct
 {
     private readonly string _section;
     private readonly IReadOnlyDictionary<TCommand, (int Code, string Name)> _upstreamCommands;
     private readonly IReadOnlyDictionary<TCommand, WinFormsKeys> _defaults;
+    private readonly Func<TCommand, string>? _describe;
     private Dictionary<TCommand, WinFormsKeys> _current;
 
     /// <param name="section">Upstream's <c>HotkeySettingsName</c> of the window.</param>
     /// <param name="upstreamCommands">Upstream's command code and name of each command the user can change.</param>
     /// <param name="defaults">Upstream's default keys; a command missing from <paramref name="upstreamCommands"/> keeps its key.</param>
+    /// <param name="describe">The command's label in Settings; by default its enum name in words.</param>
     public HotkeyTable(string section, IReadOnlyDictionary<TCommand, (int Code, string Name)> upstreamCommands,
-        IReadOnlyDictionary<TCommand, WinFormsKeys> defaults)
+        IReadOnlyDictionary<TCommand, WinFormsKeys> defaults, Func<TCommand, string>? describe = null)
     {
         _section = section;
         _upstreamCommands = upstreamCommands;
         _defaults = defaults;
+        _describe = describe;
         _current = new Dictionary<TCommand, WinFormsKeys>(defaults);
     }
 
@@ -126,15 +132,36 @@ public sealed class HotkeyTable<TCommand>
     public IReadOnlyList<TCommand> Configurable => [.. _upstreamCommands.Keys];
 
     /// <summary>
-    ///  Uses upstream's defaults, replaced by this section's hotkeys in <paramref name="serializedHotkeys"/>.
+    ///  The command's label in Settings: "QuickFetch" reads as "Quick fetch".
+    /// </summary>
+    public string Describe(TCommand command)
+    {
+        if (_describe is not null)
+        {
+            return _describe(command);
+        }
+
+        string name = command.ToString() ?? "";
+        StringBuilder text = new(name.Length + 4);
+        for (int i = 0; i < name.Length; i++)
+        {
+            text.Append(i > 0 && char.IsUpper(name[i]) ? " " + char.ToLowerInvariant(name[i]) : name[i]);
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>
+    ///  Uses upstream's defaults, replaced by this section's hotkeys in <paramref name="serializedHotkeys"/>. A stored hotkey
+    ///  is matched by its command code, as upstream matches it.
     /// </summary>
     public void Load(string? serializedHotkeys)
     {
         Dictionary<TCommand, WinFormsKeys> current = new(_defaults);
-        IReadOnlyDictionary<string, UpstreamHotkey> stored = UpstreamHotkeys.Read(serializedHotkeys, _section);
-        foreach ((TCommand command, (_, string name)) in _upstreamCommands)
+        IReadOnlyDictionary<int, UpstreamHotkey> stored = UpstreamHotkeys.ReadByCode(serializedHotkeys, _section);
+        foreach ((TCommand command, (int code, _)) in _upstreamCommands)
         {
-            if (stored.TryGetValue(name, out UpstreamHotkey? hotkey))
+            if (stored.TryGetValue(code, out UpstreamHotkey? hotkey))
             {
                 current[command] = hotkey.KeyData;
             }
@@ -341,6 +368,13 @@ public static class Hotkeys
         });
 
     /// <summary>
+    ///  The user scripts (upstream section "Scripts"): one command per named script, its <c>HotkeyCommandIdentifier</c>, with
+    ///  no key by default. Upstream appends these to every window's hotkeys; rebuilt by <see cref="Load"/> from the stored
+    ///  scripts.
+    /// </summary>
+    public static HotkeyTable<int> Scripts { get; private set; } = ScriptTable([]);
+
+    /// <summary>
     ///  Ctrl, or Cmd on macOS.
     /// </summary>
     public static KeyModifiers CommandModifier => OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
@@ -351,7 +385,7 @@ public static class Hotkeys
     public static IReadOnlyList<BrowseCommand> Configurable => Browse.Configurable;
 
     /// <summary>
-    ///  Loads every window's hotkeys from upstream's setting.
+    ///  Loads every window's hotkeys from upstream's setting, and the scripts' hotkeys for the stored scripts.
     /// </summary>
     public static void Load(string? serializedHotkeys)
     {
@@ -361,6 +395,28 @@ public static class Hotkeys
         Diff.Load(serializedHotkeys);
         LeftPanel.Load(serializedHotkeys);
         Conflicts.Load(serializedHotkeys);
+        Scripts = ScriptTable(AppServices.Scripts.Load());
+        Scripts.Load(serializedHotkeys);
+    }
+
+    /// <summary>
+    ///  The scripts' hotkey table as upstream's <c>LoadScriptHotkeys</c> builds it: every script with a name, enabled or
+    ///  not, under its display name.
+    /// </summary>
+    public static HotkeyTable<int> ScriptTable(IReadOnlyList<ScriptDefinition> scripts)
+    {
+        Dictionary<int, (int, string)> commands = [];
+        Dictionary<int, WinFormsKeys> defaults = [];
+        foreach (ScriptDefinition script in scripts.Where(script => !string.IsNullOrEmpty(script.Name)))
+        {
+            commands[script.HotkeyCommandIdentifier] = (script.HotkeyCommandIdentifier, script.DisplayName);
+            defaults[script.HotkeyCommandIdentifier] = WinFormsKeys.None;
+        }
+
+        return new HotkeyTable<int>(UpstreamHotkeys.ScriptsName, commands, defaults,
+            id => commands.TryGetValue(id, out (int, string Name) command)
+                ? command.Name
+                : id.ToString(CultureInfo.InvariantCulture));
     }
 
     /// <summary>

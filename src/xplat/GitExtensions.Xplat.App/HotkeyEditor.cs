@@ -1,4 +1,3 @@
-using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -11,7 +10,7 @@ namespace GitExtensions.Xplat.App;
 ///  button that removes the hotkey. Changes are kept until <see cref="Apply"/>.
 /// </summary>
 internal sealed class HotkeyEditor<TCommand>(HotkeyTable<TCommand> table)
-    where TCommand : struct, Enum
+    where TCommand : struct
 {
     private const double LabelWidth = 200;
     private const double BoxWidth = 220;
@@ -23,6 +22,11 @@ internal sealed class HotkeyEditor<TCommand>(HotkeyTable<TCommand> table)
 
     public void AddRows(Panel panel, string title)
     {
+        if (table.Configurable.Count == 0)
+        {
+            return;
+        }
+
         panel.Children.Add(new TextBlock { Text = title, FontWeight = Avalonia.Media.FontWeight.SemiBold, Margin = new Thickness(0, 8, 0, 2) });
         foreach (TCommand command in table.Configurable)
         {
@@ -37,7 +41,7 @@ internal sealed class HotkeyEditor<TCommand>(HotkeyTable<TCommand> table)
             _boxes[command] = box;
 
             DockPanel row = new() { LastChildFill = false };
-            TextBlock label = new() { Text = Describe(command), Width = LabelWidth, VerticalAlignment = VerticalAlignment.Center };
+            TextBlock label = new() { Text = table.Describe(command), Width = LabelWidth, VerticalAlignment = VerticalAlignment.Center };
             DockPanel.SetDock(label, Dock.Left);
             DockPanel.SetDock(box, Dock.Left);
             DockPanel.SetDock(clear, Dock.Left);
@@ -53,19 +57,6 @@ internal sealed class HotkeyEditor<TCommand>(HotkeyTable<TCommand> table)
     /// </summary>
     public string? Apply(string? serializedHotkeys)
         => _changes.Count == 0 ? serializedHotkeys : table.Save(serializedHotkeys, _changes);
-
-    // "QuickFetch" reads as "Quick fetch".
-    private static string Describe(TCommand command)
-    {
-        string name = command.ToString();
-        StringBuilder text = new(name.Length + 4);
-        for (int i = 0; i < name.Length; i++)
-        {
-            text.Append(i > 0 && char.IsUpper(name[i]) ? " " + char.ToLowerInvariant(name[i]) : name[i]);
-        }
-
-        return text.ToString();
-    }
 
     // A key on its own (Shift, Ctrl, ...) is the start of a combination, not a hotkey; Tab moves on as usual.
     private void Capture(TCommand command, TextBox box, KeyEventArgs e)

@@ -1,0 +1,25 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
+
+  <!--
+    Upstream plugins compiled unchanged as net10.0, as the shared core is. Only plugins without WinForms forms are built here
+    (docs/xplat/PLAN.md, M6); the others stay Windows-only. The app copies each one into its Plugins folder, where upstream's
+    ManagedExtensibility finds them by upstream's naming rule (GitExtensions.Plugins.*.dll).
+  -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\app\GitExtUtils\Validates.cs" Link="Validates.cs" />
+  </ItemGroup>
+
+  <!-- The app has these already; a plugin must not bring a second copy. -->
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\GitCommands\GitCommands.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\GitExtUtils\GitExtUtils.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\ResourceManager\ResourceManager.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\GitExtensions.Extensibility\GitExtensions.Extensibility.csproj" Private="false" />
+  </ItemGroup>
+</Project>

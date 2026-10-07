@@ -13,6 +13,10 @@
     <Project Path="src/xplat/GitExtensions.Xplat.Core/GitExtensions.Xplat.Core.csproj" />
     <Project Path="src/xplat/GitExtensions.Xplat.App/GitExtensions.Xplat.App.csproj" />
   </Folder>
+  <Folder Name="/src/xplat/plugins/">
+    <Project Path="src/xplat/plugins/AutoCompileSubmodules/GitExtensions.Plugins.AutoCompileSubmodules.csproj" />
+    <Project Path="src/xplat/plugins/BackgroundFetch/GitExtensions.Plugins.BackgroundFetch.csproj" />
+  </Folder>
   <Folder Name="/tests/xplat/">
     <Project Path="tests/xplat/CommonTestUtils/CommonTestUtils.csproj" />
     <Project Path="tests/xplat/GitCommands.Tests/GitCommands.Tests.csproj" />

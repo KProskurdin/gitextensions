@@ -28,6 +28,12 @@ public enum ScriptLaunchKind
     ///  <c>navigateTo:</c>).
     /// </summary>
     NavigateTo,
+
+    /// <summary>
+    ///  Runs the loaded plugin named <see cref="ScriptLaunch.FileName"/> (upstream's <c>plugin:name</c> and
+    ///  <c>{plugin:name}</c> commands).
+    /// </summary>
+    Plugin,
 }
 
 /// <summary>
@@ -67,6 +73,7 @@ public sealed class ScriptException(string message) : Exception(message);
 public static partial class ScriptRunner
 {
     private const string NavigateToPrefix = "navigateTo:";
+    private const string PluginPrefix = "plugin:";
     private const string UserInput = "UserInput";
     private const string UserFiles = "UserFiles";
     private const string OpenUrl = "{openurl}";
@@ -93,12 +100,6 @@ public static partial class ScriptRunner
         }
 
         string name = script.DisplayName;
-        if (PluginRegex.IsMatch(script.Command) || script.Command.StartsWith("plugin:", StringComparison.Ordinal))
-        {
-            throw new ScriptException(
-                $"Script: '{name}'{Environment.NewLine}Plugin commands are not supported by this version yet.");
-        }
-
         if (script.AskConfirmation && !await prompts.ConfirmAsync($"Do you want to execute script: '{name}'?"))
         {
             return null;
@@ -131,6 +132,18 @@ public static partial class ScriptRunner
                 (script.RunInBackground ? "" : "-NoExit") + " -ExecutionPolicy Unrestricted -Command \""
                                                           + command + " " + arguments + "\"";
             return new ScriptLaunch(ScriptLaunchKind.Background, shell, shellArguments.Trim(), context.WorkingDir);
+        }
+
+        // As upstream's OverrideCommandWhenNecessary: {plugin:name} becomes plugin:name, the name in lower case; the host
+        // finds the plugin ignoring case.
+        if (PluginRegex.Match(command) is { Success: true } plugin)
+        {
+            command = PluginPrefix + plugin.Groups["name"].Value.ToLower();
+        }
+
+        if (command.StartsWith(PluginPrefix, StringComparison.Ordinal))
+        {
+            return new ScriptLaunch(ScriptLaunchKind.Plugin, command[PluginPrefix.Length..], arguments, context.WorkingDir);
         }
 
         if (command.StartsWith(NavigateToPrefix, StringComparison.Ordinal))

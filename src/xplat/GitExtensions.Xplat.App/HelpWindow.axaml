@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.HelpWindow"
+        Width="460" Height="560" WindowStartupLocation="CenterOwner">
+  <!-- Mirrors upstream SimpleHelpDisplayDialog: a text to read (and copy from) beside the window it helps with. -->
+  <DockPanel Margin="12" LastChildFill="True">
+    <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Content="Close" IsCancel="True" HorizontalAlignment="Right" Margin="0,8,0,0" />
+    <ScrollViewer>
+      <SelectableTextBlock x:Name="ContentText" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+    </ScrollViewer>
+  </DockPanel>
+</Window>

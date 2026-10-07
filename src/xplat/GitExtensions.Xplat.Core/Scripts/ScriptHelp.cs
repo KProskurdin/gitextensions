@@ -1,0 +1,69 @@
+namespace GitExtensions.Xplat.Core.Scripts;
+
+/// <summary>
+///  The help upstream's scripts settings page shows for a script's arguments (<c>ScriptsSettingsPage</c>, "Arguments help").
+///  A test compares it with upstream's text, so a new option upstream shows up there.
+/// </summary>
+public static class ScriptHelp
+{
+    public const string ArgumentsHelpTitle = "Arguments help";
+
+    public const string ArgumentsHelp = @"Use {option} for normal replacement.
+Use {{option}} for quoted replacement.
+
+User inputs:
+{UserInput}
+{UserInput:a popup label}
+{UserInput:a popup label=a default value}
+{UserInput:a popup label=a default value using {sLocalBranch}}
+{UserFiles}
+
+Working directory:
+{WorkingDir}
+
+Repository:
+{RepoName}
+
+Selected commits:
+{sHashes}
+
+Selected revision:
+{sTag}
+{sBranch}
+{sLocalBranch}
+{sRemoteBranch}
+{sRemoteBranchName}   (without the remote's name)
+{sRemote}
+{sRemoteUrl}
+{sRemotePathFromUrl}
+{sHash}
+{sMessage}
+{sSubject}
+{sAuthor}
+{sCommitter}
+{sAuthorDate}
+{sCommitDate}
+
+Currently checked out revision:
+{HEAD}   (checked out branch name or checked out commit hash)
+{cTag}
+{cBranch}
+{cLocalBranch}
+{cRemoteBranch}
+{cRemoteBranchName}   (without the remote's name)
+{cHash}
+{cMessage}
+{cSubject}
+{cAuthor}
+{cCommitter}
+{cAuthorDate}
+{cCommitDate}
+{cDefaultRemote}
+{cDefaultRemoteUrl}
+{cDefaultRemotePathFromUrl}
+
+Diff selection:
+{SelectedRelativePaths}   (relative paths as they were in the selected commit)
+{LineNumber}
+{ColumnNumber}";
+}

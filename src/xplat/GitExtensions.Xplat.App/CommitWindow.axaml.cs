@@ -23,6 +23,7 @@ public partial class CommitWindow : Window
     private readonly IAppPreferences _preferences;
     private readonly Func<Task> _refresh;
     private readonly ICommitMessageStore _messages;
+    private readonly Func<string, bool>? _runPlugin;
     private string _messageBeforeAmend = "";
 
     // The file whose diff is on show, and whether it is the staged or the unstaged diff.
@@ -31,8 +32,10 @@ public partial class CommitWindow : Window
 
     public CommitWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IRepositoryService repositoryService, IAppPreferences preferences, Func<Task> refresh,
-        ICommitMessageStore messages)
+        ICommitMessageStore messages, Func<string, bool>? runPlugin = null)
     {
+        // Runs a plugin named by a script's plugin command, as the browse window does.
+        _runPlugin = runPlugin;
         _repositoryPath = repositoryPath;
         _repository = repository;
         _actions = actions;
@@ -123,6 +126,11 @@ public partial class CommitWindow : Window
         else if (Hotkeys.Commit.Match(e) is { } hotkey)
         {
             e.Handled = RunHotkey(hotkey);
+        }
+        else if (ScriptHost.MatchHotkey(e) is { } script)
+        {
+            e.Handled = true;
+            Run(() => new ScriptHost(this, _actions, runPlugin: _runPlugin).RunAsync(script, _repositoryPath, []));
         }
     }
 
@@ -396,7 +404,24 @@ public partial class CommitWindow : Window
     // As upstream's FormCommit: the "before commit" scripts can stop the commit; the "after commit" ones run once it is done.
     private async Task<bool> CommitChangesAsync()
     {
-        ScriptHost scripts = new(this, _actions);
+        // Upstream's FormCommit questions: amend rewrites history, and a commit with no branch checked out (and no rebase
+        // under way) can be lost.
+        if (AmendCheck.IsChecked == true &&
+            !await ConfirmWindow.AskAsync(this, _preferences, Confirmation.Amend, Confirmations.AmendQuestion, "Amend",
+                "Amend commit"))
+        {
+            return false;
+        }
+
+        bool detached = _repository.CurrentBranch.Length == 0 && !_repository.IsRebasing;
+        if (detached &&
+            !await ConfirmWindow.AskAsync(this, _preferences, Confirmation.CommitWithoutBranch,
+                Confirmations.NotOnBranchQuestion, "Continue", "Not on a branch"))
+        {
+            return false;
+        }
+
+        ScriptHost scripts = new(this, _actions, runPlugin: _runPlugin);
         if (!await scripts.RunEventAsync(ScriptEvent.BeforeCommit, _repositoryPath, []))
         {
             return false;

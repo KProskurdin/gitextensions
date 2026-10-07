@@ -47,6 +47,11 @@
         <Separator />
         <MenuItem x:Name="ResolveConflictsMenuItem" Header="Solve _conflicts..." />
       </MenuItem>
+      <MenuItem x:Name="PluginsMenu" Header="_Plugins">
+        <MenuItem x:Name="PluginsLoadingMenuItem" Header="Loading..." IsEnabled="False" />
+        <Separator />
+        <MenuItem x:Name="PluginSettingsMenuItem" Header="Plugins _settings..." />
+      </MenuItem>
       <MenuItem Header="_Tools">
         <MenuItem x:Name="CommandLogMenuItem" Header="Git _command log..." />
         <MenuItem x:Name="SettingsMenuItem" Header="_Settings..." />

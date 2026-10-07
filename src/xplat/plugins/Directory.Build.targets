@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)..\'))" />
+
+  <!-- After the project body, so the upstream files that SharedSources.targets added can be removed. -->
+  <ItemGroup>
+    <!-- Image resources are System.Drawing bitmaps, which throw off Windows; Properties\Resources.cs stands in for them.
+         The icon is embedded as a plain PNG instead, under one name for every plugin, so the app can show it. -->
+    <Compile Remove="$(UpstreamDir)Properties\Resources.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)Properties\Resources.resx" />
+    <EmbeddedResource Include="$(UpstreamDir)Resources\*.png" LogicalName="GitExtensions.Xplat.PluginIcon.png" />
+  </ItemGroup>
+</Project>

@@ -34,6 +34,7 @@ internal sealed class UpstreamHotkeysTests
     [TestCase(UpstreamHotkeys.FileViewerName, "Editor/FileViewer.cs")]
     [TestCase(UpstreamHotkeys.LeftPanelName, "LeftPanel/RepoObjectsTree.cs")]
     [TestCase(UpstreamHotkeys.ResolveConflictsName, "CommandsDialogs/FormResolveConflicts.cs")]
+    [TestCase(UpstreamHotkeys.ScriptsName, "CommandsDialogs/FormSettings.cs")]
     public void Section_names_should_match_upstreams_HotkeySettingsName(string name, string upstreamFile)
     {
         string source = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "app", "GitUI", upstreamFile));
@@ -79,6 +80,28 @@ internal sealed class UpstreamHotkeysTests
         written.Should().StartWith("<?xml");
         UpstreamHotkeys.Read(written, UpstreamHotkeys.BrowseFormName)["Push"].KeyData.Should()
             .Be(Keys.Control | Keys.Up);
+    }
+
+    [Test]
+    public void ReadByCode_should_key_the_hotkeys_by_command_code_as_upstream_matches_them()
+    {
+        IReadOnlyDictionary<int, UpstreamHotkey> hotkeys =
+            UpstreamHotkeys.ReadByCode(UpstreamSetting, UpstreamHotkeys.BrowseFormName);
+
+        hotkeys[7].Should().Be(new UpstreamHotkey(7, "Commit", Keys.Control | Keys.Space));
+    }
+
+    [Test]
+    public void Write_should_replace_a_command_by_its_code_so_a_renamed_script_keeps_one_entry()
+    {
+        string first = UpstreamHotkeys.Write(null, UpstreamHotkeys.ScriptsName,
+            [new UpstreamHotkey(9001, "Old name", Keys.F7)]);
+
+        string renamed = UpstreamHotkeys.Write(first, UpstreamHotkeys.ScriptsName,
+            [new UpstreamHotkey(9001, "New name", Keys.F8)]);
+
+        UpstreamHotkeys.ReadByCode(renamed, UpstreamHotkeys.ScriptsName).Should().ContainSingle()
+            .Which.Value.Should().Be(new UpstreamHotkey(9001, "New name", Keys.F8));
     }
 
     [Test]

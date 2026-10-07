@@ -44,4 +44,9 @@ public sealed partial class ScriptDefinition
     ///  The name without upstream's mnemonic ampersand, as upstream's <c>GetDisplayName</c>.
     /// </summary>
     public string DisplayName => MnemonicAmpersandRegex.Replace(Name ?? "", "");
+
+    /// <summary>
+    ///  A copy to edit, so cancelling an edit leaves the stored script as it was.
+    /// </summary>
+    public ScriptDefinition Clone() => (ScriptDefinition)MemberwiseClone();
 }

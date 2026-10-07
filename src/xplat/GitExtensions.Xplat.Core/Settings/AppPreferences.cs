@@ -25,9 +25,12 @@ public interface IAppPreferences
     bool ShowCurrentBranchOnly { get; set; }
 
     /// <summary>
-    ///  Upstream <c>DontConfirmRebase</c>: a rebase from the grid starts without asking first.
+    ///  Whether the app asks before <paramref name="confirmation"/>'s action: upstream's <c>DontConfirm...</c> settings,
+    ///  inverted, and <c>ConfirmBranchCheckout</c> as it is.
     /// </summary>
-    bool DontConfirmRebase { get; set; }
+    bool Asks(Confirmation confirmation);
+
+    void SetAsks(Confirmation confirmation, bool ask);
 
     /// <summary>
     ///  Upstream <c>checkoutbranchaction</c>: what a checkout does with local changes unless the user chooses otherwise.
@@ -89,10 +92,54 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.ShowCurrentBranchOnly.Value = value;
     }
 
-    public bool DontConfirmRebase
+    public bool Asks(Confirmation confirmation) => confirmation switch
     {
-        get => AppSettings.DontConfirmRebase.Value;
-        set => AppSettings.DontConfirmRebase.Value = value;
+        Confirmation.Amend => !AppSettings.DontConfirmAmend.Value,
+        Confirmation.CommitWithoutBranch => !AppSettings.DontConfirmCommitIfNoBranch,
+        Confirmation.Rebase => !AppSettings.DontConfirmRebase.Value,
+        Confirmation.FetchAndPrune => !AppSettings.DontConfirmFetchAndPruneAll.Value,
+        Confirmation.PushNewBranch => !AppSettings.DontConfirmPushNewBranch.Value,
+        Confirmation.DeleteUnmergedBranch => !AppSettings.DontConfirmDeleteUnmergedBranch.Value,
+        Confirmation.BranchCheckout => AppSettings.ConfirmBranchCheckout.Value,
+        Confirmation.StashDrop => !AppSettings.DontConfirmStashDrop,
+        Confirmation.SwitchWorktree => !AppSettings.DontConfirmSwitchWorktree.Value,
+        _ => throw new ArgumentOutOfRangeException(nameof(confirmation)),
+    };
+
+    public void SetAsks(Confirmation confirmation, bool ask)
+    {
+        switch (confirmation)
+        {
+            case Confirmation.Amend:
+                AppSettings.DontConfirmAmend.Value = !ask;
+                break;
+            case Confirmation.CommitWithoutBranch:
+                AppSettings.DontConfirmCommitIfNoBranch = !ask;
+                break;
+            case Confirmation.Rebase:
+                AppSettings.DontConfirmRebase.Value = !ask;
+                break;
+            case Confirmation.FetchAndPrune:
+                AppSettings.DontConfirmFetchAndPruneAll.Value = !ask;
+                break;
+            case Confirmation.PushNewBranch:
+                AppSettings.DontConfirmPushNewBranch.Value = !ask;
+                break;
+            case Confirmation.DeleteUnmergedBranch:
+                AppSettings.DontConfirmDeleteUnmergedBranch.Value = !ask;
+                break;
+            case Confirmation.BranchCheckout:
+                AppSettings.ConfirmBranchCheckout.Value = ask;
+                break;
+            case Confirmation.StashDrop:
+                AppSettings.DontConfirmStashDrop = !ask;
+                break;
+            case Confirmation.SwitchWorktree:
+                AppSettings.DontConfirmSwitchWorktree.Value = !ask;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(confirmation));
+        }
     }
 
     public LocalChangesAction CheckoutBranchAction
@@ -145,7 +192,18 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool ShowCurrentBranchOnly { get; set; }
 
-    public bool DontConfirmRebase { get; set; }
+    private readonly Dictionary<Confirmation, bool> _asks = [];
+
+    // Upstream's defaults: every question is asked except the left panel checkout.
+    public bool Asks(Confirmation confirmation)
+        => _asks.GetValueOrDefault(confirmation, confirmation != Confirmation.BranchCheckout);
+
+    public void SetAsks(Confirmation confirmation, bool ask) => _asks[confirmation] = ask;
+
+    /// <summary>
+    ///  Puts every confirmation back to upstream's default.
+    /// </summary>
+    public void ResetConfirmations() => _asks.Clear();
 
     public LocalChangesAction CheckoutBranchAction { get; set; }
 

@@ -61,6 +61,13 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs`, `FormRevisionFilter.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`; `src/xplat/GitExtensions.Xplat.App/FilterWindow.axaml(.cs)`; `MainWindow.axaml` (branch choice, Filter...) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/WorktreeDialog/FormManageWorktree.cs`, `FormCreateWorktree.cs` | `src/xplat/GitExtensions.Xplat.App/WorktreesWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (`GetWorktreesAsync`), `Operations/GitOperations.cs` (add, remove, prune) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormSubmodules.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Submodules section); `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (`GetSubmodules`), `Operations/GitOperations.cs` (update, sync) | `52d08e996` | partial |
+| `src/app/GitUI/ScriptsEngine/ScriptsManager.cs`, `ScriptsManager.ScriptRunner.cs`, `ScriptOptionsParser.cs`, `ScriptInfo.cs`, `SimplePrompt.cs`, `FormFilePrompt.cs`; `src/app/GitUI/GitModuleForm.cs` (`ExecuteScriptCommand`) | `src/xplat/GitExtensions.Xplat.Core/Scripts/` (`ScriptDefinition`, `ScriptStore.cs` with `ScriptsXml`, `ScriptRunner`, `ScriptVariables`, `RepositoryScriptContext`); `src/xplat/GitExtensions.Xplat.App/ScriptHost.cs`; `MainWindow.axaml(.cs)` (user menu bar, grid Run script, event hooks); `CommitWindow.axaml.cs` (commit events) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ScriptsSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Scripts tab); `src/xplat/GitExtensions.Xplat.Core/Scripts/ScriptListEditor.cs`, `ScriptHelp.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/SimpleHelpDisplayDialog.cs` | `src/xplat/GitExtensions.Xplat.App/HelpWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ConfirmationsSettingsPage.cs`; `src/app/GitUI/MessageBoxes.cs` (`ConfirmSuppressible`, `ConfirmBranchCheckout`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Confirmations.cs`, `AppPreferences.cs` (`Asks`, `SetAsks`); `src/xplat/GitExtensions.Xplat.App/ConfirmWindow.axaml(.cs)` (`AskAsync`); `SettingsWindow.axaml(.cs)` (Confirmations tab) | `52d08e996` | partial |
+| `src/app/GitUI/Plugin/PluginRegistry.cs`, `FailedPluginWrapper.cs`; `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (`RegisterPlugins`, `UpdatePluginMenu`, plugin parts of `SetGitModule`) | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginCatalog.cs`; `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` (`Register`, `Unregister`); `MainWindow.axaml(.cs)` (Plugins menu) | `52d08e996` | partial |
+| `src/app/GitUI/GitUICommands.cs` (the `IGitUICommands` plugins see) | `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Plugins/PluginSettingsPage.cs`; `src/app/GitUI/SettingControlBindings/*.cs` | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginSettings.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Plugins tab) | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -71,8 +78,8 @@ changes, Pull, Push, Fetch, Clone, folder, terminal, filter, search); the left p
 warning bar while a merge or rebase is stopped or conflicts exist; the dashboard of recent repositories while none is open;
 Close repository; the repository refresh after every operation; and, as upstream, a status refresh when the window is
 activated again (at most every 2 seconds), so files edited in other programs show up. Not ported: the GPG, Console and
-build-server tabs, the branch and repository dropdowns of the toolbar, the Navigate, View and Plugins menus, user scripts
-in menus. Window size, position and maximized state are kept (upstream's `WindowPositions.xml` format, under the new shell's own
+build-server tabs, the branch and repository dropdowns of the toolbar, and the Navigate and View menus (Plugins: see the PluginRegistry row; user
+scripts: see the ScriptsManager row). Window size, position and maximized state are kept (upstream's `WindowPositions.xml` format, under the new shell's own
 window names, `WindowPlacementTracker`). The File tree tab is ported (the folder tree at the selected commit, and the selected
 file's content).
 
@@ -274,7 +281,73 @@ branch or tag, merge, rebase, stash and stash pop, with Cmd in place of Ctrl on 
 (stage all), Ctrl+Enter and F5. Since 2026-10-06 the FormBrowse hotkeys are read from and written to upstream's
 `SerializedHotkeys` setting (the `HotkeySettings[]` XML, by upstream command code and name; other forms' entries are kept
 as they are), and can be changed in Settings > Hotkeys, so a hotkey changed in either app applies in both. Not ported:
-the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the scripts' hotkeys, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has.
+the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name.
+
+**ScriptsManager / ScriptRunner / ScriptOptionsParser** (`partial`). Ported: the scripts in upstream's `ownScripts` setting
+(same XML, upstream's defaults when none are stored, the older separator format, duplicate identifiers renumbered), every
+option of upstream's arguments help with the same quoting and prompts (`{UserInput}`, `{UserFiles}`, branch and remote
+choices), confirmation, `{openurl}`, `navigateTo:`, PowerShell (pwsh outside Windows), run in the foreground with the output
+window or in the background; the user menu bar (`ShowInUserMenuBar`), the grid's Run script menu, the before and after
+events of commit, pull, push, fetch, checkout and merge (a failed "before" script stops the operation, as upstream); and
+since 2026-10-07 the scripts' hotkeys (upstream section "Scripts", one command per named script, code = its
+`HotkeyCommandIdentifier`), in the browse and commit windows after the window's own hotkeys, enabled or not, as upstream's
+`GitModuleForm`. A key without Ctrl (Cmd) or Alt typed into a text box stays text, unless it is a function key; upstream
+has no such rule. Since 2026-10-07 plugin commands (`plugin:name`, `{plugin:name}` lowered as upstream) run the loaded plugin of
+that name, ignoring case, from the browse and commit windows. Not ported: `ShowInFileList` scripts
+and the selected file options from a file list, the script icons in menus (kept in the XML, not shown).
+
+**ScriptsSettingsPage** (`partial`). Ported 2026-10-07: Settings > Scripts lists the scripts in run order (enabled check
+box, name, event, command line), with Add (upstream's next identifier and "<New Script>" name), Delete, Up, Down and the
+arguments help (upstream's text, kept equal by a test that reads upstream's source); the selected script's name, command,
+arguments, event and options are edited below the list. Stored on OK, dropped on Cancel; upstream stores the page on every
+save, the port only when the scripts changed. Not ported: the icon choice (upstream's embedded images; the icon is kept as
+stored), the property grid itself (plain fields instead).
+
+**SimpleHelpDisplayDialog** (`ported`). A help text in its own window, not modal, closed with its owner.
+
+**ConfirmationsSettingsPage / ConfirmSuppressible** (`partial`). Ported 2026-10-07: the confirmations whose action the
+new shell has (amend, commit with no branch, rebase, fetch with prune, push of a new branch, force delete of an unmerged
+branch, left panel checkout, stash drop, worktree switch), under upstream's keys and labels, asked with upstream's texts
+and "Don't show me this message again" (not for the left panel checkout, as upstream). Where they are asked: the commit
+window (amend; no branch unless a rebase is under way), the grid's rebase, quick fetch with Prune and the pull dialog's
+fetch with prune, quick push and the push dialog when the remote branch is not among the fetched remote branches, Force
+delete, the left panel's checkout, Drop stash, and opening a worktree. Not ported: undo last commit, the tracking reference
+question, the automatic stash pop after pull and checkout, the conflict resolution questions, the second abort question,
+submodule update on checkout, the branch buttons of the "not on a branch" question, and upstream's Yes/No buttons (the
+new shell names the action on its button).
+
+**PluginRegistry / FailedPluginWrapper** (`partial`). Ported 2026-10-07: the plugins are loaded once, off the UI thread,
+by upstream's `ManagedExtensibility` (compiled unchanged in the shadow `GitUIPluginInterfaces`): `GitExtensions.Plugins.*.dll`
+in the Plugins folder next to the app and `GitExtensions.*.dll` in the user's plugins folder (`UserPluginsPath`). Each plugin
+gets upstream's settings container (`GitPluginSettingsContainer`, linked unchanged, so the keys are `<id>.<name>` with the
+older `<description><name>` fallback). A plugin that fails to construct is listed as "Plugin loading failure" and shows its
+error when run. The plugins are registered with the open repository, or the dashboard, and moved when the repository
+changes, as upstream's `SetGitModule` does; they are unregistered when the window closes. The Plugins menu lists them by
+name with their icon above "Plugins settings...", and turns off repository plugins on the dashboard. Not ported: the
+repository hosts menu (`GitHosters`), loading the commit-form plugins when the commit window opens on its own (the new shell
+has no stand-alone commit window), the clipboard copy of a load error, and the composition cache (off upstream too).
+Plugins built for the new shell: upstream's BackgroundFetch and AutoCompileSubmodules, compiled unchanged by shadow projects
+in `src/xplat/plugins` (only their bitmap resources are replaced, see PLAN.md M6). The other upstream plugins use WinForms
+forms and stay Windows-only.
+
+**GitUICommands (plugin side)** (`partial`). `PluginHost` is the `IGitUICommands` the plugins get: the current module,
+`RepoChangedNotifier` (from any thread; it refreshes the window on the UI thread through `PostRepositoryChanged`, as
+upstream), the events `PreCommit` and `PostCommit` (around the commit window, as `StartCommitDialog`), `PreCheckoutBranch`,
+`PostCheckoutBranch`, `PreCheckoutRevision`, `PostCheckoutRevision` (around a checkout; a "pre" handler can cancel it),
+`PostSettings`, `PostUpdateSubmodules`, `PostEditGitIgnore`, `PostRegisterPlugin`, `PostBrowseInitialize`; settings
+(`StartSettingsDialog` for a plugin opens its page), the commit window, and command and git process windows. Unlike
+upstream, `StartCommandLineProcessDialog` returns once the command started, not when it ended. Every other dialog throws
+`NotSupportedException`, which the Plugins menu shows as an error. Not ported: commit templates
+(`AddCommitTemplate` is accepted and ignored), `RunCommand`, services through `GetService`, and `BrowseRepo`.
+
+**PluginSettingsPage / SettingControlBindings** (`partial`). Ported 2026-10-07: Settings > Plugins lists the plugins and
+shows the selected plugin's settings with the editor of upstream's binding for its type: three-state check box, text box
+(with upstream's "<empty string>" marker and placeholder), password box, number box (red while not a number of the
+setting's type; an invalid number is stored as no value, as upstream), drop-down list, read-only note, and "There are no
+settings available for this plugin." The values are the repository's effective settings when one is open (a value the
+repository sets is changed there, any other in the user's settings, as upstream's `DistributedSettings` does) and the user's
+settings otherwise; unchanged values are not written. Not ported: the settings level choice (local, distributed, global),
+credentials settings and settings with their own WinForms control (shown as not editable).
 
 **FormGitIgnore / FormAddToGitIgnore** (`partial`). Ported: edit the repository's top-level `.gitignore` as text (Repository >
 Edit .gitignore...), and add the selected untracked files from the commit window (Ignore...), each as a root-anchored pattern

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Linq;
 using Keys = System.Windows.Forms.Keys;
 
@@ -52,24 +53,35 @@ public static class UpstreamHotkeys
     public const string ResolveConflictsName = "FormMergeConflicts";
 
     /// <summary>
+    ///  Upstream <c>FormSettings.HotkeySettingsName</c>: the section of the user scripts' hotkeys, one command per script
+    ///  with the script's <c>HotkeyCommandIdentifier</c> as its code.
+    /// </summary>
+    public const string ScriptsName = "Scripts";
+
+    /// <summary>
     ///  The hotkeys stored for <paramref name="formName"/>, by command name; empty when none are stored.
     /// </summary>
     public static IReadOnlyDictionary<string, UpstreamHotkey> Read(string? serialized, string formName)
     {
         Dictionary<string, UpstreamHotkey> hotkeys = new(StringComparer.Ordinal);
-        if (FormElement(Parse(serialized), formName) is not { } form)
+        foreach (UpstreamHotkey hotkey in ReadAll(serialized, formName))
         {
-            return hotkeys;
+            hotkeys[hotkey.Name] = hotkey;
         }
 
-        foreach (XElement command in form.Element("Commands")?.Elements("HotkeyCommand") ?? [])
+        return hotkeys;
+    }
+
+    /// <summary>
+    ///  The hotkeys stored for <paramref name="formName"/>, by command code, which is how upstream matches them
+    ///  (<c>HotkeySettingsManager.MergeIntoDefaultSettings</c>); empty when none are stored.
+    /// </summary>
+    public static IReadOnlyDictionary<int, UpstreamHotkey> ReadByCode(string? serialized, string formName)
+    {
+        Dictionary<int, UpstreamHotkey> hotkeys = [];
+        foreach (UpstreamHotkey hotkey in ReadAll(serialized, formName))
         {
-            if (command.Attribute("Name")?.Value is { Length: > 0 } name
-                && int.TryParse(command.Attribute("CommandCode")?.Value, out int code)
-                && TryParseKeys(command.Attribute("KeyData")?.Value ?? "None", out Keys keys))
-            {
-                hotkeys[name] = new UpstreamHotkey(code, name, keys);
-            }
+            hotkeys[hotkey.CommandCode] = hotkey;
         }
 
         return hotkeys;
@@ -89,8 +101,10 @@ public static class UpstreamHotkeys
 
         foreach (UpstreamHotkey hotkey in hotkeys)
         {
+            // By code, as upstream matches them: a renamed script keeps its hotkey and is written under its new name.
+            string code = hotkey.CommandCode.ToString(CultureInfo.InvariantCulture);
             commands.Elements("HotkeyCommand")
-                .FirstOrDefault(element => element.Attribute("Name")?.Value == hotkey.Name)?.Remove();
+                .FirstOrDefault(element => element.Attribute("CommandCode")?.Value == code)?.Remove();
             commands.Add(new XElement("HotkeyCommand",
                 new XAttribute("CommandCode", hotkey.CommandCode),
                 new XAttribute("Name", hotkey.Name),
@@ -121,6 +135,25 @@ public static class UpstreamHotkeys
         }
 
         return parts.Count == 0 ? "None" : string.Join(' ', parts);
+    }
+
+    private static IEnumerable<UpstreamHotkey> ReadAll(string? serialized, string formName)
+    {
+        if (FormElement(Parse(serialized), formName) is not { } form)
+        {
+            yield break;
+        }
+
+        foreach (XElement command in form.Element("Commands")?.Elements("HotkeyCommand") ?? [])
+        {
+            if (command.Attribute("Name")?.Value is { Length: > 0 } name
+                && int.TryParse(command.Attribute("CommandCode")?.Value, NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out int code)
+                && TryParseKeys(command.Attribute("KeyData")?.Value ?? "None", out Keys keys))
+            {
+                yield return new UpstreamHotkey(code, name, keys);
+            }
+        }
     }
 
     private static bool TryParseKeys(string text, out Keys keys)

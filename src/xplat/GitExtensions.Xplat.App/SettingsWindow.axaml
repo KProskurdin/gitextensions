@@ -1,15 +1,16 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:scripts="using:GitExtensions.Xplat.Core.Scripts"
         x:Class="GitExtensions.Xplat.App.SettingsWindow"
         Title="Settings"
-        Width="640" Height="520" WindowStartupLocation="CenterOwner">
+        Width="760" Height="580" WindowStartupLocation="CenterOwner">
   <DockPanel Margin="12" LastChildFill="True">
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
       <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
       <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
       <Button x:Name="SaveButton" Content="OK" IsDefault="True" />
     </StackPanel>
-    <TabControl>
+    <TabControl x:Name="Tabs">
       <TabItem Header="Appearance">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Theme" FontWeight="SemiBold" />
@@ -55,14 +56,79 @@
                      Text="These are git's own settings (git config). An empty repository value uses the global one." />
         </Grid>
       </TabItem>
+      <TabItem x:Name="ConfirmationsTab" Header="Confirmations">
+        <DockPanel Margin="4,8" LastChildFill="True">
+          <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8" Text="Confirm actions" />
+          <ScrollViewer>
+            <StackPanel x:Name="ConfirmationsPanel" Spacing="2" />
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+      <TabItem Header="Scripts">
+        <!-- As upstream's scripts settings page: the scripts in the order they run, and the selected script's values. -->
+        <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,8,Auto" Margin="4,8">
+          <ListBox x:Name="ScriptsList" Grid.Row="0" Grid.Column="0" MinHeight="120">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="scripts:ScriptListItem">
+                <Grid ColumnDefinitions="Auto,170,150,*" ToolTip.Tip="{Binding CommandLine}">
+                  <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" MinWidth="0" Margin="0,0,6,0" />
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="{Binding EventText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0" />
+                  <TextBlock Grid.Column="3" Text="{Binding CommandLine}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.7" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel Grid.Row="0" Grid.Column="2" Spacing="6">
+            <Button x:Name="AddScriptButton" Content="Add" HorizontalAlignment="Stretch" />
+            <Button x:Name="DeleteScriptButton" Content="Delete" HorizontalAlignment="Stretch" />
+            <Button x:Name="MoveScriptUpButton" Content="Up" HorizontalAlignment="Stretch" />
+            <Button x:Name="MoveScriptDownButton" Content="Down" HorizontalAlignment="Stretch" />
+            <Button x:Name="ScriptHelpButton" Content="?" HorizontalAlignment="Stretch" ToolTip.Tip="Arguments help" />
+          </StackPanel>
+          <Grid x:Name="ScriptDetails" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" x:DataType="scripts:ScriptListItem"
+                ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Name" VerticalAlignment="Center" />
+            <TextBox x:Name="ScriptNameBox" Grid.Row="0" Grid.Column="2" Text="{Binding Name}" Margin="0,0,0,6"
+                     ToolTip.Tip="An &amp; before a letter makes it the menu's access key" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Command" VerticalAlignment="Center" />
+            <TextBox x:Name="ScriptCommandBox" Grid.Row="1" Grid.Column="2" Text="{Binding Command}" Margin="0,0,0,6"
+                     PlaceholderText="A program, {openurl} or navigateTo:program" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Arguments" VerticalAlignment="Center" />
+            <TextBox x:Name="ScriptArgumentsBox" Grid.Row="2" Grid.Column="2" Text="{Binding Arguments}" Margin="0,0,0,6" />
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="On event" VerticalAlignment="Center" />
+            <ComboBox x:Name="ScriptEventBox" Grid.Row="3" Grid.Column="2" SelectedItem="{Binding OnEvent}" MinWidth="200" Margin="0,0,0,6" />
+            <WrapPanel Grid.Row="4" Grid.Column="2">
+              <CheckBox x:Name="ScriptEnabledCheck" Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,12,0" />
+              <CheckBox x:Name="ScriptGridMenuCheck" Content="In the revision grid menu" IsChecked="{Binding AddToRevisionGridContextMenu}" Margin="0,0,12,0" />
+              <CheckBox x:Name="ScriptAskCheck" Content="Ask for confirmation" IsChecked="{Binding AskConfirmation}" Margin="0,0,12,0" />
+              <CheckBox x:Name="ScriptBackgroundCheck" Content="Run in background" IsChecked="{Binding RunInBackground}" Margin="0,0,12,0" />
+              <CheckBox x:Name="ScriptPowerShellCheck" Content="PowerShell" IsChecked="{Binding IsPowerShell}"
+                        ToolTip.Tip="Run with PowerShell (pwsh outside Windows)" />
+            </WrapPanel>
+          </Grid>
+        </Grid>
+      </TabItem>
       <TabItem Header="Hotkeys">
         <DockPanel Margin="4,8" LastChildFill="True">
           <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8"
-                     Text="Click a box and press the new key combination. Shared with Git Extensions for Windows (its Browse window hotkeys); Ctrl is Cmd on macOS." />
+                     Text="Click a box and press the new key combination. Shared with Git Extensions for Windows; Ctrl is Cmd on macOS. Script hotkeys list the saved scripts." />
           <ScrollViewer>
             <StackPanel x:Name="HotkeysPanel" Spacing="4" />
           </ScrollViewer>
         </DockPanel>
+      </TabItem>
+      <TabItem x:Name="PluginsTab" Header="Plugins">
+        <Grid Margin="4,8" ColumnDefinitions="200,12,*">
+          <ListBox x:Name="PluginsList" Grid.Column="0" />
+          <DockPanel Grid.Column="2" LastChildFill="True">
+            <TextBlock x:Name="PluginTitleText" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBlock x:Name="PluginLevelText" DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
+            <ScrollViewer>
+              <StackPanel x:Name="PluginSettingsPanel" Spacing="6" />
+            </ScrollViewer>
+          </DockPanel>
+        </Grid>
       </TabItem>
     </TabControl>
   </DockPanel>

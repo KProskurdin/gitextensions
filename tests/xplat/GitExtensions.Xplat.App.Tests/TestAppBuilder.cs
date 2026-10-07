@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
+using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.App;
+using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
@@ -32,8 +34,26 @@ public static class TestAppBuilder
     /// </summary>
     public static InMemoryScriptStore Scripts { get; } = new();
 
+    /// <summary>
+    ///  The plugin settings the Settings window edits during the tests, so no test writes the user's settings files.
+    /// </summary>
+    public static InMemorySettingsSource PluginSettings { get; private set; } = new();
+
+    /// <summary>
+    ///  Gives the windows <paramref name="plugins"/> and empty plugin settings; with no plugins, as at the start, none load.
+    /// </summary>
+    public static void UsePlugins(params IGitPlugin[] plugins)
+    {
+        AppServices.Plugins = new FixedPluginCatalog(plugins);
+        PluginSettings = new InMemorySettingsSource();
+        AppServices.PluginSettings = new InMemoryPluginSettingsStore(PluginSettings);
+    }
+
     public static AppBuilder BuildAvaloniaApp()
     {
+        // No plugin from the folder next to the test host is loaded, and plugin settings stay in memory.
+        UsePlugins();
+
         // Replaced before the app starts, so no window ever touches the user's settings file.
         AppServices.RecentRepositories = new InMemoryRecentRepositoryStore();
         AppServices.Preferences = Preferences;

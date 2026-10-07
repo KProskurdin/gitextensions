@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using GitCommands;
 using GitExtensions.Extensibility;
@@ -12,9 +13,13 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  Runs user scripts for a window: the new shell's host for upstream's <c>ScriptsManager</c>. It asks the script's questions
 ///  as dialogs, prepares the script (<see cref="ScriptRunner"/>) and starts it: with its output in the process window,
-///  detached, as a URL in the browser, or as a commit to select.
+///  detached, as a URL in the browser, as a commit to select, or as a plugin to run.
 /// </summary>
-internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel actions, Func<string, Task>? navigateTo = null)
+internal sealed class ScriptHost(
+    Window owner,
+    RepositoryOperationsViewModel actions,
+    Func<string, Task>? navigateTo = null,
+    Func<string, bool>? runPlugin = null)
     : IScriptPrompts
 {
     /// <summary>
@@ -30,10 +35,28 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
         => [.. AppServices.Scripts.Load().Where(script => script.Enabled && script.AddToRevisionGridContextMenu)];
 
     /// <summary>
+    ///  The script whose hotkey is <paramref name="e"/>, or null. As upstream's <c>GitModuleForm</c>, any script with a hotkey
+    ///  runs from it, enabled or not. A key without Ctrl (Cmd) or Alt typed into a text box is text, unless it is a function
+    ///  key.
+    /// </summary>
+    public static ScriptDefinition? MatchHotkey(KeyEventArgs e)
+    {
+        bool typesText = (e.KeyModifiers & (Hotkeys.CommandModifier | KeyModifiers.Alt)) == 0 &&
+                         e.Key is not (>= Key.F1 and <= Key.F24);
+        if ((e.Source is TextBox && typesText) || Hotkeys.Scripts.Match(e) is not { } id)
+        {
+            return null;
+        }
+
+        return AppServices.Scripts.Load().FirstOrDefault(script => script.HotkeyCommandIdentifier == id);
+    }
+
+    /// <summary>
     ///  Runs every enabled script of <paramref name="scriptEvent"/> in turn, as upstream's <c>RunEventScripts</c>: false as
     ///  soon as one does not run, so a "before" event can stop the operation.
     /// </summary>
-    public async Task<bool> RunEventAsync(ScriptEvent scriptEvent, string repositoryPath, IReadOnlyList<string> selectedHashes)
+    public async Task<bool> RunEventAsync(ScriptEvent scriptEvent, string repositoryPath,
+        IReadOnlyList<string> selectedHashes)
     {
         foreach (ScriptDefinition script in ScriptsFor(scriptEvent))
         {
@@ -49,12 +72,14 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
     /// <summary>
     ///  Runs one script; false when it did not run (declined, cancelled, failed), as upstream's <c>RunScript</c>.
     /// </summary>
-    public async Task<bool> RunAsync(ScriptDefinition script, string repositoryPath, IReadOnlyList<string> selectedHashes)
+    public async Task<bool> RunAsync(ScriptDefinition script, string repositoryPath,
+        IReadOnlyList<string> selectedHashes)
     {
         ScriptLaunch? launch;
         try
         {
-            RepositoryScriptContext context = await Task.Run(() => new RepositoryScriptContext(repositoryPath, selectedHashes, ChooseAsync));
+            RepositoryScriptContext context = await Task.Run(() =>
+                new RepositoryScriptContext(repositoryPath, selectedHashes, ChooseAsync));
             launch = await ScriptRunner.PrepareAsync(script, context, this, Environment.ProcessPath ?? "GitExtensions");
         }
         catch (ScriptException ex)
@@ -72,9 +97,11 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
         {
             return await StartAsync(script, launch);
         }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or UriFormatException)
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException
+                                       or UriFormatException)
         {
-            await new ErrorWindow($"Failed to execute script: '{script.DisplayName}'{Environment.NewLine}{ex.Message}").ShowDialog(owner);
+            await new ErrorWindow($"Failed to execute script: '{script.DisplayName}'{Environment.NewLine}{ex.Message}")
+                .ShowDialog(owner);
             return false;
         }
     }
@@ -82,7 +109,8 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
     public Task<bool> ConfirmAsync(string message) => new ConfirmWindow(message, "Run").ShowDialog<bool>(owner);
 
     public async Task<string?> AskAsync(string caption, string? label, string defaultValue)
-        => (await new PromptWindow(caption, label ?? "Enter a value", "OK", initialValue: defaultValue, allowEmpty: true)
+        => (await new PromptWindow(caption, label ?? "Enter a value", "OK", initialValue: defaultValue,
+                allowEmpty: true)
             .ShowDialog<PromptResult?>(owner))?.Value;
 
     // As upstream's file prompt: the chosen files, quoted, separated by spaces.
@@ -107,6 +135,9 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
                     launch.WorkingDir);
             case ScriptLaunchKind.OpenUrl:
                 return await TopLevel.GetTopLevel(owner)!.Launcher.LaunchUriAsync(new Uri(launch.Arguments));
+            case ScriptLaunchKind.Plugin:
+                // As upstream: false (the script did not run) when no loaded plugin has that name.
+                return runPlugin?.Invoke(launch.FileName) ?? false;
             case ScriptLaunchKind.NavigateTo:
                 string? target = await Task.Run(() => FirstOutputLine(launch));
                 if (target is not null && navigateTo is not null)
@@ -119,8 +150,7 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
                 EnvironmentConfiguration.SetEnvironmentVariables();
                 Process.Start(new ProcessStartInfo(launch.FileName, launch.Arguments)
                 {
-                    UseShellExecute = false,
-                    WorkingDirectory = launch.WorkingDir,
+                    UseShellExecute = false, WorkingDirectory = launch.WorkingDir,
                 })?.Dispose();
                 return true;
         }
@@ -128,7 +158,8 @@ internal sealed class ScriptHost(Window owner, RepositoryOperationsViewModel act
 
     private static string? FirstOutputLine(ScriptLaunch launch)
     {
-        ExecutionResult result = new Executable(launch.FileName, launch.WorkingDir).Execute(launch.Arguments, throwOnErrorExit: false);
+        ExecutionResult result =
+            new Executable(launch.FileName, launch.WorkingDir).Execute(launch.Arguments, throwOnErrorExit: false);
         return result.StandardOutput.Split('\n').Select(line => line.Trim()).FirstOrDefault(line => line.Length > 0);
     }
 }

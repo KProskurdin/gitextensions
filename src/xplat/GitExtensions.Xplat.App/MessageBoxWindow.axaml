@@ -1,0 +1,10 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.MessageBoxWindow"
+        Title="Git Extensions"
+        Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="12">
+    <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" MaxHeight="400" />
+    <StackPanel x:Name="ButtonsPanel" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" />
+  </StackPanel>
+</Window>

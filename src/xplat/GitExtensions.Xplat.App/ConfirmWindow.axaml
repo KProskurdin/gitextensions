@@ -5,6 +5,7 @@
         Width="480" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
   <StackPanel Margin="16" Spacing="12">
     <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+    <CheckBox x:Name="DontShowAgainCheck" IsVisible="False" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
       <Button x:Name="CancelButton" Content="Cancel" />
       <Button x:Name="ConfirmButton" />

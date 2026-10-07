@@ -47,6 +47,8 @@ internal static class Program
             InitialRepository = args.Length > 0 ? args[0] : null;
         }
 
+        // Upstream code (the shared core, plugins) shows WinForms message boxes; until now they returned no answer.
+        MessageBoxHost.Install();
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

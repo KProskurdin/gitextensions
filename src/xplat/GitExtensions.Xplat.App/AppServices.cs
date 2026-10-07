@@ -1,5 +1,6 @@
 using System.Reflection;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
@@ -27,6 +28,17 @@ public static class AppServices
         get => _scripts ??= new UpstreamScriptStore();
         set => _scripts = value;
     }
+
+    /// <summary>
+    ///  The plugins, loaded by upstream's MEF host from the Plugins folder next to the app and the user's plugins folder.
+    ///  Tests replace it, so they never load the plugins copied next to the test host.
+    /// </summary>
+    public static IPluginCatalog Plugins { get; set; } = new UpstreamPluginCatalog();
+
+    /// <summary>
+    ///  Where the Settings window reads and writes plugin settings: upstream's GitExtensions.settings files.
+    /// </summary>
+    public static IPluginSettingsStore PluginSettings { get; set; } = new UpstreamPluginSettingsStore();
 
     /// <summary>
     ///  The recent repositories list. Created on first use, because the settings store reads the settings file.

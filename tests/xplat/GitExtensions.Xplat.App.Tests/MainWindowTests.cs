@@ -32,6 +32,7 @@ internal sealed class MainWindowTests
         TestAppBuilder.Preferences.ThemeVariations = [];
         TestAppBuilder.Preferences.ShowCurrentBranchOnly = false;
         TestAppBuilder.Preferences.SerializedHotkeys = null;
+        TestAppBuilder.Preferences.ResetConfirmations();
         Hotkeys.Load(null);
         TestAppBuilder.GitConfig.Clear();
         TestAppBuilder.Scripts.Save([]);
@@ -786,6 +787,10 @@ internal sealed class MainWindowTests
             Open(window, _repo.Path);
 
             Click(window, "PushButton");
+
+            // The remote has no branch yet, so upstream's "new branch for the remote" question comes first.
+            WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
+            Click(window.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
             WaitUntil(() => window.OwnedWindows.OfType<ProcessWindow>().Any());
             ProcessWindow process = window.OwnedWindows.OfType<ProcessWindow>().Single();
             WaitUntil(() => Find<TextBlock>(process, "StateText").Text == "Done");
@@ -1303,6 +1308,95 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Scripts_edited_in_settings_are_stored_on_OK_and_shown_in_the_user_menu_bar()
+    {
+        TestAppBuilder.Scripts.Save([
+            new ScriptDefinition { Name = "Kept", Command = "git", HotkeyCommandIdentifier = 9000 }
+        ]);
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        SettingsWindow settings = OpenSettings(window);
+        ListBox list = Find<ListBox>(settings, "ScriptsList");
+        list.SelectedIndex.Should().Be(0);
+        Find<TextBox>(settings, "ScriptNameBox").Text.Should().Be("Kept");
+
+        Click(settings, "AddScriptButton");
+        Find<TextBox>(settings, "ScriptNameBox").Text = "&Status";
+        Find<TextBox>(settings, "ScriptCommandBox").Text = "git";
+        Find<TextBox>(settings, "ScriptArgumentsBox").Text = "status";
+        Find<ComboBox>(settings, "ScriptEventBox").SelectedItem = ScriptEvent.ShowInUserMenuBar;
+        Click(settings, "MoveScriptUpButton");
+        Click(settings, "SaveButton");
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+        TestAppBuilder.Scripts.Load().Select(script => (script.Name, script.HotkeyCommandIdentifier)).Should()
+            .Equal(("&Status", 9001), ("Kept", 9000));
+        TestAppBuilder.Scripts.Load()[0].Should().BeEquivalentTo(new ScriptDefinition
+        {
+            Name = "&Status",
+            Command = "git",
+            Arguments = "status",
+            OnEvent = ScriptEvent.ShowInUserMenuBar,
+            Enabled = true,
+            HotkeyCommandIdentifier = 9001
+        });
+        StackPanel userScripts = Find<StackPanel>(window, "UserScriptsPanel");
+        WaitUntil(() => userScripts.Children.Count > 0);
+        userScripts.Children.OfType<Button>().Select(button => button.Content).Should().Equal("Status");
+    }
+
+    [AvaloniaTest]
+    public void Script_edits_are_dropped_when_settings_is_cancelled()
+    {
+        TestAppBuilder.Scripts.Save([new ScriptDefinition { Name = "Kept", Command = "git" }]);
+        MainWindow window = NewWindow();
+        window.Show();
+        SettingsWindow settings = OpenSettings(window);
+
+        Find<TextBox>(settings, "ScriptNameBox").Text = "Changed";
+        Click(settings, "DeleteScriptButton");
+        Click(settings, "CancelButton");
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+        TestAppBuilder.Scripts.Load().Should().ContainSingle().Which.Name.Should().Be("Kept");
+    }
+
+    [AvaloniaTest]
+    public void A_script_hotkey_is_stored_in_upstreams_Scripts_section_and_runs_the_script()
+    {
+        TestAppBuilder.Scripts.Save(
+        [
+            new ScriptDefinition
+            {
+                Name = "Tag by key",
+                Command = "git",
+                Arguments = "tag from-hotkey",
+                HotkeyCommandIdentifier = 9003,
+                Enabled = false
+            },
+        ]);
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        SettingsWindow settings = OpenSettings(window);
+
+        settings.ScriptHotkeyBoxes[9003]
+            .RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F7 });
+        Click(settings, "SaveButton");
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+        UpstreamHotkeys.ReadByCode(TestAppBuilder.Preferences.SerializedHotkeys, "Scripts")[9003].Should()
+            .Be(new UpstreamHotkey(9003, "Tag by key", System.Windows.Forms.Keys.F7));
+
+        // From the filter box too: a function key is not text. As upstream, a disabled script still runs from its hotkey.
+        Find<TextBox>(window, "FilterBox")
+            .RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F7 });
+
+        WaitUntil(() => _repo.Run("tag", "--list").Contains("from-hotkey", StringComparison.Ordinal));
+    }
+
+    [AvaloniaTest]
     public void Command_log_lists_the_git_commands_the_window_ran()
     {
         MainWindow window = NewWindow();
@@ -1396,6 +1490,15 @@ internal sealed class MainWindowTests
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
         control.RaiseEvent(new RoutedEventArgs(click));
+    }
+
+    private static SettingsWindow OpenSettings(MainWindow window)
+    {
+        Click(window, "SettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        WaitUntil(() => settings.IsGitConfigLoaded);
+        return settings;
     }
 
     private static T Find<T>(Window window, string name) where T : Control

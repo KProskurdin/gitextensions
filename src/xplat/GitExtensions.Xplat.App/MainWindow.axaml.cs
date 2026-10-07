@@ -10,9 +10,11 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
+using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
@@ -51,6 +53,11 @@ public partial class MainWindow : Window
     private CommitWindow? _commitWindow;
     private ProcessWindow? _processWindow;
     private ScriptHost? _scriptHost;
+    private readonly PluginHost _plugins;
+    private IReadOnlyList<IGitPlugin>? _loadedPlugins;
+
+    // The repository the plugins are registered with; empty for the dashboard, null before the first registration.
+    private string? _pluginRepository;
 
     // The commit whose tree the File tree tab shows, so the tree is read again only when the selection moves.
     private string? _fileTreeHash;
@@ -66,6 +73,8 @@ public partial class MainWindow : Window
         _fileManager = new SystemFileManager(_launcher, HostPlatform.Current);
         _terminal = new SystemTerminalLauncher(_launcher,
             TerminalCommand.Default(HostPlatform.Current, Environment.GetEnvironmentVariable("TERMINAL")));
+        _plugins = new PluginHost(this, _actions, plugin => Run(() => ShowSettingsAsync(plugin, pluginsPage: true)),
+            ShowCommitWindow);
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://GitExtensions/Assets/git-extensions-logo-256px.png")));
@@ -88,6 +97,8 @@ public partial class MainWindow : Window
         Opened += (_, _) => Run(OnOpenedAsync);
         Activated += (_, _) => RefreshStatusOnActivation();
         Closing += (_, _) => _preferences.Save();
+        Closed += (_, _) => _plugins.Unregister();
+        _plugins.PostRepositoryChanged += (_, _) => RefreshRepository();
         ShowGitProblem();
         Hotkeys.Load(_preferences.SerializedHotkeys);
         ShowHotkeys();
@@ -162,7 +173,8 @@ public partial class MainWindow : Window
         CreateTagMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
         ResolveConflictsMenuItem.Click += (_, _) => ShowConflicts();
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
-        SettingsMenuItem.Click += (_, _) => Run(ShowSettingsAsync);
+        SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
+        PluginSettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(pluginsPage: true));
         AboutMenuItem.Click += (_, _) =>
             _ = new AboutWindow(_git?.Version?.ToString() is { } version ? $"git {version}" : "git").ShowDialog(this);
     }
@@ -187,16 +199,17 @@ public partial class MainWindow : Window
         ApplyStashButton.Click += (_, _) =>
             RunOnSelectedStash((path, stash) => _actions.ApplyStashAsync(path, stash.Name));
         PopStashButton.Click += (_, _) => RunOnSelectedStash((path, stash) => _actions.PopStashAsync(path, stash.Name));
-        DropStashButton.Click +=
-            (_, _) => RunOnSelectedStash((path, stash) => _actions.DropStashAsync(path, stash.Name));
+        DropStashButton.Click += (_, _) => RunOnSelectedStash(async (path, stash) =>
+            await ConfirmAsync(Confirmation.StashDrop, Confirmations.StashDropQuestion, "Drop",
+                "Drop Stash Confirmation")
+            && await _actions.DropStashAsync(path, stash.Name));
         StashDiffButton.Click += (_, _) => ShowStashDiff();
         RemoteList.SelectionChanged += (_, _) => UpdateBusyState();
         SubmoduleList.SelectionChanged += (_, _) => UpdateBusyState();
         OpenSubmoduleButton.Click += (_, _) => OpenSelectedSubmodule();
         UpdateSubmoduleButton.Click += (_, _) =>
-            RunOnSelectedSubmodule((path, submodule) => _actions.UpdateSubmodulesAsync(path, submodule.Path));
-        UpdateSubmodulesButton.Click +=
-            (_, _) => RunOnRepository(path => _actions.UpdateSubmodulesAsync(path, path: null));
+            RunOnSelectedSubmodule((path, submodule) => UpdateSubmodulesAsync(path, submodule.Path));
+        UpdateSubmodulesButton.Click += (_, _) => RunOnRepository(path => UpdateSubmodulesAsync(path, null));
         SyncSubmodulesButton.Click += (_, _) => RunOnRepository(path => _actions.SyncSubmodulesAsync(path, path: null));
         AddRemoteButton.Click += (_, _) => Run(AddRemoteAsync);
         RemoveRemoteButton.Click += (_, _) => RunOnSelectedRemote(RemoveRemoteAfterConfirmAsync);
@@ -246,7 +259,7 @@ public partial class MainWindow : Window
         CheckoutCommitMenuItem.Click +=
             (_, _) => RunOnSelectedCommit((path, row) =>
                 WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
-                    () => CheckoutLocalBranchAsync(path, row.Hash)));
+                    () => CheckoutLocalBranchAsync(path, row.Hash), PluginEvent.CheckoutRevision));
         CherryPickMenuItem.Click +=
             (_, _) => RunOnSelectedCommit((path, row) => _actions.CherryPickAsync(path, row.Hash));
         RevertMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => _actions.RevertAsync(path, row.Hash));
@@ -336,6 +349,7 @@ public partial class MainWindow : Window
 
     private async Task OnOpenedAsync()
     {
+        Run(ShowPluginsAsync);
         await _recent.LoadAsync();
 
         string? initial = Program.InitialRepository;
@@ -399,6 +413,13 @@ public partial class MainWindow : Window
 
         if (Hotkeys.Match(e) is not { } command)
         {
+            // As upstream's GitModuleForm, the scripts' hotkeys come after the window's own.
+            if (ScriptHost.MatchHotkey(e) is { } script)
+            {
+                e.Handled = true;
+                RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes));
+            }
+
             return;
         }
 
@@ -442,7 +463,7 @@ public partial class MainWindow : Window
                 RunOnRepositoryFolder(path => _terminal.OpenTerminal(path));
                 break;
             case BrowseCommand.Settings:
-                Run(ShowSettingsAsync);
+                Run(() => ShowSettingsAsync());
                 break;
             case BrowseCommand.FocusFilter:
                 FilterBox.Focus();
@@ -586,6 +607,8 @@ public partial class MainWindow : Window
             await _repository.RefreshAsync(repositoryPath);
             await _recent.AddAsync(repositoryPath);
         }
+
+        RegisterPlugins();
     }
 
     private void CloseRepository()
@@ -604,6 +627,7 @@ public partial class MainWindow : Window
         FileContentView.Clear();
         ShowRepositoryPanels();
         UpdateBusyState();
+        RegisterPlugins();
     }
 
     // The dashboard of recent repositories stands in for the grid while no repository is open.
@@ -707,35 +731,67 @@ public partial class MainWindow : Window
         RunOnCurrentBranch((path, branch) => WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
             () => _actions.PullAsync(path, TrackingRemote(), branch, RebaseOnPullCheck.IsChecked == true)));
 
-    private void Push() => RunOnCurrentBranch((path, branch) => WithScriptsAsync(path, ScriptEvent.BeforePush,
-        ScriptEvent.AfterPush, () => _actions.PushAsync(path, TrackingRemote(), branch)));
+    private void Push() => RunOnCurrentBranch(async (path, branch) =>
+        await ConfirmPushAsync(TrackingRemote(), branch)
+        && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
+            () => _actions.PushAsync(path, TrackingRemote(), branch)));
 
     private void Fetch() =>
-        RunOnRepository(path => WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
-            () => _actions.FetchAsync(path, RemoteName, PruneCheck.IsChecked == true)));
+        RunOnRepository(async path =>
+            (PruneCheck.IsChecked != true || await ConfirmPruneAsync(RemoteName))
+            && await WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
+                () => _actions.FetchAsync(path, RemoteName, PruneCheck.IsChecked == true)));
 
-    private ScriptHost Scripts => _scriptHost ??= new ScriptHost(this, _actions, SelectRefAsync);
+    // As upstream's FormPush: a branch the remote does not have yet (as far as the fetched remote branches show) is pushed
+    // after a question.
+    private async Task<bool> ConfirmPushAsync(string remote, string remoteBranch)
+        => _repository.Branches.Any(known => known.IsRemote && known.Name == $"{remote}/{remoteBranch}")
+           || await ConfirmAsync(Confirmation.PushNewBranch, Confirmations.PushNewBranchQuestion, "Push", "Push");
+
+    // As upstream's pull dialog: a fetch that prunes remote-tracking branches asks first.
+    private Task<bool> ConfirmPruneAsync(string remote)
+        => ConfirmAsync(Confirmation.FetchAndPrune, Confirmations.FetchAndPruneQuestion, "Fetch and prune",
+            $"Prune remote branches from {remote}");
+
+    private ScriptHost Scripts =>
+        _scriptHost ??= new ScriptHost(this, _actions, SelectRefAsync, _plugins.ExecuteByName);
 
     // The commit selected in the grid, for the scripts' {s...} options.
     private IReadOnlyList<string> SelectedHashes => _commits.Selected is { } row ? [row.Hash] : [];
 
     // As upstream's forms: the "before" scripts run first and can stop the operation; the "after" scripts run once it
-    // succeeded.
+    // succeeded. Around them, as upstream's DoActionOnRepo, a plugin can cancel the action, and hears how it ended.
     private async Task<bool> WithScriptsAsync(string path, ScriptEvent before, ScriptEvent after,
-        Func<Task<bool>> operation)
+        Func<Task<bool>> operation, PluginEvent? pluginEvent = null)
     {
-        if (!await Scripts.RunEventAsync(before, path, SelectedHashes))
+        if (pluginEvent is { } cancellable && !_plugins.RaisePre(cancellable))
         {
             return false;
         }
 
-        bool done = await operation();
-        if (done)
+        bool done = false;
+        try
         {
-            await Scripts.RunEventAsync(after, path, SelectedHashes);
-        }
+            if (!await Scripts.RunEventAsync(before, path, SelectedHashes))
+            {
+                return false;
+            }
 
-        return done;
+            done = await operation();
+            if (done)
+            {
+                await Scripts.RunEventAsync(after, path, SelectedHashes);
+            }
+
+            return done;
+        }
+        finally
+        {
+            if (pluginEvent is { } finished)
+            {
+                _plugins.RaisePost(finished, done);
+            }
+        }
     }
 
     // Upstream's user menu bar: one button per enabled script whose event is "show in user menu bar".
@@ -792,7 +848,9 @@ public partial class MainWindow : Window
                 _repository.CurrentBranch,
                 hasUpstream: _repository.TrackingRemote is not null)
             .ShowDialog<PushRequest?>(this);
-        if (request is not null)
+        if (request is not null
+            && await ConfirmPushAsync(request.Remote,
+                request.RemoteBranch is { Length: > 0 } remoteBranch ? remoteBranch : request.LocalBranch))
         {
             await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
                 () => _actions.PushAsync(path, request));
@@ -809,7 +867,7 @@ public partial class MainWindow : Window
         PullRequest? request =
             await new PullWindow(_repository.Remotes, TrackingRemote(), RebaseOnPullCheck.IsChecked == true)
                 .ShowDialog<PullRequest?>(this);
-        if (request is not null)
+        if (request is not null && (!request.Prune || await ConfirmPruneAsync(request.Remote)))
         {
             // As upstream's pull dialog, "fetch only" runs the fetch scripts and a pull the pull scripts.
             bool fetchOnly = request.Action == PullAction.FetchOnly;
@@ -832,14 +890,21 @@ public partial class MainWindow : Window
             return;
         }
 
+        // As upstream's StartCommitDialog, the plugin events wrap the window, not each commit made in it.
+        if (!_plugins.RaisePre(PluginEvent.Commit))
+        {
+            return;
+        }
+
         CommitWindow window = new(path, _repository, _actions, _repositoryService, _preferences,
             () => OpenRepositoryAsync(path),
-            _commitMessages);
+            _commitMessages, _plugins.ExecuteByName);
         _commitWindow = window;
         window.Closed += (_, _) =>
         {
             _commitDraftSaved = window.SavedDraft;
             _commitWindow = null;
+            _plugins.RaisePost(PluginEvent.Commit, actionDone: true);
         };
 
         // The window reads the draft the previous one saved, so it waits for that save.
@@ -873,9 +938,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ShowSettingsAsync()
+    // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved.
+    private async Task ShowSettingsAsync(IGitPlugin? plugin = null, bool pluginsPage = false)
     {
-        if (await new SettingsWindow(_preferences, RepositoryPath).ShowDialog<bool>(this))
+        bool saved = await new SettingsWindow(_preferences, RepositoryPath, await LoadPluginsAsync(),
+            plugin, pluginsPage).ShowDialog<bool>(this);
+        if (saved)
         {
             ThemeApplier.Apply(_preferences);
             ShowHotkeys();
@@ -883,12 +951,92 @@ public partial class MainWindow : Window
             ShowGridScripts();
             await _recent.LoadAsync();
         }
+
+        _plugins.RaisePost(PluginEvent.Settings, saved);
     }
 
-    private void CheckoutSelectedBranch() => RunOnSelectedBranch((path, branch) =>
-        WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout, () => branch.IsRemote
+    // Loaded once, off the UI thread: scanning the plugin assemblies takes a while, as upstream's FormBrowse notes.
+    private async Task<IReadOnlyList<IGitPlugin>> LoadPluginsAsync()
+        => _loadedPlugins ??= await Task.Run(AppServices.Plugins.Load);
+
+    // Upstream's Plugins menu: the plugins by name above the separator, "Plugins settings..." below it.
+    private async Task ShowPluginsAsync()
+    {
+        IReadOnlyList<IGitPlugin> plugins = await LoadPluginsAsync();
+        PluginsMenu.Items.Remove(PluginsLoadingMenuItem);
+        int index = 0;
+        foreach (IGitPlugin plugin in plugins)
+        {
+            MenuItem item = new() { Header = plugin.Name, Tag = plugin };
+            if (PluginHost.LoadIcon(plugin) is { } icon)
+            {
+                item.Icon = new Image { Source = icon, Width = 16, Height = 16 };
+            }
+
+            item.Click += (_, _) => ExecutePlugin(plugin);
+            PluginsMenu.Items.Insert(index++, item);
+        }
+
+        RegisterPlugins();
+        _plugins.RaisePostBrowseInitialize(_plugins.Owner);
+    }
+
+    // As upstream's SetGitModule: the plugins move to the repository now shown, or to the dashboard.
+    private void RegisterPlugins()
+    {
+        string repository = RepositoryPath ?? "";
+        if (_loadedPlugins is null || _pluginRepository == repository)
+        {
+            return;
+        }
+
+        _pluginRepository = repository;
+        _plugins.Register(_loadedPlugins, RepositoryPath);
+
+        // Plugins that work on a repository are off on the dashboard, as upstream's UpdatePluginMenu turns them off.
+        foreach (MenuItem item in PluginsMenu.Items.OfType<MenuItem>())
+        {
+            if (item.Tag is IGitPlugin plugin)
+            {
+                item.IsEnabled = plugin is not IGitPluginForRepository || RepositoryPath is not null;
+            }
+        }
+    }
+
+    private void ExecutePlugin(IGitPlugin plugin)
+    {
+        if (plugin is FailedPlugin failed)
+        {
+            ShowError($"Fail to load a plugin. Error:{Environment.NewLine}{Environment.NewLine}{failed.Error}");
+            return;
+        }
+
+        try
+        {
+            if (_plugins.Execute(plugin))
+            {
+                RefreshRepository();
+            }
+        }
+        catch (Exception ex)
+        {
+            // A plugin is someone else's code; its failure is shown, not fatal.
+            ShowError(ex.Message);
+        }
+    }
+
+    // Upstream's ConfirmSuppressible: asks unless the user turned the question off (Settings > Confirmations).
+    private Task<bool> ConfirmAsync(Confirmation confirmation, string message, string confirmText, string caption)
+        => ConfirmWindow.AskAsync(this, _preferences, confirmation, message, confirmText, caption);
+
+    // As upstream's left panel: asks first only when upstream's ConfirmBranchCheckout is on (it is off by default).
+    private void CheckoutSelectedBranch() => RunOnSelectedBranch(async (path, branch) =>
+        await ConfirmAsync(Confirmation.BranchCheckout,
+            string.Format(Confirmations.BranchCheckoutQuestion, branch.Name),
+            "Checkout", "Confirm checkout")
+        && await WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout, () => branch.IsRemote
             ? _actions.CheckoutRemoteAsync(path, branch.Name)
-            : CheckoutLocalBranchAsync(path, branch.Name)));
+            : CheckoutLocalBranchAsync(path, branch.Name), PluginEvent.CheckoutBranch));
 
     // Like upstream, local changes to tracked files make the checkout ask what to do with them; the choice becomes the
     // default for next time (upstream's checkoutbranchaction). Untracked files do not block a checkout and are not counted.
@@ -969,7 +1117,8 @@ public partial class MainWindow : Window
         }
     }
 
-    // Git refuses to delete a branch with commits that are not merged; this deletes it anyway after a confirmation.
+    // Git refuses to delete a branch with commits that are not merged; this deletes it anyway after upstream's question
+    // (unless the user turned it off, as in upstream's FormDeleteBranch).
     private async Task ForceDeleteBranchAsync()
     {
         if (RepositoryPath is not { } path || SelectedBranch is not BranchInfo branch || branch.IsRemote ||
@@ -978,9 +1127,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        string message =
-            $"Delete the branch {branch.Name} even if it has commits that are not merged? This cannot be undone.";
-        if (await new ConfirmWindow(message, "Force delete").ShowDialog<bool>(this))
+        if (await ConfirmAsync(Confirmation.DeleteUnmergedBranch, Confirmations.DeleteUnmergedBranchQuestion,
+                "Force delete", "Delete Confirmation"))
         {
             await _actions.DeleteBranchAsync(path, branch.Name, force: true);
         }
@@ -1484,9 +1632,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (!_preferences.DontConfirmRebase
-            && !await new ConfirmWindow("Are you sure you want to rebase? This action will rewrite commit history.",
-                interactive ? "Rebase interactively" : "Rebase").ShowDialog<bool>(this))
+        if (!await ConfirmAsync(Confirmation.Rebase, Confirmations.RebaseQuestion,
+                interactive ? "Rebase interactively" : "Rebase", "Rebase Confirmation"))
         {
             return;
         }
@@ -1521,7 +1668,10 @@ public partial class MainWindow : Window
     private async Task ShowWorktreesAsync()
     {
         if (RepositoryPath is { } path &&
-            await new WorktreesWindow(path, _repositoryService, _actions).ShowDialog<string?>(this) is { } worktree)
+            await new WorktreesWindow(path, _repositoryService, _actions).ShowDialog<string?>(this) is { } worktree &&
+            await ConfirmAsync(Confirmation.SwitchWorktree,
+                string.Format(Confirmations.SwitchWorktreeQuestion, worktree),
+                "Open", "Open worktree"))
         {
             await OpenRepositoryAsync(worktree);
         }
@@ -1529,10 +1679,25 @@ public partial class MainWindow : Window
 
     private async Task EditGitIgnoreAsync()
     {
-        if (RepositoryPath is { } path && await new GitIgnoreWindow(path).ShowDialog<bool>(this))
+        if (RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        bool saved = await new GitIgnoreWindow(path).ShowDialog<bool>(this);
+        _plugins.RaisePost(PluginEvent.EditGitIgnore, saved);
+        if (saved)
         {
             await OpenRepositoryAsync(path);
         }
+    }
+
+    // Upstream's submodule dialogs raise PostUpdateSubmodules (the auto compile plugin builds after it).
+    private async Task<bool> UpdateSubmodulesAsync(string repositoryPath, string? submodulePath)
+    {
+        bool done = await _actions.UpdateSubmodulesAsync(repositoryPath, submodulePath);
+        _plugins.RaisePost(PluginEvent.UpdateSubmodules, done);
+        return done;
     }
 
     private async Task OpenCommitFileInDiffToolAsync()
