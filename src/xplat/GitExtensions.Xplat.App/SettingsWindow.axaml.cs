@@ -1,15 +1,21 @@
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using GitCommands;
+using GitCommands.Settings;
+using GitCommands.Utils;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtUtils.GitUI.Theming;
+using GitUI.CommandsDialogs.SettingsDialog.RevisionLinks;
 using GitUI.ScriptsEngine;
 
 namespace GitExtensions.Xplat.App;
@@ -47,6 +53,10 @@ public partial class SettingsWindow : Window
     private readonly Dictionary<IGitPlugin, PluginSettingsEditor> _pluginEditors = [];
     private SettingsSource? _pluginSettings;
     private readonly Dictionary<Confirmation, CheckBox> _confirmationChecks = [];
+    private readonly DistributedSettings _revisionLinkSettings;
+    private readonly RevisionLinkEditor _revisionLinks;
+    private readonly Dictionary<AppFont, (ComboBox Family, NumericUpDown Size)> _fontBoxes = [];
+    private readonly Dictionary<AppFont, FontSetting?> _loadedFonts = [];
 
     public SettingsWindow(IAppPreferences preferences, string? repositoryPath,
         IReadOnlyList<IGitPlugin>? plugins = null, IGitPlugin? selectedPlugin = null, bool pluginsPage = false)
@@ -56,6 +66,8 @@ public partial class SettingsWindow : Window
         _repositoryPath = repositoryPath;
         _loadedScripts = AppServices.Scripts.Load();
         _scripts = new ScriptListEditor(_loadedScripts);
+        _revisionLinkSettings = AppServices.RevisionLinks.Open(repositoryPath);
+        _revisionLinks = new RevisionLinkEditor(_revisionLinkSettings);
         InitializeComponent();
 
         ShowThemes(preferences.Theme);
@@ -64,6 +76,10 @@ public partial class SettingsWindow : Window
         CloseProcessDialogCheck.IsChecked = preferences.CloseProcessDialog;
         StartWithRecentWorkingDirCheck.IsChecked = preferences.StartWithRecentWorkingDir;
         ShowCommitCountCheck.IsChecked = preferences.ShowGitStatusInBrowseToolbar;
+        ShowRevisionTooltipsCheck.IsChecked = preferences.ShowRevisionGridTooltips;
+        MergeGraphLanesCheck.IsChecked = preferences.MergeGraphLanesHavingCommonParent;
+        GraphDiagonalsCheck.IsChecked = preferences.RenderGraphWithDiagonals;
+        StraightenDiagonalsCheck.IsChecked = preferences.StraightenGraphDiagonals;
         DefaultCloneDestinationBox.Text = preferences.DefaultCloneDestinationPath;
         RelativeDateCheck.IsChecked = preferences.RelativeDate;
         AlwaysShowCheckoutDlgCheck.IsChecked = preferences.AlwaysShowCheckoutBranchDlg;
@@ -81,6 +97,9 @@ public partial class SettingsWindow : Window
         // As upstream, the button saves at once, not with OK.
         SaveDiffDefaultsButton.Click += (_, _) => preferences.SaveDiffOptionsAsDefault();
         RecentSizeBox.Value = preferences.RecentRepositoriesHistorySize;
+        ShowFonts();
+        ShowBlameOptions(preferences.BlameOptions);
+        ShowSortingPage();
         ShowGitPage();
         ShowSshPage();
         LocalHeaderText.Text = repositoryPath is null ? "This repository (none open)" : "This repository";
@@ -92,6 +111,7 @@ public partial class SettingsWindow : Window
         ShowHotkeyRows();
         ShowConfirmations();
         ShowScripts();
+        ShowRevisionLinks();
         _plugins = plugins ?? [];
         ShowPlugins(selectedPlugin);
         if (pluginsPage)
@@ -135,6 +155,201 @@ public partial class SettingsWindow : Window
     ///  The Confirmations tab's check boxes; checked means the app asks first.
     /// </summary>
     public IReadOnlyDictionary<Confirmation, CheckBox> ConfirmationChecks => _confirmationChecks;
+
+    /// <summary>
+    ///  The text of a font list's first choice: no font stored, so the app's own applies.
+    /// </summary>
+    public const string DefaultFontChoice = "(default)";
+
+    // Upstream's labels, in upstream's order.
+    private static readonly (AppFont Font, string Label)[] _fontLabels =
+    [
+        (AppFont.Application, "Application font"), (AppFont.Commit, "Commit font"), (AppFont.Code, "Code font"),
+        (AppFont.Monospace, "Monospace font"),
+    ];
+
+    /// <summary>
+    ///  The Fonts tab's family list and size box of each font.
+    /// </summary>
+    public IReadOnlyDictionary<AppFont, (ComboBox Family, NumericUpDown Size)> FontBoxes => _fontBoxes;
+
+    // Upstream's default sizes (its code font is 10 points, the others 9), for a family chosen where none was stored.
+    private static float DefaultFontSize(AppFont font) => font == AppFont.Code ? 10 : 9;
+
+    private void ShowFonts()
+    {
+        string[] installed =
+        [
+            .. FontManager.Current.SystemFonts.Select(family => family.Name).Distinct()
+                .Order(StringComparer.CurrentCultureIgnoreCase),
+        ];
+        foreach ((AppFont font, string label) in _fontLabels)
+        {
+            FontSetting? current = _preferences.GetFont(font);
+            _loadedFonts[font] = current;
+
+            // A stored family that is not installed here is listed too, so saving keeps it.
+            List<string> families = [DefaultFontChoice, .. installed];
+            if (current is not null && !families.Contains(current.Family))
+            {
+                families.Insert(1, current.Family);
+            }
+
+            ComboBox family = new()
+            {
+                ItemsSource = families, SelectedItem = current?.Family ?? DefaultFontChoice, MinWidth = 220,
+                Margin = new Avalonia.Thickness(0, 0, 0, 6),
+            };
+            NumericUpDown size = new()
+            {
+                Minimum = 1, Maximum = 200, Increment = 1, FormatString = "0.##", Width = 130,
+                Value = (decimal)(current?.Size ?? DefaultFontSize(font)), IsEnabled = current is not null,
+                Margin = new Avalonia.Thickness(0, 0, 0, 6),
+            };
+            family.SelectionChanged += (_, _) => size.IsEnabled = family.SelectedItem as string != DefaultFontChoice;
+
+            int row = FontsGrid.RowDefinitions.Count;
+            FontsGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            TextBlock caption = new() { Text = label, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(caption, row);
+            Grid.SetRow(family, row);
+            Grid.SetColumn(family, 2);
+            Grid.SetRow(size, row);
+            Grid.SetColumn(size, 4);
+            FontsGrid.Children.Add(caption);
+            FontsGrid.Children.Add(family);
+            FontsGrid.Children.Add(size);
+            _fontBoxes[font] = (family, size);
+        }
+    }
+
+    // Only a font the user changed is written; "(default)" removes the stored one. Bold and italic are kept as stored.
+    private void SaveFonts()
+    {
+        foreach ((AppFont font, (ComboBox family, NumericUpDown size)) in _fontBoxes)
+        {
+            FontSetting? loaded = _loadedFonts[font];
+            FontSetting? chosen = family.SelectedItem is string name && name != DefaultFontChoice
+                ? (loaded ?? new FontSetting(name, DefaultFontSize(font))) with
+                {
+                    Family = name, Size = (float)(size.Value ?? (decimal)DefaultFontSize(font)),
+                }
+                : null;
+            if (chosen != loaded)
+            {
+                _preferences.SetFont(font, chosen);
+            }
+        }
+    }
+
+    /// <summary>
+    ///  The Revision links tab's definitions; stored on OK.
+    /// </summary>
+    public RevisionLinkEditor RevisionLinkEditor => _revisionLinks;
+
+    // Upstream's Revision links page: the categories on the left, the selected one's fields on the right. Upstream's "Add"
+    // button drops down the templates; here they are buttons of their own.
+    private void ShowRevisionLinks()
+    {
+        RevisionLinksList.ItemsSource = _revisionLinks.Items;
+        RevisionLinksList.SelectionChanged += (_, _) => ShowSelectedRevisionLink();
+        AddRevisionLinkButton.Click += (_, _) => RevisionLinksList.SelectedItem = _revisionLinks.Add();
+        foreach (ICloudProviderExternalLinkDefinitionExtractor template in RevisionLinkTemplates.All)
+        {
+            Button button = new()
+            {
+                Content = RevisionLinkTemplates.MenuText(template), HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            button.Click += (_, _) =>
+                UiActions.Run(() => AddRevisionLinkTemplatesAsync(template), ex => ErrorText.Text = ex.Message);
+            RevisionLinkTemplateButtons.Children.Add(button);
+        }
+
+        RemoveRevisionLinkButton.Click += (_, _) =>
+        {
+            if (RevisionLinksList.SelectedItem is RevisionLinkItem item)
+            {
+                int index = RevisionLinksList.SelectedIndex;
+                _revisionLinks.Remove(item);
+                RevisionLinksList.SelectedIndex = Math.Min(index, _revisionLinks.Items.Count - 1);
+            }
+        };
+        AddRevisionLinkFormatButton.Click += (_, _) => (RevisionLinksList.SelectedItem as RevisionLinkItem)?.AddFormat();
+        RevisionLinkFormatsList.AddHandler(Button.ClickEvent, (_, e) =>
+        {
+            if (e.Source is Button { Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format } &&
+                RevisionLinksList.SelectedItem is RevisionLinkItem item)
+            {
+                item.Formats.Remove(format);
+            }
+        });
+        RevisionLinksList.SelectedIndex = _revisionLinks.Items.Count > 0 ? 0 : -1;
+        ShowSelectedRevisionLink();
+    }
+
+    private void ShowSelectedRevisionLink()
+    {
+        RevisionLinkItem? item = RevisionLinksList.SelectedItem as RevisionLinkItem;
+        RevisionLinkDetails.DataContext = item;
+        RevisionLinkDetails.IsEnabled = item is not null;
+        RemoveRevisionLinkButton.IsEnabled = item is not null;
+    }
+
+    private async Task AddRevisionLinkTemplatesAsync(ICloudProviderExternalLinkDefinitionExtractor template)
+    {
+        IReadOnlyList<Remote> remotes = await RevisionLinkTemplates.LoadRemotesAsync(_repositoryPath);
+        IReadOnlyList<RevisionLinkItem> added = _revisionLinks.AddTemplates(template, remotes);
+        if (added.Count > 0)
+        {
+            RevisionLinksList.SelectedItem = added[0];
+        }
+    }
+
+    // Upstream's Blame viewer page; as upstream, the moved-lines options carry a warning.
+    private void ShowBlameOptions(BlameOptions options)
+    {
+        BlameIgnoreWhitespaceCheck.IsChecked = options.IgnoreWhitespace;
+        BlameDetectMoveInFileCheck.IsChecked = options.DetectMoveInFile;
+        BlameDetectMoveInAllFilesCheck.IsChecked = options.DetectMoveInAllFiles;
+        BlameDisplayAuthorFirstCheck.IsChecked = options.DisplayAuthorFirst;
+        BlameShowAuthorCheck.IsChecked = options.ShowAuthor;
+        BlameShowAuthorDateCheck.IsChecked = options.ShowAuthorDate;
+        BlameShowAuthorTimeCheck.IsChecked = options.ShowAuthorTime;
+        BlameShowLineNumbersCheck.IsChecked = options.ShowLineNumbers;
+        BlameShowOriginalFilePathCheck.IsChecked = options.ShowOriginalFilePath;
+        ToolTip.SetTip(BlameDetectMoveInFileCheck, BlameMoveWarning);
+        ToolTip.SetTip(BlameDetectMoveInAllFilesCheck, BlameMoveWarning);
+    }
+
+    /// <summary>
+    ///  Upstream's tooltip of the moved-lines options.
+    /// </summary>
+    public const string BlameMoveWarning =
+        "Could prevent blame to calculate the accurate line number when blaming previous revisions.";
+
+    // Upstream's Sorting page: each list shows its choices by their description, as upstream fills them, and the help
+    // upstream shows beside them is the tooltip.
+    private void ShowSortingPage()
+    {
+        ShowChoices(RevisionSortBox, _preferences.RevisionSortOrder);
+        ShowChoices(BranchesSortByBox, _preferences.RefsSortBy);
+        ShowChoices(BranchesOrderBox, _preferences.RefsSortOrder);
+        PrioritizedBranchesBox.Text = _preferences.PrioritizedBranchNames;
+        PrioritizedRemotesBox.Text = _preferences.PrioritizedRemoteNames;
+        ToolTip.SetTip(RevisionSortBox, SortingTexts.RevisionSortWarning);
+        ToolTip.SetTip(PrioritizedBranchesBox, SortingTexts.PrioritizedBranchNames);
+        ToolTip.SetTip(PrioritizedRemotesBox, SortingTexts.PrioritizedRemoteNames);
+    }
+
+    private static void ShowChoices<T>(ComboBox box, T current) where T : struct, Enum
+    {
+        List<EnumOption<T>> options = [.. Enum.GetValues<T>().Select(value => new EnumOption<T>(value))];
+        box.ItemsSource = options;
+        box.SelectedItem = options.FirstOrDefault(option => EqualityComparer<T>.Default.Equals(option.Value, current));
+    }
+
+    private static T Chosen<T>(ComboBox box, T current) where T : struct, Enum
+        => box.SelectedItem is EnumOption<T> option ? option.Value : current;
 
     // Upstream's Git page. Its "Change HOME" choices (FormFixHome) are offered on Windows only, where upstream checks HOME:
     // elsewhere HOME is always set, and changing it in the app would also move the app's own settings folders. The Linux
@@ -625,6 +840,10 @@ public partial class SettingsWindow : Window
         _preferences.CloseProcessDialog = CloseProcessDialogCheck.IsChecked == true;
         _preferences.StartWithRecentWorkingDir = StartWithRecentWorkingDirCheck.IsChecked == true;
         _preferences.ShowGitStatusInBrowseToolbar = ShowCommitCountCheck.IsChecked == true;
+        _preferences.ShowRevisionGridTooltips = ShowRevisionTooltipsCheck.IsChecked == true;
+        _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
+        _preferences.RenderGraphWithDiagonals = GraphDiagonalsCheck.IsChecked == true;
+        _preferences.StraightenGraphDiagonals = StraightenDiagonalsCheck.IsChecked == true;
         _preferences.DefaultCloneDestinationPath = DefaultCloneDestinationBox.Text?.Trim() ?? "";
         _preferences.RelativeDate = RelativeDateCheck.IsChecked == true;
         _preferences.AlwaysShowCheckoutBranchDlg = AlwaysShowCheckoutDlgCheck.IsChecked == true;
@@ -645,6 +864,17 @@ public partial class SettingsWindow : Window
         _preferences.RecentRepositoriesHistorySize =
             (int)(RecentSizeBox.Value ?? _preferences.RecentRepositoriesHistorySize);
         SaveGitAndSshPages();
+        SaveFonts();
+        _preferences.BlameOptions = new BlameOptions(BlameIgnoreWhitespaceCheck.IsChecked == true,
+            BlameDetectMoveInFileCheck.IsChecked == true, BlameDetectMoveInAllFilesCheck.IsChecked == true,
+            BlameDisplayAuthorFirstCheck.IsChecked == true, BlameShowAuthorCheck.IsChecked == true,
+            BlameShowAuthorDateCheck.IsChecked == true, BlameShowAuthorTimeCheck.IsChecked == true,
+            BlameShowLineNumbersCheck.IsChecked == true, BlameShowOriginalFilePathCheck.IsChecked == true);
+        _preferences.RevisionSortOrder = Chosen(RevisionSortBox, _preferences.RevisionSortOrder);
+        _preferences.RefsSortBy = Chosen(BranchesSortByBox, _preferences.RefsSortBy);
+        _preferences.RefsSortOrder = Chosen(BranchesOrderBox, _preferences.RefsSortOrder);
+        _preferences.PrioritizedBranchNames = PrioritizedBranchesBox.Text ?? "";
+        _preferences.PrioritizedRemoteNames = PrioritizedRemotesBox.Text ?? "";
         foreach ((Confirmation confirmation, CheckBox check) in _confirmationChecks)
         {
             _preferences.SetAsks(confirmation, check.IsChecked == true);
@@ -675,6 +905,8 @@ public partial class SettingsWindow : Window
         // HOME and the Linux tools folder as the next git gets them; upstream sets them before every git start too.
         EnvironmentConfiguration.SetEnvironmentVariables();
         SavePluginSettings();
+        _revisionLinks.Save();
+        AppServices.RevisionLinks.Save(_revisionLinkSettings);
 
         // Only values the user changed are written, so a setting made elsewhere since the window opened is kept.
         foreach ((string key, Func<SettingsWindow, TextBox> global, Func<SettingsWindow, TextBox> local) in
@@ -700,6 +932,14 @@ public partial class SettingsWindow : Window
 
         await _gitConfig.SetAsync(scope, key, value, scope == ConfigScope.Local ? _repositoryPath : null);
     }
+}
+
+/// <summary>
+///  A choice of an upstream settings enum, named by its description as upstream's pages name them.
+/// </summary>
+public sealed record EnumOption<T>(T Value) where T : struct, Enum
+{
+    public override string ToString() => Value.GetDescription();
 }
 
 /// <summary>

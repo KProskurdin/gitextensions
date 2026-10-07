@@ -127,6 +127,13 @@
           <Expander Header="Branches and remotes" IsExpanded="True" HorizontalAlignment="Stretch">
             <StackPanel Spacing="4">
               <TreeView x:Name="BranchTreeView" Height="220">
+                <!-- Upstream's left panel sort menus (GitRefsSortByContextMenuItem, GitRefsSortOrderContextMenuItem). -->
+                <TreeView.ContextMenu>
+                  <ContextMenu x:Name="BranchTreeContextMenu">
+                    <MenuItem x:Name="SortByMenuItem" Header="_Sort by" />
+                    <MenuItem x:Name="SortOrderMenuItem" Header="Sort _order" />
+                  </ContextMenu>
+                </TreeView.ContextMenu>
                 <TreeView.Styles>
                   <Style Selector="TreeViewItem" x:DataType="repo:BranchTreeNode">
                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -288,7 +295,8 @@
               <DataTemplate x:DataType="core:CommitListItem">
                 <Grid ColumnDefinitions="Auto,*,160,140,90">
                   <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
+                              ToolTip.Tip="{Binding Row.Tooltip.Message}">
                     <ItemsControl ItemsSource="{Binding Labels}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -307,9 +315,9 @@
                     </ItemsControl>
                     <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" />
                   </StackPanel>
-                  <TextBlock Grid.Column="2" Text="{Binding Row.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
-                  <TextBlock Grid.Column="3" Text="{Binding Row.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
-                  <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" FontFamily="{DynamicResource DiffFontFamily}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                  <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                  <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
@@ -322,12 +330,17 @@
               <Grid ColumnDefinitions="*,8,Auto">
                 <ScrollViewer Grid.Column="0">
                   <StackPanel Spacing="3" Margin="4,0">
-                    <TextBlock x:Name="DetailHash" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailHash" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
                     <TextBlock x:Name="DetailAuthor" TextWrapping="Wrap" />
                     <TextBlock x:Name="DetailAuthorDate" />
                     <TextBlock x:Name="DetailCommitDate" />
-                    <TextBlock x:Name="DetailParents" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
-                    <SelectableTextBlock x:Name="DetailMessage" TextWrapping="Wrap" Margin="0,8,0,0" />
+                    <TextBlock x:Name="DetailParents" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
+                    <SelectableTextBlock x:Name="DetailMessage" FontFamily="{DynamicResource CommitFontFamily}" FontSize="{DynamicResource CommitFontSize}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                    <!-- Upstream's commit info "Related links": the revision links defined in the settings. -->
+                    <StackPanel x:Name="DetailLinksPanel" Spacing="2" Margin="0,8,0,0" IsVisible="False">
+                      <TextBlock Text="Related links:" FontWeight="SemiBold" />
+                      <WrapPanel x:Name="DetailLinks" />
+                    </StackPanel>
                   </StackPanel>
                 </ScrollViewer>
                 <StackPanel Grid.Column="2" Spacing="4">

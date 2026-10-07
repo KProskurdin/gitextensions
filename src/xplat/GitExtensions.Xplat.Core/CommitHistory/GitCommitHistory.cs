@@ -1,9 +1,13 @@
 using System.Reactive;
 using GitCommands;
+using GitCommands.ExternalLinks;
 using GitCommands.Git;
+using GitCommands.Remotes;
+using GitCommands.Settings;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Settings;
 using GitExtUtils;
 using GitUIPluginInterfaces;
 
@@ -17,20 +21,27 @@ public sealed class GitCommitHistory : ICommitHistory
     private const string DateFormat = "yyyy-MM-dd HH:mm";
 
     private readonly Func<CommitDateStyle> _dateStyle;
+    private readonly Func<RevisionSortOrder> _sortOrder;
+    private readonly IRevisionLinkStore? _links;
 
     /// <summary>
-    ///  Reads commits; the grid's dates follow <paramref name="dateStyle"/>, asked at each read so a changed setting applies
-    ///  to the next reload (upstream's defaults when none is given).
+    ///  Reads commits; the grid's dates follow <paramref name="dateStyle"/> and the order <paramref name="sortOrder"/>
+    ///  (upstream's <c>RevisionSortOrder</c>), asked at each read so a changed setting applies to the next reload
+    ///  (upstream's defaults when none is given). The details list the revision links defined in <paramref name="links"/>.
     /// </summary>
-    public GitCommitHistory(Func<CommitDateStyle>? dateStyle = null)
+    public GitCommitHistory(Func<CommitDateStyle>? dateStyle = null, Func<RevisionSortOrder>? sortOrder = null,
+        IRevisionLinkStore? links = null)
     {
+        _links = links;
         _dateStyle = dateStyle ?? (() => new CommitDateStyle());
+        _sortOrder = sortOrder ?? (() => RevisionSortOrder.GitDefault);
     }
 
     public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null)
     {
         CommitDateStyle style = _dateStyle();
-        return Task.Run(() => ReadPage(repositoryPath, filter?.ToRevisionArguments() ?? "HEAD",
+        string revision = Sorted(filter?.ToRevisionArguments() ?? "HEAD");
+        return Task.Run(() => ReadPage(repositoryPath, revision,
             pathFilter: filter is { PathFilter.Length: > 0 } ? filter.PathFilter.Quote() : "", limit, markHead: true,
             style));
     }
@@ -47,15 +58,22 @@ public sealed class GitCommitHistory : ICommitHistory
     public Task<CommitPage> LoadFileHistoryAsync(string repositoryPath, string hash, string filePath, int limit)
     {
         CommitDateStyle style = _dateStyle();
-        return Task.Run(() => ReadPage(repositoryPath, hash, pathFilter: filePath.Quote(), limit, markHead: false,
+        string revision = Sorted(hash);
+        return Task.Run(() => ReadPage(repositoryPath, revision, pathFilter: filePath.Quote(), limit, markHead: false,
             style));
     }
 
     public Task<CommitPage> SearchAsync(string repositoryPath, string text, int limit)
     {
         CommitDateStyle style = _dateStyle();
-        return Task.Run(() => ReadSearch(repositoryPath, text, limit, style));
+        string sorting = RevisionSorting.Argument(_sortOrder());
+        return Task.Run(() => ReadSearch(repositoryPath, text, limit, style, sorting));
     }
+
+    // Upstream's revision reader adds the sort flag of upstream's own setting before the revision; the preference's flag
+    // goes after it, and git uses the last one, so the preference applies (the same value in the app).
+    private string Sorted(string revision)
+        => RevisionSorting.Argument(_sortOrder()) is { Length: > 0 } flag ? $"{flag} {revision}" : revision;
 
     // git's %at and %ct: seconds since the epoch, shown in local time as the revision reader gives its dates.
     private static DateTime FromUnixSeconds(string seconds)
@@ -64,12 +82,14 @@ public sealed class GitCommitHistory : ICommitHistory
             ? DateTimeOffset.FromUnixTimeSeconds(value).LocalDateTime
             : DateTime.MinValue;
 
-    private static CommitPage ReadSearch(string path, string text, int limit, CommitDateStyle style)
+    private static CommitPage ReadSearch(string path, string text, int limit, CommitDateStyle style,
+        string sorting)
     {
         ExecutionResult result = CreateModule(path).GitExecutable.Execute(
             new GitArgumentBuilder("log")
             {
                 "-i",
+                { sorting.Length > 0, sorting },
                 ("--grep=" + text).Quote(),
                 "-n",
                 (limit + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -93,8 +113,12 @@ public sealed class GitCommitHistory : ICommitHistory
         return new CommitPage(rows.Take(limit).ToList(), HasMore: rows.Count > limit);
     }
 
-    public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath)
-        => Task.Run(() => LoadBlame(repositoryPath, hash, filePath));
+    public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath,
+        BlameOptions? options = null)
+    {
+        IReadOnlyList<string> flags = (options ?? new BlameOptions()).Arguments;
+        return Task.Run(() => LoadBlame(repositoryPath, hash, filePath, flags));
+    }
 
     public Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath)
         => Task.Run(() => LoadFileText(repositoryPath, hash, filePath));
@@ -112,10 +136,11 @@ public sealed class GitCommitHistory : ICommitHistory
         return result.StandardOutput.Contains('\0') ? null : result.StandardOutput;
     }
 
-    private static IReadOnlyList<BlameLine> LoadBlame(string path, string hash, string filePath)
+    private static IReadOnlyList<BlameLine> LoadBlame(string path, string hash, string filePath,
+        IReadOnlyList<string> flags)
     {
         ExecutionResult result = CreateModule(path).GitExecutable.Execute(
-            new GitArgumentBuilder("blame") { "--line-porcelain", hash, "--", filePath.Quote() },
+            new GitArgumentBuilder("blame") { "--line-porcelain", flags, hash, "--", filePath.Quote() },
             throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
         {
@@ -213,7 +238,7 @@ public sealed class GitCommitHistory : ICommitHistory
                 return new CommitRow(r.ObjectId.ToString(), r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
                     style.Format(r.AuthorDate, r.CommitDate, now),
                     r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
-                    [.. refs.Select(label => label.Name)], refs);
+                    [.. refs.Select(label => label.Name)], refs, RevisionTooltips.For(r, refs));
             })
             .ToList();
 
@@ -266,9 +291,10 @@ public sealed class GitCommitHistory : ICommitHistory
         return labels;
     }
 
-    private static CommitDetails LoadDetails(string path, string hash)
+    private CommitDetails LoadDetails(string path, string hash)
     {
-        GitRevision revision = new RevisionReader(CreateModule(path))
+        GitModule module = CreateModule(path);
+        GitRevision revision = new RevisionReader(module)
                                    .GetRevision(hash, hasNotes: false, throwOnError: true,
                                        cancellationToken: CancellationToken.None)
                                ?? throw new InvalidOperationException($"Commit not found: {hash}");
@@ -279,7 +305,31 @@ public sealed class GitCommitHistory : ICommitHistory
             AuthorDate: revision.AuthorDate.ToString(DateFormat),
             CommitDate: revision.CommitDate.ToString(DateFormat),
             Parents: string.Join(", ", (revision.ParentIds ?? []).Select(parent => parent.ToShortString())),
-            Message: (revision.Body ?? revision.Subject).TrimEnd());
+            Message: (revision.Body ?? revision.Subject).TrimEnd(),
+            Links: LoadLinks(module, revision, path));
+    }
+
+    // Upstream's CommitInfo "Related links": the definitions in effect for the repository, applied by upstream's parser to the
+    // commit's message and to the branches that point at it, each address once.
+    private IReadOnlyList<RevisionLink> LoadLinks(GitModule module, GitRevision revision, string path)
+    {
+        if (_links is null)
+        {
+            return [];
+        }
+
+        DistributedSettings settings = _links.Open(path);
+        ConfiguredLinkDefinitionsProvider definitions = new(new ExternalLinksStorage());
+        if (!definitions.Get(settings).Any(definition => definition.Enabled))
+        {
+            return [];
+        }
+
+        revision.Refs = [.. module.GetRefs(RefsFilter.Heads | RefsFilter.Remotes)
+            .Where(reference => reference.ObjectId == revision.ObjectId)];
+        GitRevisionExternalLinksParser parser = new(definitions,
+            new ExternalLinkRevisionParser(new ConfigFileRemoteSettingsManager(() => module)));
+        return [.. parser.Parse(revision, settings).Distinct().Select(link => new RevisionLink(link.Caption ?? link.Uri, link.Uri))];
     }
 
     private static GitModule CreateModule(string path)

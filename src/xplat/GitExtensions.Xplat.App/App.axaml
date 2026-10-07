@@ -3,14 +3,17 @@
              x:Class="GitExtensions.Xplat.App.App"
              RequestedThemeVariant="Default">
   <Application.Resources>
-    <!-- The first installed family wins: Windows, macOS, then the usual Linux monospace fonts. -->
+    <!-- The first installed family wins: Windows, macOS, then the usual Linux monospace fonts. FontApplier replaces these
+         with upstream's code and monospace fonts when they are set. -->
     <FontFamily x:Key="DiffFontFamily">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, Liberation Mono, monospace</FontFamily>
+    <FontFamily x:Key="MonospaceFontFamily">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, Liberation Mono, monospace</FontFamily>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
-    <!-- Fluent's tab headers are sized for touch; the browse window's tabs are a compact strip, as in upstream. -->
+    <!-- Fluent's tab headers are sized for touch; the browse window's tabs are a compact strip, as in upstream. The tab's
+         content inherits the size, so it is the application font's (FontApplier). -->
     <Style Selector="TabItem">
-      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontSize" Value="{DynamicResource ControlContentThemeFontSize}" />
       <Setter Property="MinHeight" Value="28" />
       <Setter Property="Padding" Value="10,2" />
     </Style>

@@ -2,7 +2,13 @@ using System.Globalization;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
-public sealed record BlameLine(int LineNumber, string Hash, string Author, string Date, string Content);
+/// <summary>
+///  A blamed line: its number, the commit (short hash), author and day that last changed it, its text, and the author's
+///  time and the path the line had in that commit (git's "filename"; another path when the file was renamed or the line
+///  moved from another file).
+/// </summary>
+public sealed record BlameLine(int LineNumber, string Hash, string Author, string Date, string Content,
+    DateTime AuthorTime = default, string FileName = "");
 
 /// <summary>
 ///  Reads the output of <c>git blame --line-porcelain</c>, where every line carries its own commit headers.
@@ -19,6 +25,8 @@ public static class BlameParser
         string hash = "";
         string author = "";
         string date = "";
+        DateTime time = default;
+        string fileName = "";
         int lineNumber = 0;
 
         foreach (string raw in porcelain.Split('\n'))
@@ -26,7 +34,7 @@ public static class BlameParser
             string line = raw.TrimEnd('\r');
             if (line.StartsWith('\t'))
             {
-                lines.Add(new BlameLine(lineNumber, hash, author, date, line[1..]));
+                lines.Add(new BlameLine(lineNumber, hash, author, date, line[1..], time, fileName));
             }
             else if (line.StartsWith("author ", StringComparison.Ordinal))
             {
@@ -35,7 +43,12 @@ public static class BlameParser
             else if (line.StartsWith("author-time ", StringComparison.Ordinal))
             {
                 long seconds = long.Parse(line["author-time ".Length..], CultureInfo.InvariantCulture);
-                date = DateTimeOffset.FromUnixTimeSeconds(seconds).LocalDateTime.ToString(DateFormat, CultureInfo.InvariantCulture);
+                time = DateTimeOffset.FromUnixTimeSeconds(seconds).LocalDateTime;
+                date = time.ToString(DateFormat, CultureInfo.InvariantCulture);
+            }
+            else if (line.StartsWith("filename ", StringComparison.Ordinal))
+            {
+                fileName = line["filename ".Length..];
             }
             else if (IsGroupHeader(line))
             {

@@ -34,6 +34,27 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's revision graph model (lanes, segments, straightening), unchanged. Its renderer draws with WinForms
+         (System.Drawing.Graphics); CommitHistory/GraphPainter.cs ports it, and Settings/UpstreamGraphLaneColor.cs stands in
+         for the lane colors, which upstream reads from the WinForms theme. -->
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraph.cs" Link="Upstream\Graph\RevisionGraph.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphRow.cs" Link="Upstream\Graph\RevisionGraphRow.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphRevision.cs" Link="Upstream\Graph\RevisionGraphRevision.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphSegment.cs" Link="Upstream\Graph\RevisionGraphSegment.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphConfig.cs" Link="Upstream\Graph\RevisionGraphConfig.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\Lane.cs" Link="Upstream\Graph\Lane.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\LaneInfo.cs" Link="Upstream\Graph\LaneInfo.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\LaneSharing.cs" Link="Upstream\Graph\LaneSharing.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\LaneNodeLocator.cs" Link="Upstream\Graph\LaneNodeLocator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Upstream's revision link templates (GitHub, Azure DevOps), unchanged; Settings/UpstreamImages.cs stands in for the
+         WinForms images they name as icons. -->
+    <Compile Include="..\..\app\GitUI\CommandsDialogs\SettingsDialog\RevisionLinks\*.cs" Link="Upstream\RevisionLinks\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ExCSS" />
   </ItemGroup>
 

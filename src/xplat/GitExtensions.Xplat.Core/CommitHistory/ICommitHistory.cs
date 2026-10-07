@@ -35,9 +35,11 @@ public interface ICommitHistory
     Task<CommitPage> SearchAsync(string repositoryPath, string text, int limit);
 
     /// <summary>
-    ///  Who last changed each line of <paramref name="filePath"/> as of <paramref name="hash"/>.
+    ///  Who last changed each line of <paramref name="filePath"/> as of <paramref name="hash"/>, blamed with the git flags
+    ///  of <paramref name="options"/> (upstream's defaults when none are given).
     /// </summary>
-    Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath);
+    Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath,
+        BlameOptions? options = null);
 
     /// <summary>
     ///  The content of <paramref name="filePath"/> as of <paramref name="hash"/>, or null when the file is binary.
@@ -47,7 +49,7 @@ public interface ICommitHistory
 
 public sealed record CommitPage(IReadOnlyList<CommitRow> Rows, bool HasMore);
 
-public sealed record CommitRow(string Hash, string ShortHash, string Subject, string Author, string Date, IReadOnlyList<string>? ParentHashes = null, IReadOnlyList<string>? Refs = null, IReadOnlyList<RefLabel>? Labels = null);
+public sealed record CommitRow(string Hash, string ShortHash, string Subject, string Author, string Date, IReadOnlyList<string>? ParentHashes = null, IReadOnlyList<string>? Refs = null, IReadOnlyList<RefLabel>? Labels = null, RevisionTooltip? Tooltip = null);
 
 public enum RefKind
 {
@@ -80,7 +82,13 @@ public sealed record CommitDetails(
     string AuthorDate,
     string CommitDate,
     string Parents,
-    string Message);
+    string Message,
+    IReadOnlyList<RevisionLink>? Links = null);
+
+/// <summary>
+///  A link upstream's commit info lists under "Related links": the caption and the address.
+/// </summary>
+public sealed record RevisionLink(string Caption, string Uri);
 
 public sealed record CommitFile(string Status, string Path)
 {

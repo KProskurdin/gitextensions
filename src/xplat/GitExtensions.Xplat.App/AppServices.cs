@@ -41,6 +41,11 @@ public static class AppServices
     public static IPluginSettingsStore PluginSettings { get; set; } = new UpstreamPluginSettingsStore();
 
     /// <summary>
+    ///  Where the revision link definitions are read and written: upstream's GitExtensions.settings files.
+    /// </summary>
+    public static IRevisionLinkStore RevisionLinks { get; set; } = new UpstreamRevisionLinkStore();
+
+    /// <summary>
     ///  The recent repositories list. Created on first use, because the settings store reads the settings file.
     /// </summary>
     public static IRecentRepositoryStore RecentRepositories

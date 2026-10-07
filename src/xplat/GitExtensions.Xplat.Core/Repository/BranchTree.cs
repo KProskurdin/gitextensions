@@ -56,12 +56,19 @@ public static class BranchTree
     public const string LocalGroupName = "Branches";
     public const string RemoteGroupName = "Remotes";
 
-    public static IReadOnlyList<BranchTreeNode> Build(IReadOnlyList<BranchInfo> branches)
+    /// <summary>
+    ///  Builds the tree from the branches in git's order. As upstream's <c>LocalBranchTree</c> and <c>RemoteBranchTree</c>,
+    ///  branches matching <see cref="RefSorting.PrioritizedBranchNames"/> (by their name without the remote) come first, and
+    ///  remotes are listed by name with those matching <see cref="RefSorting.PrioritizedRemoteNames"/> first.
+    /// </summary>
+    public static IReadOnlyList<BranchTreeNode> Build(IReadOnlyList<BranchInfo> branches, RefSorting? sorting = null)
     {
+        sorting ??= new RefSorting();
         BranchTreeNode local = new(LocalGroupName, isExpanded: true);
         BranchTreeNode remotes = new(RemoteGroupName, isExpanded: true);
 
-        foreach (BranchInfo branch in branches)
+        foreach (BranchInfo branch in RefSorting.OrderByPriority(branches, NameWithoutRemote,
+                     sorting.PrioritizedBranchNames))
         {
             if (branch.IsRemote)
             {
@@ -76,6 +83,11 @@ public static class BranchTree
             }
         }
 
+        List<BranchTreeNode> orderedRemotes = [.. RefSorting.OrderByPriority(
+            [.. remotes.Children.OrderBy(remote => remote.Name)], remote => remote.Name, sorting.PrioritizedRemoteNames)];
+        remotes.Children.Clear();
+        remotes.Children.AddRange(orderedRemotes);
+
         List<BranchTreeNode> roots = [local];
         if (remotes.Children.Count > 0)
         {
@@ -84,6 +96,9 @@ public static class BranchTree
 
         return roots;
     }
+
+    private static string NameWithoutRemote(BranchInfo branch)
+        => branch.IsRemote && branch.Name.IndexOf('/') is var slash and >= 0 ? branch.Name[(slash + 1)..] : branch.Name;
 
     private static void Add(BranchTreeNode parent, string[] parts, BranchInfo branch, bool expandFolders)
     {

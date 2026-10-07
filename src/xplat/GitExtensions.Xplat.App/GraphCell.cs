@@ -6,18 +6,16 @@ using GitExtensions.Xplat.Core.CommitHistory;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Draws one row of the revision graph: the lanes that pass through, the commit's node, and the lines to its parents.
-///  Each lane is drawn in its own color from the theme's lane palette.
+///  Draws one row of the revision graph: the shapes upstream's renderer draws for it (<see cref="GraphPainter"/>), in the
+///  theme's lane colors. Every row of a graph is as wide as its widest row, so the columns after it line up.
 /// </summary>
 public sealed class GraphCell : Control
 {
-    private const double LaneWidth = 12;
-    private const double EdgeMargin = 8;
-    private const double NodeRadius = 4;
-    private const double LineThickness = 2;
+    // Upstream draws the checked-out commit's outline 2 pixels wide, 1 pixel outside the node.
+    private const double OutlineThickness = 2;
 
-    public static readonly StyledProperty<GraphRow?> GraphProperty =
-        AvaloniaProperty.Register<GraphCell, GraphRow?>(nameof(Graph));
+    public static readonly StyledProperty<GraphRowRef?> GraphProperty =
+        AvaloniaProperty.Register<GraphCell, GraphRowRef?>(nameof(Graph));
 
     static GraphCell()
     {
@@ -25,51 +23,83 @@ public sealed class GraphCell : Control
         AffectsRender<GraphCell>(GraphProperty);
     }
 
-    public GraphRow? Graph
+    public GraphRowRef? Graph
     {
         get => GetValue(GraphProperty);
         set => SetValue(GraphProperty, value);
     }
 
     protected override Size MeasureOverride(Size availableSize)
-        => new(LaneX(Graph?.Width ?? 0) + EdgeMargin, 0);
+        => new((Graph?.Graph.LaneCount ?? 0) * GraphPainter.LaneWidth, 0);
 
     public override void Render(DrawingContext context)
     {
-        if (Graph is not { } graph)
+        if (Graph is not { } row || Bounds.Height <= 0)
         {
             return;
         }
 
-        IReadOnlyList<IBrush> palette = ThemeBrushes.Current.Lanes;
-        double top = 0;
-        double middle = Bounds.Height / 2;
-        double bottom = Bounds.Height;
+        IReadOnlyList<GraphShape> shapes =
+            GraphPainter.Paint(row.Graph, row.Index, (int)Bounds.Height, row.HasRefs, row.IsHead);
 
-        for (int i = 0; i < graph.ActiveColumns.Count; i++)
+        // Upstream's segments start and end in the rows above and below; the cell shows its own part.
+        using DrawingContext.PushedState clip = context.PushClip(new Rect(Bounds.Size));
+        foreach (GraphShape shape in shapes)
         {
-            int lane = graph.ActiveColumns[i];
-            IBrush brush = palette[graph.ActiveColorAt(i) % palette.Count];
-            if (lane == graph.Column)
+            IBrush brush = BrushFor(shape.Color);
+            switch (shape)
             {
-                DrawLine(context, brush, lane, top, lane, middle);
-            }
-            else
-            {
-                DrawLine(context, brush, lane, top, lane, bottom);
+                case GraphLine line:
+                    context.DrawLine(new Pen(brush, GraphPainter.LaneLineWidth), ToPoint(line.From), ToPoint(line.To));
+                    break;
+                case GraphBezier curve:
+                    StreamGeometry geometry = new();
+                    using (StreamGeometryContext path = geometry.Open())
+                    {
+                        path.BeginFigure(ToPoint(curve.Start), isFilled: false);
+                        path.CubicBezierTo(ToPoint(curve.Control1), ToPoint(curve.Control2), ToPoint(curve.End));
+                        path.EndFigure(isClosed: false);
+                    }
+
+                    context.DrawGeometry(null, new Pen(brush, GraphPainter.LaneLineWidth), geometry);
+                    break;
+                case GraphNode node:
+                    DrawNode(context, node, brush);
+                    break;
             }
         }
-
-        for (int i = 0; i < graph.ParentColumns.Count; i++)
-        {
-            DrawLine(context, palette[graph.ParentColorAt(i) % palette.Count], graph.Column, middle, graph.ParentColumns[i], bottom);
-        }
-
-        context.DrawEllipse(palette[graph.Color % palette.Count], null, new Point(LaneX(graph.Column), middle), NodeRadius, NodeRadius);
     }
 
-    private static double LaneX(int lane) => EdgeMargin + (lane * LaneWidth) + (LaneWidth / 2);
+    private static void DrawNode(DrawingContext context, GraphNode node, IBrush brush)
+    {
+        Rect bounds = new(node.Bounds.X, node.Bounds.Y, node.Bounds.Width, node.Bounds.Height);
+        Pen? outline = node.Outline ? new Pen(ThemeBrushes.Current.Context, OutlineThickness) : null;
+        Rect outlineBounds = bounds.Inflate(1);
+        if (node.Square)
+        {
+            context.DrawRectangle(brush, null, bounds);
+            if (outline is not null)
+            {
+                context.DrawRectangle(null, outline, outlineBounds);
+            }
+        }
+        else
+        {
+            context.DrawEllipse(brush, null, bounds);
+            if (outline is not null)
+            {
+                context.DrawEllipse(null, outline, outlineBounds);
+            }
+        }
+    }
 
-    private static void DrawLine(DrawingContext context, IBrush brush, int fromLane, double fromY, int toLane, double toY)
-        => context.DrawLine(new Pen(brush, LineThickness), new Point(LaneX(fromLane), fromY), new Point(LaneX(toLane), toY));
+    private static IBrush BrushFor(int color)
+    {
+        IReadOnlyList<IBrush> lanes = ThemeBrushes.Current.Lanes;
+        return color == GraphPainter.NonRelativeColor
+            ? ThemeBrushes.Current.NonRelativeLane
+            : lanes[color % lanes.Count];
+    }
+
+    private static Point ToPoint(System.Drawing.PointF point) => new(point.X, point.Y);
 }

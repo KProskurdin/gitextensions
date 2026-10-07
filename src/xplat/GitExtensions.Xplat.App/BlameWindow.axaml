@@ -6,15 +6,38 @@
         Width="980" Height="620">
   <DockPanel Margin="12" LastChildFill="True">
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
-    <ListBox x:Name="BlameList" FontFamily="monospace">
+    <!-- Upstream's gutter: the commit's author line on the first line of each run of lines from one commit. -->
+    <ListBox x:Name="BlameList" Grid.IsSharedSizeScope="True"
+             FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}">
+      <!-- Upstream's blame settings menu (FormFileHistory); the choices are upstream's Blame viewer settings. -->
+      <ListBox.ContextMenu>
+        <ContextMenu x:Name="BlameContextMenu">
+          <MenuItem Header="Blame settings:" IsEnabled="False" />
+          <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox" />
+          <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox" />
+          <MenuItem x:Name="DetectMoveInAllFilesMenuItem" Header="Detect move and copy in all files" ToggleType="CheckBox" />
+          <Separator />
+          <MenuItem x:Name="DisplayAuthorFirstMenuItem" Header="Display author first" ToggleType="CheckBox" />
+          <MenuItem x:Name="ShowAuthorMenuItem" Header="Show author" ToggleType="CheckBox" />
+          <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Show author date" ToggleType="CheckBox" />
+          <MenuItem x:Name="ShowAuthorTimeMenuItem" Header="Show author time" ToggleType="CheckBox" />
+          <MenuItem x:Name="ShowLineNumbersMenuItem" Header="Show line numbers" ToggleType="CheckBox" />
+          <MenuItem x:Name="ShowOriginalFilePathMenuItem" Header="Show original file path" ToggleType="CheckBox" />
+        </ContextMenu>
+      </ListBox.ContextMenu>
       <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="core:BlameLine">
-          <Grid ColumnDefinitions="50,90,170,110,*" Margin="2,0">
-            <TextBlock Grid.Column="0" Text="{Binding LineNumber}" Foreground="Gray" />
+        <DataTemplate x:DataType="core:BlameRow">
+          <Grid Margin="2,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" SharedSizeGroup="BlameLineNumber" />
+              <ColumnDefinition Width="90" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="BlameAuthorLine" MaxWidth="420" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="{Binding LineNumberText}" Foreground="Gray" Margin="0,0,8,0" />
             <TextBlock Grid.Column="1" Text="{Binding Hash}" />
-            <TextBlock Grid.Column="2" Text="{Binding Author}" TextTrimming="CharacterEllipsis" />
-            <TextBlock Grid.Column="3" Text="{Binding Date}" />
-            <TextBlock Grid.Column="4" Text="{Binding Content}" />
+            <TextBlock Grid.Column="2" Text="{Binding AuthorLine}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+            <TextBlock Grid.Column="3" Text="{Binding Content}" />
           </Grid>
         </DataTemplate>
       </ListBox.ItemTemplate>

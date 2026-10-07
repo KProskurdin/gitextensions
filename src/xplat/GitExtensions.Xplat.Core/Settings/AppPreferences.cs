@@ -1,6 +1,8 @@
 using GitCommands;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtUtils.GitUI.Theming;
+using GitUIPluginInterfaces;
 
 namespace GitExtensions.Xplat.Core.Settings;
 
@@ -91,6 +93,32 @@ public interface IAppPreferences
     ///  Upstream <c>showgitstatusinbrowsetoolbar</c>: the Commit button shows the number of changed files.
     /// </summary>
     bool ShowGitStatusInBrowseToolbar { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>ShowRevisionGridTooltips</c>: the grid shows a tooltip on each column of a commit.
+    /// </summary>
+    bool ShowRevisionGridTooltips { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>MergeGraphLanesHavingCommonParent</c>: lanes of commits with a common parent join before it.
+    /// </summary>
+    bool MergeGraphLanesHavingCommonParent { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>RenderGraphWithDiagonals</c>: lanes change columns along diagonals instead of curves.
+    /// </summary>
+    bool RenderGraphWithDiagonals { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>StraightenGraphDiagonals</c>: lanes are moved to avoid short diagonals.
+    /// </summary>
+    bool StraightenGraphDiagonals { get; set; }
+
+    /// <summary>
+    ///  Upstream's blame settings: <c>IgnoreWhitespaceOnBlame</c>, <c>DetectCopyInFileOnBlame</c>,
+    ///  <c>DetectCopyInAllOnBlame</c> and the <c>Blame.*</c> display settings.
+    /// </summary>
+    BlameOptions BlameOptions { get; set; }
 
     /// <summary>
     ///  Upstream <c>rememberIgnoreWhiteSpacePreference</c>: a new diff view keeps the whitespace choice made in this run
@@ -211,6 +239,42 @@ public interface IAppPreferences
     bool AutoStartPageant { get; set; }
 
     /// <summary>
+    ///  Upstream <c>RevisionSortOrder</c>: the grid's commit order (git's default, author date, topology).
+    /// </summary>
+    RevisionSortOrder RevisionSortOrder { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>RefsSortBy</c>: the key git sorts the branches by.
+    /// </summary>
+    GitRefsSortBy RefsSortBy { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>RefsSortOrder</c>: ascending or descending branch order.
+    /// </summary>
+    GitRefsSortOrder RefsSortOrder { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>PrioritizedBranchNames</c>: regular expressions, separated by ';', of branches listed first.
+    /// </summary>
+    string PrioritizedBranchNames { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>PrioritizedRemoteNames</c>: regular expressions, separated by ';', of remotes listed first.
+    /// </summary>
+    string PrioritizedRemoteNames { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>font</c>, <c>commitfont</c>, <c>difffont</c> or <c>monospacefont</c>; null when not stored (the app's
+    ///  default font) or unreadable.
+    /// </summary>
+    FontSetting? GetFont(AppFont font);
+
+    /// <summary>
+    ///  Stores a font under upstream's key; null removes it, so the default applies again.
+    /// </summary>
+    void SetFont(AppFont font, FontSetting? value);
+
+    /// <summary>
     ///  Writes the preferences to their store. Changes are kept in memory until then.
     /// </summary>
     void Save();
@@ -315,6 +379,50 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ShowGitStatusInBrowseToolbar;
         set => AppSettings.ShowGitStatusInBrowseToolbar = value;
+    }
+
+    public bool ShowRevisionGridTooltips
+    {
+        get => AppSettings.ShowRevisionGridTooltips.Value;
+        set => AppSettings.ShowRevisionGridTooltips.Value = value;
+    }
+
+    public bool MergeGraphLanesHavingCommonParent
+    {
+        get => AppSettings.MergeGraphLanesHavingCommonParent.Value;
+        set => AppSettings.MergeGraphLanesHavingCommonParent.Value = value;
+    }
+
+    public bool RenderGraphWithDiagonals
+    {
+        get => AppSettings.RenderGraphWithDiagonals.Value;
+        set => AppSettings.RenderGraphWithDiagonals.Value = value;
+    }
+
+    public bool StraightenGraphDiagonals
+    {
+        get => AppSettings.StraightenGraphDiagonals.Value;
+        set => AppSettings.StraightenGraphDiagonals.Value = value;
+    }
+
+    public BlameOptions BlameOptions
+    {
+        get => new(AppSettings.IgnoreWhitespaceOnBlame, AppSettings.DetectCopyInFileOnBlame,
+            AppSettings.DetectCopyInAllOnBlame, AppSettings.BlameDisplayAuthorFirst, AppSettings.BlameShowAuthor,
+            AppSettings.BlameShowAuthorDate, AppSettings.BlameShowAuthorTime, AppSettings.BlameShowLineNumbers,
+            AppSettings.BlameShowOriginalFilePath);
+        set
+        {
+            AppSettings.IgnoreWhitespaceOnBlame = value.IgnoreWhitespace;
+            AppSettings.DetectCopyInFileOnBlame = value.DetectMoveInFile;
+            AppSettings.DetectCopyInAllOnBlame = value.DetectMoveInAllFiles;
+            AppSettings.BlameDisplayAuthorFirst = value.DisplayAuthorFirst;
+            AppSettings.BlameShowAuthor = value.ShowAuthor;
+            AppSettings.BlameShowAuthorDate = value.ShowAuthorDate;
+            AppSettings.BlameShowAuthorTime = value.ShowAuthorTime;
+            AppSettings.BlameShowLineNumbers = value.ShowLineNumbers;
+            AppSettings.BlameShowOriginalFilePath = value.ShowOriginalFilePath;
+        }
     }
 
     public bool RememberIgnoreWhiteSpacePreference
@@ -497,6 +605,46 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.AutoStartPageant = value;
     }
 
+    // A runtime setting upstream's page sets and saves at once.
+    public RevisionSortOrder RevisionSortOrder
+    {
+        get => AppSettings.RevisionSortOrder.Value;
+        set
+        {
+            AppSettings.RevisionSortOrder.Value = value;
+            AppSettings.RevisionSortOrder.Save();
+        }
+    }
+
+    public GitRefsSortBy RefsSortBy
+    {
+        get => AppSettings.RefsSortBy;
+        set => AppSettings.RefsSortBy = value;
+    }
+
+    public GitRefsSortOrder RefsSortOrder
+    {
+        get => AppSettings.RefsSortOrder;
+        set => AppSettings.RefsSortOrder = value;
+    }
+
+    public string PrioritizedBranchNames
+    {
+        get => AppSettings.PrioritizedBranchNames;
+        set => AppSettings.PrioritizedBranchNames = value;
+    }
+
+    public string PrioritizedRemoteNames
+    {
+        get => AppSettings.PrioritizedRemoteNames;
+        set => AppSettings.PrioritizedRemoteNames = value;
+    }
+
+    public FontSetting? GetFont(AppFont font) => FontSetting.Parse(AppSettings.GetString(FontSetting.KeyOf(font), null));
+
+    public void SetFont(AppFont font, FontSetting? value)
+        => AppSettings.SettingsContainer.SetString(FontSetting.KeyOf(font), value?.ToSettingString());
+
     public void Save() => AppSettings.SaveSettings();
 }
 
@@ -537,6 +685,16 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public string DefaultCloneDestinationPath { get; set; } = "";
 
     public bool ShowGitStatusInBrowseToolbar { get; set; } = true;
+
+    public bool ShowRevisionGridTooltips { get; set; } = true;
+
+    public bool MergeGraphLanesHavingCommonParent { get; set; } = true;
+
+    public bool RenderGraphWithDiagonals { get; set; } = true;
+
+    public bool StraightenGraphDiagonals { get; set; } = true;
+
+    public BlameOptions BlameOptions { get; set; } = new();
 
     public bool RememberIgnoreWhiteSpacePreference { get; set; } = true;
 
@@ -636,6 +794,47 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public string Pageant { get; set; } = "";
 
     public bool AutoStartPageant { get; set; } = true;
+
+    public RevisionSortOrder RevisionSortOrder { get; set; }
+
+    public GitRefsSortBy RefsSortBy { get; set; }
+
+    public GitRefsSortOrder RefsSortOrder { get; set; } = GitRefsSortOrder.Descending;
+
+    public string PrioritizedBranchNames { get; set; } = DefaultPrioritizedBranchNames;
+
+    public string PrioritizedRemoteNames { get; set; } = DefaultPrioritizedRemoteNames;
+
+    private readonly Dictionary<AppFont, FontSetting> _fonts = [];
+
+    public FontSetting? GetFont(AppFont font) => _fonts.GetValueOrDefault(font);
+
+    public void SetFont(AppFont font, FontSetting? value)
+    {
+        if (value is null)
+        {
+            _fonts.Remove(font);
+        }
+        else
+        {
+            _fonts[font] = value;
+        }
+    }
+
+    /// <summary>
+    ///  Removes every stored font, so the defaults apply.
+    /// </summary>
+    public void ResetFonts() => _fonts.Clear();
+
+    /// <summary>
+    ///  Upstream's default <c>PrioritizedBranchNames</c>.
+    /// </summary>
+    public const string DefaultPrioritizedBranchNames = "main[^/]*|master[^/]*|release/.*";
+
+    /// <summary>
+    ///  Upstream's default <c>PrioritizedRemoteNames</c>.
+    /// </summary>
+    public const string DefaultPrioritizedRemoteNames = "origin|upstream";
 
     public int SaveCount { get; private set; }
 

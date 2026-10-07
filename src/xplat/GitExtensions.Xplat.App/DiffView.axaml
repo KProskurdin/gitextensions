@@ -15,7 +15,7 @@
       <TextBlock x:Name="TitleText" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />
-    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" Padding="0" SelectionMode="Multiple">
+    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple">
       <ListBox.Styles>
         <Style Selector="ListBoxItem">
           <Setter Property="Padding" Value="4,0" />

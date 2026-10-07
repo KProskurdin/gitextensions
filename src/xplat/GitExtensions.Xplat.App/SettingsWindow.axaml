@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:scripts="using:GitExtensions.Xplat.Core.Scripts"
+        xmlns:settings="using:GitExtensions.Xplat.Core.Settings"
         x:Class="GitExtensions.Xplat.App.SettingsWindow"
         Title="Settings"
         Width="760" Height="580" WindowStartupLocation="CenterOwner">
@@ -20,6 +21,15 @@
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
           <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
           <CheckBox x:Name="RelativeDateCheck" Content="Show relative date instead of full date" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Fonts" page. Avalonia has no font dialog: the family is chosen from the installed ones and the size
+           typed in points, as upstream stores it. Upstream needs a restart; here the fonts change when OK is pressed. -->
+      <TabItem x:Name="FontsTab" Header="Fonts">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Fonts" FontWeight="SemiBold" />
+          <Grid x:Name="FontsGrid" ColumnDefinitions="Auto,8,*,8,Auto" />
+          <TextBlock Text="Sizes are in points. &quot;(default)&quot; keeps this app's own font." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
       <TabItem Header="General">
@@ -99,6 +109,22 @@
           </StackPanel>
         </StackPanel>
       </TabItem>
+      <!-- Upstream's "Browse repository window" page: the setting whose feature the browse window has. -->
+      <TabItem x:Name="BrowseRepositoryTab" Header="Browse repository window">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="General" FontWeight="SemiBold" />
+          <CheckBox x:Name="ShowRevisionTooltipsCheck" Content="Show revision tooltips" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Detailed" page: its revision graph group. The push and merge window options are not ported. -->
+      <TabItem x:Name="DetailedTab" Header="Detailed">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Revision graph" FontWeight="SemiBold" />
+          <CheckBox x:Name="MergeGraphLanesCheck" Content="Merge graph lanes having common parent" />
+          <CheckBox x:Name="GraphDiagonalsCheck" Content="Render graph with diagonals" />
+          <CheckBox x:Name="StraightenDiagonalsCheck" Content="Straighten graph diagonals" />
+        </StackPanel>
+      </TabItem>
       <!-- Upstream's "Commit dialog" page: the settings whose feature the commit window has. -->
       <TabItem Header="Commit dialog">
         <StackPanel Spacing="8" Margin="4,8">
@@ -136,6 +162,109 @@
           <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
           <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left" />
         </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Blame viewer" page, the blame window's settings. The author avatar is not shown by the new shell. -->
+      <TabItem x:Name="BlameViewerTab" Header="Blame viewer">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Blame settings" FontWeight="SemiBold" />
+          <CheckBox x:Name="BlameIgnoreWhitespaceCheck" Content="Ignore whitespace" />
+          <CheckBox x:Name="BlameDetectMoveInFileCheck" Content="Detect moved or copied lines within blamed file" />
+          <CheckBox x:Name="BlameDetectMoveInAllFilesCheck" Content="Detect moved or copied lines from all files in same commit" />
+          <TextBlock Text="Display result settings" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="BlameDisplayAuthorFirstCheck" Content="Display author first" />
+          <CheckBox x:Name="BlameShowAuthorCheck" Content="Show author" />
+          <CheckBox x:Name="BlameShowAuthorDateCheck" Content="Show author date" />
+          <CheckBox x:Name="BlameShowAuthorTimeCheck" Content="Show author time" />
+          <CheckBox x:Name="BlameShowLineNumbersCheck" Content="Show line numbers" />
+          <CheckBox x:Name="BlameShowOriginalFilePathCheck" Content="Show original file path" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Sorting" page: the grid's commit order and the left panel's branch order. -->
+      <TabItem x:Name="SortingTab" Header="Sorting">
+        <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto" Margin="4,8">
+          <TextBlock Grid.Row="0" Text="Sort revisions by" VerticalAlignment="Center" />
+          <ComboBox x:Name="RevisionSortBox" Grid.Row="0" Grid.Column="2" MinWidth="200" />
+          <TextBlock Grid.Row="2" Text="Sort branches by" VerticalAlignment="Center" />
+          <ComboBox x:Name="BranchesSortByBox" Grid.Row="2" Grid.Column="2" MinWidth="200" />
+          <TextBlock Grid.Row="4" Text="Order branches" VerticalAlignment="Center" />
+          <ComboBox x:Name="BranchesOrderBox" Grid.Row="4" Grid.Column="2" MinWidth="200" />
+          <TextBlock Grid.Row="6" Text="Prioritized branches" VerticalAlignment="Center" />
+          <TextBox x:Name="PrioritizedBranchesBox" Grid.Row="6" Grid.Column="2" />
+          <TextBlock Grid.Row="8" Text="Prioritized remotes" VerticalAlignment="Center" />
+          <TextBox x:Name="PrioritizedRemotesBox" Grid.Row="8" Grid.Column="2" />
+        </Grid>
+      </TabItem>
+      <!-- Upstream's "Revision links" page: link definitions that turn commit data into links in the commit details. -->
+      <TabItem x:Name="RevisionLinksTab" Header="Revision links">
+        <Grid ColumnDefinitions="200,12,*" Margin="4,8">
+          <DockPanel Grid.Column="0">
+            <TextBlock DockPanel.Dock="Top" Text="Categories" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,6,0,0">
+              <Button x:Name="AddRevisionLinkButton" Content="Add" HorizontalAlignment="Stretch" />
+              <StackPanel x:Name="RevisionLinkTemplateButtons" Spacing="4" />
+              <Button x:Name="RemoveRevisionLinkButton" Content="Remove" HorizontalAlignment="Stretch" />
+            </StackPanel>
+            <ListBox x:Name="RevisionLinksList">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="settings:RevisionLinkItem">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+          <ScrollViewer Grid.Column="2">
+            <StackPanel x:Name="RevisionLinkDetails" Spacing="6" x:DataType="settings:RevisionLinkItem">
+              <Grid ColumnDefinitions="Auto,8,*,12,Auto">
+                <TextBlock Text="Name" VerticalAlignment="Center" />
+                <TextBox x:Name="RevisionLinkNameBox" Grid.Column="2" Text="{Binding Name}" />
+                <CheckBox x:Name="RevisionLinkEnabledCheck" Grid.Column="4" Content="Enabled" IsChecked="{Binding Enabled}" />
+              </Grid>
+              <TextBlock Text="Revision data" FontWeight="SemiBold" Margin="0,6,0,0" />
+              <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,6,Auto,6,Auto">
+                <TextBlock Grid.Row="0" Text="Search in" VerticalAlignment="Center" />
+                <WrapPanel Grid.Row="0" Grid.Column="2">
+                  <CheckBox x:Name="RevisionLinkMessageCheck" Content="Message" IsChecked="{Binding SearchMessage}" Margin="0,0,12,0" />
+                  <CheckBox x:Name="RevisionLinkLocalBranchCheck" Content="Local branch name" IsChecked="{Binding SearchLocalBranches}" Margin="0,0,12,0" />
+                  <CheckBox x:Name="RevisionLinkRemoteBranchCheck" Content="Remote branch name" IsChecked="{Binding SearchRemoteBranches}" />
+                </WrapPanel>
+                <TextBlock Grid.Row="2" Text="Search pattern" VerticalAlignment="Center" />
+                <TextBox x:Name="RevisionLinkSearchPatternBox" Grid.Row="2" Grid.Column="2" Text="{Binding SearchPattern}" />
+                <TextBlock Grid.Row="4" Text="Nested pattern" VerticalAlignment="Center" />
+                <TextBox x:Name="RevisionLinkNestedPatternBox" Grid.Row="4" Grid.Column="2" Text="{Binding NestedSearchPattern}" />
+              </Grid>
+              <TextBlock Text="Remote data" FontWeight="SemiBold" Margin="0,6,0,0" />
+              <Grid ColumnDefinitions="Auto,8,*,12,Auto" RowDefinitions="Auto,6,Auto,6,Auto">
+                <TextBlock Grid.Row="0" Text="Use remotes" VerticalAlignment="Center" />
+                <TextBox x:Name="RevisionLinkUseRemotesBox" Grid.Row="0" Grid.Column="2" Text="{Binding UseRemotesPattern}" />
+                <CheckBox x:Name="RevisionLinkFirstRemoteCheck" Grid.Row="0" Grid.Column="4" Content="Only use the first match" IsChecked="{Binding UseOnlyFirstRemote}" />
+                <TextBlock Grid.Row="2" Text="Search in" VerticalAlignment="Center" />
+                <WrapPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3">
+                  <CheckBox x:Name="RevisionLinkUrlCheck" Content="URL" IsChecked="{Binding SearchRemoteUrl}" Margin="0,0,12,0" />
+                  <CheckBox x:Name="RevisionLinkPushUrlCheck" Content="Push URL" IsChecked="{Binding SearchRemotePushUrl}" />
+                </WrapPanel>
+                <TextBlock Grid.Row="4" Text="Search pattern" VerticalAlignment="Center" />
+                <TextBox x:Name="RevisionLinkRemotePatternBox" Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Text="{Binding RemoteSearchPattern}" />
+              </Grid>
+              <TextBlock Text="Links" FontWeight="SemiBold" Margin="0,6,0,0" />
+              <Grid ColumnDefinitions="150,8,*,8,Auto">
+                <TextBlock Text="Caption" Opacity="0.7" />
+                <TextBlock Grid.Column="2" Text="URI" Opacity="0.7" />
+              </Grid>
+              <ItemsControl x:Name="RevisionLinkFormatsList" ItemsSource="{Binding Formats}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="settings:RevisionLinkFormatItem">
+                    <Grid ColumnDefinitions="150,8,*,8,Auto" Margin="0,0,0,4">
+                      <TextBox Text="{Binding Caption}" />
+                      <TextBox Grid.Column="2" Text="{Binding Format}" />
+                      <Button Grid.Column="4" Name="RemoveRevisionLinkFormatButton" Content="Remove" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button x:Name="AddRevisionLinkFormatButton" Content="Add link" HorizontalAlignment="Left" />
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
       </TabItem>
       <TabItem Header="Git config">
         <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">

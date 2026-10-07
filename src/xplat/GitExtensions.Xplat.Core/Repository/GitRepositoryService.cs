@@ -12,8 +12,22 @@ namespace GitExtensions.Xplat.Core.Repository;
 /// </summary>
 public sealed class GitRepositoryService : IRepositoryService
 {
-    public Task<RepositorySnapshot> GetSnapshotAsync(string repositoryPath) =>
-        Task.Run(() => GetSnapshot(repositoryPath));
+    private readonly Func<RefSorting> _sorting;
+
+    /// <summary>
+    ///  Reads repository state; the branches come in the order <paramref name="sorting"/> asks for, read at each snapshot (by
+    ///  default upstream's <c>RefsSortBy</c> and <c>RefsSortOrder</c> settings, as upstream's <c>GitModule.GetRefs</c>).
+    /// </summary>
+    public GitRepositoryService(Func<RefSorting>? sorting = null)
+    {
+        _sorting = sorting ?? (() => new RefSorting(AppSettings.RefsSortBy, AppSettings.RefsSortOrder));
+    }
+
+    public Task<RepositorySnapshot> GetSnapshotAsync(string repositoryPath)
+    {
+        RefSorting sorting = _sorting();
+        return Task.Run(() => GetSnapshot(repositoryPath, sorting));
+    }
 
     public Task<string> GetHeadMessageAsync(string repositoryPath) =>
         Task.Run(() => new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
@@ -27,6 +41,14 @@ public sealed class GitRepositoryService : IRepositoryService
             return [.. worktrees.Select((worktree, index) => new WorktreeInfo(worktree.Path,
                 worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted))];
         });
+
+    // Upstream's GitModule.GetRefs, with the sort given instead of read from upstream's settings.
+    private static IReadOnlyList<IGitRef> GetRefs(GitModule module, RefsFilter filter, RefSorting sorting)
+    {
+        ExecutionResult result = module.GitExecutable.Execute(
+            Commands.GetRefs(filter, noLocks: true, sorting.SortBy, sorting.Order), throwOnErrorExit: false);
+        return result.ExitedSuccessfully ? module.ParseRefs(result.StandardOutput) : [];
+    }
 
     private static string? GetTrackingRemote(GitModule module, string currentBranch)
     {
@@ -83,7 +105,7 @@ public sealed class GitRepositoryService : IRepositoryService
         return new FileChange(status.Name, kind, Staged: status.Staged == StagedStatus.Index);
     }
 
-    private static RepositorySnapshot GetSnapshot(string path)
+    private static RepositorySnapshot GetSnapshot(string path, RefSorting sorting)
     {
         GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), path);
         if (!module.IsValidGitWorkingDir())
@@ -95,7 +117,7 @@ public sealed class GitRepositoryService : IRepositoryService
 
         List<BranchInfo> branches =
         [
-            .. module.GetRefs(RefsFilter.Heads | RefsFilter.Remotes)
+            .. GetRefs(module, RefsFilter.Heads | RefsFilter.Remotes, sorting)
                 .Select(branch => new BranchInfo(branch.Name, branch.IsRemote,
                     IsCurrent: branch.IsHead && branch.Name == currentBranch)),
         ];

@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
+using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
@@ -19,6 +20,7 @@ using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitUI.ScriptsEngine;
+using GitUIPluginInterfaces;
 
 namespace GitExtensions.Xplat.App;
 
@@ -40,7 +42,7 @@ public partial class MainWindow : Window
     private readonly GitDiscoveryResult? _git;
     private readonly GitCommitHistory _history;
     private readonly CommitListViewModel _commits;
-    private readonly GitRepositoryService _repositoryService = new();
+    private readonly GitRepositoryService _repositoryService;
     private readonly RepositoryViewModel _repository;
     private readonly RepositoryOperationsViewModel _actions = new(new GitOperations(AppServices.AskPassExecutable));
     private readonly RecentRepositoriesViewModel _recent = new(AppServices.RecentRepositories);
@@ -67,8 +69,10 @@ public partial class MainWindow : Window
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
-        _history = new GitCommitHistory(() =>
-            new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate));
+        _history = new GitCommitHistory(
+            () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
+            () => _preferences.RevisionSortOrder, AppServices.RevisionLinks);
+        _repositoryService = new GitRepositoryService(RefSorting);
         _commits = new CommitListViewModel(_history);
         _repository = new RepositoryViewModel(_repositoryService);
         _actions.EditorCommand = AppServices.EditorCommand;
@@ -83,6 +87,8 @@ public partial class MainWindow : Window
 
         // The branch choice is upstream'"'"'s ShowCurrentBranchOnly; it is set before the toolbar reacts to changes.
         BranchScopeBox.SelectedIndex = _preferences.ShowCurrentBranchOnly ? 1 : 0;
+        ShowSortMenus();
+        ShowGridTooltips();
         _ = _commits.ApplyFilterAsync(new RevisionFilter(CurrentBranchOnly: _preferences.ShowCurrentBranchOnly));
         WireToolbar();
         WireMenus();
@@ -826,6 +832,43 @@ public partial class MainWindow : Window
     }
 
     // Upstream's user menu bar: one button per enabled script whose event is "show in user menu bar".
+    // Upstream's ShowRevisionGridTooltips; upstream needs a restart, here it applies when the settings are saved.
+    private void ShowGridTooltips() => ToolTip.SetServiceEnabled(CommitList, _preferences.ShowRevisionGridTooltips);
+
+    // Upstream's branch sort (RefsSortBy, RefsSortOrder, done by git) and priorities, read at each refresh.
+    private RefSorting RefSorting()
+        => new(_preferences.RefsSortBy, _preferences.RefsSortOrder, _preferences.PrioritizedBranchNames,
+            _preferences.PrioritizedRemoteNames);
+
+    // Upstream's left panel menus list every choice by its description and check the current one; a choice applies at once.
+    private void ShowSortMenus()
+    {
+        foreach (GitRefsSortBy sortBy in Enum.GetValues<GitRefsSortBy>())
+        {
+            SortByMenuItem.Items.Add(SortMenuItem(sortBy.GetDescription(), () => _preferences.RefsSortBy == sortBy,
+                () => _preferences.RefsSortBy = sortBy));
+        }
+
+        foreach (GitRefsSortOrder order in Enum.GetValues<GitRefsSortOrder>())
+        {
+            SortOrderMenuItem.Items.Add(SortMenuItem(order.GetDescription(), () => _preferences.RefsSortOrder == order,
+                () => _preferences.RefsSortOrder = order));
+        }
+    }
+
+    private MenuItem SortMenuItem(string header, Func<bool> isCurrent, Action choose)
+    {
+        MenuItem item = new() { Header = header, ToggleType = MenuItemToggleType.Radio, IsChecked = isCurrent() };
+        BranchTreeContextMenu.Opening += (_, _) => item.IsChecked = isCurrent();
+        item.Click += (_, _) =>
+        {
+            choose();
+            _preferences.Save();
+            RefreshRepository();
+        };
+        return item;
+    }
+
     private void ShowUserScripts()
     {
         UserScriptsPanel.Children.Clear();
@@ -977,6 +1020,8 @@ public partial class MainWindow : Window
         if (saved)
         {
             ThemeApplier.Apply(_preferences);
+            FontApplier.Apply(_preferences);
+            ShowGridTooltips();
             ShowHotkeys();
             ShowUserScripts();
             ShowGridScripts();
@@ -1478,7 +1523,7 @@ public partial class MainWindow : Window
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.Branches):
-                BranchTreeView.ItemsSource = BranchTree.Build(_repository.Branches);
+                BranchTreeView.ItemsSource = BranchTree.Build(_repository.Branches, RefSorting());
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.Changes):
@@ -1809,6 +1854,7 @@ public partial class MainWindow : Window
             DetailCommitDate.Text = "";
             DetailParents.Text = "";
             DetailMessage.Text = _commits.DetailsError;
+            ShowLinks([]);
             CopyHashButton.IsEnabled = false;
             CopyMessageButton.IsEnabled = false;
             return;
@@ -1820,8 +1866,32 @@ public partial class MainWindow : Window
         DetailCommitDate.Text = $"Committed: {details.CommitDate}";
         DetailParents.Text = string.IsNullOrEmpty(details.Parents) ? "No parents" : $"Parents: {details.Parents}";
         DetailMessage.Text = details.Message;
+        ShowLinks(details.Links ?? []);
         CopyHashButton.IsEnabled = true;
         CopyMessageButton.IsEnabled = true;
+    }
+
+    // Each link opens in the browser, as upstream's commit info opens them.
+    private void ShowLinks(IReadOnlyList<RevisionLink> links)
+    {
+        DetailLinks.Children.Clear();
+        foreach (RevisionLink link in links)
+        {
+            HyperlinkButton button = new() { Content = link.Caption, Margin = new Thickness(0, 0, 12, 0) };
+            ToolTip.SetTip(button, link.Uri);
+            if (Uri.TryCreate(link.Uri, UriKind.Absolute, out Uri? address))
+            {
+                button.NavigateUri = address;
+            }
+            else
+            {
+                button.IsEnabled = false;
+            }
+
+            DetailLinks.Children.Add(button);
+        }
+
+        DetailLinksPanel.IsVisible = links.Count > 0;
     }
 
     private void ShowError(string message)

@@ -24,8 +24,9 @@ internal sealed class BranchTreeTests
         local.Children.Select(node => node.Display).Should().Equal("* main", "feature (2)");
         local.Children[1].Children.Select(node => node.Name).Should().Equal("login", "ui");
         local.Children[1].Children[0].Branch!.Name.Should().Be("feature/login");
-        roots[1].Children.Select(node => node.Display).Should().Equal("origin (2)", "fork (1)");
-        roots[1].Children[0].Children[1].Children.Single().Branch!.Name.Should().Be("origin/feature/login");
+        // As upstream's RemoteBranchTree: remotes by name.
+        roots[1].Children.Select(node => node.Display).Should().Equal("fork (1)", "origin (2)");
+        roots[1].Children[1].Children[1].Children.Single().Branch!.Name.Should().Be("origin/feature/login");
     }
 
     [Test]

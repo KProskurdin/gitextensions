@@ -61,7 +61,8 @@ internal static class ThemeBrushes
             RemoteBranchLabel: Brush(colors.Get(AppColor.RemoteBranch)),
             TagLabel: Brush(colors.Get(AppColor.Tag)),
             Warning: Brush(dark ? "#D29922" : "#9A6700"),
-            Lanes: lanes.Count > 0 ? lanes : [Brush(colors.Get(AppColor.GraphNonRelativeBranch))]);
+            Lanes: lanes.Count > 0 ? lanes : [Brush(colors.Get(AppColor.GraphNonRelativeBranch))],
+            NonRelativeLane: Brush(colors.Get(AppColor.GraphNonRelativeBranch)));
     }
 
     private static IBrush Brush(DrawingColor color)
@@ -81,5 +82,6 @@ internal static class ThemeBrushes
         IBrush RemoteBranchLabel,
         IBrush TagLabel,
         IBrush Warning,
-        IReadOnlyList<IBrush> Lanes);
+        IReadOnlyList<IBrush> Lanes,
+        IBrush NonRelativeLane);
 }

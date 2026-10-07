@@ -10,7 +10,7 @@
       <Button x:Name="ResetButton" Content="Reset branch here (mixed)" IsEnabled="False" />
       <Button x:Name="CloseButton" Content="Close" />
     </StackPanel>
-    <ListBox x:Name="EntryList" FontFamily="monospace">
+    <ListBox x:Name="EntryList" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="repo:ReflogEntry">
           <StackPanel Orientation="Horizontal" Spacing="12">

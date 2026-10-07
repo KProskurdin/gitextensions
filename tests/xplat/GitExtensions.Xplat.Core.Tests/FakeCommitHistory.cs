@@ -69,7 +69,8 @@ internal sealed class FakeCommitHistory : ICommitHistory
 
     public IReadOnlyList<BlameLine> Blame { get; set; } = [];
 
-    public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath) => Task.FromResult(Blame);
+    public Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath,
+        BlameOptions? options = null) => Task.FromResult(Blame);
 
     public string? FileText { get; set; } = "";
 

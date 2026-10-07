@@ -66,6 +66,12 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/SimpleHelpDisplayDialog.cs` | `src/xplat/GitExtensions.Xplat.App/HelpWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AdvancedSettingsPage.cs`; `FormCheckoutBranch.cs` (default action), `FormCreateBranch.cs`, `FormRenameBranch.cs`, `FormCreateWorktree.cs` (name normalising), `FormCommit.cs` (`PushForced`) | `src/xplat/GitExtensions.Xplat.Core/Repository/BranchNames.cs`, `Settings/AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml.cs`, `CommitWindow.axaml.cs`, `WorktreesWindow.axaml.cs`, `SettingsWindow.axaml(.cs)` (Advanced tab) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitSettingsPage.cs`, `FormFixHome.cs`, `SshSettingsPage.cs`; `src/app/GitCommands/Settings/AppSettings.cs` (`LoadSettings` sets `GIT_SSH`) | `src/xplat/GitExtensions.Xplat.Core/Settings/HomeSettings.cs`, `SshClients.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Git and SSH tabs), `App.axaml.cs` (startup) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/SortingSettingsPage.cs`; `src/app/GitUI/LeftPanel/BaseRefTree.cs` (`OrderByPriority`), `LocalBranchTree.cs`, `RemoteBranchTree.cs` (order), `ContextMenu/GitRefsSortByContextMenuItem.cs`, `GitRefsSortOrderContextMenuItem.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/RefSorting.cs`, `BranchTree.cs`, `GitRepositoryService.cs`; `CommitHistory/RevisionSorting.cs`, `GitCommitHistory.cs`; `Settings/SortingTexts.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Sorting tab), `MainWindow.axaml(.cs)` (branch tree menu) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/RevisionLinksSettingsPage.cs`; `src/app/GitUI/CommitInfo/CommitInfo.cs` (related links) | `src/xplat/GitExtensions.Xplat.Core/Settings/RevisionLinks.cs`, `UpstreamImages.cs` (stand-in); `CommitHistory/GitCommitHistory.cs` (links in the details); `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Revision links tab), `MainWindow.axaml(.cs)` (Related links) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceFontsSettingsPage.cs`; `src/app/GitExtensions.Extensibility/FontParser.cs` (format) | `src/xplat/GitExtensions.Xplat.Core/Settings/FontSetting.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/FontApplier.cs`, `SettingsWindow.axaml(.cs)` (Fonts tab), `App.axaml` and the views' font resources | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/FormBrowseRepoSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `AuthorNameColumnProvider.cs`, `DateColumnProvider.cs`, `CommitIdColumnProvider.cs` (`TryGetToolTip`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionTooltips.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (grid tooltips), `SettingsWindow.axaml(.cs)` (Browse repository window tab) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BlameViewerSettingsPage.cs`; `src/app/GitUI/UserControls/BlameControl.cs` (`BuildAuthorLine`, gutter); `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` (blame settings menu); `GitModule.Blame` (flags) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameOptions.cs`, `BlameParser.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)`, `SettingsWindow.axaml(.cs)` (Blame viewer tab) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/Graph/Rendering/GraphRenderer.cs`, `SegmentRenderer.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/DetailedSettingsPage.cs` (revision graph group) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GraphPainter.cs`, `CommitGraph.cs` (feeds upstream's `RevisionGraph`, linked unchanged), `Settings/UpstreamGraphLaneColor.cs` (stand-in); `src/xplat/GitExtensions.Xplat.App/GraphCell.cs`, `SettingsWindow.axaml(.cs)` (Detailed tab) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GeneralSettingsPage.cs`, `AppearanceSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/DateColumnProvider.cs`; `RevisionGridMenuCommands.cs` (author and relative date toggles) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitDateStyle.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (View menu, startup, commit button); `CloneWindow.axaml.cs`; `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/DiffViewerSettingsPage.cs`; `src/app/GitUI/Editor/FileViewer.cs` (whitespace, context lines, entire file, `GetExtraDiffArguments`) | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffOptions.cs`, `Settings/AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`; `SettingsWindow.axaml(.cs)` (Diff viewer tab) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/CommitDialogSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Commit dialog tab); `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs` | `52d08e996` | partial |
@@ -93,8 +99,8 @@ remote-branch and tag labels colored by kind; a context menu (copy hash or messa
 files, cherry-pick, revert, reset soft, mixed or hard); lanes that keep one color for their whole length; 5000 commits
 loaded and scrolled at 60 fps (PLAN.md M3.5). Earlier: a read-only list of the first 500 commits from `HEAD`,
 with short hash, subject, author and date, using the shared `RevisionReader.GetLog`. Selecting a row
-loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (the Search history box, Enter; git log --grep); a lane graph beside each commit (GraphLayout in core, GraphCell in the window): one lane per open line of history,
-with the lanes that pass through each row. Not ported: branch and tag labels on the graph, colors per branch, column layout
+loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (the Search history box, Enter; git log --grep); a lane graph beside each commit (since 2026-10-07 upstream's `RevisionGraph` with the ported renderer, see
+GraphRenderer below). Not ported: column layout
 and sorting, paging past 500 commits, the upstream filter bar and search (the box in the window filters only the loaded commits, by hash, subject or author), refs labels, and the changed-file list.
 
 **FormStash** (`partial`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
@@ -329,6 +335,61 @@ path back as another client. Not ported: the "Download Git" link, validating the
 folders, the registry location of an old PuTTY installer, and what upstream does with PuTTY in remote operations (starting
 Pageant with a remote's key, answering plink's host key question, the PuTTY key buttons): the setting is kept but the shell
 does not act on it yet.
+
+**SortingSettingsPage / left panel order** (`partial`). Ported 2026-10-07: Settings > Sorting has upstream's revision order
+(`RevisionSortOrder`: git's default, `--author-date-order`, `--topo-order`; also used by the file history and the search),
+the branch sort key and order (`RefsSortBy`, `RefsSortOrder`, given to `for-each-ref --sort` through upstream's
+`Commands.GetRefs`) and the prioritized branch and remote expressions with upstream's tooltips; the branch tree's context
+menu has upstream's "Sort by" and "Sort order" choices. The tree puts prioritized branches (matched by the name without the
+remote) and remotes first as `OrderByPriority` does, and lists remotes by name. Difference: an invalid expression matches
+nothing instead of failing the tree. Not ported: the help links to the user manual, the priorities in the commit info panel
+(the shell's commit details list no branches yet).
+
+**RevisionLinksSettingsPage / CommitInfo related links** (`partial`). Ported 2026-10-07: Settings > Revision links edits
+upstream's link definitions (`RevisionLinkDefs`) through upstream's `ExternalLinksManager`, so they are stored at the levels
+upstream uses (the repository's effective settings, or the user's without a repository): the categories, Add (upstream's new
+definition), the GitHub and Azure DevOps templates (upstream's extractors, linked unchanged; buttons instead of the Add
+drop-down; upstream's remote preference), Remove, and every field of a definition with its link rows. The commit details
+show "Related links:" for the selected commit, found by upstream's `GitRevisionExternalLinksParser` in the message and the
+local and remote branches at the commit, each address once; a link opens in the browser. Not ported: the template icons, the
+other commit info parts that upstream renders as links (branches, tags), and choosing a settings level on the page.
+
+**AppearanceFontsSettingsPage** (`partial`). Ported 2026-10-07: Settings > Fonts edits upstream's application, commit, code
+and monospace fonts (`font`, `commitfont`, `difffont`, `monospacefont`) in upstream's stored format. Upstream reads them
+through `System.Drawing.Font`, which works only on Windows, so `FontSetting` parses and writes the same text. Avalonia has no
+font dialog: the family is chosen from the installed fonts (a stored one that is not installed is listed too) and the size
+typed in points. "(default)" removes the key, so the app's own font applies (upstream cannot unset a font). Only a font the
+user changed is written. The fonts apply at once, without upstream's restart: the application font to the whole UI through
+Fluent's font resources, the commit font to the commit message box and the commit details, the code font to the diff,
+editors, blame, git output, command log and help, the monospace font to commit hashes and the reflog. Not ported: bold and
+italic (kept as stored, not shown), "Show end-of-line markers as glyph" (the diff view shows no end-of-line markers).
+
+**FormBrowseRepoSettingsPage / revision grid tooltips** (`partial`). Ported 2026-10-07: "Show revision tooltips"
+(`ShowRevisionGridTooltips`, on by default) and the tooltips it controls, with upstream's texts: the message column shows
+the message summary (upstream's `GitRevisionSummaryBuilder`) when it has more lines or the commit has refs, then the refs in
+brackets (local branches, remote branches, tags); the author column the author and committer; the date column both dates;
+the hash column the full hash. Upstream needs a restart; here the setting applies when the settings are saved. Not ported:
+ahead/behind counts in the ref lines and the tooltips of a hovered ref label (the shell has no ahead/behind data per ref),
+the artificial commits' change counts, and the page's other settings: the Console tab and its shell, GPG information, find
+in commit files with git grep, output history (the shell has none of them); "Show file history in the main window" and
+"Show blame in diff viewer" (the shell shows file history and blame in their own windows only).
+
+**BlameViewerSettingsPage / blame gutter and menu** (`partial`). Ported 2026-10-07: the blame window blames with upstream's
+flags (`-M`, `-C`, `-w` from `DetectCopyInFileOnBlame`, `DetectCopyInAllOnBlame`, `IgnoreWhitespaceOnBlame`) and shows
+upstream's gutter line (author and date in the chosen order, the time, the original file path) on the first line of each run
+of lines from one commit, with line numbers when chosen. Its context menu has the blame settings of upstream's file history
+window, with upstream's rules (the author or the date always shows; the time only with the date); Settings > Blame viewer has
+the page with upstream's labels and warning tooltip. Differences: the short hash stays in its own column (a column the new
+shell had before), shown once per run like the gutter line. Not ported: the author avatar, the age colors of upstream's
+gutter, and blaming the line's commit or its parent from the menu.
+
+**GraphRenderer / SegmentRenderer / DetailedSettingsPage** (`partial`). Ported 2026-10-07: upstream's graph model is linked
+unchanged; its renderer is ported line by line from WinForms' Graphics to shapes (`GraphPainter`): lanes, shared lanes,
+diagonals or curves, perpendicular junctions and bows, square nodes for commits with refs, the outline of HEAD, upstream's
+sizes. Differences: upstream's 1/8-pixel anti-aliasing shift for GDI+ is left out; the two lane states upstream throws on
+are skipped instead; colors come from the theme's lane colors by index (stand-in `RevisionGraphLaneColor`). Not ported:
+the gray non-relative and highlight draw styles, hover highlighting, the cached row bitmaps (`GraphCache`), lane tooltips
+(`LaneInfoProvider`, `BranchFinder`), artificial working-tree rows, and the Detailed page's push and merge window options.
 
 **GeneralSettingsPage / AppearanceSettingsPage / DateColumnProvider** (`partial`). Ported 2026-10-07: relative or full date
 of the author or the committer in the grid (also in search results), with upstream's View menu toggles; open the last

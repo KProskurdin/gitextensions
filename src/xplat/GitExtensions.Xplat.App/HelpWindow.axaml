@@ -6,7 +6,7 @@
   <DockPanel Margin="12" LastChildFill="True">
     <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Content="Close" IsCancel="True" HorizontalAlignment="Right" Margin="0,8,0,0" />
     <ScrollViewer>
-      <SelectableTextBlock x:Name="ContentText" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+      <SelectableTextBlock x:Name="ContentText" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" TextWrapping="Wrap" />
     </ScrollViewer>
   </DockPanel>
 </Window>

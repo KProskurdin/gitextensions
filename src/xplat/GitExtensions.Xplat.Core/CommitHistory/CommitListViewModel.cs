@@ -5,7 +5,7 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 /// <summary>
 ///  A commit as the list shows it: its row and where it sits in the revision graph.
 /// </summary>
-public sealed record CommitListItem(CommitRow Row, GraphRow Graph)
+public sealed record CommitListItem(CommitRow Row, GraphRowRef Graph)
 {
     /// <summary>
     ///  The branch and tag names of the commit in brackets, e.g. "[main] [v1.0] ", or empty when none point at it.
@@ -34,6 +34,8 @@ public sealed class CommitListViewModel : ObservableObject
     private int _loadVersion;
     private int _detailsVersion;
     private IReadOnlyList<CommitRow> _rows = [];
+    private CommitGraph? _graph;
+    private IReadOnlyList<CommitRow>? _graphRows;
     private IReadOnlyList<CommitListItem> _visibleRows = [];
     private string _filterText = "";
     private RevisionFilter _filter = RevisionFilter.AllBranches;
@@ -164,15 +166,23 @@ public sealed class CommitListViewModel : ObservableObject
 
     public void ClearError() => ErrorMessage = null;
 
+    // The list shows the commits in the graph's order, as upstream's grid does. The graph is built once per read; the quick
+    // filter only hides rows, which keep their place in the graph.
     private void RefreshVisibleRows()
     {
-        IReadOnlyList<GraphRow> graph = GraphLayout.Compute(_rows);
-        List<CommitListItem> items = [];
-        for (int i = 0; i < _rows.Count; i++)
+        if (_graph is null || !ReferenceEquals(_graphRows, _rows))
         {
-            if (_filterText.Length == 0 || Matches(_rows[i], _filterText))
+            _graph = CommitGraph.Build(_rows);
+            _graphRows = _rows;
+        }
+
+        List<CommitListItem> items = [];
+        for (int i = 0; i < _graph.OrderedRows.Count; i++)
+        {
+            CommitRow row = _graph.OrderedRows[i];
+            if (_filterText.Length == 0 || Matches(row, _filterText))
             {
-                items.Add(new CommitListItem(_rows[i], graph[i]));
+                items.Add(new CommitListItem(row, _graph.RowAt(i)));
             }
         }
 
@@ -335,6 +345,11 @@ public sealed class CommitListViewModel : ObservableObject
                 return;
             }
 
+            if (!await PrepareGraphAsync(page.Rows, version))
+            {
+                return;
+            }
+
             Rows = page.Rows;
             HasMore = false;
             string count = page.Rows.Count == 1 ? "1 commit" : $"{page.Rows.Count} commits";
@@ -359,6 +374,21 @@ public sealed class CommitListViewModel : ObservableObject
         }
     }
 
+    // Upstream's graph straightens its lanes while it is built, which takes a while for thousands of commits, so it is built
+    // off the UI thread before the rows are shown. False when a newer read has started meanwhile.
+    private async Task<bool> PrepareGraphAsync(IReadOnlyList<CommitRow> rows, int version)
+    {
+        CommitGraph graph = await Task.Run(() => CommitGraph.Build(rows));
+        if (version != _loadVersion)
+        {
+            return false;
+        }
+
+        _graph = graph;
+        _graphRows = rows;
+        return true;
+    }
+
     private async Task LoadPagesAsync(string repositoryPath, int pages)
     {
         int version = ++_loadVersion;
@@ -370,6 +400,11 @@ public sealed class CommitListViewModel : ObservableObject
         {
             CommitPage page = await _history.LoadPageAsync(repositoryPath, pages * PageSize, _filter);
             if (version != _loadVersion)
+            {
+                return;
+            }
+
+            if (!await PrepareGraphAsync(page.Rows, version))
             {
                 return;
             }

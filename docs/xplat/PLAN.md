@@ -314,10 +314,24 @@ WSLg frame times vary between runs by a few percent; the 95th percentile stayed 
 benchmark on Windows, Linux (xvfb) and macOS runners (`tests/xplat/make-bench-repo.sh`, artifact `graph-benchmark-<os>`);
 runners have no GPU, so those numbers are a lower bound.
 
-Layout of 5000 commits alone is unit-tested to stay under one second (`GraphLayoutTests`). The upstream graph layout code
-(`RevisionGraph`) was not reused: it lives in `GitUI` with WinForms painting mixed in, so `GraphLayout` reimplements the lane
-assignment. Still open: drawing styles of upstream (curved lines, the "artificial" working-tree rows) and the graph of a
-filtered or searched list (it is computed over the rows shown).
+Until 2026-10-07 the spike's own `GraphLayout` assigned the lanes (unit-tested for 5000 commits); it was replaced by
+upstream's graph, below. Still open: the graph of a filtered or searched list (it is computed over the rows shown).
+
+Upstream graph, 2026-10-07: the spike's own lane layout (`GraphLayout`) is replaced by upstream's graph model: `RevisionGraph`
+and its rows, segments and lanes (`src/app/GitUI/UserControls/RevisionGrid/Graph`, ten files) are compiled into the core by
+link, unchanged; only their lane colors (upstream reads WinForms theme brushes) have a stand-in that gives the color index.
+Upstream's renderer (`GraphRenderer`, `SegmentRenderer`) draws with WinForms' Graphics, so `GraphPainter` ports it to plain
+shapes (lines, Bezier curves, nodes) that `GraphCell` draws with Avalonia: upstream's lanes, shared lanes, straightened
+diagonals, curves, square nodes for commits with refs and the outline of the checked-out commit, in upstream's sizes. The list
+shows the commits in the graph's order, as upstream's grid does. Settings > Detailed has upstream's three graph settings
+(`MergeGraphLanesHavingCommonParent`, `RenderGraphWithDiagonals`, `StraightenGraphDiagonals`); upstream's graph reads them
+itself when a graph is made, so they apply on the next reload. Because upstream straightens lanes while it builds the graph,
+loading 5000 commits takes about 470 ms on Windows (197 ms with the spike); the graph is built off the UI thread. Scrolling is
+unchanged: 99 fps on Windows, 61 fps on Linux (WSLg, vsync). Not ported: upstream's other draw styles (gray non-relatives,
+highlighting a branch on hover), the lane tooltips (`LaneInfoProvider`), the artificial working-tree rows, and a column
+width that follows the visible rows (each row is as wide as the widest row of the page). A lane to a parent beyond the
+loaded page is not drawn, as in upstream's renderer. Tests: 275 core and 206 app on Windows; 275 and 205 on Linux (WSL).
+Checked by screenshot on Windows on this repository and on the 5500-commit benchmark repository.
 
 Started 2026-10-04 as a spike. Done: `GraphLayout` in core assigns each commit a lane and the lanes open above it (pure code, 6 tests); each commit row carries its parent hashes and its branch and tag labels; the commit list draws the lanes with `GraphCell` and shows the labels in brackets. A screenshot on Windows of a repository with two merges and a tag shows the lanes and labels as expected. Not done: the 5000-commit target, the 60 fps measurement, colors per branch, and a check on Linux and macOS. The spike has only loaded commits (the first 500), so the graph covers that page.
 
@@ -523,6 +537,59 @@ paths (`plink`, `puttygen`, `pageant`, looked for in upstream's folders) and "Au
 PuTTY's part in remote operations (Pageant start with a remote's key, plink's host key question, key buttons), the startup
 HOME check, validation of the git command while it is typed, the "Download Git" link. Tests: 238 core and 195 app on
 Windows; 238 and 194 on Linux (WSL), where the HOME choice test does not run.
+
+Sorting page, 2026-10-07: Settings > Sorting has upstream's Sorting page. "Sort revisions by" (`RevisionSortOrder`: git's
+default, author date, topology) orders the grid, the file history and the search as upstream's `RevisionReader` asks git
+(`--author-date-order`, `--topo-order`). "Sort branches by" and "Order branches" (`RefsSortBy`, `RefsSortOrder`) go to git's
+`for-each-ref --sort` through upstream's `Commands.GetRefs`, and the branch tree's new context menu has upstream's "Sort by"
+and "Sort order" choices, which apply at once. "Prioritized branches" and "Prioritized remotes" (`PrioritizedBranchNames`,
+`PrioritizedRemoteNames`, regular expressions separated by ';') move matching branches and remotes to the top of the tree,
+as upstream's `BaseRefTree.OrderByPriority`; remotes are listed by name, as upstream does (they were in git's order). By
+default "main..." and "master..." local branches and the origin and upstream remotes now come first, as in Git Extensions
+for Windows. The shell passes its preferences to the readers instead of relying on upstream's static settings, so the
+values are the same in the app and the tests can use their own. Tests: 245 core and 198 app on Windows; 245 and 197 on
+Linux (WSL).
+
+Revision links page, 2026-10-07: Settings > Revision links has upstream's page: link definitions that turn text in a commit
+into links (an issue number in the message, a branch named after a ticket). The definitions are upstream's `RevisionLinkDefs`
+setting, edited through upstream's `ExternalLinksManager` at upstream's levels, so both apps share them; the GitHub and Azure
+DevOps templates are upstream's own classes, compiled into the core by link (their WinForms icons are a stand-in). The
+commit details now show upstream's "Related links:" for the selected commit, found by upstream's parser in the message and
+the branch names at the commit; each opens in the browser. Not ported: choosing the settings level on the page, the template
+icons. Tests: 250 core and 200 app on Windows; 250 and 199 on Linux (WSL).
+
+Fonts page, 2026-10-07: Settings > Fonts has upstream's four fonts (application, commit, code, monospace), stored under
+upstream's keys in upstream's format; the core reads that text itself (`FontSetting`), since upstream's `System.Drawing.Font`
+does not work off Windows. The family is chosen from the installed fonts and the size given in points; "(default)" keeps the
+app's own font. The fonts apply when OK is pressed (upstream needs a restart): the application font to the whole UI, the
+commit font to the commit message box and details, the code font to diffs, editors, blame and git output, the monospace font
+to commit hashes. Visible change: Git Extensions for Windows stores all four fonts whenever its Fonts page is saved, so on a
+computer where it ran, the new shell now uses those fonts (typically Segoe UI 9 points instead of Inter, Consolas for code),
+and the commit message box uses the commit font, which is not monospace by default (as upstream). Checked by screenshot on
+Windows with such settings. Not ported: bold and italic, end-of-line glyphs. Tests: 264 core and 202 app on Windows; 264 and
+201 on Linux (WSL).
+
+Browse repository window page, 2026-10-07: the revision grid now shows upstream's tooltips: the full message and the
+commit's branches and tags on the message, author and committer on the author, both dates on the date, the full hash on the
+hash, with upstream's texts. Settings > Browse repository window has upstream's "Show revision tooltips"
+(`ShowRevisionGridTooltips`), which applies without a restart. The page's other settings are for features the shell does not
+have (Console tab, GPG, git-grep search, output history) or shows elsewhere (file history and blame in their own windows).
+Tests: 268 core and 203 app on Windows; 268 and 202 on Linux (WSL).
+
+M5 status after the settings pages, 2026-10-07: every upstream settings page has a tab in the new shell for the settings whose
+feature the shell has (Appearance, Fonts, General, Browse repository window, Commit dialog, Diff viewer, Advanced,
+Confirmations, Sorting, Revision links, Git, SSH, Git config, Scripts, Hotkeys, Plugins, Blame viewer), stored under upstream's
+keys. Detailed has a tab for its revision graph settings (since upstream's graph is used, M3.5); its push and merge
+window options are not ported. Not given a tab: Build server integration, Console style, Shell extension and the checklist
+(Windows-only or features not ported). Theme, hotkeys and settings are editable, so the M5 exit is met on Windows and
+Linux.
+
+Blame viewer page, 2026-10-07: the blame window follows upstream's blame settings. git blames with upstream's flags (ignore
+whitespace, on by default; detect moved or copied lines in the file or in all files), and each run of lines from one commit
+shows upstream's gutter line once: the author and date in the chosen order, the time, and the original path of a line that
+came from another file; line numbers are off by default, as upstream. The window's context menu has upstream's blame
+settings menu with its rules, and Settings > Blame viewer has the page. Not ported: author avatars, age colors, blaming the
+line's commit or parent. Tests: 279 core and 205 app on Windows; 279 and 204 on Linux (WSL).
 
 - Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
   values that upstream keeps in the Windows registry (through S1, read-only on Windows).

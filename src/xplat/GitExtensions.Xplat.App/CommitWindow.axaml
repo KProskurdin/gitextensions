@@ -69,7 +69,7 @@
             <TextBox x:Name="CommitAuthorBox" Width="260" Margin="0,0,6,4" PlaceholderText="Author (optional: Name &lt;email&gt;)" />
           </WrapPanel>
           <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
-                   FontFamily="{DynamicResource DiffFontFamily}" PlaceholderText="Commit message" />
+                   FontFamily="{DynamicResource CommitFontFamily}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Commit message" />
         </DockPanel>
       </Grid>
     </Grid>

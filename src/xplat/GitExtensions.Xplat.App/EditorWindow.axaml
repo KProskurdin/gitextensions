@@ -19,6 +19,6 @@
       </StackPanel>
     </Border>
     <TextBox x:Name="ContentBox" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" BorderThickness="0"
-             FontFamily="{DynamicResource DiffFontFamily}" />
+             FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" />
   </DockPanel>
 </Window>

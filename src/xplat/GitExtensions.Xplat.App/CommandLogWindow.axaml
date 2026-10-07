@@ -9,7 +9,7 @@
       <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Clear" />
       <Button x:Name="CopyButton" DockPanel.Dock="Right" Content="Copy command line" Margin="0,0,6,0" />
     </DockPanel>
-    <ListBox x:Name="EntryList" Grid.Row="1" FontFamily="{DynamicResource DiffFontFamily}">
+    <ListBox x:Name="EntryList" Grid.Row="1" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}">
       <ListBox.Styles>
         <Style Selector="ListBoxItem">
           <Setter Property="Padding" Value="4,0" />
@@ -19,7 +19,7 @@
     </ListBox>
     <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
     <ScrollViewer Grid.Row="3">
-      <SelectableTextBlock x:Name="DetailText" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="Wrap" />
+      <SelectableTextBlock x:Name="DetailText" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" TextWrapping="Wrap" />
     </ScrollViewer>
   </Grid>
 </Window>

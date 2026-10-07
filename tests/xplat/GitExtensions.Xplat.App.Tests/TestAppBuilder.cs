@@ -40,6 +40,20 @@ public static class TestAppBuilder
     public static InMemorySettingsSource PluginSettings { get; private set; } = new();
 
     /// <summary>
+    ///  The settings file the revision link definitions go to during the tests; <see cref="UseRevisionLinks"/> starts a new one.
+    /// </summary>
+    public static string RevisionLinksFile { get; private set; } = "";
+
+    /// <summary>
+    ///  Gives the windows an empty settings file of their own for revision links.
+    /// </summary>
+    public static void UseRevisionLinks()
+    {
+        RevisionLinksFile = Path.Combine(Path.GetTempPath(), $"xplat-links-{Guid.NewGuid():N}.settings");
+        AppServices.RevisionLinks = new FileRevisionLinkStore(RevisionLinksFile);
+    }
+
+    /// <summary>
     ///  Gives the windows <paramref name="plugins"/> and empty plugin settings; with no plugins, as at the start, none load.
     /// </summary>
     public static void UsePlugins(params IGitPlugin[] plugins)
@@ -53,6 +67,7 @@ public static class TestAppBuilder
     {
         // No plugin from the folder next to the test host is loaded, and plugin settings stay in memory.
         UsePlugins();
+        UseRevisionLinks();
 
         // Replaced before the app starts, so no window ever touches the user's settings file.
         AppServices.RecentRepositories = new InMemoryRecentRepositoryStore();

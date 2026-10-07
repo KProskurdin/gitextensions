@@ -12,6 +12,6 @@
       <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
       <Button x:Name="SaveButton" Content="Save" />
     </StackPanel>
-    <TextBox x:Name="ContentBox" AcceptsReturn="True" FontFamily="{DynamicResource DiffFontFamily}" TextWrapping="NoWrap" />
+    <TextBox x:Name="ContentBox" AcceptsReturn="True" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" TextWrapping="NoWrap" />
   </DockPanel>
 </Window>

@@ -19,6 +19,7 @@ public partial class App : Application
         // The shared core marshals work onto the thread that created this context, i.e. the UI thread.
         GitUI.ThreadHelper.JoinableTaskContext = new Microsoft.VisualStudio.Threading.JoinableTaskContext();
         ThemeApplier.Apply(AppServices.Preferences);
+        FontApplier.Apply(AppServices.Preferences);
 
         // As upstream at startup (AppSettings.LoadSettings): git uses the ssh client chosen on the SSH settings page.
         SshClients.Apply(AppServices.Preferences.SshPath);
