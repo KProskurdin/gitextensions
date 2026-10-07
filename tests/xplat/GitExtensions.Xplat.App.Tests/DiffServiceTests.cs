@@ -1,4 +1,5 @@
 using Avalonia.Headless.NUnit;
+using GitCommands.Settings;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using NUnit.Framework;
@@ -29,11 +30,45 @@ internal sealed class DiffServiceTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "two   ");
 
-        IReadOnlyList<DiffLine> withWhitespace = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false).GetAwaiter().GetResult();
-        IReadOnlyList<DiffLine> ignoringWhitespace = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false, ignoreWhitespace: true).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> withWhitespace =
+            _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> ignoringWhitespace = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false,
+            new DiffOptions(IgnoreWhitespaceKind.AllSpace)).GetAwaiter().GetResult();
 
         withWhitespace.Should().NotBeEmpty();
         ignoringWhitespace.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void GetDiff_follows_the_whitespace_kind_and_the_context_as_upstreams_file_viewer()
+    {
+        string[] original = [.. Enumerable.Range(1, 20).Select(i => $"line {i}")];
+        File.WriteAllLines(Path.Combine(_repo.Path, "a.txt"), original);
+        _repo.Run("commit", "-q", "-am", "twenty lines");
+        string[] changed = [.. original];
+        changed[9] = "line 10   ";
+        changed[10] = "line  11";
+        File.WriteAllLines(Path.Combine(_repo.Path, "a.txt"), changed);
+
+        // At end of line only the trailing spaces are ignored; a change in amount ignores both edits.
+        Changed(new DiffOptions(IgnoreWhitespaceKind.Eol)).Should().Be(1);
+        Changed(new DiffOptions(IgnoreWhitespaceKind.Change)).Should().Be(0);
+        Changed(new DiffOptions()).Should().Be(2);
+
+        // git's default context is 3 lines on each side; none, more, and the entire file follow the options.
+        Context(new DiffOptions()).Should().Be(6);
+        Context(new DiffOptions(ContextLines: 0)).Should().Be(0);
+        Context(new DiffOptions().WithMoreContext()).Should().Be(8);
+        Context(new DiffOptions(ShowEntireFile: true)).Should().Be(18);
+
+        return;
+
+        int Changed(DiffOptions options) => Diff(options).Count(line => line.Kind == DiffLineKind.Added);
+
+        int Context(DiffOptions options) => Diff(options).Count(line => line.Kind == DiffLineKind.Context);
+
+        IReadOnlyList<DiffLine> Diff(DiffOptions options)
+            => _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false, options).GetAwaiter().GetResult();
     }
 
     [AvaloniaTest]
@@ -41,7 +76,8 @@ internal sealed class DiffServiceTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
 
-        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, null, "new.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, null, "new.txt", staged: false).GetAwaiter()
+            .GetResult();
 
         lines.Should().Contain(line => line.Kind == DiffLineKind.Added && line.Text == "+content");
     }
@@ -49,7 +85,8 @@ internal sealed class DiffServiceTests
     [AvaloniaTest]
     public void GetDiff_of_an_unchanged_tracked_file_is_empty()
     {
-        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, null, "a.txt", staged: false).GetAwaiter()
+            .GetResult();
 
         lines.Should().BeEmpty();
     }
@@ -60,7 +97,8 @@ internal sealed class DiffServiceTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         _repo.Run("stash", "push", "-q");
 
-        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, "stash@{0}", filePath: null, staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, "stash@{0}", filePath: null, staged: false)
+            .GetAwaiter().GetResult();
 
         lines.Should().Contain(line => line.Kind == DiffLineKind.Added && line.Text == "+changed");
     }
@@ -70,7 +108,8 @@ internal sealed class DiffServiceTests
     {
         string head = _repo.Run("rev-parse", "HEAD").Trim();
 
-        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, head, "a.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, head, "a.txt", staged: false).GetAwaiter()
+            .GetResult();
 
         lines.Should().Contain(line => line.Kind == DiffLineKind.Removed && line.Text == "-one");
         lines.Should().Contain(line => line.Kind == DiffLineKind.Added && line.Text == "+two");
@@ -81,7 +120,8 @@ internal sealed class DiffServiceTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
 
-        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, commitHash: null, "a.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> lines = _diff.GetDiffAsync(_repo.Path, commitHash: null, "a.txt", staged: false)
+            .GetAwaiter().GetResult();
 
         lines.Should().Contain(line => line.Kind == DiffLineKind.Added && line.Text == "+changed");
     }
@@ -92,8 +132,10 @@ internal sealed class DiffServiceTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "staged");
         _repo.Run("add", "a.txt");
 
-        IReadOnlyList<DiffLine> staged = _diff.GetDiffAsync(_repo.Path, commitHash: null, "a.txt", staged: true).GetAwaiter().GetResult();
-        IReadOnlyList<DiffLine> unstaged = _diff.GetDiffAsync(_repo.Path, commitHash: null, "a.txt", staged: false).GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> staged = _diff.GetDiffAsync(_repo.Path, commitHash: null, "a.txt", staged: true)
+            .GetAwaiter().GetResult();
+        IReadOnlyList<DiffLine> unstaged = _diff.GetDiffAsync(_repo.Path, commitHash: null, "a.txt", staged: false)
+            .GetAwaiter().GetResult();
 
         staged.Should().Contain(line => line.Text == "+staged");
         unstaged.Should().BeEmpty();
@@ -104,7 +146,8 @@ internal sealed class DiffServiceTests
     {
         string head = _repo.Run("rev-parse", "HEAD").Trim();
 
-        IReadOnlyList<CommitFile> files = new GitCommitHistory().LoadFilesAsync(_repo.Path, head).GetAwaiter().GetResult();
+        IReadOnlyList<CommitFile> files = new GitCommitHistory().LoadFilesAsync(_repo.Path, head).GetAwaiter()
+            .GetResult();
 
         files.Should().ContainSingle().Which.Display.Should().Be("M a.txt");
     }

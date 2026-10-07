@@ -64,6 +64,11 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/ScriptsEngine/ScriptsManager.cs`, `ScriptsManager.ScriptRunner.cs`, `ScriptOptionsParser.cs`, `ScriptInfo.cs`, `SimplePrompt.cs`, `FormFilePrompt.cs`; `src/app/GitUI/GitModuleForm.cs` (`ExecuteScriptCommand`) | `src/xplat/GitExtensions.Xplat.Core/Scripts/` (`ScriptDefinition`, `ScriptStore.cs` with `ScriptsXml`, `ScriptRunner`, `ScriptVariables`, `RepositoryScriptContext`); `src/xplat/GitExtensions.Xplat.App/ScriptHost.cs`; `MainWindow.axaml(.cs)` (user menu bar, grid Run script, event hooks); `CommitWindow.axaml.cs` (commit events) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ScriptsSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Scripts tab); `src/xplat/GitExtensions.Xplat.Core/Scripts/ScriptListEditor.cs`, `ScriptHelp.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/SimpleHelpDisplayDialog.cs` | `src/xplat/GitExtensions.Xplat.App/HelpWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AdvancedSettingsPage.cs`; `FormCheckoutBranch.cs` (default action), `FormCreateBranch.cs`, `FormRenameBranch.cs`, `FormCreateWorktree.cs` (name normalising), `FormCommit.cs` (`PushForced`) | `src/xplat/GitExtensions.Xplat.Core/Repository/BranchNames.cs`, `Settings/AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml.cs`, `CommitWindow.axaml.cs`, `WorktreesWindow.axaml.cs`, `SettingsWindow.axaml(.cs)` (Advanced tab) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitSettingsPage.cs`, `FormFixHome.cs`, `SshSettingsPage.cs`; `src/app/GitCommands/Settings/AppSettings.cs` (`LoadSettings` sets `GIT_SSH`) | `src/xplat/GitExtensions.Xplat.Core/Settings/HomeSettings.cs`, `SshClients.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Git and SSH tabs), `App.axaml.cs` (startup) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GeneralSettingsPage.cs`, `AppearanceSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/DateColumnProvider.cs`; `RevisionGridMenuCommands.cs` (author and relative date toggles) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitDateStyle.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (View menu, startup, commit button); `CloneWindow.axaml.cs`; `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/DiffViewerSettingsPage.cs`; `src/app/GitUI/Editor/FileViewer.cs` (whitespace, context lines, entire file, `GetExtraDiffArguments`) | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffOptions.cs`, `Settings/AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`; `SettingsWindow.axaml(.cs)` (Diff viewer tab) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/CommitDialogSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Commit dialog tab); `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ConfirmationsSettingsPage.cs`; `src/app/GitUI/MessageBoxes.cs` (`ConfirmSuppressible`, `ConfirmBranchCheckout`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Confirmations.cs`, `AppPreferences.cs` (`Asks`, `SetAsks`); `src/xplat/GitExtensions.Xplat.App/ConfirmWindow.axaml(.cs)` (`AskAsync`); `SettingsWindow.axaml(.cs)` (Confirmations tab) | `52d08e996` | partial |
 | `src/app/GitUI/Plugin/PluginRegistry.cs`, `FailedPluginWrapper.cs`; `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (`RegisterPlugins`, `UpdatePluginMenu`, plugin parts of `SetGitModule`) | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginCatalog.cs`; `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` (`Register`, `Unregister`); `MainWindow.axaml(.cs)` (Plugins menu) | `52d08e996` | partial |
 | `src/app/GitUI/GitUICommands.cs` (the `IGitUICommands` plugins see) | `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` | `52d08e996` | partial |
@@ -304,6 +309,46 @@ save, the port only when the scripts changed. Not ported: the icon choice (upstr
 stored), the property grid itself (plain fields instead).
 
 **SimpleHelpDisplayDialog** (`ported`). A help text in its own window, not modal, closed with its owner.
+
+**AdvancedSettingsPage** (`partial`). Ported 2026-10-07: the checkout default action and "always show", branch name
+normalising with upstream's normaliser and symbols, and force-with-lease for Commit & Push after an amend. Differences: the
+shell asks about local changes only when there are some (upstream's dialog also picks the branch); the remote branch
+checkout does not go through the question, as before. Not ported: update checks, help images, advanced options, console
+emulator.
+
+**GitSettingsPage / FormFixHome / SshSettingsPage** (`partial`). Ported 2026-10-07: Settings > Git has the command used to
+run git, the Linux tools folder (Windows only, as upstream clears it elsewhere) and upstream's line about
+`GIT_CONFIG_GLOBAL` or HOME (variables written as `%NAME%` on Windows, `$NAME` elsewhere). FormFixHome's choices (upstream's
+default, USERPROFILE, another folder, with its two checks) are on the tab instead of a separate window, and on Windows only:
+elsewhere HOME is always set, and changing the app's own HOME would also move its settings folders. Settings > SSH chooses
+OpenSSH, PuTTY or another client with upstream's `gitssh` rule (a path ending in plink.exe is PuTTY), PuTTY's three paths
+(filled from upstream's folder list on Windows) and the Pageant autostart setting; `GIT_SSH` is set on save and at startup,
+as upstream's `AppSettings.LoadSettings` does. PuTTY is offered on Windows only, since upstream's rule reads a Linux plink
+path back as another client. Not ported: the "Download Git" link, validating the git command while it is typed
+(`CheckSettingsLogic`), the startup HOME check (`CheckHomePath`) and FormFixHome's search for a `.gitconfig` in other
+folders, the registry location of an old PuTTY installer, and what upstream does with PuTTY in remote operations (starting
+Pageant with a remote's key, answering plink's host key question, the PuTTY key buttons): the setting is kept but the shell
+does not act on it yet.
+
+**GeneralSettingsPage / AppearanceSettingsPage / DateColumnProvider** (`partial`). Ported 2026-10-07: relative or full date
+of the author or the committer in the grid (also in search results), with upstream's View menu toggles; open the last
+working directory on startup (upstream's `Program` rule, only for a valid repository); the changed-file count on the
+Commit button; the default clone destination. Not ported: the other settings of both pages (see PLAN.md M5).
+
+**DiffViewerSettingsPage / FileViewer options** (`partial`). Ported 2026-10-07: the four whitespace modes (one box instead
+of upstream's three toggle buttons, same states), fewer and more lines of context (down to none, buttons off while the
+entire file is shown) and the entire file, with upstream's diff arguments and hotkeys (IgnoreAllWhitespace, Increase and
+DecreaseNumberOfVisibleLines, ShowEntireFile), kept for the next view in this run as upstream's runtime settings; the three
+"Remember" settings and "Save current view settings as default". Not ported: the page's other settings (non-printing
+characters, syntax highlighting, diff appearance, combined diff, continuous scroll, submodule diff, all parents, difftool
+list, vertical ruler, Git coloring) and the FileViewer features they configure.
+
+**CommitDialogSettingsPage** (`partial`). Ported 2026-10-07: the second-line setting, the remembered Amend check box and
+the Commit & Push button, under upstream's keys and labels. In the commit window (FormCommit row): the message goes through
+upstream's `FormatCommitMessage` before the commit (it was given to git as typed before), Amend is put back checked when it
+was left checked (not during a merge, and keeping the draft, as upstream), and Commit and push hides when turned off. Not
+ported: show errors when staging, compose in the commit dialog, the number of previous messages, the reset buttons,
+auto-completion.
 
 **ConfirmationsSettingsPage / ConfirmSuppressible** (`partial`). Ported 2026-10-07: the confirmations whose action the
 new shell has (amend, commit with no branch, rebase, fetch with prune, push of a new branch, force delete of an unmerged

@@ -39,6 +39,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GitCommands\GitCommands.csproj" />
+    <!-- Upstream's translated texts (relative dates) and TranslationString, which upstream plugins use too, so the app ships it. -->
+    <ProjectReference Include="..\ResourceManager\ResourceManager.csproj" />
   </ItemGroup>
 
 </Project>

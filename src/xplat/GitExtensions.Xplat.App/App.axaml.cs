@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GitCommands;
+using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.App;
 
@@ -18,6 +19,9 @@ public partial class App : Application
         // The shared core marshals work onto the thread that created this context, i.e. the UI thread.
         GitUI.ThreadHelper.JoinableTaskContext = new Microsoft.VisualStudio.Threading.JoinableTaskContext();
         ThemeApplier.Apply(AppServices.Preferences);
+
+        // As upstream at startup (AppSettings.LoadSettings): git uses the ssh client chosen on the SSH settings page.
+        SshClients.Apply(AppServices.Preferences.SshPath);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

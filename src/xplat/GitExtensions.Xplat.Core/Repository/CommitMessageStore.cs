@@ -16,9 +16,32 @@ public interface ICommitMessageStore
     Task SaveAsync(string repositoryPath, string message);
 
     /// <summary>
-    ///  Forgets the draft after a commit.
+    ///  Forgets the draft (and the amend state) after a commit.
     /// </summary>
     Task ResetAsync(string repositoryPath);
+
+    /// <summary>
+    ///  Whether the draft was left with Amend checked.
+    /// </summary>
+    Task<bool> LoadAmendAsync(string repositoryPath);
+
+    Task SaveAmendAsync(string repositoryPath, bool amend);
+}
+
+/// <summary>
+///  The commit message as upstream's commit window hands it to git.
+/// </summary>
+public static class CommitMessageFormat
+{
+    /// <summary>
+    ///  Upstream's <c>CommitMessageManager.FormatCommitMessage</c>, used as is: every line ends with the platform's newline,
+    ///  and with <paramref name="ensureSecondLineEmpty"/> a second line of text gets an empty line before it. The text box's
+    ///  own line breaks are made plain first, as upstream's text box gives them. Commit templates are not supported yet, so
+    ///  lines starting with '#' are kept.
+    /// </summary>
+    public static string Format(string message, bool ensureSecondLineEmpty)
+        => CommitMessageManager.FormatCommitMessage(message.ReplaceLineEndings("\n"), usingCommitTemplate: false,
+            ensureSecondLineEmpty);
 }
 
 /// <summary>
@@ -37,10 +60,19 @@ public sealed class UpstreamCommitMessageStore : ICommitMessageStore
     public Task ResetAsync(string repositoryPath)
         => Task.Run(() => Manager(repositoryPath).ResetCommitMessageAsync());
 
+    // Upstream's .git/GitExtensions.amend. Upstream also checks its RememberAmendCommitState setting here; the commit window
+    // checks the same setting through its preferences.
+    public Task<bool> LoadAmendAsync(string repositoryPath)
+        => Task.Run(() => Manager(repositoryPath).GetAmendStateAsync());
+
+    public Task SaveAmendAsync(string repositoryPath, bool amend)
+        => Task.Run(() => Manager(repositoryPath).SetAmendStateAsync(amend));
+
     // The owner control only parents upstream's error message box; the shim's Control stands in for it.
     private static CommitMessageManager Manager(string repositoryPath)
     {
         GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
-        return new CommitMessageManager(new System.Windows.Forms.Control(), module.WorkingDirGitDir, module.CommitEncoding);
+        return new CommitMessageManager(new System.Windows.Forms.Control(), module.WorkingDirGitDir,
+            module.CommitEncoding);
     }
 }

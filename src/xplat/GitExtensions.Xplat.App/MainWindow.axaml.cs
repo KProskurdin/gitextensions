@@ -38,7 +38,7 @@ public partial class MainWindow : Window
     private static readonly TimeSpan _activationRefreshInterval = TimeSpan.FromSeconds(2);
 
     private readonly GitDiscoveryResult? _git;
-    private readonly GitCommitHistory _history = new();
+    private readonly GitCommitHistory _history;
     private readonly CommitListViewModel _commits;
     private readonly GitRepositoryService _repositoryService = new();
     private readonly RepositoryViewModel _repository;
@@ -67,6 +67,8 @@ public partial class MainWindow : Window
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
+        _history = new GitCommitHistory(() =>
+            new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate));
         _commits = new CommitListViewModel(_history);
         _repository = new RepositoryViewModel(_repositoryService);
         _actions.EditorCommand = AppServices.EditorCommand;
@@ -175,6 +177,22 @@ public partial class MainWindow : Window
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
         SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
         PluginSettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(pluginsPage: true));
+
+        // Upstream's View menu toggles for the grid's date column.
+        ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
+        ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
+        ShowAuthorDateMenuItem.Click += (_, _) =>
+        {
+            _preferences.ShowAuthorDate = !_preferences.ShowAuthorDate;
+            ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
+            RefreshRepository();
+        };
+        ShowRelativeDateMenuItem.Click += (_, _) =>
+        {
+            _preferences.RelativeDate = !_preferences.RelativeDate;
+            ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
+            RefreshRepository();
+        };
         AboutMenuItem.Click += (_, _) =>
             _ = new AboutWindow(_git?.Version?.ToString() is { } version ? $"git {version}" : "git").ShowDialog(this);
     }
@@ -183,6 +201,9 @@ public partial class MainWindow : Window
     {
         BranchTreeView.SelectionChanged += (_, _) => UpdateBusyState();
         BranchTreeView.DoubleTapped += (_, _) => CheckoutSelectedBranch();
+
+        // As upstream's branch dialogs, the name is fixed up when the box is left.
+        NewBranchBox.LostFocus += (_, _) => NewBranchBox.Text = NormaliseBranchName(NewBranchBox.Text ?? "");
         CheckoutButton.Click += (_, _) => CheckoutSelectedBranch();
         MergeButton.Click += (_, _) => MergeSelectedBranch();
         RebaseButton.Click += (_, _) => RebaseOnSelectedBranch();
@@ -352,7 +373,13 @@ public partial class MainWindow : Window
         Run(ShowPluginsAsync);
         await _recent.LoadAsync();
 
-        string? initial = Program.InitialRepository;
+        // As upstream's Program: without a repository argument, the one used last when the setting asks for it.
+        string? initial = Program.InitialRepository ??
+                          (_preferences.StartWithRecentWorkingDir &&
+                           _preferences.RecentWorkingDir is { Length: > 0 } recent &&
+                           GitModule.IsValidGitWorkingDir(recent)
+                              ? recent
+                              : null);
         if (initial is null || _git?.Status == GitDiscoveryStatus.NotFound)
         {
             return;
@@ -606,6 +633,9 @@ public partial class MainWindow : Window
             ShowRepositoryPanels();
             await _repository.RefreshAsync(repositoryPath);
             await _recent.AddAsync(repositoryPath);
+
+            // Upstream's RecentWorkingDir, which the next start can open.
+            _preferences.RecentWorkingDir = repositoryPath;
         }
 
         RegisterPlugins();
@@ -717,7 +747,8 @@ public partial class MainWindow : Window
 
     private async Task CloneAsync()
     {
-        CloneRequest? request = await new CloneWindow().ShowDialog<CloneRequest?>(this);
+        CloneRequest? request =
+            await new CloneWindow(_preferences.DefaultCloneDestinationPath).ShowDialog<CloneRequest?>(this);
         if (request is not null)
         {
             await _actions.CloneAsync(request.Url, request.TargetPath);
@@ -950,6 +981,12 @@ public partial class MainWindow : Window
             ShowUserScripts();
             ShowGridScripts();
             await _recent.LoadAsync();
+
+            // The date and commit button settings show on the next read.
+            ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
+            ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
+            UpdateCommitButton();
+            RefreshRepository();
         }
 
         _plugins.RaisePost(PluginEvent.Settings, saved);
@@ -1025,6 +1062,11 @@ public partial class MainWindow : Window
         }
     }
 
+    // Upstream's branch dialogs fix up the name (AutoNormaliseBranchName); done again where the name is used, as a button
+    // can be pressed while the name box still has the focus.
+    private string NormaliseBranchName(string name)
+        => BranchNames.Normalise(name, _preferences.AutoNormaliseBranchName, _preferences.AutoNormaliseSymbol);
+
     // Upstream's ConfirmSuppressible: asks unless the user turned the question off (Settings > Confirmations).
     private Task<bool> ConfirmAsync(Confirmation confirmation, string message, string confirmText, string caption)
         => ConfirmWindow.AskAsync(this, _preferences, confirmation, message, confirmText, caption);
@@ -1047,6 +1089,13 @@ public partial class MainWindow : Window
         if (changes == 0)
         {
             return await _actions.CheckoutAsync(path, branch);
+        }
+
+        // As upstream's FormCheckoutBranch: with UseDefaultCheckoutBranchAction the last choice is used without asking,
+        // unless AlwaysShowCheckoutBranchDlg asks every time.
+        if (_preferences.UseDefaultCheckoutBranchAction && !_preferences.AlwaysShowCheckoutBranchDlg)
+        {
+            return await _actions.CheckoutAsync(path, branch, _preferences.CheckoutBranchAction);
         }
 
         if (await new CheckoutWindow(branch, changes, _preferences.CheckoutBranchAction)
@@ -1087,7 +1136,7 @@ public partial class MainWindow : Window
             .ShowDialog<PromptResult?>(this);
         if (result is not null)
         {
-            await _actions.CreateBranchAsync(path, result.Value, checkout: true, startPoint);
+            await _actions.CreateBranchAsync(path, NormaliseBranchName(result.Value), checkout: true, startPoint);
         }
     }
 
@@ -1111,7 +1160,8 @@ public partial class MainWindow : Window
     private async Task CreateBranchAtCommitAsync()
     {
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
-            await _actions.CreateBranchAsync(path, NewBranchBox.Text ?? "", checkout: true, row.Hash))
+            await _actions.CreateBranchAsync(path, NormaliseBranchName(NewBranchBox.Text ?? ""), checkout: true,
+                row.Hash))
         {
             NewBranchBox.Text = "";
         }
@@ -1193,7 +1243,7 @@ public partial class MainWindow : Window
     private async Task RenameBranchAsync()
     {
         if (RepositoryPath is { } path && SelectedBranch is BranchInfo { IsRemote: false } branch &&
-            await _actions.RenameBranchAsync(path, branch.Name, NewBranchBox.Text ?? ""))
+            await _actions.RenameBranchAsync(path, branch.Name, NormaliseBranchName(NewBranchBox.Text ?? "")))
         {
             NewBranchBox.Text = "";
         }
@@ -1230,7 +1280,7 @@ public partial class MainWindow : Window
     private async Task CreateBranchAsync()
     {
         if (RepositoryPath is { } path &&
-            await _actions.CreateBranchAsync(path, NewBranchBox.Text ?? "", checkout: true))
+            await _actions.CreateBranchAsync(path, NormaliseBranchName(NewBranchBox.Text ?? ""), checkout: true))
         {
             NewBranchBox.Text = "";
         }
@@ -1469,7 +1519,9 @@ public partial class MainWindow : Window
     private void UpdateCommitButton()
     {
         int count = _repository.Changes.Select(change => change.Path).Distinct(StringComparer.Ordinal).Count();
-        CommitDialogButton.Content = count == 0 ? "Commit" : $"Commit ({count})";
+        CommitDialogButton.Content = count == 0 || !_preferences.ShowGitStatusInBrowseToolbar
+            ? "Commit"
+            : $"Commit ({count})";
     }
 
     private void UpdateStateBanner()

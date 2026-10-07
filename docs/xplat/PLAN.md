@@ -464,6 +464,66 @@ commit question offers only Continue and Cancel; upstream also offers to check o
 upstream's page and texts, so a label or question changed upstream fails it. Tests: 201 core and 175 app on Windows and
 Linux (WSL).
 
+Commit dialog page, 2026-10-07: Settings > Commit dialog has upstream's settings whose feature the commit window has: "Ensure
+the second line of commit message is empty" (`addnewlinetocommitmessagewhenmissing`, on by default), "Remember 'Amend
+commit' checkbox on commit form close" (`RememberAmendCommitState`, upstream's `.git/GitExtensions.amend`) and the
+"Commit & Push" button (`showcommitandpush`). Fixed on the way: the commit window gave git the message as typed; it now
+goes through upstream's `CommitMessageManager.FormatCommitMessage`, as upstream's commit window does, so a second line of
+text gets an empty line before it unless the setting is off. Not on the page: errors when staging, composing the message
+outside the window, the number of previous messages (the window has no previous-messages menu yet), the reset buttons the
+window does not have, and auto-completion. Commit templates are not supported, so their comment lines are not removed.
+Tests: 208 core and 178 app on Windows and Linux (WSL).
+
+Diff viewer page, 2026-10-07: the diff view gained upstream FileViewer's choices it lacked, and Settings > Diff viewer has
+their settings. The view's toolbar picks the whitespace changes to ignore (none, at end of line, amount, all: upstream's
+`IgnoreWhitespaceKind`, which `-w` alone had covered), the lines of context (fewer, more) and the entire file; the
+arguments are upstream's `GetExtraDiffArguments` ones (`Core/Diff/DiffOptions.cs`). Upstream's hotkeys Ctrl+=, Ctrl+- and
+Ctrl+E (FileViewer section) act on the diff too. As upstream, the choices are kept for the next diff view in this run;
+"Remember the 'Ignore whitespaces' / 'Show entire file' / 'Number of context lines' preference" decide whether a new view
+keeps them or starts from the saved default, and "Save current view settings as default" stores the current ones (upstream's
+runtime settings `IgnoreWhitespaceKind` and `ShowEntireFile`, and `NumberOfContextLines`). Not ported: non-printing
+characters, syntax highlighting, diff appearance (word diff, difftastic), combined diff, continuous scroll, submodule diff
+window, diff for all parents, the difftool list, the vertical ruler and Git coloring (the view has none of them yet).
+Tests: 212 core and 182 app on Windows and Linux (WSL).
+
+General and appearance settings, 2026-10-07: the grid's date column now follows upstream's `DateColumnProvider`: the author
+date or the commit date (`showauthordate`) and, by default as upstream, the relative text from upstream's
+`LocalizationHelpers` ("3 days ago", `relativedate`) instead of the fixed "yyyy-MM-dd HH:mm" the shell showed; otherwise the
+culture's full date. A new View menu has upstream's "Show author date" and "Show relative date" toggles, and Settings >
+Appearance has "Show relative date instead of full date". Settings > General gained upstream's "Open last working directory
+on startup" (`StartWithRecentWorkingDir`, with `RecentWorkingDir` kept on every open, as upstream), "Show number of changed
+files on commit button" (`showgitstatusinbrowsetoolbar`) and "Default clone destination" (the clone window suggests a folder
+there, named after the repository, until another target is typed). Fixed on the way: the app did not ship
+`ResourceManager.dll`, so the AutoCompileSubmodules plugin (which uses its `TranslationString`) failed to load in a real run;
+the core now references the shadow ResourceManager, and the plugin load test covers both plugins. Not ported from these
+pages: the other General settings (pull action, autostash, submodules on checkout, histogram diff, commit limit, quick search
+timeout, console window, telemetry) and the other Appearance settings (avatars, language, dictionary, truncation, auto
+scale). Tests: 215 core and 187 app on Windows and Linux (WSL).
+
+Advanced page, 2026-10-07: Settings > Advanced has upstream's settings whose feature the shell has. Checkout: "Use last chosen
+'local changes' action as default action" (`UseDefaultCheckoutBranchAction`) checks out with the last choice without asking,
+and "Always show checkout dialog" (`AlwaysShowCheckoutBranchDlg`) asks anyway, as upstream's `FormCheckoutBranch` decides
+(the shell's question appears only when there are local changes; upstream also shows its dialog without them). General:
+"Auto normalise branch name" with the symbol "_", "-" or none (`AutoNormaliseBranchName`, `AutoNormaliseSymbol`): branch
+names typed in the left panel, the create branch prompt and the new worktree's branch go through upstream's
+`GitBranchNameNormaliser` (the left panel's box when it is left, as upstream's dialogs, and again where the name is used).
+Commit: "Push forced with lease when Commit & Push action is performed with Amend option checked"
+(`CommitAndPushForcedWhenAmend`). Not on the tab: update checks, help images, advanced options, console emulator. Tests:
+221 core and 191 app on Windows and Linux (WSL).
+
+Git and SSH pages, 2026-10-07: Settings > Git has upstream's Git page: the command used to run git (moved from General), the
+Linux tools folder on Windows (`LinuxToolsDir`; upstream clears it on other OSes) and upstream's line saying where git finds
+the global config (`GIT_CONFIG_GLOBAL`, otherwise HOME). On Windows the tab also has upstream's "Change HOME" choices
+(`FormFixHome`: upstream's default, USERPROFILE or another folder, `customhomedir` and `userprofilehomedir`) with its checks;
+on Linux and macOS HOME is always set, and changing the app's HOME would also move its own settings folders, so they are
+not offered. Settings > SSH has upstream's SSH page: OpenSSH, PuTTY (Windows) or another ssh client (`gitssh`), PuTTY's
+paths (`plink`, `puttygen`, `pageant`, looked for in upstream's folders) and "Automatically start authentication client"
+(`autostartpageant`). Fixed on the way: the shell never gave git the ssh client the user chose in Git Extensions for Windows;
+`GIT_SSH` is now set at startup, as upstream's `AppSettings.LoadSettings` does, and when the page is saved. Not ported:
+PuTTY's part in remote operations (Pageant start with a remote's key, plink's host key question, key buttons), the startup
+HOME check, validation of the git command while it is typed, the "Download Git" link. Tests: 238 core and 195 app on
+Windows; 238 and 194 on Linux (WSL), where the HOME choice test does not run.
+
 - Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
   values that upstream keeps in the Windows registry (through S1, read-only on Windows).
 - External tools: diff and merge tools are configured per OS. Upstream's presets are Windows

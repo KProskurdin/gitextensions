@@ -39,13 +39,14 @@ public sealed class DiffViewModel : ObservableObject
 
     public void ClearError() => ErrorMessage = null;
 
-    public async Task LoadAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, bool ignoreWhitespace = false)
+    public async Task LoadAsync(string repositoryPath, string? commitHash, string? filePath, bool staged,
+        DiffOptions? options = null)
     {
         int version = ++_loadVersion;
         IsLoading = true;
         try
         {
-            IReadOnlyList<DiffLine> lines = await _diff.GetDiffAsync(repositoryPath, commitHash, filePath, staged, ignoreWhitespace);
+            IReadOnlyList<DiffLine> lines = await _diff.GetDiffAsync(repositoryPath, commitHash, filePath, staged, options);
             if (version == _loadVersion)
             {
                 Lines = lines;

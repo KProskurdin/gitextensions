@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Avalonia.Controls;
 using Avalonia.Media;
+using GitCommands.Settings;
 using GitExtensions.Xplat.Core.Diff;
 
 namespace GitExtensions.Xplat.App;
@@ -15,12 +16,34 @@ public partial class DiffView : UserControl
     private readonly DiffViewModel _viewModel = new(new GitDiffService());
     private DiffRequest? _request;
     private IReadOnlyList<DiffLine>? _text;
+    private DiffOptions _options;
+    private bool _showingOptions;
 
     public DiffView()
     {
         InitializeComponent();
         _viewModel.PropertyChanged += (_, e) => OnDiffChanged(e.PropertyName);
-        IgnoreWhitespaceCheck.IsCheckedChanged += (_, _) => Reload();
+
+        // As upstream's FileViewer, each view starts from the options of this run or the saved defaults.
+        _options = AppServices.Preferences.InitialDiffOptions();
+        WhitespaceBox.ItemsSource = WhitespaceOption.All;
+        ShowOptions();
+        WhitespaceBox.SelectionChanged += (_, _) =>
+        {
+            if (!_showingOptions && WhitespaceBox.SelectedItem is WhitespaceOption option)
+            {
+                ChangeOptions(_options with { IgnoreWhitespace = option.Kind });
+            }
+        };
+        DecreaseContextButton.Click += (_, _) => ChangeOptions(_options.WithLessContext());
+        IncreaseContextButton.Click += (_, _) => ChangeOptions(_options.WithMoreContext());
+        EntireFileToggle.IsCheckedChanged += (_, _) =>
+        {
+            if (!_showingOptions)
+            {
+                ChangeOptions(_options.ToggleEntireFile());
+            }
+        };
         ActualThemeVariantChanged += (_, _) => ShowLines();
 
         // A switch between two themes of the same variant (e.g. dark and dark+) changes only the colors.
@@ -58,7 +81,7 @@ public partial class DiffView : UserControl
     {
         _request = new DiffRequest(repositoryPath, commitHash, filePath, staged);
         _text = null;
-        IgnoreWhitespaceCheck.IsVisible = true;
+        OptionsPanel.IsVisible = true;
         TitleText.Text = title;
         return LoadAsync(_request);
     }
@@ -71,7 +94,7 @@ public partial class DiffView : UserControl
     {
         _request = null;
         TitleText.Text = title;
-        IgnoreWhitespaceCheck.IsVisible = false;
+        OptionsPanel.IsVisible = false;
         ShowError(content is null ? "Binary file, not shown." : null);
         _text = content is null ? [] : DiffParser.ParseText(content);
         ShowLines();
@@ -136,7 +159,7 @@ public partial class DiffView : UserControl
     {
         ShowError(null);
         return _viewModel.LoadAsync(request.RepositoryPath, request.CommitHash, request.FilePath, request.Staged,
-            IgnoreWhitespaceCheck.IsChecked == true);
+            _options);
     }
 
     private void OnDiffChanged(string? propertyName)
@@ -195,7 +218,19 @@ public partial class DiffView : UserControl
                 e.Handled = true;
                 break;
             case DiffCommand.IgnoreAllWhitespace:
-                IgnoreWhitespaceCheck.IsChecked = IgnoreWhitespaceCheck.IsChecked != true;
+                ChangeOptions(_options.ToggleIgnoreWhitespace(IgnoreWhitespaceKind.AllSpace));
+                e.Handled = true;
+                break;
+            case DiffCommand.IncreaseContext:
+                ChangeOptions(_options.WithMoreContext());
+                e.Handled = true;
+                break;
+            case DiffCommand.DecreaseContext:
+                ChangeOptions(_options.WithLessContext());
+                e.Handled = true;
+                break;
+            case DiffCommand.ShowEntireFile:
+                ChangeOptions(_options.ToggleEntireFile());
                 e.Handled = true;
                 break;
             case DiffCommand.StageLines:
@@ -210,6 +245,39 @@ public partial class DiffView : UserControl
         }
     }
 
+    /// <summary>
+    ///  The whitespace, context and entire file choices in effect.
+    /// </summary>
+    public DiffOptions Options => _options;
+
+    // As upstream's FileViewer: the change is kept for the next view in this run and the diff is read again.
+    private void ChangeOptions(DiffOptions options)
+    {
+        if (options == _options)
+        {
+            return;
+        }
+
+        _options = options;
+        AppServices.Preferences.SetDiffOptions(options);
+        ShowOptions();
+        Reload();
+    }
+
+    private void ShowOptions()
+    {
+        _showingOptions = true;
+        WhitespaceBox.SelectedItem = WhitespaceOption.All.First(option => option.Kind == _options.IgnoreWhitespace);
+        ContextText.Text = _options.ContextLines.ToString(CultureInfo.InvariantCulture);
+        EntireFileToggle.IsChecked = _options.ShowEntireFile;
+
+        // As upstream, the context buttons are off while the entire file is shown.
+        DecreaseContextButton.IsEnabled = !_options.ShowEntireFile && _options.ContextLines > 0;
+        IncreaseContextButton.IsEnabled = !_options.ShowEntireFile;
+        ContextText.Opacity = _options.ShowEntireFile ? 0.4 : 1;
+        _showingOptions = false;
+    }
+
     private void ShowError(string? message)
     {
         ErrorText.Text = message ?? "";
@@ -217,6 +285,22 @@ public partial class DiffView : UserControl
     }
 
     private sealed record DiffRequest(string RepositoryPath, string? CommitHash, string? FilePath, bool Staged);
+}
+
+/// <summary>
+///  A choice of the whitespace box, named as upstream's FileViewer menu names it.
+/// </summary>
+public sealed record WhitespaceOption(IgnoreWhitespaceKind Kind, string Label)
+{
+    public static IReadOnlyList<WhitespaceOption> All { get; } =
+    [
+        new(IgnoreWhitespaceKind.None, "Show all whitespace changes"),
+        new(IgnoreWhitespaceKind.Eol, "Ignore whitespace changes at end of line"),
+        new(IgnoreWhitespaceKind.Change, "Ignore changes in amount of whitespace"),
+        new(IgnoreWhitespaceKind.AllSpace, "Ignore all whitespace changes"),
+    ];
+
+    public override string ToString() => Label;
 }
 
 /// <summary>

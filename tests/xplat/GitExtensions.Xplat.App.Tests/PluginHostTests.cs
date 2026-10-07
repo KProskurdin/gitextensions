@@ -159,15 +159,20 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
-    public void Upstreams_background_fetch_plugin_loads_with_upstreams_host_from_the_plugins_folder()
+    public void Upstreams_plugins_load_with_upstreams_host_from_the_plugins_folder()
     {
-        // The plugin built for the new shell is copied into Plugins next to the app, and so next to these tests.
-        string file = Path.Combine(AppContext.BaseDirectory, "Plugins", "GitExtensions.Plugins.BackgroundFetch",
-            "GitExtensions.Plugins.BackgroundFetch.dll");
-        ManagedExtensibility.Initialise([Assembly.LoadFrom(file)]);
+        // The plugins built for the new shell are copied into Plugins next to the app, and so next to these tests.
+        string[] names = ["GitExtensions.Plugins.BackgroundFetch", "GitExtensions.Plugins.AutoCompileSubmodules"];
+        ManagedExtensibility.Initialise([
+            .. names.Select(name =>
+                Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Plugins", name, name + ".dll")))
+        ]);
 
         IReadOnlyList<IGitPlugin> plugins = PluginLoader.Load(ManagedExtensibility.GetExports<IGitPlugin>());
 
+        // Each constructs: what they use of the shared core (e.g. ResourceManager's TranslationString) ships with the app.
+        plugins.Should().NotContain(plugin => plugin is FailedPlugin);
+        plugins.Should().Contain(plugin => plugin.Name == "Auto compile submodules");
         IGitPlugin fetch = plugins.Should().ContainSingle(plugin => plugin.Name == "Periodic background fetch").Subject;
         fetch.Should().BeAssignableTo<IGitPluginForRepository>();
         fetch.GetType().Assembly.GetManifestResourceNames().Should().Contain("GitExtensions.Xplat.PluginIcon.png");

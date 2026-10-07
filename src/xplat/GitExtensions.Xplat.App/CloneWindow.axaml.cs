@@ -10,9 +10,27 @@ public partial class CloneWindow : Window
 {
     private const string FallbackFolderName = "repo";
 
-    public CloneWindow()
+    // The target last filled in from the default folder; a target the user typed is not replaced.
+    private string _suggestedTarget = "";
+
+    /// <param name="defaultParent">
+    ///  Upstream's default clone destination: the new folder is suggested there, named after the repository.
+    /// </param>
+    public CloneWindow(string defaultParent = "")
     {
         InitializeComponent();
+        if (defaultParent.Length > 0)
+        {
+            UrlBox.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == TextBox.TextProperty && (TargetBox.Text ?? "") == _suggestedTarget)
+                {
+                    _suggestedTarget = Path.Combine(defaultParent, RepositoryFolderName(UrlBox.Text ?? ""));
+                    TargetBox.Text = _suggestedTarget;
+                }
+            };
+        }
+
         CancelButton.Click += (_, _) => Close(null);
         CloneButton.Click += (_, _) =>
         {
@@ -21,7 +39,8 @@ public partial class CloneWindow : Window
                 Close(request);
             }
         };
-        BrowseButton.Click += (_, _) => UiActions.Run(BrowseAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+        BrowseButton.Click += (_, _) =>
+            UiActions.Run(BrowseAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
     }
 
     /// <summary>

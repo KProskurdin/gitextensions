@@ -15,11 +15,25 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 public sealed class GitCommitHistory : ICommitHistory
 {
     private const string DateFormat = "yyyy-MM-dd HH:mm";
-    private const string GitDateFormat = "%Y-%m-%d %H:%M";
+
+    private readonly Func<CommitDateStyle> _dateStyle;
+
+    /// <summary>
+    ///  Reads commits; the grid's dates follow <paramref name="dateStyle"/>, asked at each read so a changed setting applies
+    ///  to the next reload (upstream's defaults when none is given).
+    /// </summary>
+    public GitCommitHistory(Func<CommitDateStyle>? dateStyle = null)
+    {
+        _dateStyle = dateStyle ?? (() => new CommitDateStyle());
+    }
 
     public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null)
-        => Task.Run(() => ReadPage(repositoryPath, filter?.ToRevisionArguments() ?? "HEAD",
-            pathFilter: filter is { PathFilter.Length: > 0 } ? filter.PathFilter.Quote() : "", limit, markHead: true));
+    {
+        CommitDateStyle style = _dateStyle();
+        return Task.Run(() => ReadPage(repositoryPath, filter?.ToRevisionArguments() ?? "HEAD",
+            pathFilter: filter is { PathFilter.Length: > 0 } ? filter.PathFilter.Quote() : "", limit, markHead: true,
+            style));
+    }
 
     public Task<CommitDetails> LoadDetailsAsync(string repositoryPath, string hash)
         => Task.Run(() => LoadDetails(repositoryPath, hash));
@@ -31,12 +45,26 @@ public sealed class GitCommitHistory : ICommitHistory
         => Task.Run(() => LoadTree(repositoryPath, hash));
 
     public Task<CommitPage> LoadFileHistoryAsync(string repositoryPath, string hash, string filePath, int limit)
-        => Task.Run(() => ReadPage(repositoryPath, hash, pathFilter: filePath.Quote(), limit, markHead: false));
+    {
+        CommitDateStyle style = _dateStyle();
+        return Task.Run(() => ReadPage(repositoryPath, hash, pathFilter: filePath.Quote(), limit, markHead: false,
+            style));
+    }
 
     public Task<CommitPage> SearchAsync(string repositoryPath, string text, int limit)
-        => Task.Run(() => ReadSearch(repositoryPath, text, limit));
+    {
+        CommitDateStyle style = _dateStyle();
+        return Task.Run(() => ReadSearch(repositoryPath, text, limit, style));
+    }
 
-    private static CommitPage ReadSearch(string path, string text, int limit)
+    // git's %at and %ct: seconds since the epoch, shown in local time as the revision reader gives its dates.
+    private static DateTime FromUnixSeconds(string seconds)
+        => long.TryParse(seconds, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out long value)
+            ? DateTimeOffset.FromUnixTimeSeconds(value).LocalDateTime
+            : DateTime.MinValue;
+
+    private static CommitPage ReadSearch(string path, string text, int limit, CommitDateStyle style)
     {
         ExecutionResult result = CreateModule(path).GitExecutable.Execute(
             new GitArgumentBuilder("log")
@@ -45,8 +73,7 @@ public sealed class GitCommitHistory : ICommitHistory
                 ("--grep=" + text).Quote(),
                 "-n",
                 (limit + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
-                "--format=%H%x09%h%x09%an%x09%ad%x09%s",
-                ("--date=format:" + GitDateFormat).Quote(),
+                "--format=%H%x09%h%x09%an%x09%at%x09%ct%x09%s",
             },
             throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
@@ -54,11 +81,13 @@ public sealed class GitCommitHistory : ICommitHistory
             throw new GitOperationException(result.StandardError.Trim());
         }
 
+        DateTime now = DateTime.Now;
         List<CommitRow> rows = result.StandardOutput
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Split('\t', 5))
-            .Where(parts => parts.Length == 5)
-            .Select(parts => new CommitRow(parts[0], parts[1], parts[4], parts[2], parts[3]))
+            .Select(line => line.Split('\t', 6))
+            .Where(parts => parts.Length == 6)
+            .Select(parts => new CommitRow(parts[0], parts[1], parts[5], parts[2],
+                style.Format(FromUnixSeconds(parts[3]), FromUnixSeconds(parts[4]), now)))
             .ToList();
 
         return new CommitPage(rows.Take(limit).ToList(), HasMore: rows.Count > limit);
@@ -135,7 +164,8 @@ public sealed class GitCommitHistory : ICommitHistory
     ///  that touched <paramref name="pathFilter"/>. Reading stops once one commit beyond the limit is seen, so a long
     ///  history is not loaded in full.
     /// </summary>
-    private static CommitPage ReadPage(string path, string revision, string pathFilter, int limit, bool markHead)
+    private static CommitPage ReadPage(string path, string revision, string pathFilter, int limit, bool markHead,
+        CommitDateStyle style)
     {
         GitModule module = CreateModule(path);
         if (!module.IsValidGitWorkingDir())
@@ -167,18 +197,22 @@ public sealed class GitCommitHistory : ICommitHistory
 
         Dictionary<string, List<RefLabel>> labels = LoadRefLabels(module);
         string? head = markHead ? HeadHash(module) : null;
+        DateTime now = DateTime.Now;
         IReadOnlyList<CommitRow> rows = revisions
             .Take(limit)
             .Select(r =>
             {
-                List<RefLabel> refs = labels.TryGetValue(r.ObjectId.ToString(), out List<RefLabel>? found) ? [.. found] : [];
+                List<RefLabel> refs = labels.TryGetValue(r.ObjectId.ToString(), out List<RefLabel>? found)
+                    ? [.. found]
+                    : [];
                 if (r.ObjectId.ToString() == head)
                 {
                     refs.Insert(0, new RefLabel("HEAD", RefKind.Head));
                 }
 
                 return new CommitRow(r.ObjectId.ToString(), r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
-                    r.CommitDate.ToString(DateFormat), r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
+                    style.Format(r.AuthorDate, r.CommitDate, now),
+                    r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
                     [.. refs.Select(label => label.Name)], refs);
             })
             .ToList();

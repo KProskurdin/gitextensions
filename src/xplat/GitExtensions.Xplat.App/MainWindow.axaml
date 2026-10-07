@@ -29,6 +29,10 @@
         <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit ._gitignore..." />
         <MenuItem x:Name="WorktreesMenuItem" Header="_Worktrees..." />
       </MenuItem>
+      <MenuItem Header="_View">
+        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
+      </MenuItem>
       <MenuItem Header="_Commands">
         <MenuItem x:Name="CommitMenuItem" Header="_Commit..." />
         <MenuItem x:Name="PullDialogMenuItem" Header="_Pull/Fetch..." />

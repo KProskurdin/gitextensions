@@ -33,6 +33,7 @@ internal sealed class MainWindowTests
         TestAppBuilder.Preferences.ShowCurrentBranchOnly = false;
         TestAppBuilder.Preferences.SerializedHotkeys = null;
         TestAppBuilder.Preferences.ResetConfirmations();
+        TestAppBuilder.Preferences.ResetDiffOptions();
         Hotkeys.Load(null);
         TestAppBuilder.GitConfig.Clear();
         TestAppBuilder.Scripts.Save([]);

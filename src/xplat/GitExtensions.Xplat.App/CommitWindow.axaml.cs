@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using GitCommands.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
@@ -26,6 +27,9 @@ public partial class CommitWindow : Window
     private readonly Func<string, bool>? _runPlugin;
     private string _messageBeforeAmend = "";
 
+    // True while the remembered Amend state is put back; the draft is then the amend message already.
+    private bool _restoringAmend;
+
     // The file whose diff is on show, and whether it is the staged or the unstaged diff.
     private FileChange? _diffChange;
     private bool _diffStaged;
@@ -47,7 +51,8 @@ public partial class CommitWindow : Window
         Title = $"Commit - {RecentRepositoryPaths.DisplayName(repositoryPath)}";
         _messages = messages;
         Opened += (_, _) => Run(LoadMessageAsync);
-        Closing += (_, _) => SavedDraft = _messages.SaveAsync(_repositoryPath, CommitMessageBox.Text ?? "");
+        Closing += (_, _) => SavedDraft = SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true);
+        CommitAndPushButton.IsVisible = preferences.ShowCommitAndPush;
 
         StageButton.Click += (_, _) => StageSelected(staged: false);
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
@@ -104,6 +109,22 @@ public partial class CommitWindow : Window
         {
             CommitMessageBox.Text = message.TrimEnd();
         }
+
+        // As upstream: Amend comes back checked, not while a merge is stopped, and the draft stays as it was left.
+        if (_preferences.RememberAmendCommitState && !_repository.IsMerging &&
+            await _messages.LoadAmendAsync(_repositoryPath))
+        {
+            _restoringAmend = true;
+            AmendCheck.IsChecked = true;
+            _restoringAmend = false;
+        }
+    }
+
+    // On close, as upstream's FormCommit: the draft and whether Amend was checked.
+    private async Task SaveDraftAsync(string message, bool amend)
+    {
+        await _messages.SaveAsync(_repositoryPath, message);
+        await _messages.SaveAmendAsync(_repositoryPath, _preferences.RememberAmendCommitState && amend);
     }
 
     private void Run(Func<Task> action) => UiActions.Run(action, ex => ShowError(ex.Message));
@@ -427,7 +448,9 @@ public partial class CommitWindow : Window
             return false;
         }
 
-        bool committed = await _actions.CommitAsync(_repositoryPath, CommitMessageBox.Text ?? "",
+        string message = CommitMessageFormat.Format(CommitMessageBox.Text ?? "",
+            _preferences.EnsureCommitMessageSecondLineEmpty);
+        bool committed = await _actions.CommitAsync(_repositoryPath, message,
             AmendCheck.IsChecked == true,
             SignOffCheck.IsChecked == true, CommitAuthorBox.Text ?? "");
         if (committed)
@@ -454,13 +477,21 @@ public partial class CommitWindow : Window
     private async Task CommitAndPushAsync()
     {
         string branch = _repository.CurrentBranch;
+
+        // Read before the commit, which clears Amend. As upstream's FormCommit: an amended commit replaces the pushed one,
+        // so with CommitAndPushForcedWhenAmend it is pushed with force-with-lease.
+        bool forced = AmendCheck.IsChecked == true && _preferences.CommitAndPushForcedWhenAmend;
         if (branch.Length == 0 || !await CommitChangesAsync())
         {
             return;
         }
 
-        if (await _actions.PushAsync(_repositoryPath, _repository.TrackingRemote ?? DefaultRemote, branch) &&
-            _preferences.CloseCommitDialogAfterCommit)
+        string remote = _repository.TrackingRemote ?? DefaultRemote;
+        bool pushed = forced
+            ? await _actions.PushAsync(_repositoryPath,
+                new PushRequest(remote, branch, branch, ForcePushOptions.ForceWithLease, Track: false))
+            : await _actions.PushAsync(_repositoryPath, remote, branch);
+        if (pushed && _preferences.CloseCommitDialogAfterCommit)
         {
             Close();
         }
@@ -469,6 +500,12 @@ public partial class CommitWindow : Window
     // Amend starts from the HEAD message; unchecking puts back what was typed before.
     private async Task ToggleAmendAsync()
     {
+        if (_restoringAmend)
+        {
+            _messageBeforeAmend = CommitMessageBox.Text ?? "";
+            return;
+        }
+
         if (AmendCheck.IsChecked != true)
         {
             CommitMessageBox.Text = _messageBeforeAmend;

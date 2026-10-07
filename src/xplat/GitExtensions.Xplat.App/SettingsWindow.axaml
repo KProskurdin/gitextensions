@@ -18,18 +18,123 @@
           <ComboBox x:Name="ThemeBox" MinWidth="260" />
           <CheckBox x:Name="ColorblindCheck" Content="Colorblind" />
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
+          <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="RelativeDateCheck" Content="Show relative date instead of full date" />
         </StackPanel>
       </TabItem>
       <TabItem Header="General">
         <StackPanel Spacing="8" Margin="4,8">
           <CheckBox x:Name="CloseAfterCommitCheck" Content="Close the commit window after a commit" />
           <CheckBox x:Name="CloseProcessDialogCheck" Content="Close the output window when a fetch, pull or push succeeds" />
+          <CheckBox x:Name="StartWithRecentWorkingDirCheck" Content="Open last working directory on startup" />
+          <CheckBox x:Name="ShowCommitCountCheck" Content="Show number of changed files on commit button" />
+          <TextBlock Text="Default clone destination" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <TextBox x:Name="DefaultCloneDestinationBox" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Recent repositories to keep" VerticalAlignment="Center" />
             <NumericUpDown x:Name="RecentSizeBox" Minimum="1" Maximum="200" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
-          <TextBlock Text="Git executable (empty: look it up on PATH)" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <TextBox x:Name="GitCommandBox" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Git" page (paths and environment) with its "Change HOME" choices (FormFixHome) on the page. -->
+      <TabItem x:Name="GitTab" Header="Git">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Paths" FontWeight="SemiBold" />
+          <TextBlock Text="Command used to run git (empty: look it up on PATH)" />
+          <DockPanel>
+            <Button x:Name="BrowseGitCommandButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+            <TextBox x:Name="GitCommandBox" />
+          </DockPanel>
+          <StackPanel x:Name="LinuxToolsPanel" Spacing="8">
+            <TextBlock Text="Path to linux tools (sh). Leave empty when it is in the path." />
+            <DockPanel>
+              <Button x:Name="BrowseLinuxToolsButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+              <TextBox x:Name="LinuxToolsDirBox" />
+            </DockPanel>
+          </StackPanel>
+          <TextBlock Text="Environment" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <TextBlock x:Name="HomeText" TextWrapping="Wrap" />
+          <TextBlock Text="By default, the global config file is located in the folder HOME names. (This can be overridden by setting GIT_CONFIG_GLOBAL.)" Opacity="0.7" TextWrapping="Wrap" />
+          <StackPanel x:Name="HomeChoicePanel" Spacing="6">
+            <TextBlock Text="HOME" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <RadioButton x:Name="DefaultHomeRadio" GroupName="Home" />
+            <RadioButton x:Name="UserProfileHomeRadio" GroupName="Home" />
+            <RadioButton x:Name="OtherHomeRadio" GroupName="Home" Content="Other" />
+            <DockPanel Margin="24,0,0,0">
+              <Button x:Name="BrowseHomeButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+              <TextBox x:Name="OtherHomeBox" />
+            </DockPanel>
+          </StackPanel>
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "SSH" page. -->
+      <TabItem x:Name="SshTab" Header="SSH">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Specify which ssh client to use" FontWeight="SemiBold" />
+          <RadioButton x:Name="OpenSshRadio" GroupName="Ssh" Content="OpenSSH" />
+          <RadioButton x:Name="PuttyRadio" GroupName="Ssh" Content="PuTTY" />
+          <RadioButton x:Name="OtherSshRadio" GroupName="Ssh" Content="Other ssh client" />
+          <DockPanel Margin="24,0,0,0">
+            <Button x:Name="BrowseOtherSshButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+            <TextBox x:Name="OtherSshBox" />
+          </DockPanel>
+          <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                     Text="OpenSSH is the ssh client git uses itself. Another client is given to git in GIT_SSH." />
+          <StackPanel x:Name="PuttyPanel" Spacing="8">
+            <TextBlock Text="Configure PuTTY" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,6,Auto,6,Auto">
+              <TextBlock Grid.Row="0" Text="Path to plink" VerticalAlignment="Center" />
+              <TextBox x:Name="PlinkBox" Grid.Row="0" Grid.Column="2" />
+              <Button x:Name="BrowsePlinkButton" Grid.Row="0" Grid.Column="4" Content="Browse" />
+              <TextBlock Grid.Row="2" Text="Path to puttygen" VerticalAlignment="Center" />
+              <TextBox x:Name="PuttygenBox" Grid.Row="2" Grid.Column="2" />
+              <Button x:Name="BrowsePuttygenButton" Grid.Row="2" Grid.Column="4" Content="Browse" />
+              <TextBlock Grid.Row="4" Text="Path to pageant" VerticalAlignment="Center" />
+              <TextBox x:Name="PageantBox" Grid.Row="4" Grid.Column="2" />
+              <Button x:Name="BrowsePageantButton" Grid.Row="4" Grid.Column="4" Content="Browse" />
+            </Grid>
+            <CheckBox x:Name="AutoStartPageantCheck">
+              <TextBlock TextWrapping="Wrap" Text="Automatically start authentication client when a private key is configured for a remote" />
+            </CheckBox>
+          </StackPanel>
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Commit dialog" page: the settings whose feature the commit window has. -->
+      <TabItem Header="Commit dialog">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Behaviour" FontWeight="SemiBold" />
+          <CheckBox x:Name="SecondLineEmptyCheck" Content="Ensure the second line of commit message is empty" />
+          <CheckBox x:Name="RememberAmendCheck" Content="Remember 'Amend commit' checkbox on commit form close" />
+          <TextBlock Text="Show additional buttons in commit button area" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="ShowCommitAndPushCheck" Content="Commit &amp; Push" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Advanced" page: the settings whose feature the new shell has. -->
+      <TabItem Header="Advanced">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Checkout" FontWeight="SemiBold" />
+          <CheckBox x:Name="AlwaysShowCheckoutDlgCheck" Content="Always show checkout dialog" />
+          <CheckBox x:Name="UseLocalChangesActionCheck">
+            <TextBlock TextWrapping="Wrap" Text="Use last chosen &quot;local changes&quot; action as default action. This action will be performed without warning while checking out branch." />
+          </CheckBox>
+          <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <CheckBox x:Name="AutoNormaliseCheck" Content="Auto normalise branch name" />
+            <TextBlock Text="Symbol to use:" VerticalAlignment="Center" Margin="12,0,0,0" />
+            <ComboBox x:Name="NormaliseSymbolBox" MinWidth="90" />
+          </StackPanel>
+          <TextBlock Text="Commit" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="CommitAndPushForcedCheck" Content="Push forced with lease when Commit &amp; Push action is performed with Amend option checked" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's "Diff viewer" page: the settings of the diff view's whitespace, entire file and context choices. -->
+      <TabItem Header="Diff viewer">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="General" FontWeight="SemiBold" />
+          <CheckBox x:Name="RememberIgnoreWhitespaceCheck" Content="Remember the 'Ignore whitespaces' preference" />
+          <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
+          <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
+          <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left" />
         </StackPanel>
       </TabItem>
       <TabItem Header="Git config">

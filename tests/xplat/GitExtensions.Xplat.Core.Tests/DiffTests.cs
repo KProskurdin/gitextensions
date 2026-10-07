@@ -114,7 +114,7 @@ internal sealed class DiffTests
         public List<string> Requests { get; } = [];
 
         public Task<IReadOnlyList<DiffLine>> GetDiffAsync(string repositoryPath, string? commitHash, string? filePath,
-            bool staged, bool ignoreWhitespace = false)
+            bool staged, DiffOptions? options = null)
         {
             Requests.Add($"{repositoryPath} {commitHash} {filePath} staged={staged}");
             return _failure is null ? Task.FromResult(_lines) : Task.FromException<IReadOnlyList<DiffLine>>(_failure);

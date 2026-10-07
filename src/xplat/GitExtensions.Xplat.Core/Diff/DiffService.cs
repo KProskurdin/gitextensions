@@ -12,16 +12,16 @@ public interface IDiffService
     ///  The diff of <paramref name="filePath"/> in <paramref name="commitHash"/>, or of the working tree (staged or unstaged)
     ///  when no commit is given.
     /// </summary>
-    Task<IReadOnlyList<DiffLine>> GetDiffAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, bool ignoreWhitespace = false);
+    Task<IReadOnlyList<DiffLine>> GetDiffAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, DiffOptions? options = null);
 }
 
 public sealed class GitDiffService : IDiffService
 {
-    public Task<IReadOnlyList<DiffLine>> GetDiffAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, bool ignoreWhitespace = false)
+    public Task<IReadOnlyList<DiffLine>> GetDiffAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, DiffOptions? options = null)
         => Task.Run(() =>
         {
             GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
-            string output = Run(module, ignoreWhitespace, commitHash is null
+            string output = Run(module, options ?? new DiffOptions(), commitHash is null
                 ? new GitArgumentBuilder("diff") { { staged, "--cached" } }
                 : new GitArgumentBuilder("show") { "--format=", "--first-parent", commitHash }, filePath);
 
@@ -33,13 +33,13 @@ public sealed class GitDiffService : IDiffService
             return DiffParser.Parse(output);
         });
 
-    private static string Run(GitModule module, bool ignoreWhitespace, GitArgumentBuilder arguments, string? filePath)
+    private static string Run(GitModule module, DiffOptions options, GitArgumentBuilder arguments, string? filePath)
     {
         arguments.Add("--no-color");
         arguments.Add("--no-ext-diff");
-        if (ignoreWhitespace)
+        foreach (string option in options.Arguments)
         {
-            arguments.Add("-w");
+            arguments.Add(option);
         }
 
         if (filePath is not null)

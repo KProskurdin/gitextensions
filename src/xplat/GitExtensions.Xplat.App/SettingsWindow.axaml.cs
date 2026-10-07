@@ -1,9 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Layout;
+using Avalonia.Platform.Storage;
+using GitCommands;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
 using GitExtensions.Xplat.Core.Plugins;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtUtils.GitUI.Theming;
@@ -59,8 +62,27 @@ public partial class SettingsWindow : Window
         ColorblindCheck.IsChecked = preferences.ThemeVariations.Contains(ThemeVariations.Colorblind);
         CloseAfterCommitCheck.IsChecked = preferences.CloseCommitDialogAfterCommit;
         CloseProcessDialogCheck.IsChecked = preferences.CloseProcessDialog;
+        StartWithRecentWorkingDirCheck.IsChecked = preferences.StartWithRecentWorkingDir;
+        ShowCommitCountCheck.IsChecked = preferences.ShowGitStatusInBrowseToolbar;
+        DefaultCloneDestinationBox.Text = preferences.DefaultCloneDestinationPath;
+        RelativeDateCheck.IsChecked = preferences.RelativeDate;
+        AlwaysShowCheckoutDlgCheck.IsChecked = preferences.AlwaysShowCheckoutBranchDlg;
+        UseLocalChangesActionCheck.IsChecked = preferences.UseDefaultCheckoutBranchAction;
+        AutoNormaliseCheck.IsChecked = preferences.AutoNormaliseBranchName;
+        ShowNormaliseSymbols(preferences.AutoNormaliseSymbol);
+        CommitAndPushForcedCheck.IsChecked = preferences.CommitAndPushForcedWhenAmend;
+        SecondLineEmptyCheck.IsChecked = preferences.EnsureCommitMessageSecondLineEmpty;
+        RememberAmendCheck.IsChecked = preferences.RememberAmendCommitState;
+        ShowCommitAndPushCheck.IsChecked = preferences.ShowCommitAndPush;
+        RememberIgnoreWhitespaceCheck.IsChecked = preferences.RememberIgnoreWhiteSpacePreference;
+        RememberEntireFileCheck.IsChecked = preferences.RememberShowEntireFilePreference;
+        RememberContextLinesCheck.IsChecked = preferences.RememberNumberOfContextLines;
+
+        // As upstream, the button saves at once, not with OK.
+        SaveDiffDefaultsButton.Click += (_, _) => preferences.SaveDiffOptionsAsDefault();
         RecentSizeBox.Value = preferences.RecentRepositoriesHistorySize;
-        GitCommandBox.Text = preferences.GitCommand;
+        ShowGitPage();
+        ShowSshPage();
         LocalHeaderText.Text = repositoryPath is null ? "This repository (none open)" : "This repository";
         foreach ((_, _, Func<SettingsWindow, TextBox> local) in _gitConfigFields)
         {
@@ -113,6 +135,197 @@ public partial class SettingsWindow : Window
     ///  The Confirmations tab's check boxes; checked means the app asks first.
     /// </summary>
     public IReadOnlyDictionary<Confirmation, CheckBox> ConfirmationChecks => _confirmationChecks;
+
+    // Upstream's Git page. Its "Change HOME" choices (FormFixHome) are offered on Windows only, where upstream checks HOME:
+    // elsewhere HOME is always set, and changing it in the app would also move the app's own settings folders. The Linux
+    // tools folder is Git for Windows' sh; upstream clears it on other OSes.
+    private void ShowGitPage()
+    {
+        bool windows = OperatingSystem.IsWindows();
+        GitCommandBox.Text = _preferences.GitCommand;
+        LinuxToolsPanel.IsVisible = windows;
+        LinuxToolsDirBox.Text = _preferences.LinuxToolsDir;
+
+        EnvironmentConfiguration.SetEnvironmentVariables();
+        HomeText.Text = HomeSettings.Describe(
+            EnvironmentConfiguration.GetEnvironmentVariable(HomeSettings.GitConfigGlobalVariable),
+            EnvironmentConfiguration.GetHomeDir(), windows);
+        HomeChoicePanel.IsVisible = windows;
+        DefaultHomeRadio.Content = $"Use default for HOME ({EnvironmentConfiguration.GetDefaultHomeDir()})";
+        UserProfileHomeRadio.Content =
+            $"Set HOME to USERPROFILE ({Environment.GetEnvironmentVariable("USERPROFILE")})";
+        HomeChoice home = HomeSettings.ChoiceOf(_preferences.CustomHomeDir, _preferences.UserProfileHomeDir);
+        DefaultHomeRadio.IsChecked = home == HomeChoice.Default;
+        UserProfileHomeRadio.IsChecked = home == HomeChoice.UserProfile;
+        OtherHomeRadio.IsChecked = home == HomeChoice.Other;
+        OtherHomeBox.Text = _preferences.CustomHomeDir;
+        OtherHomeRadio.IsCheckedChanged += (_, _) => EnableHomeOptions();
+        EnableHomeOptions();
+
+        BrowseGitCommandButton.Click +=
+            (_, _) => Browse(() => BrowseFileAsync(GitCommandBox, "Command used to run git"));
+        BrowseLinuxToolsButton.Click +=
+            (_, _) => Browse(() => BrowseFolderAsync(LinuxToolsDirBox, "Path to linux tools"));
+        BrowseHomeButton.Click += (_, _) => Browse(() => BrowseFolderAsync(OtherHomeBox, "HOME"));
+    }
+
+    private void EnableHomeOptions()
+    {
+        OtherHomeBox.IsEnabled = OtherHomeRadio.IsChecked == true;
+        BrowseHomeButton.IsEnabled = OtherHomeRadio.IsChecked == true;
+    }
+
+    /// <summary>
+    ///  The HOME choice on the Git tab.
+    /// </summary>
+    public HomeChoice SelectedHomeChoice
+        => OtherHomeRadio.IsChecked == true ? HomeChoice.Other
+            : UserProfileHomeRadio.IsChecked == true ? HomeChoice.UserProfile
+            : HomeChoice.Default;
+
+    // Upstream's SSH page. PuTTY is offered on Windows, where upstream looks for it and recognises plink.exe; elsewhere
+    // plink is an "other ssh client" (upstream's rule would read a stored "/usr/bin/plink" back as one anyway).
+    private void ShowSshPage()
+    {
+        PlinkBox.Text = _preferences.Plink;
+        PuttygenBox.Text = _preferences.Puttygen;
+        PageantBox.Text = _preferences.Pageant;
+        AutoStartPageantCheck.IsChecked = _preferences.AutoStartPageant;
+        SshClientKind kind = SshClients.KindOf(_preferences.SshPath);
+        PuttyRadio.IsVisible = OperatingSystem.IsWindows() || kind == SshClientKind.Putty;
+        OpenSshRadio.IsChecked = kind == SshClientKind.OpenSsh;
+        PuttyRadio.IsChecked = kind == SshClientKind.Putty;
+        OtherSshRadio.IsChecked = kind == SshClientKind.Other;
+        if (kind == SshClientKind.Other)
+        {
+            OtherSshBox.Text = _preferences.SshPath;
+        }
+
+        PuttyRadio.IsCheckedChanged += (_, _) =>
+        {
+            if (PuttyRadio.IsChecked == true)
+            {
+                FindPutty();
+            }
+
+            EnableSshOptions();
+        };
+        OtherSshRadio.IsCheckedChanged += (_, _) => EnableSshOptions();
+        EnableSshOptions();
+
+        BrowseOtherSshButton.Click += (_, _) => Browse(() => BrowseFileAsync(OtherSshBox, "Other ssh client"));
+        BrowsePlinkButton.Click += (_, _) => Browse(() => BrowseFileAsync(PlinkBox, "Path to plink"));
+        BrowsePuttygenButton.Click += (_, _) => Browse(() => BrowseFileAsync(PuttygenBox, "Path to puttygen"));
+        BrowsePageantButton.Click += (_, _) => Browse(() => BrowseFileAsync(PageantBox, "Path to pageant"));
+    }
+
+    private void EnableSshOptions()
+    {
+        bool other = OtherSshRadio.IsChecked == true;
+        OtherSshBox.IsEnabled = other;
+        BrowseOtherSshButton.IsEnabled = other;
+        PuttyPanel.IsVisible = PuttyRadio.IsChecked == true;
+    }
+
+    private void FindPutty()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        PuttyPaths found = SshClients.FindPutty(
+            new PuttyPaths(PlinkBox.Text ?? "", PuttygenBox.Text ?? "", PageantBox.Text ?? ""),
+            SshClients.PuttyLocations(Environment.GetEnvironmentVariable, Environment.Is64BitProcess), File.Exists);
+        PlinkBox.Text = found.Plink;
+        PuttygenBox.Text = found.Puttygen;
+        PageantBox.Text = found.Pageant;
+    }
+
+    /// <summary>
+    ///  The ssh client choice on the SSH tab.
+    /// </summary>
+    public SshClientKind SelectedSshClient
+        => PuttyRadio.IsChecked == true ? SshClientKind.Putty
+            : OtherSshRadio.IsChecked == true ? SshClientKind.Other
+            : SshClientKind.OpenSsh;
+
+    private void Browse(Func<Task> browse) => UiActions.Run(browse, ex => ErrorText.Text = ex.Message);
+
+    private async Task BrowseFileAsync(TextBox target, string title)
+    {
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions { Title = title, AllowMultiple = false });
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
+        {
+            target.Text = path;
+        }
+    }
+
+    private async Task BrowseFolderAsync(TextBox target, string title)
+    {
+        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+        {
+            target.Text = path;
+        }
+    }
+
+    // Upstream's FormFixHome checks before it closes: another folder must be typed, and HOME must then exist.
+    private string? ValidateHome()
+    {
+        if (!HomeChoicePanel.IsVisible)
+        {
+            return null;
+        }
+
+        string other = OtherHomeBox.Text?.Trim() ?? "";
+        HomeChoice choice = SelectedHomeChoice;
+        return HomeSettings.Validate(choice, other,
+            HomeSettings.HomeFor(choice, other, Environment.GetEnvironmentVariable),
+            Directory.Exists);
+    }
+
+    private void SaveGitAndSshPages()
+    {
+        _preferences.GitCommand = GitCommandBox.Text?.Trim() ?? "";
+        if (LinuxToolsPanel.IsVisible)
+        {
+            _preferences.LinuxToolsDir = LinuxToolsDirBox.Text?.Trim() ?? "";
+        }
+
+        if (HomeChoicePanel.IsVisible)
+        {
+            HomeChoice choice = SelectedHomeChoice;
+            _preferences.CustomHomeDir = choice == HomeChoice.Other ? OtherHomeBox.Text?.Trim() ?? "" : "";
+            _preferences.UserProfileHomeDir = choice == HomeChoice.UserProfile;
+        }
+
+        _preferences.Plink = PlinkBox.Text?.Trim() ?? "";
+        _preferences.Puttygen = PuttygenBox.Text?.Trim() ?? "";
+        _preferences.Pageant = PageantBox.Text?.Trim() ?? "";
+        _preferences.AutoStartPageant = AutoStartPageantCheck.IsChecked == true;
+
+        // As upstream's page: the setting and the variable git reads, so the next git started uses the client.
+        string sshPath = SshClients.PathFor(SelectedSshClient, _preferences.Plink, OtherSshBox.Text?.Trim() ?? "");
+        _preferences.SshPath = sshPath;
+        SshClients.Apply(sshPath);
+    }
+
+    // Upstream's Advanced page lists "_", "-" and "(none)"; a symbol stored otherwise is shown too, so saving keeps it.
+    private void ShowNormaliseSymbols(string current)
+    {
+        List<NormaliseSymbolOption> options =
+            [.. BranchNames.Symbols.Select(symbol => new NormaliseSymbolOption(symbol.Label, symbol.Symbol))];
+        if (!options.Any(option => option.Symbol == current))
+        {
+            options.Add(new NormaliseSymbolOption(current, current));
+        }
+
+        NormaliseSymbolBox.ItemsSource = options;
+        NormaliseSymbolBox.SelectedItem = options.First(option => option.Symbol == current);
+    }
 
     // Upstream's ConfirmationsSettingsPage, with the questions whose action the new shell has, in upstream's groups.
     private void ShowConfirmations()
@@ -395,6 +608,13 @@ public partial class SettingsWindow : Window
     private async Task SaveAsync()
     {
         ErrorText.Text = "";
+        if (ValidateHome() is { } homeError)
+        {
+            Tabs.SelectedItem = GitTab;
+            ErrorText.Text = homeError;
+            return;
+        }
+
         if (ThemeBox.SelectedItem is ThemeOption theme)
         {
             _preferences.Theme = theme.Id;
@@ -403,9 +623,28 @@ public partial class SettingsWindow : Window
         _preferences.ThemeVariations = ColorblindCheck.IsChecked == true ? [ThemeVariations.Colorblind] : [];
         _preferences.CloseCommitDialogAfterCommit = CloseAfterCommitCheck.IsChecked == true;
         _preferences.CloseProcessDialog = CloseProcessDialogCheck.IsChecked == true;
+        _preferences.StartWithRecentWorkingDir = StartWithRecentWorkingDirCheck.IsChecked == true;
+        _preferences.ShowGitStatusInBrowseToolbar = ShowCommitCountCheck.IsChecked == true;
+        _preferences.DefaultCloneDestinationPath = DefaultCloneDestinationBox.Text?.Trim() ?? "";
+        _preferences.RelativeDate = RelativeDateCheck.IsChecked == true;
+        _preferences.AlwaysShowCheckoutBranchDlg = AlwaysShowCheckoutDlgCheck.IsChecked == true;
+        _preferences.UseDefaultCheckoutBranchAction = UseLocalChangesActionCheck.IsChecked == true;
+        _preferences.AutoNormaliseBranchName = AutoNormaliseCheck.IsChecked == true;
+        if (NormaliseSymbolBox.SelectedItem is NormaliseSymbolOption symbol)
+        {
+            _preferences.AutoNormaliseSymbol = symbol.Symbol;
+        }
+
+        _preferences.CommitAndPushForcedWhenAmend = CommitAndPushForcedCheck.IsChecked == true;
+        _preferences.EnsureCommitMessageSecondLineEmpty = SecondLineEmptyCheck.IsChecked == true;
+        _preferences.RememberAmendCommitState = RememberAmendCheck.IsChecked == true;
+        _preferences.ShowCommitAndPush = ShowCommitAndPushCheck.IsChecked == true;
+        _preferences.RememberIgnoreWhiteSpacePreference = RememberIgnoreWhitespaceCheck.IsChecked == true;
+        _preferences.RememberShowEntireFilePreference = RememberEntireFileCheck.IsChecked == true;
+        _preferences.RememberNumberOfContextLines = RememberContextLinesCheck.IsChecked == true;
         _preferences.RecentRepositoriesHistorySize =
             (int)(RecentSizeBox.Value ?? _preferences.RecentRepositoriesHistorySize);
-        _preferences.GitCommand = GitCommandBox.Text?.Trim() ?? "";
+        SaveGitAndSshPages();
         foreach ((Confirmation confirmation, CheckBox check) in _confirmationChecks)
         {
             _preferences.SetAsks(confirmation, check.IsChecked == true);
@@ -432,6 +671,9 @@ public partial class SettingsWindow : Window
         Hotkeys.Load(hotkeys);
 
         _preferences.Save();
+
+        // HOME and the Linux tools folder as the next git gets them; upstream sets them before every git start too.
+        EnvironmentConfiguration.SetEnvironmentVariables();
         SavePluginSettings();
 
         // Only values the user changed are written, so a setting made elsewhere since the window opened is kept.
@@ -458,6 +700,14 @@ public partial class SettingsWindow : Window
 
         await _gitConfig.SetAsync(scope, key, value, scope == ConfigScope.Local ? _repositoryPath : null);
     }
+}
+
+/// <summary>
+///  A branch name normaliser symbol, named as upstream's Advanced page names it.
+/// </summary>
+public sealed record NormaliseSymbolOption(string Label, string Symbol)
+{
+    public override string ToString() => Label;
 }
 
 /// <summary>

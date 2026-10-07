@@ -4,7 +4,14 @@
              x:Class="GitExtensions.Xplat.App.DiffView">
   <DockPanel LastChildFill="True">
     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
-      <CheckBox x:Name="IgnoreWhitespaceCheck" DockPanel.Dock="Right" Content="Ignore whitespace" Margin="8,0,0,0" />
+      <!-- Upstream FileViewer's toolbar: whitespace, lines of context, entire file. -->
+      <StackPanel x:Name="OptionsPanel" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
+        <ComboBox x:Name="WhitespaceBox" MinWidth="200" ToolTip.Tip="Whitespace changes" />
+        <Button x:Name="DecreaseContextButton" Content="−" Padding="8,2" ToolTip.Tip="Decrease the number of lines of context" />
+        <TextBlock x:Name="ContextText" VerticalAlignment="Center" MinWidth="16" TextAlignment="Center" ToolTip.Tip="Lines of context" />
+        <Button x:Name="IncreaseContextButton" Content="+" Padding="8,2" ToolTip.Tip="Increase the number of lines of context" />
+        <ToggleButton x:Name="EntireFileToggle" Content="Entire file" Padding="8,2" ToolTip.Tip="Show entire file" />
+      </StackPanel>
       <TextBlock x:Name="TitleText" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />

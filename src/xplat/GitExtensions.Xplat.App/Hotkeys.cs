@@ -77,6 +77,9 @@ public enum DiffCommand
     StageLines,
     UnstageLines,
     IgnoreAllWhitespace,
+    IncreaseContext,
+    DecreaseContext,
+    ShowEntireFile,
 }
 
 /// <summary>
@@ -330,6 +333,9 @@ public static class Hotkeys
             [DiffCommand.StageLines] = (12, "StageLines"),
             [DiffCommand.UnstageLines] = (13, "UnstageLines"),
             [DiffCommand.IgnoreAllWhitespace] = (15, "IgnoreAllWhitespace"),
+            [DiffCommand.IncreaseContext] = (2, "IncreaseNumberOfVisibleLines"),
+            [DiffCommand.DecreaseContext] = (3, "DecreaseNumberOfVisibleLines"),
+            [DiffCommand.ShowEntireFile] = (4, "ShowEntireFile"),
         },
         new Dictionary<DiffCommand, WinFormsKeys>
         {
@@ -338,6 +344,9 @@ public static class Hotkeys
             [DiffCommand.StageLines] = WinFormsKeys.S,
             [DiffCommand.UnstageLines] = WinFormsKeys.U,
             [DiffCommand.IgnoreAllWhitespace] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.W,
+            [DiffCommand.IncreaseContext] = WinFormsKeys.Control | WinFormsKeys.Oemplus,
+            [DiffCommand.DecreaseContext] = WinFormsKeys.Control | WinFormsKeys.OemMinus,
+            [DiffCommand.ShowEntireFile] = WinFormsKeys.Control | WinFormsKeys.E,
         });
 
     /// <summary>
