@@ -26,6 +26,11 @@ public interface IGitConfigService
     Task<string> GetAsync(ConfigScope scope, string key, string? repositoryPath = null);
 
     /// <summary>
+    ///  Every value of a multi-valued <paramref name="key"/> in <paramref name="scope"/> only, in the order git applies them.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetAllAsync(ConfigScope scope, string key, string? repositoryPath = null);
+
+    /// <summary>
     ///  Sets <paramref name="key"/> in <paramref name="scope"/>. An empty value removes the key, so the next scope applies.
     /// </summary>
     Task SetAsync(ConfigScope scope, string key, string value, string? repositoryPath = null);
@@ -51,6 +56,21 @@ public sealed class GitConfigService : IGitConfigService
 
             ThrowOnError(result, key);
             return result.StandardOutput.TrimEnd('\r', '\n');
+        });
+
+    public Task<IReadOnlyList<string>> GetAllAsync(ConfigScope scope, string key, string? repositoryPath = null)
+        => Task.Run<IReadOnlyList<string>>(() =>
+        {
+            ExecutionResult result = Executable(repositoryPath).Execute(
+                new GitArgumentBuilder("config") { ScopeOption(scope), "-z", "--get-all", key.Quote() },
+                throwOnErrorExit: false);
+            if (result.ExitCode == KeyNotSetExitCode)
+            {
+                return [];
+            }
+
+            ThrowOnError(result, key);
+            return result.StandardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries);
         });
 
     public Task SetAsync(ConfigScope scope, string key, string value, string? repositoryPath = null)
@@ -80,7 +100,9 @@ public sealed class GitConfigService : IGitConfigService
         if (!result.ExitedSuccessfully)
         {
             string error = result.StandardError.Trim();
-            throw new GitOperationException(error.Length > 0 ? error : $"git config {key} failed with exit code {result.ExitCode}");
+            throw new GitOperationException(error.Length > 0
+                ? error
+                : $"git config {key} failed with exit code {result.ExitCode}");
         }
     }
 }

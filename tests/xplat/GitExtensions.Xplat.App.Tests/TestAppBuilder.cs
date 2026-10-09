@@ -111,9 +111,25 @@ public static class TestAppBuilder
 public sealed class FakeGitConfigService : IGitConfigService
 {
     private readonly Dictionary<(ConfigScope, string), string> _values = [];
+    private readonly Dictionary<(ConfigScope, string), List<string>> _multiValues = [];
 
     public Task<string> GetAsync(ConfigScope scope, string key, string? repositoryPath = null)
         => Task.FromResult(_values.GetValueOrDefault((scope, key), ""));
+
+    public Task<IReadOnlyList<string>> GetAllAsync(ConfigScope scope, string key, string? repositoryPath = null)
+        => Task.FromResult<IReadOnlyList<string>>(
+            _multiValues.TryGetValue((scope, key), out List<string>? values) ? values
+            : _values.TryGetValue((scope, key), out string? value) ? [value]
+            : []);
+
+    /// <summary>
+    ///  Gives <paramref name="key"/> several values, as git keeps for <c>credential.helper</c>.
+    /// </summary>
+    public void SetMultiple(ConfigScope scope, string key, params string[] values)
+    {
+        _multiValues[(scope, key)] = [.. values];
+        _values[(scope, key)] = values[^1];
+    }
 
     public Task SetAsync(ConfigScope scope, string key, string value, string? repositoryPath = null)
     {
@@ -133,7 +149,11 @@ public sealed class FakeGitConfigService : IGitConfigService
 
     public string Get(ConfigScope scope, string key) => _values.GetValueOrDefault((scope, key), "");
 
-    public void Clear() => _values.Clear();
+    public void Clear()
+    {
+        _values.Clear();
+        _multiValues.Clear();
+    }
 }
 
 /// <summary>

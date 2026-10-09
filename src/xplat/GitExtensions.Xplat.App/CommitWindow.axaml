@@ -25,6 +25,12 @@
             <Button x:Name="IgnoreButton" Content="Ignore..." Margin="0,0,4,4" ToolTip.Tip="Add the selected untracked files to .gitignore" />
           </WrapPanel>
           <ListBox x:Name="UnstagedList" SelectionMode="Multiple">
+            <!-- Upstream's file list menu: the user scripts, those shown in file lists directly. -->
+            <ListBox.ContextMenu>
+              <ContextMenu x:Name="UnstagedContextMenu">
+                <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" />
+              </ContextMenu>
+            </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="repo:FileChange">
                 <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
@@ -40,6 +46,11 @@
             <Button x:Name="UnstageAllButton" Content="Unstage all" Margin="0,0,4,4" />
           </WrapPanel>
           <ListBox x:Name="StagedList" SelectionMode="Multiple">
+            <ListBox.ContextMenu>
+              <ContextMenu x:Name="StagedContextMenu">
+                <MenuItem x:Name="StagedRunScriptMenuItem" Header="Run script" />
+              </ContextMenu>
+            </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="repo:FileChange">
                 <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />

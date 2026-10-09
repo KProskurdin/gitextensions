@@ -28,7 +28,8 @@ public static partial class CommitTemplates
     ///  Upstream's <c>GitUICommands.AddCommitTemplate</c>: a plugin's template, by its key; a key registered already is
     ///  kept as it is.
     /// </summary>
-    public static void Register(string key, Func<string> text, bool isRegex = false) => _manager.Register(key, text, icon: null, isRegex);
+    public static void Register(string key, Func<string> text, bool isRegex = false) =>
+        _manager.Register(key, text, icon: null, isRegex);
 
     public static void Unregister(string key) => _manager.Unregister(key);
 
@@ -39,12 +40,57 @@ public static partial class CommitTemplates
         => [.. _manager.RegisteredTemplates.Select(item => new CommitTemplate(item.Name, item.Text, item.IsRegex))];
 
     /// <summary>
-    ///  The user's templates from upstream's settings, without the unnamed ones, as upstream's menu lists them.
+    ///  The user's templates from upstream's setting (<paramref name="serialized"/>, upstream's <c>CommitTemplates</c>),
+    ///  without the unnamed ones, as upstream's menu lists them.
     /// </summary>
-    public static IReadOnlyList<CommitTemplate> FromSettings()
-        => [.. (CommitTemplateItem.LoadFromSettings() ?? [])
-            .Where(item => !string.IsNullOrEmpty(item.Name))
-            .Select(item => new CommitTemplate(item.Name, item.Text, item.IsRegex))];
+    public static IReadOnlyList<CommitTemplate> FromSettings(string serialized)
+        => [.. (Deserialize(serialized) ?? []).Where(item => !string.IsNullOrEmpty(item.Name))];
+
+    /// <summary>
+    ///  The ten template places upstream's commit message settings edit (<c>FormCommitTemplateSettings</c>): the stored
+    ///  templates, completed with empty ones.
+    /// </summary>
+    public static IReadOnlyList<CommitTemplate> Slots(string serialized)
+    {
+        IReadOnlyList<CommitTemplate> stored = Deserialize(serialized) ?? [];
+        return
+        [
+            .. Enumerable.Range(0, Math.Max(MaxTemplates, stored.Count))
+                .Select(index => index < stored.Count ? stored[index] : new CommitTemplate("", "", IsRegex: false))
+        ];
+    }
+
+    /// <summary>
+    ///  Upstream's <c>CommitTemplateItem.SaveToSettings</c> format of <paramref name="templates"/>.
+    /// </summary>
+    public static string Serialize(IReadOnlyList<CommitTemplate> templates)
+        => GitCommands.Utils.JsonSerializer.Serialize(templates
+            .Select(template => new CommitTemplateItem(template.Name, template.Text, icon: null, template.IsRegex))
+            .ToArray());
+
+    // Upstream's FormCommitTemplateSettings._maxCommitTemplates.
+    private const int MaxTemplates = 10;
+
+    // Upstream's DeserializeCommitTemplates: nothing for an empty or unreadable value.
+    private static IReadOnlyList<CommitTemplate>? Deserialize(string serialized)
+    {
+        if (string.IsNullOrEmpty(serialized))
+        {
+            return null;
+        }
+
+        try
+        {
+            return GitCommands.Utils.JsonSerializer.Deserialize<CommitTemplateItem[]>(serialized)?
+                .Select(item => new CommitTemplate(item.Name ?? "", item.Text ?? "", item.IsRegex))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Commit templates cannot be read: {ex.Message}");
+            return null;
+        }
+    }
 
     /// <summary>
     ///  The message a template gives, as upstream's <c>ReplaceMessage</c>: a regex template's placeholders are replaced from
@@ -64,7 +110,9 @@ public static partial class CommitTemplates
             {
                 int groupIndex = int.TryParse(placeholder.Groups["index"].ValueSpan, out int index) ? index : 1;
                 MatchCollection matches = new Regex(placeholder.Groups["pattern"].Value).Matches(currentBranch);
-                string replacement = matches.Count > 0 && matches[0].Groups.Count > groupIndex ? matches[0].Groups[groupIndex].Value : "";
+                string replacement = matches.Count > 0 && matches[0].Groups.Count > groupIndex
+                    ? matches[0].Groups[groupIndex].Value
+                    : "";
                 message = message.Replace(placeholder.Groups[0].Value, replacement);
             }
         }

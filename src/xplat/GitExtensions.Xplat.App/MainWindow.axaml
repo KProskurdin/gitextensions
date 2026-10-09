@@ -405,6 +405,12 @@
                   <Button x:Name="ShowCommitDiffButton" DockPanel.Dock="Bottom" Content="Open in window" Margin="0,4,0,0"
                           ToolTip.Tip="Show the selected file's diff in its own window" />
                   <ListBox x:Name="CommitFilesList">
+                    <!-- Upstream's file list menu: the user scripts, those shown in file lists directly. -->
+                    <ListBox.ContextMenu>
+                      <ContextMenu x:Name="CommitFilesContextMenu">
+                        <MenuItem x:Name="CommitFilesRunScriptMenuItem" Header="Run script" />
+                      </ContextMenu>
+                    </ListBox.ContextMenu>
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="core:CommitFile">
                         <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />

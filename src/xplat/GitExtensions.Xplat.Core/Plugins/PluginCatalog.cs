@@ -18,6 +18,11 @@ public interface IPluginCatalog
     ///  scanning), so callers run it off the UI thread, as upstream's <c>FormBrowse</c> does.
     /// </summary>
     IReadOnlyList<IGitPlugin> Load();
+
+    /// <summary>
+    ///  The plugin files that could not be loaded, with the reason; read after <see cref="Load"/>.
+    /// </summary>
+    IReadOnlyList<SkippedPlugin> Skipped => [];
 }
 
 /// <summary>
@@ -69,8 +74,11 @@ public sealed class UpstreamPluginCatalog : IPluginCatalog
     private static bool _initialized;
 
     private readonly Lazy<IReadOnlyList<IGitPlugin>> _plugins = new(LoadPlugins);
+    private readonly Lazy<IReadOnlyList<SkippedPlugin>> _skipped = new(SkippedPlugins.Find);
 
     public IReadOnlyList<IGitPlugin> Load() => _plugins.Value;
+
+    public IReadOnlyList<SkippedPlugin> Skipped => _skipped.Value;
 
     /// <summary>
     ///  Initializes upstream's <see cref="ManagedExtensibility"/> with the app's plugin folders, once: it is process-wide and
@@ -113,6 +121,11 @@ public sealed class FixedPluginCatalog(params IGitPlugin[] plugins) : IPluginCat
         plugins.Select(plugin => new Lazy<IGitPlugin>(() => plugin))));
 
     public IReadOnlyList<IGitPlugin> Load() => _plugins.Value;
+
+    /// <summary>
+    ///  Plugin files to report as not loaded.
+    /// </summary>
+    public IReadOnlyList<SkippedPlugin> Skipped { get; init; } = [];
 }
 
 /// <summary>

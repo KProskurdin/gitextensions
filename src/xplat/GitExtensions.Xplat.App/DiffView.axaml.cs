@@ -117,6 +117,16 @@ public partial class DiffView : UserControl
     ///  The diff as git printed it and the character range of the selected lines in it, as upstream's <c>PatchManager</c>
     ///  takes them; null when no line is selected or a file's content is shown instead of a diff.
     /// </summary>
+    /// <summary>
+    ///  The file's line number at the selected line (upstream FileViewer's <c>CurrentFileLine</c>): the new number, or the old
+    ///  one for a removed line; null when no numbered line is selected.
+    /// </summary>
+    public int? CurrentFileLine
+        => DiffList.SelectedItem is DiffLineItem line
+           && int.TryParse(line.NewNumber.Length > 0 ? line.NewNumber : line.OldNumber, out int number)
+            ? number
+            : null;
+
     public (string Text, int Start, int Length)? SelectedRange()
     {
         IReadOnlyList<int> selected = DiffList.Selection.SelectedIndexes;

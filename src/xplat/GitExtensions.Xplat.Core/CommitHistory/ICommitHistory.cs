@@ -9,9 +9,9 @@ public interface ICommitHistory
 {
     /// <summary>
     ///  Reads up to <paramref name="limit"/> commits that <paramref name="filter"/> selects, or reachable from HEAD when there is
-    ///  no filter. <see cref="CommitPage.HasMore"/> tells whether more exist.
+    ///  no filter, after the first <paramref name="skip"/> of them. <see cref="CommitPage.HasMore"/> tells whether more exist.
     /// </summary>
-    Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null);
+    Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null, int skip = 0);
 
     Task<CommitDetails> LoadDetailsAsync(string repositoryPath, string hash);
 
@@ -51,7 +51,16 @@ public interface ICommitHistory
 
 public sealed record CommitPage(IReadOnlyList<CommitRow> Rows, bool HasMore);
 
-public sealed record CommitRow(string Hash, string ShortHash, string Subject, string Author, string Date, IReadOnlyList<string>? ParentHashes = null, IReadOnlyList<string>? Refs = null, IReadOnlyList<RefLabel>? Labels = null, RevisionTooltip? Tooltip = null);
+public sealed record CommitRow(
+    string Hash,
+    string ShortHash,
+    string Subject,
+    string Author,
+    string Date,
+    IReadOnlyList<string>? ParentHashes = null,
+    IReadOnlyList<string>? Refs = null,
+    IReadOnlyList<RefLabel>? Labels = null,
+    RevisionTooltip? Tooltip = null);
 
 public enum RefKind
 {
@@ -90,11 +99,16 @@ public sealed record RefLabel(string Name, RefKind Kind)
     /// </summary>
     public static RefLabel? FromRefName(string refName) => refName switch
     {
-        _ when refName.StartsWith("refs/heads/", StringComparison.Ordinal) => new(refName["refs/heads/".Length..], RefKind.Branch),
-        _ when refName.StartsWith("refs/remotes/", StringComparison.Ordinal) => new(refName["refs/remotes/".Length..], RefKind.RemoteBranch),
-        _ when refName.StartsWith("refs/tags/", StringComparison.Ordinal) => new(refName["refs/tags/".Length..], RefKind.Tag),
-        _ when refName.StartsWith(GitRefName.RefsBisectGoodPrefix, StringComparison.Ordinal) => new(BisectGoodName, RefKind.BisectGood),
-        _ when refName.StartsWith(GitRefName.RefsBisectBadPrefix, StringComparison.Ordinal) => new(BisectBadName, RefKind.BisectBad),
+        _ when refName.StartsWith("refs/heads/", StringComparison.Ordinal) => new(refName["refs/heads/".Length..],
+            RefKind.Branch),
+        _ when refName.StartsWith("refs/remotes/", StringComparison.Ordinal) => new(refName["refs/remotes/".Length..],
+            RefKind.RemoteBranch),
+        _ when refName.StartsWith("refs/tags/", StringComparison.Ordinal) => new(refName["refs/tags/".Length..],
+            RefKind.Tag),
+        _ when refName.StartsWith(GitRefName.RefsBisectGoodPrefix, StringComparison.Ordinal) => new(BisectGoodName,
+            RefKind.BisectGood),
+        _ when refName.StartsWith(GitRefName.RefsBisectBadPrefix, StringComparison.Ordinal) => new(BisectBadName,
+            RefKind.BisectBad),
         _ => null,
     };
 }

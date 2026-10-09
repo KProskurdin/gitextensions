@@ -82,19 +82,38 @@ internal sealed class CommitListViewModelTests
     }
 
     [Test]
-    public async Task LoadMoreAsync_should_request_the_next_page_size()
+    public async Task LoadMoreAsync_should_read_only_the_next_page_and_add_it()
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);
         _history.CompletePage(0, Page(hasMore: true, "aaa1"));
         await open;
 
         Task more = _viewModel.LoadMoreAsync();
-        _history.CompletePage(1, Page(hasMore: false, "aaa1", "bbb2"));
+        _history.CompletePage(1, Page(hasMore: false, "bbb2"));
         await more;
 
-        _history.PageLimits.Should().Equal(CommitListViewModel.PageSize, 2 * CommitListViewModel.PageSize);
-        _viewModel.Rows.Should().HaveCount(2);
+        _history.PageLimits.Should().Equal(CommitListViewModel.PageSize, CommitListViewModel.PageSize);
+        _history.PageSkips.Should().Equal(0, 1);
+        _viewModel.Rows.Select(row => row.Hash).Should().Equal("aaa1", "bbb2");
         _viewModel.HasMore.Should().BeFalse();
+        _viewModel.Status.Should().Be("2 commits");
+    }
+
+    [Test]
+    public async Task LoadMoreAsync_should_keep_the_selection_and_skip_commits_already_loaded()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, Page(hasMore: true, "aaa1", "bbb2"));
+        await open;
+        _ = _viewModel.SelectAsync(_viewModel.Rows[1]);
+
+        Task more = _viewModel.LoadMoreAsync();
+        _history.CompletePage(1, Page(hasMore: true, "bbb2", "ccc3"));
+        await more;
+
+        _viewModel.Rows.Select(row => row.Hash).Should().Equal("aaa1", "bbb2", "ccc3");
+        _viewModel.Selected!.Hash.Should().Be("bbb2");
+        _viewModel.HasMore.Should().BeTrue();
     }
 
     [Test]
@@ -292,8 +311,14 @@ internal sealed class CommitListViewModelTests
         CommitListViewModel commits = new(new FakeCommitHistory());
         DateTime now = DateTime.Now;
 
-        commits.ApplyBuildInfo(new BuildInfo { CommitHashList = [Commit], StartDate = now, Status = BuildStatus.Failure, Description = "#2" });
-        commits.ApplyBuildInfo(new BuildInfo { CommitHashList = [Commit], StartDate = now.AddHours(-1), Status = BuildStatus.Success });
+        commits.ApplyBuildInfo(new BuildInfo
+        {
+            CommitHashList = [Commit], StartDate = now, Status = BuildStatus.Failure, Description = "#2"
+        });
+        commits.ApplyBuildInfo(new BuildInfo
+        {
+            CommitHashList = [Commit], StartDate = now.AddHours(-1), Status = BuildStatus.Success
+        });
 
         BuildStatusCell cell = commits.BuildStatusOf(Commit.ToString());
         cell.Status.Should().Be(BuildStatus.Failure);

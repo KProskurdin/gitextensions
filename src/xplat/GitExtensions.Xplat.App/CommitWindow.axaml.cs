@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using GitCommands.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitUI.ScriptsEngine;
 
@@ -34,6 +35,19 @@ public partial class CommitWindow : Window
     private FileChange? _diffChange;
     private bool _diffStaged;
 
+    // Upstream FormCommit's texts of the templates menu and the message box menu.
+    private const string TemplateSettingsText = "_Edit commit message templates and settings...";
+    private const string ConventionalCommitText = "Conven_tional Commits";
+    private const string ConventionalCommitDocumentationText = "Documentation...";
+    private const string WordWrapBodyText = "_Word wrap (except subject line)";
+
+    // The Conventional Commits submenu as last built, and whether its types add "()" for a scope (Ctrl+Shift+T).
+    private MenuItem? _conventionalCommitsItem;
+    private bool _insertScopeParentheses;
+
+    // True while the message is reformatted, so the change it makes is not formatted again.
+    private bool _formatting;
+
     public CommitWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IRepositoryService repositoryService, IAppPreferences preferences, Func<Task> refresh,
         ICommitMessageStore messages, Func<string, bool>? runPlugin = null)
@@ -53,6 +67,14 @@ public partial class CommitWindow : Window
         Opened += (_, _) => Run(LoadMessageAsync);
         Closing += (_, _) => SavedDraft = SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true);
         CommitAndPushButton.IsVisible = preferences.ShowCommitAndPush;
+        CommitMessageBox.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextBox.TextProperty)
+            {
+                FormatMessage();
+            }
+        };
+        AddMessageMenu();
 
         StageButton.Click += (_, _) => StageSelected(staged: false);
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
@@ -69,6 +91,8 @@ public partial class CommitWindow : Window
         CommitAndPushButton.Click += (_, _) => Run(CommitAndPushAsync);
         AmendCheck.IsCheckedChanged += (_, _) => Run(ToggleAmendAsync);
         CommitTemplatesFlyout.Opening += (_, _) => ShowCommitTemplates();
+        UnstagedContextMenu.Opening += (_, _) => ShowFileListScripts(UnstagedContextMenu, UnstagedRunScriptMenuItem);
+        StagedContextMenu.Opening += (_, _) => ShowFileListScripts(StagedContextMenu, StagedRunScriptMenuItem);
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
         StagedList.SelectionChanged += (_, _) => OnFileSelected(StagedList, UnstagedList, staged: true);
         Diff.LineSelectionChanged += (_, _) => UpdateState();
@@ -130,6 +154,19 @@ public partial class CommitWindow : Window
 
     private void Run(Func<Task> action) => UiActions.Run(action, ex => ShowError(ex.Message));
 
+    // Upstream's file list menu (FileStatusList): scripts shown in file lists are items of the menu, the others under "Run
+    // script".
+    private void ShowFileListScripts(ContextMenu menu, MenuItem host)
+        => ScriptMenus.Fill(menu, host, script => script.OnEvent == ScriptEvent.ShowInFileList,
+            script => Run(() => RunScriptAsync(script)));
+
+    // As upstream FormCommit's script options: the files selected in the list last used and the line selected in the diff.
+    private Task<bool> RunScriptAsync(ScriptDefinition script)
+        => new ScriptHost(this, _actions, runPlugin: _runPlugin).RunAsync(script, _repositoryPath, [],
+            ScriptFileOptions.For(
+                SelectedChanges(_diffStaged ? StagedList : UnstagedList).Select(change => change.Path),
+                Diff.CurrentFileLine));
+
     private void ShowError(string message) => _ = new ErrorWindow(message).ShowDialog(this);
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
@@ -152,7 +189,7 @@ public partial class CommitWindow : Window
         else if (ScriptHost.MatchHotkey(e) is { } script)
         {
             e.Handled = true;
-            Run(() => new ScriptHost(this, _actions, runPlugin: _runPlugin).RunAsync(script, _repositoryPath, []));
+            Run(() => RunScriptAsync(script));
         }
     }
 
@@ -182,6 +219,10 @@ public partial class CommitWindow : Window
                 return MoveSelection(1);
             case CommitCommand.SelectPrevious:
                 return MoveSelection(-1);
+            case CommitCommand.ConventionalCommitPrefixMessage:
+                return OpenConventionalCommitMenu(insertScope: false);
+            case CommitCommand.ConventionalCommitPrefixMessageWithScope:
+                return OpenConventionalCommitMenu(insertScope: true);
             default:
                 return false;
         }
@@ -435,6 +476,17 @@ public partial class CommitWindow : Window
             return false;
         }
 
+        // Upstream's IsCommitMessageValid: each failed check of the commit message settings asks whether to go on.
+        foreach (string question in CommitMessageValidation.Questions(CommitMessageBox.Text ?? "",
+                     _preferences.CommitValidation))
+        {
+            if (!await new ConfirmWindow(question, "Yes", CommitMessageValidation.Caption, cancelText: "No")
+                    .ShowDialog<bool>(this))
+            {
+                return false;
+            }
+        }
+
         bool detached = _repository.CurrentBranch.Length == 0 && !_repository.IsRebasing;
         if (detached &&
             !await ConfirmWindow.AskAsync(this, _preferences, Confirmation.CommitWithoutBranch,
@@ -528,43 +580,146 @@ public partial class CommitWindow : Window
     private MenuFlyout CommitTemplatesFlyout => (MenuFlyout)CommitTemplatesButton.Flyout!;
 
     // Upstream's commitTemplatesToolStripMenuItem_DropDownOpening, read each time it opens: the plugins' templates (e.g.
-    // the GitHub plugin's assigned issues), then the user's own. A template replaces the message. Not ported: the
-    // conventional commit items and the template settings window.
+    // the GitHub plugin's assigned issues), the user's own, the Conventional Commits items and the settings. A template
+    // replaces the message.
     private void ShowCommitTemplates()
     {
         CommitTemplatesFlyout.Items.Clear();
-        IReadOnlyList<CommitTemplate> registered = CommitTemplates.Registered();
-        IReadOnlyList<CommitTemplate> own = CommitTemplates.FromSettings();
-        foreach (CommitTemplate template in registered)
-        {
-            CommitTemplatesFlyout.Items.Add(TemplateItem(template));
-        }
+        AddGroup(CommitTemplates.Registered());
+        AddGroup(CommitTemplates.FromSettings(_preferences.CommitTemplates));
+        _conventionalCommitsItem = ConventionalCommitsItem();
+        CommitTemplatesFlyout.Items.Add(_conventionalCommitsItem);
+        CommitTemplatesFlyout.Items.Add(new Separator());
+        MenuItem settings = new() { Header = TemplateSettingsText };
+        settings.Click += (_, _) => Run(() => new CommitTemplateSettingsWindow(_preferences).ShowDialog(this));
+        CommitTemplatesFlyout.Items.Add(settings);
 
-        if (registered.Count > 0 && own.Count > 0)
+        void AddGroup(IReadOnlyList<CommitTemplate> templates)
         {
-            CommitTemplatesFlyout.Items.Add(new Separator());
-        }
+            foreach (CommitTemplate template in templates)
+            {
+                // The name as it is: a template named after an issue may have underscores, which are not access keys here.
+                MenuItem item = new() { Header = new TextBlock { Text = template.Name } };
+                item.Click += (_, _) =>
+                {
+                    CommitMessageBox.Text = CommitTemplates.Apply(template, _repository.CurrentBranch);
+                    CommitMessageBox.Focus();
+                };
+                CommitTemplatesFlyout.Items.Add(item);
+            }
 
-        foreach (CommitTemplate template in own)
-        {
-            CommitTemplatesFlyout.Items.Add(TemplateItem(template));
+            if (templates.Count > 0)
+            {
+                CommitTemplatesFlyout.Items.Add(new Separator());
+            }
         }
+    }
 
-        if (CommitTemplatesFlyout.Items.Count == 0)
+    // Upstream's AddConventionalCommitsItems: the commit types, the footers and the documentation link.
+    private MenuItem ConventionalCommitsItem()
+    {
+        MenuItem conventional = new() { Header = ConventionalCommitText };
+        foreach (string type in ConventionalCommits.HeaderTypes)
         {
-            CommitTemplatesFlyout.Items.Add(new MenuItem { Header = "(none)", IsEnabled = false });
-        }
+            MenuItem item = new() { Header = new TextBlock { Text = type } };
+            if (type == ConventionalCommits.Feat)
+            {
+                item.InputGesture = Hotkeys.Commit.GestureFor(CommitCommand.ConventionalCommitPrefixMessage);
+            }
 
-        MenuItem TemplateItem(CommitTemplate template)
-        {
-            // The name as it is: a template named after an issue may have underscores, which are not access keys here.
-            MenuItem item = new() { Header = new TextBlock { Text = template.Name } };
             item.Click += (_, _) =>
             {
-                CommitMessageBox.Text = CommitTemplates.Apply(template, _repository.CurrentBranch);
-                CommitMessageBox.Focus();
+                (string message, int caret) = ConventionalCommits.ApplyType(CommitMessageBox.Text ?? "",
+                    CommitMessageBox.CaretIndex, type, _insertScopeParentheses);
+                SetMessage(message, caret);
+            };
+            conventional.Items.Add(item);
+        }
+
+        conventional.Items.Add(new Separator());
+        foreach (string keyword in ConventionalCommits.FooterKeywords)
+        {
+            conventional.Items.Add(FooterItem(keyword, $"{keyword}: "));
+        }
+
+        conventional.Items.Add(FooterItem(ConventionalCommits.SkipCi, ConventionalCommits.SkipCi));
+        conventional.Items.Add(new Separator());
+        MenuItem documentation = new() { Header = ConventionalCommitDocumentationText };
+        documentation.Click += (_, _) =>
+            Run(() => Launcher.LaunchUriAsync(new Uri(ConventionalCommits.DocumentationUrl)));
+        conventional.Items.Add(documentation);
+        return conventional;
+
+        MenuItem FooterItem(string text, string footer)
+        {
+            MenuItem item = new() { Header = new TextBlock { Text = text } };
+            item.Click += (_, _) =>
+            {
+                (string message, int caret) = ConventionalCommits.AppendFooter(CommitMessageBox.Text ?? "",
+                    CommitMessageBox.CaretIndex, footer);
+                SetMessage(message, caret);
             };
             return item;
         }
+    }
+
+    // Upstream's OpenConventionalCommitMenu (Ctrl+T, and Ctrl+Shift+T with a scope): the menu opens at its "feat" item.
+    private bool OpenConventionalCommitMenu(bool insertScope)
+    {
+        _insertScopeParentheses = insertScope;
+        CommitTemplatesFlyout.ShowAt(CommitTemplatesButton);
+        if (_conventionalCommitsItem is null)
+        {
+            return true;
+        }
+
+        _conventionalCommitsItem.Open();
+        _conventionalCommitsItem.Items.OfType<MenuItem>()
+            .FirstOrDefault(item => item.Header is TextBlock { Text: ConventionalCommits.Feat })?.Focus();
+        return true;
+    }
+
+    private void SetMessage(string message, int caret)
+    {
+        CommitMessageBox.Text = message;
+        CommitMessageBox.CaretIndex = Math.Min(caret, message.Length);
+        CommitMessageBox.Focus();
+    }
+
+    // Upstream FormCommit_FormatAllText: the commit message settings shape the message while it is typed.
+    private void FormatMessage()
+    {
+        CommitValidationOptions options = _preferences.CommitValidation;
+        if (_formatting || !(options.SecondLineMustBeEmpty || (options.AutoWrap && options.MaxLineLength > 0)))
+        {
+            return;
+        }
+
+        string text = CommitMessageBox.Text ?? "";
+        (string formatted, int caret) = CommitMessageValidation.Format(text, CommitMessageBox.CaretIndex, options);
+        if (formatted == text)
+        {
+            return;
+        }
+
+        _formatting = true;
+        CommitMessageBox.Text = formatted;
+        CommitMessageBox.CaretIndex = caret;
+        _formatting = false;
+    }
+
+    // Upstream's message box menu: its "Word wrap (except subject line)" item before the editing items.
+    private void AddMessageMenu()
+    {
+        MenuItem wordWrap = new() { Header = WordWrapBodyText };
+        wordWrap.Click += (_, _) => CommitMessageBox.Text =
+            CommitMessageValidation.WrapBody(CommitMessageBox.Text ?? "", _preferences.CommitValidation.MaxLineLength);
+        MenuItem cut = new() { Header = "Cut", InputGesture = new KeyGesture(Key.X, Hotkeys.CommandModifier) };
+        cut.Click += (_, _) => CommitMessageBox.Cut();
+        MenuItem copy = new() { Header = "Copy", InputGesture = new KeyGesture(Key.C, Hotkeys.CommandModifier) };
+        copy.Click += (_, _) => CommitMessageBox.Copy();
+        MenuItem paste = new() { Header = "Paste", InputGesture = new KeyGesture(Key.V, Hotkeys.CommandModifier) };
+        paste.Click += (_, _) => CommitMessageBox.Paste();
+        CommitMessageBox.ContextFlyout = new MenuFlyout { Items = { wordWrap, new Separator(), cut, copy, paste } };
     }
 }

@@ -37,10 +37,17 @@ public sealed class GitCommitHistory : ICommitHistory
         _sortOrder = sortOrder ?? (() => RevisionSortOrder.GitDefault);
     }
 
-    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null)
+    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null, int skip = 0)
     {
         CommitDateStyle style = _dateStyle();
+
+        // git applies --skip after the order and the filters, so the next page continues where the loaded ones end.
         string revision = Sorted(filter?.ToRevisionArguments() ?? "HEAD");
+        if (skip > 0)
+        {
+            revision = $"--skip={skip.ToString(System.Globalization.CultureInfo.InvariantCulture)} {revision}";
+        }
+
         return Task.Run(() => ReadPage(repositoryPath, revision,
             pathFilter: filter is { PathFilter.Length: > 0 } ? filter.PathFilter.Quote() : "", limit, markHead: true,
             style));
@@ -140,7 +147,14 @@ public sealed class GitCommitHistory : ICommitHistory
         IReadOnlyList<string> flags)
     {
         ExecutionResult result = CreateModule(path).GitExecutable.Execute(
-            new GitArgumentBuilder("blame") { "--line-porcelain", flags, hash, "--", filePath.Quote() },
+            new GitArgumentBuilder("blame")
+            {
+                "--line-porcelain",
+                flags,
+                hash,
+                "--",
+                filePath.Quote()
+            },
             throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
         {
@@ -238,7 +252,8 @@ public sealed class GitCommitHistory : ICommitHistory
                 return new CommitRow(r.ObjectId.ToString(), r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
                     style.Format(r.AuthorDate, r.CommitDate, now),
                     r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
-                    [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs, RevisionTooltips.For(r, refs));
+                    [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs,
+                    RevisionTooltips.For(r, refs));
             })
             .ToList();
 
@@ -325,11 +340,18 @@ public sealed class GitCommitHistory : ICommitHistory
             return [];
         }
 
-        revision.Refs = [.. module.GetRefs(RefsFilter.Heads | RefsFilter.Remotes)
-            .Where(reference => reference.ObjectId == revision.ObjectId)];
+        revision.Refs =
+        [
+            .. module.GetRefs(RefsFilter.Heads | RefsFilter.Remotes)
+                .Where(reference => reference.ObjectId == revision.ObjectId)
+        ];
         GitRevisionExternalLinksParser parser = new(definitions,
             new ExternalLinkRevisionParser(new ConfigFileRemoteSettingsManager(() => module)));
-        return [.. parser.Parse(revision, settings).Distinct().Select(link => new RevisionLink(link.Caption ?? link.Uri, link.Uri))];
+        return
+        [
+            .. parser.Parse(revision, settings).Distinct()
+                .Select(link => new RevisionLink(link.Caption ?? link.Uri, link.Uri))
+        ];
     }
 
     private static GitModule CreateModule(string path)

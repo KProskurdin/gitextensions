@@ -1,0 +1,49 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.CommitTemplateSettingsWindow"
+        Title="Commit message settings"
+        Width="620" Height="440" WindowStartupLocation="CenterOwner">
+  <!-- Upstream FormCommitTemplateSettings: ten commit templates and the commit validation settings. Controls are named as
+       the form's fields, for its translations. -->
+  <DockPanel Margin="12" LastChildFill="True">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button x:Name="buttonOk" Content="OK" IsDefault="True" MinWidth="80" />
+      <Button x:Name="buttonCancel" Content="Cancel" IsCancel="True" MinWidth="80" />
+    </StackPanel>
+    <TabControl x:Name="tabControl1">
+      <TabItem x:Name="tabPage1" Header="Commit templates">
+        <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,Auto,*,Auto" Margin="4,8" RowSpacing="6">
+          <TextBlock x:Name="labelCommitTemplate" Text="Commit template:" VerticalAlignment="Center" />
+          <ComboBox x:Name="_NO_TRANSLATE_comboBoxCommitTemplates" Grid.Column="2" HorizontalAlignment="Stretch" />
+          <TextBlock x:Name="labelCommitTemplateName" Grid.Row="1" Text="Name:" VerticalAlignment="Center" />
+          <TextBox x:Name="_NO_TRANSLATE_textBoxCommitTemplateName" Grid.Row="1" Grid.Column="2" MaxLength="80" />
+          <TextBox x:Name="_NO_TRANSLATE_textCommitTemplateText" Grid.Row="2" Grid.ColumnSpan="3" AcceptsReturn="True"
+                   TextWrapping="NoWrap" FontFamily="{DynamicResource CodeFontFamily}" />
+          <CheckBox x:Name="checkBoxRegexEnabled" Grid.Row="3" Grid.ColumnSpan="3" Content="Enable regex" />
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="tabPage2" Header="Commit validation">
+        <Grid ColumnDefinitions="*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8" RowSpacing="6">
+          <TextBlock x:Name="labelMaxFirstLineLength" TextWrapping="Wrap" VerticalAlignment="Center"
+                     Text="Maximum number of characters in the first line (0 = check disabled):" />
+          <NumericUpDown x:Name="_NO_TRANSLATE_numericMaxFirstLineLength" Grid.Column="2" Minimum="0" Maximum="1000" Increment="1"
+                         FormatString="0" MinWidth="120" />
+          <TextBlock x:Name="labelMaxLineLength" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Center"
+                     Text="Maximum number of characters per line (0 = check disabled):" />
+          <NumericUpDown x:Name="_NO_TRANSLATE_numericMaxLineLength" Grid.Row="1" Grid.Column="2" Minimum="0" Maximum="1000"
+                         Increment="1" FormatString="0" MinWidth="120" />
+          <TextBlock x:Name="labelSecondLineEmpty" Grid.Row="2" Text="Second line must be empty:" VerticalAlignment="Center" />
+          <CheckBox x:Name="checkBoxSecondLineEmpty" Grid.Row="2" Grid.Column="2" />
+          <TextBlock x:Name="labelUseIndent" Grid.Row="3" Text="Indent lines after the first line:" VerticalAlignment="Center" />
+          <CheckBox x:Name="checkBoxUseIndent" Grid.Row="3" Grid.Column="2" />
+          <TextBlock x:Name="labelAutoWrap" Grid.Row="4" Text="Auto-wrap commit message (except subject line)"
+                     VerticalAlignment="Center" />
+          <CheckBox x:Name="checkBoxAutoWrap" Grid.Row="4" Grid.Column="2" />
+          <TextBlock x:Name="labelRegExCheck" Grid.Row="5" Grid.ColumnSpan="3" TextWrapping="Wrap"
+                     Text="Commit must match following RegEx (Empty = check disabled):" />
+          <TextBox x:Name="_NO_TRANSLATE_textBoxCommitValidationRegex" Grid.Row="6" Grid.ColumnSpan="3" />
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

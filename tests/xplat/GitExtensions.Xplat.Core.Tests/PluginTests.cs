@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
@@ -23,6 +24,50 @@ internal sealed class PluginTests
 
         plugins.Select(plugin => plugin.Name).Should().Equal("alpha", FailedPlugin.FailedToLoadPlugin, "Zeta");
         plugins[1].Should().BeOfType<FailedPlugin>().Which.Error.Should().Contain("broken plugin");
+    }
+
+    [Test]
+    public void SkippedPlugins_should_say_that_a_plugin_needing_windows_forms_is_built_for_windows()
+    {
+        ReflectionTypeLoadException exception = new([null], [
+            new FileNotFoundException("Could not load file or assembly",
+                "System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"),
+        ]);
+
+        SkippedPlugins.Reason(exception).Should().Be(
+            "Built for Git Extensions for Windows: it uses Windows Forms, which this version does not have.");
+    }
+
+    [Test]
+    public void SkippedPlugins_should_name_the_missing_assemblies()
+    {
+        ReflectionTypeLoadException exception = new([null], [
+            new FileNotFoundException("missing", "GitExtensions.Extensibility, Version=0.3.0.0, Culture=neutral"),
+            new FileNotFoundException("missing", "GitExtensions.Extensibility, Version=0.3.0.0, Culture=neutral"),
+        ]);
+
+        SkippedPlugins.Reason(exception).Should()
+            .Be("It needs GitExtensions.Extensibility, which this version does not have.");
+    }
+
+    [Test]
+    public void SkippedPlugins_should_list_a_file_that_is_not_an_assembly()
+    {
+        string file = Path.Combine(Path.GetTempPath(), $"GitExtensions.Broken.{Guid.NewGuid():N}.dll");
+        File.WriteAllText(file, "not an assembly");
+        try
+        {
+            IReadOnlyList<SkippedPlugin> skipped = SkippedPlugins.Find([
+                new FileInfo(file),
+                new FileInfo(typeof(PluginTests).Assembly.Location)
+            ]);
+
+            skipped.Should().ContainSingle().Which.Path.Should().Be(file);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
     }
 
     [Test]

@@ -34,7 +34,23 @@ public partial class SettingsWindow : Window
             ("user.email", window => window.GlobalUserEmailBox, window => window.LocalUserEmailBox),
             ("merge.tool", window => window.GlobalMergeToolBox, window => window.LocalMergeToolBox),
             ("diff.tool", window => window.GlobalDiffToolBox, window => window.LocalDiffToolBox),
+            (CredentialHelperKey, window => window.GlobalCredentialHelperBox,
+                window => window.LocalCredentialHelperBox),
+            ("core.editor", window => window.GlobalEditorBox, window => window.LocalEditorBox),
+            ("commit.template", window => window.GlobalCommitTemplateBox, window => window.LocalCommitTemplateBox),
         ];
+
+    private const string CredentialHelperKey = "credential.helper";
+    private const string AutoCrlfKey = "core.autocrlf";
+
+    // Upstream's line ending choices (GitConfigSettingsPage), with their texts; "Not set" removes the key.
+    private static readonly AutoCrlfOption[] _autoCrlfOptions =
+    [
+        new("true", "Checkout Windows-style, commit Unix-style line endings (\"core.autocrlf\"  is set to \"true\")"),
+        new("input", "Checkout as-is, commit Unix-style line endings (\"core.autocrlf\"  is set to \"input\")"),
+        new("false", "Checkout as-is, commit as-is (\"core.autocrlf\"  is set to \"false\")"),
+        new("", "Not set"),
+    ];
 
     private readonly IAppPreferences _preferences;
     private readonly IGitConfigService _gitConfig;
@@ -110,6 +126,10 @@ public partial class SettingsWindow : Window
             local(this).IsEnabled = repositoryPath is not null;
         }
 
+        GlobalAutoCrlfBox.ItemsSource = _autoCrlfOptions;
+        LocalAutoCrlfBox.ItemsSource = _autoCrlfOptions;
+        LocalAutoCrlfBox.IsEnabled = repositoryPath is not null;
+
         ShowHotkeyRows();
         ShowConfirmations();
         ShowScripts();
@@ -124,6 +144,14 @@ public partial class SettingsWindow : Window
 
         MergeToolChoices.SelectionChanged += (_, _) => FillFromChoice(MergeToolChoices, GlobalMergeToolBox);
         DiffToolChoices.SelectionChanged += (_, _) => FillFromChoice(DiffToolChoices, GlobalDiffToolBox);
+        CredentialHelperChoices.SelectionChanged += (_, _) =>
+        {
+            if (GlobalCredentialHelperBox.IsEnabled)
+            {
+                FillFromChoice(CredentialHelperChoices, GlobalCredentialHelperBox);
+            }
+        };
+        EditorChoices.SelectionChanged += (_, _) => FillFromChoice(EditorChoices, GlobalEditorBox);
         CancelButton.Click += (_, _) => Close(false);
         SaveButton.Click += (_, _) => UiActions.Run(SaveAsync, ex => ErrorText.Text = ex.Message);
         Opened += (_, _) => UiActions.Run(LoadGitConfigAsync, ex => ErrorText.Text = ex.Message);
@@ -200,13 +228,20 @@ public partial class SettingsWindow : Window
 
             ComboBox family = new()
             {
-                ItemsSource = families, SelectedItem = current?.Family ?? DefaultFontChoice, MinWidth = 220,
+                ItemsSource = families,
+                SelectedItem = current?.Family ?? DefaultFontChoice,
+                MinWidth = 220,
                 Margin = new Avalonia.Thickness(0, 0, 0, 6),
             };
             NumericUpDown size = new()
             {
-                Minimum = 1, Maximum = 200, Increment = 1, FormatString = "0.##", Width = 130,
-                Value = (decimal)(current?.Size ?? DefaultFontSize(font)), IsEnabled = current is not null,
+                Minimum = 1,
+                Maximum = 200,
+                Increment = 1,
+                FormatString = "0.##",
+                Width = 130,
+                Value = (decimal)(current?.Size ?? DefaultFontSize(font)),
+                IsEnabled = current is not null,
                 Margin = new Avalonia.Thickness(0, 0, 0, 6),
             };
             family.SelectionChanged += (_, _) => size.IsEnabled = family.SelectedItem as string != DefaultFontChoice;
@@ -261,7 +296,8 @@ public partial class SettingsWindow : Window
         {
             Button button = new()
             {
-                Content = RevisionLinkTemplates.MenuText(template), HorizontalAlignment = HorizontalAlignment.Stretch,
+                Content = RevisionLinkTemplates.MenuText(template),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             button.Click += (_, _) =>
                 UiActions.Run(() => AddRevisionLinkTemplatesAsync(template), ex => ErrorText.Text = ex.Message);
@@ -277,10 +313,14 @@ public partial class SettingsWindow : Window
                 RevisionLinksList.SelectedIndex = Math.Min(index, _revisionLinks.Items.Count - 1);
             }
         };
-        AddRevisionLinkFormatButton.Click += (_, _) => (RevisionLinksList.SelectedItem as RevisionLinkItem)?.AddFormat();
+        AddRevisionLinkFormatButton.Click +=
+            (_, _) => (RevisionLinksList.SelectedItem as RevisionLinkItem)?.AddFormat();
         RevisionLinkFormatsList.AddHandler(Button.ClickEvent, (_, e) =>
         {
-            if (e.Source is Button { Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format } &&
+            if (e.Source is Button
+                {
+                    Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format
+                } &&
                 RevisionLinksList.SelectedItem is RevisionLinkItem item)
             {
                 item.Formats.Remove(format);
@@ -596,6 +636,27 @@ public partial class SettingsWindow : Window
     {
         ScriptsList.ItemsSource = _scripts.Items;
         ScriptEventBox.ItemsSource = Enum.GetValues<ScriptEvent>();
+
+        // Upstream's icon list: no icon, then its images by name, each shown with its picture.
+        ScriptIconBox.ItemsSource = (IEnumerable<ScriptIconChoice>)
+        [
+            new ScriptIconChoice("", null),
+            .. ScriptIcons.Names.Select(name => new ScriptIconChoice(name, ScriptIcons.Named(name)))
+        ];
+        ScriptIconBox.SelectedValueBinding = new Binding(nameof(ScriptIconChoice.Name));
+        ScriptIconBox.ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<ScriptIconChoice>((choice, _) =>
+            new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                Children =
+                {
+                    new Image { Source = choice?.Picture, Width = 16, Height = 16 },
+                    new TextBlock { Text = choice is { Name.Length: > 0 } ? choice.Name : "(none)" },
+                },
+            });
+        ScriptIconFileButton.Click +=
+            (_, _) => UiActions.Run(PickScriptIconFileAsync, ex => ErrorText.Text = ex.Message);
         ScriptsList.SelectionChanged += (_, _) => ShowSelectedScript();
         AddScriptButton.Click += (_, _) =>
         {
@@ -615,6 +676,24 @@ public partial class SettingsWindow : Window
         Closed += (_, _) => _scriptHelp?.Close();
         ScriptsList.SelectedIndex = _scripts.Items.Count > 0 ? 0 : -1;
         ShowSelectedScript();
+    }
+
+    private async Task PickScriptIconFileAsync()
+    {
+        if (ScriptsList.SelectedItem is not ScriptListItem item)
+        {
+            return;
+        }
+
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Icon or associated file path",
+            FileTypeFilter = [FilePickerFileTypes.ImageAll, FilePickerFileTypes.All],
+        });
+        if (files is [var file, ..] && file.TryGetLocalPath() is { } path)
+        {
+            item.IconFilePath = path;
+        }
     }
 
     private void ShowSelectedScript()
@@ -666,7 +745,10 @@ public partial class SettingsWindow : Window
     private void ShowPlugins(IGitPlugin? selected)
     {
         List<PluginOption> options = [.. _plugins.Select(plugin => new PluginOption(plugin))];
-        PluginsList.ItemsSource = options;
+
+        // Files upstream's loader passed over (WinForms plugins, other interface versions) follow, with the reason.
+        List<object> items = [.. options, .. AppServices.Plugins.Skipped.Select(file => new SkippedPluginOption(file))];
+        PluginsList.ItemsSource = items;
         PluginsList.SelectionChanged += (_, _) => ShowSelectedPlugin();
         PluginLevelText.Text = _repositoryPath is null
             ? "Your user settings, shared with Git Extensions for Windows."
@@ -680,6 +762,18 @@ public partial class SettingsWindow : Window
     private void ShowSelectedPlugin()
     {
         PluginSettingsPanel.Children.Clear();
+        PluginLevelText.IsVisible = PluginsList.SelectedItem is not SkippedPluginOption;
+        if (PluginsList.SelectedItem is SkippedPluginOption { File: var file })
+        {
+            PluginTitleText.Text = file.FileName;
+            PluginSettingsPanel.Children.Add(new TextBlock
+            {
+                Text = $"This plugin is not loaded. {file.Reason}", TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            });
+            PluginSettingsPanel.Children.Add(new SelectableTextBlock { Text = file.Path, Opacity = 0.7 });
+            return;
+        }
+
         if (PluginsList.SelectedItem is not PluginOption { Plugin: var plugin })
         {
             PluginTitleText.Text = _plugins.Count == 0 ? "No plugins are loaded." : "";
@@ -804,13 +898,44 @@ public partial class SettingsWindow : Window
             }
         }
 
+        // As upstream, a credential.helper with several values (a list git runs in turn) is shown but not edited: git config
+        // cannot set one value over several.
+        await GuardMultipleValuesAsync(ConfigScope.Global, GlobalCredentialHelperBox);
+        if (_repositoryPath is not null)
+        {
+            await GuardMultipleValuesAsync(ConfigScope.Local, LocalCredentialHelperBox);
+        }
+
+        GlobalAutoCrlfBox.SelectedItem = AutoCrlfOptionOf(await LoadAsync(ConfigScope.Global, AutoCrlfKey));
+        if (_repositoryPath is not null)
+        {
+            LocalAutoCrlfBox.SelectedItem = AutoCrlfOptionOf(await LoadAsync(ConfigScope.Local, AutoCrlfKey));
+        }
+
         IsGitConfigLoaded = true;
         SaveButton.IsEnabled = true;
 
         // Read after the values, so a slow git does not hold back the rest of the page.
         MergeToolChoices.ItemsSource = await AppServices.DiffMergeTools.GetAvailableAsync(diff: false);
         DiffToolChoices.ItemsSource = await AppServices.DiffMergeTools.GetAvailableAsync(diff: true);
+        CredentialHelperChoices.ItemsSource = await Task.Run(GitConfigChoices.CredentialHelpers);
+        EditorChoices.ItemsSource = await Task.Run(GitConfigChoices.Editors);
     }
+
+    private async Task GuardMultipleValuesAsync(ConfigScope scope, TextBox box)
+    {
+        IReadOnlyList<string> values = await _gitConfig.GetAllAsync(scope, CredentialHelperKey,
+            scope == ConfigScope.Local ? _repositoryPath : null);
+        if (values.Count > 1)
+        {
+            box.Text = string.Join(", ", values);
+            box.IsEnabled = false;
+        }
+    }
+
+    private static AutoCrlfOption AutoCrlfOptionOf(string value)
+        => _autoCrlfOptions.FirstOrDefault(option => option.Value.Equals(value, StringComparison.OrdinalIgnoreCase))
+           ?? _autoCrlfOptions[^1];
 
     // As upstream's appearance page: English, then the translations in the Translation folder; the current one stays
     // selected even when its file is missing.
@@ -939,11 +1064,23 @@ public partial class SettingsWindow : Window
         foreach ((string key, Func<SettingsWindow, TextBox> global, Func<SettingsWindow, TextBox> local) in
                  _gitConfigFields)
         {
-            await SaveIfChangedAsync(ConfigScope.Global, key, global(this).Text);
-            if (_repositoryPath is not null)
+            if (global(this).IsEnabled)
+            {
+                await SaveIfChangedAsync(ConfigScope.Global, key, global(this).Text);
+            }
+
+            if (_repositoryPath is not null && local(this).IsEnabled)
             {
                 await SaveIfChangedAsync(ConfigScope.Local, key, local(this).Text);
             }
+        }
+
+        await SaveIfChangedAsync(ConfigScope.Global, AutoCrlfKey,
+            (GlobalAutoCrlfBox.SelectedItem as AutoCrlfOption)?.Value);
+        if (_repositoryPath is not null)
+        {
+            await SaveIfChangedAsync(ConfigScope.Local, AutoCrlfKey,
+                (LocalAutoCrlfBox.SelectedItem as AutoCrlfOption)?.Value);
         }
 
         Close(true);
@@ -959,6 +1096,14 @@ public partial class SettingsWindow : Window
 
         await _gitConfig.SetAsync(scope, key, value, scope == ConfigScope.Local ? _repositoryPath : null);
     }
+}
+
+/// <summary>
+///  One of upstream's <c>core.autocrlf</c> choices; an empty value is "Not set".
+/// </summary>
+public sealed record AutoCrlfOption(string Value, string Text)
+{
+    public override string ToString() => Text;
 }
 
 /// <summary>
@@ -983,6 +1128,14 @@ public sealed record NormaliseSymbolOption(string Label, string Symbol)
 public sealed record PluginOption(IGitPlugin Plugin)
 {
     public override string ToString() => Plugin.Name ?? "";
+}
+
+/// <summary>
+///  A plugin file that could not be loaded, listed after the plugins.
+/// </summary>
+public sealed record SkippedPluginOption(SkippedPlugin File)
+{
+    public override string ToString() => $"{File.FileName} (not loaded)";
 }
 
 /// <summary>

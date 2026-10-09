@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:scripts="using:GitExtensions.Xplat.Core.Scripts"
         xmlns:settings="using:GitExtensions.Xplat.Core.Settings"
+        xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.SettingsWindow"
         Title="Settings"
         Width="760" Height="580" WindowStartupLocation="CenterOwner">
@@ -295,7 +296,7 @@
         </ScrollViewer>
       </TabItem>
       <TabItem Header="Git config">
-        <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
+        <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
           <!-- As upstream's diff viewer settings page offers the tools git finds, a choice here fills the global value. -->
           <TextBlock Grid.Row="0" Grid.Column="6" Text="Found on this computer" FontWeight="SemiBold" Margin="0,0,0,6" />
           <ComboBox x:Name="MergeToolChoices" Grid.Row="3" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
@@ -314,7 +315,22 @@
           <TextBlock Grid.Row="4" Grid.Column="0" Text="Diff tool" VerticalAlignment="Center" />
           <TextBox x:Name="GlobalDiffToolBox" Grid.Row="4" Grid.Column="2" Margin="0,0,0,6" PlaceholderText="e.g. meld, kdiff3, opendiff" />
           <TextBox x:Name="LocalDiffToolBox" Grid.Row="4" Grid.Column="4" Margin="0,0,0,6" />
-          <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="7" Opacity="0.7" TextWrapping="Wrap" Margin="0,6,0,0"
+          <!-- Upstream's Git config page: credential helper, editor, commit template and line endings. -->
+          <TextBlock x:Name="lblCredentialHelper" Grid.Row="5" Grid.Column="0" Text="Credential helper" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalCredentialHelperBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBox x:Name="LocalCredentialHelperBox" Grid.Row="5" Grid.Column="4" Margin="0,0,0,6" />
+          <ComboBox x:Name="CredentialHelperChoices" Grid.Row="5" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
+          <TextBlock x:Name="lblEditor" Grid.Row="6" Grid.Column="0" Text="Editor" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalEditorBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBox x:Name="LocalEditorBox" Grid.Row="6" Grid.Column="4" Margin="0,0,0,6" />
+          <ComboBox x:Name="EditorChoices" Grid.Row="6" Grid.Column="6" MinWidth="140" MaxWidth="260" Margin="0,0,0,6" PlaceholderText="Choose..." />
+          <TextBlock x:Name="lblCommitTemplatePath" Grid.Row="7" Grid.Column="0" Text="Path to commit template" VerticalAlignment="Center" />
+          <TextBox x:Name="GlobalCommitTemplateBox" Grid.Row="7" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBox x:Name="LocalCommitTemplateBox" Grid.Row="7" Grid.Column="4" Margin="0,0,0,6" />
+          <TextBlock x:Name="AutoCrlfLabel" Grid.Row="8" Grid.Column="0" Text="Line endings" VerticalAlignment="Center" />
+          <ComboBox x:Name="GlobalAutoCrlfBox" Grid.Row="8" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+          <ComboBox x:Name="LocalAutoCrlfBox" Grid.Row="8" Grid.Column="4" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="7" Opacity="0.7" TextWrapping="Wrap" Margin="0,6,0,0"
                      Text="These are git's own settings (git config). An empty repository value uses the global one." />
         </Grid>
       </TabItem>
@@ -332,11 +348,19 @@
           <ListBox x:Name="ScriptsList" Grid.Row="0" Grid.Column="0" MinHeight="120">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="scripts:ScriptListItem">
-                <Grid ColumnDefinitions="Auto,170,150,*" ToolTip.Tip="{Binding CommandLine}">
+                <Grid ColumnDefinitions="Auto,Auto,170,150,*" ToolTip.Tip="{Binding CommandLine}">
                   <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" MinWidth="0" Margin="0,0,6,0" />
-                  <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" Text="{Binding EventText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0" />
-                  <TextBlock Grid.Column="3" Text="{Binding CommandLine}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.7" />
+                  <Image Grid.Column="1" Width="16" Height="16" Margin="0,0,6,0">
+                    <Image.Source>
+                      <MultiBinding Converter="{x:Static local:ScriptIconConverter.Instance}">
+                        <Binding Path="Icon" />
+                        <Binding Path="IconFilePath" />
+                      </MultiBinding>
+                    </Image.Source>
+                  </Image>
+                  <TextBlock Grid.Column="2" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="{Binding EventText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0" />
+                  <TextBlock Grid.Column="4" Text="{Binding CommandLine}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.7" />
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
@@ -349,7 +373,7 @@
             <Button x:Name="ScriptHelpButton" Content="?" HorizontalAlignment="Stretch" ToolTip.Tip="Arguments help" />
           </StackPanel>
           <Grid x:Name="ScriptDetails" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" x:DataType="scripts:ScriptListItem"
-                ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Name" VerticalAlignment="Center" />
             <TextBox x:Name="ScriptNameBox" Grid.Row="0" Grid.Column="2" Text="{Binding Name}" Margin="0,0,0,6"
                      ToolTip.Tip="An &amp; before a letter makes it the menu's access key" />
@@ -360,7 +384,15 @@
             <TextBox x:Name="ScriptArgumentsBox" Grid.Row="2" Grid.Column="2" Text="{Binding Arguments}" Margin="0,0,0,6" />
             <TextBlock Grid.Row="3" Grid.Column="0" Text="On event" VerticalAlignment="Center" />
             <ComboBox x:Name="ScriptEventBox" Grid.Row="3" Grid.Column="2" SelectedItem="{Binding OnEvent}" MinWidth="200" Margin="0,0,0,6" />
-            <WrapPanel Grid.Row="4" Grid.Column="2">
+            <!-- Upstream's Icon (one of its images) and "Icon or associated file path". -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Icon" VerticalAlignment="Center" />
+            <Grid Grid.Row="4" Grid.Column="2" ColumnDefinitions="Auto,8,*,4,Auto" Margin="0,0,0,6">
+              <ComboBox x:Name="ScriptIconBox" Grid.Column="0" MinWidth="200" SelectedValue="{Binding Icon}" MaxDropDownHeight="300" />
+              <TextBox x:Name="ScriptIconFileBox" Grid.Column="2" Text="{Binding IconFilePath}"
+                       PlaceholderText="Icon or associated file path (an image file)" />
+              <Button x:Name="ScriptIconFileButton" Grid.Column="4" Content="Browse..." />
+            </Grid>
+            <WrapPanel Grid.Row="5" Grid.Column="2">
               <CheckBox x:Name="ScriptEnabledCheck" Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,12,0" />
               <CheckBox x:Name="ScriptGridMenuCheck" Content="In the revision grid menu" IsChecked="{Binding AddToRevisionGridContextMenu}" Margin="0,0,12,0" />
               <CheckBox x:Name="ScriptAskCheck" Content="Ask for confirmation" IsChecked="{Binding AskConfirmation}" Margin="0,0,12,0" />

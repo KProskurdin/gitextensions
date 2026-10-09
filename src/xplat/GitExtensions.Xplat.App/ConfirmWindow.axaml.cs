@@ -8,11 +8,17 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class ConfirmWindow : Window
 {
-    public ConfirmWindow(string message, string confirmText, string? caption = null, bool offerDontShowAgain = false)
+    public ConfirmWindow(string message, string confirmText, string? caption = null, bool offerDontShowAgain = false,
+        string? cancelText = null)
     {
         InitializeComponent();
         MessageText.Text = message;
         ConfirmButton.Content = confirmText;
+        if (cancelText is not null)
+        {
+            CancelButton.Content = cancelText;
+        }
+
         if (caption is not null)
         {
             Title = caption;

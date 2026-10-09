@@ -28,6 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's word wrapping of commit message lines (no WinForms code), used as upstream's commit window uses it. -->
+    <Compile Include="..\..\app\GitUI\CommandsDialogs\CommitDialog\WordWrapper.cs" Link="Upstream\CommitDialog\WordWrapper.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Upstream's plugin settings keys ("<plugin id>.<name>", and the older "<description><name>"), so plugins read the
          values the WinForms app stored. The rest of upstream's PluginRegistry uses WinForms; Plugins/ reimplements it. -->
     <Compile Include="..\..\app\GitUI\Plugin\GitPluginSettingsContainer.cs" Link="Upstream\Plugin\GitPluginSettingsContainer.cs" />

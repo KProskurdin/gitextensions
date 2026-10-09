@@ -35,6 +35,15 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
+    public void LoadPage_should_continue_after_the_skipped_commits()
+    {
+        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 1, skip: 1).GetAwaiter().GetResult();
+
+        page.Rows.Select(row => row.Subject).Should().Equal("first");
+        page.HasMore.Should().BeFalse();
+    }
+
+    [AvaloniaTest]
     public void LoadPage_should_label_commits_with_their_branches_and_tags()
     {
         _repo.Run("branch", "feature");

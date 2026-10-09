@@ -111,6 +111,15 @@ internal sealed class ScriptsTests
         (await ScriptVariables.ExpandAsync("{{SelectedRelativePaths}}", context)).Should().Be("\"a.txt\" \"b c.txt\"");
     }
 
+    [Test]
+    public async Task ScriptFileOptions_should_give_the_files_and_the_line_and_no_column_when_unknown()
+    {
+        FakeScriptContext context = new() { Extra = ScriptFileOptions.For(["a.txt", "dir/b.txt"], line: 12) };
+
+        (await ScriptVariables.ExpandAsync("{SelectedRelativePaths}:{LineNumber}:{ColumnNumber}", context))
+            .Should().Be("a.txt dir/b.txt:12:");
+    }
+
     [TestCase("https://github.com/owner/repo.git", "/owner/repo")]
     [TestCase("git@github.com:owner/repo.git", "/owner/repo")]
     [TestCase("", "/")]

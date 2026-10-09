@@ -48,6 +48,8 @@ public enum CommitCommand
     Refresh,
     SelectNext,
     SelectPrevious,
+    ConventionalCommitPrefixMessage,
+    ConventionalCommitPrefixMessageWithScope,
 }
 
 /// <summary>
@@ -248,6 +250,9 @@ public static class Hotkeys
             [BrowseCommand.Pull] = WinFormsKeys.Control | WinFormsKeys.Down,
             [BrowseCommand.Push] = WinFormsKeys.Control | WinFormsKeys.Up,
             [BrowseCommand.QuickPull] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.P,
+            [CommitCommand.ConventionalCommitPrefixMessage] = WinFormsKeys.Control | WinFormsKeys.T,
+            [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
+                WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.T,
             [BrowseCommand.QuickPush] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Up,
             [BrowseCommand.QuickFetch] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Down,
             [BrowseCommand.Terminal] = WinFormsKeys.Control | WinFormsKeys.G,
@@ -279,6 +284,8 @@ public static class Hotkeys
             [CommitCommand.Refresh] = (18, "Refresh"),
             [CommitCommand.SelectNext] = (19, "SelectNext"),
             [CommitCommand.SelectPrevious] = (22, "SelectPrevious"),
+            [CommitCommand.ConventionalCommitPrefixMessage] = (25, "ConventionalCommit_PrefixMessage"),
+            [CommitCommand.ConventionalCommitPrefixMessageWithScope] = (26, "ConventionalCommit_PrefixMessageWithScope"),
         },
         new Dictionary<CommitCommand, WinFormsKeys>
         {

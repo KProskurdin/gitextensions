@@ -131,6 +131,34 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
+    public void The_plugins_tab_lists_plugin_files_that_could_not_be_loaded_with_the_reason()
+    {
+        AppServices.Plugins = new FixedPluginCatalog(_plugin)
+        {
+            Skipped =
+            [
+                new SkippedPlugin("GitExtensions.Old.dll", "/plugins/GitExtensions.Old.dll", "Built for Windows.")
+            ],
+        };
+        MainWindow window = NewWindow();
+        window.Show();
+        WaitForPluginItem(window);
+
+        Click(window, "PluginSettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        ListBox plugins = Find<ListBox>(settings, "PluginsList");
+        plugins.Items.Select(item => item!.ToString()).Should()
+            .Equal(RecordingPlugin.PluginName, "GitExtensions.Old.dll (not loaded)");
+        plugins.SelectedIndex = 1;
+
+        Find<TextBlock>(settings, "PluginTitleText").Text.Should().Be("GitExtensions.Old.dll");
+        Find<StackPanel>(settings, "PluginSettingsPanel").GetLogicalDescendants().OfType<TextBlock>()
+            .Select(text => text.Text).Should().Contain("This plugin is not loaded. Built for Windows.");
+        settings.Close();
+    }
+
+    [AvaloniaTest]
     public void A_plugin_asking_for_a_dialog_the_app_does_not_have_gets_an_error_not_a_crash()
     {
         MainWindow window = NewWindow();

@@ -277,8 +277,58 @@ public sealed class CommitListViewModel : ObservableObject
     /// </summary>
     public bool IsLoaded(ObjectId commit) => _loadedHashes.Contains(commit.ToString());
 
-    public Task LoadMoreAsync()
-        => _repositoryPath is null ? Task.CompletedTask : LoadPagesAsync(_repositoryPath, _pages + 1);
+    /// <summary>
+    ///  Reads the next page after the loaded commits and adds it to the list; the loaded commits and the selection stay.
+    /// </summary>
+    public async Task LoadMoreAsync()
+    {
+        if (_repositoryPath is not { } repositoryPath)
+        {
+            return;
+        }
+
+        int version = ++_loadVersion;
+        IReadOnlyList<CommitRow> loaded = _rows;
+        IsLoading = true;
+        Status = "Loading...";
+
+        try
+        {
+            CommitPage page = await _history.LoadPageAsync(repositoryPath, PageSize, _filter, skip: loaded.Count);
+            if (version != _loadVersion)
+            {
+                return;
+            }
+
+            // A commit made since the first read moves the history down by one, so the next page may repeat a loaded one.
+            HashSet<string> known = new(loaded.Select(row => row.Hash), StringComparer.OrdinalIgnoreCase);
+            IReadOnlyList<CommitRow> rows = [.. loaded, .. page.Rows.Where(row => known.Add(row.Hash))];
+            if (!await PrepareGraphAsync(rows, version))
+            {
+                return;
+            }
+
+            _pages++;
+            Rows = rows;
+            HasMore = page.HasMore;
+            Status = PageStatus(rows.Count, page.HasMore);
+        }
+        catch (Exception ex)
+        {
+            if (version == _loadVersion)
+            {
+                Status = PageStatus(loaded.Count, HasMore);
+                ErrorMessage = ex.Message;
+            }
+        }
+        finally
+        {
+            if (version == _loadVersion)
+            {
+                IsLoading = false;
+            }
+        }
+    }
 
     /// <summary>
     ///  Loads enough pages to hold at least <paramref name="count"/> commits, in one read.
@@ -467,9 +517,7 @@ public sealed class CommitListViewModel : ObservableObject
             RepositoryName = Path.GetFileName(repositoryPath.TrimEnd('/', '\\'));
             Rows = page.Rows;
             HasMore = page.HasMore;
-            string count = page.Rows.Count == 1 ? "1 commit" : $"{page.Rows.Count} commits";
-            string filtered = _filter.IsNarrowed ? " (filtered)" : "";
-            Status = page.HasMore ? $"{count}{filtered}, more available" : count + filtered;
+            Status = PageStatus(page.Rows.Count, page.HasMore);
         }
         catch (Exception ex)
         {
@@ -493,6 +541,13 @@ public sealed class CommitListViewModel : ObservableObject
                 IsLoading = false;
             }
         }
+    }
+
+    private string PageStatus(int rows, bool hasMore)
+    {
+        string count = rows == 1 ? "1 commit" : $"{rows} commits";
+        string filtered = _filter.IsNarrowed ? " (filtered)" : "";
+        return hasMore ? $"{count}{filtered}, more available" : count + filtered;
     }
 
     private void ClearSelection()

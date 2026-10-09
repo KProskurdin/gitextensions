@@ -16,9 +16,12 @@ internal sealed class FakeCommitHistory : ICommitHistory
 
     public List<RevisionFilter?> PageFilters { get; } = [];
 
-    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null)
+    public List<int> PageSkips { get; } = [];
+
+    public Task<CommitPage> LoadPageAsync(string repositoryPath, int limit, RevisionFilter? filter = null, int skip = 0)
     {
         PageLimits.Add(limit);
+        PageSkips.Add(skip);
         PageFilters.Add(filter);
         TaskCompletionSource<CommitPage> read = new();
         _pageReads.Add(read);
@@ -74,7 +77,8 @@ internal sealed class FakeCommitHistory : ICommitHistory
 
     public string? FileText { get; set; } = "";
 
-    public Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath) => Task.FromResult(FileText);
+    public Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath) =>
+        Task.FromResult(FileText);
 
     public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash) => Task.FromResult(Files);
 }

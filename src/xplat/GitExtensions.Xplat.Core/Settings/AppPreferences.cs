@@ -1,6 +1,7 @@
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtUtils.GitUI.Theming;
 using GitUIPluginInterfaces;
 
@@ -27,6 +28,16 @@ public interface IAppPreferences
     ///  after the subject (upstream's <c>CommitMessageManager.FormatCommitMessage</c>).
     /// </summary>
     bool EnsureCommitMessageSecondLineEmpty { get; set; }
+
+    /// <summary>
+    ///  Upstream's commit message settings (<c>CommitValidation*</c>): checks before a commit and formatting while typing.
+    /// </summary>
+    CommitValidationOptions CommitValidation { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>CommitTemplates</c>: the user's commit templates, in upstream's JSON (<c>CommitTemplateItem</c>).
+    /// </summary>
+    string CommitTemplates { get; set; }
 
     /// <summary>
     ///  Upstream <c>RememberAmendCommitState</c>: the commit window keeps the Amend check box across closing and opening.
@@ -317,6 +328,28 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.EnsureCommitMessageSecondLineEmpty;
         set => AppSettings.EnsureCommitMessageSecondLineEmpty = value;
+    }
+
+    public CommitValidationOptions CommitValidation
+    {
+        get => new(AppSettings.CommitValidationMaxCntCharsFirstLine, AppSettings.CommitValidationMaxCntCharsPerLine,
+            AppSettings.CommitValidationSecondLineMustBeEmpty, AppSettings.CommitValidationIndentAfterFirstLine,
+            AppSettings.CommitValidationAutoWrap, AppSettings.CommitValidationRegEx);
+        set
+        {
+            AppSettings.CommitValidationMaxCntCharsFirstLine = value.MaxFirstLineLength;
+            AppSettings.CommitValidationMaxCntCharsPerLine = value.MaxLineLength;
+            AppSettings.CommitValidationSecondLineMustBeEmpty = value.SecondLineMustBeEmpty;
+            AppSettings.CommitValidationIndentAfterFirstLine = value.IndentAfterFirstLine;
+            AppSettings.CommitValidationAutoWrap = value.AutoWrap;
+            AppSettings.CommitValidationRegEx = value.RegEx;
+        }
+    }
+
+    public string CommitTemplates
+    {
+        get => AppSettings.CommitTemplates;
+        set => AppSettings.CommitTemplates = value;
     }
 
     public bool RememberAmendCommitState
@@ -693,6 +726,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     // Upstream's defaults.
     public bool EnsureCommitMessageSecondLineEmpty { get; set; } = true;
+
+    public CommitValidationOptions CommitValidation { get; set; } = new();
+
+    public string CommitTemplates { get; set; } = "";
 
     public bool RememberAmendCommitState { get; set; } = true;
 

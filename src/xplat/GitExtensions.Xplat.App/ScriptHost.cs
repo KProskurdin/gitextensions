@@ -29,12 +29,6 @@ internal sealed class ScriptHost(
         => [.. AppServices.Scripts.Load().Where(script => script.Enabled && script.OnEvent == scriptEvent)];
 
     /// <summary>
-    ///  The enabled scripts upstream adds to the revision grid's context menu.
-    /// </summary>
-    public static IReadOnlyList<ScriptDefinition> GridScripts()
-        => [.. AppServices.Scripts.Load().Where(script => script.Enabled && script.AddToRevisionGridContextMenu)];
-
-    /// <summary>
     ///  The script whose hotkey is <paramref name="e"/>, or null. As upstream's <c>GitModuleForm</c>, any script with a hotkey
     ///  runs from it, enabled or not. A key without Ctrl (Cmd) or Alt typed into a text box is text, unless it is a function
     ///  key.
@@ -71,15 +65,17 @@ internal sealed class ScriptHost(
 
     /// <summary>
     ///  Runs one script; false when it did not run (declined, cancelled, failed), as upstream's <c>RunScript</c>.
+    ///  <paramref name="extraOptions"/> are the options of the place it runs from, such as a file list's
+    ///  <see cref="ScriptFileOptions"/>.
     /// </summary>
     public async Task<bool> RunAsync(ScriptDefinition script, string repositoryPath,
-        IReadOnlyList<string> selectedHashes)
+        IReadOnlyList<string> selectedHashes, IReadOnlyDictionary<string, IReadOnlyList<string>>? extraOptions = null)
     {
         ScriptLaunch? launch;
         try
         {
             RepositoryScriptContext context = await Task.Run(() =>
-                new RepositoryScriptContext(repositoryPath, selectedHashes, ChooseAsync));
+                new RepositoryScriptContext(repositoryPath, selectedHashes, ChooseAsync, extraOptions));
             launch = await ScriptRunner.PrepareAsync(script, context, this, Environment.ProcessPath ?? "GitExtensions");
         }
         catch (ScriptException ex)

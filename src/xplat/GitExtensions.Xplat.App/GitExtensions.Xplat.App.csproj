@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- A GUI program on Windows: started from Explorer, or by git as its editor or askpass program, it gets no console
+         window. Standard output still reaches git through the handles git passes. Other OSes make no difference. -->
+    <OutputType>WinExe</OutputType>
     <AssemblyName>GitExtensions</AssemblyName>
     <RootNamespace>GitExtensions.Xplat.App</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -18,6 +20,10 @@
   <ItemGroup>
     <!-- The logo lives in setup/ and is linked, not copied, so the upstream asset stays the single source. -->
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-256px.png" Link="Assets\git-extensions-logo-256px.png" />
+    <!-- Upstream's icons and the resource list that names them, linked so a script's icon name (upstream's
+         GitUI.Properties.Images) finds the same picture (ScriptIcons.cs). -->
+    <AvaloniaResource Include="..\..\app\GitUI\Properties\Images.resx" Link="Assets\Upstream\Images.resx" />
+    <AvaloniaResource Include="..\..\app\GitUI\Resources\Icons\*.png" Link="Assets\Upstream\Icons\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

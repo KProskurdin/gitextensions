@@ -283,6 +283,7 @@ public partial class MainWindow : Window
         };
         CommitList.DoubleTapped += (_, _) => DetailTabs.SelectedItem = DiffTab;
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
+        CommitFilesContextMenu.Opening += (_, _) => ShowFileListScripts();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
         CopyHashButton.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Hash));
         CopyMessageButton.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Message));
@@ -464,7 +465,7 @@ public partial class MainWindow : Window
             if (ScriptHost.MatchHotkey(e) is { } script)
             {
                 e.Handled = true;
-                RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes));
+                RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions()));
             }
 
             return;
@@ -890,26 +891,63 @@ public partial class MainWindow : Window
         UserScriptsPanel.Children.Clear();
         foreach (ScriptDefinition script in ScriptHost.ScriptsFor(ScriptEvent.ShowInUserMenuBar))
         {
+            // As upstream's user menu bar: the script's icon before its name, when it has one.
             Button button = new() { Content = script.DisplayName };
-            button.Click += (_, _) => RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes));
+            if (ScriptIcons.For(script) is { } icon)
+            {
+                button.Content = new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 4,
+                    Children =
+                    {
+                        new Image { Source = icon, Width = 16, Height = 16 },
+                        new TextBlock { Text = script.DisplayName }
+                    },
+                };
+            }
+
+            button.Click += (_, _) =>
+                RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions()));
             UserScriptsPanel.Children.Add(button);
         }
 
         UserScriptsPanel.IsVisible = UserScriptsPanel.Children.Count > 0;
     }
 
-    // The grid's "Run script" lists the scripts upstream adds to the grid's context menu, read when the menu opens.
-    private void ShowGridScripts()
+    // Upstream's file list menu (FileStatusList): scripts shown in file lists are items of the menu, the others under "Run
+    // script"; they run with the selected files.
+    private void ShowFileListScripts()
+        => ScriptMenus.Fill(CommitFilesContextMenu, CommitFilesRunScriptMenuItem,
+            script => script.OnEvent == ScriptEvent.ShowInFileList,
+            script => RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
+
+    // As upstream's FormBrowse.GetScriptOptionsProvider: the files of the tab on show, the File tree's or the Diff tab's, and
+    // the line selected in its viewer; none on the other tabs.
+    private IReadOnlyDictionary<string, IReadOnlyList<string>>? FileScriptOptions()
     {
-        IReadOnlyList<ScriptDefinition> scripts = ScriptHost.GridScripts();
-        RunScriptMenuItem.ItemsSource = scripts.Select(script =>
+        if (DetailTabs.SelectedItem == FileTreeTab)
         {
-            MenuItem item = new() { Header = script.DisplayName };
-            item.Click += (_, _) => RunOnSelectedCommit((path, _) => Scripts.RunAsync(script, path, SelectedHashes));
-            return item;
-        }).ToList();
-        RunScriptMenuItem.IsVisible = scripts.Count > 0;
+            return ScriptFileOptions.For(
+                FileTreeView.SelectedItem is FileTreeNode node ? [node.Path] : [], FileContentView.CurrentFileLine);
+        }
+
+        if (DetailTabs.SelectedItem == DiffTab)
+        {
+            return ScriptFileOptions.For(
+                CommitFilesList.SelectedItems?.OfType<CommitFile>().Select(file => file.Path) ?? [],
+                CommitDiff.CurrentFileLine);
+        }
+
+        return null;
     }
+
+    // As upstream's grid menu, read when the menu opens: the scripts marked for the grid are items of the menu, every other
+    // enabled script is under "Run script".
+    private void ShowGridScripts()
+        => ScriptMenus.Fill(CommitContextMenu, RunScriptMenuItem, script => script.AddToRevisionGridContextMenu,
+            script => RunOnSelectedCommit((path, _) =>
+                Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
 
     // A script's navigateTo: output names a commit or ref; it is selected when it is among the loaded commits.
     private async Task SelectRefAsync(string target)
@@ -1497,7 +1535,15 @@ public partial class MainWindow : Window
                 CommitFilesList.ItemsSource = _commits.CommitFiles;
                 break;
             case nameof(CommitListViewModel.VisibleRows):
+                // A new page or the quick filter replaces the items; the selected commit stays selected when it is still shown.
+                string? selectedHash = _commits.Selected?.Hash;
                 CommitList.ItemsSource = _commits.VisibleRows;
+                if (selectedHash is not null
+                    && _commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == selectedHash) is { } selectedItem)
+                {
+                    CommitList.SelectedItem = selectedItem;
+                }
+
                 break;
             case nameof(CommitListViewModel.Status):
                 StatusText.Text = _commits.Status;

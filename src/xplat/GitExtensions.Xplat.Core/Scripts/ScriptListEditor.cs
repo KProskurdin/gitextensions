@@ -88,7 +88,7 @@ public sealed class ScriptListItem(ScriptDefinition script) : ObservableObject
     [
         nameof(Name), nameof(Enabled), nameof(OnEvent), nameof(Command), nameof(Arguments),
         nameof(AddToRevisionGridContextMenu), nameof(AskConfirmation), nameof(RunInBackground), nameof(IsPowerShell),
-        nameof(EventText), nameof(CommandLine)
+        nameof(Icon), nameof(IconFilePath), nameof(EventText), nameof(CommandLine)
     ];
 
     public ScriptDefinition Script { get; } = script;
@@ -145,6 +145,24 @@ public sealed class ScriptListItem(ScriptDefinition script) : ObservableObject
     {
         get => Script.IsPowerShell;
         set => Change(() => Script.IsPowerShell = value);
+    }
+
+    /// <summary>
+    ///  The name of one of upstream's images (<c>GitUI.Properties.Images</c>), or empty for none.
+    /// </summary>
+    public string Icon
+    {
+        get => Script.Icon ?? "";
+        set => Change(() => Script.Icon = value.Length == 0 ? null : value);
+    }
+
+    /// <summary>
+    ///  Upstream's "Icon or associated file path": an image file whose picture is the icon; it wins over <see cref="Icon"/>.
+    /// </summary>
+    public string IconFilePath
+    {
+        get => Script.IconFilePath ?? "";
+        set => Change(() => Script.IconFilePath = value.Length == 0 ? null : value);
     }
 
     /// <summary>

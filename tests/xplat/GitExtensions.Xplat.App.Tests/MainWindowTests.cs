@@ -179,6 +179,23 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void The_selected_commit_stays_selected_while_the_quick_filter_still_shows_it()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = 1;
+        WaitUntil(() => Find<SelectableTextBlock>(window, "DetailMessage").Text == "first");
+
+        Find<TextBox>(window, "FilterBox").Text = "fir";
+
+        WaitUntil(() => commits.ItemCount == 1);
+        ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");
+        WaitUntil(() => Find<SelectableTextBlock>(window, "DetailMessage").Text == "first");
+    }
+
+    [AvaloniaTest]
     public void Opening_a_folder_that_is_not_a_repository_shows_an_error_dialog()
     {
         string folder = Path.Combine(Path.GetTempPath(), "xplat-not-a-repo-" + Guid.NewGuid().ToString("N"));
@@ -1096,6 +1113,42 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Settings_git_config_saves_the_credential_helper_editor_and_line_endings()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        TestAppBuilder.GitConfig.Set(ConfigScope.Global, "core.autocrlf", "input");
+        TestAppBuilder.GitConfig.SetMultiple(ConfigScope.Local, "credential.helper", "", "store");
+
+        Click(window, "SettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        WaitUntil(() => settings.IsGitConfigLoaded);
+        ComboBox globalCrlf = Find<ComboBox>(settings, "GlobalAutoCrlfBox");
+        ((AutoCrlfOption)globalCrlf.SelectedItem!).Value.Should().Be("input");
+        Find<TextBox>(settings, "LocalCredentialHelperBox").IsEnabled.Should().BeFalse();
+        ComboBox helpers = Find<ComboBox>(settings, "CredentialHelperChoices");
+        WaitUntil(() => helpers.ItemCount > 0);
+        helpers.Items.Should().Contain("store");
+
+        helpers.SelectedItem = "store";
+        Find<TextBox>(settings, "GlobalEditorBox").Text = "vi";
+        globalCrlf.SelectedItem = globalCrlf.Items.OfType<AutoCrlfOption>().Single(option => option.Value == "");
+        Find<ComboBox>(settings, "LocalAutoCrlfBox").SelectedItem =
+            globalCrlf.Items.OfType<AutoCrlfOption>().Single(option => option.Value == "true");
+        Click(settings, "SaveButton");
+
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "credential.helper").Should().Be("store");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "core.editor").Should().Be("vi");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "core.autocrlf").Should().BeEmpty();
+        TestAppBuilder.GitConfig.Get(ConfigScope.Local, "core.autocrlf").Should().Be("true");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Local, "credential.helper").Should().Be("store");
+        TestAppBuilder.GitConfig.Clear();
+    }
+
+    [AvaloniaTest]
     public void Settings_lists_upstreams_theme_files_and_follows_the_system_first()
     {
         MainWindow window = NewWindow();
@@ -1280,7 +1333,11 @@ internal sealed class MainWindowTests
         [
             new ScriptDefinition
             {
-                Name = "In grid", Command = "git", Arguments = "status", AddToRevisionGridContextMenu = true
+                Name = "In grid",
+                Command = "git",
+                Arguments = "status",
+                AddToRevisionGridContextMenu = true,
+                Icon = "EditFile",
             },
             new ScriptDefinition
             {
@@ -1295,10 +1352,16 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
+        // As upstream: a script marked for the grid is an item of the menu itself, after "Run script", with its icon; the
+        // other enabled scripts are under "Run script".
         MenuItem runScript = Find<MenuItem>(window, "RunScriptMenuItem");
-        runScript.IsVisible.Should().BeTrue();
-        runScript.ItemsSource.Should().BeAssignableTo<IEnumerable<MenuItem>>()
-            .Which.Select(item => item.Header).Should().Equal("In grid");
+        ContextMenu menu = Find<ListBox>(window, "CommitList").ContextMenu!;
+        MenuItem gridScript = (MenuItem)menu.Items[menu.Items.IndexOf(runScript) + 1]!;
+        ((TextBlock)gridScript.Header!).Text.Should().Be("In grid");
+        gridScript.Icon.Should().BeOfType<Image>().Which.Source.Should().NotBeNull();
+        runScript.IsEnabled.Should().BeTrue();
+        runScript.Items.OfType<MenuItem>().Select(item => ((TextBlock)item.Header!).Text).Should()
+            .Equal("After commit");
 
         CommitWindow commit = OpenCommitWindow(window);
         Find<TextBox>(commit, "CommitMessageBox").Text = "with a script";
@@ -1306,6 +1369,59 @@ internal sealed class MainWindowTests
 
         WaitUntil(() => _repo.Run("tag", "--list").Contains("after-commit", StringComparison.Ordinal));
         _repo.Run("rev-parse", "after-commit").Trim().Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
+    }
+
+    [AvaloniaTest]
+    public void A_file_list_script_is_in_the_file_menu_and_runs_with_the_selected_files()
+    {
+        TestAppBuilder.Scripts.Save(
+        [
+            new ScriptDefinition
+            {
+                Name = "Tag file",
+                Command = "git",
+                Arguments = "tag file-{SelectedRelativePaths}",
+                OnEvent = ScriptEvent.ShowInFileList,
+            },
+        ]);
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        CommitWindow commit = OpenCommitWindow(window);
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        WaitUntil(() => unstaged.ItemCount == 1);
+        unstaged.SelectedIndex = 0;
+
+        ContextMenu menu = unstaged.ContextMenu!;
+        unstaged.RaiseEvent(new ContextRequestedEventArgs());
+        MenuItem item = menu.Items.OfType<MenuItem>().Single(entry => entry.Header is TextBlock { Text: "Tag file" });
+        Find<MenuItem>(commit, "UnstagedRunScriptMenuItem").IsEnabled.Should().BeFalse();
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        menu.Close();
+
+        WaitUntil(() => _repo.Run("tag", "--list").Contains("file-new.txt", StringComparison.Ordinal));
+    }
+
+    [AvaloniaTest]
+    public void A_scripts_icon_is_chosen_from_upstreams_images_in_settings()
+    {
+        TestAppBuilder.Scripts.Save([
+            new ScriptDefinition { Name = "Iconic", Command = "git", HotkeyCommandIdentifier = 9000 }
+        ]);
+        MainWindow window = NewWindow();
+        window.Show();
+        SettingsWindow settings = OpenSettings(window);
+        ComboBox icons = Find<ComboBox>(settings, "ScriptIconBox");
+        icons.Items.OfType<ScriptIconChoice>().Should()
+            .Contain(choice => choice.Name == "EditFile" && choice.Picture != null);
+
+        icons.SelectedValue = "EditFile";
+        Click(settings, "SaveButton");
+
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+        TestAppBuilder.Scripts.Load().Single().Icon.Should().Be("EditFile");
+        TestAppBuilder.Scripts.Save([]);
     }
 
     [AvaloniaTest]
