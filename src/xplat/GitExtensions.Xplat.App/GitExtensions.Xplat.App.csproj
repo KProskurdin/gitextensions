@@ -29,6 +29,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's translations (Transifex), linked into the Translation folder next to the app as upstream ships them
+         (upstream's Translator looks there), for the language chosen in Settings > Appearance. -->
+    <Content Include="..\..\app\GitUI\Translation\*.xlf;..\..\app\GitUI\Translation\*.gif" Link="Translation\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
@@ -39,6 +47,8 @@
     <ProjectReference Include="..\GitCommands\GitCommands.csproj" />
     <ProjectReference Include="..\GitExtensions.Xplat.Core\GitExtensions.Xplat.Core.csproj" />
     <ProjectReference Include="..\GitExtensions.Xplat.Ui\GitExtensions.Xplat.Ui.csproj" />
+    <!-- The GitHub API client of the GitHub plugin, which ships with the app as upstream ships it. -->
+    <ProjectReference Include="..\Git.hub\Git.hub.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,6 +64,13 @@
     <ProjectReference Include="..\plugins\Gource\GitExtensions.Plugins.Gource.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
     <ProjectReference Include="..\plugins\GitImpact\GitExtensions.Plugins.GitImpact.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
     <ProjectReference Include="..\plugins\GitStatistics\GitExtensions.Plugins.GitStatistics.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\GitHub3\GitExtensions.Plugins.GitHub3.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\BuildServerIntegration\AppVeyorIntegration\GitExtensions.Plugins.AppVeyorIntegration.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\BuildServerIntegration\AzureDevOpsIntegration\GitExtensions.Plugins.AzureDevOpsIntegration.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\BuildServerIntegration\GitHubActionsIntegration\GitExtensions.Plugins.GitHubActionsIntegration.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\BuildServerIntegration\GitlabIntegration\GitExtensions.Plugins.GitlabIntegration.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\BuildServerIntegration\JenkinsIntegration\GitExtensions.Plugins.JenkinsIntegration.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\BuildServerIntegration\TeamCityIntegration\GitExtensions.Plugins.TeamCityIntegration.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
   </ItemGroup>
 
   <!-- After the references are built, so their output paths are known; as content they reach the build output, the

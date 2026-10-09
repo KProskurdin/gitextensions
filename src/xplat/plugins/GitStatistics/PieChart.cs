@@ -18,7 +18,7 @@ namespace GitExtensions.Plugins.GitStatistics;
 /// </summary>
 public sealed class PieChart : Control
 {
-    private const double Margin = 10;
+    private const double PieMargin = 10;
     private const double EdgeDarkening = 0.7;
     private const double StartAngle = -90;
 
@@ -112,7 +112,7 @@ public sealed class PieChart : Control
 
     private (Point Center, double Radius) Circle()
     {
-        double side = Math.Max(0, Math.Min(Bounds.Width, Bounds.Height) - (2 * Margin));
+        double side = Math.Max(0, Math.Min(Bounds.Width, Bounds.Height) - (2 * PieMargin));
         return (new Point(Bounds.Width / 2, Bounds.Height / 2), side / 2);
     }
 

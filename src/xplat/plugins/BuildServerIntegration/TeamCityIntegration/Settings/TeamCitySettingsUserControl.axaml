@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TeamCityIntegration.Settings.TeamCitySettingsUserControl">
+  <!-- Upstream TeamCitySettingsUserControl: the server, the project(s) with a chooser, the build ID filter and the guest
+       option, or the server and build from a build URL on the clipboard. Texts are named as the control's fields, for its
+       translations. -->
+  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+    <HyperlinkButton x:Name="lnkExtractDataFromBuildUrlCopiedInTheClipboard" Grid.Row="0" Grid.Column="1"
+                     Content="Extract the data from the build url copied in the clipboard" />
+    <TextBlock x:Name="label13" Grid.Row="1" Text="TeamCity server URL" VerticalAlignment="Center" />
+    <TextBox x:Name="TeamCityServerUrl" Grid.Row="1" Grid.Column="1" />
+    <TextBlock x:Name="label1" Grid.Row="2" Text="Project name" VerticalAlignment="Center" />
+    <DockPanel Grid.Row="2" Grid.Column="1">
+      <Button x:Name="buttonProjectChooser" DockPanel.Dock="Right" Content="..." Margin="4,0,0,0" IsEnabled="False" />
+      <TextBox x:Name="TeamCityProjectName" />
+    </DockPanel>
+    <TextBlock x:Name="labelProjectNameComment" Grid.Row="3" Grid.Column="1" Opacity="0.7" Text="Several names splitted by | char" />
+    <TextBlock x:Name="labelBuildFilter" Grid.Row="4" Text="Build Id Filter" VerticalAlignment="Center" />
+    <TextBox x:Name="TeamCityBuildIdFilter" Grid.Row="4" Grid.Column="1" />
+    <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+      <TextBlock x:Name="labelBuildIdFilter" Opacity="0.7" Text="Regexp" />
+      <TextBlock x:Name="labelRegexError" Foreground="Firebrick" IsVisible="False"
+                 Text="The &quot;Build Id Filter&quot; regular expression is not valid and won't be saved!" />
+    </StackPanel>
+    <CheckBox x:Name="CheckBoxLogAsGuest" Grid.Row="6" Grid.Column="1" IsThreeState="True"
+              Content="Log as guest to display the build report" />
+  </Grid>
+</UserControl>

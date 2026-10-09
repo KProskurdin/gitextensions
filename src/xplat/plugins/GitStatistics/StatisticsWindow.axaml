@@ -10,9 +10,10 @@
       <Setter Property="Margin" Value="0,0,0,8" />
     </Style>
   </Window.Styles>
-  <!-- Upstream FormGitStatistics: four tabs, each with its total, the figures as text and a pie. -->
+  <!-- Upstream FormGitStatistics: four tabs, each with its total, the figures as text and a pie. Texts are named as the form's
+       fields, for its translations. -->
   <TabControl x:Name="Tabs" Margin="6">
-    <TabItem Header="Commits per contributor">
+    <TabItem x:Name="tabPage2" Header="Commits per contributor">
       <DockPanel Margin="6">
         <TextBlock x:Name="TotalCommits" DockPanel.Dock="Top" Classes="total" Text="Total commits" />
         <Grid ColumnDefinitions="*,*">
@@ -21,7 +22,7 @@
         </Grid>
       </DockPanel>
     </TabItem>
-    <TabItem Header="Lines of code per language">
+    <TabItem x:Name="tabPage1" Header="Lines of code per language">
       <DockPanel Margin="6">
         <TextBlock x:Name="TotalLinesOfCode" DockPanel.Dock="Top" Classes="total" Text="Total lines of code" />
         <Grid ColumnDefinitions="*,*">
@@ -30,7 +31,7 @@
         </Grid>
       </DockPanel>
     </TabItem>
-    <TabItem Header="Lines of code per type">
+    <TabItem x:Name="tabPage3" Header="Lines of code per type">
       <DockPanel Margin="6">
         <TextBlock x:Name="TotalLinesOfCode2" DockPanel.Dock="Top" Classes="total" Text="Total lines of code" />
         <Grid ColumnDefinitions="*,*">
@@ -39,7 +40,7 @@
         </Grid>
       </DockPanel>
     </TabItem>
-    <TabItem Header="Lines of test code">
+    <TabItem x:Name="tabPage4" Header="Lines of test code">
       <DockPanel Margin="6">
         <TextBlock x:Name="TotalLinesOfTestCode" DockPanel.Dock="Top" Classes="total" Text="Total lines of code" />
         <Grid ColumnDefinitions="*,*">

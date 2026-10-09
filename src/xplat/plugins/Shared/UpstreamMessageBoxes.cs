@@ -1,9 +1,10 @@
 namespace GitUI;
 
 /// <summary>
-///  Stands in for the members of GitUI's <c>MessageBoxes</c> that the Gource plugin class uses. GitUI is the WinForms
-///  project, which the new shell does not build; these forward to the shared <see cref="GitExtensions.Extensibility.MessageBoxes"/>,
-///  which GitUI's own class also wraps.
+///  Stands in for the members of GitUI's <c>MessageBoxes</c> that upstream plugin classes use (Gource, Azure DevOps, GitHub).
+///  GitUI is the WinForms project, which the new shell does not build; these forward to the shared
+///  <see cref="GitExtensions.Extensibility.MessageBoxes"/>, which GitUI's own class also wraps. Linked into each plugin that
+///  needs it, so it stays internal to each.
 /// </summary>
 internal static class MessageBoxes
 {

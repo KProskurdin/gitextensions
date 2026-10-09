@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', '..', 'plugins', 'BuildServerIntegration', 'JenkinsIntegration'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms settings control; Settings\JenkinsSettingsUserControl.axaml here stands in for it. The adapter is
+         compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)Settings\JenkinsSettingsUserControl.cs;$(UpstreamDir)Settings\JenkinsSettingsUserControl.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)Settings\JenkinsSettingsUserControl.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

@@ -4,41 +4,42 @@
         x:Class="GitExtensions.Plugins.DeleteUnusedBranches.DeleteUnusedBranchesWindow"
         Title="Delete obsolete branches"
         Width="900" Height="560" WindowStartupLocation="CenterOwner">
-  <!-- Upstream DeleteUnusedBranchesForm: the search options, the branches found with a check box each, and the status. -->
+  <!-- Upstream DeleteUnusedBranchesForm: the search options, the branches found with a check box each, and the status. Texts are named as
+       the form's fields and columns, for its translations. -->
   <DockPanel Margin="8">
     <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
-      <TextBlock Grid.Row="0" Text="Delete branches older than x days" VerticalAlignment="Center" />
+      <TextBlock x:Name="label1" Grid.Row="0" Text="Delete branches older than x days" VerticalAlignment="Center" />
       <NumericUpDown x:Name="OlderThanDaysBox" Grid.Row="0" Grid.Column="1" Width="140" HorizontalAlignment="Left"
                      Minimum="0" Maximum="100000" Increment="1" FormatString="0" />
-      <TextBlock Grid.Row="1" Text="Delete branches fully merged into branch" VerticalAlignment="Center" />
+      <TextBlock x:Name="label2" Grid.Row="1" Text="Delete branches fully merged into branch" VerticalAlignment="Center" />
       <TextBox x:Name="MergedIntoBranchBox" Grid.Row="1" Grid.Column="1" Width="240" HorizontalAlignment="Left" />
-      <CheckBox x:Name="IncludeUnmergedCheck" Grid.Row="1" Grid.Column="2" Content="Include unmerged branches" />
-      <CheckBox x:Name="IncludeRemoteCheck" Grid.Row="2" Content="Delete remote branches from" />
+      <CheckBox x:Name="includeUnmergedBranches" Grid.Row="1" Grid.Column="2" Content="Include unmerged branches" />
+      <CheckBox x:Name="IncludeRemoteBranches" Grid.Row="2" Content="Delete remote branches from" />
       <TextBox x:Name="RemoteBox" Grid.Row="2" Grid.Column="1" Width="240" HorizontalAlignment="Left" />
-      <CheckBox x:Name="UseRegexCheck" Grid.Row="3" Content="Use regex to filter branches" />
+      <CheckBox x:Name="useRegexFilter" Grid.Row="3" Content="Use regex to filter branches" />
       <TextBox x:Name="RegexBox" Grid.Row="3" Grid.Column="1" Width="240" HorizontalAlignment="Left" />
       <StackPanel Grid.Row="3" Grid.Column="2" Orientation="Horizontal" Spacing="12">
-        <CheckBox x:Name="RegexCaseInsensitiveCheck" Content="Case insensitive" />
-        <CheckBox x:Name="RegexDoesNotMatchCheck" Content="Does not match" />
+        <CheckBox x:Name="useRegexCaseInsensitive" Content="Case insensitive" />
+        <CheckBox x:Name="regexDoesNotMatch" Content="Does not match" />
       </StackPanel>
       <DockPanel Grid.Row="4" Grid.ColumnSpan="3">
-        <Button x:Name="SearchButton" DockPanel.Dock="Right" Content="Search branches" />
+        <Button x:Name="RefreshBtn" DockPanel.Dock="Right" Content="Search branches" />
         <TextBlock x:Name="InstructionText" VerticalAlignment="Center" TextWrapping="Wrap" />
       </DockPanel>
     </Grid>
     <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
-      <Button x:Name="SettingsButton" DockPanel.Dock="Left" Content="Settings" />
-      <Button x:Name="DeleteButton" DockPanel.Dock="Right" Content="Delete" Margin="6,0,0,0" />
-      <Button x:Name="CloseButton" DockPanel.Dock="Right" Content="Close" />
+      <Button x:Name="buttonSettings" DockPanel.Dock="Left" Content="Settings" />
+      <Button x:Name="Delete" DockPanel.Dock="Right" Content="Delete" Margin="6,0,0,0" />
+      <Button x:Name="Cancel" DockPanel.Dock="Right" Content="Close" />
       <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="12,0" />
     </DockPanel>
     <Grid DockPanel.Dock="Top" ColumnDefinitions="50,*,175,120,*" Margin="4,8,4,2">
       <!-- Upstream's header check box: ticks or clears every row. -->
       <CheckBox x:Name="SelectAllCheck" Grid.Column="0" />
-      <TextBlock Grid.Column="1" Text="Name" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="2" Text="Last activity" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="3" Text="Last author" VerticalAlignment="Center" />
-      <TextBlock Grid.Column="4" Text="Last message" VerticalAlignment="Center" />
+      <TextBlock x:Name="nameDataGridViewTextBoxColumn" Grid.Column="1" Text="Name" VerticalAlignment="Center" />
+      <TextBlock x:Name="dateDataGridViewTextBoxColumn" Grid.Column="2" Text="Last activity" VerticalAlignment="Center" />
+      <TextBlock x:Name="Author" Grid.Column="3" Text="Last author" VerticalAlignment="Center" />
+      <TextBlock x:Name="Message" Grid.Column="4" Text="Last message" VerticalAlignment="Center" />
     </Grid>
     <ListBox x:Name="BranchList">
       <ListBox.Styles>

@@ -1,4 +1,5 @@
 using System.Reflection;
+using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
@@ -43,7 +44,22 @@ public static class AppServices
     /// <summary>
     ///  Where the revision link definitions are read and written: upstream's GitExtensions.settings files.
     /// </summary>
+    /// <remarks>
+    ///  The same repository settings hold the build server integration settings, which the grid and the Settings window read
+    ///  through this store too.
+    /// </remarks>
     public static IRevisionLinkStore RevisionLinks { get; set; } = new UpstreamRevisionLinkStore();
+
+    /// <summary>
+    ///  The build server plugins (adapters, settings controls, auto-detectors). Tests replace it, so they never load the
+    ///  plugins copied next to the test host.
+    /// </summary>
+    public static IBuildServerCatalog BuildServers { get; set; } = new UpstreamBuildServerCatalog();
+
+    /// <summary>
+    ///  Where the build server credentials are kept (BuildServerCredentialStores).
+    /// </summary>
+    public static IBuildServerCredentialStore BuildServerCredentials { get; set; } = BuildServerCredentialStores.ForCurrentOs();
 
     /// <summary>
     ///  The recent repositories list. Created on first use, because the settings store reads the settings file.

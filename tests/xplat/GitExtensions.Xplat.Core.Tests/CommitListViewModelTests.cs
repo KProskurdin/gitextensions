@@ -1,4 +1,7 @@
 using AwesomeAssertions;
+using GitExtensions.Extensibility.BuildServerIntegration;
+using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.CommitHistory;
 using NUnit.Framework;
 
@@ -8,6 +11,7 @@ internal sealed class CommitListViewModelTests
 {
     private const string RepositoryPath = "/work/one";
     private const string OtherRepositoryPath = "/work/two";
+    private static readonly ObjectId Commit = ObjectId.Parse("0123456789abcdef0123456789abcdef01234567");
 
     private FakeCommitHistory _history = null!;
     private CommitListViewModel _viewModel = null!;
@@ -281,6 +285,23 @@ internal sealed class CommitListViewModelTests
         => new(
             hashes.Select(hash => new CommitRow(hash, hash[..4], "subject " + hash, "author", "2026-10-03 12:00"))
                 .ToList(), hasMore);
+
+    [Test]
+    public void ApplyBuildInfo_should_keep_the_latest_build_of_each_commit()
+    {
+        CommitListViewModel commits = new(new FakeCommitHistory());
+        DateTime now = DateTime.Now;
+
+        commits.ApplyBuildInfo(new BuildInfo { CommitHashList = [Commit], StartDate = now, Status = BuildStatus.Failure, Description = "#2" });
+        commits.ApplyBuildInfo(new BuildInfo { CommitHashList = [Commit], StartDate = now.AddHours(-1), Status = BuildStatus.Success });
+
+        BuildStatusCell cell = commits.BuildStatusOf(Commit.ToString());
+        cell.Status.Should().Be(BuildStatus.Failure);
+        cell.Symbol.Should().Be("❌");
+        cell.Tooltip.Should().Be("#2");
+        commits.ClearBuildStatuses();
+        cell.Info.Should().BeNull();
+    }
 
     private static CommitDetails Details(string hash, string message)
         => new(hash, "author <a@example.com>", "2026-10-03 12:00", "2026-10-03 12:00", "", message);

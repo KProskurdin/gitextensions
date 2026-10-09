@@ -32,6 +32,10 @@
       <MenuItem Header="_View">
         <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
+        <Separator />
+        <!-- Upstream's "Grid info" toggles for the build status column. -->
+        <MenuItem x:Name="ShowBuildStatusIconMenuItem" Header="Show build status _icon" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowBuildStatusTextMenuItem" Header="Show build status te_xt" ToggleType="CheckBox" />
       </MenuItem>
       <MenuItem Header="_Commands">
         <MenuItem x:Name="CommitMenuItem" Header="_Commit..." />
@@ -51,6 +55,13 @@
         <MenuItem x:Name="BisectMenuItem" Header="B_isect..." />
         <Separator />
         <MenuItem x:Name="ResolveConflictsMenuItem" Header="Solve _conflicts..." />
+      </MenuItem>
+      <!-- Upstream's "(Repository hosts)" menu: named after the repository host plugin, shown when one is loaded. -->
+      <MenuItem x:Name="RepositoryHostsMenu" Header="(Repository hosts)" IsVisible="False">
+        <MenuItem x:Name="ForkCloneRepositoryMenuItem" Header="_Fork/Clone repository..." />
+        <MenuItem x:Name="ViewPullRequestsMenuItem" Header="View _pull requests..." />
+        <MenuItem x:Name="CreatePullRequestsMenuItem" Header="_Create pull requests..." />
+        <MenuItem x:Name="AddUpstreamRemoteMenuItem" Header="_Add upstream remote" />
       </MenuItem>
       <MenuItem x:Name="PluginsMenu" Header="_Plugins">
         <MenuItem x:Name="PluginsLoadingMenuItem" Header="Loading..." IsEnabled="False" />
@@ -270,11 +281,14 @@
 
         <Grid x:Name="BrowsePanel" RowDefinitions="Auto,*,5,300" IsVisible="False">
           <!-- Column headers of the revision grid; the widths match the row template below. -->
-          <Grid Grid.Row="0" ColumnDefinitions="*,160,140,90" Margin="12,0,12,2">
+          <Grid Grid.Row="0" ColumnDefinitions="*,160,140,90,Auto" Margin="12,0,12,2">
             <TextBlock Grid.Column="0" Text="Message" FontWeight="SemiBold" />
             <TextBlock Grid.Column="1" Text="Author" FontWeight="SemiBold" />
             <TextBlock Grid.Column="2" Text="Date" FontWeight="SemiBold" />
             <TextBlock Grid.Column="3" Text="Commit" FontWeight="SemiBold" />
+            <!-- Upstream's last column. As wide as BuildStatusColumnWidth: 0 while no build server shows results. -->
+            <TextBlock x:Name="BuildStatusHeader" Grid.Column="4" Text="Build Status" FontWeight="SemiBold" ClipToBounds="True"
+                       TextTrimming="CharacterEllipsis" Width="{DynamicResource BuildStatusColumnWidth}" />
           </Grid>
           <ListBox x:Name="CommitList" Grid.Row="1">
             <ListBox.Styles>
@@ -302,6 +316,8 @@
                 <MenuItem x:Name="CherryPickMenuItem" Header="Cherry-pick this commit" />
                 <MenuItem x:Name="RevertMenuItem" Header="Revert this commit" />
                 <MenuItem x:Name="RunScriptMenuItem" Header="Run script" />
+                <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" />
+                <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" />
                 <MenuItem Header="Rebase current branch on">
                   <MenuItem x:Name="RebaseOnCommitMenuItem" Header="Selected commit" />
                   <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit interactively..." />
@@ -315,7 +331,7 @@
             </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="core:CommitListItem">
-                <Grid ColumnDefinitions="Auto,*,160,140,90">
+                <Grid ColumnDefinitions="Auto,*,160,140,90,Auto">
                   <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
                               ToolTip.Tip="{Binding Row.Tooltip.Message}">
@@ -340,6 +356,16 @@
                   <TextBlock Grid.Column="2" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
                   <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
                   <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
+                       build report. -->
+                  <StackPanel Grid.Column="5" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
+                              Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
+                              ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"
+                               Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
+                    <TextBlock Text="{Binding Build.Text}" IsVisible="{DynamicResource BuildStatusShowText}" TextTrimming="CharacterEllipsis"
+                               Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
+                  </StackPanel>
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>

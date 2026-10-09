@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', '..', 'plugins', 'BuildServerIntegration', 'AzureDevOpsIntegration'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms settings control; Settings\SettingsUserControl.axaml here stands in for it. The adapter is
+         compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)Settings\SettingsUserControl.cs;$(UpstreamDir)Settings\SettingsUserControl.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)Settings\SettingsUserControl.resx" />
+  </ItemGroup>
+
+</Project>

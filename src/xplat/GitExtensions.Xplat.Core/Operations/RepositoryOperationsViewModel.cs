@@ -496,7 +496,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     ///  Clones <paramref name="sourceUrl"/> into <paramref name="targetPath"/>. The clone is reported through
     ///  <see cref="RepositoryChanged"/> with the target path, so a view can open it.
     /// </summary>
-    public Task<bool> CloneAsync(string sourceUrl, string targetPath)
+    public Task<bool> CloneAsync(string sourceUrl, string targetPath, int? depth = null)
     {
         if (string.IsNullOrWhiteSpace(sourceUrl))
         {
@@ -510,7 +510,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
         return RunRemoteAsync($"Clone {sourceUrl.Trim()}", "Cloned", targetPath,
             (output, cancellation) =>
-                _operations.CloneAsync(sourceUrl.Trim(), targetPath.Trim(), output, cancellation));
+                _operations.CloneAsync(sourceUrl.Trim(), targetPath.Trim(), output, cancellation, depth));
     }
 
     private async Task<bool> RunRemoteAsync(string title, string successMessage, string repositoryPath,

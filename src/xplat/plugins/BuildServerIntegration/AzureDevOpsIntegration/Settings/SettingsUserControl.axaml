@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AzureDevOpsIntegration.Settings.SettingsUserControl">
+  <!-- Upstream Azure DevOps SettingsUserControl: the project, the build definition filter and the API token, or all of them
+       from a build URL on the clipboard. Texts are named as the control's fields, for its translations. -->
+  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+    <HyperlinkButton x:Name="ExtractLink" Grid.Row="0" Grid.Column="1" Content="Extract data from a build result url copied in the clipboard" />
+    <TextBlock x:Name="label13" Grid.Row="1" Text="Project Url" VerticalAlignment="Center" />
+    <TextBox x:Name="TfsServer" Grid.Row="1" Grid.Column="1" />
+    <TextBlock x:Name="label1" Grid.Row="2" Grid.Column="1" Opacity="0.7"
+               Text="Examples:&#10; - https://dev.azure.com/yourorganization/projectname/&#10; - https://yourhost:8080/tfs/collectionname/projectname/&#10; - https://yourorganization.visualstudio.com/projectname/" />
+    <TextBlock x:Name="label3" Grid.Row="3" Text="Build definition name&#10;(all existing if left empty)" VerticalAlignment="Center" />
+    <TextBox x:Name="TfsBuildDefinitionNameFilter" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" />
+    <TextBlock x:Name="labelBuildIdFilter" Grid.Row="4" Grid.Column="1" Opacity="0.7"
+               Text="If needed, use the '*' wildcard or enter a Regular Expression" />
+    <TextBlock x:Name="labelRegexError" Grid.Row="5" Grid.Column="1" Foreground="Firebrick" IsVisible="False"
+               Text="The 'Build definition name' regular expression is not valid and won't be saved!" />
+    <TextBlock x:Name="RestApiTokenLabel" Grid.Row="6" Text="Rest Api Token" VerticalAlignment="Center" />
+    <TextBox x:Name="RestApiToken" Grid.Row="6" Grid.Column="1" />
+    <HyperlinkButton x:Name="TokenManagementLink" Grid.Row="7" Grid.Column="1" Content="Go to token management page" IsEnabled="False" />
+    <TextBlock x:Name="label4" Grid.Row="8" Grid.Column="1" Opacity="0.7"
+               Text="You need to create a token with the following scopes:&#10; - 'Build (read)'&#10; - 'Project and team (read)'" />
+  </Grid>
+</UserControl>

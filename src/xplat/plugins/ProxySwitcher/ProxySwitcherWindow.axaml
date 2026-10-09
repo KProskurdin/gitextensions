@@ -3,16 +3,16 @@
         x:Class="GitExtensions.Plugins.ProxySwitcher.ProxySwitcherWindow"
         Title="Proxy Switcher"
         Width="420" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <!-- Upstream ProxySwitcherForm: the local and global http.proxy, read only, and set or unset. -->
+  <!-- Upstream ProxySwitcherForm: the local and global http.proxy, read only, and set or unset. Texts are named as the form's fields, for its translations. -->
   <Grid Margin="12" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="8">
-    <TextBlock Grid.Row="0" Text="Local http.proxy:" VerticalAlignment="Center" />
+    <TextBlock x:Name="LocalHttpProxy_Label" Grid.Row="0" Text="Local http.proxy:" VerticalAlignment="Center" />
     <TextBox x:Name="LocalProxyBox" Grid.Row="0" Grid.Column="1" IsReadOnly="True" />
-    <TextBlock Grid.Row="1" Text="Global http.proxy:" VerticalAlignment="Center" />
+    <TextBlock x:Name="GlobalHttpProxy_Label" Grid.Row="1" Text="Global http.proxy:" VerticalAlignment="Center" />
     <TextBox x:Name="GlobalProxyBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True" />
-    <CheckBox x:Name="ApplyGloballyCheck" Grid.Row="2" Grid.Column="1" Content="Apply globally" />
+    <CheckBox x:Name="ApplyGlobally_CheckBox" Grid.Row="2" Grid.Column="1" Content="Apply globally" />
     <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
-      <Button x:Name="SetProxyButton" Content="Set proxy" />
-      <Button x:Name="UnsetProxyButton" Content="Unset proxy" />
+      <Button x:Name="SetProxy_Button" Content="Set proxy" />
+      <Button x:Name="UnsetProxy_Button" Content="Unset proxy" />
     </StackPanel>
   </Grid>
 </Window>

@@ -3,41 +3,42 @@
         x:Class="GitExtensions.Plugins.ReleaseNotesGenerator.ReleaseNotesGeneratorWindow"
         Title="Release Notes Generator"
         Width="760" Height="600" WindowStartupLocation="CenterOwner">
-  <!-- Upstream ReleaseNotesGeneratorForm: the commit range and log arguments, the result, and the copy buttons. -->
+  <!-- Upstream ReleaseNotesGeneratorForm: the commit range and log arguments, the result, and the copy buttons. Texts are named as the form's
+       fields, for its translations. -->
   <DockPanel Margin="10">
     <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
-      <TextBlock Grid.Row="0" Text="Commit expression &quot;From&quot; (excluding):" VerticalAlignment="Center" />
+      <TextBlock x:Name="label2" Grid.Row="0" Text="Commit expression &quot;From&quot; (excluding):" VerticalAlignment="Center" />
       <TextBox x:Name="FromBox" Grid.Row="0" Grid.Column="1" />
-      <TextBlock Grid.Row="1" Text="Commit expression &quot;To&quot; (including):" VerticalAlignment="Center" />
+      <TextBlock x:Name="label1" Grid.Row="1" Text="Commit expression &quot;To&quot; (including):" VerticalAlignment="Center" />
       <TextBox x:Name="ToBox" Grid.Row="1" Grid.Column="1" Text="HEAD" />
-      <TextBlock Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Center"
+      <TextBlock x:Name="label7" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" VerticalAlignment="Center"
                  Text="(Commit expressions can be commit hashes,&#10;branch names, tag names)" />
-      <TextBlock Grid.Row="2" Text="git log arguments:" VerticalAlignment="Center" />
+      <TextBlock x:Name="label3" Grid.Row="2" Text="git log arguments:" VerticalAlignment="Center" />
       <TextBox x:Name="LogArgumentsBox" Grid.Row="2" Grid.Column="1"
                Text="--pretty=&quot;format:%h@%s%b&quot; --abbrev-commit {0}..{1}" />
-      <TextBlock Grid.Row="2" Grid.Column="2" Text="{}{0} = from; {1} = to" VerticalAlignment="Center" />
-      <Button x:Name="GenerateButton" Grid.Row="3" Grid.Column="1" Content="Generate" HorizontalAlignment="Left" />
+      <TextBlock x:Name="label4" Grid.Row="2" Grid.Column="2" Text="{}{0} = from; {1} = to" VerticalAlignment="Center" />
+      <Button x:Name="buttonGenerate" Grid.Row="3" Grid.Column="1" Content="Generate" HorizontalAlignment="Left" />
     </Grid>
     <!-- Upstream's "Copy to clipboard" group, enabled once the output has commits. -->
-    <HeaderedContentControl x:Name="CopyGroup" DockPanel.Dock="Bottom" Header="Copy to clipboard" Margin="0,8,0,0" IsEnabled="False">
+    <HeaderedContentControl x:Name="groupBoxCopy" DockPanel.Dock="Bottom" Header="Copy to clipboard" Margin="0,8,0,0" IsEnabled="False">
       <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
-        <Button x:Name="CopyOriginalButton" Grid.Row="0" Content="original output" HorizontalAlignment="Stretch" />
-        <TextBlock Grid.Row="0" Grid.Column="1" Text="as is" VerticalAlignment="Center" />
-        <Button x:Name="CopyTabsButton" Grid.Row="1" Content="as text table (tabs)" HorizontalAlignment="Stretch" />
-        <TextBlock Grid.Row="1" Grid.Column="1" Text="separate columns with tabs" VerticalAlignment="Center" />
-        <Button x:Name="CopySpacesButton" Grid.Row="2" Content="as text table (spaces)" HorizontalAlignment="Stretch" />
-        <TextBlock Grid.Row="2" Grid.Column="1" Text="separate columns with spaces" VerticalAlignment="Center" />
-        <Button x:Name="CopyHtmlButton" Grid.Row="3" Content="as HTML table" HorizontalAlignment="Stretch" />
-        <TextBlock Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap"
+        <Button x:Name="buttonCopyOrigOutput" Grid.Row="0" Content="original output" HorizontalAlignment="Stretch" />
+        <TextBlock x:Name="label8" Grid.Row="0" Grid.Column="1" Text="as is" VerticalAlignment="Center" />
+        <Button x:Name="buttonCopyAsTextTableTab" Grid.Row="1" Content="as text table (tabs)" HorizontalAlignment="Stretch" />
+        <TextBlock x:Name="label9" Grid.Row="1" Grid.Column="1" Text="separate columns with tabs" VerticalAlignment="Center" />
+        <Button x:Name="buttonCopyAsTextTableSpace" Grid.Row="2" Content="as text table (spaces)" HorizontalAlignment="Stretch" />
+        <TextBlock x:Name="label10" Grid.Row="2" Grid.Column="1" Text="separate columns with spaces" VerticalAlignment="Center" />
+        <Button x:Name="buttonCopyAsHtml" Grid.Row="3" Content="as HTML table" HorizontalAlignment="Stretch" />
+        <TextBlock x:Name="label11" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap"
                    Text="Clipboard will contain HTML code (plain text) and HTML format which can be pasted into a word processor as a table" />
       </Grid>
     </HeaderedContentControl>
     <DockPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-      <TextBlock Text="Revisions count = " />
-      <TextBlock x:Name="CountText" Text="n/a" />
-      <TextBlock Text="Sorting: Most recent revisions are listed on top." HorizontalAlignment="Right" />
+      <TextBlock x:Name="label6" Text="Revisions count = " />
+      <TextBlock x:Name="labelRevCount" Text="n/a" />
+      <TextBlock x:Name="label5" Text="Sorting: Most recent revisions are listed on top." HorizontalAlignment="Right" />
     </DockPanel>
-    <TextBlock DockPanel.Dock="Top" Text="Result" Margin="0,8,0,2" FontWeight="SemiBold" />
+    <TextBlock x:Name="groupBox1" DockPanel.Dock="Top" Text="Result" Margin="0,8,0,2" FontWeight="SemiBold" />
     <TextBox x:Name="ResultBox" AcceptsReturn="True" TextWrapping="NoWrap" />
   </DockPanel>
 </Window>

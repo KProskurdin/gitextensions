@@ -25,14 +25,15 @@ public partial class GourceStartWindow : Window
     {
         _dialog = dialog;
         InitializeComponent();
+        UpstreamTranslation.Apply(this, "GourceStart");
         GourcePathBox.Text = dialog.PathToGource.Length > 0 || OperatingSystem.IsWindows()
             ? dialog.PathToGource
             : FindOnPath(GourceProgram) ?? "";
         WorkingDirBox.Text = dialog.GitWorkingDir ?? module.WorkingDir;
         ArgumentsBox.Text = dialog.GourceArguments;
-        StartButton.Click += (_, _) => Start();
-        GourceBrowseButton.Click += (_, _) => _ = BrowseGourceAsync();
-        WorkingDirBrowseButton.Click += (_, _) => _ = BrowseWorkingDirAsync();
+        button1.Click += (_, _) => Start();
+        GourceBrowse.Click += (_, _) => _ = BrowseGourceAsync();
+        WorkingDirBrowse.Click += (_, _) => _ = BrowseWorkingDirAsync();
     }
 
     // Upstream's Button1Click.

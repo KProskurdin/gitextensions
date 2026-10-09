@@ -101,6 +101,19 @@ public partial class DiffView : UserControl
     }
 
     /// <summary>
+    ///  Shows a patch that is not in the repository (a pull request's file), as upstream's <c>ViewFixedPatch</c>.
+    /// </summary>
+    public void ShowPatch(string title, string patch)
+    {
+        _request = null;
+        TitleText.Text = title;
+        OptionsPanel.IsVisible = false;
+        ShowError(null);
+        _text = DiffParser.Parse(patch);
+        ShowLines();
+    }
+
+    /// <summary>
     ///  The diff as git printed it and the character range of the selected lines in it, as upstream's <c>PatchManager</c>
     ///  takes them; null when no line is selected or a file's content is shown instead of a diff.
     /// </summary>

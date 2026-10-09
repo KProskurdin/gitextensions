@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TeamCityIntegration.Settings.TeamCityBuildChooser"
+        Title="Choose the TeamCity build..."
+        Width="420" Height="460" WindowStartupLocation="CenterOwner">
+  <!-- Upstream TeamCityBuildChooser: the server's projects, each project's builds read when it is expanded. Texts are named
+       as the form's fields, for its translations. -->
+  <DockPanel Margin="8">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+      <Button x:Name="buttonOK" Content="OK" IsDefault="True" IsEnabled="False" />
+      <Button x:Name="buttonCancel" Content="Cancel" IsCancel="True" />
+    </StackPanel>
+    <TreeView x:Name="treeViewTeamCityProjects" />
+  </DockPanel>
+</Window>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Upstream's GitHub plugin, compiled unchanged: the repository host (fork, clone, pull requests) and the commit message
+    issue helper. Its windows are upstream GitUI forms, which the app reimplements (RepositoryHosts in the app); the plugin
+    itself has none.
+  -->
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'GitHub3'))</UpstreamDir>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- Ships with the app (with RestSharp), as upstream ships it next to GitExtensions.exe. -->
+    <ProjectReference Include="..\..\Git.hub\Git.hub.csproj" Private="false" />
+  </ItemGroup>
+
+</Project>

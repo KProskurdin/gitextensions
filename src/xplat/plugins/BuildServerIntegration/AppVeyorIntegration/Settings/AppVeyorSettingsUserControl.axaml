@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AppVeyorIntegration.Settings.AppVeyorSettingsUserControl">
+  <!-- Upstream AppVeyorSettingsUserControl: the projects, the account and its API token, and the test results option.
+       Texts are named as the control's fields, for its translations. -->
+  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+    <TextBlock x:Name="lblProjects" Grid.Row="0" Text="Project(s) Name(s)" VerticalAlignment="Center" />
+    <TextBox x:Name="AppVeyorProjectName" Grid.Row="0" Grid.Column="1" />
+    <TextBlock x:Name="label1" Grid.Row="1" Grid.Column="1" Opacity="0.7" TextWrapping="Wrap"
+               Text="If you want to use the result of different projects, separate your different projects names by a '|'." />
+    <TextBlock x:Name="lblAccountName" Grid.Row="2" Text="Account name" VerticalAlignment="Center" />
+    <TextBox x:Name="AppVeyorAccountName" Grid.Row="2" Grid.Column="1" />
+    <TextBlock x:Name="lblApiToken" Grid.Row="3" Text="Api token" VerticalAlignment="Center" />
+    <TextBox x:Name="AppVeyorAccountToken" Grid.Row="3" Grid.Column="1" />
+    <TextBlock x:Name="label2" Grid.Row="4" Grid.Column="1" Opacity="0.7" TextWrapping="Wrap"
+               Text="Token used to be able to query AppVeyor rest Api. You will find out in the user account menu." />
+    <CheckBox x:Name="cbLoadTestResults" Grid.Row="5" Grid.ColumnSpan="2" IsThreeState="True"
+              Content="Display test results in build status summary for each build result (network intensive!)" />
+  </Grid>
+</UserControl>

@@ -2,9 +2,9 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
 
   <!--
-    Upstream plugins compiled unchanged as net10.0, as the shared core is. Only plugins without WinForms forms are built here
-    (docs/xplat/PLAN.md, M6); the others stay Windows-only. The app copies each one into its Plugins folder, where upstream's
-    ManagedExtensibility finds them by upstream's naming rule (GitExtensions.Plugins.*.dll).
+    Upstream plugins compiled unchanged as net10.0, as the shared core is. A plugin with WinForms forms or controls replaces them
+    with Avalonia ones (XplatPluginUi, Directory.Build.targets; docs/xplat/PLAN.md, M6). The app copies
+    each one into its Plugins folder, where upstream's ManagedExtensibility finds them by upstream's naming rule (GitExtensions.Plugins.*.dll).
   -->
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

@@ -3,12 +3,12 @@
         x:Class="GitExtensions.Plugins.CreateLocalBranches.CreateLocalBranchesWindow"
         Title="Create local tracking branches"
         Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <!-- Upstream CreateLocalBranchesForm: the remote, and one button. -->
+  <!-- Upstream CreateLocalBranchesForm: the remote, and one button. Texts are named as the form's fields, for its translations. -->
   <StackPanel Margin="12" Spacing="10">
     <DockPanel>
       <TextBox x:Name="RemoteBox" DockPanel.Dock="Right" Width="180" Text="origin" />
-      <TextBlock Text="Remote to create tracking branches for" VerticalAlignment="Center" />
+      <TextBlock x:Name="label1" Text="Remote to create tracking branches for" VerticalAlignment="Center" />
     </DockPanel>
-    <Button x:Name="CreateButton" Content="Create local tracking branches" HorizontalAlignment="Center" />
+    <Button x:Name="button1" Content="Create local tracking branches" HorizontalAlignment="Center" />
   </StackPanel>
 </Window>

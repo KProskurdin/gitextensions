@@ -678,6 +678,28 @@ an upstream fix. With these, eight of the eleven upstream plugins run in the new
 224 app on Windows. Not done: GitHub3 and BuildServerIntegration (they need the repository-host and build-server UI),
 translations of the plugin windows, and third-party WinForms plugins (still skipped by the loader).
 
+Remaining upstream plugins and translations, 2026-10-09 (later): all eleven upstream plugins now run in the new shell.
+- Translations: the app ships upstream's Transifex files and Settings > Appearance has upstream's language choice (the shared
+  `translation` setting). `GitExtensions.Xplat.Ui.UpstreamTranslation` translates a window as upstream translates the form it
+  reimplements (by type name and field names), so the plugin windows, the build server and repository host windows below
+  use upstream's existing translations; the plugin classes translate themselves as upstream. The rest of the shell stays
+  English for now (its windows are not named after upstream's forms yet).
+- Build server integration: the six BuildServerIntegration plugins are shadow projects (adapters, API clients and detectors
+  unchanged; each WinForms settings control replaced by an Avalonia control exported with upstream's metadata, TeamCity's
+  build chooser too). `Core/BuildServer` reimplements upstream's `BuildServerWatcher` (adapter choice and detection, polling,
+  credentials), and the grid has upstream's "Build Status" column with its View toggles and the build report and pull request
+  links; Settings > Build server integration edits the repository's settings with the plugin's control. Credentials: upstream's
+  DPAPI file on Windows, the Secret Service (`secret-tool`) on Linux when installed, otherwise kept for the session only.
+- GitHub: `externals/Git.hub` and the GitHub3 plugin are compiled unchanged (the shim gained `LinkLabel`, menu item lists and
+  `TaskDialog`). The app reimplements upstream's repository host forms (fork and clone, view pull requests, create pull
+  request) and menu, the blame window shows the plugin's "View in GitHub", plugin settings show link labels as links, and
+  plugin commit templates (the GitHub issue helper) appear in the commit window's new "Commit templates" menu, with the user's
+  own templates from upstream's setting.
+Tests: the real GitHub Actions adapter against a local fake API, the real Jenkins settings control, the watcher's choice and
+credentials, the repository host windows with a fake host plugin, and the GitHub plugin itself (menu, blame item, links,
+template) without network. 290 core and 242 app on Windows; 290 and 241 on Linux (WSL). Not done: third-party WinForms
+plugins (still skipped by the loader), the build report tab, the conventional commit items of the templates menu.
+
 Estimate: 3 to 4 weeks.
 
 ### M7. Packaging and distribution
@@ -742,6 +764,9 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 4. **Translations:** reuse the Transifex `.xlf` files, or start new?
    *Recommendation:* reuse. The strings already exist and translators already work on them.
    Needs a check of how `TranslationString` maps to the Avalonia side.
+   *Status 2026-10-09:* the files are reused as they are (shipped from `src/app/GitUI/Translation`); a window named after
+   upstream's form uses its entries (`UpstreamTranslation`). Applied to the plugin, build server and repository host windows
+   so far; the user has not confirmed the recommendation yet.
 5. **Plugins off Windows:** which plugins must work, and is it acceptable that WinForms-based
    plugins stay Windows-only?
    *Recommendation:* non-UI plugins first (M6); UI plugins later, by demand.

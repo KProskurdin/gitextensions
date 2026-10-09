@@ -11,6 +11,7 @@
     <!-- The WinForms form; GourceStart.cs here stands in for it. The plugin class, with upstream's download of Gource for
          Windows, is compiled as it is. -->
     <Compile Remove="$(UpstreamDir)GourceStart.cs;$(UpstreamDir)GourceStart.Designer.cs" />
+    <Compile Include="..\Shared\UpstreamMessageBoxes.cs" Link="UpstreamMessageBoxes.cs" />
   </ItemGroup>
 
 </Project>

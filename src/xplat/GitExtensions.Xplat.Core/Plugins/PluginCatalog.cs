@@ -72,20 +72,27 @@ public sealed class UpstreamPluginCatalog : IPluginCatalog
 
     public IReadOnlyList<IGitPlugin> Load() => _plugins.Value;
 
+    /// <summary>
+    ///  Initializes upstream's <see cref="ManagedExtensibility"/> with the app's plugin folders, once: it is process-wide and
+    ///  accepts one initialization. The build server integration reads its exports too.
+    /// </summary>
+    public static void EnsureInitialized()
+    {
+        lock (_initLock)
+        {
+            if (!_initialized)
+            {
+                ManagedExtensibility.Initialise(userPluginsPath: AppSettings.UserPluginsPath);
+                _initialized = true;
+            }
+        }
+    }
+
     private static IReadOnlyList<IGitPlugin> LoadPlugins()
     {
         try
         {
-            // ManagedExtensibility is process-wide and accepts one initialization.
-            lock (_initLock)
-            {
-                if (!_initialized)
-                {
-                    ManagedExtensibility.Initialise(userPluginsPath: AppSettings.UserPluginsPath);
-                    _initialized = true;
-                }
-            }
-
+            EnsureInitialized();
             return PluginLoader.Load(ManagedExtensibility.GetExports<IGitPlugin>());
         }
         catch (Exception ex)

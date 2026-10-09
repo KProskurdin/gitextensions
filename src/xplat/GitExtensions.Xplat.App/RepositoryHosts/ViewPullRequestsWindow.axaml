@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:GitExtensions.Xplat.App"
+        xmlns:local="using:GitExtensions.Xplat.App.RepositoryHosts"
+        x:Class="GitExtensions.Xplat.App.RepositoryHosts.ViewPullRequestsWindow"
+        Title="View pull requests"
+        Width="980" Height="720" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="MinHeight" Value="22" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream ViewPullRequestsForm: the hosted repository, its pull requests, the selected one's diff and comments, and
+       fetching or closing it. Texts are named as the form's fields and columns, for its translations. -->
+  <Grid Margin="8" RowDefinitions="Auto,200,Auto,*" RowSpacing="6">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock x:Name="_chooseRepo" Text="Choose repository:" VerticalAlignment="Center" />
+      <ComboBox x:Name="_selectHostedRepoCB" MinWidth="320" />
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Opacity="0.7" />
+    </StackPanel>
+    <DockPanel Grid.Row="1">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="60,*,140,160,220" Margin="4,0,4,2">
+        <TextBlock x:Name="columnHeaderId" Text="#" FontWeight="SemiBold" />
+        <TextBlock x:Name="columnHeaderHeading" Grid.Column="1" Text="Heading" FontWeight="SemiBold" />
+        <TextBlock x:Name="columnHeaderBy" Grid.Column="2" Text="By" FontWeight="SemiBold" />
+        <TextBlock x:Name="columnHeaderCreated" Grid.Column="3" Text="Created" FontWeight="SemiBold" />
+        <TextBlock x:Name="columnHeaderBranch" Grid.Column="4" Text="Will be fetched to branch" FontWeight="SemiBold" />
+      </Grid>
+      <ListBox x:Name="_pullRequestsList">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:PullRequestRow">
+            <Grid ColumnDefinitions="60,*,140,160,220">
+              <TextBlock Text="{Binding Id}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="{Binding Owner}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="3" Text="{Binding Created}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="4" Text="{Binding FetchBranch}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+      <Button x:Name="_fetchBtn" Content="Fetch to pr/ branch" IsEnabled="False" />
+      <Button x:Name="_addAndFetchBtn" Content="Add remote and fetch" IsEnabled="False" />
+      <Button x:Name="_closePullRequestBtn" Content="Close pull request" IsEnabled="False" />
+    </StackPanel>
+    <TabControl x:Name="DetailTabs" Grid.Row="3">
+      <TabItem x:Name="tabPage1" Header="Diffs">
+        <Grid ColumnDefinitions="260,5,*">
+          <ListBox x:Name="_fileStatusList" />
+          <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+          <app:DiffView x:Name="_diffViewer" Grid.Column="2" />
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="tabPage2" Header="Comments">
+        <Grid RowDefinitions="*,Auto,Auto" RowSpacing="6">
+          <ScrollViewer x:Name="DiscussionScroll">
+            <ItemsControl x:Name="_discussionWB">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="local:DiscussionEntryRow">
+                  <StackPanel Margin="0,0,0,12">
+                    <Border BorderThickness="0,0,0,1" BorderBrush="Gray" Padding="0,0,0,2">
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Created}" Opacity="0.7" />
+                        <TextBlock Text="{Binding Author}" FontWeight="Bold" Foreground="{Binding AuthorBrush}" />
+                      </DockPanel>
+                    </Border>
+                    <TextBlock Text="{Binding Commit}" FontSize="10" IsVisible="{Binding Commit, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <SelectableTextBlock Text="{Binding Body}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <TextBox x:Name="_postCommentText" Grid.Row="1" AcceptsReturn="True" TextWrapping="Wrap" Height="80" />
+          <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="_refreshCommentsBtn" Content="Refresh" IsEnabled="False" />
+            <Button x:Name="_postComment" Content="Post comment" IsEnabled="False" />
+          </StackPanel>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>

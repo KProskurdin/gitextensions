@@ -38,12 +38,12 @@ internal sealed class UiPluginTests
             _messages.Add(text);
             return buttons is System.Windows.Forms.MessageBoxButtons.YesNo ? DialogResult.Yes : DialogResult.OK;
         });
-        ;
     }
 
     [TearDown]
     public void TearDown()
     {
+        AppSettings.CurrentTranslation = "";
         MessageBoxHost.Answer(null);
         TestAppBuilder.UsePlugins();
         _repo.Dispose();
@@ -67,13 +67,52 @@ internal sealed class UiPluginTests
         RunPlugin(window, plugin, dialog =>
         {
             Find<TextBox>(dialog, "RemoteBox").Text.Should().Be("origin");
-            Click(dialog, "CreateButton");
+            Click(dialog, "button1");
             return true;
         });
 
         _repo.Run("for-each-ref", "--format=%(refname:short) %(upstream:short)", "refs/heads/").Should()
             .Contain("feature/one origin/feature/one").And.Contain("two origin/two");
         _messages.Should().ContainSingle().Which.Should().EndWith("local tracking branches have been created/updated.");
+    }
+
+    [AvaloniaTest]
+    public void Plugin_windows_show_upstreams_translations_of_the_chosen_language()
+    {
+        AppSettings.CurrentTranslation = "German";
+        IGitPlugin createBranches = LoadPlugin("CreateLocalBranches");
+        MainWindow window = OpenWindow(createBranches);
+
+        RunPlugin(window, createBranches, dialog =>
+        {
+            dialog.Title.Should().Be("Erzeuge lokale Branches zur Verfolgung");
+            Find<TextBlock>(dialog, "label1").Text.Should().Be("Remote zu dem Tracking Branches erzeugt werden sollen");
+            Find<Button>(dialog, "button1").Content.Should().Be("Erzeuge lokale Branches zur Verfolgung");
+            return true;
+        });
+
+        // Texts the window's code shows come from the same entries: no proxy host set, so the window says so and closes.
+        IGitPlugin proxySwitcher = LoadPlugin("ProxySwitcher");
+        window = OpenWindow(proxySwitcher);
+        TestSettings(proxySwitcher);
+        RunPlugin(window, proxySwitcher, _ => false);
+
+        _messages.Should().Equal(
+            "Es ist kein Proxy konfiguriert. Bitte setzen Sie den Proxy-Host in den Plugin Einstellungen.");
+    }
+
+    [AvaloniaTest]
+    public void Plugin_windows_keep_upstreams_english_texts_without_a_language()
+    {
+        IGitPlugin plugin = LoadPlugin("CreateLocalBranches");
+        MainWindow window = OpenWindow(plugin);
+
+        RunPlugin(window, plugin, dialog =>
+        {
+            dialog.Title.Should().Be("Create local tracking branches");
+            Find<TextBlock>(dialog, "label1").Text.Should().Be("Remote to create tracking branches for");
+            return true;
+        });
     }
 
     [AvaloniaTest]
@@ -90,17 +129,17 @@ internal sealed class UiPluginTests
         RunPlugin(window, plugin, dialog =>
         {
             // Never the user's global config: the local level only.
-            Find<CheckBox>(dialog, "ApplyGloballyCheck").IsChecked = false;
+            Find<CheckBox>(dialog, "ApplyGlobally_CheckBox").IsChecked = false;
             switch (step++)
             {
                 case 0:
-                    Click(dialog, "SetProxyButton");
+                    Click(dialog, "SetProxy_Button");
                     _repo.Run("config", "--local", "http.proxy").Trim().Should()
                         .Be("user:secret@proxy.example.com:8080");
                     Find<TextBox>(dialog, "LocalProxyBox").Text.Should().Be("user:****@proxy.example.com:8080");
                     return false;
                 default:
-                    Click(dialog, "UnsetProxyButton");
+                    Click(dialog, "UnsetProxy_Button");
                     GitProcess.RunAllowingFailure(_repo.Path, "config", "--local", "http.proxy").Should().Be(1);
                     return true;
             }
@@ -188,7 +227,7 @@ internal sealed class UiPluginTests
                 row.GetType().GetProperty("Path")!.GetValue(row).Should().Be("big.bin");
                 row.GetType().GetProperty("CommitCount")!.GetValue(row).Should().Be(2);
                 row.GetType().GetProperty("Delete")!.SetValue(row, true);
-                Click(dialog, "DeleteButton");
+                Click(dialog, "Delete");
                 return true;
             });
 
@@ -233,7 +272,7 @@ internal sealed class UiPluginTests
             ListBox branches = Find<ListBox>(dialog, "BranchList");
             if (!deleteClicked)
             {
-                if (!Equals(Find<Button>(dialog, "SearchButton").Content, "Search branches") || branches.ItemCount == 0)
+                if (!Equals(Find<Button>(dialog, "RefreshBtn").Content, "Search branches") || branches.ItemCount == 0)
                 {
                     return false;
                 }
@@ -242,14 +281,14 @@ internal sealed class UiPluginTests
                     .Should().BeEquivalentTo(["merged-one", "merged-two"]);
                 Find<TextBlock>(dialog, "StatusText").Text.Should().Be("2/2 branches selected.");
                 Find<CheckBox>(dialog, "SelectAllCheck").IsChecked.Should().BeTrue();
-                Click(dialog, "DeleteButton");
+                Click(dialog, "Delete");
                 deleteClicked = true;
                 return false;
             }
 
             // The list is searched again after the deletion, and the deleted branches are gone.
-            return Equals(Find<Button>(dialog, "SearchButton").Content, "Search branches")
-                   && Find<Button>(dialog, "DeleteButton").IsEnabled && branches.ItemCount == 0;
+            return Equals(Find<Button>(dialog, "RefreshBtn").Content, "Search branches")
+                   && Find<Button>(dialog, "Delete").IsEnabled && branches.ItemCount == 0;
         });
 
         _messages.Should().Equal("Are you sure to delete 2 selected branches?");
@@ -266,21 +305,21 @@ internal sealed class UiPluginTests
 
         RunPlugin(window, plugin, dialog =>
         {
-            Click(dialog, "GenerateButton");
-            Find<HeaderedContentControl>(dialog, "CopyGroup").IsEnabled.Should().BeFalse();
+            Click(dialog, "buttonGenerate");
+            Find<HeaderedContentControl>(dialog, "groupBoxCopy").IsEnabled.Should().BeFalse();
 
             Find<TextBox>(dialog, "FromBox").Text = "HEAD~1";
-            Click(dialog, "GenerateButton");
+            Click(dialog, "buttonGenerate");
             Find<TextBox>(dialog, "ResultBox").Text.Should().Be($"{hash}@secondbody line{Environment.NewLine}");
-            Find<TextBlock>(dialog, "CountText").Text.Should().Be("1");
-            Find<HeaderedContentControl>(dialog, "CopyGroup").IsEnabled.Should().BeTrue();
+            Find<TextBlock>(dialog, "labelRevCount").Text.Should().Be("1");
+            Find<HeaderedContentControl>(dialog, "groupBoxCopy").IsEnabled.Should().BeTrue();
 
-            Click(dialog, "CopyTabsButton");
+            Click(dialog, "buttonCopyAsTextTableTab");
             Copied(dialog).Should().Be(
                 $"Commit log from 'HEAD~1' to 'HEAD' (most recent changes are listed on top):{Environment.NewLine}" +
                 $"{hash}\tsecondbody line{Environment.NewLine}");
             // As upstream, whose TextBox.Lines ends with the empty line after git's last newline: the HTML keeps it as a <br/>.
-            Click(dialog, "CopyHtmlButton");
+            Click(dialog, "buttonCopyAsHtml");
             Copied(dialog).Should().Be(
                 "<p>Commit log from 'HEAD~1' to 'HEAD' (most recent changes are listed on top):</p>" +
                 $"<table>\r\n<tr>\r\n  <td>{hash}</td>\r\n  <td>secondbody line<br/></td>\r\n</tr>\r\n</table>");
@@ -323,7 +362,7 @@ internal sealed class UiPluginTests
             Find<TextBox>(dialog, "ArgumentsBox").Text.Should().Be("--hide filenames --user-image-dir \"$(AVATARS)\"");
             Find<TextBox>(dialog, "ArgumentsBox").Text =
                 "--hide filenames --user-image-dir \"$(AVATARS)\" --seconds-per-day 1";
-            Click(dialog, "StartButton");
+            Click(dialog, "button1");
             return true;
         });
 
@@ -384,12 +423,12 @@ internal sealed class UiPluginTests
                 bool selected = (bool)graph.GetType().GetMethod("TrySelectAuthorAt")!
                     .Invoke(graph, [new Avalonia.Point(10, 2)])!;
                 selected.Should().BeTrue();
-                Find<TextBlock>(dialog, "AuthorText").Text.Should().Be("Ann (2 Commits, 4 Changed Lines)");
+                Find<TextBlock>(dialog, "lblAuthor").Text.Should().Be("Ann (2 Commits, 4 Changed Lines)");
                 Find<Border>(dialog, "AuthorColor").IsVisible.Should().BeTrue();
 
                 // Upstream's submodules option reloads the graph from the start.
-                Find<CheckBox>(dialog, "IncludeSubmodulesCheck").IsChecked = true;
-                Find<TextBlock>(dialog, "AuthorText").IsVisible.Should().BeFalse();
+                Find<CheckBox>(dialog, "cbIncludingSubmodules").IsChecked = true;
+                Find<TextBlock>(dialog, "lblAuthor").IsVisible.Should().BeFalse();
                 toggled = true;
                 return false;
             }

@@ -70,6 +70,22 @@ public interface IAppPreferences
     bool RelativeDate { get; set; }
 
     /// <summary>
+    ///  Upstream <c>translation</c>: the language of upstream's translations (a file name in the Translation folder, such as
+    ///  "German"); empty or "English" for upstream's English texts.
+    /// </summary>
+    string Translation { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showbuildstatusiconcolumn</c>: the grid's build status column shows the status symbol.
+    /// </summary>
+    bool ShowBuildStatusIconColumn { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showbuildstatustextcolumn</c>: the grid's build status column shows the build's description.
+    /// </summary>
+    bool ShowBuildStatusTextColumn { get; set; }
+
+    /// <summary>
     ///  Upstream <c>showauthordate</c>: the grid shows the author date instead of the commit date.
     /// </summary>
     bool ShowAuthorDate { get; set; }
@@ -349,6 +365,24 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.RelativeDate;
         set => AppSettings.RelativeDate = value;
+    }
+
+    public string Translation
+    {
+        get => AppSettings.Translation;
+        set => AppSettings.Translation = value;
+    }
+
+    public bool ShowBuildStatusIconColumn
+    {
+        get => AppSettings.ShowBuildStatusIconColumn;
+        set => AppSettings.ShowBuildStatusIconColumn = value;
+    }
+
+    public bool ShowBuildStatusTextColumn
+    {
+        get => AppSettings.ShowBuildStatusTextColumn;
+        set => AppSettings.ShowBuildStatusTextColumn = value;
     }
 
     public bool ShowAuthorDate
@@ -675,6 +709,12 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool CommitAndPushForcedWhenAmend { get; set; }
 
     public bool RelativeDate { get; set; } = true;
+
+    public string Translation { get; set; } = "";
+
+    public bool ShowBuildStatusIconColumn { get; set; } = true;
+
+    public bool ShowBuildStatusTextColumn { get; set; }
 
     public bool ShowAuthorDate { get; set; } = true;
 

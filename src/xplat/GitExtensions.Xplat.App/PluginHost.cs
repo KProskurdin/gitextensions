@@ -7,7 +7,9 @@ using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
+using GitExtensions.Xplat.App.RepositoryHosts;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 using GitUIPluginInterfaces;
 using Form = System.Windows.Forms.Form;
@@ -29,7 +31,8 @@ internal sealed class PluginHost : IGitUICommands
     /// </summary>
     public const string IconResourceName = "GitExtensions.Xplat.PluginIcon.png";
 
-    private static readonly IGitExecutorProvider _executorProvider = new GitExecutorProvider(new GitDirectoryResolver());
+    private static readonly IGitExecutorProvider
+        _executorProvider = new GitExecutorProvider(new GitDirectoryResolver());
 
     private readonly Window _owner;
     private readonly RepositoryOperationsViewModel _actions;
@@ -270,18 +273,27 @@ internal sealed class PluginHost : IGitUICommands
     public IGitUICommands WithWorkingDirectory(string? workingDirectory)
         => WithGitModule(CreateModule(workingDirectory ?? ""));
 
-    // Commit templates from plugins need the commit window's template menu, which the new shell does not have yet.
+    // As upstream: the commit window's "Commit templates" menu lists them. The icon is not shown.
     public void AddCommitTemplate(string key, Func<string> addingText, Image? icon, bool isRegex = false)
-    {
-    }
+        => CommitTemplates.Register(key, addingText, isRegex);
 
-    public void RemoveCommitTemplate(string key)
-    {
-    }
+    public void RemoveCommitTemplate(string key) => CommitTemplates.Unregister(key);
 
     public bool RunCommand(IReadOnlyList<string> args) => false;
 
-    public void AddUpstreamRemote(IWin32Window? owner, IRepositoryHostPlugin gitHoster) => throw NotAvailable();
+    // Upstream's AddUpstreamRemote: the plugin adds the fork's parent as "upstream", which is then fetched (upstream opens
+    // its pull dialog to fetch it at once).
+    public void AddUpstreamRemote(IWin32Window? owner, IRepositoryHostPlugin gitHoster)
+        => WrapRepoHostingCall(RepositoryHostTexts.AddUpstreamRemote, gitHoster, host => UiActions.Run(
+            async () =>
+            {
+                string? remoteName = await host.AddUpstreamRemoteAsync();
+                if (!string.IsNullOrEmpty(remoteName))
+                {
+                    await _actions.FetchAsync(Module.WorkingDir, remoteName, prune: false);
+                }
+            },
+            ex => ShowError(ex.Message)));
 
     public IGitRemoteCommand CreateRemoteCommand() => throw NotAvailable();
 
@@ -360,8 +372,13 @@ internal sealed class PluginHost : IGitUICommands
     public bool StartCloneDialog(IWin32Window? owner, string? url = null, bool openedFromProtocolHandler = false,
         EventHandler<GitModuleEventArgs>? gitModuleChanged = null) => throw NotAvailable();
 
+    // Upstream's StartCloneForkFromHoster. The clone opens in the window, as every clone does; gitModuleChanged hears of it
+    // too, as upstream calls it.
     public void StartCloneForkFromHoster(IWin32Window? owner, IRepositoryHostPlugin gitHoster,
-        EventHandler<GitModuleEventArgs>? gitModuleChanged) => throw NotAvailable();
+        EventHandler<GitModuleEventArgs>? gitModuleChanged)
+        => WrapRepoHostingCall(RepositoryHostTexts.ForkCloneRepo, gitHoster, host =>
+            _ = new ForkAndCloneWindow(host, _actions, DefaultCloneDestination(), gitModuleChanged).ShowDialog(
+                OwnerOf(owner)));
 
     public bool StartCompareRevisionsDialog(IWin32Window? owner = null) => throw NotAvailable();
 
@@ -370,11 +387,31 @@ internal sealed class PluginHost : IGitUICommands
 
     public bool StartCreateBranchDialog(IWin32Window? owner, string? branch) => throw NotAvailable();
 
-    public void StartCreatePullRequest(IWin32Window? owner) => throw NotAvailable();
+    // Upstream's StartCreatePullRequest: the one host plugin that knows the repository.
+    public void StartCreatePullRequest(IWin32Window? owner)
+    {
+        List<IRepositoryHostPlugin> relevantHosts =
+            [.. _registered.OfType<IRepositoryHostPlugin>().Where(host => host.GitModuleIsRelevantToMe())];
+        if (relevantHosts.Count == 1)
+        {
+            StartCreatePullRequest(owner, relevantHosts[0]);
+        }
+        else
+        {
+            MessageBoxes.Show(owner, relevantHosts.Count == 0
+                    ? "Could not find any repo hosts for current working directory"
+                    : "StartCreatePullRequest:Selection not implemented!",
+                RepositoryHostTexts.Error, System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Error);
+        }
+    }
 
+    // Upstream's StartCreatePullRequest; as upstream's form, the branch to choose is not used.
     public void StartCreatePullRequest(IWin32Window? owner, IRepositoryHostPlugin gitHoster,
         string? chooseRemote = null,
-        string? chooseBranch = null) => throw NotAvailable();
+        string? chooseBranch = null)
+        => WrapRepoHostingCall(RepositoryHostTexts.CreatePullRequest, gitHoster, host =>
+            new CreatePullRequestWindow(host, Module, chooseRemote).Show(OwnerOf(owner)));
 
     public bool StartCreateTagDialog(IWin32Window? owner = null, GitRevision? revision = null) => throw NotAvailable();
 
@@ -421,7 +458,9 @@ internal sealed class PluginHost : IGitUICommands
         string? remoteBranch = null, string? remote = null, GitPullAction pullAction = GitPullAction.None)
         => throw NotAvailable();
 
-    public void StartPullRequestsDialog(IWin32Window? owner, IRepositoryHostPlugin gitHoster) => throw NotAvailable();
+    public void StartPullRequestsDialog(IWin32Window? owner, IRepositoryHostPlugin gitHoster)
+        => WrapRepoHostingCall(RepositoryHostTexts.ViewPullRequest, gitHoster, host =>
+            new ViewPullRequestsWindow(host, Module, _actions).Show(OwnerOf(owner)));
 
     public bool StartPushDialog(IWin32Window? owner, bool pushOnShow) => throw NotAvailable();
 
@@ -498,6 +537,40 @@ internal sealed class PluginHost : IGitUICommands
     public bool WorktreeDelete(IWin32Window? owner, string worktreePath) => throw NotAvailable();
 
     public bool WorktreeSwitch(IWin32Window? owner, string worktreePath) => throw NotAvailable();
+
+    // Upstream's WrapRepoHostingCall: a host that is not set up yet is run first (the GitHub plugin then opens its settings),
+    // and a failure is shown with upstream's text.
+    private void WrapRepoHostingCall(string name, IRepositoryHostPlugin gitHoster, Action<IRepositoryHostPlugin> call)
+    {
+        if (!gitHoster.ConfigurationOk)
+        {
+            gitHoster.Execute(new GitUIEventArgs(null, this));
+        }
+
+        if (!gitHoster.ConfigurationOk)
+        {
+            return;
+        }
+
+        try
+        {
+            call(gitHoster);
+        }
+        catch (Exception ex)
+        {
+            MessageBoxes.Show(Owner,
+                string.Format("ERROR: {0} failed. Message: {1}\r\n\r\n{2}", name, ex.Message, ex.StackTrace),
+                "Error! :(", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+        }
+    }
+
+    // Upstream starts in the default clone folder, or the folder of the most recent repository (usually the open one).
+    private string DefaultCloneDestination()
+        => AppServices.Preferences.DefaultCloneDestinationPath is { Length: > 0 } destination ? destination
+            : Module.WorkingDir.Length > 0 ? Path.GetDirectoryName(Module.WorkingDir.TrimEnd('/', '\\')) ?? ""
+            : "";
+
+    private Window OwnerOf(IWin32Window? owner) => ModalWindow.OwnerWindow(owner) ?? _owner;
 
     private static GitModule CreateModule(string workingDir) => new(_executorProvider, workingDir);
 

@@ -18,11 +18,12 @@ namespace GitExtensions.Plugins.ReleaseNotesGenerator;
 /// </summary>
 public partial class ReleaseNotesGeneratorWindow : Window
 {
-    private const string CommitLogFrom = "Commit log from '{0}' to '{1}' ({2}):";
-    private const string FromCommitNotSpecified = "'From' commit must be specified";
-    private const string ToCommitNotSpecified = "'To' commit must be specified";
-    private const string InvalidInput = "Invalid input";
+    private const string Category = "ReleaseNotesGeneratorForm";
     private const string MostRecentHint = "most recent changes are listed on top";
+    private static string CommitLogFrom => UpstreamTranslation.Text(Category, "_commitLogFrom", "Commit log from '{0}' to '{1}' ({2}):");
+    private static string FromCommitNotSpecified => UpstreamTranslation.Text(Category, "_fromCommitNotSpecified", "'From' commit must be specified");
+    private static string ToCommitNotSpecified => UpstreamTranslation.Text(Category, "_toCommitNotSpecified", "'To' commit must be specified");
+    private static string InvalidInput => UpstreamTranslation.Text(Category, "_caption", "Invalid input");
 
     private readonly IGitModule _module;
     private readonly GitLogLineParser _parser = new();
@@ -32,11 +33,12 @@ public partial class ReleaseNotesGeneratorWindow : Window
     {
         _module = module;
         InitializeComponent();
-        GenerateButton.Click += (_, _) => Generate();
-        CopyOriginalButton.Click += (_, _) => _ = CopyTextAsync(ResultBox.Text ?? "");
-        CopyTabsButton.Click += (_, _) => _ = CopyTextAsync(CreateTextTable(separateWithTabs: true));
-        CopySpacesButton.Click += (_, _) => _ = CopyTextAsync(CreateTextTable(separateWithTabs: false));
-        CopyHtmlButton.Click += (_, _) => _ = CopyHtmlAsync();
+        UpstreamTranslation.Apply(this, Category);
+        buttonGenerate.Click += (_, _) => Generate();
+        buttonCopyOrigOutput.Click += (_, _) => _ = CopyTextAsync(ResultBox.Text ?? "");
+        buttonCopyAsTextTableTab.Click += (_, _) => _ = CopyTextAsync(CreateTextTable(separateWithTabs: true));
+        buttonCopyAsTextTableSpace.Click += (_, _) => _ = CopyTextAsync(CreateTextTable(separateWithTabs: false));
+        buttonCopyAsHtml.Click += (_, _) => _ = CopyHtmlAsync();
     }
 
     /// <summary>
@@ -62,15 +64,15 @@ public partial class ReleaseNotesGeneratorWindow : Window
         try
         {
             _logLines = [.. _parser.Parse(result.Split(Environment.NewLine))];
-            CountText.Text = _logLines.Count.ToString();
+            labelRevCount.Text = _logLines.Count.ToString();
         }
         catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidOperationException)
         {
             _logLines = [];
-            CountText.Text = "n/a";
+            labelRevCount.Text = "n/a";
         }
 
-        CopyGroup.IsEnabled = _logLines.Count > 0;
+        groupBoxCopy.IsEnabled = _logLines.Count > 0;
     }
 
     private bool IsGiven(TextBox box, string message)

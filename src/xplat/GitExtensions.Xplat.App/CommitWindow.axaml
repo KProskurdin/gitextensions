@@ -66,6 +66,12 @@
             <Button x:Name="CommitAndPushButton" Content="Commit and push" Margin="0,0,12,4" />
             <CheckBox x:Name="AmendCheck" Content="Amend commit" Margin="0,0,12,4" />
             <CheckBox x:Name="SignOffCheck" Content="Sign-off" Margin="0,0,12,4" />
+            <!-- Upstream's "Commit templates" menu: the plugins' templates, then the user's own. -->
+            <Button x:Name="CommitTemplatesButton" Content="Commit _templates" Margin="0,0,12,4">
+              <Button.Flyout>
+                <MenuFlyout Placement="TopEdgeAlignedLeft" />
+              </Button.Flyout>
+            </Button>
             <TextBox x:Name="CommitAuthorBox" Width="260" Margin="0,0,6,4" PlaceholderText="Author (optional: Name &lt;email&gt;)" />
           </WrapPanel>
           <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"

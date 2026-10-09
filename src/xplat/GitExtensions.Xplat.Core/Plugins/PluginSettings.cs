@@ -31,6 +31,9 @@ public enum PluginSettingKind
     /// <summary>Read-only text (<see cref="PseudoSetting"/>).</summary>
     Note,
 
+    /// <summary>A link (a <see cref="PseudoSetting"/> with a link label); clicking it runs the plugin's handler.</summary>
+    Link,
+
     /// <summary>A setting whose upstream editor is a WinForms control, such as credentials or a custom control.</summary>
     Unsupported,
 }
@@ -166,12 +169,19 @@ public sealed class PluginSettingRow : ObservableObject
             },
             PseudoSetting { CustomControl: System.Windows.Forms.TextBox note } pseudo =>
                 new PluginSettingRow(PluginSettingKind.Note, pseudo.Caption.Trim()) { _text = note.Text },
+            PseudoSetting { CustomControl: System.Windows.Forms.LinkLabel link } pseudo =>
+                new PluginSettingRow(PluginSettingKind.Link, pseudo.Caption.Trim()) { _text = link.Text, Click = link.RaiseClick },
             _ when setting.GetType() is { IsGenericType: true } type &&
                    type.GetGenericTypeDefinition() == typeof(NumberSetting<>) =>
                 (PluginSettingRow)_createNumber.MakeGenericMethod(type.GetGenericArguments()[0]).Invoke(null, [setting])!,
             _ => new PluginSettingRow(PluginSettingKind.Unsupported, setting.Caption),
         };
     }
+
+    /// <summary>
+    ///  What clicking a <see cref="PluginSettingKind.Link"/> does.
+    /// </summary>
+    public Action? Click { get; private init; }
 
     internal void Load(SettingsSource settings) => _load(this, settings);
 

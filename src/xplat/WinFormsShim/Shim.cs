@@ -107,7 +107,19 @@ public class Control : System.ComponentModel.Component, IWin32Window
 
     public Color BackColor { get; set; }
 
+    public object? Tag { get; set; }
+
     public bool IsDisposed { get; private set; }
+
+    public event EventHandler? Click;
+
+    /// <summary>
+    ///  Lets the host application click a control it shows for upstream code (e.g. a plugin setting's link label); WinForms
+    ///  raises <see cref="Click"/> itself.
+    /// </summary>
+    public void RaiseClick() => OnClick(EventArgs.Empty);
+
+    protected virtual void OnClick(EventArgs e) => Click?.Invoke(this, e);
 
     protected override void Dispose(bool disposing)
     {
@@ -156,7 +168,25 @@ public class ButtonBase : Control
 
 public class ToolStripItem : System.ComponentModel.Component
 {
+    public ToolStripItem()
+    {
+    }
+
+    public ToolStripItem(string? text, Image? image)
+    {
+        Text = text ?? string.Empty;
+        Image = image;
+    }
+
+    public string Text { get; set; } = string.Empty;
+
     public Image? Image { get; set; }
+
+    public object? Tag { get; set; }
+
+    public event EventHandler? Click;
+
+    public void PerformClick() => Click?.Invoke(this, EventArgs.Empty);
 
     public bool IsDisposed { get; private set; }
 
@@ -169,6 +199,29 @@ public class ToolStripItem : System.ComponentModel.Component
 
 public class ToolStripMenuItem : ToolStripItem
 {
+    public ToolStripMenuItem()
+    {
+    }
+
+    public ToolStripMenuItem(string? text, Image? image = null)
+        : base(text, image)
+    {
+    }
+
+    public ToolStripItemCollection DropDownItems { get; } = new();
+}
+
+/// <summary>
+///  WinForms' menu item list, for the context menus upstream plugins fill in (the host shows them as its own menus).
+/// </summary>
+public class ToolStripItemCollection : System.Collections.ObjectModel.Collection<ToolStripItem>
+{
+    public ToolStripItem Add(string? text)
+    {
+        ToolStripMenuItem item = new(text);
+        Add(item);
+        return item;
+    }
 }
 
 public enum SystemColorMode
@@ -314,15 +367,66 @@ public class Label : Control
 {
 }
 
+public class LinkLabel : Label
+{
+}
+
 public class TableLayoutPanel : Control
 {
 }
 
 public class ContextMenuStrip : Control
 {
+    public ToolStripItemCollection Items { get; } = new();
 }
 
 public class DataGridViewColumn
 {
     public bool Visible { get; set; }
+}
+
+public enum TaskDialogIcon
+{
+    None = 0,
+    Information = 1,
+    Warning = 2,
+    Error = 3,
+    Shield = 4,
+}
+
+public class TaskDialogButton(string? text = null)
+{
+    public string? Text { get; set; } = text;
+
+    /// <summary>
+    ///  WinForms' standard Cancel button, which a dialog that allows cancelling returns when it is closed.
+    /// </summary>
+    public static TaskDialogButton Cancel { get; } = new("Cancel");
+}
+
+public class TaskDialogPage
+{
+    public string? Caption { get; set; }
+
+    public string? Heading { get; set; }
+
+    public string? Text { get; set; }
+
+    public TaskDialogIcon? Icon { get; set; }
+
+    public bool AllowCancel { get; set; }
+
+    public List<TaskDialogButton> Buttons { get; } = [];
+}
+
+/// <summary>
+///  Lets the host application show task dialogs raised by upstream code (e.g. a build server plugin); without a host, the
+///  dialog is cancelled.
+/// </summary>
+public static class TaskDialog
+{
+    public static Func<TaskDialogPage, Task<TaskDialogButton>>? Handler { get; set; }
+
+    public static Task<TaskDialogButton> ShowDialogAsync(TaskDialogPage page)
+        => Handler?.Invoke(page) ?? Task.FromResult(TaskDialogButton.Cancel);
 }

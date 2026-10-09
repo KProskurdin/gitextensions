@@ -19,7 +19,8 @@ public partial class CreateLocalBranchesWindow : Window
     {
         _module = module;
         InitializeComponent();
-        CreateButton.Click += (_, _) => CreateBranches();
+        UpstreamTranslation.Apply(this, "CreateLocalBranchesForm");
+        button1.Click += (_, _) => CreateBranches();
     }
 
     // Upstream's button1_Click. As upstream, a branch git cannot create (e.g. one that exists) is passed over, and the count

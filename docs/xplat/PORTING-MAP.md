@@ -86,9 +86,25 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/plugins/FindLargeFiles/FindLargeFilesForm.cs` | `src/xplat/plugins/FindLargeFiles/FindLargeFilesForm.cs` (stand-in), `FindLargeFilesWindow.axaml(.cs)`, `LargeFileFinder.cs`, `LargeFileRow.cs`, `FindLargeFilesScript.cs` | `52d08e996` | ported |
 | `src/plugins/DeleteUnusedBranches/DeleteUnusedBranchesForm.cs` | `src/xplat/plugins/DeleteUnusedBranches/DeleteUnusedBranchesForm.cs` (stand-in), `DeleteUnusedBranchesWindow.axaml(.cs)`, `BranchRow.cs` | `52d08e996` | ported |
 | `src/plugins/ReleaseNotesGenerator/ReleaseNotesGeneratorForm.cs`, `HtmlFragment.cs` (writing to the clipboard) | `src/xplat/plugins/ReleaseNotesGenerator/ReleaseNotesGeneratorForm.cs` (stand-in), `ReleaseNotesGeneratorWindow.axaml(.cs)`, `HtmlClipboard.cs` | `52d08e996` | ported |
-| `src/plugins/Gource/GourceStart.cs` | `src/xplat/plugins/Gource/GourceStart.cs` (stand-in), `GourceStartWindow.axaml(.cs)`, `UpstreamMessageBoxes.cs` | `52d08e996` | partial |
+| `src/plugins/Gource/GourceStart.cs` | `src/xplat/plugins/Gource/GourceStart.cs` (stand-in), `GourceStartWindow.axaml(.cs)`; `src/xplat/plugins/Shared/UpstreamMessageBoxes.cs` | `52d08e996` | partial |
 | `src/plugins/Statistics/GitImpact/FormImpact.cs`, `ImpactControl.cs` | `src/xplat/plugins/GitImpact/FormImpact.cs` (stand-in), `ImpactWindow.axaml(.cs)`, `ImpactGraph.cs` | `52d08e996` | ported |
 | `src/plugins/Statistics/GitStatistics/FormGitStatistics.cs`, `PieChart/*.cs` | `src/xplat/plugins/GitStatistics/FormGitStatistics.cs` (stand-in), `StatisticsWindow.axaml(.cs)`, `PieChart.cs` | `52d08e996` | partial |
+| `src/app/GitExtensions.Extensibility/Translations/Xliff/TranslationUtil.cs` (translating a form by its fields); `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (language) | `src/xplat/GitExtensions.Xplat.Ui/UpstreamTranslation.cs`; the plugin and repository host windows; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Appearance tab) | `52d08e996` | partial |
+| `src/app/GitUI/BuildServerIntegration/BuildServerWatcher.cs` | `src/xplat/GitExtensions.Xplat.Core/BuildServer/BuildServerWatcher.cs`, `BuildServerCatalog.cs`, `BuildServerCredentialStore.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/Columns/BuildStatusColumnProvider.cs`; `RevisionGridControl.cs` (build report items, cell click); `RevisionGridMenuCommands.cs` (build status toggles) | `src/xplat/GitExtensions.Xplat.Core/BuildServer/BuildStatusCell.cs`, `CommitHistory/CommitListViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.BuildServer.cs`, `BuildStatusBrushConverter.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BuildServerIntegrationSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml`, `SettingsWindow.BuildServer.cs` | `52d08e996` | partial |
+| `src/app/GitUI/HelperDialogs/FormBuildServerCredentials.cs` | `src/xplat/GitExtensions.Xplat.App/BuildServerCredentialsWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/BuildServerIntegration/AppVeyorIntegration/Settings/AppVeyorSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/AppVeyorIntegration/Settings/AppVeyorSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/BuildServerIntegration/AzureDevOpsIntegration/Settings/SettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/AzureDevOpsIntegration/Settings/SettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/BuildServerIntegration/GitHubActionsIntegration/Settings/GitHubActionsSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/GitHubActionsIntegration/Settings/GitHubActionsSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/BuildServerIntegration/GitlabIntegration/Settings/GitlabSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/GitlabIntegration/Settings/GitlabSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/BuildServerIntegration/JenkinsIntegration/Settings/JenkinsSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/JenkinsIntegration/Settings/JenkinsSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/BuildServerIntegration/TeamCityIntegration/Settings/TeamCitySettingsUserControl.cs`, `TeamCityBuildChooser.cs` | `src/xplat/plugins/BuildServerIntegration/TeamCityIntegration/Settings/TeamCitySettingsUserControl.axaml(.cs)`, `TeamCityBuildChooser.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/RepoHosting/ForkAndCloneForm.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/ForkAndCloneWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/RepoHosting/ViewPullRequestsForm.cs`, `DiscussionHtmlCreator.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/ViewPullRequestsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/RepoHosting/CreatePullRequestForm.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/CreatePullRequestWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (repository hosts menu); `src/app/GitUI/GitUICommands.cs` (repository host methods); `src/app/GitUI/UserControls/BlameControl.cs` (`ConfigureRepositoryHostPlugin`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.RepositoryHosts.cs`, `PluginHost.cs`, `RepositoryHosts/RepositoryHostMenus.cs`, `BlameWindow.axaml.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormCommit.cs` (commit templates menu); `src/app/GitCommands/CommitTemplateManager.cs` (used as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)` | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -184,7 +200,7 @@ the window, and the repository refresh after the commit. Later on 2026-10-06: st
 Ignore... for untracked files (see FormAddToGitIgnore), and Open in diff tool. The message is kept where upstream keeps it,
 through upstream's `CommitMessageManager` used as is (`.git/COMMITMESSAGE`, or `.git/MERGE_MSG` during a merge, so a stopped
 merge starts from git's merge message and both apps share the draft). Not ported: GPG signing, skipping hooks,
-commit templates, commit scripts, and the message history.
+the conventional commit and template settings items of the commit templates menu (see that row), commit scripts, and the message history.
 
 **FormPush** (`partial`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
@@ -457,14 +473,18 @@ upstream), the events `PreCommit` and `PostCommit` (around the commit window, as
 `StartBatchFileProcessDialog` runs the text as upstream's batch file on Windows and as a sh script elsewhere. `GetService` gives
 `IGitExecutorProvider`. Unlike
 upstream, `StartCommandLineProcessDialog` returns once the command started, not when it ended. Every other dialog throws
-`NotSupportedException`, which the Plugins menu shows as an error. Not ported: commit templates
-(`AddCommitTemplate` is accepted and ignored), `RunCommand`, services through `GetService` other than `IGitExecutorProvider`, and `BrowseRepo`.
+`NotSupportedException`, which the Plugins menu shows as an error. Since 2026-10-09 also: commit templates
+(`AddCommitTemplate`, see the commit templates row) and the repository host methods (`StartCloneForkFromHoster`,
+`StartPullRequestsDialog`, `StartCreatePullRequest`, `AddUpstreamRemote`, with upstream's `WrapRepoHostingCall`: a host that
+is not set up is run first, and a failure is shown with upstream's text); `AddUpstreamRemote` fetches the added remote where
+upstream opens its pull dialog to fetch it. Not ported: `RunCommand`, services through `GetService` other than `IGitExecutorProvider`, and `BrowseRepo`.
 
 **PluginSettingsPage / SettingControlBindings** (`partial`). Ported 2026-10-07: Settings > Plugins lists the plugins and
 shows the selected plugin's settings with the editor of upstream's binding for its type: three-state check box, text box
 (with upstream's "<empty string>" marker and placeholder), password box, number box (red while not a number of the
 setting's type; an invalid number is stored as no value, as upstream), drop-down list, read-only note, and "There are no
-settings available for this plugin." The values are the repository's effective settings when one is open (a value the
+settings available for this plugin.", and (2026-10-09) links (a pseudo setting with a link label, such as the GitHub
+plugin's token pages; the click runs the plugin's own handler through the shim's `RaiseClick`). The values are the repository's effective settings when one is open (a value the
 repository sets is changed there, any other in the user's settings, as upstream's `DistributedSettings` does) and the user's
 settings otherwise; unchanged values are not written. Not ported: the settings level choice (local, distributed, global),
 credentials settings and settings with their own WinForms control (shown as not editable).
@@ -532,8 +552,10 @@ and the toolbar's bisect icons.
 projects in `src/xplat/plugins` that set `XplatPluginUi`: the plugin class and the files without WinForms are compiled
 unchanged, and the form is replaced by a stand-in of the same name and constructor (`GitExtensions.Xplat.Ui.PluginDialog`)
 whose `ShowDialog` shows an Avalonia window modally (`ModalWindow`, a nested dispatcher frame, as WinForms runs a modal
-dialog). The window reimplements the form; its rows below. Texts are upstream's English texts, not translated. Not ported:
-GitHub3 and BuildServerIntegration.
+dialog). The window reimplements the form; its rows below. Since 2026-10-09 the windows are translated: their controls
+are named as the form's fields, so upstream's Transifex entries for the form apply (see the translations row). The
+BuildServerIntegration plugins replace their settings controls the same way (exported with upstream's metadata); GitHub3 has
+no form of its own (its windows are upstream GitUI forms, see the repository host rows).
 
 **CreateLocalBranchesForm** (`ported`). Creates or updates a tracking branch for every branch of the remote, with upstream's
 commands and messages; as upstream, a branch git cannot create is passed over, and the count in the message is that of every
@@ -577,3 +599,77 @@ and lines of code per language, per type and in tests, counted by upstream's `Li
 asks the host for `IGitExecutorProvider`, which `PluginHost.GetService` now gives. Off Windows the ignored directories are
 turned back into the platform's separators (the plugin class writes them with `\`). Not ported: upstream's 3D pie chart
 (`PieChart/`, System.Drawing); `PieChart.cs` draws a flat pie in upstream's colors with the slice's text as tooltip.
+
+**Translations** (`partial`). Since 2026-10-09 the app ships upstream's Transifex files (`Translation/*.xlf`, linked from
+`src/app/GitUI/Translation`), and Settings > Appearance has upstream's language choice (`translation` setting, shared with Git
+Extensions for Windows). Upstream translates a form through `TranslationUtil` by its type name and its fields' names;
+`UpstreamTranslation.Apply` does the same for a window whose controls are named as the form's fields (the title from
+`$this`, then text blocks, buttons, check boxes, tabs, groups, menu items, column headers and tooltips), and
+`UpstreamTranslation.Text` gives a `TranslationString` field's text. Upstream's `&` mnemonics become Avalonia access keys.
+Upstream plugin classes translate themselves as upstream (`GitPluginBase.Translate`), so plugin names, setting captions and
+messages follow too. As upstream, a change applies to windows opened later; the plugins' own texts need a restart. Not
+translated: the rest of the new shell, whose windows are not named after upstream's forms yet, and the first-start language
+dialog (`FormChooseTranslation`).
+
+**BuildServerWatcher** (`partial`). Upstream's choice of adapter (the configured type unless integration is turned off; with
+no type, detection from the remotes in `PrioritizedBuildServerRemoteNames` order while the integration setting is untouched,
+and the matching detector filling in its settings), upstream's polling (running builds every 10 seconds while there are any,
+finished ones of the last three days, then all, then every two minutes), `ReplaceVariables`, and the credentials in upstream's
+text format. The watcher is relaunched after each read of the grid, as upstream. Credentials: on Windows upstream's store (the
+user's isolated storage, DPAPI-encrypted, one file per server; Git Extensions for Windows reads the same file when the
+isolation identity matches); on Linux the desktop's Secret Service through `secret-tool` when installed; otherwise (macOS,
+Linux without `secret-tool`) they are kept for the session only, so a secret is never written in plain text. Difference:
+upstream writes the file without truncating it, so a shorter text could leave old bytes; the port truncates. As upstream, an
+auto-detected server reads its settings from the type-less path `BuildServer.` (a settings tab entry for the type is not used
+until the type is chosen there).
+
+**BuildStatusColumnProvider** (`partial`). The "Build Status" column, last as upstream: the status symbol, the description or
+both (View > "Show build status icon" and "Show build status text", upstream's settings), colored by status (upstream's lighter
+colors on a dark theme instead of on a selected row), with upstream's tooltip; shown only while a build server gives results.
+A click on the cell opens the build report, and the grid menu has "View build report in a browser" and "View pull request in
+a browser". A build replaces the shown one unless it started earlier; results are kept per commit, so commits read later
+(another page) show them too. Not ported: the hand cursor over a cell with a report, and the column's width when resized.
+
+**BuildServerIntegrationSettingsPage** (`partial`). Settings > Build server integration on the repository's settings (as the
+revision links): the three-state "Enable build server integration", the type (None and the plugins' types, with upstream's
+reason when one cannot be loaded), and the plugin's settings control for the type, given the repository's folder name and
+remote URLs. The plugin control's values for a type are read from that type's path even before it is saved (upstream reads
+them from the saved type's path). Not ported: "Show build result page" (the shell has no build report tab), the settings
+level choice.
+
+**FormBuildServerCredentials** (`ported`). Guest access, user name and password, or bearer token, filled with the known ones;
+asked from the adapter's thread, shown on the UI thread until answered.
+
+**Build server settings controls** (`ported`). AppVeyor, Azure DevOps, GitHub Actions, GitLab, Jenkins and TeamCity: each
+plugin's control is replaced by an Avalonia control of the same name, exported with upstream's metadata, with upstream's
+fields, keys and checks (three-state check boxes, regex checks, the GitLab project lookup and token page, the Azure DevOps and
+TeamCity extraction from a build URL on the clipboard, TeamCity's build chooser with its lazily read project tree). The
+adapters, API clients and detectors are compiled unchanged. The WinForms `TaskDialog` the Azure DevOps adapter shows for a bad
+token goes through the shim to the app's message box window.
+
+**ForkAndCloneForm** (`ported`). The user's repositories and the search (by text or user) through the host plugin, off the UI
+thread; fork; and clone with upstream's options (folder, directory, upstream remote from the parent's owner, protocol, depth)
+through the shell's clone, which opens the clone; the parent is added as a remote afterwards. Differences: the default folder
+is the default clone folder or the folder of the open repository (upstream: of the most recent repository, usually the same);
+"Open github page" opens the homepage as upstream.
+
+**ViewPullRequestsForm / DiscussionHtmlCreator** (`partial`). The hosted remotes (the current branch's first), their pull
+requests (moving on from an empty one on the first load, as upstream), the selected one's patch split into files as upstream
+and shown in the diff view, the discussion, Fetch to the pr/ branch, Add remote and fetch (then checkout), and Close pull
+request. Differences: the discussion is a list of entries (author, date, commit, body) instead of upstream's HTML page; the
+comment box and its Refresh and Post buttons work (upstream's have no handlers). Not ported: the file list's status icons.
+
+**CreatePullRequestForm** (`ported`). The foreign hosted remotes as targets, both branch lists with the default branch chosen,
+the title from the branch's last commit until typed, the body from `.github/PULL_REQUEST_TEMPLATE.md`, and upstream's
+messages.
+
+**Repository host menu, commands and blame items** (`ported`). The "(Repository hosts)" menu named after the first host plugin
+(upstream supports one) with Fork/Clone repository, View pull requests, Create pull requests and Add upstream remote, through
+`PluginHost` as upstream through `GitUICommands`; the blame window's menu gets the host plugin's items (the GitHub plugin's
+"View in GitHub" for the line), which the plugin builds in a shim `ContextMenuStrip` with upstream's `GitBlameContext` as tag.
+
+**Commit templates** (`partial`). The commit window's "Commit templates" menu: the plugins' templates (upstream's
+`CommitTemplateManager` registry, used as is; the GitHub plugin adds the user's assigned issues), then the user's own
+(upstream's `CommitTemplates` setting); a template replaces the message, with upstream's regex placeholders filled from the
+branch name. Not ported: the conventional commit items, the template settings window, git's `commit.template` as the initial
+message, and the templates' icons.

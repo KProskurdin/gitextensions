@@ -107,7 +107,13 @@ public partial class MainWindow : Window
         Opened += (_, _) => Run(OnOpenedAsync);
         Activated += (_, _) => RefreshStatusOnActivation();
         Closing += (_, _) => _preferences.Save();
-        Closed += (_, _) => _plugins.Unregister();
+        Closed += (_, _) =>
+        {
+            _plugins.Unregister();
+            StopBuildServer();
+        };
+        WireBuildStatus();
+        WireRepositoryHosts();
         _plugins.PostRepositoryChanged += (_, _) => RefreshRepository();
         ShowGitProblem();
         Hotkeys.Load(_preferences.SerializedHotkeys);
@@ -653,6 +659,7 @@ public partial class MainWindow : Window
         }
 
         RegisterPlugins();
+        await LaunchBuildServerAsync();
     }
 
     private void CloseRepository()
@@ -672,6 +679,7 @@ public partial class MainWindow : Window
         ShowRepositoryPanels();
         UpdateBusyState();
         RegisterPlugins();
+        StopBuildServer();
     }
 
     // The dashboard of recent repositories stands in for the grid while no repository is open.
@@ -1039,6 +1047,7 @@ public partial class MainWindow : Window
             ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
             ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
             UpdateCommitButton();
+            ShowBuildStatusColumn();
             RefreshRepository();
         }
 
@@ -1054,6 +1063,7 @@ public partial class MainWindow : Window
     {
         IReadOnlyList<IGitPlugin> plugins = await LoadPluginsAsync();
         PluginsMenu.Items.Remove(PluginsLoadingMenuItem);
+        ShowRepositoryHostsMenu(plugins);
         int index = 0;
         foreach (IGitPlugin plugin in plugins)
         {
@@ -1933,7 +1943,7 @@ public partial class MainWindow : Window
     {
         if (RepositoryPath is { } path)
         {
-            new FileBrowserWindow(path, hash).Show(this);
+            new FileBrowserWindow(path, hash, RelevantRepositoryHost).Show(this);
         }
     }
 

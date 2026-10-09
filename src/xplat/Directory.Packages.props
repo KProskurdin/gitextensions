@@ -8,6 +8,9 @@
     <PackageVersion Include="System.Resources.Extensions" Version="10.0.0" />
     <!-- Supplied implicitly by the WinForms SDK upstream (Settings.Designer.cs). -->
     <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.0" />
+    <!-- Upstream keeps the build server credentials encrypted with DPAPI (Windows only); part of the Windows desktop SDK
+         upstream. -->
+    <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
     <!-- Cross-platform UI (GitExtensions.Xplat.App). -->
     <PackageVersion Include="Avalonia" Version="12.1.3" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.1.3" />

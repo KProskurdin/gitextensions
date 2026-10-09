@@ -14,6 +14,7 @@ namespace GitExtensions.Plugins.FindLargeFiles;
 /// </summary>
 public partial class FindLargeFilesWindow : Window
 {
+    private const string Category = "FindLargeFilesForm";
     private const string AreYouSureToDelete = "Are you sure to delete the selected files?";
     private const string DeleteCaption = "Delete";
 
@@ -30,15 +31,16 @@ public partial class FindLargeFilesWindow : Window
         _commands = commands;
         _finder = new LargeFileFinder(commands.Module, threshold);
         InitializeComponent();
+        UpstreamTranslation.Apply(this, Category);
         FileList.ItemsSource = _rows;
-        CloseButton.Click += (_, _) => Close();
-        DeleteButton.Click += (_, _) => DeleteSelected();
-        SortBy(SortByShaButton, row => row.Sha);
-        SortBy(SortByPathButton, row => row.Path);
-        SortBy(SortBySizeButton, row => row.File.SizeInBytes);
-        SortBy(SortByCompressedSizeButton, row => row.File.CompressedSizeInBytes);
-        SortBy(SortByCommitCountButton, row => row.CommitCount);
-        SortBy(SortByDateButton, row => row.File.LastCommitDate);
+        Cancel.Click += (_, _) => Close();
+        Delete.Click += (_, _) => DeleteSelected();
+        SortBy(sHADataGridViewTextBoxColumn, row => row.Sha);
+        SortBy(pathDataGridViewTextBoxColumn, row => row.Path);
+        SortBy(sizeDataGridViewTextBoxColumn, row => row.File.SizeInBytes);
+        SortBy(CompressedSize, row => row.File.CompressedSizeInBytes);
+        SortBy(commitCountDataGridViewTextBoxColumn, row => row.CommitCount);
+        SortBy(lastCommitDateDataGridViewTextBoxColumn, row => row.File.LastCommitDate);
         Opened += (_, _) => _ = ScanAsync();
         Closed += (_, _) => _closed.Cancel();
     }
@@ -101,7 +103,9 @@ public partial class FindLargeFilesWindow : Window
     // Upstream's Delete_Click: the window closes whatever the answer.
     private void DeleteSelected()
     {
-        if (MessageBoxes.Show(new WindowOwner(this), AreYouSureToDelete, DeleteCaption,
+        if (MessageBoxes.Show(new WindowOwner(this),
+                UpstreamTranslation.Text(Category, "_areYouSureToDelete", AreYouSureToDelete),
+                UpstreamTranslation.Text(Category, "_deleteCaption", DeleteCaption),
                 System.Windows.Forms.MessageBoxButtons.YesNo, System.Windows.Forms.MessageBoxIcon.Warning)
             == System.Windows.Forms.DialogResult.Yes)
         {

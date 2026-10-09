@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Plugins.GitStatistics;
 
@@ -13,17 +14,18 @@ namespace GitExtensions.Plugins.GitStatistics;
 /// </summary>
 public partial class StatisticsWindow : Window
 {
-    private const string CommitsText = "{0:N0} Commits";
-    private const string CommitsBy = "{0:N0} Commits by {1}";
-    private const string LinesOfCodeInFiles = "{0:N0} Lines of code in {1} files ({2:P1})";
-    private const string LinesOfCode = "{0:N0} Lines of code";
-    private const string LinesOfCodeP = "{0:N0} Lines of code ({1:P1})";
-    private const string LinesOfTestCode = "{0:N0} Lines of test code";
-    private const string LinesOfTestCodeP = "{0:N0} Lines of test code ({1:P1})";
-    private const string LinesOfProductionCodeP = "{0:N0} Lines of production code ({1:P1})";
-    private const string BlankLinesP = "{0:N0} Blank lines ({1:P1})";
-    private const string CommentLinesP = "{0:N0} Comment lines ({1:P1})";
-    private const string LinesOfDesignerFilesP = "{0:N0} Lines in designer files ({1:P1})";
+    private const string Category = "FormGitStatistics";
+    private static string CommitsText => UpstreamTranslation.Text(Category, "_commits", "{0:N0} Commits");
+    private static string CommitsBy => UpstreamTranslation.Text(Category, "_commitsBy", "{0:N0} Commits by {1}");
+    private static string LinesOfCodeInFiles => UpstreamTranslation.Text(Category, "_linesOfCodeInFiles", "{0:N0} Lines of code in {1} files ({2:P1})");
+    private static string LinesOfCode => UpstreamTranslation.Text(Category, "_linesOfCode", "{0:N0} Lines of code");
+    private static string LinesOfCodeP => UpstreamTranslation.Text(Category, "_linesOfCodeP", "{0:N0} Lines of code ({1:P1})");
+    private static string LinesOfTestCode => UpstreamTranslation.Text(Category, "_linesOfTestCode", "{0:N0} Lines of test code");
+    private static string LinesOfTestCodeP => UpstreamTranslation.Text(Category, "_linesOfTestCodeP", "{0:N0} Lines of test code ({1:P1})");
+    private static string LinesOfProductionCodeP => UpstreamTranslation.Text(Category, "_linesOfProductionCodeP", "{0:N0} Lines of production code ({1:P1})");
+    private static string BlankLinesP => UpstreamTranslation.Text(Category, "_blankLinesP", "{0:N0} Blank lines ({1:P1})");
+    private static string CommentLinesP => UpstreamTranslation.Text(Category, "_commentLinesP", "{0:N0} Comment lines ({1:P1})");
+    private static string LinesOfDesignerFilesP => UpstreamTranslation.Text(Category, "_linesOfDesignerFilesP", "{0:N0} Lines in designer files ({1:P1})");
 
     private readonly IGitExecutorProvider _executorProvider;
     private readonly IGitModule _module;
@@ -41,6 +43,7 @@ public partial class StatisticsWindow : Window
         _countSubmodules = countSubmodules;
         _directoriesToIgnore = directoriesToIgnore;
         InitializeComponent();
+        UpstreamTranslation.Apply(this, Category);
         _lineCounter.Updated += OnLineCounterUpdated;
         Opened += (_, _) =>
         {

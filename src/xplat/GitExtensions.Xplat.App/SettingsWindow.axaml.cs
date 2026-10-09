@@ -9,6 +9,7 @@ using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
+using GitExtensions.Extensibility.Translations;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
@@ -82,6 +83,7 @@ public partial class SettingsWindow : Window
         StraightenDiagonalsCheck.IsChecked = preferences.StraightenGraphDiagonals;
         DefaultCloneDestinationBox.Text = preferences.DefaultCloneDestinationPath;
         RelativeDateCheck.IsChecked = preferences.RelativeDate;
+        ShowLanguages(preferences.Translation);
         AlwaysShowCheckoutDlgCheck.IsChecked = preferences.AlwaysShowCheckoutBranchDlg;
         UseLocalChangesActionCheck.IsChecked = preferences.UseDefaultCheckoutBranchAction;
         AutoNormaliseCheck.IsChecked = preferences.AutoNormaliseBranchName;
@@ -112,6 +114,7 @@ public partial class SettingsWindow : Window
         ShowConfirmations();
         ShowScripts();
         ShowRevisionLinks();
+        ShowBuildServerPage();
         _plugins = plugins ?? [];
         ShowPlugins(selectedPlugin);
         if (pluginsPage)
@@ -737,6 +740,10 @@ public partial class SettingsWindow : Window
                     text.Foreground = row.IsValid ? null : Avalonia.Media.Brushes.Firebrick;
                 };
                 return Labeled(row.Caption, text);
+            case PluginSettingKind.Link:
+                HyperlinkButton link = new() { Content = row.Text };
+                link.Click += (_, _) => row.Click?.Invoke();
+                return link;
             case PluginSettingKind.Note:
                 return new TextBlock
                 {
@@ -805,6 +812,20 @@ public partial class SettingsWindow : Window
         DiffToolChoices.ItemsSource = await AppServices.DiffMergeTools.GetAvailableAsync(diff: true);
     }
 
+    // As upstream's appearance page: English, then the translations in the Translation folder; the current one stays
+    // selected even when its file is missing.
+    private void ShowLanguages(string current)
+    {
+        List<string> languages = ["English", .. Translator.GetAllTranslations()];
+        if (current.Length > 0 && !languages.Contains(current))
+        {
+            languages.Add(current);
+        }
+
+        LanguageBox.ItemsSource = languages;
+        LanguageBox.SelectedItem = current.Length > 0 ? current : "English";
+    }
+
     private static void FillFromChoice(ComboBox choices, TextBox target)
     {
         if (choices.SelectedItem is string tool)
@@ -846,6 +867,11 @@ public partial class SettingsWindow : Window
         _preferences.StraightenGraphDiagonals = StraightenDiagonalsCheck.IsChecked == true;
         _preferences.DefaultCloneDestinationPath = DefaultCloneDestinationBox.Text?.Trim() ?? "";
         _preferences.RelativeDate = RelativeDateCheck.IsChecked == true;
+        if (LanguageBox.SelectedItem is string language)
+        {
+            _preferences.Translation = language;
+        }
+
         _preferences.AlwaysShowCheckoutBranchDlg = AlwaysShowCheckoutDlgCheck.IsChecked == true;
         _preferences.UseDefaultCheckoutBranchAction = UseLocalChangesActionCheck.IsChecked == true;
         _preferences.AutoNormaliseBranchName = AutoNormaliseCheck.IsChecked == true;
@@ -906,6 +932,7 @@ public partial class SettingsWindow : Window
         EnvironmentConfiguration.SetEnvironmentVariables();
         SavePluginSettings();
         _revisionLinks.Save();
+        SaveBuildServerPage();
         AppServices.RevisionLinks.Save(_revisionLinkSettings);
 
         // Only values the user changed are written, so a setting made elsewhere since the window opened is kept.

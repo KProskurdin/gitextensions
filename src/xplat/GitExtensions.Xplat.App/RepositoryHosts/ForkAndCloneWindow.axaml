@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App.RepositoryHosts"
+        x:Class="GitExtensions.Xplat.App.RepositoryHosts.ForkAndCloneWindow"
+        Title="Remote repository fork and clone"
+        Width="760" Height="640" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="MinHeight" Value="22" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream ForkAndCloneForm: the user's repositories and a search, the clone options below, and the buttons. Texts are
+       named as the form's fields and columns, for its translations. -->
+  <DockPanel Margin="10">
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+      <Button x:Name="openGitupPageBtn" DockPanel.Dock="Left" Content="Open github page" />
+      <Button x:Name="closeBtn" DockPanel.Dock="Right" Content="Close" IsCancel="True" Margin="6,0,0,0" />
+      <Button x:Name="cloneBtn" DockPanel.Dock="Right" Content="Clone" IsEnabled="False" />
+      <Panel />
+    </DockPanel>
+    <HeaderedContentControl x:Name="cloneSetupGB" DockPanel.Dock="Bottom" Header="Clone" Margin="0,8,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+        <TextBlock x:Name="label1" Grid.Row="0" Text="Destination folder:" VerticalAlignment="Center" />
+        <TextBox x:Name="destinationTB" Grid.Row="0" Grid.Column="1" />
+        <Button x:Name="browseForCloneToDirbtn" Grid.Row="0" Grid.Column="2" Content="..." />
+        <TextBlock x:Name="createDirectoryLbl" Grid.Row="1" Text="Create directory:" VerticalAlignment="Center" />
+        <TextBox x:Name="createDirTB" Grid.Row="1" Grid.Column="1" />
+        <TextBlock x:Name="label3" Grid.Row="2" Text="Add upstream remote as:" VerticalAlignment="Center" />
+        <ComboBox x:Name="addUpstreamRemoteAsCB" Grid.Row="2" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+        <TextBlock x:Name="ProtocolLabel" Grid.Row="3" Text="Protocol:" VerticalAlignment="Center" IsVisible="False" />
+        <ComboBox x:Name="ProtocolDropdownList" Grid.Row="3" Grid.Column="1" IsVisible="False" MinWidth="120" />
+        <TextBlock x:Name="depthLabel" Grid.Row="4" Text="Limit Depth:" VerticalAlignment="Center" />
+        <NumericUpDown x:Name="depthUpDown" Grid.Row="4" Grid.Column="1" Width="140" HorizontalAlignment="Left"
+                       Minimum="0" Maximum="1000000" Increment="1" FormatString="0" Value="0" />
+        <TextBlock x:Name="cloneInfoText" Grid.Row="5" Grid.ColumnSpan="3" TextWrapping="Wrap" Opacity="0.8" />
+      </Grid>
+    </HeaderedContentControl>
+    <TabControl x:Name="tabControl">
+      <TabItem x:Name="myReposPage" Header="My repositories">
+        <DockPanel Margin="4">
+          <TextBlock x:Name="helpTextLbl" DockPanel.Dock="Bottom" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"
+                     Text="If you want to fork a repository owned by somebody else, go to the Search for repositories tab." />
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,80,80,80" Margin="4,0,4,2">
+            <TextBlock x:Name="columnHeaderMyReposName" Text="Name" FontWeight="SemiBold" />
+            <TextBlock x:Name="columnHeaderMyReposIsFork" Grid.Column="1" Text="Is fork" FontWeight="SemiBold" />
+            <TextBlock x:Name="columnHeaderMyReposForks" Grid.Column="2" Text="# Forks" FontWeight="SemiBold" />
+            <TextBlock x:Name="columnHeaderMyReposIsPrivate" Grid.Column="3" Text="Private" FontWeight="SemiBold" />
+          </Grid>
+          <ListBox x:Name="myReposLV">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:HostedRepositoryRow">
+                <Grid ColumnDefinitions="*,80,80,80">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding IsFork}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="{Binding Forks}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="{Binding IsPrivate}" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+      <TabItem x:Name="searchReposPage" Header="Search for repositories">
+        <DockPanel Margin="4">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <Button x:Name="getFromUserBtn" DockPanel.Dock="Right" Content="Get from user" />
+            <TextBlock x:Name="orLbl" DockPanel.Dock="Right" Text="or" VerticalAlignment="Center" Margin="8,0" />
+            <Button x:Name="searchBtn" DockPanel.Dock="Right" Content="Search" Margin="6,0,0,0" />
+            <TextBox x:Name="searchTB" />
+          </DockPanel>
+          <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+            <Button x:Name="forkBtn" DockPanel.Dock="Right" Content="Fork!" IsEnabled="False" VerticalAlignment="Top" />
+            <TextBlock x:Name="descriptionLbl" DockPanel.Dock="Left" Text="Description:" Margin="0,0,8,0" />
+            <TextBlock x:Name="searchResultItemDescription" TextWrapping="Wrap" />
+          </DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,140,80,80" Margin="4,0,4,2">
+            <TextBlock x:Name="columnHeaderSearchName" Text="Name" FontWeight="SemiBold" />
+            <TextBlock x:Name="columnHeaderSearchOwner" Grid.Column="1" Text="Owner" FontWeight="SemiBold" />
+            <TextBlock x:Name="columnHeaderSearchIsFork" Grid.Column="2" Text="Is fork" FontWeight="SemiBold" />
+            <TextBlock x:Name="columnHeaderSearchForks" Grid.Column="3" Text="# Forks" FontWeight="SemiBold" />
+          </Grid>
+          <ListBox x:Name="searchResultsLV">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:HostedRepositoryRow">
+                <Grid ColumnDefinitions="*,140,80,80">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Owner}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="{Binding IsFork}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="{Binding Forks}" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

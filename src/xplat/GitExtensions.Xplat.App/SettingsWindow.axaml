@@ -21,6 +21,15 @@
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
           <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
           <CheckBox x:Name="RelativeDateCheck" Content="Show relative date instead of full date" />
+          <!-- Upstream's "Language" group: upstream's translations (Translation folder), shared with Git Extensions for
+               Windows through the same setting. -->
+          <TextBlock Text="Language" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Language (restart required)" VerticalAlignment="Center" />
+            <ComboBox x:Name="LanguageBox" MinWidth="200" />
+            <HyperlinkButton x:Name="HelpTranslateButton" Content="Help translate" NavigateUri="https://github.com/gitextensions/gitextensions/wiki/Translations" />
+          </StackPanel>
+          <TextBlock Text="Translates the plugins and their windows. The rest of this app shows English texts for now." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Fonts" page. Avalonia has no font dialog: the family is chosen from the installed ones and the size
@@ -265,6 +274,25 @@
             </StackPanel>
           </ScrollViewer>
         </Grid>
+      </TabItem>
+      <!-- Upstream's "Build server integration" page, on the repository's settings as the revision links: the type, whether
+           the integration is on (undecided: decided by a lower settings level, or detected from the remotes), and the
+           plugin's own settings control for the type. -->
+      <TabItem x:Name="BuildServerTab" Header="Build server integration">
+        <ScrollViewer>
+          <StackPanel Spacing="8" Margin="4,8">
+            <TextBlock Text="Git Extensions can integrate with build servers to supply per-commit Continuous Integration information."
+                       TextWrapping="Wrap" Opacity="0.7" />
+            <CheckBox x:Name="EnableBuildServerCheck" Content="Enable build server integration" IsThreeState="True" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Build server type" VerticalAlignment="Center" />
+              <ComboBox x:Name="BuildServerTypeBox" MinWidth="220" />
+            </StackPanel>
+            <TextBlock x:Name="BuildServerNoRepositoryText" Text="Open a repository to set up its build server." Opacity="0.7"
+                       IsVisible="False" />
+            <ContentControl x:Name="BuildServerSettingsPanel" />
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
       <TabItem Header="Git config">
         <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">

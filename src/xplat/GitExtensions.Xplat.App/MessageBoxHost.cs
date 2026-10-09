@@ -15,10 +15,15 @@ namespace GitExtensions.Xplat.App;
 public static class MessageBoxHost
 {
     /// <summary>
-    ///  Answers the WinForms shim's message boxes from now on. Not done for the headless tests: a box nobody answers would
-    ///  stop a test.
+    ///  Answers the WinForms shim's message boxes and task dialogs from now on. Not done for the headless tests: a box
+    ///  nobody answers would stop a test.
     /// </summary>
-    public static void Install() => Answer(Show);
+    public static void Install()
+    {
+        Answer(Show);
+        System.Windows.Forms.TaskDialog.Handler = page =>
+            Task.FromResult(ModalWindow.Show(() => new MessageBoxWindow(page), owner: null).ChosenButton);
+    }
 
     /// <summary>
     ///  Lets <paramref name="handler"/> answer the shim's message boxes, or no one when it is null (a box then answers

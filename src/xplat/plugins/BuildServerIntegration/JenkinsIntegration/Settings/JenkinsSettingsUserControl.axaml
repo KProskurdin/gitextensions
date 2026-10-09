@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="JenkinsIntegration.Settings.JenkinsSettingsUserControl">
+  <!-- Upstream JenkinsSettingsUserControl: the server, the project(s) and the branch to ignore. Texts are named as the
+       control's fields, for its translations. -->
+  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+    <TextBlock x:Name="lblJenkinsServerUrl" Grid.Row="0" Text="Jenkins server URL" VerticalAlignment="Center" />
+    <TextBox x:Name="JenkinsServerUrl" Grid.Row="0" Grid.Column="1" />
+    <TextBlock x:Name="lblProjectName" Grid.Row="1" Text="Project name" VerticalAlignment="Center" />
+    <TextBox x:Name="JenkinsProjectName" Grid.Row="1" Grid.Column="1" />
+    <TextBlock x:Name="lblIgnoreBuildBranch" Grid.Row="2" Text="Ignore build for branch" VerticalAlignment="Center" />
+    <TextBox x:Name="IgnoreBuildBranch" Grid.Row="2" Grid.Column="1" />
+  </Grid>
+</UserControl>

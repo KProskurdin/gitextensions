@@ -93,8 +93,9 @@ internal sealed class FakeGitOperations : IGitOperations
         Record("SyncSubmodules", $"{repositoryPath} {path}");
 
     public Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
-        CancellationToken cancellationToken = default) =>
-        RecordRemote("Clone", $"{sourceUrl} {targetPath}", output, cancellationToken);
+        CancellationToken cancellationToken = default, int? depth = null) =>
+        RecordRemote("Clone", depth is null ? $"{sourceUrl} {targetPath}" : $"{sourceUrl} {targetPath} --depth {depth}", output,
+            cancellationToken);
 
     public Task InitAsync(string folder) => Record("Init", folder);
 

@@ -11,24 +11,24 @@
       <Setter Property="Padding" Value="4,2" />
     </Style>
   </Window.Styles>
-  <!-- Upstream FindLargeFilesForm: the files found, a progress bar while the history is read, Close and Delete. -->
+  <!-- Upstream FindLargeFilesForm: the files found, a progress bar while the history is read, Close and Delete. Texts are named as the form's fields and columns, for its translations. -->
   <DockPanel Margin="8">
-    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" TextWrapping="Wrap"
+    <TextBlock x:Name="label1" DockPanel.Dock="Top" Margin="0,0,0,6" TextWrapping="Wrap"
                Text="Reset local changes before deleting files. Choose files to delete. Force push for replacing data on remote repository." />
     <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
-      <Button x:Name="CloseButton" DockPanel.Dock="Left" Content="Close" />
-      <Button x:Name="DeleteButton" DockPanel.Dock="Right" Content="Delete" />
+      <Button x:Name="Cancel" DockPanel.Dock="Left" Content="Close" />
+      <Button x:Name="Delete" DockPanel.Dock="Right" Content="Delete" />
       <ProgressBar x:Name="ScanProgress" Margin="8,0" VerticalAlignment="Center" />
     </DockPanel>
     <!-- Upstream's grid columns; a header click sorts by the column, a second click reverses it. -->
     <Grid DockPanel.Dock="Top" ColumnDefinitions="90,*,80,130,110,160,60" Margin="4,0,4,2">
-      <Button x:Name="SortByShaButton" Grid.Column="0" Content="SHA" Classes="header" />
-      <Button x:Name="SortByPathButton" Grid.Column="1" Content="Path" Classes="header" />
-      <Button x:Name="SortBySizeButton" Grid.Column="2" Content="Size" Classes="header" />
-      <Button x:Name="SortByCompressedSizeButton" Grid.Column="3" Content="Compressed size" Classes="header" />
-      <Button x:Name="SortByCommitCountButton" Grid.Column="4" Content="Commit count" Classes="header" />
-      <Button x:Name="SortByDateButton" Grid.Column="5" Content="Last commit date" Classes="header" />
-      <TextBlock Grid.Column="6" Text="Delete" VerticalAlignment="Center" Margin="4,0" />
+      <Button x:Name="sHADataGridViewTextBoxColumn" Grid.Column="0" Content="SHA" Classes="header" />
+      <Button x:Name="pathDataGridViewTextBoxColumn" Grid.Column="1" Content="Path" Classes="header" />
+      <Button x:Name="sizeDataGridViewTextBoxColumn" Grid.Column="2" Content="Size" Classes="header" />
+      <Button x:Name="CompressedSize" Grid.Column="3" Content="Compressed size" Classes="header" />
+      <Button x:Name="commitCountDataGridViewTextBoxColumn" Grid.Column="4" Content="Commit count" Classes="header" />
+      <Button x:Name="lastCommitDateDataGridViewTextBoxColumn" Grid.Column="5" Content="Last commit date" Classes="header" />
+      <TextBlock x:Name="dataGridViewCheckBoxColumn1" Grid.Column="6" Text="Delete" VerticalAlignment="Center" Margin="4,0" />
     </Grid>
     <ListBox x:Name="FileList">
       <ListBox.Styles>

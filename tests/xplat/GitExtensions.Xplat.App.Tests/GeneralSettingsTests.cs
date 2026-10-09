@@ -112,6 +112,12 @@ internal sealed class GeneralSettingsTests
         Find<CheckBox>(settings, "StartWithRecentWorkingDirCheck").IsChecked = true;
         Find<CheckBox>(settings, "ShowCommitCountCheck").IsChecked = false;
         Find<CheckBox>(settings, "RelativeDateCheck").IsChecked = false;
+
+        // English and upstream's translations next to the app, as upstream's appearance page lists them.
+        ComboBox languages = Find<ComboBox>(settings, "LanguageBox");
+        languages.SelectedItem.Should().Be("English");
+        languages.Items.Should().Contain(["English", "German", "Japanese"]);
+        languages.SelectedItem = "German";
         Find<TextBox>(settings, "DefaultCloneDestinationBox").Text = " /src ";
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
@@ -120,6 +126,7 @@ internal sealed class GeneralSettingsTests
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar.Should().BeFalse();
         TestAppBuilder.Preferences.RelativeDate.Should().BeFalse();
         TestAppBuilder.Preferences.DefaultCloneDestinationPath.Should().Be("/src");
+        TestAppBuilder.Preferences.Translation.Should().Be("German");
         WaitUntil(() => Find<MenuItem>(window, "ShowRelativeDateMenuItem").IsChecked == false);
     }
 
@@ -131,6 +138,7 @@ internal sealed class GeneralSettingsTests
         TestAppBuilder.Preferences.RecentWorkingDir = null;
         TestAppBuilder.Preferences.DefaultCloneDestinationPath = "";
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar = true;
+        TestAppBuilder.Preferences.Translation = "";
     }
 
     private static DateTime UnixDate(string seconds)

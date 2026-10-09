@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The GitHub API client the GitHub plugin uses (externals/Git.hub, a submodule), compiled unchanged as net10.0. It has no
+    WinForms code; upstream builds it for net10.0-windows only because every project there does.
+  -->
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'externals', 'Git.hub', 'Git.hub'))</UpstreamDir>
+    <NoWarn>$(NoWarn),1573,1591,1696,1712</NoWarn>
+    <!-- Upstream's settings for this project: it does not follow the repository's style rules. -->
+    <Nullable>disable</Nullable>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <Import Project="..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The repository's CommonAssemblyInfo.cs, which the shared props add, already describes the assembly. -->
+    <Compile Remove="$(UpstreamDir)Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Not WinForms code; the namespaces the shared xplat props add would only clash with Git.hub's own names. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RestSharp" />
+  </ItemGroup>
+
+</Project>

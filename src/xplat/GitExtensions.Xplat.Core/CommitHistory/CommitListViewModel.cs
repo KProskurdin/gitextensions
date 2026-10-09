@@ -1,4 +1,7 @@
 using System.IO;
+using GitExtensions.Extensibility.BuildServerIntegration;
+using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.BuildServer;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
@@ -18,6 +21,11 @@ public sealed record CommitListItem(CommitRow Row, GraphRowRef Graph)
     /// </summary>
     public IReadOnlyList<RefLabel> Labels =>
         Row.Labels ?? [.. (Row.Refs ?? []).Select(name => new RefLabel(name, RefKind.Branch))];
+
+    /// <summary>
+    ///  The commit's build status, shared by every item of the same commit.
+    /// </summary>
+    public BuildStatusCell Build { get; init; } = new();
 }
 
 /// <summary>
@@ -48,6 +56,8 @@ public sealed class CommitListViewModel : ObservableObject
     private string? _errorMessage;
     private string? _detailsError;
     private IReadOnlyList<CommitFile> _commitFiles = [];
+    private readonly Dictionary<string, BuildStatusCell> _buildStatuses = new(StringComparer.OrdinalIgnoreCase);
+    private volatile HashSet<string> _loadedHashes = new(StringComparer.OrdinalIgnoreCase);
 
     public CommitListViewModel(ICommitHistory history)
     {
@@ -66,6 +76,7 @@ public sealed class CommitListViewModel : ObservableObject
         {
             if (SetProperty(ref _rows, value))
             {
+                _loadedHashes = new HashSet<string>(value.Select(row => row.Hash), StringComparer.OrdinalIgnoreCase);
                 RefreshVisibleRows();
             }
         }
@@ -182,7 +193,7 @@ public sealed class CommitListViewModel : ObservableObject
             CommitRow row = _graph.OrderedRows[i];
             if (_filterText.Length == 0 || Matches(row, _filterText))
             {
-                items.Add(new CommitListItem(row, _graph.RowAt(i)));
+                items.Add(new CommitListItem(row, _graph.RowAt(i)) { Build = BuildStatusOf(row.Hash) });
             }
         }
 
@@ -223,6 +234,48 @@ public sealed class CommitListViewModel : ObservableObject
         RepositoryName = "";
         IsLoading = false;
     }
+
+    /// <summary>
+    ///  The build status of the commit <paramref name="hash"/>, kept while the repository is shown, so a commit read later
+    ///  (another page) shows the builds already found.
+    /// </summary>
+    public BuildStatusCell BuildStatusOf(string hash)
+    {
+        if (!_buildStatuses.TryGetValue(hash, out BuildStatusCell? cell))
+        {
+            cell = new BuildStatusCell();
+            _buildStatuses[hash] = cell;
+        }
+
+        return cell;
+    }
+
+    /// <summary>
+    ///  Shows a build result on each of its commits. Call it on the UI thread.
+    /// </summary>
+    public void ApplyBuildInfo(BuildInfo buildInfo)
+    {
+        foreach (ObjectId commit in buildInfo.CommitHashList)
+        {
+            BuildStatusOf(commit.ToString()).Apply(buildInfo);
+        }
+    }
+
+    /// <summary>
+    ///  Forgets the build results, when the repository or its build server changes.
+    /// </summary>
+    public void ClearBuildStatuses()
+    {
+        foreach (BuildStatusCell cell in _buildStatuses.Values)
+        {
+            cell.Clear();
+        }
+    }
+
+    /// <summary>
+    ///  Whether the commit is among the loaded ones; safe to call from any thread (build server adapters ask from theirs).
+    /// </summary>
+    public bool IsLoaded(ObjectId commit) => _loadedHashes.Contains(commit.ToString());
 
     public Task LoadMoreAsync()
         => _repositoryPath is null ? Task.CompletedTask : LoadPagesAsync(_repositoryPath, _pages + 1);

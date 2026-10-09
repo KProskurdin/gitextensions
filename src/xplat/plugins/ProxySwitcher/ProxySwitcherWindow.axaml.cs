@@ -17,6 +17,7 @@ namespace GitExtensions.Plugins.ProxySwitcher;
 /// </summary>
 public partial class ProxySwitcherWindow : Window
 {
+    private const string Category = "ProxySwitcherForm";
     private const string PleaseSetProxy = "There is no proxy configured. Please set the proxy host in the plugin settings.";
     private const string ProxySetting = "http.proxy";
 
@@ -30,8 +31,12 @@ public partial class ProxySwitcherWindow : Window
         _settings = settings;
         _module = module;
         InitializeComponent();
-        SetProxyButton.Click += (_, _) => SetProxy();
-        UnsetProxyButton.Click += (_, _) => UnsetProxy();
+        UpstreamTranslation.Apply(this, Category);
+
+        // As upstream, the title is the plugin's description.
+        Title = UpstreamTranslation.Text(Category, "_pluginDescription", "Proxy Switcher");
+        SetProxy_Button.Click += (_, _) => SetProxy();
+        UnsetProxy_Button.Click += (_, _) => UnsetProxy();
         Opened += (_, _) => OnOpened();
     }
 
@@ -43,7 +48,9 @@ public partial class ProxySwitcherWindow : Window
     {
         if (string.IsNullOrEmpty(_plugin.HttpProxy.ValueOrDefault(_settings)))
         {
-            MessageBoxes.ShowError(new WindowOwner(this), PleaseSetProxy, Title);
+            MessageBoxes.ShowError(new WindowOwner(this),
+                UpstreamTranslation.Text(Category, "_pleaseSetProxy", PleaseSetProxy),
+                Title);
             Close();
             return;
         }
@@ -58,7 +65,7 @@ public partial class ProxySwitcherWindow : Window
         LocalProxyBox.Text = HidePassword(_module.GetEffectiveSetting(ProxySetting));
         GlobalProxyBox.Text = HidePassword(
             new GitConfigSettings(_module.GitExecutable, GitSettingLevel.Global).GetValue(ProxySetting) ?? "");
-        ApplyGloballyCheck.IsChecked = string.Equals(LocalProxyBox.Text, GlobalProxyBox.Text, StringComparison.Ordinal);
+        ApplyGlobally_CheckBox.IsChecked = string.Equals(LocalProxyBox.Text, GlobalProxyBox.Text, StringComparison.Ordinal);
     }
 
     private static string HidePassword(string httpProxy) => PasswordRegex.Replace(httpProxy, ":****@");
@@ -94,7 +101,7 @@ public partial class ProxySwitcherWindow : Window
     {
         GitArgumentBuilder args = new("config")
         {
-            { ApplyGloballyCheck.IsChecked == true, "--global" },
+            { ApplyGlobally_CheckBox.IsChecked == true, "--global" },
             ProxySetting,
             BuildHttpProxy(),
         };
@@ -107,7 +114,7 @@ public partial class ProxySwitcherWindow : Window
     {
         GitArgumentBuilder args = new("config")
         {
-            { ApplyGloballyCheck.IsChecked == true, "--global" },
+            { ApplyGlobally_CheckBox.IsChecked == true, "--global" },
             "--unset",
             ProxySetting,
         };

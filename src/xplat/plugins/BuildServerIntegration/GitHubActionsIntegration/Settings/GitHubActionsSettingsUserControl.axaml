@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="GitExtensions.Plugins.GitHubActionsIntegration.Settings.GitHubActionsSettingsUserControl">
+  <!-- Upstream GitHubActionsSettingsUserControl: the API URL, the repository and the token. Texts are named as the control's
+       fields, for its translations. -->
+  <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+    <TextBlock x:Name="lblApiUrl" Grid.Row="0" Text="API URL" VerticalAlignment="Center" />
+    <TextBox x:Name="txtApiUrl" Grid.Row="0" Grid.Column="1" />
+    <TextBlock x:Name="lblOwner" Grid.Row="1" Text="Owner" VerticalAlignment="Center" />
+    <TextBox x:Name="txtOwner" Grid.Row="1" Grid.Column="1" />
+    <TextBlock x:Name="lblRepository" Grid.Row="2" Text="Repository" VerticalAlignment="Center" />
+    <TextBox x:Name="txtRepository" Grid.Row="2" Grid.Column="1" />
+    <TextBlock x:Name="lblApiToken" Grid.Row="3" Text="API Token" VerticalAlignment="Center" />
+    <TextBox x:Name="txtApiToken" Grid.Row="3" Grid.Column="1" PasswordChar="*" />
+    <HyperlinkButton x:Name="lnkTokenManagement" Grid.Row="4" Grid.Column="1" Content="Create a GitHub personal access token"
+                     NavigateUri="https://github.com/settings/personal-access-tokens/new" />
+  </Grid>
+</UserControl>

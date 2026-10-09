@@ -23,21 +23,22 @@ namespace GitExtensions.Plugins.DeleteUnusedBranches;
 /// </summary>
 public partial class DeleteUnusedBranchesWindow : Window
 {
-    private const string DeleteCaption = "Delete";
-    private const string SelectBranchesToDelete = "Select branches to delete using checkboxes in '{0}' column.";
-    private const string AreYouSureToDelete = "Are you sure to delete {0} selected branches?";
-    private const string DangerousAction =
-        "DANGEROUS ACTION!\nBranches will be deleted on the remote '{0}'. This can not be undone.\nAre you sure you want to continue?";
-    private const string DeletingBranches = "Deleting branches...";
-    private const string DeletingUnmergedBranches =
-        "Deleting unmerged branches will result in dangling commits. Use with caution!";
-    private const string ChooseBranchesToDelete =
-        "Choose branches to delete. Only branches that are fully merged in '{0}' will be deleted.";
-    private const string PressToSearch = "Press '{0}' to search for branches to delete.";
-    private const string CancelText = "Cancel";
-    private const string SearchBranches = "Search branches";
-    private const string Loading = "Loading...";
-    private const string BranchesSelected = "{0}/{1} branches selected.";
+    private const string Category = "DeleteUnusedBranchesForm";
+    private static string DeleteCaption => UpstreamTranslation.Text(Category, "_deleteCaption", "Delete");
+    private static string SelectBranchesToDelete => UpstreamTranslation.Text(Category, "_selectBranchesToDelete", "Select branches to delete using checkboxes in '{0}' column.");
+    private static string AreYouSureToDelete => UpstreamTranslation.Text(Category, "_areYouSureToDelete", "Are you sure to delete {0} selected branches?");
+    private static string DangerousAction =>
+        UpstreamTranslation.Text(Category, "_dangerousAction", "DANGEROUS ACTION!\nBranches will be deleted on the remote '{0}'. This can not be undone.\nAre you sure you want to continue?");
+    private static string DeletingBranches => UpstreamTranslation.Text(Category, "_deletingBranches", "Deleting branches...");
+    private static string DeletingUnmergedBranches =>
+        UpstreamTranslation.Text(Category, "_deletingUnmergedBranches", "Deleting unmerged branches will result in dangling commits. Use with caution!");
+    private static string ChooseBranchesToDelete =>
+        UpstreamTranslation.Text(Category, "_chooseBranchesToDelete", "Choose branches to delete. Only branches that are fully merged in '{0}' will be deleted.");
+    private static string PressToSearch => UpstreamTranslation.Text(Category, "_pressToSearch", "Press '{0}' to search for branches to delete.");
+    private static string CancelText => UpstreamTranslation.Text(Category, "_cancel", "Cancel");
+    private static string SearchBranches => UpstreamTranslation.Text(Category, "_searchBranches", "Search branches");
+    private static string Loading => UpstreamTranslation.Text(Category, "_loading", "Loading...");
+    private static string BranchesSelected => UpstreamTranslation.Text(Category, "_branchesSelected", "{0}/{1} branches selected.");
 
     private readonly IGitModule _module;
     private readonly IGitUICommands _commands;
@@ -54,19 +55,20 @@ public partial class DeleteUnusedBranchesWindow : Window
         _commands = commands;
         _plugin = plugin;
         InitializeComponent();
+        UpstreamTranslation.Apply(this, Category);
         BranchList.ItemsSource = _rows;
 
         // Upstream's OnLoad. The values are set before the change handlers are added, so opening the window neither clears
         // the list nor warns about unmerged branches.
         MergedIntoBranchBox.Text = settings.MergedInBranch;
         OlderThanDaysBox.Value = settings.DaysOlderThan;
-        IncludeRemoteCheck.IsChecked = settings.DeleteRemoteBranchesFromFlag;
+        IncludeRemoteBranches.IsChecked = settings.DeleteRemoteBranchesFromFlag;
         RemoteBox.Text = settings.RemoteName;
-        UseRegexCheck.IsChecked = settings.UseRegexToFilterBranchesFlag;
+        useRegexFilter.IsChecked = settings.UseRegexToFilterBranchesFlag;
         RegexBox.Text = settings.RegexFilter;
-        RegexCaseInsensitiveCheck.IsChecked = settings.RegexCaseInsensitiveFlag;
-        RegexDoesNotMatchCheck.IsChecked = settings.RegexInvertedFlag;
-        IncludeUnmergedCheck.IsChecked = settings.IncludeUnmergedBranchesFlag;
+        useRegexCaseInsensitive.IsChecked = settings.RegexCaseInsensitiveFlag;
+        regexDoesNotMatch.IsChecked = settings.RegexInvertedFlag;
+        includeUnmergedBranches.IsChecked = settings.IncludeUnmergedBranchesFlag;
         ShowInstructions();
 
         foreach (TextBox box in new[] { MergedIntoBranchBox, RemoteBox, RegexBox })
@@ -80,15 +82,15 @@ public partial class DeleteUnusedBranchesWindow : Window
             };
         }
 
-        IncludeRemoteCheck.IsCheckedChanged += (_, _) => ClearResults();
-        UseRegexCheck.IsCheckedChanged += (_, _) => ClearResults();
+        IncludeRemoteBranches.IsCheckedChanged += (_, _) => ClearResults();
+        useRegexFilter.IsCheckedChanged += (_, _) => ClearResults();
         OlderThanDaysBox.ValueChanged += (_, _) => ClearResults();
-        IncludeUnmergedCheck.IsCheckedChanged += (_, _) => OnIncludeUnmergedChanged();
+        includeUnmergedBranches.IsCheckedChanged += (_, _) => OnIncludeUnmergedChanged();
         SelectAllCheck.IsCheckedChanged += (_, _) => SelectAll();
-        SearchButton.Click += (_, _) => _ = RefreshObsoleteBranchesAsync();
-        DeleteButton.Click += (_, _) => DeleteSelected();
-        CloseButton.Click += (_, _) => Close();
-        SettingsButton.Click += (_, _) => OpenSettings();
+        RefreshBtn.Click += (_, _) => _ = RefreshObsoleteBranchesAsync();
+        Delete.Click += (_, _) => DeleteSelected();
+        Cancel.Click += (_, _) => Close();
+        buttonSettings.Click += (_, _) => OpenSettings();
         Opened += (_, _) => _ = RefreshObsoleteBranchesAsync();
         Closed += (_, _) => _refreshCancellation?.Cancel();
     }
@@ -108,7 +110,7 @@ public partial class DeleteUnusedBranchesWindow : Window
     private void ShowInstructions()
     {
         InstructionText.Text = string.Format(ChooseBranchesToDelete, MergedIntoBranchBox.Text);
-        StatusText.Text = string.Format(PressToSearch, SearchButton.Content);
+        StatusText.Text = string.Format(PressToSearch, RefreshBtn.Content);
     }
 
     private void ClearResults()
@@ -121,7 +123,7 @@ public partial class DeleteUnusedBranchesWindow : Window
     private void OnIncludeUnmergedChanged()
     {
         ClearResults();
-        if (IsChecked(IncludeUnmergedCheck))
+        if (IsChecked(includeUnmergedBranches))
         {
             MessageBoxes.Show(new WindowOwner(this), DeletingUnmergedBranches, DeleteCaption, MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
@@ -173,13 +175,13 @@ public partial class DeleteUnusedBranchesWindow : Window
         SetRefreshing(cancellation);
         string currentBranch = _module.GetSelectedBranch();
         RefreshContext context = new(
-            IsChecked(IncludeRemoteCheck),
-            IsChecked(IncludeUnmergedCheck),
+            IsChecked(IncludeRemoteBranches),
+            IsChecked(includeUnmergedBranches),
             MergedIntoBranchBox.Text ?? "",
             RemoteBox.Text ?? "",
-            IsChecked(UseRegexCheck) ? RegexBox.Text : null,
-            IsChecked(RegexCaseInsensitiveCheck),
-            IsChecked(RegexDoesNotMatchCheck),
+            IsChecked(useRegexFilter) ? RegexBox.Text : null,
+            IsChecked(useRegexCaseInsensitive),
+            IsChecked(regexDoesNotMatch),
             TimeSpan.FromDays((int)(OlderThanDaysBox.Value ?? 0)),
             cancellation.Token);
 
@@ -213,7 +215,7 @@ public partial class DeleteUnusedBranchesWindow : Window
     private void SetRefreshing(CancellationTokenSource? cancellation)
     {
         _refreshCancellation = cancellation;
-        SearchButton.Content = cancellation is null ? SearchBranches : CancelText;
+        RefreshBtn.Content = cancellation is null ? SearchBranches : CancelText;
         StatusText.Text = cancellation is null ? DefaultStatus() : Loading;
     }
 
@@ -294,7 +296,7 @@ public partial class DeleteUnusedBranchesWindow : Window
 
         string remoteName = RemoteBox.Text ?? "";
         string remoteBranchPrefix = remoteName + "/";
-        List<Branch> remoteBranches = IsChecked(IncludeRemoteCheck)
+        List<Branch> remoteBranches = IsChecked(IncludeRemoteBranches)
             ? [.. selected.Where(branch => branch.Name.StartsWith(remoteBranchPrefix))]
             : [];
 
@@ -307,7 +309,7 @@ public partial class DeleteUnusedBranchesWindow : Window
 
         HasDeletedBranch = true;
         List<Branch> localBranches = [.. selected.Except(remoteBranches)];
-        bool force = IsChecked(IncludeUnmergedCheck);
+        bool force = IsChecked(includeUnmergedBranches);
         SetWorking(true);
         StatusText.Text = DeletingBranches;
         _ = DeleteAsync(remoteName, remoteBranchPrefix.Length, remoteBranches, localBranches, force);
@@ -347,7 +349,7 @@ public partial class DeleteUnusedBranchesWindow : Window
 
     private void SetWorking(bool working)
     {
-        foreach (Control control in new Control[] { SearchButton, DeleteButton, SettingsButton, BranchList, SelectAllCheck })
+        foreach (Control control in new Control[] { RefreshBtn, Delete, buttonSettings, BranchList, SelectAllCheck })
         {
             control.IsEnabled = !working;
         }

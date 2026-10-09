@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using DialogResult = System.Windows.Forms.DialogResult;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 using MessageBoxDefaultButton = System.Windows.Forms.MessageBoxDefaultButton;
+using TaskDialogButton = System.Windows.Forms.TaskDialogButton;
+using TaskDialogPage = System.Windows.Forms.TaskDialogPage;
 
 namespace GitExtensions.Xplat.App;
 
@@ -35,7 +37,9 @@ public partial class MessageBoxWindow : Window
             DialogResult result = results[index];
             Button button = new()
             {
-                Content = TextOf(result), Name = $"{result}Button", MinWidth = 80,
+                Content = TextOf(result),
+                Name = $"{result}Button",
+                MinWidth = 80,
                 IsDefault = index == Math.Min(defaultIndex, results.Count - 1),
                 IsCancel = result == DialogResult.Cancel,
             };
@@ -49,9 +53,37 @@ public partial class MessageBoxWindow : Window
     }
 
     /// <summary>
+    ///  A WinForms task dialog shown as a message box: the heading above the text, and the page's own buttons.
+    ///  <see cref="ChosenButton"/> is the button pressed; closing the box is WinForms' Cancel.
+    /// </summary>
+    public MessageBoxWindow(TaskDialogPage page)
+    {
+        InitializeComponent();
+        Title = string.IsNullOrEmpty(page.Caption) ? "Git Extensions" : page.Caption;
+        MessageText.Text = string.Join(Environment.NewLine + Environment.NewLine,
+            new string?[] { page.Heading, page.Text }.Where(part => !string.IsNullOrEmpty(part)));
+        for (int index = 0; index < page.Buttons.Count; index++)
+        {
+            TaskDialogButton choice = page.Buttons[index];
+            Button button = new() { Content = choice.Text, MinWidth = 80, IsDefault = index == 0 };
+            button.Click += (_, _) =>
+            {
+                ChosenButton = choice;
+                Close();
+            };
+            ButtonsPanel.Children.Add(button);
+        }
+    }
+
+    /// <summary>
     ///  The button pressed, or the result of closing the box.
     /// </summary>
     public DialogResult Result { get; private set; }
+
+    /// <summary>
+    ///  The task dialog button pressed.
+    /// </summary>
+    public TaskDialogButton ChosenButton { get; private set; } = TaskDialogButton.Cancel;
 
     private static IReadOnlyList<DialogResult> ButtonsOf(MessageBoxButtons buttons) => buttons switch
     {

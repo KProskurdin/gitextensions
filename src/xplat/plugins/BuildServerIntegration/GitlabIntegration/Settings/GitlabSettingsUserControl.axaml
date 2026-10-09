@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="GitExtensions.Plugins.GitlabIntegration.Settings.GitlabSettingsUserControl">
+  <!-- Upstream GitlabSettingsUserControl: the instance, the API token and the project, which can be looked up on the
+       server. Texts are named as the control's fields, for its translations. -->
+  <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+    <TextBlock x:Name="label1" Grid.Row="0" Text="Instance URL" VerticalAlignment="Center" />
+    <TextBox x:Name="InstanceUrlTextBox" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" />
+    <TextBlock x:Name="label2" Grid.Row="1" Text="Api Token" VerticalAlignment="Center" />
+    <TextBox x:Name="ApiTokenTextBox" Grid.Row="1" Grid.Column="1" />
+    <HyperlinkButton x:Name="TokenManagementLink" Grid.Row="1" Grid.Column="2" Content="Go to token management page"
+                     IsEnabled="False" />
+    <TextBlock x:Name="label3" Grid.Row="2" Text="Project ID" VerticalAlignment="Center" />
+    <TextBox x:Name="ProjectIdTextBox" Grid.Row="2" Grid.Column="1" />
+    <HyperlinkButton x:Name="GetProjectIdLink" Grid.Row="2" Grid.Column="2" Content="Get Project ID from server"
+                     IsEnabled="False" />
+    <TextBlock x:Name="GetProjectIdStatusText" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Foreground="Firebrick"
+               TextWrapping="Wrap" IsVisible="False"
+               Text="Failed to obtain project from server. Try to specify valid API token or check instance URL" />
+  </Grid>
+</UserControl>

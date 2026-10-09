@@ -68,6 +68,7 @@ public partial class CommitWindow : Window
         CommitButton.Click += (_, _) => Run(CommitAsync);
         CommitAndPushButton.Click += (_, _) => Run(CommitAndPushAsync);
         AmendCheck.IsCheckedChanged += (_, _) => Run(ToggleAmendAsync);
+        CommitTemplatesFlyout.Opening += (_, _) => ShowCommitTemplates();
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
         StagedList.SelectionChanged += (_, _) => OnFileSelected(StagedList, UnstagedList, staged: true);
         Diff.LineSelectionChanged += (_, _) => UpdateState();
@@ -521,6 +522,49 @@ public partial class CommitWindow : Window
         {
             AmendCheck.IsChecked = false;
             ShowError(ex.Message);
+        }
+    }
+
+    private MenuFlyout CommitTemplatesFlyout => (MenuFlyout)CommitTemplatesButton.Flyout!;
+
+    // Upstream's commitTemplatesToolStripMenuItem_DropDownOpening, read each time it opens: the plugins' templates (e.g.
+    // the GitHub plugin's assigned issues), then the user's own. A template replaces the message. Not ported: the
+    // conventional commit items and the template settings window.
+    private void ShowCommitTemplates()
+    {
+        CommitTemplatesFlyout.Items.Clear();
+        IReadOnlyList<CommitTemplate> registered = CommitTemplates.Registered();
+        IReadOnlyList<CommitTemplate> own = CommitTemplates.FromSettings();
+        foreach (CommitTemplate template in registered)
+        {
+            CommitTemplatesFlyout.Items.Add(TemplateItem(template));
+        }
+
+        if (registered.Count > 0 && own.Count > 0)
+        {
+            CommitTemplatesFlyout.Items.Add(new Separator());
+        }
+
+        foreach (CommitTemplate template in own)
+        {
+            CommitTemplatesFlyout.Items.Add(TemplateItem(template));
+        }
+
+        if (CommitTemplatesFlyout.Items.Count == 0)
+        {
+            CommitTemplatesFlyout.Items.Add(new MenuItem { Header = "(none)", IsEnabled = false });
+        }
+
+        MenuItem TemplateItem(CommitTemplate template)
+        {
+            // The name as it is: a template named after an issue may have underscores, which are not access keys here.
+            MenuItem item = new() { Header = new TextBlock { Text = template.Name } };
+            item.Click += (_, _) =>
+            {
+                CommitMessageBox.Text = CommitTemplates.Apply(template, _repository.CurrentBranch);
+                CommitMessageBox.Focus();
+            };
+            return item;
         }
     }
 }

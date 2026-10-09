@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.App;
+using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
@@ -63,6 +64,15 @@ public static class TestAppBuilder
         AppServices.PluginSettings = new InMemoryPluginSettingsStore(PluginSettings);
     }
 
+    /// <summary>
+    ///  Gives the windows <paramref name="catalog"/> as the build server plugins, and credentials kept in memory.
+    /// </summary>
+    public static void UseBuildServers(IBuildServerCatalog catalog)
+    {
+        AppServices.BuildServers = catalog;
+        AppServices.BuildServerCredentials = new SessionBuildServerCredentialStore();
+    }
+
     public static AppBuilder BuildAvaloniaApp()
     {
         // No plugin from the folder next to the test host is loaded, and plugin settings stay in memory.
@@ -80,6 +90,12 @@ public static class TestAppBuilder
         AppServices.AskPassExecutable = null;
         AppServices.DiffMergeTools = new FixedDiffMergeToolCatalog();
         AppServices.Scripts = Scripts;
+
+        // No build server plugin from the folder next to the test host, and no credentials written to the user's storage.
+        UseBuildServers(new FixedBuildServerCatalog());
+
+        // Upstream's English texts, whatever language the user's settings file has; a test may choose one and reset it.
+        GitCommands.AppSettings.CurrentTranslation = "";
 
         // Upstream's theme files are copied next to the app; no user themes, so the user's own never change a test.
         AppServices.Themes = new UpstreamThemeService(new AppThemePaths(

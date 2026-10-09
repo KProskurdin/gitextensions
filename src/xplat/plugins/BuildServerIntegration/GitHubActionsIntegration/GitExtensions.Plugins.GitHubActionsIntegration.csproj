@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', '..', 'plugins', 'BuildServerIntegration', 'GitHubActionsIntegration'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms settings control; Settings\GitHubActionsSettingsUserControl.axaml here stands in for it. The adapter is
+         compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)Settings\GitHubActionsSettingsUserControl.cs;$(UpstreamDir)Settings\GitHubActionsSettingsUserControl.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)Settings\GitHubActionsSettingsUserControl.resx" />
+  </ItemGroup>
+
+</Project>

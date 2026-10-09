@@ -241,8 +241,9 @@ public interface IGitOperations
     /// </summary>
     Task ResetAsync(string repositoryPath, string commit, ResetMode mode);
 
+    /// <param name="depth">Upstream's "Limit depth": a shallow clone of that many commits; null for the whole history.</param>
     Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default, int? depth = null);
 
     /// <summary>
     ///  Creates a repository in <paramref name="folder"/>, creating the folder when it does not exist.

@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WinFormsShim\GitExtensions.Xplat.WinFormsShim.csproj" />
+    <!-- Upstream's translations (Translator) and the language setting (AppSettings). -->
+    <ProjectReference Include="..\GitCommands\GitCommands.csproj" />
   </ItemGroup>
 
 </Project>

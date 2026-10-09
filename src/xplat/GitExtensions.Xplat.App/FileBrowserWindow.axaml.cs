@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
 
 namespace GitExtensions.Xplat.App;
@@ -12,9 +13,12 @@ public partial class FileBrowserWindow : Window
     private readonly FileBrowserViewModel _viewModel = new(new GitCommitHistory());
     private readonly string _repositoryPath;
     private readonly string _hash;
+    private readonly Func<IRepositoryHostPlugin?>? _repositoryHost;
 
-    public FileBrowserWindow(string repositoryPath, string hash)
+    /// <param name="repositoryHost">The repository host plugin of the repository, for the blame menu (e.g. "View in GitHub").</param>
+    public FileBrowserWindow(string repositoryPath, string hash, Func<IRepositoryHostPlugin?>? repositoryHost = null)
     {
+        _repositoryHost = repositoryHost;
         _repositoryPath = repositoryPath;
         _hash = hash;
         InitializeComponent();
@@ -33,7 +37,7 @@ public partial class FileBrowserWindow : Window
     {
         if (_viewModel.SelectedFile is { } file)
         {
-            new BlameWindow(_repositoryPath, _hash, file).Show(this);
+            new BlameWindow(_repositoryPath, _hash, file, _repositoryHost).Show(this);
         }
     }
 

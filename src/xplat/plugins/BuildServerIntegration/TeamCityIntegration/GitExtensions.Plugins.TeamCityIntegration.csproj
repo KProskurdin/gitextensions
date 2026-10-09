@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', '..', 'plugins', 'BuildServerIntegration', 'TeamCityIntegration'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms settings control and build chooser; the .axaml files in Settings here stand in for them. The adapter
+         is compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)Settings\TeamCitySettingsUserControl.cs;$(UpstreamDir)Settings\TeamCitySettingsUserControl.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)Settings\TeamCitySettingsUserControl.resx" />
+    <Compile Remove="$(UpstreamDir)Settings\TeamCityBuildChooser.cs;$(UpstreamDir)Settings\TeamCityBuildChooser.Designer.cs" />
+  </ItemGroup>
+
+</Project>

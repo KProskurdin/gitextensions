@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Plugins.GitImpact;
 
@@ -11,13 +12,15 @@ namespace GitExtensions.Plugins.GitImpact;
 /// </summary>
 public partial class ImpactWindow : Window
 {
-    private const string AuthorCommits = "{0} ({1} Commits, {2} Changed Lines)";
+    private const string Category = "FormImpact";
+    private static string AuthorCommits => UpstreamTranslation.Text(Category, "_authorCommits", "{0} ({1} Commits, {2} Changed Lines)");
 
     private double _distanceFromEnd;
 
     public ImpactWindow(IGitModule module)
     {
         InitializeComponent();
+        UpstreamTranslation.Apply(this, Category);
         Graph.Init(module);
         Graph.GraphChanged += (_, _) => ShowAuthor(Graph.SelectedAuthor);
 
@@ -35,7 +38,7 @@ public partial class ImpactWindow : Window
                     GraphScroll.Extent.Width - GraphScroll.Viewport.Width - GraphScroll.Offset.X);
             }
         };
-        IncludeSubmodulesCheck.IsCheckedChanged += (_, _) => Graph.ShowSubmodules = IncludeSubmodulesCheck.IsChecked == true;
+        cbIncludingSubmodules.IsCheckedChanged += (_, _) => Graph.ShowSubmodules = cbIncludingSubmodules.IsChecked == true;
         Opened += (_, _) => Graph.UpdateData();
         Closed += (_, _) =>
         {
@@ -48,11 +51,11 @@ public partial class ImpactWindow : Window
     private void ShowAuthor(string author)
     {
         bool shown = !string.IsNullOrEmpty(author);
-        AuthorText.IsVisible = AuthorColor.IsVisible = shown;
+        lblAuthor.IsVisible = AuthorColor.IsVisible = shown;
         if (shown)
         {
             ImpactLoader.DataPoint data = Graph.GetAuthorInfo(author);
-            AuthorText.Text = string.Format(AuthorCommits, author, data.Commits, data.ChangedLines);
+            lblAuthor.Text = string.Format(AuthorCommits, author, data.Commits, data.ChangedLines);
             AuthorColor.Background = Graph.GetAuthorBrush(author);
         }
     }

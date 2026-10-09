@@ -450,7 +450,7 @@ public sealed class GitOperations : IGitOperations
         => RunWithOutputAsync(repositoryPath, Commands.StopBisect(), output, cancellationToken);
 
     public Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, int? depth = null)
         => Task.Run(async () =>
         {
             string fullTarget = Path.GetFullPath(targetPath);
@@ -459,7 +459,7 @@ public sealed class GitOperations : IGitOperations
             Directory.CreateDirectory(parent);
 
             string source = PathUtil.IsLocalFile(sourceUrl) ? sourceUrl.ToPosixPath() : sourceUrl;
-            ArgumentString clone = Commands.Clone(source, fullTarget, path => path?.ToPosixPath());
+            ArgumentString clone = Commands.Clone(source, fullTarget, path => path?.ToPosixPath(), depth: depth);
             if (output is null)
             {
                 Execute(new Executable(AppSettings.GitCommand, parent), clone);
