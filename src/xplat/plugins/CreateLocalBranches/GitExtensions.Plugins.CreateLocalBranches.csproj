@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'CreateLocalBranches'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form; CreateLocalBranchesForm.cs here stands in for it. -->
+    <Compile Remove="$(UpstreamDir)CreateLocalBranchesForm.cs;$(UpstreamDir)CreateLocalBranchesForm.Designer.cs" />
+  </ItemGroup>
+
+</Project>

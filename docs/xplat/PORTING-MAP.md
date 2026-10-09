@@ -79,6 +79,16 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/Plugin/PluginRegistry.cs`, `FailedPluginWrapper.cs`; `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (`RegisterPlugins`, `UpdatePluginMenu`, plugin parts of `SetGitModule`) | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginCatalog.cs`; `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` (`Register`, `Unregister`); `MainWindow.axaml(.cs)` (Plugins menu) | `52d08e996` | partial |
 | `src/app/GitUI/GitUICommands.cs` (the `IGitUICommands` plugins see) | `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Plugins/PluginSettingsPage.cs`; `src/app/GitUI/SettingControlBindings/*.cs` | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginSettings.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Plugins tab) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/InteractiveGitActionControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/GitActionBanner.cs`, `GitRepositoryService.cs` (state), `RepositoryViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (`BisectBanner`, `StateBanner`) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/BrowseDialog/FormBisect.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (bisect items) | `src/xplat/GitExtensions.Xplat.App/BisectWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (bisect), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
+| `src/plugins/CreateLocalBranches/CreateLocalBranchesForm.cs` | `src/xplat/plugins/CreateLocalBranches/CreateLocalBranchesForm.cs` (stand-in), `CreateLocalBranchesWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/ProxySwitcher/ProxySwitcherForm.cs` | `src/xplat/plugins/ProxySwitcher/ProxySwitcherForm.cs` (stand-in), `ProxySwitcherWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/plugins/FindLargeFiles/FindLargeFilesForm.cs` | `src/xplat/plugins/FindLargeFiles/FindLargeFilesForm.cs` (stand-in), `FindLargeFilesWindow.axaml(.cs)`, `LargeFileFinder.cs`, `LargeFileRow.cs`, `FindLargeFilesScript.cs` | `52d08e996` | ported |
+| `src/plugins/DeleteUnusedBranches/DeleteUnusedBranchesForm.cs` | `src/xplat/plugins/DeleteUnusedBranches/DeleteUnusedBranchesForm.cs` (stand-in), `DeleteUnusedBranchesWindow.axaml(.cs)`, `BranchRow.cs` | `52d08e996` | ported |
+| `src/plugins/ReleaseNotesGenerator/ReleaseNotesGeneratorForm.cs`, `HtmlFragment.cs` (writing to the clipboard) | `src/xplat/plugins/ReleaseNotesGenerator/ReleaseNotesGeneratorForm.cs` (stand-in), `ReleaseNotesGeneratorWindow.axaml(.cs)`, `HtmlClipboard.cs` | `52d08e996` | ported |
+| `src/plugins/Gource/GourceStart.cs` | `src/xplat/plugins/Gource/GourceStart.cs` (stand-in), `GourceStartWindow.axaml(.cs)`, `UpstreamMessageBoxes.cs` | `52d08e996` | partial |
+| `src/plugins/Statistics/GitImpact/FormImpact.cs`, `ImpactControl.cs` | `src/xplat/plugins/GitImpact/FormImpact.cs` (stand-in), `ImpactWindow.axaml(.cs)`, `ImpactGraph.cs` | `52d08e996` | ported |
+| `src/plugins/Statistics/GitStatistics/FormGitStatistics.cs`, `PieChart/*.cs` | `src/xplat/plugins/GitStatistics/FormGitStatistics.cs` (stand-in), `StatisticsWindow.axaml(.cs)`, `PieChart.cs` | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -96,7 +106,9 @@ file's content).
 
 **RevisionGridControl** (`partial`). Added 2026-10-06: columns (graph and message, author, date, commit); HEAD, branch,
 remote-branch and tag labels colored by kind; a context menu (copy hash or message, create a branch or tag here, browse
-files, cherry-pick, revert, reset soft, mixed or hard); lanes that keep one color for their whole length; 5000 commits
+files, cherry-pick, revert, reset soft, mixed or hard); lanes that keep one color for their whole length; upstream'"'"'s bisect items at the top of the context menu (mark the selected
+revision bad, good or skipped, stop bisect), shown only while a bisect runs, and the good and bad marks as labels in green
+and red where upstream draws icons, with upstream'"'"'s tooltip texts (2026-10-09); 5000 commits
 loaded and scrolled at 60 fps (PLAN.md M3.5). Earlier: a read-only list of the first 500 commits from `HEAD`,
 with short hash, subject, author and date, using the shared `RevisionReader.GetLog`. Selecting a row
 loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (the Search history box, Enter; git log --grep); a lane graph beside each commit (since 2026-10-07 upstream's `RevisionGraph` with the ported renderer, see
@@ -123,8 +135,8 @@ discarding the unstaged edits of selected tracked files, after a confirmation.
 **FormRebase** (`partial`). Ported: rebase the current branch onto a selected local or remote branch, abort a stopped
 rebase, and continue one after the conflicts are staged. Added 2026-10-06: the grid menu "Rebase current branch on" >
 "Selected commit" and "Selected commit interactively..." (with upstream's confirmation, skipped when upstream's
-`DontConfirmRebase` is set), and Skip and Edit todo beside Continue while a rebase is stopped, as the upstream form shows them
-for any rebase in progress. The interactive rebase uses upstream's `Commands.Rebase` (autosquash from git's
+`DontConfirmRebase` is set), and Skip and Edit todo while a rebase is stopped, as the upstream form shows them for any rebase in
+progress (since 2026-10-09 under More... in the action bar, where upstream'"'"'s More... opens this form). The interactive rebase uses upstream's `Commands.Rebase` (autosquash from git's
 `rebase.autosquash`, as the form's default) and runs with live output. Difference: upstream makes git call it through the
 global `core.editor` (written by its settings check); the new shell sets `GIT_SEQUENCE_EDITOR` and `GIT_EDITOR` for the one
 git call instead (`GitEditorCommand`), so the user's git config is not changed. As upstream, continue and skip then open the
@@ -441,10 +453,12 @@ forms and stay Windows-only.
 upstream), the events `PreCommit` and `PostCommit` (around the commit window, as `StartCommitDialog`), `PreCheckoutBranch`,
 `PostCheckoutBranch`, `PreCheckoutRevision`, `PostCheckoutRevision` (around a checkout; a "pre" handler can cancel it),
 `PostSettings`, `PostUpdateSubmodules`, `PostEditGitIgnore`, `PostRegisterPlugin`, `PostBrowseInitialize`; settings
-(`StartSettingsDialog` for a plugin opens its page), the commit window, and command and git process windows. Unlike
+(`StartSettingsDialog` for a plugin opens its page), the commit window, and command and git process windows. Since 2026-10-09
+`StartBatchFileProcessDialog` runs the text as upstream's batch file on Windows and as a sh script elsewhere. `GetService` gives
+`IGitExecutorProvider`. Unlike
 upstream, `StartCommandLineProcessDialog` returns once the command started, not when it ended. Every other dialog throws
 `NotSupportedException`, which the Plugins menu shows as an error. Not ported: commit templates
-(`AddCommitTemplate` is accepted and ignored), `RunCommand`, services through `GetService`, and `BrowseRepo`.
+(`AddCommitTemplate` is accepted and ignored), `RunCommand`, services through `GetService` other than `IGitExecutorProvider`, and `BrowseRepo`.
 
 **PluginSettingsPage / SettingControlBindings** (`partial`). Ported 2026-10-07: Settings > Plugins lists the plugins and
 shows the selected plugin's settings with the editor of upstream's binding for its type: three-state check box, text box
@@ -495,3 +509,71 @@ repeats `ThemePathProvider`'s folder rules because the upstream class asserts Gi
 appearance choice lists the same themes and the colorblind variation. Not ported: applying the panel, editor and selection
 colors and the system color overrides to the controls, the theme editor, `UseSystemVisualStyle`, and the restart prompt
 (the new shell applies a theme at once).
+
+**InteractiveGitActionControl** (`partial`). Ported 2026-10-09: upstream's two notification bars above the grid, one for a
+bisect and one for a stopped rebase, merge or patch (`git am`) or for conflicts left by any command, with upstream's texts,
+its buttons in its order (Resolve... while conflicts remain, else Continue; Abort; More...) and its colors (light sky blue,
+orange with conflicts; darker in a dark theme). The state is read with upstream's `GitModule.InTheMiddleOfRebase`,
+`InTheMiddleOfMerge`, `InTheMiddleOfPatch` and `InTheMiddleOfBisect`, checked in upstream's order, so a stopped `git am` is
+now a patch and no longer shown as a rebase. Continue runs upstream's command for the action (`rebase --continue`,
+`merge --continue` with the app as the message editor, `am --3way --resolved`). Differences: Abort asks first, as the shell
+already did; conflicts are taken from the status the window already reads, not from a second `ls-files --unmerged`. More...
+for a rebase offers Skip commit and Edit todo, and for a patch Skip patch (`am --3way --skip`), instead of opening
+`FormRebase` or `FormApplyPatch`, which are not ported; for a bisect it opens the bisect window.
+
+**FormBisect** (`partial`). Ported 2026-10-09: Commands > Bisect... and the bisect bar's More... open the bisect window with
+upstream's five buttons and their enabled rules; Start runs while the window stays open, the marks and Stop close it, as
+upstream. Each step runs with git's output in the process window (upstream's process dialog); a mark's window stays open
+whatever the close setting says, because its output names the next commit to test or the first bad one (upstream passes
+`useDialogSettings: false`). Not ported: starting with a range from two selected commits (the grid selects one commit),
+and the toolbar's bisect icons.
+
+**Plugin forms (general)**. Since 2026-10-09 upstream plugins with WinForms forms are built for the new shell by shadow
+projects in `src/xplat/plugins` that set `XplatPluginUi`: the plugin class and the files without WinForms are compiled
+unchanged, and the form is replaced by a stand-in of the same name and constructor (`GitExtensions.Xplat.Ui.PluginDialog`)
+whose `ShowDialog` shows an Avalonia window modally (`ModalWindow`, a nested dispatcher frame, as WinForms runs a modal
+dialog). The window reimplements the form; its rows below. Texts are upstream's English texts, not translated. Not ported:
+GitHub3 and BuildServerIntegration.
+
+**CreateLocalBranchesForm** (`ported`). Creates or updates a tracking branch for every branch of the remote, with upstream's
+commands and messages; as upstream, a branch git cannot create is passed over, and the count in the message is that of every
+branch git listed.
+
+**ProxySwitcherForm** (`ported`). Shows the local (effective) and global `http.proxy` with the password hidden, sets it from
+the plugin's settings and unsets it, locally or globally. Difference: the module's config cache is invalidated after a change,
+because upstream shows the cached (old) value until the next refresh.
+
+**FindLargeFilesForm** (`ported`). The scan (`LargeFileFinder`) runs upstream's commands off the UI thread and reports each
+file to the list as upstream's binding list does; the list sorts by a column header and is read-only until the scan ends.
+Delete runs upstream's script through `StartBatchFileProcessDialog`: on Windows upstream's batch file, character for character
+(the test compares it with upstream's verified snapshots); elsewhere the same steps as a POSIX shell script, which the
+`PluginHost` runs with sh.
+
+**DeleteUnusedBranchesForm** (`ported`). Upstream's search (merged into a branch or all, older than a number of days, a
+remote, a regex), the header check box, the status line and the deletion one branch at a time, with upstream's messages.
+Differences: the saved settings are put in the window before its change handlers are added, so opening it does not warn
+about unmerged branches (upstream's load triggers its own handler); a failed deletion shows its message instead of a bug
+report.
+
+**ReleaseNotesGeneratorForm** (`ported`). The range, the log arguments, the result and its count, and the four copies, with
+upstream's text tables and HTML. HTML goes to the clipboard as plain text and as HTML: on Windows upstream's CF_HTML text,
+elsewhere the platform's own HTML format (`text/html`, `public.html`).
+
+**GourceStart** (`partial`). The path, the repository and the arguments, Start, the two links and the pickers. The plugin
+class is upstream's, with its download of Gource for Windows. Not ported: authors' pictures for `$(AVATARS)` (the new shell
+has no avatar service; the folder is created empty). Off Windows an empty path is filled with the `gource` on the PATH.
+
+**FormImpact / ImpactControl** (`ported`). Upstream's `ImpactLoader` (the git reads) is compiled unchanged; `ImpactGraph`
+ports the drawing control: a band per author with upstream's block heights (log scale), curves between weeks, changed-lines
+and week labels, the author under the pointer outlined and named with commits and changed lines, and the submodules option.
+Differences: the graph scrolls in a ScrollViewer (it keeps to the newest weeks while loading, as upstream's scroll bar); the
+hit test uses the blocks and the same curves instead of the platform geometry. Upstream bug, not fixed here because
+`ImpactLoader` is compiled unchanged: its parse loop steps over the header line that ends a commit's numstat, so every commit
+that follows another in git's output is skipped (in a repository with one commit per author per turn, half the authors
+vanish). Candidate for an upstream fix from `master`.
+
+**FormGitStatistics** (`partial`). The four tabs with upstream's texts: commits per contributor (`GetCommitsByContributor`),
+and lines of code per language, per type and in tests, counted by upstream's `LineCounter` off the UI thread. The plugin
+asks the host for `IGitExecutorProvider`, which `PluginHost.GetService` now gives. Off Windows the ignored directories are
+turned back into the platform's separators (the plugin class writes them with `\`). Not ported: upstream's 3D pie chart
+(`PieChart/`, System.Drawing); `PieChart.cs` draws a flat pie in upstream's colors with the slice's text as tooltip.

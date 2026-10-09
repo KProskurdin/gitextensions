@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'ProxySwitcher'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form; ProxySwitcherForm.cs here stands in for it. -->
+    <Compile Remove="$(UpstreamDir)ProxySwitcherForm.cs;$(UpstreamDir)ProxySwitcherForm.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)ProxySwitcherForm.resx" />
+  </ItemGroup>
+
+</Project>

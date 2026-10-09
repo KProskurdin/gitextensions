@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'Gource'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form; GourceStart.cs here stands in for it. The plugin class, with upstream's download of Gource for
+         Windows, is compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)GourceStart.cs;$(UpstreamDir)GourceStart.Designer.cs" />
+  </ItemGroup>
+
+</Project>

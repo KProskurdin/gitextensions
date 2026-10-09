@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Plugins.GitImpact"
+        x:Class="GitExtensions.Plugins.GitImpact.ImpactWindow"
+        Title="Impact"
+        Width="880" Height="520" WindowStartupLocation="CenterOwner">
+  <!-- Upstream FormImpact: the author under the pointer with their color, the submodules option, and the graph. -->
+  <DockPanel>
+    <DockPanel DockPanel.Dock="Top" Margin="6" Height="22">
+      <CheckBox x:Name="IncludeSubmodulesCheck" DockPanel.Dock="Right" Content="Including submodules" />
+      <Border x:Name="AuthorColor" Width="20" Height="20" IsVisible="False" Margin="0,0,6,0" />
+      <TextBlock x:Name="AuthorText" VerticalAlignment="Center" IsVisible="False" />
+    </DockPanel>
+    <ScrollViewer x:Name="GraphScroll" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Disabled">
+      <local:ImpactGraph x:Name="Graph" />
+    </ScrollViewer>
+  </DockPanel>
+</Window>

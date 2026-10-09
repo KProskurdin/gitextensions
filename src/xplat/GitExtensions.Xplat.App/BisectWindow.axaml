@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.BisectWindow"
+        Title="Bisect"
+        Width="260" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream FormBisect: one button per step, in its order. -->
+  <StackPanel Margin="12" Spacing="4">
+    <Button x:Name="StartButton" Content="Start bisect" HorizontalAlignment="Stretch" />
+    <Button x:Name="BadButton" Content="Mark current revision _bad" HorizontalAlignment="Stretch" />
+    <Button x:Name="GoodButton" Content="Mark current revision _good" HorizontalAlignment="Stretch" />
+    <Button x:Name="SkipButton" Content="_Skip current revision" HorizontalAlignment="Stretch" />
+    <Button x:Name="StopButton" Content="Stop bisect" HorizontalAlignment="Stretch" Margin="0,0,0,4" />
+  </StackPanel>
+</Window>

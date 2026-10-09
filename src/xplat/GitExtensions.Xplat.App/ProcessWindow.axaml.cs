@@ -66,7 +66,7 @@ public partial class ProcessWindow : Window
         AbortButton.IsEnabled = _actions.CanCancel;
         CloseButton.IsEnabled = state != RemoteOperationState.Running;
 
-        if (state == RemoteOperationState.Succeeded && _preferences.CloseProcessDialog)
+        if (state == RemoteOperationState.Succeeded && _preferences.CloseProcessDialog && !_actions.KeepOutputOpen)
         {
             Close();
         }

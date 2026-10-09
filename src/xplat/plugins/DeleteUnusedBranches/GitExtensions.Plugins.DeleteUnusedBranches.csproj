@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'DeleteUnusedBranches'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form and its grid parts (header check box cell, binding list); DeleteUnusedBranchesForm.cs here stands in
+         for the form. Branch, the form settings and the branch output parser are compiled as they are. -->
+    <Compile Remove="$(UpstreamDir)DeleteUnusedBranchesForm.cs;$(UpstreamDir)DeleteUnusedBranchesForm.Designer.cs" />
+    <Compile Remove="$(UpstreamDir)DataGridViewCheckBoxHeaderCell.cs;$(UpstreamDir)CheckBoxHeaderCellEventArgs.cs;$(UpstreamDir)SortableBranchesList.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)DeleteUnusedBranchesForm.resx" />
+  </ItemGroup>
+
+</Project>

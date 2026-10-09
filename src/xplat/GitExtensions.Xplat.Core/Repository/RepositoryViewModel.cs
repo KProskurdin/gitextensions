@@ -13,6 +13,8 @@ public sealed class RepositoryViewModel : ObservableObject
     private bool _isLoading;
     private bool _isMerging;
     private bool _isRebasing;
+    private bool _isApplyingPatch;
+    private bool _isBisecting;
     private IReadOnlyList<string> _remotes = [];
     private string? _trackingRemote;
     private SyncStatus? _sync;
@@ -99,12 +101,30 @@ public sealed class RepositoryViewModel : ObservableObject
     }
 
     /// <summary>
-    ///  True while a rebase is stopped for conflicts or for a commit (rebase-merge or rebase-apply exists).
+    ///  True while a rebase is stopped for conflicts or for a commit (upstream's <c>InTheMiddleOfRebase</c>).
     /// </summary>
     public bool IsRebasing
     {
         get => _isRebasing;
         private set => SetProperty(ref _isRebasing, value);
+    }
+
+    /// <summary>
+    ///  True while a patch series applied with <c>git am</c> is stopped (rebase-apply without a rebase).
+    /// </summary>
+    public bool IsApplyingPatch
+    {
+        get => _isApplyingPatch;
+        private set => SetProperty(ref _isApplyingPatch, value);
+    }
+
+    /// <summary>
+    ///  True between <c>git bisect start</c> and <c>git bisect reset</c> (BISECT_START exists).
+    /// </summary>
+    public bool IsBisecting
+    {
+        get => _isBisecting;
+        private set => SetProperty(ref _isBisecting, value);
     }
 
     public bool IsLoading
@@ -133,6 +153,8 @@ public sealed class RepositoryViewModel : ObservableObject
         ClearState();
         IsMerging = false;
         IsRebasing = false;
+        IsApplyingPatch = false;
+        IsBisecting = false;
         IsLoading = false;
     }
 
@@ -166,6 +188,8 @@ public sealed class RepositoryViewModel : ObservableObject
             Changes = snapshot.Changes;
             IsMerging = snapshot.IsMerging;
             IsRebasing = snapshot.IsRebasing;
+            IsApplyingPatch = snapshot.IsApplyingPatch;
+            IsBisecting = snapshot.IsBisecting;
             Stashes = snapshot.Stashes;
             Tags = snapshot.Tags;
             Remotes = snapshot.Remotes ?? [];

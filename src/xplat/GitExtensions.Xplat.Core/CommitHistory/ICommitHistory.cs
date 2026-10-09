@@ -1,3 +1,5 @@
+using GitCommands;
+
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
 /// <summary>
@@ -57,13 +59,32 @@ public enum RefKind
     Branch,
     RemoteBranch,
     Tag,
+
+    /// <summary>
+    ///  A commit marked good during a bisect (refs/bisect/good-*). Upstream draws an icon for it.
+    /// </summary>
+    BisectGood,
+
+    /// <summary>
+    ///  The commit marked bad during a bisect (refs/bisect/bad).
+    /// </summary>
+    BisectBad,
 }
 
 /// <summary>
-///  A name that points at a commit, as the revision grid labels it: HEAD, a local or remote branch, or a tag.
+///  A name that points at a commit, as the revision grid labels it: HEAD, a local or remote branch, a tag, or a bisect
+///  mark.
 /// </summary>
 public sealed record RefLabel(string Name, RefKind Kind)
 {
+    public const string BisectGoodName = "good";
+    public const string BisectBadName = "bad";
+
+    /// <summary>
+    ///  True for a bisect mark, which is not a name git can check out or delete.
+    /// </summary>
+    public bool IsBisect => Kind is RefKind.BisectGood or RefKind.BisectBad;
+
     /// <summary>
     ///  Classifies a full reference name such as "refs/heads/main"; the label shows its short name.
     /// </summary>
@@ -72,6 +93,8 @@ public sealed record RefLabel(string Name, RefKind Kind)
         _ when refName.StartsWith("refs/heads/", StringComparison.Ordinal) => new(refName["refs/heads/".Length..], RefKind.Branch),
         _ when refName.StartsWith("refs/remotes/", StringComparison.Ordinal) => new(refName["refs/remotes/".Length..], RefKind.RemoteBranch),
         _ when refName.StartsWith("refs/tags/", StringComparison.Ordinal) => new(refName["refs/tags/".Length..], RefKind.Tag),
+        _ when refName.StartsWith(GitRefName.RefsBisectGoodPrefix, StringComparison.Ordinal) => new(BisectGoodName, RefKind.BisectGood),
+        _ when refName.StartsWith(GitRefName.RefsBisectBadPrefix, StringComparison.Ordinal) => new(BisectBadName, RefKind.BisectBad),
         _ => null,
     };
 }

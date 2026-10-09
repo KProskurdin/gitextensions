@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
+using GitCommands.Git;
 using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
@@ -54,6 +55,7 @@ public partial class MainWindow : Window
     private readonly ITerminalLauncher _terminal;
     private CommitWindow? _commitWindow;
     private ProcessWindow? _processWindow;
+    private GitActionBanner? _actionBanner;
     private ScriptHost? _scriptHost;
     private readonly PluginHost _plugins;
     private IReadOnlyList<IGitPlugin>? _loadedPlugins;
@@ -146,11 +148,12 @@ public partial class MainWindow : Window
         BranchScopeBox.SelectionChanged += (_, _) => Run(ApplyBranchScopeAsync);
         RevisionFilterButton.Click += (_, _) => Run(EditRevisionFilterAsync);
         ResolveConflictsButton.Click += (_, _) => ShowConflicts();
-        AbortMergeButton.Click += (_, _) => AbortAfterConfirm("merge", _actions.AbortMergeAsync);
-        AbortRebaseButton.Click += (_, _) => AbortAfterConfirm("rebase", _actions.AbortRebaseAsync);
-        ContinueRebaseButton.Click += (_, _) => RunOnRepository(path => _actions.ContinueRebaseAsync(path));
-        SkipRebaseButton.Click += (_, _) => RunOnRepository(path => _actions.SkipRebaseAsync(path));
-        EditRebaseTodoButton.Click += (_, _) => RunOnRepository(path => _actions.EditRebaseTodoAsync(path));
+        ContinueActionButton.Click += (_, _) => ContinueAction();
+        AbortActionButton.Click += (_, _) => AbortAction();
+        SkipRebaseMenuItem.Click += (_, _) => RunOnRepository(path => _actions.SkipRebaseAsync(path));
+        EditRebaseTodoMenuItem.Click += (_, _) => RunOnRepository(path => _actions.EditRebaseTodoAsync(path));
+        SkipPatchMenuItem.Click += (_, _) => RunOnRepository(path => _actions.SkipPatchAsync(path));
+        BisectMoreButton.Click += (_, _) => Run(ShowBisectAsync);
     }
 
     private void WireMenus()
@@ -179,6 +182,7 @@ public partial class MainWindow : Window
         MergeMenuItem.Click += (_, _) => MergeSelectedBranch();
         RebaseMenuItem.Click += (_, _) => RebaseOnSelectedBranch();
         CreateTagMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
+        BisectMenuItem.Click += (_, _) => Run(ShowBisectAsync);
         ResolveConflictsMenuItem.Click += (_, _) => ShowConflicts();
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
         SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
@@ -297,6 +301,10 @@ public partial class MainWindow : Window
         ResetHardMenuItem.Click += (_, _) => Run(ResetHardAsync);
         RebaseOnCommitMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: false));
         RebaseInteractiveMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: true));
+        MarkBadMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Bad);
+        MarkGoodMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Good);
+        BisectSkipMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Skip);
+        StopBisectMenuItem.Click += (_, _) => RunOnRepository(path => _actions.StopBisectAsync(path));
     }
 
     // The File tree tab follows the selected commit (HEAD when none is selected), and is read only while it is on show.
@@ -1517,6 +1525,8 @@ public partial class MainWindow : Window
             case nameof(RepositoryViewModel.CurrentBranch):
             case nameof(RepositoryViewModel.IsMerging):
             case nameof(RepositoryViewModel.IsRebasing):
+            case nameof(RepositoryViewModel.IsApplyingPatch):
+            case nameof(RepositoryViewModel.IsBisecting):
             case nameof(RepositoryViewModel.Sync):
                 UpdateBranchText();
                 UpdateStateBanner();
@@ -1569,27 +1579,106 @@ public partial class MainWindow : Window
             : $"Commit ({count})";
     }
 
+    // Upstream's FormBrowse refreshes both notification bars with the repository (RefreshBisect, RefreshGitAction).
     private void UpdateStateBanner()
     {
         bool conflicts = _repository.Changes.Any(change => change.Kind == ChangeKind.Conflict);
-        string text = _repository.IsRebasing ? "Rebase in progress."
-            : _repository.IsMerging ? "Merge in progress."
-            : conflicts ? "There are unresolved conflicts."
-            : "";
-        if (conflicts && text.Length > 0 && !text.StartsWith("There", StringComparison.Ordinal))
+        _actionBanner = GitActionBanner.ForRepository(_repository.IsRebasing, _repository.IsMerging,
+            _repository.IsApplyingPatch, conflicts);
+        ShowBanner(StateBanner, StateBannerText, _actionBanner);
+        IReadOnlyList<GitActionButton> buttons = _actionBanner?.Buttons ?? [];
+        ResolveConflictsButton.IsVisible = buttons.Contains(GitActionButton.Resolve);
+        ContinueActionButton.IsVisible = buttons.Contains(GitActionButton.Continue);
+        AbortActionButton.IsVisible = buttons.Contains(GitActionButton.Abort);
+        MoreActionButton.IsVisible = buttons.Contains(GitActionButton.More);
+        SkipRebaseMenuItem.IsVisible = _actionBanner?.Action == GitAction.Rebase;
+        EditRebaseTodoMenuItem.IsVisible = _actionBanner?.Action == GitAction.Rebase;
+        SkipPatchMenuItem.IsVisible = _actionBanner?.Action == GitAction.Patch;
+
+        ShowBanner(BisectBanner, BisectBannerText, GitActionBanner.ForBisect(_repository.IsBisecting));
+        foreach (Control item in new Control[]
+                 {
+                     MarkBadMenuItem, MarkGoodMenuItem, BisectSkipMenuItem, StopBisectMenuItem, BisectSeparator,
+                 })
         {
-            text += " There are unresolved conflicts.";
+            item.IsVisible = _repository.IsBisecting;
+        }
+    }
+
+    private static void ShowBanner(Border banner, TextBlock text, GitActionBanner? state)
+    {
+        banner.IsVisible = state is not null;
+        if (state is null)
+        {
+            return;
         }
 
-        StateBannerText.Text = text;
-        StateBannerText.Foreground = ThemeBrushes.Current.Warning;
-        StateBanner.IsVisible = text.Length > 0;
-        ResolveConflictsButton.IsVisible = conflicts;
-        AbortMergeButton.IsVisible = _repository.IsMerging;
-        ContinueRebaseButton.IsVisible = _repository.IsRebasing;
-        SkipRebaseButton.IsVisible = _repository.IsRebasing;
-        EditRebaseTodoButton.IsVisible = _repository.IsRebasing;
-        AbortRebaseButton.IsVisible = _repository.IsRebasing;
+        text.Text = state.Text;
+        text.Foreground = ThemeBrushes.Current.Context;
+        banner.Background = state.HasConflicts ? ThemeBrushes.Current.ConflictBanner : ThemeBrushes.Current.InfoBanner;
+    }
+
+    // Upstream's ContinueButton_Click: the action's own continue command.
+    private void ContinueAction()
+    {
+        switch (_actionBanner?.Action)
+        {
+            case GitAction.Rebase:
+                RunOnRepository(path => _actions.ContinueRebaseAsync(path));
+                break;
+            case GitAction.Merge:
+                RunOnRepository(path => _actions.ContinueMergeAsync(path));
+                break;
+            case GitAction.Patch:
+                RunOnRepository(path => _actions.ContinuePatchAsync(path));
+                break;
+        }
+    }
+
+    private void AbortAction()
+    {
+        switch (_actionBanner?.Action)
+        {
+            case GitAction.Rebase:
+                AbortAfterConfirm("rebase", _actions.AbortRebaseAsync);
+                break;
+            case GitAction.Merge:
+                AbortAfterConfirm("merge", _actions.AbortMergeAsync);
+                break;
+            case GitAction.Patch:
+                AbortAfterConfirm("patch", _actions.AbortPatchAsync);
+                break;
+        }
+    }
+
+    // Upstream's FormBisect, from Commands > Bisect... or the bar's More...: the window starts the bisect itself and returns
+    // the step to run next.
+    private async Task ShowBisectAsync()
+    {
+        if (RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        BisectWindow window = new(_repository.IsBisecting, () => _actions.StartBisectAsync(path));
+        BisectStep? step = await window.ShowDialog<BisectStep?>(this);
+        if (step == BisectStep.Stop)
+        {
+            await _actions.StopBisectAsync(path);
+        }
+        else if (step is { } mark && BisectWindow.OptionFor(mark) is { } option)
+        {
+            await _actions.MarkBisectAsync(path, option);
+        }
+    }
+
+    // Upstream's grid bisect items mark the selected commit, not the checked-out one.
+    private void MarkSelectedForBisect(GitBisectOption option)
+    {
+        if (_commits.Selected is { } row)
+        {
+            RunOnRepository(path => _actions.MarkBisectAsync(path, option, row.Hash));
+        }
     }
 
     // Each control is enabled only when its action can run: nothing while a read or write is in progress, and
@@ -1653,11 +1742,16 @@ public partial class MainWindow : Window
         MergeMenuItem.IsEnabled = branchSelected;
         RebaseButton.IsEnabled = branchSelected;
         RebaseMenuItem.IsEnabled = branchSelected;
-        AbortMergeButton.IsEnabled = open && _repository.IsMerging;
-        AbortRebaseButton.IsEnabled = open && _repository.IsRebasing;
-        ContinueRebaseButton.IsEnabled = open && _repository.IsRebasing;
-        SkipRebaseButton.IsEnabled = open && _repository.IsRebasing;
-        EditRebaseTodoButton.IsEnabled = open && _repository.IsRebasing && _actions.EditorCommand is not null;
+        ContinueActionButton.IsEnabled = open;
+        AbortActionButton.IsEnabled = open;
+        MoreActionButton.IsEnabled = open;
+        EditRebaseTodoMenuItem.IsEnabled = _actions.EditorCommand is not null;
+        BisectMoreButton.IsEnabled = open;
+        BisectMenuItem.IsEnabled = commitSelected;
+        MarkBadMenuItem.IsEnabled = commitSelected;
+        MarkGoodMenuItem.IsEnabled = commitSelected;
+        BisectSkipMenuItem.IsEnabled = commitSelected;
+        StopBisectMenuItem.IsEnabled = open;
 
         StashButton.IsEnabled = open;
         StashMenuItem.IsEnabled = open;

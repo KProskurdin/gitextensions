@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'Statistics', 'GitStatistics'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form and upstream's 3D pie chart (System.Drawing); FormGitStatistics.cs here stands in for the form and
+         PieChart.cs draws the charts. The plugin class, LineCounter and CodeFile (the counting) are compiled as they are. -->
+    <Compile Remove="$(UpstreamDir)FormGitStatistics.cs;$(UpstreamDir)FormGitStatistics.Designer.cs;$(UpstreamDir)PieChart\**\*.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)FormGitStatistics.resx;$(UpstreamDir)PieChart\**\*.resx" />
+  </ItemGroup>
+
+</Project>

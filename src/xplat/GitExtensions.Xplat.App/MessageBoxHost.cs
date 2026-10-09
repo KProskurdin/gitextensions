@@ -1,7 +1,4 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Threading;
+using GitExtensions.Xplat.Ui;
 using DialogResult = System.Windows.Forms.DialogResult;
 using IWin32Window = System.Windows.Forms.IWin32Window;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
@@ -12,8 +9,8 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Shows the message boxes of upstream code (the shared core's <c>MessageBoxes</c>, and plugins) as
-///  <see cref="MessageBoxWindow"/>. Upstream expects the answer when the call returns, so the box runs in a nested
-///  dispatcher frame, as a WinForms modal dialog runs its own message loop.
+///  <see cref="MessageBoxWindow"/>. Upstream expects the answer when the call returns, so the box is a
+///  <see cref="ModalWindow"/>, which runs in a nested dispatcher frame as a WinForms modal dialog runs its own message loop.
 /// </summary>
 public static class MessageBoxHost
 {
@@ -21,34 +18,19 @@ public static class MessageBoxHost
     ///  Answers the WinForms shim's message boxes from now on. Not done for the headless tests: a box nobody answers would
     ///  stop a test.
     /// </summary>
-    public static void Install() => System.Windows.Forms.MessageBox.Handler = Show;
+    public static void Install() => Answer(Show);
+
+    /// <summary>
+    ///  Lets <paramref name="handler"/> answer the shim's message boxes, or no one when it is null (a box then answers
+    ///  <see cref="DialogResult.None"/>). Tests use it to record the boxes and answer them.
+    /// </summary>
+    public static void Answer(
+        Func<IWin32Window?, string, string, MessageBoxButtons, MessageBoxIcon, MessageBoxDefaultButton, DialogResult>? handler)
+        => System.Windows.Forms.MessageBox.Handler = handler;
 
     public static DialogResult Show(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons,
         MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
     {
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            return Dispatcher.UIThread.Invoke(() => Show(owner, text, caption, buttons, icon, defaultButton));
-        }
-
-        MessageBoxWindow box = new(text, caption, buttons, defaultButton);
-        DispatcherFrame frame = new();
-        box.Closed += (_, _) => frame.Continue = false;
-        if (((owner as WindowOwner)?.Window ?? ActiveWindow()) is { } window)
-        {
-            _ = box.ShowDialog(window);
-        }
-        else
-        {
-            box.Show();
-        }
-
-        Dispatcher.UIThread.PushFrame(frame);
-        return box.Result;
+        return ModalWindow.Show(() => new MessageBoxWindow(text, caption, buttons, defaultButton), owner).Result;
     }
-
-    private static Window? ActiveWindow()
-        => Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            ? desktop.Windows.FirstOrDefault(window => window.IsActive) ?? desktop.MainWindow
-            : null;
 }

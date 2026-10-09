@@ -421,6 +421,34 @@ public sealed class GitOperations : IGitOperations
                 CancellationToken.None, GitEditorCommand.Environment(editorCommand));
         });
 
+    public Task ContinueMergeAsync(string repositoryPath, string? editorCommand = null)
+        => RunRebaseStepAsync(repositoryPath, Commands.ContinueMerge(), editorCommand);
+
+    public Task ContinuePatchAsync(string repositoryPath)
+        => RunAsync(repositoryPath, _ => Commands.Resolved());
+
+    public Task SkipPatchAsync(string repositoryPath)
+        => RunAsync(repositoryPath, _ => Commands.Skip());
+
+    public Task AbortPatchAsync(string repositoryPath)
+        => RunAsync(repositoryPath, _ => Commands.Abort());
+
+    public Task StartBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default)
+        => RunWithOutputAsync(repositoryPath, Commands.StartBisect(), output, cancellationToken);
+
+    public Task MarkBisectAsync(string repositoryPath, GitBisectOption option, string? commit,
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default)
+        => RunWithOutputAsync(repositoryPath,
+            commit is null
+                ? Commands.ContinueBisect(option)
+                : Commands.ContinueBisect(option, ObjectId.Parse(commit)),
+            output, cancellationToken);
+
+    public Task StopBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default)
+        => RunWithOutputAsync(repositoryPath, Commands.StopBisect(), output, cancellationToken);
+
     public Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
         CancellationToken cancellationToken = default)
         => Task.Run(async () =>
@@ -485,6 +513,13 @@ public sealed class GitOperations : IGitOperations
 
             Execute(module.GitExecutable, (ArgumentString)$"-c core.editor=true {step}");
         });
+
+    private static Task RunWithOutputAsync(string repositoryPath, ArgumentString arguments,
+        IProgress<GitOutputLine>? output, CancellationToken cancellationToken)
+        => Task.Run(
+            () => GitOutputRunner.RunAsync(CreateModule(repositoryPath).WorkingDir, arguments,
+                output ?? NullOutput.Instance, cancellationToken),
+            cancellationToken);
 
     private static Task RunAsync(string repositoryPath, Func<GitModule, ArgumentString> build)
         => Task.Run(() =>

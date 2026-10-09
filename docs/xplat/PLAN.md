@@ -235,6 +235,19 @@ of prompting. This is untested against a real remote.
 Still open in M2: notifications; the UI-thread abstraction (the view models do not marshal, so it is not
 needed yet); a credential store for Linux and macOS, if git's helpers are not enough.
 
+Notifications, 2026-10-09: upstream's notification bars above the grid (`InteractiveGitActionControl`) are ported: one bar
+for a bisect and one for a stopped rebase, merge or patch (`git am`) or for unresolved conflicts, with upstream's texts,
+buttons and colors (`Core/Repository/GitActionBanner.cs`). The repository state now uses upstream's `GitModule.InTheMiddleOf*`
+checks, so a stopped `git am` shows as a patch instead of a rebase; Continue also concludes a merge (`merge --continue`) and a
+patch. With them came bisect (upstream `FormBisect` and the grid's bisect items, good and bad marks as labels). Message boxes
+were done in M6 (`MessageBoxHost`). Tests: 289 core and 213 app on Windows.
+
+UI-thread abstraction, 2026-10-09 (recommendation, not yet confirmed by the user): drop the item. The view models are created
+and used on the UI thread and await off-thread work, so their continuations return through Avalonia's synchronization
+context; upstream code that switches threads uses `ThreadHelper.JoinableTaskContext`, which the app creates on the UI thread
+at startup. The eight remaining `Dispatcher.UIThread` calls are in views (priority posts, the nested frame of a message box,
+the screenshot and benchmark aids), where a wrapper would add a layer without removing an Avalonia dependency.
+
 - Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
   stage/unstage, commit, branch, checkout, fetch/pull/push, stash.
 - Each service delegates to `GitCommands`. Where the logic lives in a WinForms form today, the
@@ -643,6 +656,27 @@ plugins, plugin settings levels and credentials settings. Third-party plugins bu
 types and are skipped by upstream's loader when their types do not resolve. Tests: 199 core and 171 app on Windows; on Linux (WSL)
 the plugin and script tests pass (25 core, 9 app). Not verified: macOS, and a run of the real app with the plugins on Linux.
 Next in M6: UI plugins by demand.
+
+Plugins with their own windows, 2026-10-09: six more upstream plugins work in the new shell: Create local tracking branches,
+Proxy Switcher, Find large files, Delete obsolete branches, Release Notes Generator and Gource. No new plugin contract was
+needed, and `GitExtensions.Extensibility` is unchanged: each plugin class is compiled unchanged by a shadow project in
+`src/xplat/plugins`, and only its WinForms form is replaced, by a stand-in of the same name and constructor whose
+`ShowDialog` shows an Avalonia window that reimplements the form (rows in `PORTING-MAP.md`). The stand-ins derive from
+`PluginDialog` in the new library `src/xplat/GitExtensions.Xplat.Ui` (Avalonia helpers shared by the app and the plugins:
+`WindowOwner`, moved from the app, and `ModalWindow`, which runs a window in a nested dispatcher frame so the plugin's
+synchronous `Execute` gets the answer, as WinForms' `ShowDialog` gives it; `MessageBoxHost` now uses it too). A plugin project
+opts in with `XplatPluginUi`, which adds Avalonia and the library without copying them. `PluginHost.StartBatchFileProcessDialog`
+works now: upstream's batch file on Windows, a sh script elsewhere (Find large files writes each). Tests: 9 headless tests
+load each plugin from the Plugins folder, run it from the Plugins menu and drive its window (`UiPluginTests`), including a
+real `filter-branch` removal and upstream's own snapshots of the batch file. 289 core and 222 app tests on Windows. Later the
+same day: the two Statistics plugins, Impact Graph (upstream's `ImpactLoader` unchanged, its drawing control ported as
+`ImpactGraph`) and Statistics (upstream's `LineCounter` unchanged; a flat pie instead of upstream's 3D System.Drawing pie);
+`PluginHost.GetService` now gives `IGitExecutorProvider`, which Statistics asks for. Found while testing: upstream's
+`ImpactLoader` skips every commit that follows another in git's log output (its parse loop steps over the next header), so
+Impact Graph undercounts in both apps; it is left unfixed in the fork (the file is compiled unchanged) and is a candidate for
+an upstream fix. With these, eight of the eleven upstream plugins run in the new shell. Tests: 11 plugin tests; 289 core and
+224 app on Windows. Not done: GitHub3 and BuildServerIntegration (they need the repository-host and build-server UI),
+translations of the plugin windows, and third-party WinForms plugins (still skipped by the loader).
 
 Estimate: 3 to 4 weeks.
 

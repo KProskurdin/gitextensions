@@ -8,6 +8,7 @@ using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Ui;
 using GitUIPluginInterfaces;
 using Form = System.Windows.Forms.Form;
 using Image = System.Drawing.Image;
@@ -27,6 +28,8 @@ internal sealed class PluginHost : IGitUICommands
     ///  The name of the embedded PNG icon of the plugins built for the new shell (src/xplat/plugins).
     /// </summary>
     public const string IconResourceName = "GitExtensions.Xplat.PluginIcon.png";
+
+    private static readonly IGitExecutorProvider _executorProvider = new GitExecutorProvider(new GitDirectoryResolver());
 
     private readonly Window _owner;
     private readonly RepositoryOperationsViewModel _actions;
@@ -196,7 +199,12 @@ internal sealed class PluginHost : IGitUICommands
         }
     }
 
-    public object? GetService(Type serviceType) => null;
+    /// <summary>
+    ///  The services upstream's plugins ask for that the new shell has: the git executor provider (the Statistics plugin opens
+    ///  submodules with it). Upstream's service container has more; the others are not available.
+    /// </summary>
+    public object? GetService(Type serviceType)
+        => serviceType == typeof(IGitExecutorProvider) ? _executorProvider : null;
 
     public void RaisePostBrowseInitialize(IWin32Window? owner)
         => PostBrowseInitialize?.Invoke(this, new GitUIEventArgs(owner, this));
@@ -298,7 +306,35 @@ internal sealed class PluginHost : IGitUICommands
     public bool StartArchiveDialog(IWin32Window? owner = null, GitRevision? revision = null,
         GitRevision? revision2 = null, string? path = null) => throw NotAvailable();
 
-    public void StartBatchFileProcessDialog(string batchFile) => throw NotAvailable();
+    /// <summary>
+    ///  As upstream: writes <paramref name="batchFile"/> to a temporary file, runs it in the process window and deletes it.
+    ///  Upstream runs a cmd.exe batch file; there is no cmd.exe off Windows, so there the text is a POSIX shell script, run
+    ///  by sh, which the plugins built for the new shell write (e.g. FindLargeFiles). Upstream waits for the dialog; the
+    ///  process window runs on.
+    /// </summary>
+    public void StartBatchFileProcessDialog(string batchFile)
+    {
+        bool windows = OperatingSystem.IsWindows();
+        string tempFile = Path.Join(Path.GetTempPath(),
+            $"GitExtensions-{Guid.NewGuid():N}{(windows ? ".cmd" : ".sh")}");
+        File.WriteAllText(tempFile, windows ? $"@prompt $G{Environment.NewLine}{batchFile}" : batchFile);
+        string program = windows ? "cmd.exe" : "/bin/sh";
+        string arguments = windows ? $"/C \"{tempFile}\"" : $"\"{tempFile}\"";
+        string workingDir = Module.WorkingDir.Length > 0 ? Module.WorkingDir : Environment.CurrentDirectory;
+        UiActions.Run(
+            async () =>
+            {
+                try
+                {
+                    await _actions.RunProgramAsync($"{program} {arguments}", program, arguments, workingDir);
+                }
+                finally
+                {
+                    File.Delete(tempFile);
+                }
+            },
+            ex => ShowError(ex.Message));
+    }
 
     public bool StartBrowseDialog(IWin32Window? owner, BrowseArguments? args = null) => throw NotAvailable();
 
@@ -463,8 +499,7 @@ internal sealed class PluginHost : IGitUICommands
 
     public bool WorktreeSwitch(IWin32Window? owner, string worktreePath) => throw NotAvailable();
 
-    private static GitModule CreateModule(string workingDir)
-        => new(new GitExecutorProvider(new GitDirectoryResolver()), workingDir);
+    private static GitModule CreateModule(string workingDir) => new(_executorProvider, workingDir);
 
     private static NotSupportedException NotAvailable(
         [System.Runtime.CompilerServices.CallerMemberName]
@@ -499,14 +534,4 @@ internal enum PluginEvent
     Settings,
     UpdateSubmodules,
     EditGitIgnore,
-}
-
-/// <summary>
-///  An Avalonia window as the WinForms owner upstream code passes around.
-/// </summary>
-public sealed class WindowOwner(Window window) : IWin32Window
-{
-    public Window Window => window;
-
-    public IntPtr Handle => window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 }

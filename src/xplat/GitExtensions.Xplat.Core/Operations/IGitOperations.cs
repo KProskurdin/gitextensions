@@ -1,4 +1,5 @@
 using GitCommands;
+using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Operations;
@@ -197,6 +198,43 @@ public interface IGitOperations
     ///  Opens the remaining todo list of a stopped interactive rebase in <paramref name="editorCommand"/>.
     /// </summary>
     Task EditRebaseTodoAsync(string repositoryPath, string editorCommand);
+
+    /// <summary>
+    ///  Concludes a merge whose conflicts are resolved and staged, opening <paramref name="editorCommand"/> for the message as
+    ///  <see cref="ContinueRebaseAsync"/> does.
+    /// </summary>
+    Task ContinueMergeAsync(string repositoryPath, string? editorCommand = null);
+
+    /// <summary>
+    ///  Resumes a stopped <c>git am</c> once the patch's conflicts are resolved (upstream's <c>Commands.Resolved</c>).
+    /// </summary>
+    Task ContinuePatchAsync(string repositoryPath);
+
+    /// <summary>
+    ///  Leaves out the patch <c>git am</c> stopped at and goes on with the next one.
+    /// </summary>
+    Task SkipPatchAsync(string repositoryPath);
+
+    Task AbortPatchAsync(string repositoryPath);
+
+    /// <summary>
+    ///  Starts a bisect (<c>git bisect start</c>); git's messages go to <paramref name="output"/>.
+    /// </summary>
+    Task StartBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///  Marks <paramref name="commit"/> good, bad or skipped, or the checked-out commit when it is null. git then checks out
+    ///  the next commit to test and reports it, or the first bad commit, to <paramref name="output"/>.
+    /// </summary>
+    Task MarkBisectAsync(string repositoryPath, GitBisectOption option, string? commit,
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///  Ends the bisect and checks out the branch it started on (<c>git bisect reset</c>).
+    /// </summary>
+    Task StopBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     ///  Moves the checked-out branch to <paramref name="commit"/>. <paramref name="mode"/> decides what happens to the index and working tree.

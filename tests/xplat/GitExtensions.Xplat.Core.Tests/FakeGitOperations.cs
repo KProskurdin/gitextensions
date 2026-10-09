@@ -147,6 +147,27 @@ internal sealed class FakeGitOperations : IGitOperations
         IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default) => RecordRemote(
         "RebaseInteractive", $"{repositoryPath} {onto} editor={editorCommand}", output, cancellationToken);
 
+    public Task ContinueMergeAsync(string repositoryPath, string? editorCommand = null) =>
+        Record("ContinueMerge", $"{repositoryPath} editor={editorCommand}");
+
+    public Task ContinuePatchAsync(string repositoryPath) => Record("ContinuePatch", repositoryPath);
+
+    public Task SkipPatchAsync(string repositoryPath) => Record("SkipPatch", repositoryPath);
+
+    public Task AbortPatchAsync(string repositoryPath) => Record("AbortPatch", repositoryPath);
+
+    public Task StartBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default) =>
+        RecordRemote("StartBisect", repositoryPath, output, cancellationToken);
+
+    public Task MarkBisectAsync(string repositoryPath, GitCommands.Git.GitBisectOption option, string? commit,
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default) =>
+        RecordRemote("MarkBisect", $"{repositoryPath} {option} {commit ?? "current"}", output, cancellationToken);
+
+    public Task StopBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default) =>
+        RecordRemote("StopBisect", repositoryPath, output, cancellationToken);
+
     public Task MergeAsync(string repositoryPath, string branch) => Record("Merge", $"{repositoryPath} {branch}");
 
     public Task AbortMergeAsync(string repositoryPath) => Record("AbortMerge", repositoryPath);

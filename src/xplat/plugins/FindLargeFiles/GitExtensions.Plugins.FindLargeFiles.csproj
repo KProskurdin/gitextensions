@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'FindLargeFiles'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form, and its binding list (upstream's SortableBindingList is in GitUI); FindLargeFilesForm.cs here
+         stands in for the form. GitObject.cs is compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)FindLargeFilesForm.cs;$(UpstreamDir)FindLargeFilesForm.Designer.cs;$(UpstreamDir)SortableObjectsList.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)FindLargeFilesForm.resx" />
+  </ItemGroup>
+
+</Project>

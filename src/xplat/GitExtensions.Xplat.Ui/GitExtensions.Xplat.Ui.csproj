@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Avalonia helpers shared by the app and the plugins built for it (src/xplat/plugins): an Avalonia window as the WinForms
+    owner upstream code passes around, a modal window that returns when it closes, as a WinForms ShowDialog does, and the base
+    of the stand-ins that replace upstream plugins' WinForms forms. Ships next to the app; plugins reference it without
+    copying it.
+  -->
+  <ItemGroup>
+    <!-- The shared xplat props add WinForms/Drawing namespaces to every project; they clash with Avalonia's control names. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinFormsShim\GitExtensions.Xplat.WinFormsShim.csproj" />
+  </ItemGroup>
+
+</Project>

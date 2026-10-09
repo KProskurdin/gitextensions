@@ -10,7 +10,9 @@ namespace GitExtensions.Xplat.App;
 ///  Colors that carry meaning (diff lines, graph lanes, ref labels), taken from the active upstream theme's
 ///  <see cref="AppColor"/> values as upstream uses them: diff lines on the green and red terminal background colors, hunk
 ///  headers on <see cref="AppColor.DiffSection"/>, labels in the branch, remote branch and tag colors, lanes in the graph
-///  branch colors. The text and warning colors have no AppColor upstream and follow the light or dark set.
+///  branch colors, bisect marks in the terminal green and red. The text, warning and banner colors have no AppColor
+///  upstream and follow the light or dark set; the banners are upstream's notification bar colors (LightSkyBlue, or Orange
+///  when there are conflicts), darkened for a dark theme.
 /// </summary>
 internal static class ThemeBrushes
 {
@@ -60,7 +62,11 @@ internal static class ThemeBrushes
             BranchLabel: Brush(colors.Get(AppColor.Branch)),
             RemoteBranchLabel: Brush(colors.Get(AppColor.RemoteBranch)),
             TagLabel: Brush(colors.Get(AppColor.Tag)),
+            BisectGoodLabel: Brush(colors.Get(AppColor.AnsiTerminalGreenForeNormal)),
+            BisectBadLabel: Brush(colors.Get(AppColor.AnsiTerminalRedForeNormal)),
             Warning: Brush(dark ? "#D29922" : "#9A6700"),
+            InfoBanner: Brush(dark ? "#1E4A66" : "#87CEFA"),
+            ConflictBanner: Brush(dark ? "#7A4A00" : "#FFA500"),
             Lanes: lanes.Count > 0 ? lanes : [Brush(colors.Get(AppColor.GraphNonRelativeBranch))],
             NonRelativeLane: Brush(colors.Get(AppColor.GraphNonRelativeBranch)));
     }
@@ -81,7 +87,11 @@ internal static class ThemeBrushes
         IBrush BranchLabel,
         IBrush RemoteBranchLabel,
         IBrush TagLabel,
+        IBrush BisectGoodLabel,
+        IBrush BisectBadLabel,
         IBrush Warning,
+        IBrush InfoBanner,
+        IBrush ConflictBanner,
         IReadOnlyList<IBrush> Lanes,
         IBrush NonRelativeLane);
 }

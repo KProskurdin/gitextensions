@@ -10,6 +10,7 @@ using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Scripts;
+using GitExtensions.Xplat.Ui;
 using GitUI.ScriptsEngine;
 using GitUIPluginInterfaces;
 using NUnit.Framework;

@@ -9,4 +9,18 @@
     <EmbeddedResource Remove="$(UpstreamDir)Properties\Resources.resx" />
     <EmbeddedResource Include="$(UpstreamDir)Resources\*.png" LogicalName="GitExtensions.Xplat.PluginIcon.png" />
   </ItemGroup>
+
+  <!--
+    A plugin with a WinForms form sets XplatPluginUi: the upstream plugin class is compiled unchanged, and the project removes
+    the upstream form and adds a stand-in of the same name (a GitExtensions.Xplat.Ui.PluginDialog) whose Avalonia window
+    reimplements it (docs/xplat/PORTING-MAP.md). Avalonia and the UI helpers ship with the app, so they are not copied.
+  -->
+  <PropertyGroup Condition="'$(XplatPluginUi)' == 'true'">
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(XplatPluginUi)' == 'true'">
+    <PackageReference Include="Avalonia" PrivateAssets="all" ExcludeAssets="runtime" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\GitExtensions.Xplat.Ui\GitExtensions.Xplat.Ui.csproj" Private="false" />
+  </ItemGroup>
 </Project>

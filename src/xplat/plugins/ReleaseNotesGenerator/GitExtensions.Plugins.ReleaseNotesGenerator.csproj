@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'ReleaseNotesGenerator'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form, and HtmlFragment, which uses the WinForms clipboard; ReleaseNotesGeneratorForm.cs here stands in
+         for the form and HtmlClipboard.cs for the clipboard part. The log line parser is compiled as it is. -->
+    <Compile Remove="$(UpstreamDir)ReleaseNotesGeneratorForm.cs;$(UpstreamDir)ReleaseNotesGeneratorForm.Designer.cs;$(UpstreamDir)HtmlFragment.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)ReleaseNotesGeneratorForm.resx" />
+  </ItemGroup>
+
+</Project>

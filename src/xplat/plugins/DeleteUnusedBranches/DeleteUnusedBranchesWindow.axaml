@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Plugins.DeleteUnusedBranches"
+        x:Class="GitExtensions.Plugins.DeleteUnusedBranches.DeleteUnusedBranchesWindow"
+        Title="Delete obsolete branches"
+        Width="900" Height="560" WindowStartupLocation="CenterOwner">
+  <!-- Upstream DeleteUnusedBranchesForm: the search options, the branches found with a check box each, and the status. -->
+  <DockPanel Margin="8">
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+      <TextBlock Grid.Row="0" Text="Delete branches older than x days" VerticalAlignment="Center" />
+      <NumericUpDown x:Name="OlderThanDaysBox" Grid.Row="0" Grid.Column="1" Width="140" HorizontalAlignment="Left"
+                     Minimum="0" Maximum="100000" Increment="1" FormatString="0" />
+      <TextBlock Grid.Row="1" Text="Delete branches fully merged into branch" VerticalAlignment="Center" />
+      <TextBox x:Name="MergedIntoBranchBox" Grid.Row="1" Grid.Column="1" Width="240" HorizontalAlignment="Left" />
+      <CheckBox x:Name="IncludeUnmergedCheck" Grid.Row="1" Grid.Column="2" Content="Include unmerged branches" />
+      <CheckBox x:Name="IncludeRemoteCheck" Grid.Row="2" Content="Delete remote branches from" />
+      <TextBox x:Name="RemoteBox" Grid.Row="2" Grid.Column="1" Width="240" HorizontalAlignment="Left" />
+      <CheckBox x:Name="UseRegexCheck" Grid.Row="3" Content="Use regex to filter branches" />
+      <TextBox x:Name="RegexBox" Grid.Row="3" Grid.Column="1" Width="240" HorizontalAlignment="Left" />
+      <StackPanel Grid.Row="3" Grid.Column="2" Orientation="Horizontal" Spacing="12">
+        <CheckBox x:Name="RegexCaseInsensitiveCheck" Content="Case insensitive" />
+        <CheckBox x:Name="RegexDoesNotMatchCheck" Content="Does not match" />
+      </StackPanel>
+      <DockPanel Grid.Row="4" Grid.ColumnSpan="3">
+        <Button x:Name="SearchButton" DockPanel.Dock="Right" Content="Search branches" />
+        <TextBlock x:Name="InstructionText" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </DockPanel>
+    </Grid>
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+      <Button x:Name="SettingsButton" DockPanel.Dock="Left" Content="Settings" />
+      <Button x:Name="DeleteButton" DockPanel.Dock="Right" Content="Delete" Margin="6,0,0,0" />
+      <Button x:Name="CloseButton" DockPanel.Dock="Right" Content="Close" />
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="12,0" />
+    </DockPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="50,*,175,120,*" Margin="4,8,4,2">
+      <!-- Upstream's header check box: ticks or clears every row. -->
+      <CheckBox x:Name="SelectAllCheck" Grid.Column="0" />
+      <TextBlock Grid.Column="1" Text="Name" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Text="Last activity" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="3" Text="Last author" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="4" Text="Last message" VerticalAlignment="Center" />
+    </Grid>
+    <ListBox x:Name="BranchList">
+      <ListBox.Styles>
+        <Style Selector="ListBoxItem">
+          <Setter Property="Padding" Value="4,0" />
+          <Setter Property="MinHeight" Value="24" />
+        </Style>
+      </ListBox.Styles>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:BranchRow">
+          <Grid ColumnDefinitions="50,*,175,120,*">
+            <CheckBox Grid.Column="0" IsChecked="{Binding Delete}" />
+            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding Date}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3" Text="{Binding Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="4" Text="{Binding Message}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

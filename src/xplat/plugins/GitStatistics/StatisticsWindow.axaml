@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Plugins.GitStatistics"
+        x:Class="GitExtensions.Plugins.GitStatistics.StatisticsWindow"
+        Title="Statistics"
+        Width="900" Height="560" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="TextBlock.total">
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream FormGitStatistics: four tabs, each with its total, the figures as text and a pie. -->
+  <TabControl x:Name="Tabs" Margin="6">
+    <TabItem Header="Commits per contributor">
+      <DockPanel Margin="6">
+        <TextBlock x:Name="TotalCommits" DockPanel.Dock="Top" Classes="total" Text="Total commits" />
+        <Grid ColumnDefinitions="*,*">
+          <ScrollViewer><SelectableTextBlock x:Name="CommitStatistics" Text="Loading.." /></ScrollViewer>
+          <local:PieChart x:Name="CommitCountPie" Grid.Column="1" />
+        </Grid>
+      </DockPanel>
+    </TabItem>
+    <TabItem Header="Lines of code per language">
+      <DockPanel Margin="6">
+        <TextBlock x:Name="TotalLinesOfCode" DockPanel.Dock="Top" Classes="total" Text="Total lines of code" />
+        <Grid ColumnDefinitions="*,*">
+          <ScrollViewer><SelectableTextBlock x:Name="LinesOfCodePerLanguageText" Text="Loading..." /></ScrollViewer>
+          <local:PieChart x:Name="LinesOfCodeExtensionPie" Grid.Column="1" />
+        </Grid>
+      </DockPanel>
+    </TabItem>
+    <TabItem Header="Lines of code per type">
+      <DockPanel Margin="6">
+        <TextBlock x:Name="TotalLinesOfCode2" DockPanel.Dock="Top" Classes="total" Text="Total lines of code" />
+        <Grid ColumnDefinitions="*,*">
+          <ScrollViewer><SelectableTextBlock x:Name="LinesOfCodePerTypeText" Text="Loading..." /></ScrollViewer>
+          <local:PieChart x:Name="LinesOfCodePie" Grid.Column="1" />
+        </Grid>
+      </DockPanel>
+    </TabItem>
+    <TabItem Header="Lines of test code">
+      <DockPanel Margin="6">
+        <TextBlock x:Name="TotalLinesOfTestCode" DockPanel.Dock="Top" Classes="total" Text="Total lines of code" />
+        <Grid ColumnDefinitions="*,*">
+          <ScrollViewer><SelectableTextBlock x:Name="TestCodeText" Text="Loading..." /></ScrollViewer>
+          <local:PieChart x:Name="TestCodePie" Grid.Column="1" />
+        </Grid>
+      </DockPanel>
+    </TabItem>
+  </TabControl>
+</Window>

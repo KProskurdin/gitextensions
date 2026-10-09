@@ -1,3 +1,4 @@
+using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Operations;
@@ -19,6 +20,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     private IReadOnlyList<string> _outputLines = [];
     private string _outputTitle = "";
     private RemoteOperationState _remoteState;
+    private bool _keepOutputOpen;
     private CancellationTokenSource? _cancellation;
 
     public RepositoryOperationsViewModel(IGitOperations operations)
@@ -98,6 +100,16 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     /// <summary>
     ///  True while a remote operation runs; <see cref="Cancel"/> then stops git.
     /// </summary>
+    /// <summary>
+    ///  True when the output of the last remote operation is its result, e.g. the next commit a bisect checked out, so its
+    ///  window stays open after success whatever the close setting says (upstream's <c>useDialogSettings: false</c>).
+    /// </summary>
+    public bool KeepOutputOpen
+    {
+        get => _keepOutputOpen;
+        private set => SetProperty(ref _keepOutputOpen, value);
+    }
+
     public bool CanCancel => _remoteState == RemoteOperationState.Running;
 
     public void Cancel() => _cancellation?.Cancel();
@@ -351,6 +363,48 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
                 () => _operations.EditRebaseTodoAsync(repositoryPath, editor))
             : RejectAsync(NoEditorMessage);
 
+    public Task<bool> ContinueMergeAsync(string repositoryPath)
+        => RunAsync("Merge continued", repositoryPath, () => _operations.ContinueMergeAsync(repositoryPath, EditorCommand));
+
+    public Task<bool> ContinuePatchAsync(string repositoryPath)
+        => RunAsync("Patch applied", repositoryPath, () => _operations.ContinuePatchAsync(repositoryPath));
+
+    public Task<bool> SkipPatchAsync(string repositoryPath)
+        => RunAsync("Patch skipped", repositoryPath, () => _operations.SkipPatchAsync(repositoryPath));
+
+    public Task<bool> AbortPatchAsync(string repositoryPath)
+        => RunAsync("Patch aborted", repositoryPath, () => _operations.AbortPatchAsync(repositoryPath));
+
+    /// <summary>
+    ///  Starts a bisect with git's output shown as a remote operation's is, as upstream's FormBisect runs it in a process
+    ///  dialog.
+    /// </summary>
+    public Task<bool> StartBisectAsync(string repositoryPath)
+        => RunRemoteAsync("Bisect start", "Bisect started", repositoryPath,
+            (output, cancellation) => _operations.StartBisectAsync(repositoryPath, output, cancellation));
+
+    /// <summary>
+    ///  Marks <paramref name="commit"/> (the checked-out commit when null) and shows which commit git checks out next, or the
+    ///  first bad commit; that output stays on screen (<see cref="KeepOutputOpen"/>).
+    /// </summary>
+    public Task<bool> MarkBisectAsync(string repositoryPath, GitBisectOption option, string? commit = null)
+    {
+        string mark = option switch
+        {
+            GitBisectOption.Good => "good",
+            GitBisectOption.Bad => "bad",
+            _ => "skipped",
+        };
+        string what = commit is null ? "current revision" : ShortHash(commit);
+        return RunRemoteAsync($"Bisect: mark {what} {mark}", $"Marked {what} {mark}", repositoryPath,
+            (output, cancellation) => _operations.MarkBisectAsync(repositoryPath, option, commit, output, cancellation),
+            keepOutputOpen: true);
+    }
+
+    public Task<bool> StopBisectAsync(string repositoryPath)
+        => RunRemoteAsync("Bisect reset", "Bisect stopped", repositoryPath,
+            (output, cancellation) => _operations.StopBisectAsync(repositoryPath, output, cancellation));
+
     private static string ShortHash(string commit) => commit.Length > 8 ? commit[..8] : commit;
 
     public Task<bool> MergeAsync(string repositoryPath, string branch)
@@ -460,7 +514,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     }
 
     private async Task<bool> RunRemoteAsync(string title, string successMessage, string repositoryPath,
-        Func<IProgress<GitOutputLine>, CancellationToken, Task> operation)
+        Func<IProgress<GitOutputLine>, CancellationToken, Task> operation, bool keepOutputOpen = false)
     {
         lock (_outputLock)
         {
@@ -469,6 +523,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
         OutputLines = [];
         OutputTitle = title;
+        KeepOutputOpen = keepOutputOpen;
         using CancellationTokenSource cancellation = new();
         _cancellation = cancellation;
         RemoteState = RemoteOperationState.Running;

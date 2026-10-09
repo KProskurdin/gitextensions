@@ -12,10 +12,19 @@
   <Folder Name="/src/xplat/app/">
     <Project Path="src/xplat/GitExtensions.Xplat.Core/GitExtensions.Xplat.Core.csproj" />
     <Project Path="src/xplat/GitExtensions.Xplat.App/GitExtensions.Xplat.App.csproj" />
+    <Project Path="src/xplat/GitExtensions.Xplat.Ui/GitExtensions.Xplat.Ui.csproj" />
   </Folder>
   <Folder Name="/src/xplat/plugins/">
     <Project Path="src/xplat/plugins/AutoCompileSubmodules/GitExtensions.Plugins.AutoCompileSubmodules.csproj" />
     <Project Path="src/xplat/plugins/BackgroundFetch/GitExtensions.Plugins.BackgroundFetch.csproj" />
+    <Project Path="src/xplat/plugins/CreateLocalBranches/GitExtensions.Plugins.CreateLocalBranches.csproj" />
+    <Project Path="src/xplat/plugins/DeleteUnusedBranches/GitExtensions.Plugins.DeleteUnusedBranches.csproj" />
+    <Project Path="src/xplat/plugins/FindLargeFiles/GitExtensions.Plugins.FindLargeFiles.csproj" />
+    <Project Path="src/xplat/plugins/GitImpact/GitExtensions.Plugins.GitImpact.csproj" />
+    <Project Path="src/xplat/plugins/GitStatistics/GitExtensions.Plugins.GitStatistics.csproj" />
+    <Project Path="src/xplat/plugins/Gource/GitExtensions.Plugins.Gource.csproj" />
+    <Project Path="src/xplat/plugins/ProxySwitcher/GitExtensions.Plugins.ProxySwitcher.csproj" />
+    <Project Path="src/xplat/plugins/ReleaseNotesGenerator/GitExtensions.Plugins.ReleaseNotesGenerator.csproj" />
   </Folder>
   <Folder Name="/tests/xplat/">
     <Project Path="tests/xplat/CommonTestUtils/CommonTestUtils.csproj" />

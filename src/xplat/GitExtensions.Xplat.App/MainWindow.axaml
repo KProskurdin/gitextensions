@@ -48,6 +48,7 @@
         <MenuItem x:Name="MergeMenuItem" Header="_Merge selected branch" />
         <MenuItem x:Name="RebaseMenuItem" Header="Re_base onto selected branch" />
         <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." />
+        <MenuItem x:Name="BisectMenuItem" Header="B_isect..." />
         <Separator />
         <MenuItem x:Name="ResolveConflictsMenuItem" Header="Solve _conflicts..." />
       </MenuItem>
@@ -106,18 +107,33 @@
 
     <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="8,4" IsVisible="False" TextWrapping="Wrap" />
 
-    <!-- Shown while a merge or rebase is stopped, like upstream's warning bar above the grid. -->
-    <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3"
-            BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
-      <WrapPanel>
-        <TextBlock x:Name="StateBannerText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" />
-        <Button x:Name="ResolveConflictsButton" Content="Solve conflicts..." Margin="0,0,6,0" />
-        <Button x:Name="AbortMergeButton" Content="Abort merge" Margin="0,0,6,0" />
-        <Button x:Name="ContinueRebaseButton" Content="Continue rebase" Margin="0,0,6,0" />
-        <Button x:Name="SkipRebaseButton" Content="Skip commit" Margin="0,0,6,0" ToolTip.Tip="Leave out the commit the rebase stopped at" />
-        <Button x:Name="EditRebaseTodoButton" Content="Edit todo" Margin="0,0,6,0" ToolTip.Tip="Edit the steps the rebase has not done yet" />
-        <Button x:Name="AbortRebaseButton" Content="Abort rebase" Margin="0,0,6,0" />
-      </WrapPanel>
+    <!-- Upstream's two notification bars above the grid (InteractiveGitActionControl): a bisect in progress, and a stopped
+         rebase, merge or patch or unresolved conflicts. Texts, buttons and their order come from the core's GitActionBanner. -->
+    <Border x:Name="BisectBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
+      <DockPanel>
+        <Button x:Name="BisectMoreButton" DockPanel.Dock="Right" Content="M_ore..." />
+        <TextBlock x:Name="BisectBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+    <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+          <Button x:Name="ResolveConflictsButton" Content="Resolve..." />
+          <Button x:Name="ContinueActionButton" Content="Continue" />
+          <Button x:Name="AbortActionButton" Content="Abort" />
+          <!-- Upstream's More... opens FormRebase or FormApplyPatch; the new shell offers their extra steps here. -->
+          <Button x:Name="MoreActionButton" Content="M_ore...">
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="SkipRebaseMenuItem" Header="_Skip commit" ToolTip.Tip="Leave out the commit the rebase stopped at" />
+                <MenuItem x:Name="EditRebaseTodoMenuItem" Header="_Edit todo" ToolTip.Tip="Edit the steps the rebase has not done yet" />
+                <MenuItem x:Name="SkipPatchMenuItem" Header="_Skip patch" ToolTip.Tip="Leave out the patch git am stopped at" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+        <TextBlock x:Name="StateBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
+      </DockPanel>
     </Border>
 
     <Grid ColumnDefinitions="280,5,*" Margin="6">
@@ -269,6 +285,12 @@
             </ListBox.Styles>
             <ListBox.ContextMenu>
               <ContextMenu x:Name="CommitContextMenu">
+                <!-- Upstream's bisect items, at the top and shown only while a bisect runs. -->
+                <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" IsVisible="False" />
+                <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" IsVisible="False" />
+                <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" IsVisible="False" />
+                <MenuItem x:Name="StopBisectMenuItem" Header="Stop bisect" IsVisible="False" />
+                <Separator x:Name="BisectSeparator" IsVisible="False" />
                 <MenuItem x:Name="CopyHashMenuItem" Header="Copy commit hash" />
                 <MenuItem x:Name="CopyMessageMenuItem" Header="Copy commit message" />
                 <Separator />

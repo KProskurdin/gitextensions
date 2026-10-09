@@ -38,6 +38,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GitCommands\GitCommands.csproj" />
     <ProjectReference Include="..\GitExtensions.Xplat.Core\GitExtensions.Xplat.Core.csproj" />
+    <ProjectReference Include="..\GitExtensions.Xplat.Ui\GitExtensions.Xplat.Ui.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,6 +46,14 @@
          folder, one subfolder per plugin, where upstream's ManagedExtensibility looks for them. -->
     <ProjectReference Include="..\plugins\BackgroundFetch\GitExtensions.Plugins.BackgroundFetch.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
     <ProjectReference Include="..\plugins\AutoCompileSubmodules\GitExtensions.Plugins.AutoCompileSubmodules.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\CreateLocalBranches\GitExtensions.Plugins.CreateLocalBranches.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\ProxySwitcher\GitExtensions.Plugins.ProxySwitcher.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\FindLargeFiles\GitExtensions.Plugins.FindLargeFiles.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\DeleteUnusedBranches\GitExtensions.Plugins.DeleteUnusedBranches.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\ReleaseNotesGenerator\GitExtensions.Plugins.ReleaseNotesGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\Gource\GitExtensions.Plugins.Gource.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\GitImpact\GitExtensions.Plugins.GitImpact.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
+    <ProjectReference Include="..\plugins\GitStatistics\GitExtensions.Plugins.GitStatistics.csproj" ReferenceOutputAssembly="false" OutputItemType="XplatPlugin" />
   </ItemGroup>
 
   <!-- After the references are built, so their output paths are known; as content they reach the build output, the

@@ -238,7 +238,7 @@ public sealed class GitCommitHistory : ICommitHistory
                 return new CommitRow(r.ObjectId.ToString(), r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
                     style.Format(r.AuthorDate, r.CommitDate, now),
                     r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
-                    [.. refs.Select(label => label.Name)], refs, RevisionTooltips.For(r, refs));
+                    [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs, RevisionTooltips.For(r, refs));
             })
             .ToList();
 

@@ -1,0 +1,55 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Plugins.FindLargeFiles"
+        x:Class="GitExtensions.Plugins.FindLargeFiles.FindLargeFilesWindow"
+        Title="Find large files"
+        Width="980" Height="520" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Button.header">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="4,2" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream FindLargeFilesForm: the files found, a progress bar while the history is read, Close and Delete. -->
+  <DockPanel Margin="8">
+    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" TextWrapping="Wrap"
+               Text="Reset local changes before deleting files. Choose files to delete. Force push for replacing data on remote repository." />
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+      <Button x:Name="CloseButton" DockPanel.Dock="Left" Content="Close" />
+      <Button x:Name="DeleteButton" DockPanel.Dock="Right" Content="Delete" />
+      <ProgressBar x:Name="ScanProgress" Margin="8,0" VerticalAlignment="Center" />
+    </DockPanel>
+    <!-- Upstream's grid columns; a header click sorts by the column, a second click reverses it. -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="90,*,80,130,110,160,60" Margin="4,0,4,2">
+      <Button x:Name="SortByShaButton" Grid.Column="0" Content="SHA" Classes="header" />
+      <Button x:Name="SortByPathButton" Grid.Column="1" Content="Path" Classes="header" />
+      <Button x:Name="SortBySizeButton" Grid.Column="2" Content="Size" Classes="header" />
+      <Button x:Name="SortByCompressedSizeButton" Grid.Column="3" Content="Compressed size" Classes="header" />
+      <Button x:Name="SortByCommitCountButton" Grid.Column="4" Content="Commit count" Classes="header" />
+      <Button x:Name="SortByDateButton" Grid.Column="5" Content="Last commit date" Classes="header" />
+      <TextBlock Grid.Column="6" Text="Delete" VerticalAlignment="Center" Margin="4,0" />
+    </Grid>
+    <ListBox x:Name="FileList">
+      <ListBox.Styles>
+        <Style Selector="ListBoxItem">
+          <Setter Property="Padding" Value="4,0" />
+          <Setter Property="MinHeight" Value="24" />
+        </Style>
+      </ListBox.Styles>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:LargeFileRow">
+          <Grid ColumnDefinitions="90,*,80,130,110,160,60">
+            <TextBlock Grid.Column="0" Text="{Binding Sha}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding Path}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding Size}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3" Text="{Binding CompressedSize}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="4" Text="{Binding CommitCount}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="5" Text="{Binding LastCommitDate}" VerticalAlignment="Center" />
+            <CheckBox Grid.Column="6" IsChecked="{Binding Delete}" IsEnabled="{Binding IsEditable}" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

@@ -37,9 +37,13 @@ public sealed class GitRepositoryService : IRepositoryService
     public Task<IReadOnlyList<WorktreeInfo>> GetWorktreesAsync(string repositoryPath) =>
         Task.Run<IReadOnlyList<WorktreeInfo>>(() =>
         {
-            IReadOnlyList<GitWorktree> worktrees = new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath).GetWorktrees();
-            return [.. worktrees.Select((worktree, index) => new WorktreeInfo(worktree.Path,
-                worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted))];
+            IReadOnlyList<GitWorktree> worktrees =
+                new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath).GetWorktrees();
+            return
+            [
+                .. worktrees.Select((worktree, index) => new WorktreeInfo(worktree.Path,
+                    worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted))
+            ];
         });
 
     // Upstream's GitModule.GetRefs, with the sort given instead of read from upstream's settings.
@@ -52,7 +56,9 @@ public sealed class GitRepositoryService : IRepositoryService
 
     private static string? GetTrackingRemote(GitModule module, string currentBranch)
     {
-        string remote = currentBranch.Length == 0 ? "" : module.GetSetting(string.Format(SettingKeyString.BranchRemote, currentBranch));
+        string remote = currentBranch.Length == 0
+            ? ""
+            : module.GetSetting(string.Format(SettingKeyString.BranchRemote, currentBranch));
         return remote.Length == 0 ? null : remote;
     }
 
@@ -85,9 +91,12 @@ public sealed class GitRepositoryService : IRepositoryService
         Dictionary<string, IGitSubmoduleInfo> status = module.GetSubmodulesInfo().OfType<IGitSubmoduleInfo>()
             .GroupBy(info => info.LocalPath, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-        return [.. paths.Select(path => status.TryGetValue(path, out IGitSubmoduleInfo? info)
-            ? new SubmoduleInfo(path, info.IsInitialized, info.IsUpToDate)
-            : new SubmoduleInfo(path, IsInitialized: false, IsUpToDate: false))];
+        return
+        [
+            .. paths.Select(path => status.TryGetValue(path, out IGitSubmoduleInfo? info)
+                ? new SubmoduleInfo(path, info.IsInitialized, info.IsUpToDate)
+                : new SubmoduleInfo(path, IsInitialized: false, IsUpToDate: false))
+        ];
     }
 
     public static FileChange ToFileChange(GitItemStatus status)
@@ -124,13 +133,21 @@ public sealed class GitRepositoryService : IRepositoryService
 
         List<FileChange> changes = [.. module.GetAllChangedFilesWithSubmodulesStatus().Select(ToFileChange)];
 
-        bool isMerging = File.Exists(Path.Combine(module.WorkingDirGitDir, "MERGE_HEAD"));
-        bool isRebasing = Directory.Exists(Path.Combine(module.WorkingDirGitDir, "rebase-merge"))
-                          || Directory.Exists(Path.Combine(module.WorkingDirGitDir, "rebase-apply"));
+        // Upstream's InteractiveGitActionControl order: a rebase is checked before a patch, because both checks match a
+        // rebase-merge folder.
+        bool isMerging = module.InTheMiddleOfMerge();
+        bool isRebasing = module.InTheMiddleOfRebase();
+        bool isApplyingPatch = !isRebasing && module.InTheMiddleOfPatch();
         List<StashInfo> stashes = [.. module.GetStashes().Select(stash => new StashInfo(stash.Name, stash.Message))];
-        List<string> tags = [.. module.GitExecutable.GetOutput(new GitArgumentBuilder("tag") { "--list" })
-            .Split(Delimiters.LineFeed, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+        List<string> tags =
+        [
+            .. module.GitExecutable.GetOutput(new GitArgumentBuilder("tag") { "--list" })
+                .Split(Delimiters.LineFeed, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        ];
 
-        return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes, isMerging, stashes, tags, isRebasing, module.GetRemoteNames(), GetSync(module), GetTrackingRemote(module, currentBranch), GetSubmodules(module));
+        return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes, isMerging,
+            stashes, tags, isRebasing, module.GetRemoteNames(), GetSync(module),
+            GetTrackingRemote(module, currentBranch), GetSubmodules(module),
+            isApplyingPatch, module.InTheMiddleOfBisect());
     }
 }

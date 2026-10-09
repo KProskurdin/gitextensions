@@ -5,7 +5,8 @@ using GitExtensions.Xplat.Core.CommitHistory;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Colors a ref label by its kind, as upstream's revision grid does: HEAD, local branches, remote branches and tags.
+///  Colors a ref label by its kind, as upstream's revision grid does: HEAD, local branches, remote branches, tags and
+///  bisect marks.
 /// </summary>
 public sealed class RefLabelBrushConverter : IValueConverter
 {
@@ -19,6 +20,8 @@ public sealed class RefLabelBrushConverter : IValueConverter
             RefKind.Head => palette.BranchLabel,
             RefKind.Tag => palette.TagLabel,
             RefKind.RemoteBranch => palette.RemoteBranchLabel,
+            RefKind.BisectGood => palette.BisectGoodLabel,
+            RefKind.BisectBad => palette.BisectBadLabel,
             _ => palette.BranchLabel,
         };
     }

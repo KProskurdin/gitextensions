@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'Statistics', 'GitImpact'))</UpstreamDir>
+    <XplatPluginUi>true</XplatPluginUi>
+  </PropertyGroup>
+
+  <Import Project="..\..\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <!-- The WinForms form and its drawing control; FormImpact.cs here stands in for the form and ImpactGraph.cs ports the
+         control. The plugin class and ImpactLoader (the git reads) are compiled as they are. -->
+    <Compile Remove="$(UpstreamDir)FormImpact.cs;$(UpstreamDir)FormImpact.Designer.cs;$(UpstreamDir)ImpactControl.cs;$(UpstreamDir)ImpactControl.Designer.cs" />
+    <EmbeddedResource Remove="$(UpstreamDir)ImpactControl.resx" />
+  </ItemGroup>
+
+</Project>

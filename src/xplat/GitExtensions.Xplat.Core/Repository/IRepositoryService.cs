@@ -18,6 +18,11 @@ public interface IRepositoryService
     Task<IReadOnlyList<WorktreeInfo>> GetWorktreesAsync(string repositoryPath);
 }
 
+/// <summary>
+///  The state of a repository. <see cref="IsRebasing"/>, <see cref="IsMerging"/>, <see cref="IsApplyingPatch"/> and
+///  <see cref="IsBisecting"/> follow upstream's <c>GitModule.InTheMiddleOf*</c> checks: a <c>git am</c> session is a patch,
+///  not a rebase, although both keep their state in rebase-apply.
+/// </summary>
 public sealed record RepositorySnapshot(
     string? CurrentBranch,
     IReadOnlyList<BranchInfo> Branches,
@@ -29,7 +34,9 @@ public sealed record RepositorySnapshot(
     IReadOnlyList<string>? Remotes = null,
     SyncStatus? Sync = null,
     string? TrackingRemote = null,
-    IReadOnlyList<SubmoduleInfo>? Submodules = null);
+    IReadOnlyList<SubmoduleInfo>? Submodules = null,
+    bool IsApplyingPatch = false,
+    bool IsBisecting = false);
 
 /// <summary>
 ///  Commits the current branch has that its upstream lacks (<see cref="Ahead"/>) and the reverse (<see cref="Behind"/>).
