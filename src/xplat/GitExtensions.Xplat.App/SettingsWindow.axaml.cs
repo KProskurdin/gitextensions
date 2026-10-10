@@ -62,13 +62,16 @@ public partial class SettingsWindow : Window
     private readonly HotkeyEditor<DiffCommand> _diffHotkeys = new(Hotkeys.Diff);
     private readonly HotkeyEditor<LeftPanelCommand> _leftPanelHotkeys = new(Hotkeys.LeftPanel);
     private readonly HotkeyEditor<ConflictsCommand> _conflictsHotkeys = new(Hotkeys.Conflicts);
+    private readonly HotkeyEditor<BrowseDiffCommand> _browseDiffHotkeys = new(Hotkeys.BrowseDiff);
+    private readonly HotkeyEditor<StashCommand> _stashHotkeys = new(Hotkeys.Stash);
     private readonly HotkeyEditor<int> _scriptHotkeys = new(Hotkeys.Scripts);
     private readonly IReadOnlyList<ScriptDefinition> _loadedScripts;
     private readonly ScriptListEditor _scripts;
     private HelpWindow? _scriptHelp;
     private readonly IReadOnlyList<IGitPlugin> _plugins;
     private readonly Dictionary<IGitPlugin, PluginSettingsEditor> _pluginEditors = [];
-    private SettingsSource? _pluginSettings;
+    private readonly Dictionary<SettingLevel, SettingsSource> _pluginSources = [];
+    private SettingLevel _pluginLevel = SettingLevel.Effective;
     private readonly Dictionary<Confirmation, CheckBox> _confirmationChecks = [];
     private readonly DistributedSettings _revisionLinkSettings;
     private readonly RevisionLinkEditor _revisionLinks;
@@ -92,6 +95,25 @@ public partial class SettingsWindow : Window
         CloseAfterCommitCheck.IsChecked = preferences.CloseCommitDialogAfterCommit;
         CloseProcessDialogCheck.IsChecked = preferences.CloseProcessDialog;
         StartWithRecentWorkingDirCheck.IsChecked = preferences.StartWithRecentWorkingDir;
+        FollowRenamesInFileHistoryCheck.IsChecked = preferences.FileHistory.FollowRenames;
+        FollowRenamesExactCheck.IsChecked = preferences.FileHistory.ExactRenamesOnly;
+        UseHistogramDiffCheck.IsChecked = preferences.UseHistogramDiffAlgorithm;
+        StashUntrackedFilesCheck.IsChecked = preferences.IncludeUntrackedFilesInAutoStash;
+        UpdateSubmodulesCheck.IsChecked = preferences.UpdateSubmodulesOnCheckout;
+        CheckUncommittedChangesCheck.IsChecked = preferences.CheckForUncommittedChangesInCheckoutBranch;
+        DefaultPullActionBox.ItemsSource = PullActionOption.All;
+
+        // Upstream shows a stored "Default" as "Open pull dialog".
+        DefaultPullActionBox.SelectedItem = PullActionOption.All.FirstOrDefault(option =>
+            option.Action == preferences.DefaultPullAction) ?? PullActionOption.All[0];
+        QuickSearchTimeoutBox.Value = preferences.RevisionGridQuickSearchTimeout;
+        ShowArtificialCountCheck.IsChecked = preferences.ShowGitStatusForArtificialCommits;
+        ShowAheadBehindCheck.IsChecked = preferences.ShowAheadBehindData;
+        ShowStashCountCheck.IsChecked = preferences.ShowStashCount;
+        CommitsLimitCheck.IsChecked = preferences.MaxRevisionGraphCommits != 0;
+        CommitsLimitBox.Value = preferences.MaxRevisionGraphCommits;
+        CommitsLimitBox.IsEnabled = preferences.MaxRevisionGraphCommits != 0;
+        CommitsLimitCheck.IsCheckedChanged += (_, _) => CommitsLimitBox.IsEnabled = CommitsLimitCheck.IsChecked == true;
         ShowCommitCountCheck.IsChecked = preferences.ShowGitStatusInBrowseToolbar;
         ShowRevisionTooltipsCheck.IsChecked = preferences.ShowRevisionGridTooltips;
         MergeGraphLanesCheck.IsChecked = preferences.MergeGraphLanesHavingCommonParent;
@@ -629,6 +651,8 @@ public partial class SettingsWindow : Window
         _diffHotkeys.AddRows(HotkeysPanel, "Diff viewer");
         _leftPanelHotkeys.AddRows(HotkeysPanel, "Left panel");
         _conflictsHotkeys.AddRows(HotkeysPanel, "Resolve conflicts");
+        _browseDiffHotkeys.AddRows(HotkeysPanel, "Diff tab files");
+        _stashHotkeys.AddRows(HotkeysPanel, "Stashes");
         _scriptHotkeys.AddRows(HotkeysPanel, "Scripts");
     }
 
@@ -750,10 +774,23 @@ public partial class SettingsWindow : Window
         List<object> items = [.. options, .. AppServices.Plugins.Skipped.Select(file => new SkippedPluginOption(file))];
         PluginsList.ItemsSource = items;
         PluginsList.SelectionChanged += (_, _) => ShowSelectedPlugin();
-        PluginLevelText.Text = _repositoryPath is null
-            ? "Your user settings, shared with Git Extensions for Windows."
-            : "The settings in effect for this repository. As in Git Extensions for Windows, a value the repository sets is " +
-              "changed there; any other value is stored in your user settings.";
+
+        // Upstream's settings sources of a repository page; without a repository only the global settings exist.
+        List<PluginLevelOption> levels = _repositoryPath is null
+            ? [new PluginLevelOption(SettingLevel.Global, GlobalLevelText)]
+            :
+            [
+                new PluginLevelOption(SettingLevel.Effective, "Effective"),
+                new PluginLevelOption(SettingLevel.Local, "Local for current repository"),
+                new PluginLevelOption(SettingLevel.Distributed, "Distributed with current repository"),
+                new PluginLevelOption(SettingLevel.Global, GlobalLevelText),
+            ];
+        _pluginLevel = levels[0].Level;
+        PluginLevelBox.ItemsSource = levels;
+        PluginLevelBox.SelectedItem = levels[0];
+        PluginLevelBox.IsEnabled = levels.Count > 1;
+        PluginLevelBox.SelectionChanged += (_, _) => ChangePluginLevel();
+        ShowPluginLevelText();
         PluginsList.SelectedItem =
             options.FirstOrDefault(option => option.Plugin == selected) ?? options.FirstOrDefault();
         ShowSelectedPlugin();
@@ -762,7 +799,7 @@ public partial class SettingsWindow : Window
     private void ShowSelectedPlugin()
     {
         PluginSettingsPanel.Children.Clear();
-        PluginLevelText.IsVisible = PluginsList.SelectedItem is not SkippedPluginOption;
+        PluginLevelText.IsVisible = PluginLevelPanel.IsVisible = PluginsList.SelectedItem is not SkippedPluginOption;
         if (PluginsList.SelectedItem is SkippedPluginOption { File: var file })
         {
             PluginTitleText.Text = file.FileName;
@@ -782,8 +819,7 @@ public partial class SettingsWindow : Window
 
         if (!_pluginEditors.TryGetValue(plugin, out PluginSettingsEditor? editor))
         {
-            _pluginSettings ??= AppServices.PluginSettings.Open(_repositoryPath);
-            editor = new PluginSettingsEditor(plugin, _pluginSettings);
+            editor = new PluginSettingsEditor(plugin, PluginSource(_pluginLevel));
             _pluginEditors[plugin] = editor;
         }
 
@@ -834,6 +870,36 @@ public partial class SettingsWindow : Window
                     text.Foreground = row.IsValid ? null : Avalonia.Media.Brushes.Firebrick;
                 };
                 return Labeled(row.Caption, text);
+            case PluginSettingKind.Credentials:
+                // Upstream's CredentialsControl: a user name and a password.
+                if (!row.IsEditable)
+                {
+                    return Labeled(row.Caption, new TextBlock
+                    {
+                        Text = row.NotEditableReason ?? "Not available at this settings source.",
+                        Opacity = 0.7,
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    });
+                }
+
+                TextBox user = new() { Text = row.Text, PlaceholderText = "User name" };
+                TextBox password = new() { Text = row.Password, PasswordChar = '●', PlaceholderText = "Password" };
+                user.PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == TextBox.TextProperty)
+                    {
+                        row.Text = user.Text;
+                    }
+                };
+                password.PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == TextBox.TextProperty)
+                    {
+                        row.Password = password.Text;
+                    }
+                };
+                return Labeled(row.Caption, new StackPanel { Spacing = 4, Children = { user, password } });
             case PluginSettingKind.Link:
                 HyperlinkButton link = new() { Content = row.Text };
                 link.Click += (_, _) => row.Click?.Invoke();
@@ -872,7 +938,34 @@ public partial class SettingsWindow : Window
 
     private void SavePluginSettings()
     {
-        if (_pluginSettings is null)
+        foreach (PluginSettingsEditor editor in _pluginEditors.Values)
+        {
+            editor.Save();
+        }
+
+        foreach (SettingsSource source in _pluginSources.Values)
+        {
+            AppServices.PluginSettings.Save(source);
+        }
+    }
+
+    private const string GlobalLevelText = "Global for all repositories";
+
+    private SettingsSource PluginSource(SettingLevel level)
+    {
+        if (!_pluginSources.TryGetValue(level, out SettingsSource? source))
+        {
+            _pluginSources[level] = source = AppServices.PluginSettings.Open(_repositoryPath, level);
+        }
+
+        return source;
+    }
+
+    // As upstream's settings page header: the values edited so far go to the source they were edited in (written to disk on
+    // OK), and the page shows the newly chosen source.
+    private void ChangePluginLevel()
+    {
+        if (PluginLevelBox.SelectedItem is not PluginLevelOption { Level: var level } || level == _pluginLevel)
         {
             return;
         }
@@ -882,8 +975,23 @@ public partial class SettingsWindow : Window
             editor.Save();
         }
 
-        AppServices.PluginSettings.Save(_pluginSettings);
+        _pluginEditors.Clear();
+        _pluginLevel = level;
+        ShowPluginLevelText();
+        ShowSelectedPlugin();
     }
+
+    private void ShowPluginLevelText()
+        => PluginLevelText.Text = _pluginLevel switch
+        {
+            SettingLevel.Effective =>
+                "The settings in effect for this repository. As in Git Extensions for Windows, a value the repository sets " +
+                "is changed there; any other value is stored in your user settings.",
+            SettingLevel.Local => "Stored in this repository's .git folder, for you only.",
+            SettingLevel.Distributed =>
+                "Stored in this repository's GitExtensions.settings file, shared with the repository.",
+            _ => "Your user settings, shared with Git Extensions for Windows.",
+        };
 
     private async Task LoadGitConfigAsync()
     {
@@ -985,6 +1093,25 @@ public partial class SettingsWindow : Window
         _preferences.CloseCommitDialogAfterCommit = CloseAfterCommitCheck.IsChecked == true;
         _preferences.CloseProcessDialog = CloseProcessDialogCheck.IsChecked == true;
         _preferences.StartWithRecentWorkingDir = StartWithRecentWorkingDirCheck.IsChecked == true;
+        _preferences.FileHistory = new FileHistoryOptions(FollowRenamesInFileHistoryCheck.IsChecked == true,
+            FollowRenamesExactCheck.IsChecked == true);
+        _preferences.UseHistogramDiffAlgorithm = UseHistogramDiffCheck.IsChecked == true;
+        _preferences.IncludeUntrackedFilesInAutoStash = StashUntrackedFilesCheck.IsChecked == true;
+        _preferences.UpdateSubmodulesOnCheckout = UpdateSubmodulesCheck.IsChecked;
+        _preferences.CheckForUncommittedChangesInCheckoutBranch = CheckUncommittedChangesCheck.IsChecked == true;
+        if (DefaultPullActionBox.SelectedItem is PullActionOption pullAction)
+        {
+            _preferences.DefaultPullAction = pullAction.Action;
+        }
+
+        _preferences.RevisionGridQuickSearchTimeout = (int)(QuickSearchTimeoutBox.Value ?? 4000);
+        _preferences.ShowGitStatusForArtificialCommits = ShowArtificialCountCheck.IsChecked == true;
+        _preferences.ShowAheadBehindData = ShowAheadBehindCheck.IsChecked == true;
+        _preferences.ShowStashCount = ShowStashCountCheck.IsChecked == true;
+
+        // As upstream: an unchecked limit is stored as 0, no limit.
+        _preferences.MaxRevisionGraphCommits =
+            CommitsLimitCheck.IsChecked == true ? (int)(CommitsLimitBox.Value ?? 0) : 0;
         _preferences.ShowGitStatusInBrowseToolbar = ShowCommitCountCheck.IsChecked == true;
         _preferences.ShowRevisionGridTooltips = ShowRevisionTooltipsCheck.IsChecked == true;
         _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
@@ -1038,6 +1165,8 @@ public partial class SettingsWindow : Window
         hotkeys = _diffHotkeys.Apply(hotkeys);
         hotkeys = _leftPanelHotkeys.Apply(hotkeys);
         hotkeys = _conflictsHotkeys.Apply(hotkeys);
+        hotkeys = _browseDiffHotkeys.Apply(hotkeys);
+        hotkeys = _stashHotkeys.Apply(hotkeys);
         hotkeys = _scriptHotkeys.Apply(hotkeys);
         _preferences.SerializedHotkeys = hotkeys;
 
@@ -1148,4 +1277,30 @@ public sealed record ThemeOption(ThemeId Id)
             : Id == ThemeId.DefaultLight ? "light (default)"
             : Id.IsBuiltin ? Id.Name
             : $"{Id.Name} (user)";
+}
+
+/// <summary>
+///  One of upstream's settings sources on the Plugins tab.
+/// </summary>
+public sealed record PluginLevelOption(SettingLevel Level, string Text)
+{
+    public override string ToString() => Text;
+}
+
+/// <summary>
+///  One of upstream's default pull actions, named as upstream's General page names it.
+/// </summary>
+public sealed record PullActionOption(GitPullAction Action, string Text)
+{
+    public static IReadOnlyList<PullActionOption> All { get; } =
+    [
+        new(GitPullAction.None, "Open pull dialog"),
+        new(GitPullAction.Merge, "Pull - merge"),
+        new(GitPullAction.Rebase, "Pull - rebase"),
+        new(GitPullAction.Fetch, "Fetch"),
+        new(GitPullAction.FetchAll, "Fetch all"),
+        new(GitPullAction.FetchPruneAll, "Fetch and prune all"),
+    ];
+
+    public override string ToString() => Text;
 }

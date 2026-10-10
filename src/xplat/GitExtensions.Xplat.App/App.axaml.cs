@@ -21,6 +21,11 @@ public partial class App : Application
         ThemeApplier.Apply(AppServices.Preferences);
         FontApplier.Apply(AppServices.Preferences);
 
+        // Upstream's translations: every window's texts that are upstream's English texts, when the window is shown (the
+        // windows named after an upstream form translate themselves by their controls' names first).
+        Control.LoadedEvent.AddClassHandler<Window>((window, _) =>
+            GitExtensions.Xplat.Ui.UpstreamTranslation.ApplyByText(window));
+
         // As upstream at startup (AppSettings.LoadSettings): git uses the ssh client chosen on the SSH settings page.
         SshClients.Apply(AppServices.Preferences.SshPath);
 

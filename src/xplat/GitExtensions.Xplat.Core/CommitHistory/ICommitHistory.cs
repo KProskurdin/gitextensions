@@ -27,7 +27,7 @@ public interface ICommitHistory
 
     /// <summary>
     ///  Up to <paramref name="limit"/> commits reachable from <paramref name="hash"/> that changed <paramref name="filePath"/>.
-    ///  Renames are not followed.
+    ///  Renames are followed as the history options say.
     /// </summary>
     Task<CommitPage> LoadFileHistoryAsync(string repositoryPath, string hash, string filePath, int limit);
 
@@ -49,7 +49,15 @@ public interface ICommitHistory
     Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath);
 }
 
-public sealed record CommitPage(IReadOnlyList<CommitRow> Rows, bool HasMore);
+/// <param name="FilePaths">For a file history that follows renames: the path the file had in each commit, by commit hash.</param>
+public sealed record CommitPage(IReadOnlyList<CommitRow> Rows, bool HasMore,
+    IReadOnlyDictionary<string, string>? FilePaths = null);
+
+/// <summary>
+///  How a file history is read: upstream's <c>FollowRenamesInFileHistory</c> (on by default) and
+///  <c>FollowRenamesInFileHistoryExactOnly</c>.
+/// </summary>
+public sealed record FileHistoryOptions(bool FollowRenames = true, bool ExactRenamesOnly = false);
 
 public sealed record CommitRow(
     string Hash,
@@ -60,7 +68,9 @@ public sealed record CommitRow(
     IReadOnlyList<string>? ParentHashes = null,
     IReadOnlyList<string>? Refs = null,
     IReadOnlyList<RefLabel>? Labels = null,
-    RevisionTooltip? Tooltip = null);
+    RevisionTooltip? Tooltip = null,
+    string? Body = null,
+    bool HasMultiLineMessage = false);
 
 public enum RefKind
 {

@@ -179,6 +179,64 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void The_working_directory_and_index_are_rows_above_head_with_their_changes()
+    {
+        TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = true;
+        try
+        {
+            File.WriteAllText(Path.Combine(_repo.Path, "staged.txt"), "staged");
+            _repo.Run("add", "staged.txt");
+            File.WriteAllText(Path.Combine(_repo.Path, "untracked.txt"), "new");
+            MainWindow window = NewWindow();
+            window.Show();
+            Open(window, _repo.Path);
+            ListBox commits = Find<ListBox>(window, "CommitList");
+
+            List<CommitListItem> items = [.. commits.Items.OfType<CommitListItem>()];
+            items.Select(item => item.Row.Subject).Should()
+                .Equal("Working directory", "Commit index", "second", "first");
+            Find<TextBlock>(window, "StatusText").Text.Should().Be("2 commits");
+
+            commits.SelectedIndex = 0;
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            WaitUntil(() => files.ItemCount == 1);
+            ((CommitFile)files.Items[0]!).Path.Should().Be("untracked.txt");
+            Find<MenuItem>(window, "CherryPickMenuItem").IsEnabled.Should().BeFalse();
+
+            commits.SelectedIndex = 1;
+            WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Path == "staged.txt"));
+            files.SelectedIndex = 0;
+            DiffView diff = Find<DiffView>(window, "CommitDiff");
+            WaitUntil(() => diff.Lines.Any(line => line.Text == "+staged"));
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = false;
+        }
+    }
+
+    [AvaloniaTest]
+    public void Upstreams_diff_tab_hotkeys_blame_a_file_and_go_to_the_parent()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = 0;
+        ListBox files = Find<ListBox>(window, "CommitFilesList");
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+        WaitUntil(() => files.ItemCount > 0);
+        files.SelectedIndex = 0;
+
+        PressIn(files, Key.B, KeyModifiers.None);
+        WaitUntil(() => window.OwnedWindows.OfType<BlameWindow>().Any());
+        window.OwnedWindows.OfType<BlameWindow>().Single().Close();
+
+        PressIn(files, Key.Left, KeyModifiers.Control);
+        ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");
+    }
+
+    [AvaloniaTest]
     public void The_selected_commit_stays_selected_while_the_quick_filter_still_shows_it()
     {
         MainWindow window = NewWindow();
@@ -1097,6 +1155,14 @@ internal sealed class MainWindowTests
         TestAppBuilder.GitConfig.Get(ConfigScope.Global, "user.email").Should().Be("kept@example.com");
         WaitUntil(() => Avalonia.Application.Current!.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Dark);
 
+        // Upstream's dark.css panel and editor backgrounds.
+        Avalonia.Application.Current!.Resources["PanelBackgroundBrush"].Should()
+            .BeAssignableTo<Avalonia.Media.ISolidColorBrush>().Which.Color.Should()
+            .Be(Avalonia.Media.Color.Parse("#323232"));
+        Avalonia.Application.Current!.Resources["EditorBackgroundBrush"].Should()
+            .BeAssignableTo<Avalonia.Media.ISolidColorBrush>().Which.Color.Should()
+            .Be(Avalonia.Media.Color.Parse("#323232"));
+
         // The colors come from upstream's dark.css with its colorblind variation (.RemoteBranch.colorblind).
         object? remoteLabel = RefLabelBrushConverter.Instance.Convert(RefKind.RemoteBranch, typeof(object), null,
             System.Globalization.CultureInfo.InvariantCulture);
@@ -1401,6 +1467,87 @@ internal sealed class MainWindowTests
         menu.Close();
 
         WaitUntil(() => _repo.Run("tag", "--list").Contains("file-new.txt", StringComparison.Ordinal));
+    }
+
+    [AvaloniaTest]
+    public void The_commit_templates_menu_has_the_users_templates_conventional_commits_and_the_message_settings()
+    {
+        TestAppBuilder.Preferences.CommitTemplates =
+            CommitTemplates.Serialize([new CommitTemplate("Mine", "my text", false)]);
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+        _repo.Run("add", "new.txt");
+        string head = _repo.Run("rev-parse", "HEAD");
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        CommitWindow commit = OpenCommitWindow(window);
+        Button button = Find<Button>(commit, "CommitTemplatesButton");
+        MenuFlyout flyout = (MenuFlyout)button.Flyout!;
+        TextBox message = Find<TextBox>(commit, "CommitMessageBox");
+        try
+        {
+            flyout.ShowAt(button);
+            List<MenuItem> items = [.. flyout.Items.OfType<MenuItem>()];
+            items.Select(HeaderText).Should().Equal("Mine", "Conven_tional Commits",
+                "_Edit commit message templates and settings...");
+            items[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            message.Text.Should().Be("my text");
+
+            List<MenuItem> conventional = [.. items[1].Items.OfType<MenuItem>()];
+            conventional.Single(item => HeaderText(item) == "fix").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            message.Text.Should().Be("fix: my text");
+            conventional.Select(HeaderText).Should().Contain(["BREAKING CHANGE", "[skip ci]", "Documentation..."]);
+
+            // The settings window stores upstream's commit validation; a subject over the limit then asks before committing.
+            items[2].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            WaitUntil(() => commit.OwnedWindows.OfType<CommitTemplateSettingsWindow>().Any());
+            CommitTemplateSettingsWindow settings = commit.OwnedWindows.OfType<CommitTemplateSettingsWindow>().Single();
+            Find<NumericUpDown>(settings, "_NO_TRANSLATE_numericMaxFirstLineLength").Value = 5;
+            Find<TextBox>(settings, "_NO_TRANSLATE_textBoxCommitTemplateName").Text = "Renamed";
+            Click(settings, "buttonOk");
+            WaitUntil(() => !commit.OwnedWindows.OfType<CommitTemplateSettingsWindow>().Any());
+            TestAppBuilder.Preferences.CommitValidation.MaxFirstLineLength.Should().Be(5);
+            CommitTemplates.FromSettings(TestAppBuilder.Preferences.CommitTemplates).Single().Name.Should()
+                .Be("Renamed");
+
+            Click(commit, "CommitButton");
+            WaitUntil(() => commit.OwnedWindows.OfType<ConfirmWindow>().Any());
+            ConfirmWindow question = commit.OwnedWindows.OfType<ConfirmWindow>().Single();
+            Find<TextBlock>(question, "MessageText").Text.Should().Be(CommitMessageValidation.FirstLineTooLong);
+            Click(question, "CancelButton");
+            WaitUntil(() => !commit.OwnedWindows.OfType<ConfirmWindow>().Any());
+            _repo.Run("rev-parse", "HEAD").Should().Be(head);
+        }
+        finally
+        {
+            flyout.Hide();
+            TestAppBuilder.Preferences.CommitTemplates = "";
+            TestAppBuilder.Preferences.CommitValidation = new CommitValidationOptions();
+        }
+
+        static string? HeaderText(MenuItem item) => item.Header as string ?? (item.Header as TextBlock)?.Text;
+    }
+
+    [AvaloniaTest]
+    public void A_commit_message_is_formatted_as_typed_with_upstreams_settings()
+    {
+        TestAppBuilder.Preferences.CommitValidation = new CommitValidationOptions(SecondLineMustBeEmpty: true);
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        CommitWindow commit = OpenCommitWindow(window);
+        TextBox message = Find<TextBox>(commit, "CommitMessageBox");
+        try
+        {
+            message.Text = "subject\nbody";
+
+            message.Text.Should().Be("subject\n\n - body");
+        }
+        finally
+        {
+            message.Text = "";
+            TestAppBuilder.Preferences.CommitValidation = new CommitValidationOptions();
+        }
     }
 
     [AvaloniaTest]

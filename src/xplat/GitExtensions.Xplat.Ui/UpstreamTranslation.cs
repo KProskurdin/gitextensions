@@ -79,7 +79,8 @@ public static class UpstreamTranslation
                 continue;
             }
 
-            if ((Find(category, element.Name, TextProperty) ?? Find(category, element.Name, HeaderTextProperty)) is { } text)
+            if ((Find(category, element.Name, TextProperty) ?? Find(category, element.Name, HeaderTextProperty)) is
+                { } text)
             {
                 SetText(element, text);
             }
@@ -90,6 +91,127 @@ public static class UpstreamTranslation
             }
         }
     }
+
+    /// <summary>
+    ///  Translates the texts of <paramref name="root"/> that are upstream's English texts: the windows of the new shell
+    ///  that are not named after an upstream form (the browse window, the settings) show many of upstream's texts, and
+    ///  each gets upstream's translation of that text (from the first category that has it). Access keys are compared
+    ///  without their marks. Lists that show data (commits, files, branches) and text the user types are left alone.
+    /// </summary>
+    public static void ApplyByText(StyledElement root)
+    {
+        if (string.IsNullOrEmpty(AppSettings.CurrentTranslation))
+        {
+            return;
+        }
+
+        IReadOnlyDictionary<string, string> texts = TextsOf(AppSettings.CurrentTranslation);
+        if (texts.Count == 0)
+        {
+            return;
+        }
+
+        if (root is Window { Title: { } windowTitle } window && Translate(windowTitle) is { } title)
+        {
+            window.Title = WithoutMnemonic(title);
+        }
+
+        foreach (StyledElement element in Elements(root, skipDataLists: true))
+        {
+            switch (element)
+            {
+                case TextBox textBox:
+                    if (textBox.PlaceholderText is { } placeholder &&
+                        Translate(placeholder) is { } translatedPlaceholder)
+                    {
+                        textBox.PlaceholderText = WithoutMnemonic(translatedPlaceholder);
+                    }
+
+                    break;
+                case TextBlock { Text: { } text } textBlock when textBlock.Inlines is not { Count: > 0 }:
+                    if (Translate(text) is { } translatedText)
+                    {
+                        textBlock.Text = WithoutMnemonic(translatedText);
+                    }
+
+                    break;
+                case HeaderedContentControl { Header: string header } headered:
+                    if (Translate(header) is { } translatedHeader)
+                    {
+                        headered.Header = WithAccessKey(translatedHeader);
+                    }
+
+                    break;
+                case HeaderedSelectingItemsControl { Header: string menuHeader } menuItem:
+                    if (Translate(menuHeader) is { } translatedMenuHeader)
+                    {
+                        menuItem.Header = WithAccessKey(translatedMenuHeader);
+                    }
+
+                    break;
+                case HeaderedItemsControl { Header: string header } headeredItems:
+                    if (Translate(header) is { } translatedItemsHeader)
+                    {
+                        headeredItems.Header = WithAccessKey(translatedItemsHeader);
+                    }
+
+                    break;
+                case ContentControl { Content: string content } contentControl:
+                    if (Translate(content) is { } translatedContent)
+                    {
+                        contentControl.Content = WithAccessKey(translatedContent);
+                    }
+
+                    break;
+            }
+
+            if (element is Control control && ToolTip.GetTip(control) is string tip &&
+                Translate(tip) is { } translatedTip)
+            {
+                ToolTip.SetTip(control, translatedTip);
+            }
+        }
+
+        return;
+
+        string? Translate(string english)
+            => english.Length > 0 && texts.TryGetValue(Key(english), out string? translated) ? translated : null;
+    }
+
+    private static readonly Dictionary<string, IReadOnlyDictionary<string, string>> _textsByLanguage = [];
+
+    // Upstream's English texts (the xlf sources) and their translations, by the text without its access key mark.
+    private static IReadOnlyDictionary<string, string> TextsOf(string language)
+    {
+        lock (_textsByLanguage)
+        {
+            if (_textsByLanguage.TryGetValue(language, out IReadOnlyDictionary<string, string>? cached))
+            {
+                return cached;
+            }
+
+            Dictionary<string, string> texts = new(StringComparer.Ordinal);
+            foreach (TranslationFile file in Translator.GetTranslation(language).Values)
+            {
+                foreach (TranslationItem item in file.TranslationCategories.SelectMany(category =>
+                             category.Body.TranslationItems))
+                {
+                    if (!string.IsNullOrEmpty(item.Source) && !string.IsNullOrEmpty(item.Value)
+                                                           && item.Property is TextProperty or HeaderTextProperty
+                                                               or ToolTipTextProperty)
+                    {
+                        texts.TryAdd(Key(item.Source), item.Value);
+                    }
+                }
+            }
+
+            _textsByLanguage[language] = texts;
+            return texts;
+        }
+    }
+
+    // Upstream's "&Open" and the shell's "_Open" are the same text.
+    private static string Key(string text) => text.Replace("&", "").Replace("_", "").Trim();
 
     /// <summary>
     ///  Upstream's WinForms text with its mnemonic ("&amp;Open") as an Avalonia access key ("_Open").
@@ -103,13 +225,20 @@ public static class UpstreamTranslation
     public static string WithoutMnemonic(string text)
         => ConvertMnemonic(text, accessKey: false);
 
-    private static IEnumerable<StyledElement> Elements(StyledElement root)
+    // With skipDataLists, the items of a list filled from data (commits, files, branches) are not visited: their texts are
+    // data, not the window's. Menus are always visited.
+    private static IEnumerable<StyledElement> Elements(StyledElement root, bool skipDataLists = false)
     {
         Stack<StyledElement> pending = new([root]);
         while (pending.Count > 0)
         {
             StyledElement element = pending.Pop();
             yield return element;
+            if (skipDataLists && element is ItemsControl { ItemsSource: not null } and not (MenuItem or Menu or ContextMenu))
+            {
+                continue;
+            }
+
             foreach (ILogical child in element.GetLogicalChildren())
             {
                 if (child is StyledElement styled)
@@ -159,6 +288,9 @@ public static class UpstreamTranslation
                 break;
             case HeaderedItemsControl headeredItems:
                 headeredItems.Header = WithAccessKey(text);
+                break;
+            case HeaderedSelectingItemsControl menuItem:
+                menuItem.Header = WithAccessKey(text);
                 break;
             case ContentControl content when content.Content is null or string:
                 content.Content = WithAccessKey(text);

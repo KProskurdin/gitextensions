@@ -26,6 +26,11 @@ public sealed record CommitListItem(CommitRow Row, GraphRowRef Graph)
     ///  The commit's build status, shared by every item of the same commit.
     /// </summary>
     public BuildStatusCell Build { get; init; } = new();
+
+    /// <summary>
+    ///  Text after the subject: the number of changed files of an artificial row, as upstream counts them; otherwise empty.
+    /// </summary>
+    public string Badge { get; init; } = "";
 }
 
 /// <summary>
@@ -43,6 +48,8 @@ public sealed class CommitListViewModel : ObservableObject
     private int _detailsVersion;
     private IReadOnlyList<CommitRow> _rows = [];
     private CommitGraph? _graph;
+    private bool _drawNonRelativesGray = true;
+    private Dictionary<string, string> _artificialBadges = new(StringComparer.Ordinal);
     private IReadOnlyList<CommitRow>? _graphRows;
     private IReadOnlyList<CommitListItem> _visibleRows = [];
     private string _filterText = "";
@@ -177,6 +184,96 @@ public sealed class CommitListViewModel : ObservableObject
 
     public void ClearError() => ErrorMessage = null;
 
+    /// <summary>
+    ///  Upstream's counts of the artificial rows (<c>ArtificialCommitChangeCount</c>): the files changed in the working
+    ///  directory and in the index; null hides them.
+    /// </summary>
+    public void SetArtificialChangeCounts(int? workTree, int? index)
+    {
+        Dictionary<string, string> badges = new(StringComparer.Ordinal);
+        if (workTree is { } workTreeCount)
+        {
+            badges[ArtificialCommits.WorkTreeHash] = ChangeCount(workTreeCount);
+        }
+
+        if (index is { } indexCount)
+        {
+            badges[ArtificialCommits.IndexHash] = ChangeCount(indexCount);
+        }
+
+        if (badges.Count == _artificialBadges.Count && badges.All(badge =>
+                _artificialBadges.TryGetValue(badge.Key, out string? shown) && shown == badge.Value))
+        {
+            return;
+        }
+
+        _artificialBadges = badges;
+        if (_rows.Any(row => ArtificialCommits.IsArtificial(row.Hash)))
+        {
+            RefreshVisibleRows();
+        }
+
+        static string ChangeCount(int count) => count == 1 ? "(1 change)" : $"({count} changes)";
+    }
+
+    /// <summary>
+    ///  Raised when the graph is to be drawn again with the same rows: its draw style or highlight changed.
+    /// </summary>
+    public event EventHandler? GraphAppearanceChanged;
+
+    /// <summary>
+    ///  Upstream's "Draw non relatives gray" (<c>revisiongraphdrawnonrelativesgray</c>): commits that are not ancestors of
+    ///  the checked-out one are drawn gray. A highlighted branch lasts until the next read, as upstream's.
+    /// </summary>
+    public bool DrawNonRelativesGray
+    {
+        get => _drawNonRelativesGray;
+        set
+        {
+            if (SetProperty(ref _drawNonRelativesGray, value) && _graph is { } graph)
+            {
+                graph.DrawStyle = BaseDrawStyle;
+                GraphAppearanceChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    private GraphDrawStyle BaseDrawStyle =>
+        _drawNonRelativesGray ? GraphDrawStyle.DrawNonRelativesGray : GraphDrawStyle.Normal;
+
+    /// <summary>
+    ///  Upstream's "Highlight selected branch (until refresh)": the ancestry of <paramref name="row"/> in color, the rest gray.
+    /// </summary>
+    public void HighlightBranch(CommitRow row)
+    {
+        if (_graph is { } graph)
+        {
+            graph.HighlightBranch(row.Hash);
+            GraphAppearanceChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    ///  Upstream's hover highlight while a ref label of <paramref name="item"/> is under the mouse: its ancestry in color, the
+    ///  rest gray; null ends it.
+    /// </summary>
+    public void SetHoverHighlight(CommitListItem? item)
+    {
+        if (_graph is not { } graph || !ReferenceEquals(item?.Graph.Graph ?? graph, graph))
+        {
+            return;
+        }
+
+        IReadOnlySet<ObjectId>? highlighted = item is null ? null : graph.AncestryOf(item.Graph.Index);
+        if (graph.HoverHighlighted is null && highlighted is null)
+        {
+            return;
+        }
+
+        graph.HoverHighlighted = highlighted;
+        GraphAppearanceChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     // The list shows the commits in the graph's order, as upstream's grid does. The graph is built once per read; the quick
     // filter only hides rows, which keep their place in the graph.
     private void RefreshVisibleRows()
@@ -184,6 +281,7 @@ public sealed class CommitListViewModel : ObservableObject
         if (_graph is null || !ReferenceEquals(_graphRows, _rows))
         {
             _graph = CommitGraph.Build(_rows);
+            _graph.DrawStyle = BaseDrawStyle;
             _graphRows = _rows;
         }
 
@@ -193,7 +291,10 @@ public sealed class CommitListViewModel : ObservableObject
             CommitRow row = _graph.OrderedRows[i];
             if (_filterText.Length == 0 || Matches(row, _filterText))
             {
-                items.Add(new CommitListItem(row, _graph.RowAt(i)) { Build = BuildStatusOf(row.Hash) });
+                items.Add(new CommitListItem(row, _graph.RowAt(i))
+                {
+                    Build = BuildStatusOf(row.Hash), Badge = _artificialBadges.GetValueOrDefault(row.Hash, ""),
+                });
             }
         }
 
@@ -282,7 +383,7 @@ public sealed class CommitListViewModel : ObservableObject
     /// </summary>
     public async Task LoadMoreAsync()
     {
-        if (_repositoryPath is not { } repositoryPath)
+        if (_repositoryPath is not { } repositoryPath || Remaining(CommitCount(_rows)) <= 0)
         {
             return;
         }
@@ -294,7 +395,10 @@ public sealed class CommitListViewModel : ObservableObject
 
         try
         {
-            CommitPage page = await _history.LoadPageAsync(repositoryPath, PageSize, _filter, skip: loaded.Count);
+            CommitPage page =
+                await _history.LoadPageAsync(repositoryPath, Math.Min(PageSize, Remaining(CommitCount(loaded))),
+                    _filter,
+                    skip: CommitCount(loaded));
             if (version != _loadVersion)
             {
                 return;
@@ -310,14 +414,14 @@ public sealed class CommitListViewModel : ObservableObject
 
             _pages++;
             Rows = rows;
-            HasMore = page.HasMore;
-            Status = PageStatus(rows.Count, page.HasMore);
+            HasMore = page.HasMore && Remaining(CommitCount(rows)) > 0;
+            Status = PageStatus(CommitCount(rows), page.HasMore);
         }
         catch (Exception ex)
         {
             if (version == _loadVersion)
             {
-                Status = PageStatus(loaded.Count, HasMore);
+                Status = PageStatus(CommitCount(loaded), HasMore);
                 ErrorMessage = ex.Message;
             }
         }
@@ -487,6 +591,7 @@ public sealed class CommitListViewModel : ObservableObject
             return false;
         }
 
+        graph.DrawStyle = BaseDrawStyle;
         _graph = graph;
         _graphRows = rows;
         return true;
@@ -501,7 +606,8 @@ public sealed class CommitListViewModel : ObservableObject
 
         try
         {
-            CommitPage page = await _history.LoadPageAsync(repositoryPath, pages * PageSize, _filter);
+            CommitPage page =
+                await _history.LoadPageAsync(repositoryPath, Math.Min(pages * PageSize, Remaining(0)), _filter);
             if (version != _loadVersion)
             {
                 return;
@@ -516,8 +622,8 @@ public sealed class CommitListViewModel : ObservableObject
             _pages = pages;
             RepositoryName = Path.GetFileName(repositoryPath.TrimEnd('/', '\\'));
             Rows = page.Rows;
-            HasMore = page.HasMore;
-            Status = PageStatus(page.Rows.Count, page.HasMore);
+            HasMore = page.HasMore && Remaining(CommitCount(page.Rows)) > 0;
+            Status = PageStatus(CommitCount(page.Rows), page.HasMore);
         }
         catch (Exception ex)
         {
@@ -542,6 +648,18 @@ public sealed class CommitListViewModel : ObservableObject
             }
         }
     }
+
+    /// <summary>
+    ///  Upstream's <c>maxrevisiongraphcommits</c> ("Limit number of commits to be loaded"): no more commits are read than
+    ///  this; 0 is no limit.
+    /// </summary>
+    public int MaxCommits { get; set; }
+
+    private int Remaining(int loaded) => MaxCommits > 0 ? MaxCommits - loaded : int.MaxValue;
+
+    // The commits git listed, without the artificial working directory and index rows.
+    private static int CommitCount(IReadOnlyList<CommitRow> rows) =>
+        rows.Count(row => !ArtificialCommits.IsArtificial(row.Hash));
 
     private string PageStatus(int rows, bool hasMore)
     {

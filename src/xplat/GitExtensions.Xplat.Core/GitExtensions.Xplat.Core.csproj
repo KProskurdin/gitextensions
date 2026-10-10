@@ -28,6 +28,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's syntax highlighting definitions (ICSharpCode.TextEditor's .xshd files), read by Diff/SyntaxHighlighting.cs. -->
+    <EmbeddedResource Include="..\..\..\externals\ICSharpCode.TextEditor\Project\Resources\*.xshd"
+                      LogicalName="Xshd.%(Filename)%(Extension)" Link="Upstream\Xshd\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Upstream's word wrapping of commit message lines (no WinForms code), used as upstream's commit window uses it. -->
     <Compile Include="..\..\app\GitUI\CommandsDialogs\CommitDialog\WordWrapper.cs" Link="Upstream\CommitDialog\WordWrapper.cs" />
   </ItemGroup>
@@ -51,6 +57,8 @@
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\LaneInfo.cs" Link="Upstream\Graph\LaneInfo.cs" />
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\LaneSharing.cs" Link="Upstream\Graph\LaneSharing.cs" />
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\LaneNodeLocator.cs" Link="Upstream\Graph\LaneNodeLocator.cs" />
+    <!-- The branch a lane belongs to, for the lane tooltips (CommitHistory/LaneInfoProvider.cs). -->
+    <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\BranchFinder.cs" Link="Upstream\Graph\BranchFinder.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -131,6 +131,32 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
+    public void Plugin_settings_are_edited_at_the_chosen_settings_source()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        WaitForPluginItem(window);
+
+        Click(window, "PluginSettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        ComboBox levels = Find<ComboBox>(settings, "PluginLevelBox");
+        levels.Items.OfType<PluginLevelOption>().Select(option => option.Level).Should().Equal(
+            SettingLevel.Effective, SettingLevel.Local, SettingLevel.Distributed, SettingLevel.Global);
+        levels.SelectedItem = levels.Items.OfType<PluginLevelOption>()
+            .Single(option => option.Level == SettingLevel.Local);
+        Find<StackPanel>(settings, "PluginSettingsPanel").GetLogicalDescendants().OfType<TextBox>().First().Text =
+            "local only";
+        Click(settings, "SaveButton");
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+        AppServices.PluginSettings.Open(_repo.Path, SettingLevel.Local)
+            .GetValue($"{RecordingPlugin.PluginId}.Arguments").Should().Be("local only");
+        TestAppBuilder.PluginSettings.Values.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
     public void The_plugins_tab_lists_plugin_files_that_could_not_be_loaded_with_the_reason()
     {
         AppServices.Plugins = new FixedPluginCatalog(_plugin)

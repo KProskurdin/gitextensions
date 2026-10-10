@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using GitCommands.Settings;
 using GitExtensions.Xplat.Core.Diff;
@@ -15,6 +17,11 @@ public partial class DiffView : UserControl
 {
     private readonly DiffViewModel _viewModel = new(new GitDiffService());
     private DiffRequest? _request;
+
+    // The file whose syntax colors the lines (upstream's FileViewer picks the highlighting by the file name), and whether the
+    // lines are a diff (a first column of +, - or space) or a file's text.
+    private string? _syntaxPath;
+    private bool _textIsDiff = true;
     private IReadOnlyList<DiffLine>? _text;
     private DiffOptions _options;
     private bool _showingOptions;
@@ -81,6 +88,8 @@ public partial class DiffView : UserControl
     {
         _request = new DiffRequest(repositoryPath, commitHash, filePath, staged);
         _text = null;
+        _syntaxPath = filePath;
+        _textIsDiff = true;
         OptionsPanel.IsVisible = true;
         TitleText.Text = title;
         return LoadAsync(_request);
@@ -96,6 +105,8 @@ public partial class DiffView : UserControl
         TitleText.Text = title;
         OptionsPanel.IsVisible = false;
         ShowError(content is null ? "Binary file, not shown." : null);
+        _syntaxPath = title;
+        _textIsDiff = false;
         _text = content is null ? [] : DiffParser.ParseText(content);
         ShowLines();
     }
@@ -108,6 +119,8 @@ public partial class DiffView : UserControl
         _request = null;
         TitleText.Text = title;
         OptionsPanel.IsVisible = false;
+        _syntaxPath = title;
+        _textIsDiff = true;
         ShowError(null);
         _text = DiffParser.Parse(patch);
         ShowLines();
@@ -182,7 +195,7 @@ public partial class DiffView : UserControl
     {
         ShowError(null);
         return _viewModel.LoadAsync(request.RepositoryPath, request.CommitHash, request.FilePath, request.Staged,
-            _options);
+            _options with { Histogram = AppServices.Preferences.UseHistogramDiffAlgorithm });
     }
 
     private void OnDiffChanged(string? propertyName)
@@ -206,17 +219,48 @@ public partial class DiffView : UserControl
     // Brushes follow the theme, so a theme switch rebuilds the items.
     private void ShowLines()
     {
+        SyntaxHighlighter? highlighter = _syntaxPath is { } path && SyntaxDefinitions.ForFile(path) is { } syntax
+            ? new SyntaxHighlighter(syntax)
+            : null;
         Lines =
         [
             .. (_text ?? _viewModel.Lines).Select(line => new DiffLineItem(line.Text,
                 ThemeBrushes.ForegroundFor(line.Kind), ThemeBrushes.BackgroundFor(line.Kind),
                 line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
-                line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? ""))
+                line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "") { Runs = Highlight(highlighter, line), })
         ];
         DiffList.ItemsSource = Lines;
     }
 
     private void OnThemeChanged(object? sender, EventArgs e) => ShowLines();
+
+    // The syntax colors of a line's code (after the +, - or space of a diff line); a hunk starts the highlighting again, as
+    // its first line may be in the middle of a comment.
+    private IReadOnlyList<DiffTextRun>? Highlight(SyntaxHighlighter? highlighter, DiffLine line)
+    {
+        if (highlighter is null || line.Kind == DiffLineKind.Header)
+        {
+            return null;
+        }
+
+        if (line.Kind == DiffLineKind.Hunk)
+        {
+            highlighter.Reset();
+            return null;
+        }
+
+        int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
+        List<DiffTextRun> runs = prefix > 0 ? [new DiffTextRun(line.Text[..prefix], null, false, false)] : [];
+        string code = line.Text[prefix..];
+        foreach (SyntaxRun run in highlighter.HighlightLine(code))
+        {
+            runs.Add(new DiffTextRun(code.Substring(run.Start, run.Length),
+                run.Style?.Color is { } color ? ThemeBrushes.Syntax(color) : null,
+                run.Style?.Bold == true, run.Style?.Italic == true));
+        }
+
+        return runs;
+    }
 
     // Upstream FileViewer's hotkeys, while the diff has the focus.
     private void OnDiffKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
@@ -335,4 +379,71 @@ public sealed record DiffLineItem(
     IBrush Foreground,
     IBrush? Background = null,
     string OldNumber = "",
-    string NewNumber = "");
+    string NewNumber = "")
+{
+    /// <summary>
+    ///  The line in parts with their syntax colors, or null when the file has no syntax definition.
+    /// </summary>
+    public IReadOnlyList<DiffTextRun>? Runs { get; init; }
+}
+
+/// <summary>
+///  A part of a line with its syntax color (null for the line's color), bold and italic.
+/// </summary>
+public sealed record DiffTextRun(string Text, IBrush? Foreground, bool Bold, bool Italic);
+
+/// <summary>
+///  A text block that shows <see cref="Runs"/> in their colors when there are any, otherwise its text.
+/// </summary>
+public sealed class SyntaxTextBlock : TextBlock
+{
+    public static readonly StyledProperty<IReadOnlyList<DiffTextRun>?> RunsProperty =
+        AvaloniaProperty.Register<SyntaxTextBlock, IReadOnlyList<DiffTextRun>?>(nameof(Runs));
+
+    public IReadOnlyList<DiffTextRun>? Runs
+    {
+        get => GetValue(RunsProperty);
+        set => SetValue(RunsProperty, value);
+    }
+
+    protected override Type StyleKeyOverride => typeof(TextBlock);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != RunsProperty)
+        {
+            return;
+        }
+
+        if (Runs is not { } runs)
+        {
+            Inlines = null;
+            return;
+        }
+
+        InlineCollection inlines = [];
+        foreach (DiffTextRun run in runs)
+        {
+            Run inline = new(run.Text);
+            if (run.Foreground is not null)
+            {
+                inline.Foreground = run.Foreground;
+            }
+
+            if (run.Bold)
+            {
+                inline.FontWeight = FontWeight.Bold;
+            }
+
+            if (run.Italic)
+            {
+                inline.FontStyle = FontStyle.Italic;
+            }
+
+            inlines.Add(inline);
+        }
+
+        Inlines = inlines;
+    }
+}

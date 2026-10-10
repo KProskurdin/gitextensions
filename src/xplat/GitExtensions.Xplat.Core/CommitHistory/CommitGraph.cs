@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using GitCommands;
+using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 using GitUI.UserControls.RevisionGrid.Graph;
 using GitUIPluginInterfaces;
@@ -35,6 +37,54 @@ public sealed class CommitGraph
 
     internal RevisionGraphConfig Config => _graph.Config;
 
+    /// <summary>
+    ///  How lanes are colored: upstream's <c>RevisionGraphDrawStyle</c>.
+    /// </summary>
+    public GraphDrawStyle DrawStyle { get; set; } = GraphDrawStyle.DrawNonRelativesGray;
+
+    /// <summary>
+    ///  The commits shown in their colors while a ref label is hovered (upstream's hover highlight), or null.
+    /// </summary>
+    public IReadOnlySet<ObjectId>? HoverHighlighted { get; set; }
+
+    /// <summary>
+    ///  Upstream's "Highlight selected branch": the ancestry of <paramref name="hash"/> becomes the relatives, drawn in their
+    ///  colors while the rest is gray, until the graph is read again.
+    /// </summary>
+    public void HighlightBranch(string hash)
+    {
+        _graph.HighlightBranch(IdOf(hash));
+        DrawStyle = GraphDrawStyle.HighlightSelected;
+    }
+
+    /// <summary>
+    ///  The ancestry of the row at <paramref name="index"/> among the loaded commits, as upstream's hover highlight walks it.
+    /// </summary>
+    public IReadOnlySet<ObjectId> AncestryOf(int index)
+    {
+        HashSet<ObjectId> ancestry = [];
+        if (_graph.GetNodeForRow(index) is not { } start)
+        {
+            return ancestry;
+        }
+
+        Stack<RevisionGraphRevision> pending = new([start]);
+        while (pending.TryPop(out RevisionGraphRevision? revision))
+        {
+            if (!ancestry.Add(revision.Objectid))
+            {
+                continue;
+            }
+
+            foreach (RevisionGraphRevision parent in revision.Parents)
+            {
+                pending.Push(parent);
+            }
+        }
+
+        return ancestry;
+    }
+
     public static CommitGraph Build(IReadOnlyList<CommitRow> rows)
     {
         RevisionGraph graph = new();
@@ -52,7 +102,15 @@ public sealed class CommitGraph
                 continue;
             }
 
-            graph.Add(new GitRevision(id) { ParentIds = [.. (row.ParentHashes ?? []).Select(IdOf)] });
+            // The message and refs are what the lane tooltips show (upstream's LaneInfoProvider and BranchFinder).
+            graph.Add(new GitRevision(id)
+            {
+                ParentIds = [.. (row.ParentHashes ?? []).Select(IdOf)],
+                Subject = row.Subject,
+                Body = row.Body,
+                HasMultiLineMessage = row.HasMultiLineMessage,
+                Refs = [.. (row.Labels ?? []).Select(label => RefOf(id, label)).OfType<IGitRef>()],
+            });
         }
 
         // The page is all that is read. As in upstream's renderer, a lane to a parent beyond it is not drawn.
@@ -92,6 +150,44 @@ public sealed class CommitGraph
     }
 
     internal IRevisionGraphRow? SegmentsFor(int index) => _graph.GetSegmentsForRow(index);
+
+    /// <summary>
+    ///  The lanes the row at <paramref name="index"/> uses, at most upstream's limit.
+    /// </summary>
+    public int LaneCountAt(int index)
+        => Math.Min(_graph.GetSegmentsForRow(index)?.GetLaneCount() ?? 0, RevisionGraph.MaxLanes);
+
+    /// <summary>
+    ///  How many lanes the graph column is wide: as upstream's column, the most lanes of the rows on screen, which the view
+    ///  sets as it scrolls; <see cref="LaneCount"/> (the whole page) until then.
+    /// </summary>
+    public int ShownLaneCount
+    {
+        get => _shownLaneCount ?? LaneCount;
+        set => _shownLaneCount = value;
+    }
+
+    private int? _shownLaneCount;
+
+    /// <summary>
+    ///  Upstream's lane tooltip for <paramref name="lane"/> of the row at <paramref name="index"/>: the commit the lane comes
+    ///  from, its branch and message; empty where there is no lane.
+    /// </summary>
+    public string LaneInfo(int index, int lane)
+        => new LaneInfoProvider(new LaneNodeLocator(_graph), new GitRevisionSummaryBuilder()).GetLaneInfo(index, lane);
+
+    // The labels as upstream's refs, which BranchFinder reads by kind (local or remote branch); HEAD and bisect marks are not
+    // refs there. The module is not used for these.
+    private static GitRef? RefOf(ObjectId id, RefLabel label)
+        => label.Kind switch
+        {
+            RefKind.Branch => new GitRef(_refModule.Value, id, GitRefName.RefsHeadsPrefix + label.Name),
+            RefKind.RemoteBranch => new GitRef(_refModule.Value, id, GitRefName.RefsRemotesPrefix + label.Name),
+            RefKind.Tag => new GitRef(_refModule.Value, id, GitRefName.RefsTagsPrefix + label.Name),
+            _ => null,
+        };
+
+    private static readonly Lazy<GitModule> _refModule = new(() => Repository.GitModules.Open(""));
 
     // git gives full hashes; other text (a test's short names) gets a stable id of its own, so the graph still links rows.
     private static ObjectId IdOf(string hash)

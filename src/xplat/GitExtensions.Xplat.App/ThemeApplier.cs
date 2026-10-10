@@ -51,7 +51,32 @@ internal static class ThemeApplier
         LastError = colors.Error;
         ThemeBrushes.Use(colors);
         app.RequestedThemeVariant = colors.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
+
+        // Upstream's panel, editor, line number and selection colors: windows and panels, the diff and file views, their
+        // line numbers, and the selected lines of a diff.
+        SetBrush(app, PanelBackgroundKey, colors.Get(AppColor.PanelBackground));
+        SetBrush(app, EditorBackgroundKey, colors.Get(AppColor.EditorBackground));
+        SetBrush(app, LineNumberBackgroundKey, colors.Get(AppColor.LineNumberBackground));
+        SetBrush(app, SelectionKey, colors.Get(AppColor.Selection));
         Changed?.Invoke(null, EventArgs.Empty);
+    }
+
+    public const string PanelBackgroundKey = "PanelBackgroundBrush";
+    public const string EditorBackgroundKey = "EditorBackgroundBrush";
+    public const string LineNumberBackgroundKey = "LineNumberBackgroundBrush";
+    public const string SelectionKey = "SelectionBackgroundBrush";
+
+    // A slot the theme leaves empty keeps Fluent's color for the variant.
+    private static void SetBrush(Application app, string key, System.Drawing.Color color)
+    {
+        if (color.IsEmpty)
+        {
+            app.Resources.Remove(key);
+            return;
+        }
+
+        app.Resources[key] = new Avalonia.Media.SolidColorBrush(
+            Avalonia.Media.Color.FromArgb(color.A, color.R, color.G, color.B)).ToImmutable();
     }
 
     private static bool SystemIsDark(Application app)

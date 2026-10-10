@@ -130,6 +130,71 @@ internal sealed class GeneralSettingsTests
         WaitUntil(() => Find<MenuItem>(window, "ShowRelativeDateMenuItem").IsChecked == false);
     }
 
+    [AvaloniaTest]
+    public void The_general_page_saves_upstreams_behaviour_and_performance_settings()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Click(window, "SettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        WaitUntil(() => settings.IsGitConfigLoaded);
+        try
+        {
+            Find<CheckBox>(settings, "UpdateSubmodulesCheck").IsChecked.Should().BeNull("upstream asks by default");
+            Find<CheckBox>(settings, "CommitsLimitCheck").IsChecked.Should().BeTrue();
+            ComboBox pullActions = Find<ComboBox>(settings, "DefaultPullActionBox");
+            pullActions.SelectedItem!.ToString().Should().Be("Pull - merge");
+
+            Find<CheckBox>(settings, "UseHistogramDiffCheck").IsChecked = true;
+            Find<CheckBox>(settings, "UpdateSubmodulesCheck").IsChecked = false;
+            Find<CheckBox>(settings, "FollowRenamesExactCheck").IsChecked = true;
+            Find<CheckBox>(settings, "ShowStashCountCheck").IsChecked = true;
+            Find<CheckBox>(settings, "CommitsLimitCheck").IsChecked = false;
+            pullActions.SelectedItem = pullActions.Items.OfType<PullActionOption>()
+                .Single(option => option.Action == GitExtensions.Extensibility.Git.GitPullAction.Rebase);
+            Click(settings, "SaveButton");
+            WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+            TestAppBuilder.Preferences.UseHistogramDiffAlgorithm.Should().BeTrue();
+            TestAppBuilder.Preferences.UpdateSubmodulesOnCheckout.Should().BeFalse();
+            TestAppBuilder.Preferences.FileHistory.ExactRenamesOnly.Should().BeTrue();
+            TestAppBuilder.Preferences.ShowStashCount.Should().BeTrue();
+            TestAppBuilder.Preferences.MaxRevisionGraphCommits.Should().Be(0, "an unchecked limit is stored as none");
+            TestAppBuilder.Preferences.DefaultPullAction.Should()
+                .Be(GitExtensions.Extensibility.Git.GitPullAction.Rebase);
+            // The Rebase box shows the default action once the window has applied the settings.
+            WaitUntil(() => Find<CheckBox>(window, "RebaseOnPullCheck").IsChecked == true);
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.UseHistogramDiffAlgorithm = false;
+            TestAppBuilder.Preferences.UpdateSubmodulesOnCheckout = null;
+            TestAppBuilder.Preferences.FileHistory = new FileHistoryOptions();
+            TestAppBuilder.Preferences.ShowStashCount = false;
+            TestAppBuilder.Preferences.MaxRevisionGraphCommits = 100000;
+            TestAppBuilder.Preferences.DefaultPullAction = GitExtensions.Extensibility.Git.GitPullAction.Merge;
+        }
+    }
+
+    [AvaloniaTest]
+    public void Typing_into_the_grid_selects_the_next_matching_commit_as_upstreams_quick_search()
+    {
+        MainWindow window = OpenWindow();
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = 0;
+        commits.Focus();
+
+        commits.RaiseEvent(new Avalonia.Input.TextInputEventArgs
+        {
+            RoutedEvent = Avalonia.Input.InputElement.TextInputEvent, Text = "fir", Source = commits,
+        });
+
+        ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");
+        Find<TextBlock>(window, "QuickSearchText").Text.Should().Be("Searching for: fir");
+        Find<Border>(window, "QuickSearchPanel").IsVisible.Should().BeTrue();
+    }
+
     private static void Reset()
     {
         TestAppBuilder.Preferences.RelativeDate = true;

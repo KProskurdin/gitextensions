@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using GitCommands.Settings;
 using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
@@ -24,6 +25,10 @@ public partial class MainWindow
     private BuildServerWatcher? _buildWatcher;
     private string? _buildServerType;
     private string? _buildStatusRepository;
+
+    // Upstream's BuildServerSettings.ShowBuildResultPage of the open repository, and the build the report tab follows.
+    private bool _showBuildReport;
+    private BuildStatusCell? _reportedBuild;
 
     /// <summary>
     ///  The build server whose results the grid shows, or null.
@@ -49,6 +54,8 @@ public partial class MainWindow
             ShowBuildStatusColumn();
         };
         OpenBuildReportMenuItem.Click += (_, _) => OpenBuildLink(SelectedBuildStatus()?.Url);
+        OpenBuildReportLink.Click += (_, _) => OpenBuildLink(_reportedBuild?.Url);
+        CommitList.SelectionChanged += (_, _) => FollowSelectedBuild();
         OpenPullRequestPageMenuItem.Click += (_, _) => OpenBuildLink(SelectedBuildStatus()?.PullRequestUrl);
         CommitContextMenu.Opening += (_, _) =>
         {
@@ -118,10 +125,14 @@ public partial class MainWindow
         try
         {
             string? type = await watcher.LaunchAsync();
+            bool showReport = await Task.Run(() =>
+                BuildServerSettings.ShowBuildResultPage.ValueOrDefault(AppServices.RevisionLinks.Open(path)));
             if (_buildWatcher == watcher)
             {
                 _buildServerType = type;
+                _showBuildReport = type is not null && showReport;
                 ShowBuildStatusColumn();
+                ShowBuildReportTab();
             }
         }
         catch (Exception ex)
@@ -135,12 +146,45 @@ public partial class MainWindow
         _buildWatcher?.Dispose();
         _buildWatcher = null;
         _buildServerType = null;
+        _showBuildReport = false;
         ShowBuildStatusColumn();
+        ShowBuildReportTab();
+    }
+
+    // The report tab follows the selected commit's build, which a later poll may give or change.
+    private void FollowSelectedBuild()
+    {
+        _reportedBuild?.PropertyChanged -= OnReportedBuildChanged;
+        _reportedBuild = SelectedBuildStatus();
+        _reportedBuild?.PropertyChanged += OnReportedBuildChanged;
+        ShowBuildReportTab();
+    }
+
+    private void OnReportedBuildChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BuildStatusCell.Url))
+        {
+            ShowBuildReportTab();
+        }
+    }
+
+    // Upstream's FillBuildReport: the tab shows while the page is on and the selected commit's build has a report.
+    private void ShowBuildReportTab()
+    {
+        bool show = _showBuildReport && !string.IsNullOrEmpty(_reportedBuild?.Url);
+        if (!show && DetailTabs.SelectedItem == BuildReportTab)
+        {
+            DetailTabs.SelectedItem = CommitInfoTab;
+        }
+
+        BuildReportTab.IsVisible = show;
+        ToolTip.SetTip(OpenBuildReportLink, show ? _reportedBuild!.Url : null);
     }
 
     // Asked on the adapter's thread; the window shows on the UI thread and the answer comes back when it closes.
     private IBuildServerCredentials? AskBuildServerCredentials(string uniqueKey, IBuildServerCredentials credentials)
-        => ModalWindow.Show(() => new BuildServerCredentialsWindow(uniqueKey, credentials), new WindowOwner(this)).Credentials;
+        => ModalWindow.Show(() => new BuildServerCredentialsWindow(uniqueKey, credentials), new WindowOwner(this))
+            .Credentials;
 
     private BuildStatusCell? SelectedBuildStatus()
         => (CommitList.SelectedItem as CommitListItem)?.Build;

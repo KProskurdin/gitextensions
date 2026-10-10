@@ -182,6 +182,61 @@ internal sealed class PluginTests
         editor.Title.Should().Be("Sample");
     }
 
+    [Test]
+    public void A_credentials_setting_is_edited_where_upstream_edits_it()
+    {
+        CredentialsPlugin plugin = new();
+
+        // Only reads: the repository's shared level has no credentials, and elsewhere a new name has none stored.
+        PluginSettingRow row = RowAt(SettingLevel.Distributed);
+        row.Kind.Should().Be(PluginSettingKind.Credentials);
+        row.IsEditable.Should().BeFalse();
+        if (!OperatingSystem.IsWindows())
+        {
+            row = RowAt(SettingLevel.Global);
+            row.IsEditable.Should().BeFalse();
+            row.NotEditableReason.Should().Be(PluginSettingRow.CredentialsNeedWindows);
+            return;
+        }
+
+        row = RowAt(SettingLevel.Global);
+        row.IsEditable.Should().BeTrue();
+        row.Text.Should().BeEmpty();
+        return;
+
+        PluginSettingRow RowAt(SettingLevel level)
+            => new PluginSettingsEditor(plugin, new InMemorySettingsSource(level)).Rows[0];
+    }
+
+    private sealed class CredentialsPlugin : GitPluginBase
+    {
+        private readonly CredentialsSetting _login = new($"xplat-test-{Guid.NewGuid():N}", "Login", () => "/work/repo");
+
+        public CredentialsPlugin()
+            : base(hasSettings: true)
+        {
+            Id = Guid.NewGuid();
+            Name = "Credentials";
+            Description = Name;
+        }
+
+        public override IEnumerable<ISetting> GetSettings() => [_login];
+
+        public override bool Execute(GitUIEventArgs args) => false;
+    }
+
+    [Test]
+    public void The_in_memory_store_keeps_each_repository_level_apart()
+    {
+        InMemorySettingsSource global = new();
+        InMemoryPluginSettingsStore store = new(global);
+
+        store.Open("/repo", SettingLevel.Effective).Should().BeSameAs(global);
+        store.Open(null, SettingLevel.Local).Should().BeSameAs(global);
+        store.Open("/repo", SettingLevel.Local).SettingLevel.Should().Be(SettingLevel.Local);
+        store.Open("/repo", SettingLevel.Local).Should().BeSameAs(store.Open("/repo", SettingLevel.Local));
+    }
+
     private sealed class SamplePlugin : GitPluginBase
     {
         private readonly StringSetting _arguments = new("Arguments", "fetch --all");

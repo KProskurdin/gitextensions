@@ -44,6 +44,28 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
+    public void LoadFileHistory_should_follow_a_rename_unless_turned_off()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "old.txt"), "one\ntwo\nthree\nfour\n");
+        _repo.Run("add", "old.txt");
+        _repo.Run("commit", "-q", "-m", "add old");
+        _repo.Run("mv", "old.txt", "new.txt");
+        _repo.Run("commit", "-q", "-m", "rename");
+        File.AppendAllText(Path.Combine(_repo.Path, "new.txt"), "five\n");
+        _repo.Run("commit", "-q", "-am", "change new");
+        string first = _repo.Run("rev-parse", "HEAD~2").Trim();
+
+        CommitPage followed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
+            .LoadFileHistoryAsync(_repo.Path, "HEAD", "new.txt", limit: 10).GetAwaiter().GetResult();
+        CommitPage notFollowed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions(FollowRenames: false))
+            .LoadFileHistoryAsync(_repo.Path, "HEAD", "new.txt", limit: 10).GetAwaiter().GetResult();
+
+        followed.Rows.Select(row => row.Subject).Should().Equal("change new", "rename", "add old");
+        followed.FilePaths![first].Should().Be("old.txt");
+        notFollowed.Rows.Select(row => row.Subject).Should().Equal("change new", "rename");
+    }
+
+    [AvaloniaTest]
     public void LoadPage_should_label_commits_with_their_branches_and_tags()
     {
         _repo.Run("branch", "feature");

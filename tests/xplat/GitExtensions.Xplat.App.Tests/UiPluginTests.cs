@@ -102,6 +102,34 @@ internal sealed class UiPluginTests
     }
 
     [AvaloniaTest]
+    public void The_browse_window_shows_upstreams_translations_of_its_texts()
+    {
+        AppSettings.CurrentTranslation = "German";
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        window.FindControl<Button>("CommitDialogButton")!.Content.Should().Be("Committen");
+        window.FindControl<MenuItem>("ShowAuthorDateMenuItem")!.Header.Should().Be("Zeige Autor Datum");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Texts_translate_but_the_items_of_a_data_list_do_not()
+    {
+        AppSettings.CurrentTranslation = "German";
+        TextBlock label = new() { Text = "Commit" };
+        ListBox list = new() { ItemsSource = new[] { "Commit" } };
+        Window window = new() { Content = new StackPanel { Children = { label, list } } };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        label.Text.Should().Be("Committen");
+        list.GetRealizedContainers().OfType<ListBoxItem>().Single().Content.Should().Be("Commit");
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void Plugin_windows_keep_upstreams_english_texts_without_a_language()
     {
         IGitPlugin plugin = LoadPlugin("CreateLocalBranches");

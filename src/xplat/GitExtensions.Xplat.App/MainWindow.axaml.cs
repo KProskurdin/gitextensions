@@ -73,7 +73,8 @@ public partial class MainWindow : Window
         _git = git;
         _history = new GitCommitHistory(
             () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
-            () => _preferences.RevisionSortOrder, AppServices.RevisionLinks);
+            () => _preferences.RevisionSortOrder, AppServices.RevisionLinks,
+            showArtificialCommits: () => _preferences.RevisionGraphShowArtificialCommits);
         _repositoryService = new GitRepositoryService(RefSorting);
         _commits = new CommitListViewModel(_history);
         _repository = new RepositoryViewModel(_repositoryService);
@@ -138,6 +139,17 @@ public partial class MainWindow : Window
         InitButton.Click += (_, _) => Run(() => _actions.InitAsync(PathBox.Text ?? ""));
         CommitDialogButton.Click += (_, _) => ShowCommitWindow();
         PullButton.Click += (_, _) => Pull();
+
+        // The Rebase box shows and sets upstream's default pull action between merge and rebase.
+        RebaseOnPullCheck.IsChecked = _preferences.DefaultPullAction == GitPullAction.Rebase;
+        RebaseOnPullCheck.IsCheckedChanged += (_, _) =>
+        {
+            bool rebase = RebaseOnPullCheck.IsChecked == true;
+            if (rebase || _preferences.DefaultPullAction == GitPullAction.Rebase)
+            {
+                _preferences.DefaultPullAction = rebase ? GitPullAction.Rebase : GitPullAction.Merge;
+            }
+        };
         PushButton.Click += (_, _) => Push();
         PushTagsButton.Click += (_, _) => RunOnRepository(path =>
             WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
@@ -209,6 +221,8 @@ public partial class MainWindow : Window
             ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
             RefreshRepository();
         };
+        WireGraphStyles();
+        WireQuickSearch();
         AboutMenuItem.Click += (_, _) =>
             _ = new AboutWindow(_git?.Version?.ToString() is { } version ? $"git {version}" : "git").ShowDialog(this);
     }
@@ -384,6 +398,8 @@ public partial class MainWindow : Window
         RebaseMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Rebase);
         CreateTagMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CreateTag);
         SettingsMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Settings);
+        HighlightSelectedBranchMenuItem.InputGesture =
+            Hotkeys.Grid.GestureFor(GridCommand.ToggleHighlightSelectedBranch);
     }
 
     // Event handlers start their async work through this, so an exception that escapes it is shown, not fatal.
@@ -445,6 +461,12 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        if (RunTabHotkey(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         // As upstream, the grid's and the left panel's own hotkeys act while they have the focus.
         if (IsWithin(e.Source, CommitList) && Hotkeys.Grid.Match(e) is { } gridCommand)
         {
@@ -577,6 +599,13 @@ public partial class MainWindow : Window
                     FirstParent = !_commits.Filter.FirstParent
                 }));
                 return true;
+            case GridCommand.ToggleHighlightSelectedBranch when selected is not null:
+                _commits.HighlightBranch(selected);
+                return true;
+            case GridCommand.NextQuickSearch:
+                return QuickSearchNext(down: true);
+            case GridCommand.PrevQuickSearch:
+                return QuickSearchNext(down: false);
             default:
                 return false;
         }
@@ -781,9 +810,28 @@ public partial class MainWindow : Window
     // Pull and push use the remote the branch tracks, falling back to origin for a branch without one.
     private string TrackingRemote() => _repository.TrackingRemote ?? RemoteName;
 
-    private void Pull() =>
+    // Upstream's toolbar pull runs the default pull action (Settings > General): the pull dialog, a merge or rebase pull, or
+    // a fetch of the branch's remote or of all remotes (with prune). The Rebase box is the merge or rebase choice.
+    private void Pull()
+    {
+        GitPullAction action = _preferences.DefaultPullAction;
+        if (action is GitPullAction.None or GitPullAction.Default)
+        {
+            Run(ShowPullDialogAsync);
+            return;
+        }
+
+        if (action is GitPullAction.Fetch or GitPullAction.FetchAll or GitPullAction.FetchPruneAll)
+        {
+            string remote = action == GitPullAction.Fetch ? TrackingRemote() : "--all";
+            RunOnRepository(path => WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
+                () => _actions.FetchAsync(path, remote, prune: action == GitPullAction.FetchPruneAll)));
+            return;
+        }
+
         RunOnCurrentBranch((path, branch) => WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
             () => _actions.PullAsync(path, TrackingRemote(), branch, RebaseOnPullCheck.IsChecked == true)));
+    }
 
     private void Push() => RunOnCurrentBranch(async (path, branch) =>
         await ConfirmPushAsync(TrackingRemote(), branch)
@@ -1084,6 +1132,10 @@ public partial class MainWindow : Window
             // The date and commit button settings show on the next read.
             ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
             ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
+            RebaseOnPullCheck.IsChecked = _preferences.DefaultPullAction == GitPullAction.Rebase;
+            UpdateBranchText();
+            _commits.MaxCommits = _preferences.MaxRevisionGraphCommits;
+            ShowArtificialChangeCounts();
             UpdateCommitButton();
             ShowBuildStatusColumn();
             RefreshRepository();
@@ -1179,7 +1231,8 @@ public partial class MainWindow : Window
             "Checkout", "Confirm checkout")
         && await WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout, () => branch.IsRemote
             ? _actions.CheckoutRemoteAsync(path, branch.Name)
-            : CheckoutLocalBranchAsync(path, branch.Name), PluginEvent.CheckoutBranch));
+            : CheckoutLocalBranchAsync(path, branch.Name), PluginEvent.CheckoutBranch)
+        && await UpdateSubmodulesAfterCheckoutAsync(path));
 
     // Like upstream, local changes to tracked files make the checkout ask what to do with them; the choice becomes the
     // default for next time (upstream's checkoutbranchaction). Untracked files do not block a checkout and are not counted.
@@ -1187,7 +1240,9 @@ public partial class MainWindow : Window
     {
         int changes = _repository.Changes.Where(change => change.Kind != ChangeKind.Untracked)
             .Select(change => change.Path).Distinct(StringComparer.Ordinal).Count();
-        if (changes == 0)
+
+        // Upstream's "Check for uncommitted changes in checkout branch dialog" off: git decides, as for no changes.
+        if (changes == 0 || !_preferences.CheckForUncommittedChangesInCheckoutBranch)
         {
             return await _actions.CheckoutAsync(path, branch);
         }
@@ -1595,9 +1650,11 @@ public partial class MainWindow : Window
             case nameof(RepositoryViewModel.Changes):
                 UpdateCommitButton();
                 UpdateStateBanner();
+                ShowArtificialChangeCounts();
                 break;
             case nameof(RepositoryViewModel.Stashes):
                 StashList.ItemsSource = _repository.Stashes;
+                UpdateBranchText();
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.Tags):
@@ -1745,7 +1802,9 @@ public partial class MainWindow : Window
         bool open = !busy && RepositoryPath is not null;
         bool gitAvailable = _git?.Status != GitDiscoveryStatus.NotFound;
         bool hasBranch = _repository.CurrentBranch.Length > 0;
-        bool commitSelected = open && _commits.Selected is not null;
+        // Upstream's commit actions do not apply to the artificial working directory and index rows.
+        bool commitSelected = open && _commits.Selected is { } selectedRow &&
+                              !ArtificialCommits.IsArtificial(selectedRow.Hash);
 
         OpenButton.IsEnabled = !busy && gitAvailable;
         OpenMenuItem.IsEnabled = !busy && gitAvailable;
@@ -1939,6 +1998,39 @@ public partial class MainWindow : Window
         }
     }
 
+    // Upstream's GitUICommands.UpdateSubmodules after a checkout: with submodules, they are updated as Settings > General's
+    // "Update submodules on checkout" says, or after upstream's question, whose remembered answer sets that setting.
+    private async Task<bool> UpdateSubmodulesAfterCheckoutAsync(string repositoryPath)
+    {
+        if (_repository.Submodules.Count == 0)
+        {
+            return true;
+        }
+
+        bool update;
+        if (_preferences.UpdateSubmodulesOnCheckout is { } setting)
+        {
+            update = setting;
+        }
+        else
+        {
+            ConfirmWindow question = new(UpdateSubmodulesQuestion, "Yes", "Update submodules", offerDontShowAgain: true,
+                cancelText: "No", dontShowAgainText: "Remember choice");
+            update = await question.ShowDialog<bool>(this);
+            if (question.DontShowAgain)
+            {
+                _preferences.UpdateSubmodulesOnCheckout = update;
+            }
+        }
+
+        return !update || await UpdateSubmodulesAsync(repositoryPath, null);
+    }
+
+    // Upstream's MessageBoxes texts of that question.
+    private const string UpdateSubmodulesQuestion =
+        "Update submodules on checkout?\n\nSince this repository has submodules, it's necessary to update them on every "
+        + "checkout.\n\nThis will just checkout on the submodule the commit determined by the superproject.";
+
     // Upstream's submodule dialogs raise PostUpdateSubmodules (the auto compile plugin builds after it).
     private async Task<bool> UpdateSubmodulesAsync(string repositoryPath, string? submodulePath)
     {
@@ -1952,16 +2044,24 @@ public partial class MainWindow : Window
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {
-            await _actions.RunDiffToolAsync(path, file.Path, row.Hash, staged: false);
+            (string? hash, bool staged) = DiffSource(row);
+            await _actions.RunDiffToolAsync(path, file.Path, hash, staged);
         }
     }
+
+    // The diff of a commit file: the working tree's unstaged or staged change for the artificial rows, as upstream's grid.
+    private static (string? Hash, bool Staged) DiffSource(CommitRow row)
+        => row.Hash == ArtificialCommits.WorkTreeHash ? (null, false)
+            : row.Hash == ArtificialCommits.IndexHash ? (null, true)
+            : (row.Hash, false);
 
     private void ShowCommitDiff()
     {
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {
-            new DiffWindow(path, row.Hash, file.Path, staged: false).Show(this);
+            (string? hash, bool staged) = DiffSource(row);
+            new DiffWindow(path, hash, file.Path, staged).Show(this);
         }
     }
 
@@ -1972,7 +2072,8 @@ public partial class MainWindow : Window
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {
-            Run(() => CommitDiff.ShowAsync(path, row.Hash, file.Path, staged: false, file.Path));
+            (string? hash, bool staged) = DiffSource(row);
+            Run(() => CommitDiff.ShowAsync(path, hash, file.Path, staged, file.Path));
         }
     }
 
@@ -1981,8 +2082,13 @@ public partial class MainWindow : Window
         string branch = _repository.CurrentBranch;
         string state = _repository.IsRebasing ? " (rebase in progress)" :
             _repository.IsMerging ? " (merge in progress)" : "";
-        string sync = _repository.Sync is { } status ? $" [ahead {status.Ahead}, behind {status.Behind}]" : "";
+        // Upstream's "Show ahead and behind information on status bar in browse window".
+        string sync = _preferences.ShowAheadBehindData && _repository.Sync is { } status
+            ? $" [ahead {status.Ahead}, behind {status.Behind}]"
+            : "";
         BranchText.Text = branch.Length == 0 ? "" : $"Branch: {branch}{state}{sync}";
+        StashCountText.IsVisible = _preferences.ShowStashCount && RepositoryPath is not null;
+        StashCountText.Text = $"Stashes: {_repository.Stashes.Count}";
     }
 
     private void ShowFiles(string hash)

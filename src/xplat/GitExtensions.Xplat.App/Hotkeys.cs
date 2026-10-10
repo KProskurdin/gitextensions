@@ -67,6 +67,9 @@ public enum GridCommand
     ShowCurrentBranchOnly,
     ToggleHideMergeCommits,
     ShowFirstParent,
+    ToggleHighlightSelectedBranch,
+    NextQuickSearch,
+    PrevQuickSearch,
 }
 
 /// <summary>
@@ -90,6 +93,36 @@ public enum DiffCommand
 public enum LeftPanelCommand
 {
     Delete,
+}
+
+/// <summary>
+///  The commands of upstream's Diff tab file list (<c>RevisionDiffControl.Command</c>) that the browse window's Diff tab
+///  has; they act while its file list has the focus.
+/// </summary>
+public enum BrowseDiffCommand
+{
+    DeleteSelectedFiles,
+    ShowHistory,
+    Blame,
+    OpenWithDifftool,
+    EditFile,
+    ResetSelectedFiles,
+    StageSelectedFile,
+    UnStageSelectedFile,
+    ShowFileTree,
+    GoToFirstParent,
+    GoToLastParent,
+    OpenWorkingDirectoryFile,
+}
+
+/// <summary>
+///  Upstream <c>FormStash.Command</c>: in the new shell they act on the left panel's stash list.
+/// </summary>
+public enum StashCommand
+{
+    NextStash,
+    PreviousStash,
+    Refresh,
 }
 
 /// <summary>
@@ -250,9 +283,6 @@ public static class Hotkeys
             [BrowseCommand.Pull] = WinFormsKeys.Control | WinFormsKeys.Down,
             [BrowseCommand.Push] = WinFormsKeys.Control | WinFormsKeys.Up,
             [BrowseCommand.QuickPull] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.P,
-            [CommitCommand.ConventionalCommitPrefixMessage] = WinFormsKeys.Control | WinFormsKeys.T,
-            [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
-                WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.T,
             [BrowseCommand.QuickPush] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Up,
             [BrowseCommand.QuickFetch] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Down,
             [BrowseCommand.Terminal] = WinFormsKeys.Control | WinFormsKeys.G,
@@ -285,7 +315,8 @@ public static class Hotkeys
             [CommitCommand.SelectNext] = (19, "SelectNext"),
             [CommitCommand.SelectPrevious] = (22, "SelectPrevious"),
             [CommitCommand.ConventionalCommitPrefixMessage] = (25, "ConventionalCommit_PrefixMessage"),
-            [CommitCommand.ConventionalCommitPrefixMessageWithScope] = (26, "ConventionalCommit_PrefixMessageWithScope"),
+            [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
+                (26, "ConventionalCommit_PrefixMessageWithScope"),
         },
         new Dictionary<CommitCommand, WinFormsKeys>
         {
@@ -298,6 +329,9 @@ public static class Hotkeys
             [CommitCommand.Refresh] = WinFormsKeys.F5,
             [CommitCommand.SelectNext] = WinFormsKeys.Control | WinFormsKeys.N,
             [CommitCommand.SelectPrevious] = WinFormsKeys.Control | WinFormsKeys.P,
+            [CommitCommand.ConventionalCommitPrefixMessage] = WinFormsKeys.Control | WinFormsKeys.T,
+            [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
+                WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.T,
         });
 
     /// <summary>
@@ -315,6 +349,9 @@ public static class Hotkeys
             [GridCommand.ShowCurrentBranchOnly] = (10, "ShowCurrentBranchOnly"),
             [GridCommand.ToggleHideMergeCommits] = (8, "ToggleHideMergeCommits"),
             [GridCommand.ShowFirstParent] = (13, "ShowFirstParent"),
+            [GridCommand.ToggleHighlightSelectedBranch] = (16, "ToggleHighlightSelectedBranch"),
+            [GridCommand.NextQuickSearch] = (17, "NextQuickSearch"),
+            [GridCommand.PrevQuickSearch] = (18, "PrevQuickSearch"),
         },
         new Dictionary<GridCommand, WinFormsKeys>
         {
@@ -327,6 +364,9 @@ public static class Hotkeys
             [GridCommand.ShowCurrentBranchOnly] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.U,
             [GridCommand.ToggleHideMergeCommits] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.M,
             [GridCommand.ShowFirstParent] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.S,
+            [GridCommand.ToggleHighlightSelectedBranch] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.B,
+            [GridCommand.NextQuickSearch] = WinFormsKeys.Alt | WinFormsKeys.Down,
+            [GridCommand.PrevQuickSearch] = WinFormsKeys.Alt | WinFormsKeys.Up,
         });
 
     /// <summary>
@@ -362,6 +402,59 @@ public static class Hotkeys
     public static HotkeyTable<LeftPanelCommand> LeftPanel { get; } = new(UpstreamHotkeys.LeftPanelName,
         new Dictionary<LeftPanelCommand, (int, string)> { [LeftPanelCommand.Delete] = (0, "Delete") },
         new Dictionary<LeftPanelCommand, WinFormsKeys> { [LeftPanelCommand.Delete] = WinFormsKeys.Delete });
+
+    /// <summary>
+    ///  The Diff tab's file list (upstream RevisionDiffControl, section "BrowseDiff"): upstream's codes and defaults of the
+    ///  commands the tab has.
+    /// </summary>
+    public static HotkeyTable<BrowseDiffCommand> BrowseDiff { get; } = new(UpstreamHotkeys.BrowseDiffName,
+        new Dictionary<BrowseDiffCommand, (int, string)>
+        {
+            [BrowseDiffCommand.DeleteSelectedFiles] = (0, "DeleteSelectedFiles"),
+            [BrowseDiffCommand.ShowHistory] = (1, "ShowHistory"),
+            [BrowseDiffCommand.Blame] = (2, "Blame"),
+            [BrowseDiffCommand.OpenWithDifftool] = (3, "OpenWithDifftool"),
+            [BrowseDiffCommand.EditFile] = (4, "EditFile"),
+            [BrowseDiffCommand.ResetSelectedFiles] = (9, "ResetSelectedFiles"),
+            [BrowseDiffCommand.StageSelectedFile] = (10, "StageSelectedFile"),
+            [BrowseDiffCommand.UnStageSelectedFile] = (11, "UnStageSelectedFile"),
+            [BrowseDiffCommand.ShowFileTree] = (12, "ShowFileTree"),
+            [BrowseDiffCommand.GoToFirstParent] = (18, "GoToFirstParent"),
+            [BrowseDiffCommand.GoToLastParent] = (19, "GoToLastParent"),
+            [BrowseDiffCommand.OpenWorkingDirectoryFile] = (20, "OpenWorkingDirectoryFile"),
+        },
+        new Dictionary<BrowseDiffCommand, WinFormsKeys>
+        {
+            [BrowseDiffCommand.DeleteSelectedFiles] = WinFormsKeys.Delete,
+            [BrowseDiffCommand.ShowHistory] = WinFormsKeys.H,
+            [BrowseDiffCommand.Blame] = WinFormsKeys.B,
+            [BrowseDiffCommand.OpenWithDifftool] = WinFormsKeys.F3,
+            [BrowseDiffCommand.EditFile] = WinFormsKeys.F4,
+            [BrowseDiffCommand.ResetSelectedFiles] = WinFormsKeys.R,
+            [BrowseDiffCommand.StageSelectedFile] = WinFormsKeys.S,
+            [BrowseDiffCommand.UnStageSelectedFile] = WinFormsKeys.U,
+            [BrowseDiffCommand.ShowFileTree] = WinFormsKeys.T,
+            [BrowseDiffCommand.GoToFirstParent] = WinFormsKeys.Control | WinFormsKeys.Left,
+            [BrowseDiffCommand.GoToLastParent] = WinFormsKeys.Control | WinFormsKeys.Right,
+            [BrowseDiffCommand.OpenWorkingDirectoryFile] = WinFormsKeys.Shift | WinFormsKeys.F4,
+        });
+
+    /// <summary>
+    ///  Upstream's stash window (FormStash, section "Stash"), for the left panel's stash list.
+    /// </summary>
+    public static HotkeyTable<StashCommand> Stash { get; } = new(UpstreamHotkeys.StashName,
+        new Dictionary<StashCommand, (int, string)>
+        {
+            [StashCommand.NextStash] = (0, "NextStash"),
+            [StashCommand.PreviousStash] = (1, "PreviousStash"),
+            [StashCommand.Refresh] = (2, "Refresh"),
+        },
+        new Dictionary<StashCommand, WinFormsKeys>
+        {
+            [StashCommand.NextStash] = WinFormsKeys.Control | WinFormsKeys.N,
+            [StashCommand.PreviousStash] = WinFormsKeys.Control | WinFormsKeys.P,
+            [StashCommand.Refresh] = WinFormsKeys.F5,
+        });
 
     /// <summary>
     ///  The conflicts window (upstream FormResolveConflicts, section "FormMergeConflicts"). Choose base is not ported: the
@@ -411,6 +504,8 @@ public static class Hotkeys
         Diff.Load(serializedHotkeys);
         LeftPanel.Load(serializedHotkeys);
         Conflicts.Load(serializedHotkeys);
+        BrowseDiff.Load(serializedHotkeys);
+        Stash.Load(serializedHotkeys);
         Scripts = ScriptTable(AppServices.Scripts.Load());
         Scripts.Load(serializedHotkeys);
     }

@@ -21,7 +21,8 @@ internal sealed class CommitGraphTests
         graph.LaneCount.Should().Be(1);
         IReadOnlyList<GraphShape> middle = GraphPainter.Paint(graph, 1, RowHeight, hasRefs: false, isHead: false);
         middle.OfType<GraphLine>().Should().NotBeEmpty()
-            .And.OnlyContain(line => line.From.X == GraphPainter.LaneWidth / 2 && line.To.X == GraphPainter.LaneWidth / 2);
+            .And.OnlyContain(line =>
+                line.From.X == GraphPainter.LaneWidth / 2 && line.To.X == GraphPainter.LaneWidth / 2);
         middle.OfType<GraphNode>().Should().ContainSingle().Which.Square.Should().BeFalse();
     }
 
@@ -29,6 +30,7 @@ internal sealed class CommitGraphTests
     public void A_merged_side_branch_gets_its_own_lane_and_color()
     {
         CommitGraph graph = CommitGraph.Build([Row("m", "a", "s"), Row("s", "b"), Row("a", "b"), Row("b")]);
+        graph.DrawStyle = GraphDrawStyle.Normal;
 
         graph.LaneCount.Should().Be(2);
         GraphNode side = Node(graph, graph.OrderedRows.ToList().FindIndex(row => row.Hash == Hash("s")));
@@ -40,6 +42,62 @@ internal sealed class CommitGraphTests
         GraphPainter.Paint(graph, 0, RowHeight, hasRefs: false, isHead: false)
             .Where(shape => shape is GraphBezier || (shape is GraphLine line && line.From.X != line.To.X))
             .Should().NotBeEmpty();
+    }
+
+    [Test]
+    public void Non_relatives_are_gray_until_a_branch_or_a_hover_highlights_them()
+    {
+        // HEAD is "a" on the main line; "s" is a side branch that is not one of its ancestors.
+        CommitGraph graph = CommitGraph.Build(
+            [Row("s", "b"), Row("a", "b") with { Labels = [new RefLabel("HEAD", RefKind.Head)] }, Row("b")]);
+        int side = graph.OrderedRows.ToList().FindIndex(row => row.Hash == Hash("s"));
+        int main = graph.OrderedRows.ToList().FindIndex(row => row.Hash == Hash("a"));
+
+        graph.DrawStyle.Should().Be(GraphDrawStyle.DrawNonRelativesGray, "upstream's default");
+        Node(graph, side).Color.Should().Be(GraphPainter.NonRelativeColor);
+        Node(graph, main).Color.Should().NotBe(GraphPainter.NonRelativeColor);
+
+        graph.HoverHighlighted = graph.AncestryOf(side);
+        Node(graph, side).Color.Should().NotBe(GraphPainter.NonRelativeColor);
+        Node(graph, main).Color.Should().Be(GraphPainter.NonRelativeColor, "the hover shows only the hovered ancestry");
+        graph.HoverHighlighted = null;
+
+        graph.HighlightBranch(Hash("s"));
+        graph.DrawStyle.Should().Be(GraphDrawStyle.HighlightSelected);
+        Node(graph, side).Color.Should().NotBe(GraphPainter.NonRelativeColor);
+        Node(graph, main).Color.Should().Be(GraphPainter.NonRelativeColor);
+    }
+
+    [Test]
+    public void The_shown_width_is_the_page_until_the_view_narrows_it_to_its_rows()
+    {
+        CommitGraph graph = CommitGraph.Build([Row("m", "a", "s"), Row("s", "b"), Row("a", "b"), Row("b"), Row("c")]);
+
+        graph.ShownLaneCount.Should().Be(graph.LaneCount);
+        graph.LaneCountAt(graph.OrderedRows.ToList().FindIndex(row => row.Hash == Hash("s"))).Should().Be(2);
+        graph.ShownLaneCount = 1;
+        graph.ShownLaneCount.Should().Be(1);
+    }
+
+    [Test]
+    public void A_lanes_tooltip_names_its_commit_branch_and_message_as_upstream()
+    {
+        CommitGraph graph = CommitGraph.Build(
+        [
+            Row("m", "a", "s") with { Subject = "Merge branch 'feature' into main" },
+            Row("s", "b") with { Subject = "side work" },
+            Row("a", "b") with { Subject = "main work", Labels = [new RefLabel("main", RefKind.Branch)] },
+            Row("b") with { Subject = "base" },
+        ]);
+        int side = graph.OrderedRows.ToList().FindIndex(row => row.Hash == Hash("s"));
+        int sideLane = (int)(Node(graph, side).Bounds.X / GraphPainter.LaneWidth);
+
+        string info = graph.LaneInfo(side, sideLane);
+
+        info.Should().StartWith("* " + Hash("s"));
+        info.Should().Contain("Branch: feature");
+        info.Should().EndWith("side work");
+        graph.LaneInfo(side, lane: 5).Should().BeEmpty();
     }
 
     [Test]
@@ -64,12 +122,16 @@ internal sealed class CommitGraphTests
     [Test]
     public void Nodes_with_refs_are_squares_and_the_checked_out_one_is_outlined()
     {
-        CommitRow head = Row("b", "a") with { Labels = [new RefLabel("HEAD", RefKind.Head), new RefLabel("main", RefKind.Branch)] };
+        CommitRow head = Row("b", "a") with
+        {
+            Labels = [new RefLabel("HEAD", RefKind.Head), new RefLabel("main", RefKind.Branch)]
+        };
         CommitGraph graph = CommitGraph.Build([head, Row("a")]);
 
         GraphRowRef cell = graph.RowAt(0);
         (cell.HasRefs, cell.IsHead).Should().Be((true, true));
-        GraphNode node = GraphPainter.Paint(graph, 0, RowHeight, cell.HasRefs, cell.IsHead).OfType<GraphNode>().Single();
+        GraphNode node = GraphPainter.Paint(graph, 0, RowHeight, cell.HasRefs, cell.IsHead).OfType<GraphNode>()
+            .Single();
         (node.Square, node.Outline).Should().Be((true, true));
         node.Bounds.Width.Should().Be(GraphPainter.NodeDimension);
     }
@@ -78,7 +140,8 @@ internal sealed class CommitGraphTests
     public void The_settings_and_sizes_are_upstreams()
     {
         string root = RepositoryRoot();
-        string settings = File.ReadAllText(Path.Combine(root, "src", "app", "GitCommands", "Settings", "AppSettings.cs"));
+        string settings =
+            File.ReadAllText(Path.Combine(root, "src", "app", "GitCommands", "Settings", "AppSettings.cs"));
         string page = File.ReadAllText(Path.Combine(root, "src", "app", "GitUI", "CommandsDialogs", "SettingsDialog",
             "Pages", "DetailedSettingsPage.Designer.cs"));
         string renderer = File.ReadAllText(Path.Combine(root, "src", "app", "GitUI", "UserControls", "RevisionGrid",
@@ -92,7 +155,8 @@ internal sealed class CommitGraphTests
 
         foreach (string label in (string[])
                  [
-                     "Merge graph lanes having common parent", "Render graph with diagonals", "Straighten graph diagonals",
+                     "Merge graph lanes having common parent", "Render graph with diagonals",
+                     "Straighten graph diagonals",
                  ])
         {
             page.Should().Contain($".Text = \"{label}\";");

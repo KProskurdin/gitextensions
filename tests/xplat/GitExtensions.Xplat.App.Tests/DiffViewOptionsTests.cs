@@ -4,6 +4,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitCommands.Settings;
 using GitExtensions.Xplat.Core.Diff;
@@ -106,6 +107,35 @@ internal sealed class DiffViewOptionsTests
         // Not remembered, so a new view starts from the saved default rather than this run's choice.
         TestAppBuilder.Preferences.SetDiffOptions(new DiffOptions(IgnoreWhitespaceKind.AllSpace));
         TestAppBuilder.Preferences.InitialDiffOptions().IgnoreWhitespace.Should().Be(IgnoreWhitespaceKind.Eol);
+    }
+
+    [AvaloniaTest]
+    public void A_code_files_diff_has_upstreams_syntax_colors_and_a_text_file_has_none()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "Program.cs"), "int x = 1;\n");
+        _repo.Run("add", "Program.cs");
+        _repo.Run("commit", "-q", "-m", "code");
+        File.WriteAllText(Path.Combine(_repo.Path, "Program.cs"), "int x = 1;\n// changed\n");
+        DiffView diff = new();
+        Window window = new() { Content = diff, Width = 900, Height = 600 };
+        window.Show();
+        Task load = diff.ShowAsync(_repo.Path, commitHash: null, "Program.cs", staged: false, "Program.cs");
+        WaitUntil(() => load.IsCompleted);
+
+        DiffLineItem added = diff.Lines.Single(line => line.Text == "+// changed");
+        string.Concat(added.Runs!.Select(run => run.Text)).Should().Be("+// changed");
+        added.Runs![0].Foreground.Should().BeNull("the + keeps the line's color");
+        added.Runs!.Skip(1).Select(run => run.Foreground).Should()
+            .OnlyContain(brush => brush == added.Runs![1].Foreground)
+            .And.NotContainNulls("the comment has the definition's comment color");
+        diff.Lines.Single(line => line.Text.StartsWith("@@", StringComparison.Ordinal)).Runs.Should().BeNull();
+        Dispatcher.UIThread.RunJobs();
+        diff.GetVisualDescendants().OfType<SyntaxTextBlock>().Should().Contain(block => block.Inlines!.Count > 0);
+
+        diff.ShowText("notes.txt", "plain text");
+        diff.Lines.Single().Runs.Should().BeNull();
+        diff.ShowText("Program.cs", "int x;");
+        diff.Lines.Single().Runs!.Select(run => run.Text).Should().Equal("int", " ", "x", ";");
     }
 
     private DiffView Show()

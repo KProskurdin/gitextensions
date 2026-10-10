@@ -17,5 +17,9 @@
       <Setter Property="MinHeight" Value="28" />
       <Setter Property="Padding" Value="10,2" />
     </Style>
+    <!-- Upstream's PanelBackground (ThemeApplier sets it from the theme) behind every window, as upstream's forms use it. -->
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+    </Style>
   </Application.Styles>
 </Application>

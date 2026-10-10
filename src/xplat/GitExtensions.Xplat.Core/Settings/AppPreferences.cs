@@ -1,4 +1,5 @@
 using GitCommands;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
@@ -45,6 +46,12 @@ public interface IAppPreferences
     bool RememberAmendCommitState { get; set; }
 
     /// <summary>
+    ///  Upstream <c>followrenamesinfilehistory</c> and <c>followrenamesinfilehistoryexactonly</c>: a file history includes
+    ///  the commits made under the file's earlier names.
+    /// </summary>
+    FileHistoryOptions FileHistory { get; set; }
+
+    /// <summary>
     ///  Upstream <c>showcommitandpush</c>: the commit window shows its Commit and push button.
     /// </summary>
     bool ShowCommitAndPush { get; set; }
@@ -79,6 +86,45 @@ public interface IAppPreferences
     ///  Upstream <c>relativedate</c>: the grid shows "3 days ago" instead of the full date.
     /// </summary>
     bool RelativeDate { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>revisiongraphdrawnonrelativesgray</c> (on by default): graph lanes of commits that are not relatives of
+    ///  the checked-out commit are gray.
+    /// </summary>
+    bool RevisionGraphDrawNonRelativesGray { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>revisiongraphshowworkingdirchanges</c> (on by default): the grid shows the working directory and index as
+    ///  artificial commits above HEAD.
+    /// </summary>
+    bool RevisionGraphShowArtificialCommits { get; set; }
+
+    /// <summary>
+    ///  Upstream's General page: <c>usepatiencediffalgorithm</c> (the histogram algorithm, despite the key's name),
+    ///  <c>includeUntrackedFilesInAutoStash</c>, <c>updateSubmodulesOnCheckout</c> (null: ask), <c>showstashcount</c>,
+    ///  <c>showaheadbehinddata</c>, <c>showgitstatusforartificialcommits</c>, <c>maxrevisiongraphcommits</c> (0: no limit),
+    ///  <c>revisiongridquicksearchtimeout</c> (milliseconds), <c>DefaultPullAction</c> and
+    ///  <c>checkforuncommittedchangesincheckoutbranch</c>.
+    /// </summary>
+    bool UseHistogramDiffAlgorithm { get; set; }
+
+    bool IncludeUntrackedFilesInAutoStash { get; set; }
+
+    bool? UpdateSubmodulesOnCheckout { get; set; }
+
+    bool ShowStashCount { get; set; }
+
+    bool ShowAheadBehindData { get; set; }
+
+    bool ShowGitStatusForArtificialCommits { get; set; }
+
+    int MaxRevisionGraphCommits { get; set; }
+
+    int RevisionGridQuickSearchTimeout { get; set; }
+
+    GitPullAction DefaultPullAction { get; set; }
+
+    bool CheckForUncommittedChangesInCheckoutBranch { get; set; }
 
     /// <summary>
     ///  Upstream <c>translation</c>: the language of upstream's translations (a file name in the Translation folder, such as
@@ -358,6 +404,16 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RememberAmendCommitState = value;
     }
 
+    public FileHistoryOptions FileHistory
+    {
+        get => new(AppSettings.FollowRenamesInFileHistory, AppSettings.FollowRenamesInFileHistoryExactOnly);
+        set
+        {
+            AppSettings.FollowRenamesInFileHistory = value.FollowRenames;
+            AppSettings.FollowRenamesInFileHistoryExactOnly = value.ExactRenamesOnly;
+        }
+    }
+
     public bool ShowCommitAndPush
     {
         get => AppSettings.ShowCommitAndPush;
@@ -398,6 +454,78 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.RelativeDate;
         set => AppSettings.RelativeDate = value;
+    }
+
+    public bool RevisionGraphDrawNonRelativesGray
+    {
+        get => AppSettings.RevisionGraphDrawNonRelativesGray;
+        set => AppSettings.RevisionGraphDrawNonRelativesGray = value;
+    }
+
+    public bool RevisionGraphShowArtificialCommits
+    {
+        get => AppSettings.RevisionGraphShowArtificialCommits;
+        set => AppSettings.RevisionGraphShowArtificialCommits = value;
+    }
+
+    public bool UseHistogramDiffAlgorithm
+    {
+        get => AppSettings.UseHistogramDiffAlgorithm;
+        set => AppSettings.UseHistogramDiffAlgorithm = value;
+    }
+
+    public bool IncludeUntrackedFilesInAutoStash
+    {
+        get => AppSettings.IncludeUntrackedFilesInAutoStash;
+        set => AppSettings.IncludeUntrackedFilesInAutoStash = value;
+    }
+
+    public bool? UpdateSubmodulesOnCheckout
+    {
+        get => AppSettings.UpdateSubmodulesOnCheckout;
+        set => AppSettings.UpdateSubmodulesOnCheckout = value;
+    }
+
+    public bool ShowStashCount
+    {
+        get => AppSettings.ShowStashCount;
+        set => AppSettings.ShowStashCount = value;
+    }
+
+    public bool ShowAheadBehindData
+    {
+        get => AppSettings.ShowAheadBehindData;
+        set => AppSettings.ShowAheadBehindData = value;
+    }
+
+    public bool ShowGitStatusForArtificialCommits
+    {
+        get => AppSettings.ShowGitStatusForArtificialCommits;
+        set => AppSettings.ShowGitStatusForArtificialCommits = value;
+    }
+
+    public int MaxRevisionGraphCommits
+    {
+        get => AppSettings.MaxRevisionGraphCommits;
+        set => AppSettings.MaxRevisionGraphCommits = value;
+    }
+
+    public int RevisionGridQuickSearchTimeout
+    {
+        get => AppSettings.RevisionGridQuickSearchTimeout;
+        set => AppSettings.RevisionGridQuickSearchTimeout = value;
+    }
+
+    public GitPullAction DefaultPullAction
+    {
+        get => AppSettings.DefaultPullAction;
+        set => AppSettings.DefaultPullAction = value;
+    }
+
+    public bool CheckForUncommittedChangesInCheckoutBranch
+    {
+        get => AppSettings.CheckForUncommittedChangesInCheckoutBranch;
+        set => AppSettings.CheckForUncommittedChangesInCheckoutBranch = value;
     }
 
     public string Translation
@@ -707,7 +835,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.PrioritizedRemoteNames = value;
     }
 
-    public FontSetting? GetFont(AppFont font) => FontSetting.Parse(AppSettings.GetString(FontSetting.KeyOf(font), null));
+    public FontSetting? GetFont(AppFont font) =>
+        FontSetting.Parse(AppSettings.GetString(FontSetting.KeyOf(font), null));
 
     public void SetFont(AppFont font, FontSetting? value)
         => AppSettings.SettingsContainer.SetString(FontSetting.KeyOf(font), value?.ToSettingString());
@@ -733,6 +862,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool RememberAmendCommitState { get; set; } = true;
 
+    public FileHistoryOptions FileHistory { get; set; } = new();
+
     public bool ShowCommitAndPush { get; set; } = true;
 
     public bool AlwaysShowCheckoutBranchDlg { get; set; }
@@ -746,6 +877,32 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool CommitAndPushForcedWhenAmend { get; set; }
 
     public bool RelativeDate { get; set; } = true;
+
+    public bool RevisionGraphDrawNonRelativesGray { get; set; } = true;
+
+    // Off, unlike upstream: the tests count the commits git lists; the ones about the artificial rows turn it on.
+    public bool RevisionGraphShowArtificialCommits { get; set; }
+
+    // Upstream's defaults of the General page.
+    public bool UseHistogramDiffAlgorithm { get; set; }
+
+    public bool IncludeUntrackedFilesInAutoStash { get; set; }
+
+    public bool? UpdateSubmodulesOnCheckout { get; set; }
+
+    public bool ShowStashCount { get; set; }
+
+    public bool ShowAheadBehindData { get; set; } = true;
+
+    public bool ShowGitStatusForArtificialCommits { get; set; } = true;
+
+    public int MaxRevisionGraphCommits { get; set; } = 100000;
+
+    public int RevisionGridQuickSearchTimeout { get; set; } = 4000;
+
+    public GitPullAction DefaultPullAction { get; set; } = GitPullAction.Merge;
+
+    public bool CheckForUncommittedChangesInCheckoutBranch { get; set; } = true;
 
     public string Translation { get; set; } = "";
 

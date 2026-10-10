@@ -19,6 +19,11 @@
           <TextBlock Text="History of the selected file" FontWeight="Bold" VerticalAlignment="Center" />
           <Button x:Name="ShowHistoryDiffButton" Content="Show diff" />
         </StackPanel>
+        <!-- Upstream FormFileHistory's rename choices (followrenamesinfilehistory, ...exactonly). -->
+        <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+          <CheckBox x:Name="FollowRenamesCheck" Content="Detect and follow renames" Margin="0,0,12,0" />
+          <CheckBox x:Name="ExactRenamesCheck" Content="Detect and follow - exact renames and copies only" />
+        </WrapPanel>
         <ListBox x:Name="HistoryList">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="core:CommitRow">

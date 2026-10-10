@@ -1,3 +1,4 @@
+using GitExtensions.Extensibility.Git;
 using GitUI.UserControls.RevisionGrid.Graph;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
@@ -6,6 +7,16 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 ///  A shape of a graph cell. <see cref="Color"/> is the lane's color index (see <c>RevisionGraphLaneColor</c>), or
 ///  <see cref="GraphPainter.NonRelativeColor"/> for a commit with no lane.
 /// </summary>
+/// <summary>
+///  Upstream's <c>RevisionGraphDrawStyle</c>.
+/// </summary>
+public enum GraphDrawStyle
+{
+    Normal,
+    DrawNonRelativesGray,
+    HighlightSelected,
+}
+
 public abstract record GraphShape(int Color);
 
 public sealed record GraphLine(PointF From, PointF To, int Color) : GraphShape(Color);
@@ -19,8 +30,8 @@ public sealed record GraphNode(RectangleF Bounds, bool Square, bool Outline, int
 
 /// <summary>
 ///  Upstream's revision graph drawing (<c>GraphRenderer</c> and <c>SegmentRenderer</c>), ported from WinForms' Graphics to
-///  shapes the view draws: the same lanes, curves, diagonals and nodes, in device-independent pixels. Only upstream's
-///  normal draw style is ported (no gray non-relatives, no highlighting).
+///  shapes the view draws: the same lanes, curves, diagonals and nodes, in device-independent pixels, with upstream's
+///  draw styles (non-relatives gray, a highlighted branch, the hover highlight of a ref's ancestry).
 /// </summary>
 public static class GraphPainter
 {
@@ -55,9 +66,14 @@ public static class GraphPainter
 
         LaneInfo? currentRowRevisionLaneInfo = null;
 
+        GraphDrawStyle style = graph.DrawStyle;
+        IReadOnlySet<ObjectId>? hovered = graph.HoverHighlighted;
+
         // Upstream's normal draw style skips the secondary segments of an entirely shared lane.
-        const bool skipSecondarySharedSegments = true;
-        foreach (RevisionGraphSegment segment in currentRow.Segments.Reverse().OrderBy(s => s.Child.IsRelative))
+        bool skipSecondarySharedSegments = style == GraphDrawStyle.Normal;
+        foreach (RevisionGraphSegment segment in currentRow.Segments.Reverse()
+                     .OrderBy(s => s.Child.IsRelative)
+                     .ThenBy(s => hovered?.Contains(s.Child.Objectid) is true || hovered?.Contains(s.Parent.Objectid) is true))
         {
             SegmentLanesInfo lanes = GetLanesInfo(segment, previousRow, currentRow, nextRow, skipSecondarySharedSegments,
                 config.MergeGraphLanesHavingCommonParent, setLaneInfo: laneInfo => currentRowRevisionLaneInfo = laneInfo);
@@ -70,7 +86,9 @@ public static class GraphPainter
             center.X = (int)((lanes.CenterLane + 0.5) * LaneWidth);
             end.X = (int)((lanes.EndLane + 0.5) * LaneWidth);
 
-            SegmentRenderer renderer = new(config, shapes, ColorOf(segment.LaneInfo), new Size(LaneWidth, rowHeight));
+            SegmentRenderer renderer = new(config, shapes,
+                ColorOf(segment.LaneInfo, segment.Child.IsRelative, style, hovered?.Contains(segment.Child.Objectid)),
+                new Size(LaneWidth, rowHeight));
             if (config.RenderGraphWithDiagonals)
             {
                 Lazy<DiagonalSegmentInfo> previousSegmentInfo = new(() => GetDiagonalSegmentInfo(
@@ -99,13 +117,21 @@ public static class GraphPainter
             int centerX = (int)((revisionLane + 0.5) * LaneWidth);
             shapes.Add(new GraphNode(
                 new RectangleF(centerX - (NodeDimension / 2), center.Y - (NodeDimension / 2), NodeDimension, NodeDimension),
-                Square: hasRefs, Outline: isHead, ColorOf(currentRowRevisionLaneInfo)));
+                Square: hasRefs, Outline: isHead,
+                ColorOf(currentRowRevisionLaneInfo, currentRow.Revision.IsRelative, style,
+                    hovered?.Contains(currentRow.Revision.Objectid))));
         }
 
         return shapes;
     }
 
-    private static int ColorOf(LaneInfo? laneInfo) => laneInfo?.Color ?? NonRelativeColor;
+    // Upstream's GetBrushForLaneInfo: the lane's color when the commit is a relative, while hovered, or in the normal style;
+    // gray otherwise and for a commit without a lane.
+    private static int ColorOf(LaneInfo? laneInfo, bool isRelative, GraphDrawStyle style, bool? isHoverHighlighted)
+        => laneInfo is not null && isHoverHighlighted is not false
+           && (isHoverHighlighted is true || isRelative || style == GraphDrawStyle.Normal)
+            ? laneInfo.Color
+            : NonRelativeColor;
 
     private static SegmentLanesInfo GetLanesInfo(RevisionGraphSegment revisionGraphSegment,
         IRevisionGraphRow? previousRow,

@@ -35,6 +35,8 @@ internal sealed class UpstreamHotkeysTests
     [TestCase(UpstreamHotkeys.LeftPanelName, "LeftPanel/RepoObjectsTree.cs")]
     [TestCase(UpstreamHotkeys.ResolveConflictsName, "CommandsDialogs/FormResolveConflicts.cs")]
     [TestCase(UpstreamHotkeys.ScriptsName, "CommandsDialogs/FormSettings.cs")]
+    [TestCase(UpstreamHotkeys.BrowseDiffName, "CommandsDialogs/RevisionDiffControl.cs")]
+    [TestCase(UpstreamHotkeys.StashName, "CommandsDialogs/FormStash.cs")]
     public void Section_names_should_match_upstreams_HotkeySettingsName(string name, string upstreamFile)
     {
         string source = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "app", "GitUI", upstreamFile));

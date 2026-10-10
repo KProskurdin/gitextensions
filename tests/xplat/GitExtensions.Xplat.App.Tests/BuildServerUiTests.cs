@@ -70,6 +70,7 @@ internal sealed class BuildServerUiTests
         DistributedSettings settings = AppServices.RevisionLinks.Open(_repo.Path);
         BuildServerSettings.ServerName[settings] = GitHubActions;
         settings.SetString($"BuildServer.{GitHubActions}.GitHubActionsApiUrl", api.Url);
+        BuildServerSettings.ShowBuildResultPage[settings] = true;
         AppServices.RevisionLinks.Save(settings);
 
         MainWindow window = OpenWindow();
@@ -82,6 +83,14 @@ internal sealed class BuildServerUiTests
         window.Resources["BuildStatusColumnWidth"].Should().Be(24.0, "the symbol alone, as upstream's icon column");
         api.Requests.Should().Contain(request =>
             request.Contains("/repos/owner/repo/actions/runs", StringComparison.Ordinal));
+
+        // Upstream's build report tab, for the selected commit whose build has a report.
+        TabItem report = window.FindControl<TabItem>("BuildReportTab")!;
+        report.IsVisible.Should().BeFalse();
+        window.FindControl<ListBox>("CommitList")!.SelectedIndex = 0;
+        report.IsVisible.Should().BeTrue();
+        ToolTip.GetTip(window.FindControl<HyperlinkButton>("OpenBuildReportLink")!).Should()
+            .Be("https://github.com/owner/repo/actions/runs/7");
 
         Click(window, "ShowBuildStatusTextMenuItem");
         window.Resources["BuildStatusColumnWidth"].Should().Be(150.0);
@@ -142,12 +151,14 @@ internal sealed class BuildServerUiTests
             "the plugin suggests the repository's folder name");
         control.FindControl<TextBox>("JenkinsServerUrl")!.Text = "http://127.0.0.1:1/jenkins";
         Find<CheckBox>(settingsWindow, "EnableBuildServerCheck").IsChecked = true;
+        Find<CheckBox>(settingsWindow, "ShowBuildResultPageCheck").IsChecked = false;
         Click(settingsWindow, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
         DistributedSettings stored = AppServices.RevisionLinks.Open(_repo.Path);
         BuildServerSettings.ServerName[stored].Should().Be(Jenkins);
         BuildServerSettings.IntegrationEnabled[stored].Should().BeTrue();
+        BuildServerSettings.ShowBuildResultPage[stored].Should().BeFalse();
         stored.GetString($"BuildServer.{Jenkins}.BuildServerUrl", null).Should().Be("http://127.0.0.1:1/jenkins");
         stored.GetString($"BuildServer.{Jenkins}.ProjectName", null).Should().Be(Path.GetFileName(_repo.Path));
     }

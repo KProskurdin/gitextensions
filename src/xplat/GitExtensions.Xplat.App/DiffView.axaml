@@ -15,19 +15,34 @@
       <TextBlock x:Name="TitleText" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />
-    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple">
+    <!-- Upstream's EditorBackground behind the lines, LineNumberBackground behind the numbers, Selection on selected lines. -->
+    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
+             Background="{DynamicResource EditorBackgroundBrush}">
       <ListBox.Styles>
         <Style Selector="ListBoxItem">
           <Setter Property="Padding" Value="4,0" />
           <Setter Property="MinHeight" Value="0" />
         </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+          <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+          <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
+        </Style>
+        <Style Selector="ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+          <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
+        </Style>
       </ListBox.Styles>
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:DiffLineItem">
           <Grid ColumnDefinitions="44,44,*">
-            <TextBlock Grid.Column="0" Text="{Binding OldNumber}" Opacity="0.55" TextAlignment="Right" Margin="0,0,6,0" />
-            <TextBlock Grid.Column="1" Text="{Binding NewNumber}" Opacity="0.55" TextAlignment="Right" Margin="0,0,8,0" />
-            <TextBlock Grid.Column="2" Text="{Binding Text}" Foreground="{Binding Foreground}" Background="{Binding Background}" />
+            <TextBlock Grid.Column="0" Text="{Binding OldNumber}" Opacity="0.55" TextAlignment="Right" Padding="0,0,6,0"
+                       Background="{DynamicResource LineNumberBackgroundBrush}" />
+            <TextBlock Grid.Column="1" Text="{Binding NewNumber}" Opacity="0.55" TextAlignment="Right" Padding="0,0,8,0"
+                       Background="{DynamicResource LineNumberBackgroundBrush}" />
+            <!-- The file's syntax colors when its type has a definition, as upstream's file viewer. -->
+            <local:SyntaxTextBlock Grid.Column="2" Text="{Binding Text}" Runs="{Binding Runs}" Foreground="{Binding Foreground}"
+                                   Background="{Binding Background}" />
           </Grid>
         </DataTemplate>
       </ListBox.ItemTemplate>

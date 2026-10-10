@@ -29,8 +29,22 @@ public sealed class GraphCell : Control
         set => SetValue(GraphProperty, value);
     }
 
+    // Upstream's lane tooltip (RevisionGraphColumnProvider.TryGetToolTip): the lane under the mouse, its commit and branch.
+    protected override void OnPointerMoved(Avalonia.Input.PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (Graph is not { } row)
+        {
+            return;
+        }
+
+        int lane = (int)(e.GetPosition(this).X / GraphPainter.LaneWidth);
+        string info = row.Graph.LaneInfo(row.Index, lane);
+        ToolTip.SetTip(this, info.Length > 0 ? info.TrimEnd() : null);
+    }
+
     protected override Size MeasureOverride(Size availableSize)
-        => new((Graph?.Graph.LaneCount ?? 0) * GraphPainter.LaneWidth, 0);
+        => new((Graph?.Graph.ShownLaneCount ?? 0) * GraphPainter.LaneWidth, 0);
 
     public override void Render(DrawingContext context)
     {

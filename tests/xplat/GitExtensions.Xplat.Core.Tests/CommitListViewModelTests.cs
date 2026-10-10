@@ -100,6 +100,37 @@ internal sealed class CommitListViewModelTests
     }
 
     [Test]
+    public async Task MaxCommits_should_limit_the_reads_and_end_the_paging()
+    {
+        _viewModel.MaxCommits = 3;
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, Page(hasMore: true, "aaa1", "bbb2"));
+        await open;
+
+        Task more = _viewModel.LoadMoreAsync();
+        _history.CompletePage(1, Page(hasMore: true, "ccc3"));
+        await more;
+        await _viewModel.LoadMoreAsync();
+
+        _history.PageLimits.Should().Equal(3, 1);
+        _viewModel.HasMore.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Artificial_rows_get_their_change_counts_and_are_not_counted_as_commits()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+            [.. ArtificialCommits.Rows("Ann", null), .. Page(hasMore: false, "aaa1").Rows], HasMore: false));
+        await open;
+
+        _viewModel.SetArtificialChangeCounts(workTree: 2, index: 1);
+
+        _viewModel.VisibleRows.Select(item => item.Badge).Should().Equal("(2 changes)", "(1 change)", "");
+        _viewModel.Status.Should().Be("1 commit");
+    }
+
+    [Test]
     public async Task LoadMoreAsync_should_keep_the_selection_and_skip_commits_already_loaded()
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);

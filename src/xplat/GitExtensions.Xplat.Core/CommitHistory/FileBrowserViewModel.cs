@@ -14,6 +14,7 @@ public sealed class FileBrowserViewModel : ObservableObject
     private string? _selectedFile;
     private IReadOnlyList<CommitRow> _fileHistory = [];
     private string? _errorMessage;
+    private IReadOnlyDictionary<string, string>? _filePaths;
 
     public FileBrowserViewModel(ICommitHistory history)
     {
@@ -52,6 +53,17 @@ public sealed class FileBrowserViewModel : ObservableObject
 
     public void ClearError() => ErrorMessage = null;
 
+    /// <summary>
+    ///  The path the selected file had in <paramref name="row"/>'s commit: an earlier name when the history followed a rename.
+    /// </summary>
+    public string? PathIn(CommitRow row)
+        => _filePaths?.GetValueOrDefault(row.Hash) ?? SelectedFile;
+
+    /// <summary>
+    ///  Reads the selected file's history again, e.g. after the rename options changed.
+    /// </summary>
+    public Task ReloadHistoryAsync() => SelectFileAsync(SelectedFile);
+
     public async Task OpenAsync(string repositoryPath, string hash)
     {
         int version = ++_openVersion;
@@ -89,9 +101,11 @@ public sealed class FileBrowserViewModel : ObservableObject
 
         try
         {
-            CommitPage page = await _history.LoadFileHistoryAsync(_repositoryPath, _hash, filePath, CommitListViewModel.PageSize);
+            CommitPage page =
+                await _history.LoadFileHistoryAsync(_repositoryPath, _hash, filePath, CommitListViewModel.PageSize);
             if (version == _historyVersion)
             {
+                _filePaths = page.FilePaths;
                 FileHistory = page.Rows;
             }
         }

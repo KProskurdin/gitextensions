@@ -9,7 +9,7 @@ namespace GitExtensions.Xplat.App;
 public partial class ConfirmWindow : Window
 {
     public ConfirmWindow(string message, string confirmText, string? caption = null, bool offerDontShowAgain = false,
-        string? cancelText = null)
+        string? cancelText = null, string? dontShowAgainText = null)
     {
         InitializeComponent();
         MessageText.Text = message;
@@ -24,7 +24,7 @@ public partial class ConfirmWindow : Window
             Title = caption;
         }
 
-        DontShowAgainCheck.Content = Confirmations.DontShowAgain;
+        DontShowAgainCheck.Content = dontShowAgainText ?? Confirmations.DontShowAgain;
         DontShowAgainCheck.IsVisible = offerDontShowAgain;
         CancelButton.Click += (_, _) => Close(false);
         ConfirmButton.Click += (_, _) => Close(true);

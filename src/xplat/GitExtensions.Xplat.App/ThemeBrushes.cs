@@ -41,6 +41,31 @@ internal static class ThemeBrushes
     public static IBrush ForegroundFor(DiffLineKind kind)
         => kind == DiffLineKind.Header ? Current.Header : Current.Context;
 
+    /// <summary>
+    ///  A syntax definition's color (a name or "#rrggbb"), made readable on the theme's background as upstream's editor
+    ///  adapts the definitions' colors (<c>ColorHelper.AdaptForeColor</c>); null for a color that cannot be read.
+    /// </summary>
+    public static IBrush? Syntax(string color)
+    {
+        Palette palette = Current;
+        if (palette.SyntaxBrushes.TryGetValue(color, out IBrush? brush))
+        {
+            return brush;
+        }
+
+        if (!Color.TryParse(color, out Color parsed))
+        {
+            palette.SyntaxBrushes[color] = null;
+            return null;
+        }
+
+        DrawingColor background = palette.IsDark ? DrawingColor.FromArgb(0x1E, 0x1E, 0x1E) : DrawingColor.White;
+        DrawingColor adapted = DrawingColor.FromArgb(parsed.A, parsed.R, parsed.G, parsed.B).AdaptForeColor(background);
+        brush = Brush(adapted);
+        palette.SyntaxBrushes[color] = brush;
+        return brush;
+    }
+
     private static Palette Create(AppThemeColors colors)
     {
         bool dark = colors.IsDark;
@@ -93,5 +118,9 @@ internal static class ThemeBrushes
         IBrush InfoBanner,
         IBrush ConflictBanner,
         IReadOnlyList<IBrush> Lanes,
-        IBrush NonRelativeLane);
+        IBrush NonRelativeLane)
+    {
+        // The syntax colors made for this palette, by the definition's color text.
+        public Dictionary<string, IBrush?> SyntaxBrushes { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
 }

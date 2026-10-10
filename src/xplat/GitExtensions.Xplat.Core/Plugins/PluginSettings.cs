@@ -34,7 +34,10 @@ public enum PluginSettingKind
     /// <summary>A link (a <see cref="PseudoSetting"/> with a link label); clicking it runs the plugin's handler.</summary>
     Link,
 
-    /// <summary>A setting whose upstream editor is a WinForms control, such as credentials or a custom control.</summary>
+    /// <summary>A user name and password (<see cref="CredentialsSetting"/>), kept in the Windows Credential Manager.</summary>
+    Credentials,
+
+    /// <summary>A setting whose upstream editor is a custom WinForms control.</summary>
     Unsupported,
 }
 
@@ -127,6 +130,57 @@ public sealed class PluginSettingRow : ObservableObject
     public bool IsValid => _isValid(_text);
 
     /// <summary>
+    ///  The password of a <see cref="PluginSettingKind.Credentials"/> setting; <see cref="Text"/> is its user name.
+    /// </summary>
+    public string? Password { get; set; }
+
+    /// <summary>
+    ///  False when the setting cannot be edited at the edited level or on this OS; <see cref="Text"/> says why for credentials.
+    /// </summary>
+    public bool IsEditable { get; private set; } = true;
+
+    /// <summary>
+    ///  Why <see cref="IsEditable"/> is false, or null.
+    /// </summary>
+    public string? NotEditableReason { get; private set; }
+
+    /// <summary>
+    ///  Credentials live in the Windows Credential Manager (upstream's <c>CredentialsManager</c>, through
+    ///  AdysTech.CredentialManager), which other OSes do not have.
+    /// </summary>
+    public const string CredentialsNeedWindows =
+        "Stored in the Windows Credential Manager, which this operating system does not have.";
+
+    // Upstream's CredentialsSettingControlBinding: the user and the repository levels and the effective one have credentials.
+    private static PluginSettingRow CreateCredentials(CredentialsSetting setting)
+        => new(PluginSettingKind.Credentials, setting.Caption,
+            (row, settings) =>
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    row.IsEditable = false;
+                    row.NotEditableReason = CredentialsNeedWindows;
+                    return;
+                }
+
+                row.IsEditable =
+                    settings.SettingLevel is SettingLevel.Global or SettingLevel.Local or SettingLevel.Effective;
+                System.Net.NetworkCredential credentials = row.IsEditable
+                    ? setting.GetValueOrDefault(settings)
+                    : new System.Net.NetworkCredential();
+                row.Text = credentials.UserName;
+                row.Password = credentials.Password;
+            },
+            (row, settings) =>
+            {
+                if (row.IsEditable)
+                {
+                    setting.SaveValue(settings, row.Text ?? "", row.Password ?? "");
+                    setting.Save();
+                }
+            });
+
+    /// <summary>
     ///  The row for <paramref name="setting"/>; a setting with its own WinForms editor gets an unsupported row.
     /// </summary>
     public static PluginSettingRow Create(ISetting setting)
@@ -139,7 +193,8 @@ public sealed class PluginSettingRow : ObservableObject
         return setting switch
         {
             BoolSetting bools => new PluginSettingRow(PluginSettingKind.Bool, bools.Caption,
-                (row, settings) => row.Checked = IsEffective(settings) ? bools.ValueOrDefault(settings) : bools[settings],
+                (row, settings) =>
+                    row.Checked = IsEffective(settings) ? bools.ValueOrDefault(settings) : bools[settings],
                 (row, settings) =>
                 {
                     if (!IsEffective(settings) || bools.ValueOrDefault(settings) != row.Checked)
@@ -154,7 +209,8 @@ public sealed class PluginSettingRow : ObservableObject
                 settings => IsEffective(settings) ? passwords.ValueOrDefault(settings) : passwords[settings],
                 (settings, value) => passwords[settings] = value, passwords.ValueOrDefault),
             ChoiceSetting choices => new PluginSettingRow(PluginSettingKind.Choice, choices.Caption,
-                (row, settings) => row.Text = IsEffective(settings) ? choices.ValueOrDefault(settings) : choices[settings],
+                (row, settings) =>
+                    row.Text = IsEffective(settings) ? choices.ValueOrDefault(settings) : choices[settings],
                 (row, settings) =>
                 {
                     // As upstream's drop-down list: a stored value that is not one of the choices is kept unless changed.
@@ -163,17 +219,19 @@ public sealed class PluginSettingRow : ObservableObject
                     {
                         choices[settings] = value;
                     }
-                })
-            {
-                Choices = [.. choices.Values],
-            },
+                }) { Choices = [.. choices.Values], },
+            CredentialsSetting credentials => CreateCredentials(credentials),
             PseudoSetting { CustomControl: System.Windows.Forms.TextBox note } pseudo =>
                 new PluginSettingRow(PluginSettingKind.Note, pseudo.Caption.Trim()) { _text = note.Text },
             PseudoSetting { CustomControl: System.Windows.Forms.LinkLabel link } pseudo =>
-                new PluginSettingRow(PluginSettingKind.Link, pseudo.Caption.Trim()) { _text = link.Text, Click = link.RaiseClick },
+                new PluginSettingRow(PluginSettingKind.Link, pseudo.Caption.Trim())
+                {
+                    _text = link.Text, Click = link.RaiseClick
+                },
             _ when setting.GetType() is { IsGenericType: true } type &&
                    type.GetGenericTypeDefinition() == typeof(NumberSetting<>) =>
-                (PluginSettingRow)_createNumber.MakeGenericMethod(type.GetGenericArguments()[0]).Invoke(null, [setting])!,
+                (PluginSettingRow)_createNumber.MakeGenericMethod(type.GetGenericArguments()[0])
+                    .Invoke(null, [setting])!,
             _ => new PluginSettingRow(PluginSettingKind.Unsupported, setting.Caption),
         };
     }
@@ -211,16 +269,14 @@ public sealed class PluginSettingRow : ObservableObject
                 {
                     write(settings, value);
                 }
-            })
-        {
-            Placeholder = StringPlaceholder,
-        };
+            }) { Placeholder = StringPlaceholder, };
 
     // Upstream's NumberSettingTextBoxBinding: an empty or invalid number removes the value.
     private static PluginSettingRow CreateNumber<T>(NumberSetting<T> setting)
         => new(PluginSettingKind.Number, setting.Caption,
             (row, settings) =>
-                row.Text = (IsEffective(settings) ? setting.ValueOrDefault(settings) : setting[settings])?.ToString() ?? "",
+                row.Text = (IsEffective(settings) ? setting.ValueOrDefault(settings) : setting[settings])?.ToString() ??
+                           "",
             (row, settings) =>
             {
                 if (string.IsNullOrEmpty(row.Text) || TryParse<T>(row.Text) is not { } value)
@@ -234,10 +290,7 @@ public sealed class PluginSettingRow : ObservableObject
                     setting[settings] = value;
                 }
             },
-            text => string.IsNullOrEmpty(text) || TryParse<T>(text) is not null)
-        {
-            Placeholder = NumberPlaceholder,
-        };
+            text => string.IsNullOrEmpty(text) || TryParse<T>(text) is not null) { Placeholder = NumberPlaceholder, };
 
     // The types upstream's NumberSetting<T>.TryConvertFromString accepts (it is internal).
     private static object? TryParse<T>(string text)
@@ -305,10 +358,11 @@ public sealed class PluginSettingsEditor
 public interface IPluginSettingsStore
 {
     /// <summary>
-    ///  The settings the Settings window edits: the repository's effective settings when one is open, as upstream's
-    ///  settings dialog shows them, otherwise the user's global settings.
+    ///  The settings the Settings window edits at <paramref name="level"/>, upstream's "Settings source": the repository's
+    ///  effective settings by default, as upstream's settings dialog shows them; without a repository, the user's global
+    ///  settings whatever the level.
     /// </summary>
-    SettingsSource Open(string? repositoryPath);
+    SettingsSource Open(string? repositoryPath, SettingLevel level = SettingLevel.Effective);
 
     /// <summary>
     ///  Writes the settings <see cref="Open"/> returned to disk.
@@ -321,11 +375,22 @@ public interface IPluginSettingsStore
 /// </summary>
 public sealed class UpstreamPluginSettingsStore : IPluginSettingsStore
 {
-    public SettingsSource Open(string? repositoryPath)
-        => string.IsNullOrEmpty(repositoryPath)
-            ? DistributedSettings.CreateGlobal()
-            : DistributedSettings.CreateEffective(
-                new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath));
+    public SettingsSource Open(string? repositoryPath, SettingLevel level = SettingLevel.Effective)
+    {
+        if (string.IsNullOrEmpty(repositoryPath))
+        {
+            return DistributedSettings.CreateGlobal();
+        }
+
+        GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
+        return level switch
+        {
+            SettingLevel.Local => DistributedSettings.CreateLocal(module),
+            SettingLevel.Distributed => DistributedSettings.CreateDistributed(module),
+            SettingLevel.Global => DistributedSettings.CreateGlobal(),
+            _ => DistributedSettings.CreateEffective(module),
+        };
+    }
 
     public void Save(SettingsSource settings)
     {
@@ -369,7 +434,23 @@ public sealed class InMemoryPluginSettingsStore(SettingsSource settings) : IPlug
 {
     public int SaveCount { get; private set; }
 
-    public SettingsSource Open(string? repositoryPath) => settings;
+    private readonly Dictionary<SettingLevel, InMemorySettingsSource> _levels = [];
+
+    // The given source is the effective and the global one; each repository level has a source of its own.
+    public SettingsSource Open(string? repositoryPath, SettingLevel level = SettingLevel.Effective)
+    {
+        if (repositoryPath is null || level is SettingLevel.Effective or SettingLevel.Global)
+        {
+            return settings;
+        }
+
+        if (!_levels.TryGetValue(level, out InMemorySettingsSource? source))
+        {
+            _levels[level] = source = new InMemorySettingsSource(level);
+        }
+
+        return source;
+    }
 
     public void Save(SettingsSource saved) => SaveCount++;
 }

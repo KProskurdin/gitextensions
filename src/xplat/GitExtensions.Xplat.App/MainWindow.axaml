@@ -33,6 +33,12 @@
         <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
         <Separator />
+        <!-- Upstream's graph styles: gray lanes for commits that are not relatives of the checked-out one, and the selected
+             commit's ancestry in color until the next refresh (also Alt+click). -->
+        <MenuItem x:Name="DrawNonRelativesGrayMenuItem" Header="Draw non relatives gra_y" ToggleType="CheckBox" />
+        <MenuItem x:Name="HighlightSelectedBranchMenuItem" Header="Highlight selected branch (until refresh)" />
+        <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
+        <Separator />
         <!-- Upstream's "Grid info" toggles for the build status column. -->
         <MenuItem x:Name="ShowBuildStatusIconMenuItem" Header="Show build status _icon" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowBuildStatusTextMenuItem" Header="Show build status te_xt" ToggleType="CheckBox" />
@@ -112,6 +118,8 @@
       <DockPanel LastChildFill="True">
         <TextBlock x:Name="BranchText" DockPanel.Dock="Left" FontWeight="SemiBold" Margin="0,0,16,0" />
         <TextBlock x:Name="StatusText" DockPanel.Dock="Left" Margin="0,0,16,0" />
+        <!-- Upstream's stash count (Settings > General, "Show stash count on status bar in browse window"). -->
+        <TextBlock x:Name="StashCountText" DockPanel.Dock="Left" Margin="0,0,16,0" IsVisible="False" />
         <TextBlock x:Name="OperationStatusText" TextTrimming="CharacterEllipsis" />
       </DockPanel>
     </Border>
@@ -335,7 +343,7 @@
                   <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
                               ToolTip.Tip="{Binding Row.Tooltip.Message}">
-                    <ItemsControl ItemsSource="{Binding Labels}">
+                    <ItemsControl Classes="refLabels" ItemsSource="{Binding Labels}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                           <StackPanel Orientation="Horizontal" />
@@ -352,6 +360,8 @@
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" />
+                    <!-- Upstream's change counts of the artificial rows (ShowGitStatusForArtificialCommits). -->
+                    <TextBlock Text="{Binding Badge}" Opacity="0.7" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </StackPanel>
                   <TextBlock Grid.Column="2" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
                   <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -370,6 +380,11 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
+          <!-- Upstream's quick search label: what was typed into the grid, red when nothing matches. -->
+          <Border x:Name="QuickSearchPanel" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="False"
+                  Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" Padding="7,5,5,5" IsHitTestVisible="False">
+            <TextBlock x:Name="QuickSearchText" FontWeight="Bold" FontSize="14" />
+          </Border>
 
           <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
 
@@ -434,6 +449,13 @@
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
                 <local:DiffView x:Name="FileContentView" Grid.Column="2" />
               </Grid>
+            </TabItem>
+            <!-- Upstream's build report tab (BuildReportTabPageExtension), shown when the repository's "Show build result
+                 page" is on and the selected commit's build has a report. Upstream embeds a browser for some servers; the
+                 new shell has none, so it shows upstream's "Open report" link, as upstream does for the other servers. -->
+            <TabItem x:Name="BuildReportTab" Header="Build Report" IsVisible="False">
+              <HyperlinkButton x:Name="OpenBuildReportLink" Content="Open report" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
             </TabItem>
           </TabControl>
         </Grid>

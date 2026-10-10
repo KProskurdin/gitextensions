@@ -52,6 +52,8 @@ public partial class SettingsWindow
         BuildServerTypeBox.ItemsSource = items;
         BuildServerTypeBox.SelectedItem = items.FirstOrDefault(item => Equals(item.Tag, current)) ?? items[0];
         EnableBuildServerCheck.IsChecked = BuildServerSettings.IntegrationEnabled[settings];
+        ShowBuildResultPageCheck.IsChecked = BuildServerSettings.ShowBuildResultPage[settings];
+        ShowBuildResultPageCheck.IsEnabled = true;
         EnableBuildServerCheck.IsEnabled = BuildServerTypeBox.IsEnabled = true;
         BuildServerTypeBox.SelectionChanged += (_, _) => UiActions.Run(ShowBuildServerControlAsync, ex => ErrorText.Text = ex.Message);
         await ShowBuildServerControlAsync();
@@ -98,6 +100,7 @@ public partial class SettingsWindow
         SettingsSource settings = _revisionLinkSettings;
         BuildServerSettings.ServerName[settings] = SelectedBuildServerType;
         BuildServerSettings.IntegrationEnabled[settings] = EnableBuildServerCheck.IsChecked;
+        BuildServerSettings.ShowBuildResultPage[settings] = ShowBuildResultPageCheck.IsChecked;
         if (_buildServerControl is not null && _buildServerControlType is not null)
         {
             _buildServerControl.SaveSettings(SettingsOf(_buildServerControlType));

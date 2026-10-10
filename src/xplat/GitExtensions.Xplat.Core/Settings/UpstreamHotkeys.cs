@@ -53,6 +53,16 @@ public static class UpstreamHotkeys
     public const string ResolveConflictsName = "FormMergeConflicts";
 
     /// <summary>
+    ///  Upstream <c>RevisionDiffControl.HotkeySettingsName</c>: the browse window's Diff tab file list.
+    /// </summary>
+    public const string BrowseDiffName = "BrowseDiff";
+
+    /// <summary>
+    ///  Upstream <c>FormStash.HotkeySettingsName</c>.
+    /// </summary>
+    public const string StashName = "Stash";
+
+    /// <summary>
     ///  Upstream <c>FormSettings.HotkeySettingsName</c>: the section of the user scripts' hotkeys, one command per script
     ///  with the script's <c>HotkeyCommandIdentifier</c> as its code.
     /// </summary>
