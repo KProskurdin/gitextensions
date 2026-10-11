@@ -55,7 +55,7 @@ internal sealed class GeneralSettingsTests
     public void The_app_opens_the_repository_used_last_when_the_setting_asks_for_it()
     {
         MainWindow first = OpenWindow();
-        TestAppBuilder.Preferences.RecentWorkingDir.Should().Be(Find<TextBox>(first, "PathBox").Text);
+        TestAppBuilder.Preferences.RecentWorkingDir.Should().Be(first.OpenRepositoryPath);
         first.Close();
 
         TestAppBuilder.Preferences.StartWithRecentWorkingDir = true;
@@ -63,7 +63,7 @@ internal sealed class GeneralSettingsTests
         second.Show();
 
         WaitUntil(() => Find<ListBox>(second, "CommitList").ItemCount == 2);
-        Find<TextBox>(second, "PathBox").Text.Should().Be(TestAppBuilder.Preferences.RecentWorkingDir);
+        second.OpenRepositoryPath.Should().Be(TestAppBuilder.Preferences.RecentWorkingDir);
     }
 
     [AvaloniaTest]
@@ -71,13 +71,13 @@ internal sealed class GeneralSettingsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         MainWindow window = OpenWindow();
-        Button commit = Find<Button>(window, "CommitDialogButton");
-        WaitUntil(() => commit.Content as string == "Commit (1)");
+        ToolButton commit = Find<ToolButton>(window, "CommitDialogButton");
+        WaitUntil(() => commit.Text == "Commit (1)");
 
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar = false;
         Click(window, "RefreshMenuItem");
 
-        WaitUntil(() => commit.Content as string == "Commit");
+        WaitUntil(() => commit.Text == "Commit");
     }
 
     [AvaloniaTest]
@@ -163,8 +163,8 @@ internal sealed class GeneralSettingsTests
             TestAppBuilder.Preferences.MaxRevisionGraphCommits.Should().Be(0, "an unchecked limit is stored as none");
             TestAppBuilder.Preferences.DefaultPullAction.Should()
                 .Be(GitExtensions.Extensibility.Git.GitPullAction.Rebase);
-            // The Rebase box shows the default action once the window has applied the settings.
-            WaitUntil(() => Find<CheckBox>(window, "RebaseOnPullCheck").IsChecked == true);
+            // As upstream, the pull button shows the default action once the window has applied the settings.
+            WaitUntil(() => Find<ToolSplitButton>(window, "PullButton").Image == "PullRebase");
         }
         finally
         {
@@ -219,9 +219,8 @@ internal sealed class GeneralSettingsTests
     {
         MainWindow window = NewWindow();
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled &&
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy &&
                         Find<ListBox>(window, "CommitList").ItemCount > 0);
         return window;
     }

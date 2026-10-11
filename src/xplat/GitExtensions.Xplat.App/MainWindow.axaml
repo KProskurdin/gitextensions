@@ -50,6 +50,7 @@
         <MenuItem x:Name="PullMenuItem" Header="Quick pull" />
         <MenuItem x:Name="PushMenuItem" Header="Quick push" />
         <MenuItem x:Name="FetchMenuItem" Header="Quick _fetch" />
+        <MenuItem x:Name="PushTagsMenuItem" Header="Push _tags" />
         <Separator />
         <MenuItem x:Name="StashMenuItem" Header="_Stash changes" />
         <MenuItem x:Name="StashPopMenuItem" Header="Stash p_op" />
@@ -83,34 +84,81 @@
       </MenuItem>
     </Menu>
 
-    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1" Padding="6,4">
+    <!-- Upstream's toolstrips (FormBrowse.Designer: ToolStripMain, then the filter toolstrip and the scripts' toolstrip),
+         in its order, with its images and tooltips. -->
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1" Padding="2,1">
       <WrapPanel>
-        <TextBox x:Name="PathBox" Width="340" Margin="0,0,4,2" PlaceholderText="Path to a git repository" />
-        <Button x:Name="OpenButton" Content="Open" Margin="0,0,4,2" />
-        <Button x:Name="RefreshButton" Content="Refresh" Margin="0,0,12,2" ToolTip.Tip="Refresh (F5)" />
-        <Button x:Name="CommitDialogButton" Content="Commit" Margin="0,0,4,2" FontWeight="SemiBold" ToolTip.Tip="Commit (Ctrl+Space)" />
-        <Button x:Name="PullButton" Content="Pull" Margin="0,0,2,2" ToolTip.Tip="Pull the current branch from the remote it tracks (Ctrl+Shift+P). Ctrl+Down opens the pull dialog." />
-        <CheckBox x:Name="RebaseOnPullCheck" Content="Rebase" Margin="0,0,8,2" ToolTip.Tip="Pull with rebase instead of merge" />
-        <Button x:Name="PushButton" Content="Push" Margin="0,0,4,2" ToolTip.Tip="Push the current branch to the remote it tracks (Ctrl+Shift+Up). Ctrl+Up opens the push dialog." />
-        <Button x:Name="PushTagsButton" Content="Push tags" Margin="0,0,4,2" />
-        <Button x:Name="FetchButton" Content="Fetch" Margin="0,0,2,2" ToolTip.Tip="Fetch from origin (Ctrl+Shift+Down)" />
-        <CheckBox x:Name="PruneCheck" Content="Prune" Margin="0,0,12,2" ToolTip.Tip="Remove remote-tracking branches that are gone on the remote" />
-        <Button x:Name="CloneButton" Content="Clone..." Margin="0,0,4,2" />
-        <Button x:Name="InitButton" Content="Init" Margin="0,0,4,2" ToolTip.Tip="Create a repository in the folder in the path box" />
-        <Button x:Name="OpenFolderButton" Content="Folder" Margin="0,0,4,2" ToolTip.Tip="Open the repository folder in the file manager" />
-        <Button x:Name="TerminalButton" Content="Terminal" Margin="0,0,4,2" ToolTip.Tip="Open a terminal in the repository (Ctrl+G)" />
-        <Button x:Name="FilesButton" Content="Files..." Margin="0,0,4,2" />
-        <Button x:Name="ReflogButton" Content="Reflog..." Margin="0,0,12,2" />
+        <StackPanel x:Name="MainToolStrip" Classes="toolStrip">
+          <local:ToolButton x:Name="RefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh" />
+          <Rectangle Classes="toolSeparator" />
+          <local:ToolButton x:Name="ToggleLeftPanelButton" Image="LayoutSidebarLeft" ToolTip.Tip="Toggle left panel" />
+          <local:ToolButton x:Name="ToggleSplitViewButton" Image="LayoutFooter" ToolTip.Tip="Toggle split view layout" />
+          <Rectangle Classes="toolSeparator" />
+          <local:ToolDropDownButton x:Name="SubmodulesButton" Image="SubmodulesManage" ToolTip.Tip="Submodules">
+            <local:ToolDropDownButton.Flyout>
+              <MenuFlyout />
+            </local:ToolDropDownButton.Flyout>
+          </local:ToolDropDownButton>
+          <local:ToolDropDownButton x:Name="WorktreesButton" Image="WorkTree" ToolTip.Tip="Worktrees">
+            <local:ToolDropDownButton.Flyout>
+              <MenuFlyout />
+            </local:ToolDropDownButton.Flyout>
+          </local:ToolDropDownButton>
+          <!-- Upstream's working directory drop-down: the repository's name, the recent repositories to switch to. -->
+          <local:ToolDropDownButton x:Name="WorkingDirButton" Text="WorkingDir">
+            <local:ToolDropDownButton.Flyout>
+              <MenuFlyout />
+            </local:ToolDropDownButton.Flyout>
+          </local:ToolDropDownButton>
+          <local:ToolDropDownButton x:Name="BranchSelectButton" Image="Branch" Text="Branch" ToolTip.Tip="Change current branch">
+            <local:ToolDropDownButton.Flyout>
+              <MenuFlyout />
+            </local:ToolDropDownButton.Flyout>
+          </local:ToolDropDownButton>
+          <Rectangle Classes="toolSeparator" />
+          <!-- The image and tooltip follow the default pull action, as upstream's RefreshDefaultPullAction sets them. -->
+          <local:ToolSplitButton x:Name="PullButton" Image="Pull" ToolTip.Tip="Pull">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="PullMergeMenuItem" Header="Pull - _merge" Icon="{local:UpstreamIcon PullMerge}" />
+                <MenuItem x:Name="PullRebaseMenuItem" Header="Pull - _rebase" Icon="{local:UpstreamIcon PullRebase}" />
+                <MenuItem x:Name="PullFetchMenuItem" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" ToolTip.Tip="Fetch branches and tags" />
+                <MenuItem x:Name="PullOpenDialogMenuItem" Header="Open _pull dialog..." Icon="{local:UpstreamIcon Pull}" />
+                <MenuItem x:Name="PullFetchAllMenuItem" Header="Fetch _all" Icon="{local:UpstreamIcon PullFetchAll}" ToolTip.Tip="Fetch branches and tags from all remote repositories" />
+                <MenuItem x:Name="PullFetchPruneAllMenuItem" Header="F_etch and prune all" Icon="{local:UpstreamIcon PullFetchPruneAll}" ToolTip.Tip="Fetch branches and tags from all remote repositories also prune deleted branches" />
+                <Separator />
+                <MenuItem x:Name="SetDefaultPullActionMenuItem" Header="Set _default Pull button action" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <!-- Upstream shows the ahead and behind counts as the push button's text. -->
+          <local:ToolButton x:Name="PushButton" Image="Push" ToolTip.Tip="Push" />
+          <local:ToolButton x:Name="CommitDialogButton" Image="RepoStateClean" Text="Commit" />
+          <local:ToolSplitButton x:Name="StashToolButton" Image="Stash" ToolTip.Tip="Manage stashes">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="StashChangesMenuItem" Header="_Stash" ToolTip.Tip="Stash changes" />
+                <MenuItem x:Name="StashStagedMenuItem" Header="S_tash staged" ToolTip.Tip="Stash staged changes" />
+                <MenuItem x:Name="StashPopToolMenuItem" Header="Stash _pop" ToolTip.Tip="Apply and drop single stash" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <Rectangle Classes="toolSeparator" />
+          <local:ToolButton x:Name="OpenFolderButton" Image="BrowseFileExplorer" ToolTip.Tip="File Explorer" />
+          <local:ToolButton x:Name="TerminalButton" Image="Console" ToolTip.Tip="Terminal" />
+          <local:ToolButton x:Name="EditSettingsButton" Image="Settings" ToolTip.Tip="Settings" />
+        </StackPanel>
+        <StackPanel x:Name="FilterToolStrip" Classes="toolStrip" Spacing="4">
+          <ComboBox x:Name="BranchScopeBox" SelectedIndex="0" ToolTip.Tip="Which branches the grid shows">
+            <ComboBoxItem Content="All branches" />
+            <ComboBoxItem Content="Current branch" />
+          </ComboBox>
+          <TextBox x:Name="FilterBox" Width="180" PlaceholderText="Filter loaded commits (Ctrl+E)" />
+          <TextBox x:Name="SearchBox" Width="180" PlaceholderText="Search history (Enter)" />
+          <local:ToolButton x:Name="RevisionFilterButton" Image="EditFilter" Text="Filter..." ToolTip.Tip="Filter by author, committer, message, date or path" />
+        </StackPanel>
         <!-- Upstream's user menu bar: the enabled scripts whose event is "show in user menu bar". -->
-        <StackPanel x:Name="UserScriptsPanel" Orientation="Horizontal" Spacing="4" Margin="0,0,12,2" />
-        <TextBox x:Name="FilterBox" Width="180" Margin="0,0,4,2" PlaceholderText="Filter loaded commits (Ctrl+E)" />
-        <TextBox x:Name="SearchBox" Width="180" Margin="0,0,4,2" PlaceholderText="Search history (Enter)" />
-        <ComboBox x:Name="BranchScopeBox" Margin="0,0,4,2" SelectedIndex="0" ToolTip.Tip="Which branches the grid shows">
-          <ComboBoxItem Content="All branches" />
-          <ComboBoxItem Content="Current branch" />
-        </ComboBox>
-        <Button x:Name="RevisionFilterButton" Content="Filter..." Margin="0,0,4,2" ToolTip.Tip="Filter by author, committer, message, date or path" />
-        <Button x:Name="LoadMoreButton" Content="Load more" IsVisible="False" Margin="0,0,4,2" />
+        <StackPanel x:Name="UserScriptsPanel" Classes="toolStrip" Spacing="4" />
       </WrapPanel>
     </Border>
 
@@ -118,6 +166,7 @@
       <DockPanel LastChildFill="True">
         <TextBlock x:Name="BranchText" DockPanel.Dock="Left" FontWeight="SemiBold" Margin="0,0,16,0" />
         <TextBlock x:Name="StatusText" DockPanel.Dock="Left" Margin="0,0,16,0" />
+        <Button x:Name="LoadMoreButton" DockPanel.Dock="Left" Content="Load more" IsVisible="False" Padding="6,0" MinHeight="0" Margin="0,0,16,0" />
         <!-- Upstream's stash count (Settings > General, "Show stash count on status bar in browse window"). -->
         <TextBlock x:Name="StashCountText" DockPanel.Dock="Left" Margin="0,0,16,0" IsVisible="False" />
         <TextBlock x:Name="OperationStatusText" TextTrimming="CharacterEllipsis" />
@@ -155,7 +204,7 @@
       </DockPanel>
     </Border>
 
-    <Grid ColumnDefinitions="280,5,*" Margin="6">
+    <Grid x:Name="MainSplitGrid" ColumnDefinitions="280,5,*" Margin="6">
       <!-- Repository objects: upstream's left panel (RepoObjectsTree) as sections. -->
       <ScrollViewer x:Name="LeftPanel" Grid.Column="0">
         <StackPanel Spacing="4">

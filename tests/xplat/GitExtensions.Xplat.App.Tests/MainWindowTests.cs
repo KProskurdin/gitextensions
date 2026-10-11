@@ -53,7 +53,7 @@ internal sealed class MainWindowTests
 
         Find<TextBlock>(window, "GitProblemText").Text.Should().Contain("git was not found");
         Find<TextBlock>(window, "GitProblemText").IsVisible.Should().BeTrue();
-        Find<Button>(window, "OpenButton").IsEnabled.Should().BeFalse();
+        Find<ToolDropDownButton>(window, "WorkingDirButton").IsEnabled.Should().BeFalse();
         Find<MenuItem>(window, "OpenMenuItem").IsEnabled.Should().BeFalse();
     }
 
@@ -64,7 +64,7 @@ internal sealed class MainWindowTests
             new GitVersion("git version 2.20.1")));
 
         Find<TextBlock>(window, "GitProblemText").Text.Should().Contain("2.20.1");
-        Find<Button>(window, "OpenButton").IsEnabled.Should().BeTrue();
+        Find<ToolDropDownButton>(window, "WorkingDirButton").IsEnabled.Should().BeTrue();
     }
 
     [AvaloniaTest]
@@ -76,7 +76,8 @@ internal sealed class MainWindowTests
 
         Find<TextBlock>(window, "StatusText").Text.Should().Be("2 commits");
         Find<ListBox>(window, "CommitList").ItemCount.Should().Be(2);
-        window.Title.Should().Be($"{Path.GetFileName(_repo.Path)} - Git Extensions");
+        string branch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        WaitUntil(() => window.Title == $"{Path.GetFileName(_repo.Path)} ({branch}) - Git Extensions");
         Find<Grid>(window, "BrowsePanel").IsVisible.Should().BeTrue();
         Find<DockPanel>(window, "DashboardPanel").IsVisible.Should().BeFalse();
     }
@@ -285,7 +286,7 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
 
         Open(window, _repo.Path);
-        WaitUntil(() => Find<Button>(window, "CommitDialogButton").Content as string == "Commit (1)");
+        WaitUntil(() => Find<ToolButton>(window, "CommitDialogButton").Text == "Commit (1)");
 
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
         Find<TextBlock>(window, "BranchText").Text.Should().Be($"Branch: {current}");
@@ -410,7 +411,7 @@ internal sealed class MainWindowTests
         window.Show();
         Open(window, _repo.Path);
 
-        Click(window, "FilesButton");
+        Click(window, "FilesMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<FileBrowserWindow>().Any());
 
         FileBrowserWindow files = window.OwnedWindows.OfType<FileBrowserWindow>().Single();
@@ -430,7 +431,7 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
-        Click(window, "FilesButton");
+        Click(window, "FilesMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<FileBrowserWindow>().Any());
         FileBrowserWindow files = window.OwnedWindows.OfType<FileBrowserWindow>().Single();
         ListBox fileList = files.FindControl<ListBox>("FileList")!;
@@ -474,7 +475,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Merged feature");
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        WaitUntil(() => !window.IsBusy);
         window.Close();
     }
 
@@ -490,7 +491,7 @@ internal sealed class MainWindowTests
         TreeView branches = Find<TreeView>(window, "BranchTreeView");
         WaitUntil(() =>
             BranchNode(branches, "other") is not null &&
-            Find<Button>(window, "CommitDialogButton").Content as string == "Commit (1)");
+            Find<ToolButton>(window, "CommitDialogButton").Text == "Commit (1)");
         branches.SelectedItem = BranchNode(branches, "other");
 
         Click(window, "CheckoutButton");
@@ -533,14 +534,14 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
         Open(window, _repo.Path);
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
-        Click(window, "OpenButton");
-        Button commit = Find<Button>(window, "CommitDialogButton");
-        WaitUntil(() => commit.Content as string == "Commit (1)");
+        Click(window, "RefreshButton");
+        ToolButton commit = Find<ToolButton>(window, "CommitDialogButton");
+        WaitUntil(() => commit.Text == "Commit (1)");
 
         Find<TextBox>(window, "StashMessageBox").Text = "wip";
         Click(window, "StashButton");
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Stashed");
-        WaitUntil(() => commit.Content as string == "Commit");
+        WaitUntil(() => commit.Text == "Commit");
         _repo.Run("stash", "list").Should().Contain("wip");
 
         ListBox stashes = Find<ListBox>(window, "StashList");
@@ -548,7 +549,7 @@ internal sealed class MainWindowTests
         stashes.SelectedIndex = 0;
         Click(window, "PopStashButton");
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Stash popped");
-        WaitUntil(() => commit.Content as string == "Commit (1)");
+        WaitUntil(() => commit.Text == "Commit (1)");
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("changed");
     }
 
@@ -594,9 +595,9 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
-        WaitUntil(() => Find<Button>(window, "ReflogButton").IsEnabled);
+        WaitUntil(() => Find<MenuItem>(window, "ReflogMenuItem").IsEnabled);
 
-        Click(window, "ReflogButton");
+        Click(window, "ReflogMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<ReflogWindow>().Any());
         ReflogWindow reflog = window.OwnedWindows.OfType<ReflogWindow>().Single();
         ListBox entries = Find<ListBox>(reflog, "EntryList");
@@ -1078,8 +1079,8 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
-        Button commit = Find<Button>(window, "CommitDialogButton");
-        commit.Content.Should().Be("Commit");
+        ToolButton commit = Find<ToolButton>(window, "CommitDialogButton");
+        commit.Text.Should().Be("Commit");
         Thread.Sleep(TimeSpan.FromSeconds(2.1));
 
         Window other = new();
@@ -1089,7 +1090,7 @@ internal sealed class MainWindowTests
         window.Activate();
         other.Close();
 
-        WaitUntil(() => commit.Content as string == "Commit (1)");
+        WaitUntil(() => commit.Text == "Commit (1)");
     }
 
     [AvaloniaTest]
@@ -1721,9 +1722,8 @@ internal sealed class MainWindowTests
 
     private static void Open(MainWindow window, string path)
     {
-        Find<TextBox>(window, "PathBox").Text = path;
-        Find<Button>(window, "OpenButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(path);
+        WaitUntil(() => !window.IsBusy);
     }
 
     private static CommitWindow OpenCommitWindow(MainWindow window)

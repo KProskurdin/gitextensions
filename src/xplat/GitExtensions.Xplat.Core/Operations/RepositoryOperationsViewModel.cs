@@ -239,6 +239,9 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         => RunAsync("Stashed", repositoryPath,
             () => _operations.StashAsync(repositoryPath, message.Trim(), includeUntracked, keepIndex, paths));
 
+    public Task<bool> StashStagedAsync(string repositoryPath)
+        => RunAsync("Stashed staged changes", repositoryPath, () => _operations.StashStagedAsync(repositoryPath));
+
     public Task<bool> ApplyStashAsync(string repositoryPath, string stashName)
         => RunAsync("Stash applied", repositoryPath, () => _operations.ApplyStashAsync(repositoryPath, stashName));
 

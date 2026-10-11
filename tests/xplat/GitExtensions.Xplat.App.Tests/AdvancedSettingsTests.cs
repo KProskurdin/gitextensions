@@ -40,7 +40,7 @@ internal sealed class AdvancedSettingsTests
         MainWindow window = OpenWindow();
         TreeView branches = Find<TreeView>(window, "BranchTreeView");
         WaitUntil(() => BranchNode(branches, "other") is not null &&
-                        Find<Button>(window, "CommitDialogButton").Content as string == "Commit (1)");
+                        Find<ToolButton>(window, "CommitDialogButton").Text == "Commit (1)");
         branches.SelectedItem = BranchNode(branches, "other");
 
         Click(window, "CheckoutButton");
@@ -155,9 +155,8 @@ internal sealed class AdvancedSettingsTests
     {
         MainWindow window = NewWindow();
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
         return window;
     }
 

@@ -147,6 +147,19 @@ Access keys (Alt+letter) as upstream's `&` texts, tab order as the designer's `T
 of each list as upstream, splitter positions and column widths kept (upstream's `SplitterManager` keys), tooltips on
 toolbar icons with upstream's `ToolTipText`.
 
+### Progress
+
+- 2026-10-11, U1.1 done: lane colors count the theme's distinct GraphBranch colors (`UpstreamGraphLaneColor.LaneColorCount`).
+- 2026-10-11, U1.2 done: `UpstreamImages` loads any `Images.resx` entry by name, cached; `{local:UpstreamImage Name}` and
+  `{local:UpstreamIcon Name}` for markup. The dark-theme adaptation of icons is not done yet.
+- 2026-10-11, U1.3 mostly done: `ToolButton`, `ToolDropDownButton` and `ToolSplitButton` (class `tool`: flat, border on
+  hover, 16 px image plus optional text), `toolStrip` panels and `toolSeparator`s, on Fluent. Overflow is not done. Fluent
+  restyled was enough for the toolstrip, so the Simple theme question stays open for the grid (U1.4).
+- 2026-10-11, U2.1 mostly done: the main toolstrip in upstream's order and with its images, split buttons, default pull
+  action, push ahead/behind text and "Commit (n)" state image; the working directory caption and the window title as
+  upstream. Left: the terminal choice drop-down, the third layout toggle, the filter toolstrip's "Branches:" box and funnel
+  buttons. See the "FormBrowse toolstrip" note in `PORTING-MAP.md`.
+
 ## Risks
 
 - Fluent fights a dense WinForms look; restyling may be cheaper with Avalonia's Simple theme as a base. Decide in U1 with a

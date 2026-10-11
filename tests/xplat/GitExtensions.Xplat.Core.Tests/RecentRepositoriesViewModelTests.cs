@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using GitCommands;
+using GitCommands.UserRepositoryHistory;
 using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
@@ -66,10 +68,52 @@ internal sealed class RecentRepositoriesViewModelTests
     }
 
     [Test]
+    public void Caption_should_be_the_full_path_without_shortening()
+    {
+        string path = RootedOutsideHome("work", "repo");
+
+        RecentRepositoryPaths.Caption(path, [], Splitter(ShorteningRecentRepoPathStrategy.None))
+            .Should().Be(path + Path.DirectorySeparatorChar);
+    }
+
+    [Test]
+    public void Caption_should_be_the_folder_name_with_the_most_significant_directory_strategy()
+    {
+        string path = RootedOutsideHome("work", "repo");
+
+        RecentRepositoryPaths.Caption(path, [RootedOutsideHome("other", "tool")],
+            Splitter(ShorteningRecentRepoPathStrategy.MostSignDir)).Should().Be("repo");
+    }
+
+    [Test]
+    public void Caption_should_show_the_home_folder_as_a_tilde()
+    {
+        string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "src", "repo");
+
+        RecentRepositoryPaths.Caption(path, [], Splitter(ShorteningRecentRepoPathStrategy.None))
+            .Should().Be($"~{Path.DirectorySeparatorChar}src{Path.DirectorySeparatorChar}repo");
+    }
+
+    [Test]
     public void Same_should_compare_case_as_the_file_system_does()
     {
         RecentRepositoryPaths.Same("/work/Repo", "/work/repo").Should().Be(OperatingSystem.IsWindows());
     }
+
+    // A path on a drive or root of its own, so it is never under the user's home folder.
+    private static string RootedOutsideHome(params string[] parts)
+        => Path.Combine([OperatingSystem.IsWindows() ? @"Q:\" : "/xplat-outside-home", .. parts]);
+
+    // Every setting the caption depends on, so the user's settings file never changes a test.
+    private static RecentRepoSplitter Splitter(ShorteningRecentRepoPathStrategy strategy) => new()
+    {
+        ShorteningStrategy = strategy,
+        MaxTopRepositories = 0,
+        HideTopRepositoriesFromRecentList = false,
+        SortTopRepos = false,
+        SortRecentRepos = false,
+        RecentReposComboMinWidth = 0,
+    };
 
     private sealed class FailingStore : IRecentRepositoryStore
     {

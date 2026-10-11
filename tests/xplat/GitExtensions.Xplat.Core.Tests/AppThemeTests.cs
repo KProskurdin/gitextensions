@@ -63,6 +63,22 @@ internal sealed class AppThemeTests
     }
 
     [Test]
+    public void LaneColors_should_be_upstreams_distinct_theme_colors_so_the_lane_index_is_upstreams()
+    {
+        AppThemeColors light = _service.Load(ThemeId.DefaultLight, [], systemIsDark: false);
+        AppThemeColors dark = _service.Load(ThemeId.DefaultDark, [], systemIsDark: false);
+
+        // GraphBranch8 is empty in both, so upstream cycles through seven colors.
+        light.LaneColors().Should().HaveCount(7).And.OnlyHaveUniqueItems();
+        dark.LaneColors().Should().HaveCount(7);
+        light.LaneColors()[2].ToArgb().Should().Be(Color.FromArgb(0x24, 0xc2, 0x21).ToArgb());
+
+        GitUI.UserControls.RevisionGrid.Graph.RevisionGraphLaneColor.LaneColorCount = light.LaneColors().Count;
+        GitUI.UserControls.RevisionGrid.Graph.RevisionGraphLaneColor.GetColorForLane(9).Should().Be(2,
+            "9 % 7, as upstream; the fork computed 9 % 8 = 1");
+    }
+
+    [Test]
     public void Load_should_follow_imports_and_apply_the_overrides()
     {
         AppThemeColors colors = _service.Load(new ThemeId("dark+", isBuiltin: true), [], systemIsDark: false);

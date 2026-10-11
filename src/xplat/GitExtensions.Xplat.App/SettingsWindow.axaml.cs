@@ -292,6 +292,7 @@ public partial class SettingsWindow : Window
                 IsEnabled = current is not null,
                 Margin = new Avalonia.Thickness(0, 0, 0, 6),
             };
+
             // Upstream's font dialog sets the style too; here it is two check boxes beside the size.
             CheckBox bold = new()
             {

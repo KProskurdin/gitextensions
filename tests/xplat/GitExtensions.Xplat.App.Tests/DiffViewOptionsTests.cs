@@ -156,7 +156,7 @@ internal sealed class DiffViewOptionsTests
         Dispatcher.UIThread.RunJobs();
         Avalonia.Controls.Shapes.Line ruler = diff.FindControl<Avalonia.Controls.Shapes.Line>("VerticalRuler")!;
         ruler.IsVisible.Should().BeTrue();
-        ruler.StartPoint.X.Should().BeGreaterThan(88 + 79 * 4, "column 80 is past the line numbers");
+        ruler.StartPoint.X.Should().BeGreaterThan(88 + (79 * 4), "column 80 is past the line numbers");
 
         // As upstream: the markers for spaces, tabs and line ends, not on the diff's own + or space; no new git diff.
         diff.FindControl<ToggleButton>("NonPrintingToggle")!.IsChecked = true;

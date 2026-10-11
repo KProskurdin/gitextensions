@@ -109,7 +109,9 @@ internal sealed class UiPluginTests
         window.Show();
         Dispatcher.UIThread.RunJobs();
 
-        window.FindControl<Button>("CommitDialogButton")!.Content.Should().Be("Committen");
+        // The toolbar button shows upstream's image and its translated text.
+        ((StackPanel)window.FindControl<ToolButton>("CommitDialogButton")!.Content!).Children.OfType<TextBlock>().Single()
+            .Text.Should().Be("Committen");
         window.FindControl<MenuItem>("ShowAuthorDateMenuItem")!.Header.Should().Be("Zeige Autor Datum");
         window.Close();
     }
@@ -554,9 +556,8 @@ internal sealed class UiPluginTests
         window.Show();
         MenuItem menu = Find<MenuItem>(window, "PluginsMenu");
         WaitUntil(() => menu.Items.OfType<MenuItem>().Any(item => item.Tag == plugin));
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
         return window;
     }
 

@@ -16,27 +16,19 @@ internal static class DiffToolChoices
         MenuFlyout flyout = new();
         button.Flyout = flyout;
         Show(button);
-        flyout.Opening += async (_, _) =>
-        {
-            flyout.Items.Clear();
-            IReadOnlyList<string> tools;
-            try
-            {
-                tools = await AppServices.DiffMergeTools.GetAvailableAsync(diff: true);
-            }
-            catch (Exception ex) when (ex is IOException or InvalidOperationException)
-            {
-                showError(ex.Message);
-                return;
-            }
+        flyout.Opening += (_, _) =>
+            UiActions.Run(() => FillAsync(flyout, open, showError), ex => showError(ex.Message));
+    }
 
-            foreach (string tool in tools)
-            {
-                MenuItem item = new() { Header = new TextBlock { Text = tool } };
-                item.Click += (_, _) => UiActions.Run(() => open(tool), ex => showError(ex.Message));
-                flyout.Items.Add(item);
-            }
-        };
+    private static async Task FillAsync(MenuFlyout flyout, Func<string, Task> open, Action<string> showError)
+    {
+        flyout.Items.Clear();
+        foreach (string tool in await AppServices.DiffMergeTools.GetAvailableAsync(diff: true))
+        {
+            MenuItem item = new() { Header = new TextBlock { Text = tool } };
+            item.Click += (_, _) => UiActions.Run(() => open(tool), ex => showError(ex.Message));
+            flyout.Items.Add(item);
+        }
     }
 
     /// <summary>

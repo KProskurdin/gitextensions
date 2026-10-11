@@ -35,8 +35,7 @@ internal sealed class BrowseRepositorySettingsTests
         string branch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
+        window.OpenRepository(_repo.Path);
         ListBox commits = Find<ListBox>(window, "CommitList");
         WaitUntil(() => commits.ItemCount >= 2);
 
@@ -67,8 +66,7 @@ internal sealed class BrowseRepositorySettingsTests
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
+        window.OpenRepository(_repo.Path);
         ListBox commits = Find<ListBox>(window, "CommitList");
         WaitUntil(() => commits.ItemCount >= 2);
         GraphRowRef head = commits.Items.OfType<CommitListItem>().First().Graph;

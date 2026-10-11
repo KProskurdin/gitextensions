@@ -1,3 +1,4 @@
+using GitCommands;
 using GitCommands.UserRepositoryHistory;
 using HistoryEntry = GitCommands.UserRepositoryHistory.Repository;
 
@@ -38,10 +39,13 @@ public sealed class SettingsRecentRepositoryStore : IRecentRepositoryStore
         IList<HistoryEntry> history = await RepositoryHistoryManager.Locals.LoadRecentHistoryAsync();
         string? stored = history.Select(repository => repository.Path)
             .FirstOrDefault(path => RecentRepositoryPaths.Same(path, repositoryPath));
-        return stored is null ? ToPaths(history) : ToPaths(await RepositoryHistoryManager.Locals.RemoveRecentAsync(stored));
+        return stored is null
+            ? ToPaths(history)
+            : ToPaths(await RepositoryHistoryManager.Locals.RemoveRecentAsync(stored));
     }
 
-    private static IReadOnlyList<string> ToPaths(IEnumerable<HistoryEntry> history) => [.. history.Select(repository => repository.Path)];
+    private static IReadOnlyList<string> ToPaths(IEnumerable<HistoryEntry> history) =>
+        [.. history.Select(repository => repository.Path)];
 }
 
 /// <summary>
@@ -79,7 +83,8 @@ public static class RecentRepositoryPaths
     ///  the file system ignores it.
     /// </summary>
     public static bool Same(string left, string right)
-        => string.Equals(Trim(left), Trim(right), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        => string.Equals(Trim(left), Trim(right),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     /// <summary>
     ///  The folder name shown for a recent entry, e.g. "gitextensions" for "/home/me/src/gitextensions/".
@@ -89,6 +94,28 @@ public static class RecentRepositoryPaths
         string trimmed = Trim(path);
         string name = Path.GetFileName(trimmed);
         return name.Length == 0 ? trimmed : name;
+    }
+
+    /// <summary>
+    ///  The working directory button's caption, as upstream's <c>WorkingDirectoryToolStripSplitButton</c> sets it: the
+    ///  caption upstream's <see cref="RecentRepoSplitter"/> gives the path among the recent repositories (shortened as the
+    ///  user's <c>ShorteningRecentRepoPathStrategy</c> asks, the full path by default), with the home folder as "~".
+    /// </summary>
+    /// <param name="path">The open repository.</param>
+    /// <param name="recentPaths">The recent repositories, newest first.</param>
+    /// <param name="splitter">The splitter with the shortening settings; upstream's settings when null.</param>
+    public static string Caption(string path, IReadOnlyList<string> recentPaths, RecentRepoSplitter? splitter = null)
+    {
+        // Upstream's working directory always ends with a separator, and it adds the open repository to the history first,
+        // so it is always among them.
+        string workingDir = path.EnsureTrailingPathSeparator() ?? path;
+        List<HistoryEntry> history = [new HistoryEntry(workingDir)];
+        history.AddRange(recentPaths.Where(recent => !Same(recent, path)).Select(recent => new HistoryEntry(recent)));
+
+        List<RecentRepoInfo> repositories = [];
+        (splitter ?? new RecentRepoSplitter()).SplitRecentRepos(history, repositories, repositories);
+        RecentRepoInfo? shown = repositories.Find(repository => Same(repository.Repo.Path, path));
+        return PathUtil.GetDisplayPath(shown?.Caption ?? workingDir);
     }
 
     private static string Trim(string path) => path.Length > 1 ? path.TrimEnd('/', '\\') : path;

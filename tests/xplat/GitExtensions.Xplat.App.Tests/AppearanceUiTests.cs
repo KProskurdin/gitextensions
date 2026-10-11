@@ -189,9 +189,8 @@ internal sealed class AppearanceUiTests
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled && Find<ListBox>(window, "CommitList").ItemCount > 0);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy && Find<ListBox>(window, "CommitList").ItemCount > 0);
         return window;
     }
 

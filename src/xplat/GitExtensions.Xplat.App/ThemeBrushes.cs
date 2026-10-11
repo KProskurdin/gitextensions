@@ -69,13 +69,11 @@ internal static class ThemeBrushes
     private static Palette Create(AppThemeColors colors)
     {
         bool dark = colors.IsDark;
-        List<IBrush> lanes =
-        [
-            .. Enumerable.Range(0, 8)
-                .Select(i => colors.Get(AppColor.GraphBranch1 + i))
-                .Where(color => !color.IsEmpty)
-                .Select(Brush)
-        ];
+
+        // Upstream's lane colors; the graph picks a lane's index from their count, as upstream does.
+        IReadOnlyList<DrawingColor> laneColors = colors.LaneColors();
+        GitUI.UserControls.RevisionGrid.Graph.RevisionGraphLaneColor.LaneColorCount = laneColors.Count;
+        List<IBrush> lanes = [.. laneColors.Select(Brush)];
         return new Palette(
             IsDark: dark,
             AddedBackground: Brush(colors.Get(AppColor.AnsiTerminalGreenBackNormal)),

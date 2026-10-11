@@ -24,8 +24,14 @@ public partial class CommitWindow
 
     // Counts the requests to follow the typing, so only the last one after the pause shows the list.
     private int _autoCompleteRequests;
+
     private CancellationTokenSource _autoCompleteCancellation = new();
-    private Task<IReadOnlyList<AutoCompleteWord>>? _autoCompleteWords;
+
+    // The words of the changes, once read; null while they are being read or when auto-completion is off.
+    private IReadOnlyList<AutoCompleteWord>? _autoCompleteWords;
+
+    // Ctrl+Space was pressed while the words were being read, so the list opens when they are there.
+    private bool _autoCompleteAsked;
     private IReadOnlyList<AutoCompleteWord> _autoCompleteMatches = [];
 
     // Upstream's _autoCompleteWasUserActivated: after Ctrl+Space the list also follows a word of one letter.
@@ -59,9 +65,37 @@ public partial class CommitWindow
     {
         _autoCompleteCancellation.Cancel();
         _autoCompleteCancellation = new CancellationTokenSource();
-        _autoCompleteWords = _preferences.ProvideAutocompletion
-            ? CommitMessageAutoCompletion.LoadWordsAsync(_repositoryPath, _autoCompleteCancellation.Token)
-            : null;
+        _autoCompleteWords = null;
+        if (_preferences.ProvideAutocompletion)
+        {
+            CancellationToken cancellation = _autoCompleteCancellation.Token;
+            UiActions.Run(() => LoadAutoCompleteWordsAsync(cancellation),
+                ex => System.Diagnostics.Trace.WriteLine($"Auto-completion words: {ex.Message}"));
+        }
+    }
+
+    private async Task LoadAutoCompleteWordsAsync(CancellationToken cancellation)
+    {
+        try
+        {
+            IReadOnlyList<AutoCompleteWord> words =
+                await CommitMessageAutoCompletion.LoadWordsAsync(_repositoryPath, cancellation);
+            if (cancellation.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _autoCompleteWords = words;
+            if (_autoCompleteAsked)
+            {
+                _autoCompleteAsked = false;
+                UpdateOrShowAutoComplete(calledByUser: true);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer read replaced this one.
+        }
     }
 
     // Upstream's message box menu item.
@@ -154,7 +188,8 @@ public partial class CommitWindow
                 CloseAutoComplete();
                 return true;
             case Key.Down:
-                AutoCompleteList.SelectedIndex = Math.Min(AutoCompleteList.SelectedIndex + 1, AutoCompleteList.ItemCount - 1);
+                AutoCompleteList.SelectedIndex =
+                    Math.Min(AutoCompleteList.SelectedIndex + 1, AutoCompleteList.ItemCount - 1);
                 AutoCompleteList.ScrollIntoView(AutoCompleteList.SelectedIndex);
                 return true;
             case Key.Up:
@@ -169,20 +204,15 @@ public partial class CommitWindow
     // Upstream's UpdateOrShowAutoComplete.
     private void UpdateOrShowAutoComplete(bool calledByUser)
     {
-        if (!_preferences.ProvideAutocompletion || _autoCompleteWords is null)
+        if (!_preferences.ProvideAutocompletion)
         {
             return;
         }
 
-        if (!_autoCompleteWords.IsCompletedSuccessfully)
+        if (_autoCompleteWords is not { } words)
         {
-            // Upstream says the words are still being read; the list follows the next key instead.
-            if (calledByUser)
-            {
-                _autoCompleteWords.ContinueWith(_ => Dispatcher.UIThread.Post(() => UpdateOrShowAutoComplete(true)),
-                    TaskScheduler.Default);
-            }
-
+            // Upstream says the words are still being read; here the list opens once they are.
+            _autoCompleteAsked |= calledByUser;
             return;
         }
 
@@ -195,7 +225,7 @@ public partial class CommitWindow
             return;
         }
 
-        IReadOnlyList<AutoCompleteWord> matches = CommitMessageAutoCompletion.Matches(_autoCompleteWords.Result, word);
+        IReadOnlyList<AutoCompleteWord> matches = CommitMessageAutoCompletion.Matches(words, word);
         if (matches.Count == 0)
         {
             CloseAutoComplete();

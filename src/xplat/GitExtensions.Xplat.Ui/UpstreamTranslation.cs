@@ -178,6 +178,17 @@ public static class UpstreamTranslation
             => english.Length > 0 && texts.TryGetValue(Key(english), out string? translated) ? translated : null;
     }
 
+    /// <summary>
+    ///  Upstream's translation of the English text <paramref name="english"/> in the current language, as
+    ///  <see cref="ApplyByText"/> finds it, for a text a view sets after it was translated; the text itself when there is
+    ///  none.
+    /// </summary>
+    public static string ByText(string english)
+        => !string.IsNullOrEmpty(AppSettings.CurrentTranslation) && english.Length > 0
+           && TextsOf(AppSettings.CurrentTranslation).TryGetValue(Key(english), out string? translated)
+            ? WithAccessKey(translated)
+            : english;
+
     private static readonly Dictionary<string, IReadOnlyDictionary<string, string>> _textsByLanguage = [];
 
     // Upstream's English texts (the xlf sources) and their translations, by the text without its access key mark.

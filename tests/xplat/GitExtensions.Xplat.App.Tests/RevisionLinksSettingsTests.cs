@@ -104,9 +104,8 @@ internal sealed class RevisionLinksSettingsTests
 
         MainWindow window = NewWindow();
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
         WaitUntil(() => Find<StackPanel>(window, "DetailLinksPanel").IsVisible);
 
@@ -126,9 +125,8 @@ internal sealed class RevisionLinksSettingsTests
     {
         MainWindow window = NewWindow();
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
         SettingsWindow settings = OpenSettings(window);
         ComboBox levels = Find<ComboBox>(settings, "RevisionLinkLevelBox");
         levels.Items.Cast<object>().Select(level => level.ToString()).Should().Equal("Effective",

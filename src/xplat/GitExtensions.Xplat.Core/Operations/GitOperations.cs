@@ -391,6 +391,9 @@ public sealed class GitOperations : IGitOperations
         => RunAsync(repositoryPath,
             _ => Commands.StashSave(includeUntracked, keepIndex, message, selectedFiles: paths));
 
+    public Task StashStagedAsync(string repositoryPath)
+        => RunAsync(repositoryPath, _ => new GitArgumentBuilder("stash") { "--staged" });
+
     public Task ApplyStashAsync(string repositoryPath, string stashName)
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("stash") { "apply", "-q", stashName.Quote() });
 

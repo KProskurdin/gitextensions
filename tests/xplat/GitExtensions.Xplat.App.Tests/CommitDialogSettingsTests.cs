@@ -279,9 +279,8 @@ internal sealed class CommitDialogSettingsTests
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
         return window;
     }
 

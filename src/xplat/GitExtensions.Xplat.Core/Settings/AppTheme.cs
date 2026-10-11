@@ -23,6 +23,20 @@ public sealed record AppThemeColors(
     public Color Get(AppColor name) => Colors.TryGetValue(name, out Color color) ? color : Color.Empty;
 
     /// <summary>
+    ///  The graph's lane colors as upstream's <c>RevisionGraphLaneColor</c> builds them: the distinct, non-empty colors of
+    ///  GraphBranch1 to GraphBranch8 in order, or upstream's four fallback colors when the theme gives fewer than four.
+    /// </summary>
+    public IReadOnlyList<Color> LaneColors()
+    {
+        const int MinBranchColors = 4;
+        Color[] colors =
+        [
+            .. Enumerable.Range(0, 8).Select(i => Get(AppColor.GraphBranch1 + i)).Where(color => !color.IsEmpty).Distinct()
+        ];
+        return colors.Length < MinBranchColors ? [Color.Cyan, Color.Magenta, Color.Yellow, Color.Lime] : colors;
+    }
+
+    /// <summary>
     ///  The system color the theme sets, or <see cref="Color.Empty"/> where it keeps the system's.
     /// </summary>
     public Color Get(KnownColor name)

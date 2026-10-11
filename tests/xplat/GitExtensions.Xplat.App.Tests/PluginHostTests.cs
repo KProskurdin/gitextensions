@@ -335,9 +335,8 @@ internal sealed class PluginHostTests
 
     private static void Open(MainWindow window, string path)
     {
-        Find<TextBox>(window, "PathBox").Text = path;
-        Find<Button>(window, "OpenButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(path);
+        WaitUntil(() => !window.IsBusy);
     }
 
     private static void Click(Window window, string name)

@@ -45,10 +45,13 @@ public partial class MainWindow : Window
     private readonly CommitListViewModel _commits;
     private readonly GitRepositoryService _repositoryService;
     private readonly RepositoryViewModel _repository;
+
     private readonly RepositoryOperationsViewModel _actions = new(new GitOperations(AppServices.AskPassExecutable,
         () => AppServices.Preferences.ShowErrorsWhenStagingFiles));
+
     private readonly RecentRepositoriesViewModel _recent = new(AppServices.RecentRepositories,
         path => AppServices.Preferences.ShowRepoCurrentBranch ? RecentRepositoryBranches.CurrentBranch(path) : null);
+
     private readonly ICommitMessageStore _commitMessages = AppServices.CommitMessages;
     private Task _commitDraftSaved = Task.CompletedTask;
     private readonly IAppPreferences _preferences = AppServices.Preferences;
@@ -135,34 +138,16 @@ public partial class MainWindow : Window
 
     private void WireToolbar()
     {
-        OpenButton.Click += (_, _) => Run(() => OpenRepositoryAsync(PathBox.Text?.Trim() ?? ""));
         RefreshButton.Click += (_, _) => RefreshRepository();
-
-        // Creates a repository in the path box, or in a new folder at that path; the window then opens it.
-        InitButton.Click += (_, _) => Run(() => _actions.InitAsync(PathBox.Text ?? ""));
         CommitDialogButton.Click += (_, _) => ShowCommitWindow();
         PullButton.Click += (_, _) => Pull();
-
-        // The Rebase box shows and sets upstream's default pull action between merge and rebase.
-        RebaseOnPullCheck.IsChecked = _preferences.DefaultPullAction == GitPullAction.Rebase;
-        RebaseOnPullCheck.IsCheckedChanged += (_, _) =>
-        {
-            bool rebase = RebaseOnPullCheck.IsChecked == true;
-            if (rebase || _preferences.DefaultPullAction == GitPullAction.Rebase)
-            {
-                _preferences.DefaultPullAction = rebase ? GitPullAction.Rebase : GitPullAction.Merge;
-            }
-        };
         PushButton.Click += (_, _) => Push();
-        PushTagsButton.Click += (_, _) => RunOnRepository(path =>
+        PushTagsMenuItem.Click += (_, _) => RunOnRepository(path =>
             WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
                 () => _actions.PushTagsAsync(path, RemoteName)));
-        FetchButton.Click += (_, _) => Fetch();
-        CloneButton.Click += (_, _) => Run(CloneAsync);
         OpenFolderButton.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
         TerminalButton.Click += (_, _) => RunOnRepositoryFolder(path => _terminal.OpenTerminal(path));
-        FilesButton.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
-        ReflogButton.Click += (_, _) => Run(ShowReflogAsync);
+        WireMainToolStrip();
         FilterBox.TextChanged += (_, _) => _commits.FilterText = FilterBox.Text ?? "";
         SearchBox.KeyDown += OnSearchKeyDown;
         LoadMoreButton.Click += (_, _) => Run(_commits.LoadMoreAsync);
@@ -427,7 +412,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        PathBox.Text = initial;
         await OpenRepositoryAsync(initial);
 
         if (Environment.GetEnvironmentVariable(BenchmarkEnvironmentVariable) is { Length: > 0 } benchmark)
@@ -684,7 +668,6 @@ public partial class MainWindow : Window
         await _commits.OpenAsync(path);
         if (RepositoryPath is { } repositoryPath)
         {
-            PathBox.Text = repositoryPath;
             ShowRepositoryPanels();
             await _repository.RefreshAsync(repositoryPath);
             await _recent.AddAsync(repositoryPath);
@@ -730,7 +713,6 @@ public partial class MainWindow : Window
     {
         if (RecentList.SelectedItem is RecentRepository recent && _git?.Status != GitDiscoveryStatus.NotFound)
         {
-            PathBox.Text = recent.Path;
             Run(() => OpenRepositoryAsync(recent.Path));
         }
     }
@@ -763,7 +745,6 @@ public partial class MainWindow : Window
     {
         if (await PickFolderAsync("Open repository") is { } folder)
         {
-            PathBox.Text = folder;
             await OpenRepositoryAsync(folder);
         }
     }
@@ -772,7 +753,6 @@ public partial class MainWindow : Window
     {
         if (await PickFolderAsync("Create a repository in this folder") is { } folder)
         {
-            PathBox.Text = folder;
             await _actions.InitAsync(folder);
         }
     }
@@ -835,7 +815,7 @@ public partial class MainWindow : Window
         }
 
         RunOnCurrentBranch((path, branch) => WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
-            () => _actions.PullAsync(path, TrackingRemote(), branch, RebaseOnPullCheck.IsChecked == true)));
+            () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase)));
     }
 
     private void Push() => RunOnCurrentBranch(async (path, branch) =>
@@ -843,11 +823,12 @@ public partial class MainWindow : Window
         && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
             () => _actions.PushAsync(path, TrackingRemote(), branch)));
 
-    private void Fetch() =>
+    // Upstream's quick fetch (Fetch in the pull menu), and its fetch-all and prune variants; a prune asks first.
+    private void Fetch(string remote = RemoteName, bool prune = false) =>
         RunOnRepository(async path =>
-            (PruneCheck.IsChecked != true || await ConfirmPruneAsync(RemoteName))
+            (!prune || await ConfirmPruneAsync(remote))
             && await WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
-                () => _actions.FetchAsync(path, RemoteName, PruneCheck.IsChecked == true)));
+                () => _actions.FetchAsync(path, remote, prune)));
 
     // As upstream's FormPush: a branch the remote does not have yet (as far as the fetched remote branches show) is pushed
     // after a question.
@@ -1070,7 +1051,8 @@ public partial class MainWindow : Window
         }
 
         PullRequest? request =
-            await new PullWindow(_repository.Remotes, TrackingRemote(), RebaseOnPullCheck.IsChecked == true)
+            await new PullWindow(_repository.Remotes, TrackingRemote(),
+                    _preferences.DefaultPullAction == GitPullAction.Rebase)
                 .ShowDialog<PullRequest?>(this);
         if (request is not null && (!request.Prune || await ConfirmPruneAsync(request.Remote)))
         {
@@ -1165,7 +1147,7 @@ public partial class MainWindow : Window
             // The date and commit button settings show on the next read.
             ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
             ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
-            RebaseOnPullCheck.IsChecked = _preferences.DefaultPullAction == GitPullAction.Rebase;
+            ShowDefaultPullAction();
             UpdateBranchText();
             _commits.MaxCommits = _preferences.MaxRevisionGraphCommits;
             ShowArtificialChangeCounts();
@@ -1637,9 +1619,7 @@ public partial class MainWindow : Window
                 StatusText.Text = _commits.Status;
                 break;
             case nameof(CommitListViewModel.RepositoryName):
-                Title = _commits.RepositoryName.Length == 0
-                    ? "Git Extensions"
-                    : $"{_commits.RepositoryName} - Git Extensions";
+                UpdateTitle();
                 break;
             case nameof(CommitListViewModel.HasMore):
                 LoadMoreButton.IsVisible = _commits.HasMore;
@@ -1714,15 +1694,6 @@ public partial class MainWindow : Window
 
                 break;
         }
-    }
-
-    // Upstream shows the number of changes on the Commit button, so pending work is visible from the browse window.
-    private void UpdateCommitButton()
-    {
-        int count = _repository.Changes.Select(change => change.Path).Distinct(StringComparer.Ordinal).Count();
-        CommitDialogButton.Content = count == 0 || !_preferences.ShowGitStatusInBrowseToolbar
-            ? "Commit"
-            : $"Commit ({count})";
     }
 
     // Upstream's FormBrowse refreshes both notification bars with the repository (RefreshBisect, RefreshGitAction).
@@ -1835,15 +1806,13 @@ public partial class MainWindow : Window
         bool open = !busy && RepositoryPath is not null;
         bool gitAvailable = _git?.Status != GitDiscoveryStatus.NotFound;
         bool hasBranch = _repository.CurrentBranch.Length > 0;
+
         // Upstream's commit actions do not apply to the artificial working directory and index rows.
         bool commitSelected = open && _commits.Selected is { } selectedRow &&
                               !ArtificialCommits.IsArtificial(selectedRow.Hash);
 
-        OpenButton.IsEnabled = !busy && gitAvailable;
         OpenMenuItem.IsEnabled = !busy && gitAvailable;
-        InitButton.IsEnabled = !busy && gitAvailable;
         InitMenuItem.IsEnabled = !busy && gitAvailable;
-        CloneButton.IsEnabled = !busy && gitAvailable;
         CloneMenuItem.IsEnabled = !busy && gitAvailable;
         RecentList.IsEnabled = !busy && gitAvailable;
         CloseRepositoryMenuItem.IsEnabled = open;
@@ -1854,7 +1823,6 @@ public partial class MainWindow : Window
         LoadMoreButton.IsEnabled = !busy;
         CommitDialogButton.IsEnabled = open;
         CommitMenuItem.IsEnabled = open;
-        FetchButton.IsEnabled = open;
         FetchMenuItem.IsEnabled = open;
         PullDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0;
         PushDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0 &&
@@ -1863,19 +1831,18 @@ public partial class MainWindow : Window
         PullMenuItem.IsEnabled = open && hasBranch;
         PushButton.IsEnabled = open && hasBranch;
         PushMenuItem.IsEnabled = open && hasBranch;
-        PushTagsButton.IsEnabled = open;
+        PushTagsMenuItem.IsEnabled = open;
         OpenFolderButton.IsEnabled = open;
         FileExplorerMenuItem.IsEnabled = open;
         TerminalButton.IsEnabled = open;
         TerminalMenuItem.IsEnabled = open;
-        FilesButton.IsEnabled = open;
         FilesMenuItem.IsEnabled = open;
-        ReflogButton.IsEnabled = open;
         ReflogMenuItem.IsEnabled = open;
         GitIgnoreMenuItem.IsEnabled = open;
         WorktreesMenuItem.IsEnabled = open;
         ResolveConflictsMenuItem.IsEnabled = open;
         ResolveConflictsButton.IsEnabled = open;
+        UpdateToolStrip(busy, open);
 
         CreateBranchButton.IsEnabled = open;
         CreateBranchMenuItem.IsEnabled = open;
@@ -2117,6 +2084,7 @@ public partial class MainWindow : Window
         string branch = _repository.CurrentBranch;
         string state = _repository.IsRebasing ? " (rebase in progress)" :
             _repository.IsMerging ? " (merge in progress)" : "";
+
         // Upstream's "Show ahead and behind information on status bar in browse window".
         string sync = _preferences.ShowAheadBehindData && _repository.Sync is { } status
             ? $" [ahead {status.Ahead}, behind {status.Behind}]"

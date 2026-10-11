@@ -17,6 +17,67 @@
       <Setter Property="MinHeight" Value="28" />
       <Setter Property="Padding" Value="10,2" />
     </Style>
+    <!-- Upstream's toolstrips (ToolStripEx): flat items with their 16-pixel images, a light fill and a border only while
+         the pointer is on them, thin vertical separators, no gaps. ToolButton, ToolDropDownButton and ToolSplitButton carry
+         the "tool" class. -->
+    <Style Selector="StackPanel.toolStrip">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Margin" Value="2,1,6,1" />
+    </Style>
+    <Style Selector="Rectangle.toolSeparator">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Margin" Value="3,0" />
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tool, DropDownButton.tool">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="3,2" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter, DropDownButton.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListLowBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+    </Style>
+    <Style Selector="Button.tool:pressed /template/ ContentPresenter#PART_ContentPresenter, DropDownButton.tool:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightListMediumBrush}" />
+    </Style>
+    <Style Selector="Button.tool:disabled /template/ ContentPresenter#PART_ContentPresenter, DropDownButton.tool:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector=":is(Button).tool:disabled Image">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <Style Selector="SplitButton.tool">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="3,2" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="SplitButton.tool /template/ Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="SplitButton.tool /template/ Button#PART_SecondaryButton">
+      <Setter Property="Padding" Value="1,0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Width" Value="14" />
+    </Style>
+    <Style Selector="SplitButton.tool:disabled Image">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
     <!-- Upstream's PanelBackground (ThemeApplier sets it from the theme) behind every window, as upstream's forms use it. -->
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />

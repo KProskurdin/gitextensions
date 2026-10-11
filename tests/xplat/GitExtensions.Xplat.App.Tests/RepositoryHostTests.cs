@@ -85,7 +85,7 @@ internal sealed class RepositoryHostTests
         string target = Path.Combine(destination, "project");
         WaitUntil(() => !fork.IsVisible);
         GitProcess.Run(target, "remote", "get-url", "team").Trim().Replace('\\', '/').Should().Be(parent.Replace('\\', '/'));
-        WaitUntil(() => Find<TextBox>(window, "PathBox").Text == target);
+        WaitUntil(() => window.OpenRepositoryPath == target);
     }
 
     [AvaloniaTest]
@@ -265,9 +265,8 @@ internal sealed class RepositoryHostTests
         TestAppBuilder.UsePlugins(plugin);
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled && Find<MenuItem>(window, "RepositoryHostsMenu").IsVisible
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy && Find<MenuItem>(window, "RepositoryHostsMenu").IsVisible
                         && Find<MenuItem>(window, "PluginsMenu").Items.OfType<MenuItem>().Any(item => item.Tag == plugin));
         return window;
     }

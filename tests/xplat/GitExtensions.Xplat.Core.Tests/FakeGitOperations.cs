@@ -107,6 +107,8 @@ internal sealed class FakeGitOperations : IGitOperations
         IReadOnlyList<string>? paths) => Record("Stash",
         $"{repositoryPath} {message} untracked={includeUntracked} keepIndex={keepIndex} paths={string.Join(",", paths ?? [])}");
 
+    public Task StashStagedAsync(string repositoryPath) => Record("StashStaged", repositoryPath);
+
     public Task ApplyStashAsync(string repositoryPath, string stashName) =>
         Record("ApplyStash", $"{repositoryPath} {stashName}");
 

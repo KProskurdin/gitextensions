@@ -115,6 +115,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/Graph/LaneInfoProvider.cs`; `Graph/BranchFinder.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/LaneInfoProvider.cs`, `CommitGraph.cs`; `src/xplat/GitExtensions.Xplat.App/GraphCell.cs` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/RevisionGrid/ArtificialCommitChangeCount.cs`; `RevisionGridControl.cs` (artificial rows) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/ArtificialCommits.cs`, `GitCommitHistory.cs`, `CommitListViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BuildReportTabPageExtension.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs`, `MainWindow.axaml` (`BuildReportTab`) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (`ToolStripMain`), `FormBrowse.cs` (toolstrip parts of `InitMenusAndToolbars`, `RefreshDefaultPullAction`, the layout toggles, the title); `Menus/WorkingDirectoryToolStripSplitButton.cs`; `ToolStripPushButton.cs`; `src/app/GitUI/UserControls/RepoStateVisualiser.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs`, `MainWindow.axaml` (toolstrip), `UpstreamImages.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepoState.cs`, `RecentRepositories.cs` (`Caption`), `BrowseWindowTitle.cs` | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -813,3 +814,16 @@ submodules).
 **BuildReportTabPageExtension** (`partial`). 2026-10-10: a "Build Report" tab while `ShowBuildResultPage` is on and the
 selected commit's build has a report, following the selected build. Difference: the report is a link that opens in the
 browser; upstream shows it in an embedded browser, which Avalonia does not have.
+
+**FormBrowse toolstrip** (`partial`). 2026-10-11: the browse toolbar rebuilt in the order of upstream's `ToolStripMain`,
+with upstream's images by resource name (`UpstreamImages`, which reads the linked `Images.resx`): refresh; the left panel and
+commit info toggles; the submodules, worktrees, working directory and branch drop-downs; the pull split button (merge,
+rebase, fetch, open dialog, fetch all, fetch and prune all, and the default pull action, shown as the button's image and
+text); push with upstream's `AheadBehindData.ToDisplay` text and tooltips; "Commit (n)" with `RepoStateVisualiser`'s
+image; the stash split button; the folder, terminal and settings buttons; then the branch scope, filter and search boxes.
+The working directory caption is upstream's `RecentRepoSplitter` caption and `PathUtil.GetDisplayPath`, and the window
+title is upstream's `AppTitleGenerator` (both linked GitCommands code, unchanged). The path box, Open, Init, Clone, Fetch,
+Push tags, Files and Reflog buttons were removed; their actions are in the menus, as upstream. Differences: upstream's
+stash button opens its stash window, which the new shell does not have, so the button stashes; the third layout toggle
+(commit info position), the terminal choice drop-down, the filter toolstrip's funnel buttons and the "Branches:" box are
+not there yet (UI-PARITY U2); toolstrip overflow is not ported.

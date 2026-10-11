@@ -21,7 +21,8 @@ internal static class GitProcess
     /// <summary>
     ///  Runs git for a setup step that is expected to fail, such as a merge that stops for conflicts, and returns its exit code.
     /// </summary>
-    public static int RunAllowingFailure(string workingDir, params string[] arguments) => Execute(workingDir, arguments).ExitCode;
+    public static int RunAllowingFailure(string workingDir, params string[] arguments) =>
+        Execute(workingDir, arguments).ExitCode;
 
     private static (int ExitCode, string Output, string Error) Execute(string workingDir, string[] arguments)
     {
@@ -48,17 +49,18 @@ internal static class GitProcess
             return;
         }
 
-        // git writes read-only object files, which Windows refuses to delete.
-        foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-        {
-            File.SetAttributes(file, FileAttributes.Normal);
-        }
-
-        // A git process that just exited can still hold its working directory for a moment, so retry briefly.
-        for (int attempt = 1; ; attempt++)
+        // A git process that just exited can still hold its working directory for a moment, and one a window started in the
+        // background can still add or remove its lock files (index.lock), so retry briefly, from the attributes on.
+        for (int attempt = 1;; attempt++)
         {
             try
             {
+                // git writes read-only object files, which Windows refuses to delete.
+                foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                }
+
                 Directory.Delete(path, recursive: true);
                 return;
             }

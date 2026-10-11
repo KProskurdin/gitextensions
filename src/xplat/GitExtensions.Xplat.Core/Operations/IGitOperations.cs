@@ -163,6 +163,11 @@ public interface IGitOperations
     Task StashAsync(string repositoryPath, string message, bool includeUntracked, bool keepIndex,
         IReadOnlyList<string>? paths = null);
 
+    /// <summary>
+    ///  Upstream's <c>StashStaged</c>: <c>git stash --staged</c>, only the staged changes.
+    /// </summary>
+    Task StashStagedAsync(string repositoryPath);
+
     Task ApplyStashAsync(string repositoryPath, string stashName);
 
     Task PopStashAsync(string repositoryPath, string stashName);

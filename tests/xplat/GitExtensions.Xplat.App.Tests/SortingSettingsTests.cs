@@ -157,9 +157,8 @@ internal sealed class SortingSettingsTests
     {
         MainWindow window = NewWindow();
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
-        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
         return window;
     }
 

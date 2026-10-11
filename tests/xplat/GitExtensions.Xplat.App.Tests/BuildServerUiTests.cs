@@ -201,10 +201,9 @@ internal sealed class BuildServerUiTests
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<TextBox>(window, "PathBox").Text = _repo.Path;
-        Click(window, "OpenButton");
+        window.OpenRepository(_repo.Path);
         WaitUntil(() =>
-            Find<ListBox>(window, "CommitList").ItemCount == 2 && Find<Button>(window, "OpenButton").IsEnabled);
+            Find<ListBox>(window, "CommitList").ItemCount == 2 && !window.IsBusy);
         return window;
     }
 
