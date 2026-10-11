@@ -795,7 +795,8 @@ AppImage, `.deb` or `.rpm`, a `.dmg`, and an installer for the Avalonia app on W
 
 Exit: the Avalonia app covers the WinForms app's features, or the decision is made to keep both.
 
-Not planned in detail. Full parity is the largest unknown and depends on section 9, question 1.
+Not planned in detail. Full parity is the largest unknown and depends on section 9, question 1. The known gaps, in the
+order users would notice them, are listed in section 12.4.
 
 ## 8. Testing strategy
 
@@ -959,17 +960,59 @@ Each milestone's exit criteria include a sync: `verify-upstream.sh` passes on th
 `upstream/master`, the measures in 11.2 are reported, and `SYNC-LOG.md` has an entry for the
 sync that was done during the milestone.
 
-## 12. Immediate next steps
+## 12. Remaining work (future plan)
 
 Updated 2026-10-11, after the work items of M1 to M6 were finished (details in each milestone and in `PORTING-MAP.md`).
-M0 keeps its user-side items (CI run on GitHub, `master`); the latest app tests ran on Windows, the Linux run is to repeat.
+Nothing below needs code for M0 to M6; it is user actions, runs that are still missing, M7 and M8, and open decisions.
 
-1. User actions: commit the current work; decide whether to merge `upstream/master` (`afc512395`, 18 commits ahead) and
-   move `master`; remove the two leftovers of a failed test run from the repository (`git config --unset http.proxy`,
-   `git branch -D pr/n7_ann/feature`, see `SYNC-LOG.md` 2026-10-11).
-2. Repeat the Linux (WSL) app test run, which the host stopped for lack of memory on 2026-10-11, and record it.
-3. Confirm the CI workflow on GitHub (M0's open item; macOS evidence for M1 to M6 depends on it, section 9, question 11).
-4. M7: packaging and distribution per OS.
-5. M8 (optional), in the order users would notice: the per-parent and combined diffs of merge commits, the spelling
-   checker, word diff and git coloring, continuous scroll, and the features of the remaining settings (listed under M5).
-6. macOS: the user runs the build on their own laptop. Record the hardware run in `SYNC-LOG.md` when it happens.
+### 12.1 User actions
+
+1. Remove the two leftovers of a failed test run from the repository (see `SYNC-LOG.md` 2026-10-11):
+   `git config --unset http.proxy` and `git branch -D pr/n7_ann/feature`.
+2. Commit the current work (about 70 files in the working tree).
+3. Decide whether to merge `upstream/master` (`afc512395`, 18 commits ahead of the fork base) and move `master` (M0's open
+   item). Record the merge in `SYNC-LOG.md`.
+
+### 12.2 Checks not run yet
+
+1. Linux (WSL) app tests: the run of 2026-10-11 was stopped by the host for lack of memory. The Linux core tests pass
+   (384). Repeat the app run and record it.
+2. CI on GitHub: `.github/workflows/xplat.yml` has not run there yet. The macOS evidence for M1 to M6 depends on it
+   (section 9, question 11), and so do the screenshot (`app-screenshot`) and package (`app-packages`) jobs.
+3. macOS on hardware: nothing has run on a Mac yet. The user tests the build on their own laptop (section 9, question 4)
+   and the run is recorded in `SYNC-LOG.md`.
+
+### 12.3 M7, packaging and distribution (started)
+
+Done: unsigned packages per OS from `src/xplat/eng/publish-app.sh` (Windows zip, Linux tarball with a `.desktop` entry,
+macOS `.app` zip), built by CI. To do:
+1. Signing and notarization (needs section 9, question 8: an Apple developer account).
+2. An `.icns` icon and a `.dmg` for macOS.
+3. An AppImage, and a `.deb` or `.rpm`, for Linux.
+4. An installer for the Avalonia app on Windows.
+
+### 12.4 M8, feature parity (optional, not planned in detail)
+
+In the order users would notice them:
+1. The diffs of merge commits against each parent and the combined diff ("Show file differences for all parents",
+   "Omit uninteresting changes from combined diff").
+2. The spelling checker of the commit message (upstream's NetSpell is a WinForms component), with the dictionary setting
+   and "Mark ill formed lines".
+3. Diff viewer: diff appearance (git word diff, difftastic), git coloring, continuous scroll to the next file, the
+   submodule diff window, end-of-line glyphs.
+4. Browse window: the GPG, Console and output history tabs (with the default shell and output history depth), git-grep
+   search, file history and blame inside the main window.
+5. The multi-branch push view (with "Get remote branches directly from the remote") and the merge dialog (with the log
+   messages options).
+6. The remaining confirmations: undo last commit, the tracking reference question, the stash pop after pull and checkout,
+   the conflict resolution questions, the second abort question.
+7. Advanced page: update checks, "Always show advanced options", help images (the console emulator is Windows-only).
+8. The hotkey commands of all the features above.
+
+### 12.5 Open decisions (section 9)
+
+1. Question 7: confirm "keep upstream behavior" for branch-name rules and commit-message line endings.
+2. Question 8: an Apple developer account for signing and notarization.
+3. Question 9: who maintains the xplat track, and how often it syncs with upstream.
+4. Question 10: the terminal on Linux and macOS (recommendation: a configurable command with a default from the OS).
+5. Question 11: accept CI-only macOS evidence until a run on hardware (recommendation: yes; no macOS release without one).
