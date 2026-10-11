@@ -1009,6 +1009,12 @@ In the order users would notice them:
 7. Advanced page: update checks, "Always show advanced options", help images (the console emulator is Windows-only).
 8. The hotkey commands of all the features above.
 
+### 12.4b UI and UX parity
+
+The look and behavior of the Avalonia app against the WinForms app: the comparison of 2026-10-11 and the plan (U1 groundwork,
+U2 browse window, U3 commit window, U4 settings, U5 other windows, U6 UX details) are in `UI-PARITY.md`. It includes a
+bug found by the comparison: lane colors differ from upstream's (U1 item 1).
+
 ### 12.5 Open decisions (section 9)
 
 1. Question 7: confirm "keep upstream behavior" for branch-name rules and commit-message line endings.
