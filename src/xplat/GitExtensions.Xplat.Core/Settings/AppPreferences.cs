@@ -1,5 +1,6 @@
 using GitCommands;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.Avatars;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
@@ -44,6 +45,79 @@ public interface IAppPreferences
     ///  Upstream <c>RememberAmendCommitState</c>: the commit window keeps the Amend check box across closing and opening.
     /// </summary>
     bool RememberAmendCommitState { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>lastCommitMessage</c>: the message of the last commit made from the commit window, in any repository.
+    /// </summary>
+    string LastCommitMessage { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>commitDialogNumberOfPreviousMessages</c>: how many earlier messages the "Commit message" menu lists.
+    /// </summary>
+    int CommitDialogNumberOfPreviousMessages { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>commitDialogShowOnlyMyMessages</c>: the "Commit message" menu lists only the user's own messages.
+    /// </summary>
+    bool CommitDialogShowOnlyMyMessages { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showerrorswhenstagingfiles</c>: off, git's line ending check (<c>core.safecrlf</c>) does not stop staging.
+    /// </summary>
+    bool ShowErrorsWhenStagingFiles { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showresetunstagedchanges</c>: the commit window shows "Reset Unstaged Changes".
+    /// </summary>
+    bool ShowResetWorkTreeChanges { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showresetallchanges</c>: the commit window shows "Reset All Changes".
+    /// </summary>
+    bool ShowResetAllChanges { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>provideautocompletion</c>: the commit message box offers the words of the changed files.
+    /// </summary>
+    bool ProvideAutocompletion { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>UseFormCommitMessage</c>: the message is typed in the commit window; otherwise git asks for it in its
+    ///  editor during the commit.
+    /// </summary>
+    bool UseFormCommitMessage { get; set; }
+
+    /// <summary>
+    ///  Upstream's avatar provider, fallback, custom template and cache days (Appearance > Author images).
+    /// </summary>
+    AvatarOptions Avatars { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showauthorgravatar</c>: the commit details show the author's avatar.
+    /// </summary>
+    bool ShowAuthorAvatarInCommitInfo { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showrevisiongridauthoravatarcolumn</c>: the revision grid shows the author's avatar.
+    /// </summary>
+    bool ShowAuthorAvatarColumn { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>dashboardshowcurrentbranch</c>: the dashboard and the recent repositories menu show each repository's
+    ///  checked out branch.
+    /// </summary>
+    bool ShowRepoCurrentBranch { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>truncatepathmethod</c>: how file lists shorten a long path.
+    /// </summary>
+    TruncatePathMethod TruncatePathMethod { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>Appearance.AvatarAuthorInitialsPalette</c> and <c>AvatarAuthorInitialsLuminanceThreshold</c>, set only
+    ///  in the settings file.
+    /// </summary>
+    AuthorInitials AuthorInitials { get; }
 
     /// <summary>
     ///  Upstream <c>followrenamesinfilehistory</c> and <c>followrenamesinfilehistoryexactonly</c>: a file history includes
@@ -210,6 +284,28 @@ public interface IAppPreferences
     ///  diff view starts with 3.
     /// </summary>
     bool RememberNumberOfContextLines { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>RememberShowNonPrintableCharsPreference</c>, as <see cref="RememberIgnoreWhiteSpacePreference"/> for
+    ///  "show nonprinting characters".
+    /// </summary>
+    bool RememberShowNonPrintingCharsPreference { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>RememberShowSyntaxHighlightingInDiff</c>, as <see cref="RememberIgnoreWhiteSpacePreference"/> for
+    ///  "show syntax highlighting".
+    /// </summary>
+    bool RememberShowSyntaxHighlightingInDiff { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>diffverticalrulerposition</c>: the column a line is drawn at in diffs; 0 draws none.
+    /// </summary>
+    int DiffVerticalRulerPosition { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>difftools.showavailable</c>: "Open in diff tool" offers every diff tool git knows besides the default.
+    /// </summary>
+    bool ShowAvailableDiffTools { get; set; }
 
     /// <summary>
     ///  The options a new diff view starts with, by upstream's rules (FileViewer's constructor).
@@ -403,6 +499,94 @@ public sealed class SettingsAppPreferences : IAppPreferences
         get => AppSettings.RememberAmendCommitState;
         set => AppSettings.RememberAmendCommitState = value;
     }
+
+    public string LastCommitMessage
+    {
+        get => AppSettings.LastCommitMessage;
+        set => AppSettings.LastCommitMessage = value;
+    }
+
+    public int CommitDialogNumberOfPreviousMessages
+    {
+        get => AppSettings.CommitDialogNumberOfPreviousMessages;
+        set => AppSettings.CommitDialogNumberOfPreviousMessages = value;
+    }
+
+    public bool CommitDialogShowOnlyMyMessages
+    {
+        get => AppSettings.CommitDialogShowOnlyMyMessages;
+        set => AppSettings.CommitDialogShowOnlyMyMessages = value;
+    }
+
+    public bool ShowErrorsWhenStagingFiles
+    {
+        get => AppSettings.ShowErrorsWhenStagingFiles;
+        set => AppSettings.ShowErrorsWhenStagingFiles = value;
+    }
+
+    public bool ShowResetWorkTreeChanges
+    {
+        get => AppSettings.ShowResetWorkTreeChanges;
+        set => AppSettings.ShowResetWorkTreeChanges = value;
+    }
+
+    public bool ShowResetAllChanges
+    {
+        get => AppSettings.ShowResetAllChanges;
+        set => AppSettings.ShowResetAllChanges = value;
+    }
+
+    public bool ProvideAutocompletion
+    {
+        get => AppSettings.ProvideAutocompletion;
+        set => AppSettings.ProvideAutocompletion = value;
+    }
+
+    public bool UseFormCommitMessage
+    {
+        get => AppSettings.UseFormCommitMessage;
+        set => AppSettings.UseFormCommitMessage = value;
+    }
+
+    public AvatarOptions Avatars
+    {
+        get => new(AppSettings.AvatarProvider, AppSettings.AvatarFallbackType, AppSettings.CustomAvatarTemplate,
+            AppSettings.AvatarImageCacheDays);
+        set
+        {
+            AppSettings.AvatarProvider = value.Provider;
+            AppSettings.AvatarFallbackType = value.Fallback;
+            AppSettings.CustomAvatarTemplate = value.CustomTemplate;
+            AppSettings.AvatarImageCacheDays = value.CacheDays;
+        }
+    }
+
+    public bool ShowAuthorAvatarInCommitInfo
+    {
+        get => AppSettings.ShowAuthorAvatarInCommitInfo;
+        set => AppSettings.ShowAuthorAvatarInCommitInfo = value;
+    }
+
+    public bool ShowAuthorAvatarColumn
+    {
+        get => AppSettings.ShowAuthorAvatarColumn;
+        set => AppSettings.ShowAuthorAvatarColumn = value;
+    }
+
+    public bool ShowRepoCurrentBranch
+    {
+        get => AppSettings.ShowRepoCurrentBranch;
+        set => AppSettings.ShowRepoCurrentBranch = value;
+    }
+
+    public TruncatePathMethod TruncatePathMethod
+    {
+        get => AppSettings.TruncatePathMethod;
+        set => AppSettings.TruncatePathMethod = value;
+    }
+
+    public AuthorInitials AuthorInitials
+        => field ??= new(AppSettings.AvatarAuthorInitialsPalette, AppSettings.AvatarAuthorInitialsLuminanceThreshold);
 
     public FileHistoryOptions FileHistory
     {
@@ -605,7 +789,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
         get => new(AppSettings.IgnoreWhitespaceOnBlame, AppSettings.DetectCopyInFileOnBlame,
             AppSettings.DetectCopyInAllOnBlame, AppSettings.BlameDisplayAuthorFirst, AppSettings.BlameShowAuthor,
             AppSettings.BlameShowAuthorDate, AppSettings.BlameShowAuthorTime, AppSettings.BlameShowLineNumbers,
-            AppSettings.BlameShowOriginalFilePath);
+            AppSettings.BlameShowOriginalFilePath, AppSettings.BlameShowAuthorAvatar);
         set
         {
             AppSettings.IgnoreWhitespaceOnBlame = value.IgnoreWhitespace;
@@ -617,6 +801,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
             AppSettings.BlameShowAuthorTime = value.ShowAuthorTime;
             AppSettings.BlameShowLineNumbers = value.ShowLineNumbers;
             AppSettings.BlameShowOriginalFilePath = value.ShowOriginalFilePath;
+            AppSettings.BlameShowAuthorAvatar = value.ShowAuthorAvatar;
         }
     }
 
@@ -638,16 +823,46 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RememberNumberOfContextLines = value;
     }
 
+    public bool RememberShowNonPrintingCharsPreference
+    {
+        get => AppSettings.RememberShowNonPrintingCharsPreference;
+        set => AppSettings.RememberShowNonPrintingCharsPreference = value;
+    }
+
+    public bool RememberShowSyntaxHighlightingInDiff
+    {
+        get => AppSettings.RememberShowSyntaxHighlightingInDiff;
+        set => AppSettings.RememberShowSyntaxHighlightingInDiff = value;
+    }
+
+    public int DiffVerticalRulerPosition
+    {
+        get => AppSettings.DiffVerticalRulerPosition;
+        set => AppSettings.DiffVerticalRulerPosition = value;
+    }
+
+    public bool ShowAvailableDiffTools
+    {
+        get => AppSettings.ShowAvailableDiffTools;
+        set => AppSettings.ShowAvailableDiffTools = value;
+    }
+
     // Upstream's runtime settings: the value of this run, read back from the saved default unless remembered.
     public DiffOptions InitialDiffOptions()
         => new(AppSettings.IgnoreWhitespaceKind.GetValue(reload: !AppSettings.RememberIgnoreWhiteSpacePreference),
             AppSettings.NumberOfContextLines,
-            AppSettings.ShowEntireFile.GetValue(reload: !AppSettings.RememberShowEntireFilePreference));
+            AppSettings.ShowEntireFile.GetValue(reload: !AppSettings.RememberShowEntireFilePreference),
+            ShowNonPrintingChars: AppSettings.ShowNonPrintingChars.GetValue(
+                reload: !AppSettings.RememberShowNonPrintingCharsPreference),
+            ShowSyntaxHighlighting: AppSettings.ShowSyntaxHighlightingInDiff.GetValue(
+                reload: !AppSettings.RememberShowSyntaxHighlightingInDiff));
 
     public void SetDiffOptions(DiffOptions options)
     {
         AppSettings.IgnoreWhitespaceKind.Value = options.IgnoreWhitespace;
         AppSettings.ShowEntireFile.Value = options.ShowEntireFile;
+        AppSettings.ShowNonPrintingChars.Value = options.ShowNonPrintingChars;
+        AppSettings.ShowSyntaxHighlightingInDiff.Value = options.ShowSyntaxHighlighting;
 
         // Stored only when remembered (upstream's setter decides).
         AppSettings.NumberOfContextLines = options.ContextLines;
@@ -657,6 +872,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         AppSettings.IgnoreWhitespaceKind.Save();
         AppSettings.ShowEntireFile.Save();
+        AppSettings.ShowNonPrintingChars.Save();
+        AppSettings.ShowSyntaxHighlightingInDiff.Save();
         AppSettings.SaveSettings();
     }
 
@@ -862,6 +1079,35 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool RememberAmendCommitState { get; set; } = true;
 
+    public string LastCommitMessage { get; set; } = "";
+
+    public int CommitDialogNumberOfPreviousMessages { get; set; } = 6;
+
+    public bool CommitDialogShowOnlyMyMessages { get; set; }
+
+    public bool ShowErrorsWhenStagingFiles { get; set; } = true;
+
+    public bool ShowResetWorkTreeChanges { get; set; } = true;
+
+    public bool ShowResetAllChanges { get; set; } = true;
+
+    public bool ProvideAutocompletion { get; set; } = true;
+
+    public bool UseFormCommitMessage { get; set; } = true;
+
+    public AvatarOptions Avatars { get; set; } = new();
+
+    public bool ShowAuthorAvatarInCommitInfo { get; set; } = true;
+
+    public bool ShowAuthorAvatarColumn { get; set; } = true;
+
+    public bool ShowRepoCurrentBranch { get; set; } = true;
+
+    public TruncatePathMethod TruncatePathMethod { get; set; }
+
+    // Upstream's default palette and threshold.
+    public AuthorInitials AuthorInitials { get; } = new("SlateGray,RoyalBlue,Purple,OrangeRed,Teal,OliveDrab", 0.5f);
+
     public FileHistoryOptions FileHistory { get; set; } = new();
 
     public bool ShowCommitAndPush { get; set; } = true;
@@ -936,6 +1182,14 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool RememberNumberOfContextLines { get; set; }
 
+    public bool RememberShowNonPrintingCharsPreference { get; set; }
+
+    public bool RememberShowSyntaxHighlightingInDiff { get; set; } = true;
+
+    public int DiffVerticalRulerPosition { get; set; }
+
+    public bool ShowAvailableDiffTools { get; set; } = true;
+
     // The values of this run and the saved defaults, as upstream's runtime settings keep them.
     private DiffOptions _diffOptions = new();
     private DiffOptions _savedDiffOptions = new();
@@ -950,6 +1204,12 @@ public sealed class InMemoryAppPreferences : IAppPreferences
             ShowEntireFile = RememberShowEntireFilePreference
                 ? _diffOptions.ShowEntireFile
                 : _savedDiffOptions.ShowEntireFile,
+            ShowNonPrintingChars = RememberShowNonPrintingCharsPreference
+                ? _diffOptions.ShowNonPrintingChars
+                : _savedDiffOptions.ShowNonPrintingChars,
+            ShowSyntaxHighlighting = RememberShowSyntaxHighlightingInDiff
+                ? _diffOptions.ShowSyntaxHighlighting
+                : _savedDiffOptions.ShowSyntaxHighlighting,
         };
         return _diffOptions with
         {
@@ -972,6 +1232,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
         => _savedDiffOptions = _savedDiffOptions with
         {
             IgnoreWhitespace = _diffOptions.IgnoreWhitespace, ShowEntireFile = _diffOptions.ShowEntireFile,
+            ShowNonPrintingChars = _diffOptions.ShowNonPrintingChars,
+            ShowSyntaxHighlighting = _diffOptions.ShowSyntaxHighlighting,
         };
 
     /// <summary>
@@ -982,6 +1244,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
         RememberIgnoreWhiteSpacePreference = true;
         RememberShowEntireFilePreference = false;
         RememberNumberOfContextLines = false;
+        RememberShowNonPrintingCharsPreference = false;
+        RememberShowSyntaxHighlightingInDiff = true;
         _diffOptions = new DiffOptions();
         _savedDiffOptions = new DiffOptions();
     }

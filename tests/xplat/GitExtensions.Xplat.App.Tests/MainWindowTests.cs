@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Xplat.App;
@@ -442,6 +443,10 @@ internal sealed class MainWindowTests
         BlameWindow blame = files.OwnedWindows.OfType<BlameWindow>().Single();
         ListBox lines = blame.FindControl<ListBox>("BlameList")!;
         WaitUntil(() => lines.ItemCount == 1);
+
+        // As upstream's gutter: the author's avatar (initials here, as no provider is set) beside the commit's first line.
+        WaitUntil(() => lines.GetVisualDescendants().OfType<AvatarView>().Any(avatar => avatar.IsEffectivelyVisible));
+        lines.GetVisualDescendants().OfType<AvatarView>().Single().InitialsText.Should().Be("Te");
 
         blame.Close();
         files.Close();

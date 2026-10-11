@@ -20,6 +20,21 @@ internal sealed class RecentRepositoriesViewModelTests
     }
 
     [Test]
+    public async Task The_list_should_show_each_repositorys_branch_once_it_is_read()
+    {
+        RecentRepositoriesViewModel viewModel = new(new InMemoryRecentRepositoryStore(),
+            path => path == "/work/one" ? "main" : null);
+
+        await viewModel.AddAsync("/work/two");
+        await viewModel.AddAsync("/work/one");
+        await viewModel.BranchesRead;
+
+        viewModel.Items.Select(item => item.Branch).Should().Equal("main", null);
+        viewModel.Items[0].Display.Should().Be("one [main]  (/work/one)");
+        viewModel.Items[1].Display.Should().Be("two  (/work/two)");
+    }
+
+    [Test]
     public async Task RemoveAsync_should_drop_the_entry_with_or_without_a_trailing_separator()
     {
         RecentRepositoriesViewModel viewModel = new(new InMemoryRecentRepositoryStore());

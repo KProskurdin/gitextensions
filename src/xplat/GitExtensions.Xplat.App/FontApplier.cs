@@ -44,10 +44,10 @@ internal static class FontApplier
         double applicationSize = application?.SizeInPixels ?? _themeFont.Value.Size;
         app.Resources[ApplicationFamilyKey] = applicationFamily;
         app.Resources[ApplicationSizeKey] = applicationSize;
+        SetStyle(app, application, "ApplicationFontWeight", "ApplicationFontStyle");
 
         // As upstream, the commit font defaults to the application's, the code and monospace fonts to a monospace one; a
         // family that is not installed falls back to the defaults after it, as upstream's font falls back to the system's.
-        // Bold and italic are kept in the setting but not shown.
         Set(app, preferences.GetFont(AppFont.Commit), "CommitFontFamily", "CommitFontSize", applicationFamily,
             fallbacks: null, applicationSize);
         Set(app, preferences.GetFont(AppFont.Code), "DiffFontFamily", "DiffFontSize", new FontFamily(CodeFamilies),
@@ -62,5 +62,13 @@ internal static class FontApplier
         app.Resources[familyKey] = setting is null ? defaultFamily
             : new FontFamily(fallbacks is null ? setting.Family : $"{setting.Family}, {fallbacks}");
         app.Resources[sizeKey] = setting?.SizeInPixels ?? defaultSize;
+        SetStyle(app, setting, familyKey.Replace("Family", "Weight"), familyKey.Replace("Family", "Style"));
+    }
+
+    // Upstream's font style flags; a font that is not set is regular, as upstream's defaults.
+    private static void SetStyle(Application app, FontSetting? setting, string weightKey, string styleKey)
+    {
+        app.Resources[weightKey] = setting?.Bold == true ? FontWeight.Bold : FontWeight.Normal;
+        app.Resources[styleKey] = setting?.Italic == true ? FontStyle.Italic : FontStyle.Normal;
     }
 }

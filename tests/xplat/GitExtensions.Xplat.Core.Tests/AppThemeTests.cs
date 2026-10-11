@@ -46,6 +46,20 @@ internal sealed class AppThemeTests
         colors.Error.Should().BeNull();
         colors.Get(AppColor.GraphBranch1).ToArgb().Should().Be(ColorTranslator.FromHtml("#db5b93").ToArgb());
         colors.Get(AppColor.GraphBranch8).IsEmpty.Should().BeTrue("dark.css leaves this lane color unused");
+        colors.SystemColors.Should().BeEmpty("upstream's themes list the system colors only for reference");
+    }
+
+    [Test]
+    public void Load_should_read_the_system_colors_a_user_theme_overrides()
+    {
+        File.WriteAllText(Path.Combine(_userThemes, "mine.css"),
+            "@import url(\"dark.css\");\n.WindowText { color: #f0f0f0; }\n.Highlight { color: #2864b4; }");
+
+        AppThemeColors colors = _service.Load(new ThemeId("mine"), [], systemIsDark: false);
+
+        colors.Get(KnownColor.WindowText).ToArgb().Should().Be(ColorTranslator.FromHtml("#f0f0f0").ToArgb());
+        colors.Get(KnownColor.Highlight).ToArgb().Should().Be(ColorTranslator.FromHtml("#2864b4").ToArgb());
+        colors.Get(KnownColor.GrayText).IsEmpty.Should().BeTrue();
     }
 
     [Test]

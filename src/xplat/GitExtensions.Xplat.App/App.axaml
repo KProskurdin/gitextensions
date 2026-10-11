@@ -20,6 +20,9 @@
     <!-- Upstream's PanelBackground (ThemeApplier sets it from the theme) behind every window, as upstream's forms use it. -->
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+      <!-- Upstream's application font is bold or italic when the Fonts page says so (FontApplier). -->
+      <Setter Property="FontWeight" Value="{DynamicResource ApplicationFontWeight}" />
+      <Setter Property="FontStyle" Value="{DynamicResource ApplicationFontStyle}" />
     </Style>
   </Application.Styles>
 </Application>

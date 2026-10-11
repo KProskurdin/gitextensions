@@ -93,3 +93,32 @@ public static class RecentRepositoryPaths
 
     private static string Trim(string path) => path.Length > 1 ? path.TrimEnd('/', '\\') : path;
 }
+
+/// <summary>
+///  Upstream's <c>RepositoryCurrentBranchNameProvider</c> for the dashboard and the recent repositories menu.
+/// </summary>
+public static class RecentRepositoryBranches
+{
+    /// <summary>
+    ///  The checked out branch, as upstream's <c>Commands.GetSelectedBranch</c> reads it (mostly from the HEAD file, without
+    ///  running git); null for a folder that is gone, not a repository or bare, as upstream shows no branch then.
+    /// </summary>
+    public static string? CurrentBranch(string path)
+    {
+        try
+        {
+            if (!GitCommands.GitModule.IsValidGitWorkingDir(path) || GitCommands.GitModule.IsBareRepository(path))
+            {
+                return null;
+            }
+
+            string branch = GitCommands.Git.Commands.GetSelectedBranch(
+                new GitCommands.GitExecutorProvider(new GitCommands.Git.GitDirectoryResolver()).GetExecutor(path));
+            return branch.Length == 0 ? null : branch;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+}

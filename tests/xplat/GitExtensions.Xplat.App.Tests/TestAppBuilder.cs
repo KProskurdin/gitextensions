@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.App;
+using GitExtensions.Xplat.Core.Avatars;
 using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
@@ -73,8 +74,30 @@ public static class TestAppBuilder
         AppServices.BuildServerCredentials = new SessionBuildServerCredentialStore();
     }
 
+    /// <summary>
+    ///  The avatar images the tests offer, by address.
+    /// </summary>
+    public static FakeAvatarDownloader AvatarDownloads { get; } = new();
+
+    /// <summary>
+    ///  An empty folder outside any repository, the tests' current directory.
+    /// </summary>
+    public static string TestCurrentDirectory { get; } =
+        Path.Combine(Path.GetTempPath(), "xplat-app-tests-cwd-" + Guid.NewGuid().ToString("N"));
+
+    public static string AvatarCacheFolder { get; } =
+        Path.Combine(Path.GetTempPath(), "xplat-avatars-" + Guid.NewGuid().ToString("N"));
+
     public static AppBuilder BuildAvaloniaApp()
     {
+        // A git command run without a repository (a plugin acting after an open failed) runs in the current directory, so it
+        // must never be the repository the tests are started from: a failed run once fetched a branch and set a proxy there.
+        // git does not look for a repository above the temporary folder either (the test repositories are inside it).
+        Directory.CreateDirectory(TestCurrentDirectory);
+        Environment.CurrentDirectory = TestCurrentDirectory;
+        Environment.SetEnvironmentVariable("GIT_CEILING_DIRECTORIES",
+            Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar));
+
         // No plugin from the folder next to the test host is loaded, and plugin settings stay in memory.
         UsePlugins();
         UseRevisionLinks();
@@ -90,6 +113,9 @@ public static class TestAppBuilder
         AppServices.AskPassExecutable = null;
         AppServices.DiffMergeTools = new FixedDiffMergeToolCatalog();
         AppServices.Scripts = Scripts;
+
+        // Avatars are never downloaded and their cache is a folder of the run's own.
+        AppServices.Avatars = new AvatarService(() => Preferences.Avatars, AvatarCacheFolder, AvatarDownloads);
 
         // No build server plugin from the folder next to the test host, and no credentials written to the user's storage.
         UseBuildServers(new FixedBuildServerCatalog());
@@ -163,4 +189,22 @@ public sealed class FixedDiffMergeToolCatalog : IDiffMergeToolCatalog
 {
     public Task<IReadOnlyList<string>> GetAvailableAsync(bool diff, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<string>>(diff ? ["meld", "vscode"] : ["kdiff3", "meld"]);
+}
+
+/// <summary>
+///  Avatar images by address, and the addresses asked for.
+/// </summary>
+public sealed class FakeAvatarDownloader : IAvatarDownloader
+{
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Uri, byte[]> _images = new();
+
+    public System.Collections.Concurrent.ConcurrentQueue<Uri> Requests { get; } = new();
+
+    public void Offer(Uri uri, byte[] image) => _images[uri] = image;
+
+    public Task<byte[]?> DownloadAsync(Uri uri)
+    {
+        Requests.Enqueue(uri);
+        return Task.FromResult(_images.TryGetValue(uri, out byte[]? image) ? image : null);
+    }
 }

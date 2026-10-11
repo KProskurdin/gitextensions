@@ -12,7 +12,7 @@
       </StackPanel>
       <TextBlock x:Name="StateText" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
     </DockPanel>
-    <ListBox x:Name="OutputList" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}">
+    <ListBox x:Name="OutputList" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}">
       <ListBox.Styles>
         <Style Selector="ListBoxItem">
           <Setter Property="Padding" Value="4,0" />

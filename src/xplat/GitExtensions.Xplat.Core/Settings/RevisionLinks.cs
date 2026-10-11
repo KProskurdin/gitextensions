@@ -15,10 +15,11 @@ namespace GitExtensions.Xplat.Core.Settings;
 public interface IRevisionLinkStore
 {
     /// <summary>
-    ///  The repository's effective settings when one is open, as upstream's settings dialog edits them (the repository's
-    ///  .git and shared GitExtensions.settings, then the user's), otherwise the user's.
+    ///  The repository's settings at <paramref name="level"/> when one is open, as upstream's settings dialog edits them: in
+    ///  effect (the repository's .git and shared GitExtensions.settings, then the user's), or one of those files; otherwise
+    ///  the user's.
     /// </summary>
-    DistributedSettings Open(string? repositoryPath);
+    DistributedSettings Open(string? repositoryPath, SettingLevel level = SettingLevel.Effective);
 
     /// <summary>
     ///  Writes the settings <see cref="Open"/> returned.
@@ -31,22 +32,35 @@ public interface IRevisionLinkStore
 /// </summary>
 public sealed class UpstreamRevisionLinkStore : IRevisionLinkStore
 {
-    public DistributedSettings Open(string? repositoryPath)
-        => string.IsNullOrEmpty(repositoryPath)
-            ? DistributedSettings.CreateGlobal()
-            : DistributedSettings.CreateEffective(
-                new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath));
+    public DistributedSettings Open(string? repositoryPath, SettingLevel level = SettingLevel.Effective)
+    {
+        if (string.IsNullOrEmpty(repositoryPath) || level == SettingLevel.Global)
+        {
+            return DistributedSettings.CreateGlobal();
+        }
+
+        GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
+        return level switch
+        {
+            SettingLevel.Local => DistributedSettings.CreateLocal(module),
+            SettingLevel.Distributed => DistributedSettings.CreateDistributed(module),
+            _ => DistributedSettings.CreateEffective(module),
+        };
+    }
 
     public void Save(DistributedSettings settings) => settings.Save();
 }
 
 /// <summary>
-///  One settings file for every repository. Tests use it with a temporary file, so they never write the user's settings.
+///  One settings file for every repository, and one beside it for each repository level ("<i>file</i>.Local",
+///  "<i>file</i>.Distributed"). Tests use it with a temporary file, so they never write the user's settings.
 /// </summary>
 public sealed class FileRevisionLinkStore(string settingsFile) : IRevisionLinkStore
 {
-    public DistributedSettings Open(string? repositoryPath)
-        => new(null, new GitExtSettingsCache(settingsFile, autoSave: false), SettingLevel.Global);
+    public DistributedSettings Open(string? repositoryPath, SettingLevel level = SettingLevel.Effective)
+        => level is SettingLevel.Local or SettingLevel.Distributed
+            ? new(null, new GitExtSettingsCache($"{settingsFile}.{level}", autoSave: false), level)
+            : new(null, new GitExtSettingsCache(settingsFile, autoSave: false), SettingLevel.Global);
 
     public void Save(DistributedSettings settings) => settings.Save();
 }

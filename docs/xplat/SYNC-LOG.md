@@ -72,3 +72,23 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   `0174ba1cc`; the user has not asked for it to be moved, and automation must not move it.
 - Next: merge `upstream/master` into the fork branch when the user decides to do so, and record
   that merge as a new entry.
+
+### 2026-10-11: verification against upstream, no merge (end of M0 to M6)
+
+- Upstream checked: `afc512395`, 18 commits ahead of the fork base (`0174ba1cc`).
+- Command: the steps of `tests/xplat/verify-upstream.sh`, run by hand on Windows. The script's own `git fetch` failed: the
+  repository's `.git/config` had `http.proxy = :8080`, left there by a failed app test run of the same day (the ProxySwitcher
+  plugin test ran against the process's working directory after a repository failed to open; the same run fetched a branch
+  `pr/n7_ann/feature` into the repository). The fetch ran with `-c http.proxy=`, and the worktree was checked out with
+  `core.longpaths` because upstream's snapshot file names are too long for Windows' default limit. Since then the app tests
+  run from an empty temporary folder with `GIT_CEILING_DIRECTORIES` set, so a git command without a repository cannot reach
+  the repository the tests start from. The proxy line and the branch are still in the repository: removing them was left to
+  the user.
+- Result on Windows: 3506 passed, 1 failed (`Load_performed_on_thread_pool_and_result_handled_via_callers_context`, the
+  known Windows failure in `AsyncLoaderTests`), 1 skipped, 3508 total. Linux was not run for this check.
+- `port-drift.sh`: 93 rows, 0 with upstream changes since their base, 0 stale.
+- Measures (PLAN.md 11.2): upstream files modified 0; seam count 7; anchors intact yes (the shadow build passes on
+  `afc512395`); shadow build and tests pass yes (with the known failure); ported forms out of date: none.
+- Fork tests the same day: 384 core and 276 app on Windows; 384 core on Linux (WSL). The Linux app run was stopped by the
+  host for lack of memory and has to be repeated.
+- No merge. Local `master` is not moved.

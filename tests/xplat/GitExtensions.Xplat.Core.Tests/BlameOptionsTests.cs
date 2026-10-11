@@ -123,7 +123,7 @@ internal sealed class BlameOptionsTests
                      "Blame settings", "Ignore whitespace", "Detect moved or copied lines within blamed file",
                      "Detect moved or copied lines from all files in same commit", "Display result settings",
                      "Display author first", "Show author", "Show author date", "Show author time", "Show line numbers",
-                     "Show original file path",
+                     "Show original file path", "Show author avatar",
                  ])
         {
             page.Should().Contain($".Text = \"{label}\";");
@@ -132,11 +132,37 @@ internal sealed class BlameOptionsTests
         foreach (string label in (string[])
                  [
                      "Blame settings:", "Ignore whitespace", "Detect move and copy in this file",
-                     "Detect move and copy in all files",
+                     "Detect move and copy in all files", "Show author avatar",
                  ])
         {
             menu.Should().Contain($".Text = \"{label}\";");
         }
+    }
+
+    [Test]
+    public void AgeBuckets_should_spread_upstreams_seven_colors_from_three_years_back_to_now()
+    {
+        DateTime now = new(2026, 10, 11, 12, 0, 0);
+        BlameLine Aged(DateTime time) => new(1, "h", "Ann", "", "x", time);
+
+        BlameOptions.AgeBuckets([Aged(now), Aged(now.AddYears(-3)), Aged(now.AddDays(-1.5 * 365)), Aged(now.AddYears(-9))],
+            now).Should().Equal(6, 4, 5, 0);
+        BlameOptions.AgeBuckets([Aged(now), Aged(now.AddYears(-3)), Aged(now.AddDays(-1.5 * 365))], now)
+            .Should().Equal(6, 0, 3);
+    }
+
+    [Test]
+    public void Rows_should_show_the_avatar_on_the_first_line_of_a_run_when_avatars_are_on()
+    {
+        BlameLine[] lines = [Line(1, "aaaa", "a.txt"), Line(2, "aaaa", "a.txt"), Line(3, "bbbb", "a.txt")];
+
+        IReadOnlyList<BlameRow> rows = new BlameOptions().Rows(lines, "a.txt", CultureInfo.InvariantCulture);
+        IReadOnlyList<BlameRow> without = new BlameOptions(ShowAuthorAvatar: false)
+            .Rows(lines, "a.txt", CultureInfo.InvariantCulture);
+
+        rows.Select(row => row.ShowAvatar).Should().Equal(true, false, true);
+        rows.Should().OnlyContain(row => row.AvatarColumn);
+        without.Should().OnlyContain(row => !row.AvatarColumn && !row.ShowAvatar);
     }
 
     private static BlameLine Line(int number, string hash, string fileName)

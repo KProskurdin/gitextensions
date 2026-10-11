@@ -140,6 +140,16 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             () => _operations.CommitAsync(repositoryPath, message, amend, signOff, author.Trim()));
     }
 
+    /// <summary>
+    ///  Commits with the message typed in git's editor (<see cref="EditorCommand"/>), for upstream's
+    ///  <c>UseFormCommitMessage</c> turned off.
+    /// </summary>
+    public Task<bool> CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author)
+        => EditorCommand is { } editor
+            ? RunAsync(amend ? "Amended" : "Committed", repositoryPath,
+                () => _operations.CommitWithEditorAsync(repositoryPath, amend, signOff, author.Trim(), editor))
+            : RejectAsync("No editor is available for the commit message.");
+
     public Task<bool> CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -417,6 +427,10 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         => RunAsync($"Deleted {paths.Count} untracked file(s)", repositoryPath,
             () => _operations.DeleteUntrackedAsync(repositoryPath, paths));
 
+    public Task<bool> ResetAllChangesAsync(string repositoryPath, bool clean, bool onlyWorkTree)
+        => RunAsync(onlyWorkTree ? "Unstaged changes reset" : "All changes reset", repositoryPath,
+            () => _operations.ResetAllChangesAsync(repositoryPath, clean, onlyWorkTree));
+
     public Task<bool> AddRemoteAsync(string repositoryPath, string name, string url)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -456,12 +470,13 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     /// <summary>
     ///  Opens a file in the configured diff tool. Nothing is reloaded: the tool only shows the change.
     /// </summary>
-    public async Task<bool> RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged)
+    public async Task<bool> RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged,
+        string? tool = null)
     {
         ErrorMessage = null;
         try
         {
-            await _operations.RunDiffToolAsync(repositoryPath, path, commit, staged);
+            await _operations.RunDiffToolAsync(repositoryPath, path, commit, staged, tool);
             StatusMessage = $"Diff tool started for {path}";
             return true;
         }

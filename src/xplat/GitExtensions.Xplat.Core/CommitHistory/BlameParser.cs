@@ -8,7 +8,7 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 ///  moved from another file).
 /// </summary>
 public sealed record BlameLine(int LineNumber, string Hash, string Author, string Date, string Content,
-    DateTime AuthorTime = default, string FileName = "");
+    DateTime AuthorTime = default, string FileName = "", string AuthorEmail = "");
 
 /// <summary>
 ///  Reads the output of <c>git blame --line-porcelain</c>, where every line carries its own commit headers.
@@ -24,6 +24,7 @@ public static class BlameParser
         List<BlameLine> lines = [];
         string hash = "";
         string author = "";
+        string email = "";
         string date = "";
         DateTime time = default;
         string fileName = "";
@@ -34,11 +35,15 @@ public static class BlameParser
             string line = raw.TrimEnd('\r');
             if (line.StartsWith('\t'))
             {
-                lines.Add(new BlameLine(lineNumber, hash, author, date, line[1..], time, fileName));
+                lines.Add(new BlameLine(lineNumber, hash, author, date, line[1..], time, fileName, email));
             }
             else if (line.StartsWith("author ", StringComparison.Ordinal))
             {
                 author = line["author ".Length..];
+            }
+            else if (line.StartsWith("author-mail ", StringComparison.Ordinal))
+            {
+                email = line["author-mail ".Length..].Trim('<', '>');
             }
             else if (line.StartsWith("author-time ", StringComparison.Ordinal))
             {

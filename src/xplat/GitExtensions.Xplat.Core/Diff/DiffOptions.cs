@@ -4,13 +4,16 @@ namespace GitExtensions.Xplat.Core.Diff;
 
 /// <summary>
 ///  How a diff is shown, as upstream's <c>FileViewer</c> toolbar sets it: which whitespace changes to ignore, how many lines
-///  of context to show around each change, or the entire file; and upstream's histogram algorithm setting.
+///  of context to show around each change, or the entire file; upstream's histogram algorithm setting; and two choices
+///  that change only the display, nonprinting characters and syntax highlighting.
 /// </summary>
 public sealed record DiffOptions(
     IgnoreWhitespaceKind IgnoreWhitespace = IgnoreWhitespaceKind.None,
     int ContextLines = DiffOptions.DefaultContextLines,
     bool ShowEntireFile = false,
-    bool Histogram = false)
+    bool Histogram = false,
+    bool ShowNonPrintingChars = false,
+    bool ShowSyntaxHighlighting = true)
 {
     /// <summary>
     ///  Upstream's default number of context lines (git's default too).

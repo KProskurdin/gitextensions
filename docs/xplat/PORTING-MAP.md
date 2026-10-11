@@ -105,6 +105,16 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/RepoHosting/CreatePullRequestForm.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/CreatePullRequestWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (repository hosts menu); `src/app/GitUI/GitUICommands.cs` (repository host methods); `src/app/GitUI/UserControls/BlameControl.cs` (`ConfigureRepositoryHostPlugin`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.RepositoryHosts.cs`, `PluginHost.cs`, `RepositoryHosts/RepositoryHostMenus.cs`, `BlameWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` (commit templates menu); `src/app/GitCommands/CommitTemplateManager.cs` (used as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/CommitDialog/FormCommitTemplateSettings.cs` | `src/xplat/GitExtensions.Xplat.App/CommitTemplateSettingsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`, `CommitMessageValidation.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormCommit.cs` ("Commit message" menu, reset buttons, `IsCommitMessageValid`, `FormatAllText`, conventional commits) | `src/xplat/GitExtensions.Xplat.Core/Repository/PreviousCommitMessages.cs`, `CommitMessageValidation.cs`, `ConventionalCommits.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`, `ResetChangesWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/SpellChecker/EditNetSpell.cs` (auto-completion); `src/app/GitUI/AutoCompletion/*.cs`, `SpellChecker/WordAtCursorExtractor.cs`, `SpellCheckerHelper.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitMessageAutoCompletion.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.AutoComplete.cs` | `52d08e996` | partial |
+| `src/app/GitUI/Avatars/*.cs` (`AvatarService` and its providers; `TemplateFormatter.cs`, `HexString.cs` linked as is); `src/app/GitUI/UserControls/AvatarControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Avatars/AvatarService.cs`, `AuthorInitials.cs`; `src/xplat/GitExtensions.Xplat.App/AvatarView.cs`, `SettingsWindow.Appearance.cs` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/PathFormatter.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FilePathDisplay.cs`; `src/xplat/GitExtensions.Xplat.App/FilePathTrimming.cs` | `52d08e996` | ported |
+| `src/app/GitUI/RepositoryCurrentBranchNameProvider.cs`; `DashboardControl/UserRepositoriesListController.cs` (`GetCurrentBranchName`) | `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs` (`RecentRepositoryBranches`), `RecentRepositoriesViewModel.cs` | `52d08e996` | ported |
+| `src/app/GitUI/UserControls/RevisionGrid/QuickSearchProvider.cs`; `src/app/GitCommands/Git/GitRevisionTester.cs` (`Matches`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/QuickSearch.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.QuickSearch.cs` | `52d08e996` | ported |
+| `src/app/GitUI/UserControls/RevisionGrid/Graph/LaneInfoProvider.cs`; `Graph/BranchFinder.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/LaneInfoProvider.cs`, `CommitGraph.cs`; `src/xplat/GitExtensions.Xplat.App/GraphCell.cs` | `52d08e996` | ported |
+| `src/app/GitUI/UserControls/RevisionGrid/ArtificialCommitChangeCount.cs`; `RevisionGridControl.cs` (artificial rows) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/ArtificialCommits.cs`, `GitCommitHistory.cs`, `CommitListViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/BuildReportTabPageExtension.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs`, `MainWindow.axaml` (`BuildReportTab`) | `52d08e996` | partial |
 
 ## Notes per row
 
@@ -114,11 +124,14 @@ changes, Pull, Push, Fetch, Clone, folder, terminal, filter, search); the left p
 (details, copy hash and message) and a Diff tab (changed files with the selected file's diff inline); a status bar; a
 warning bar while a merge or rebase is stopped or conflicts exist; the dashboard of recent repositories while none is open;
 Close repository; the repository refresh after every operation; and, as upstream, a status refresh when the window is
-activated again (at most every 2 seconds), so files edited in other programs show up. Not ported: the GPG, Console and
-build-server tabs, the branch and repository dropdowns of the toolbar, and the Navigate and View menus (Plugins: see the PluginRegistry row; user
+activated again (at most every 2 seconds), so files edited in other programs show up. Not ported: the GPG and Console
+tabs, the branch and repository dropdowns of the toolbar, and the Navigate and View menus (Plugins: see the PluginRegistry row; user
 scripts: see the ScriptsManager row). Window size, position and maximized state are kept (upstream's `WindowPositions.xml` format, under the new shell's own
 window names, `WindowPlacementTracker`). The File tree tab is ported (the folder tree at the selected commit, and the selected
-file's content).
+file's content). Added 2026-10-10: the View menu's graph items (draw non-relatives gray, highlight the selected branch,
+show the artificial commits), the Build Report tab, the status bar's ahead/behind counts and stash count, and the Pull
+button following the default pull action. Added 2026-10-11: the author's avatar beside the commit details
+(`showauthorgravatar`).
 
 **RevisionGridControl** (`partial`). Added 2026-10-06: columns (graph and message, author, date, commit); HEAD, branch,
 remote-branch and tag labels colored by kind; a context menu (copy hash or message, create a branch or tag here, browse
@@ -128,8 +141,12 @@ and red where upstream draws icons, with upstream'"'"'s tooltip texts (2026-10-0
 loaded and scrolled at 60 fps (PLAN.md M3.5). Earlier: a read-only list of the first 500 commits from `HEAD`,
 with short hash, subject, author and date, using the shared `RevisionReader.GetLog`. Selecting a row
 loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (the Search history box, Enter; git log --grep); a lane graph beside each commit (since 2026-10-07 upstream's `RevisionGraph` with the ported renderer, see
-GraphRenderer below). Not ported: column layout
-and sorting, paging past 500 commits, the upstream filter bar and search (the box in the window filters only the loaded commits, by hash, subject or author), refs labels, and the changed-file list.
+GraphRenderer below). Added 2026-10-10: "Load more" reads only the next page (`--skip`), up to upstream's commit limit
+(`maxrevisiongraphcommits`); typing in the grid searches it as upstream's quick search (QuickSearchProvider row); the
+working directory and index rows; the selected row is kept when the rows are read again. Added 2026-10-11: the author's
+avatar at the start of the author cell (`showrevisiongridauthoravatarcolumn`; upstream has a column of its own). Not
+ported: column layout and sorting, and the upstream filter bar (the box in the window filters only the loaded commits, by
+hash, subject or author).
 
 **FormStash** (`partial`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
 stash by its name. Also ported: including untracked files. Also ported: stashing only the selected files (Stash selected). Also ported: keeping the index (Keep index). Not ported: branching from a
@@ -145,8 +162,11 @@ remote choice in the dialog and deleting both at once.
 multi-commit selection, the no-commit option, the append-to-message option, and the commit-message edit step.
 
 **FormResetChanges** (`partial`). Ported: reset the current branch to the selected commit with the soft and mixed
-modes. Not ported: deleting whole untracked directories. Also ported: deleting selected untracked files after a confirmation (Delete untracked), the hard mode, behind a confirmation (Reset hard here), and
-discarding the unstaged edits of selected tracked files, after a confirmation.
+modes. Also ported: deleting selected untracked files after a confirmation (Delete untracked), the hard mode, behind a confirmation (Reset hard here), and
+discarding the unstaged edits of selected tracked files, after a confirmation. Added 2026-10-11: the form itself
+(`ResetChangesWindow`, upstream's texts and its rule for the "Also delete new files and/or directories" check box) for the
+commit window's "Reset all changes" and "Reset unstaged changes", which then delete untracked files and directories
+(`git clean -d`) when asked.
 
 **FormRebase** (`partial`). Ported: rebase the current branch onto a selected local or remote branch, abort a stopped
 rebase, and continue one after the conflicts are staged. Added 2026-10-06: the grid menu "Rebase current branch on" >
@@ -199,8 +219,20 @@ the window, and the repository refresh after the commit. Later on 2026-10-06: st
 (also staging lines of an untracked file and unstaging lines of a newly added one, as upstream's FileViewer),
 Ignore... for untracked files (see FormAddToGitIgnore), and Open in diff tool. The message is kept where upstream keeps it,
 through upstream's `CommitMessageManager` used as is (`.git/COMMITMESSAGE`, or `.git/MERGE_MSG` during a merge, so a stopped
-merge starts from git's merge message and both apps share the draft). Not ported: GPG signing, skipping hooks,
-the conventional commit and template settings items of the commit templates menu (see that row), commit scripts, and the message history.
+merge starts from git's merge message and both apps share the draft). Added 2026-10-10: upstream's commit message checks
+before a commit (each failed check asks Yes or No, upstream's texts) and the formatting while typing (empty second line,
+wrapping), the message box menu's "Word wrap (except subject line)", the Conventional Commits items of the templates menu
+(Ctrl+T, Ctrl+Shift+T with a scope, the footers), the user scripts in the file lists' menus, and the before and after
+commit script events. Added 2026-10-11: the "Commit message" menu (the last messages on HEAD, `CommitDialogNumberOfPreviousMessages`
+of them, and the last message committed from the window in any repository first, `lastCommitMessage`; "Show only my
+messages" with upstream's `--author` pattern; "Generate a list of changes in submodules" for the staged submodules, which
+leaves out a submodule added or removed in the commit where upstream throws), "Reset all changes" and "Reset unstaged
+changes" (upstream's `FormResetChanges` question, then `GitModule.ResetAllChanges`'s steps with their errors reported),
+staging without git's line ending check when "Show errors when staging files" is off (`-c core.safecrlf=false`), the
+message box's auto-completion (see the EditNetSpell row) and, with "Compose commit messages in Commit dialog" off, a
+commit whose message git asks for in the editor (`GitEditorCommand`). Not ported: GPG signing, skipping hooks, the
+spelling checker, and the commit kinds other than normal and amend (fixup, squash) with their "modify commit message"
+button.
 
 **FormPush** (`partial`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
@@ -250,22 +282,35 @@ control (`DiffView`), used inline by the Diff tab, the commit window and the con
 light or dark theme. Also since 2026-10-06: old and new line numbers (read from the hunk headers), a file's content with line
 numbers (the File tree tab), and staging or unstaging of selected lines of a tracked file, with the patch built by upstream's
 `PatchManager.GetSelectedLinesAsPatch` and applied as upstream's FileViewer does; the external diff tool for a working-tree,
-staged or commit file (`git difftool`, with `diff.guitool` or `diff.tool` required, as for the merge tool). Not ported: syntax
-highlighting, line staging of new files, line reset, the other patch-line actions (cherry-pick or revert of lines), and
-binary-file handling (the content view says a binary file is not shown).
+staged or commit file (`git difftool`, with `diff.guitool` or `diff.tool` required, as for the merge tool). Added
+2026-10-10: syntax highlighting from upstream's own definitions (ICSharpCode's `.xshd` files, embedded and read by a port of
+its line parser), with the colors made readable on the theme as upstream's `AdaptForeColor` does; the histogram algorithm
+(General page). Added 2026-10-11: "Show nonprinting characters" (spaces, tabs and line ends marked as upstream's editor does)
+and "Show syntax highlighting" (a diff is highlighted only while it is on, a file's text always), both kept as upstream's
+runtime settings, the vertical ruler (`diffverticalrulerposition`), and the menu of every diff tool git can start beside
+"Open in diff tool" (`difftools.showavailable`). Not ported: line reset, the other patch-line actions (cherry-pick or
+revert of lines), binary-file handling (the content view says a binary file is not shown), the diff appearance choices
+(git word diff, difftastic), git's own coloring, the combined diff of merges, continuous scroll to the next file, the
+submodule diff window, and end-of-line glyphs.
 
 **RevisionDiffControl** (`partial`). Ported: the files a selected commit changed, with status letters, the selected
-file's diff beside the list (the Diff tab), and an action that opens it in its own window. Not ported: the per-file tree, filtering, the file history view, and the
-diff of merge commits against each parent.
+file's diff beside the list (the Diff tab), and an action that opens it in its own window. Added 2026-10-10: the
+working directory's and the index's files for the artificial rows (unstaged changes with the untracked files, staged
+changes), upstream's BrowseDiff hotkeys for the commands the shell has (parents, difftool, history, blame, file tree, edit,
+open, stage, unstage, reset, delete) and the user scripts in the list's menu. Added 2026-10-11: the paths follow "Truncate
+long filenames" (PathFormatter row). Not ported: the per-file tree, filtering, the file history view, and the diff of merge
+commits against each parent ("Show file differences for all parents") with the combined diff.
 
 **FormFileHistory** (`partial`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
-and a diff of that file in a chosen commit. Not ported: renames followed with `--follow`, blame, the tree view with
-folders (the list is flat), the file's content view, and the branch and revision filters of the upstream form.
+and a diff of that file in a chosen commit. Added 2026-10-10: the history follows renames as upstream's
+`BuildPathFilter` does (`followrenamesinfilehistory`, `followrenamesinfilehistoryexactonly`, toggles in the window), and
+the diff of a commit uses the file's name in that commit; blame from the window. Not ported: the tree view with folders
+(the list is flat), the file's content view, and the branch and revision filters of the upstream form.
 
 **FormBlame** (`partial`). Ported: per-line blame of a file as of a commit (line number, short hash, author, date, text),
 read from `git blame --line-porcelain`; since 2026-10-06 a double-click or Enter on a line shows that commit's change to the
-file. Not ported: the author margin and its coloring, selecting the commit in the grid, the blame-ignore-whitespace and
-detect-moves options, and blame of a diff against the parent.
+file. The blame settings, the gutter and its age colors and avatars: see the BlameViewerSettingsPage row. Not ported:
+selecting the commit in the grid and blame of a diff against the parent.
 
 **FormMergeBranch** (`partial`). Ported: merge the selected branch into the current one with git's fast-forward
 default, abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. Conflicting files appear in the
@@ -298,16 +343,20 @@ commit window after a commit (`closecommitdialogaftercommit`), close the output 
 apps share it. Added 2026-10-06: `diff.tool`, and a choice of the diff and merge tools git finds on this computer (upstream's
 `CustomDiffMergeToolCache`, as its diff viewer page uses it). Difference: upstream's page writes `diff.guitool` and
 `merge.guitool` with a path and command per tool; the new shell writes `diff.tool` and `merge.tool` by name and leaves the
-command to git's built-in tool definitions (its launches read the `guitool` keys first). Not ported: the other pages, custom
-CSS themes, the tool path and command fields, and plugin settings.
+command to git's built-in tool definitions (its launches read the `guitool` keys first). The other pages have rows of their
+own below. Added 2026-10-10 to the Git config tab: `credential.helper` with the helpers git and the OS offer (on Linux and
+macOS git's own helpers are the credential store, PLAN.md decision 6; a value set more than once is left alone),
+`core.editor` (with this app's `fileeditor` command offered), `commit.template` and `core.autocrlf`. Not ported: the tool
+path and command fields.
 
 **FormAbout** (`partial`). Ported: name, version, operating system, runtime and git version. Not ported: the contributor list
 and the links.
 
 **Dashboard** (`partial`). Ported: the recent repositories, newest first, from upstream's own history
 (`RepositoryHistoryManager`, setting key `history`), shown while no repository is open and in Start > Recent repositories;
-open with Enter or a double-click; remove an entry. Not ported: favourites and categories, the create, open and clone tiles,
-and the path shortening options.
+open with Enter or a double-click; remove an entry. Added 2026-10-11: each repository's checked out branch beside it, in
+the dashboard and the menu (`dashboardshowcurrentbranch`, see the RepositoryCurrentBranchNameProvider row), read after the
+list shows. Not ported: favourites and categories, the create, open and clone tiles, and the path shortening options.
 
 **RepoObjectsTree** (`partial`). Ported: a branch tree (`BranchTree` in core) with local branches under Branches and remote
 branches under Remotes and their remote, both grouped in folders at '/', with branch counts and the checked-out branch
@@ -320,7 +369,11 @@ branch or tag, merge, rebase, stash and stash pop, with Cmd in place of Ctrl on 
 (stage all), Ctrl+Enter and F5. Since 2026-10-06 the FormBrowse hotkeys are read from and written to upstream's
 `SerializedHotkeys` setting (the `HotkeySettings[]` XML, by upstream command code and name; other forms' entries are kept
 as they are), and can be changed in Settings > Hotkeys, so a hotkey changed in either app applies in both. Not ported:
-the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name.
+the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name. Added 2026-10-10: the BrowseDiff section (the Diff tab's
+file list, see RevisionDiffControl) and the Stash section (the left panel's stash list: next, previous, refresh), the
+commit window's Conventional Commits keys, and the grid's ToggleHighlightSelectedBranch and quick search next and previous
+keys. Still not ported: the commands of every section that the new shell has no feature for, and the reset-to-defaults
+button.
 
 **ScriptsManager / ScriptRunner / ScriptOptionsParser** (`partial`). Ported: the scripts in upstream's `ownScripts` setting
 (same XML, upstream's defaults when none are stored, the older separator format, duplicate identifiers renumbered), every
@@ -332,15 +385,17 @@ since 2026-10-07 the scripts' hotkeys (upstream section "Scripts", one command p
 `HotkeyCommandIdentifier`), in the browse and commit windows after the window's own hotkeys, enabled or not, as upstream's
 `GitModuleForm`. A key without Ctrl (Cmd) or Alt typed into a text box stays text, unless it is a function key; upstream
 has no such rule. Since 2026-10-07 plugin commands (`plugin:name`, `{plugin:name}` lowered as upstream) run the loaded plugin of
-that name, ignoring case, from the browse and commit windows. Not ported: `ShowInFileList` scripts
-and the selected file options from a file list, the script icons in menus (kept in the XML, not shown).
+that name, ignoring case, from the browse and commit windows. Added 2026-10-10: `ShowInFileList` scripts in the file lists'
+menus (the Diff tab, the commit window's lists) with the selected files' options (`{SelectedRelativePaths}`, the line and
+column of the diff), and the script icons in the menus, from upstream's own images (`Images.resx`, linked) or the script's
+icon file.
 
 **ScriptsSettingsPage** (`partial`). Ported 2026-10-07: Settings > Scripts lists the scripts in run order (enabled check
 box, name, event, command line), with Add (upstream's next identifier and "<New Script>" name), Delete, Up, Down and the
 arguments help (upstream's text, kept equal by a test that reads upstream's source); the selected script's name, command,
 arguments, event and options are edited below the list. Stored on OK, dropped on Cancel; upstream stores the page on every
-save, the port only when the scripts changed. Not ported: the icon choice (upstream's embedded images; the icon is kept as
-stored), the property grid itself (plain fields instead).
+save, the port only when the scripts changed. Added 2026-10-10: the icon choice, from upstream's embedded images by name.
+Not ported: the property grid itself (plain fields instead).
 
 **SimpleHelpDisplayDialog** (`ported`). A help text in its own window, not modal, closed with its owner.
 
@@ -379,8 +434,11 @@ upstream uses (the repository's effective settings, or the user's without a repo
 definition), the GitHub and Azure DevOps templates (upstream's extractors, linked unchanged; buttons instead of the Add
 drop-down; upstream's remote preference), Remove, and every field of a definition with its link rows. The commit details
 show "Related links:" for the selected commit, found by upstream's `GitRevisionExternalLinksParser` in the message and the
-local and remote branches at the commit, each address once; a link opens in the browser. Not ported: the template icons, the
-other commit info parts that upstream renders as links (branches, tags), and choosing a settings level on the page.
+local and remote branches at the commit, each address once; a link opens in the browser. Added 2026-10-11: the settings
+level box of upstream's page header (effective, local, distributed, global; the definitions edited at each level are
+stored on OK) and the templates' icons (upstream's `GitHub` and `VisualStudioTeamServices` images, by name, since the
+templates' own `Icon` is a WinForms image). Not ported: the other commit info parts that upstream renders as links
+(branches, tags).
 
 **AppearanceFontsSettingsPage** (`partial`). Ported 2026-10-07: Settings > Fonts edits upstream's application, commit, code
 and monospace fonts (`font`, `commitfont`, `difffont`, `monospacefont`) in upstream's stored format. Upstream reads them
@@ -389,8 +447,9 @@ font dialog: the family is chosen from the installed fonts (a stored one that is
 typed in points. "(default)" removes the key, so the app's own font applies (upstream cannot unset a font). Only a font the
 user changed is written. The fonts apply at once, without upstream's restart: the application font to the whole UI through
 Fluent's font resources, the commit font to the commit message box and the commit details, the code font to the diff,
-editors, blame, git output, command log and help, the monospace font to commit hashes and the reflog. Not ported: bold and
-italic (kept as stored, not shown), "Show end-of-line markers as glyph" (the diff view shows no end-of-line markers).
+editors, blame, git output, command log and help, the monospace font to commit hashes and the reflog. Added 2026-10-11:
+bold and italic, as check boxes beside the size (upstream's font dialog), shown through weight and style resources (the
+application font through the windows' style). Not ported: "Show end-of-line markers as glyph".
 
 **FormBrowseRepoSettingsPage / revision grid tooltips** (`partial`). Ported 2026-10-07: "Show revision tooltips"
 (`ShowRevisionGridTooltips`, on by default) and the tooltips it controls, with upstream's texts: the message column shows
@@ -398,7 +457,7 @@ the message summary (upstream's `GitRevisionSummaryBuilder`) when it has more li
 brackets (local branches, remote branches, tags); the author column the author and committer; the date column both dates;
 the hash column the full hash. Upstream needs a restart; here the setting applies when the settings are saved. Not ported:
 ahead/behind counts in the ref lines and the tooltips of a hovered ref label (the shell has no ahead/behind data per ref),
-the artificial commits' change counts, and the page's other settings: the Console tab and its shell, GPG information, find
+and the page's other settings: the Console tab and its shell, GPG information, find
 in commit files with git grep, output history (the shell has none of them); "Show file history in the main window" and
 "Show blame in diff viewer" (the shell shows file history and blame in their own windows only).
 
@@ -408,36 +467,50 @@ upstream's gutter line (author and date in the chosen order, the time, the origi
 of lines from one commit, with line numbers when chosen. Its context menu has the blame settings of upstream's file history
 window, with upstream's rules (the author or the date always shows; the time only with the date); Settings > Blame viewer has
 the page with upstream's labels and warning tooltip. Differences: the short hash stays in its own column (a column the new
-shell had before), shown once per run like the gutter line. Not ported: the author avatar, the age colors of upstream's
-gutter, and blaming the line's commit or its parent from the menu.
+shell had before), shown once per run like the gutter line. Added 2026-10-11: upstream's age colors (`CalculateBlameGutterData`:
+seven greens from the oldest line, at least three years back, to now; their lightness turned around on a dark theme where
+upstream adapts them) and the author's avatar on the first line of a commit's run (`Blame.ShowAuthorAvatar`, in the menu and
+on the page; see the Avatars row). Not ported: blaming the line's commit or its parent from the menu.
 
 **GraphRenderer / SegmentRenderer / DetailedSettingsPage** (`partial`). Ported 2026-10-07: upstream's graph model is linked
 unchanged; its renderer is ported line by line from WinForms' Graphics to shapes (`GraphPainter`): lanes, shared lanes,
 diagonals or curves, perpendicular junctions and bows, square nodes for commits with refs, the outline of HEAD, upstream's
 sizes. Differences: upstream's 1/8-pixel anti-aliasing shift for GDI+ is left out; the two lane states upstream throws on
-are skipped instead; colors come from the theme's lane colors by index (stand-in `RevisionGraphLaneColor`). Not ported:
-the gray non-relative and highlight draw styles, hover highlighting, the cached row bitmaps (`GraphCache`), lane tooltips
-(`LaneInfoProvider`, `BranchFinder`), artificial working-tree rows, and the Detailed page's push and merge window options.
+are skipped instead; colors come from the theme's lane colors by index (stand-in `RevisionGraphLaneColor`). Added
+2026-10-10: upstream's draw styles (non-relatives drawn gray by default, `revisiongraphdrawnonrelativesgray`; highlight
+the selected branch; highlight while the pointer is on a branch's label), upstream's lane colors for them
+(`GetBrushForLaneInfo`), lane tooltips (LaneInfoProvider row), the artificial working directory and index rows (their own
+row), and a graph column only as wide as the visible rows need. Not ported: the cached row bitmaps (`GraphCache`, not
+needed for the frame times in PLAN.md M3.5) and the Detailed page's push and merge window options (the shell has no
+multi-branch push view or merge dialog; PLAN.md M8).
 
 **GeneralSettingsPage / AppearanceSettingsPage / DateColumnProvider** (`partial`). Ported 2026-10-07: relative or full date
 of the author or the committer in the grid (also in search results), with upstream's View menu toggles; open the last
 working directory on startup (upstream's `Program` rule, only for a valid repository); the changed-file count on the
-Commit button; the default clone destination. Not ported: the other settings of both pages (see PLAN.md M5).
+Commit button; the default clone destination. Added 2026-10-10 from the General page: the default pull action (the Pull
+button and the rebase check box follow it), autostash with untracked files, submodule update on checkout (with upstream's
+question while undecided), histogram diff, the commit limit, the quick search timeout, the uncommitted changes check of
+checkout, and the status bar's ahead and behind counts and stash count. Added 2026-10-11 from the Appearance page: the
+author images group (Avatars row), the branch names of the recent repositories (Dashboard row) and "Truncate long
+filenames" (PathFormatter row). Not ported: the console window and telemetry settings (General), the spelling
+dictionary (no spelling checker, PLAN.md M8), and the Windows-only "Show current branch in Visual Studio" and "Auto scale
+user interface" (Avalonia scales by the system's setting).
 
 **DiffViewerSettingsPage / FileViewer options** (`partial`). Ported 2026-10-07: the four whitespace modes (one box instead
 of upstream's three toggle buttons, same states), fewer and more lines of context (down to none, buttons off while the
 entire file is shown) and the entire file, with upstream's diff arguments and hotkeys (IgnoreAllWhitespace, Increase and
 DecreaseNumberOfVisibleLines, ShowEntireFile), kept for the next view in this run as upstream's runtime settings; the three
-"Remember" settings and "Save current view settings as default". Not ported: the page's other settings (non-printing
-characters, syntax highlighting, diff appearance, combined diff, continuous scroll, submodule diff, all parents, difftool
-list, vertical ruler, Git coloring) and the FileViewer features they configure.
+"Remember" settings and "Save current view settings as default". Added 2026-10-11: remember non-printing characters and
+syntax highlighting, the vertical ruler position and "Show all available difftools" (FileViewer row). Not ported: diff
+appearance, combined diff, continuous scroll, submodule diff, all parents and Git coloring, whose FileViewer features the
+shell does not have (PLAN.md M8).
 
 **CommitDialogSettingsPage** (`partial`). Ported 2026-10-07: the second-line setting, the remembered Amend check box and
 the Commit & Push button, under upstream's keys and labels. In the commit window (FormCommit row): the message goes through
 upstream's `FormatCommitMessage` before the commit (it was given to git as typed before), Amend is put back checked when it
-was left checked (not during a merge, and keeping the draft, as upstream), and Commit and push hides when turned off. Not
-ported: show errors when staging, compose in the commit dialog, the number of previous messages, the reset buttons,
-auto-completion.
+was left checked (not during a merge, and keeping the draft, as upstream), and Commit and push hides when turned off. Added
+2026-10-11, with their features in the commit window (FormCommit row): show errors when staging, compose in the commit
+dialog, the number of previous messages, the two reset buttons and auto-completion. The page is complete.
 
 **ConfirmationsSettingsPage / ConfirmSuppressible** (`partial`). Ported 2026-10-07: the confirmations whose action the
 new shell has (amend, commit with no branch, rebase, fetch with prune, push of a new branch, force delete of an unmerged
@@ -446,8 +519,8 @@ and "Don't show me this message again" (not for the left panel checkout, as upst
 window (amend; no branch unless a rebase is under way), the grid's rebase, quick fetch with Prune and the pull dialog's
 fetch with prune, quick push and the push dialog when the remote branch is not among the fetched remote branches, Force
 delete, the left panel's checkout, Drop stash, and opening a worktree. Not ported: undo last commit, the tracking reference
-question, the automatic stash pop after pull and checkout, the conflict resolution questions, the second abort question,
-submodule update on checkout, the branch buttons of the "not on a branch" question, and upstream's Yes/No buttons (the
+question, the automatic stash pop after pull and checkout, the conflict resolution questions, the second abort question
+(features the shell does not have, PLAN.md M8), the branch buttons of the "not on a branch" question, and upstream's Yes/No buttons (the
 new shell names the action on its button).
 
 **PluginRegistry / FailedPluginWrapper** (`partial`). Ported 2026-10-07: the plugins are loaded once, off the UI thread,
@@ -461,8 +534,10 @@ name with their icon above "Plugins settings...", and turns off repository plugi
 repository hosts menu (`GitHosters`), loading the commit-form plugins when the commit window opens on its own (the new shell
 has no stand-alone commit window), the clipboard copy of a load error, and the composition cache (off upstream too).
 Plugins built for the new shell: upstream's BackgroundFetch and AutoCompileSubmodules, compiled unchanged by shadow projects
-in `src/xplat/plugins` (only their bitmap resources are replaced, see PLAN.md M6). The other upstream plugins use WinForms
-forms and stay Windows-only.
+in `src/xplat/plugins` (only their bitmap resources are replaced, see PLAN.md M6); the WinForms plugins of upstream's
+repository were built for it since (see "Plugin forms"). Added 2026-10-10: Settings > Plugins also lists the plugin files
+upstream's loader passed over, with the reason (a third-party plugin built on WinForms, another interface version), as
+PLAN.md decision 5 chose: such plugins are not loadable in the new shell.
 
 **GitUICommands (plugin side)** (`partial`). `PluginHost` is the `IGitUICommands` the plugins get: the current module,
 `RepoChangedNotifier` (from any thread; it refreshes the window on the UI thread through `PostRepositoryChanged`, as
@@ -486,8 +561,10 @@ setting's type; an invalid number is stored as no value, as upstream), drop-down
 settings available for this plugin.", and (2026-10-09) links (a pseudo setting with a link label, such as the GitHub
 plugin's token pages; the click runs the plugin's own handler through the shim's `RaiseClick`). The values are the repository's effective settings when one is open (a value the
 repository sets is changed there, any other in the user's settings, as upstream's `DistributedSettings` does) and the user's
-settings otherwise; unchanged values are not written. Not ported: the settings level choice (local, distributed, global),
-credentials settings and settings with their own WinForms control (shown as not editable).
+settings otherwise; unchanged values are not written. Added 2026-10-10: the settings level choice of upstream's page
+header (effective, local, distributed, global; the values edited at a level go to it), and credentials settings (user name
+and password, kept in Windows' credential store as upstream does; on Linux and macOS they say why they cannot be edited,
+PLAN.md decision 6). Not ported: settings with their own WinForms control (shown as not editable).
 
 **FormGitIgnore / FormAddToGitIgnore** (`partial`). Ported: edit the repository's top-level `.gitignore` as text (Repository >
 Edit .gitignore...), and add the selected untracked files from the commit window (Ignore...), each as a root-anchored pattern
@@ -526,9 +603,13 @@ installer placement of the helper; the new shell needs none. Not checked on macO
 `ThemeModule.LoadThemeSettings` does (light is upstream's default theme, a theme that fails to load falls back to it, the
 system mode resolves to dark or light), through upstream's own loader files linked into the core unchanged. `AppThemePaths`
 repeats `ThemePathProvider`'s folder rules because the upstream class asserts GitExtensions.exe in Debug builds. The
-appearance choice lists the same themes and the colorblind variation. Not ported: applying the panel, editor and selection
-colors and the system color overrides to the controls, the theme editor, `UseSystemVisualStyle`, and the restart prompt
-(the new shell applies a theme at once).
+appearance choice lists the same themes and the colorblind variation. Added 2026-10-10: the panel, editor, line number and
+selection colors (windows' background, the diff and file views, their numbers, selected diff lines). Added 2026-10-11: the
+system color overrides a theme sets (upstream's `SysColorValues`; upstream's own themes set none and list the dark ones only
+for reference, as WinForms' dark mode supplies them): WindowText, GrayText and Highlight go to Fluent's text, disabled text
+and accent resources, and come back to the app's own when a theme without them is applied. Not ported: the other system
+colors (Fluent draws the controls from its light or dark variant), the theme editor, `UseSystemVisualStyle`, and the
+restart prompt (the new shell applies a theme at once).
 
 **InteractiveGitActionControl** (`partial`). Ported 2026-10-09: upstream's two notification bars above the grid, one for a
 bisect and one for a stopped rebase, merge or patch (`git am`) or for conflicts left by any command, with upstream's texts,
@@ -607,9 +688,11 @@ Extensions for Windows). Upstream translates a form through `TranslationUtil` by
 `$this`, then text blocks, buttons, check boxes, tabs, groups, menu items, column headers and tooltips), and
 `UpstreamTranslation.Text` gives a `TranslationString` field's text. Upstream's `&` mnemonics become Avalonia access keys.
 Upstream plugin classes translate themselves as upstream (`GitPluginBase.Translate`), so plugin names, setting captions and
-messages follow too. As upstream, a change applies to windows opened later; the plugins' own texts need a restart. Not
-translated: the rest of the new shell, whose windows are not named after upstream's forms yet, and the first-start language
-dialog (`FormChooseTranslation`).
+messages follow too. As upstream, a change applies to windows opened later; the plugins' own texts need a restart. Added
+2026-10-10: every other window is translated by its English texts (`UpstreamTranslation.ApplyByText`, when a window is
+loaded): a text that matches one of upstream's English source texts takes that text's translation, so labels copied from
+upstream follow the language; lists filled with data are left alone. Texts of the new shell that upstream does not have
+stay English (PLAN.md decision 4). Not translated: the first-start language dialog (`FormChooseTranslation`).
 
 **BuildServerWatcher** (`partial`). Upstream's choice of adapter (the configured type unless integration is turned off; with
 no type, detection from the remotes in `PrioritizedBuildServerRemoteNames` order while the integration setting is untouched,
@@ -628,7 +711,9 @@ both (View > "Show build status icon" and "Show build status text", upstream's s
 colors on a dark theme instead of on a selected row), with upstream's tooltip; shown only while a build server gives results.
 A click on the cell opens the build report, and the grid menu has "View build report in a browser" and "View pull request in
 a browser". A build replaces the shown one unless it started earlier; results are kept per commit, so commits read later
-(another page) show them too. Not ported: the hand cursor over a cell with a report, and the column's width when resized.
+(another page) show them too. Added 2026-10-10: the Build Report tab (BuildReportTabPageExtension row: the selected
+commit's report as a link to open in the browser, since the shell has no embedded browser; shown while
+`ShowBuildResultPage` is on and the commit has a report). Not ported: the hand cursor over a cell with a report, and the column's width when resized.
 
 **BuildServerIntegrationSettingsPage** (`partial`). Settings > Build server integration on the repository's settings (as the
 revision links): the three-state "Enable build server integration", the type (None and the plugins' types, with upstream's
@@ -671,5 +756,60 @@ messages.
 **Commit templates** (`partial`). The commit window's "Commit templates" menu: the plugins' templates (upstream's
 `CommitTemplateManager` registry, used as is; the GitHub plugin adds the user's assigned issues), then the user's own
 (upstream's `CommitTemplates` setting); a template replaces the message, with upstream's regex placeholders filled from the
-branch name. Not ported: the conventional commit items, the template settings window, git's `commit.template` as the initial
-message, and the templates' icons.
+branch name. Added 2026-10-10: the Conventional Commits items and the template settings window (FormCommitTemplateSettings
+row: the user's templates and the commit message settings, stored in upstream's format). Not ported: git's
+`commit.template` as the initial message, and the plugin templates' icons.
+
+**FormCommitTemplateSettings** (`ported`). 2026-10-10: the user's templates (upstream's `CommitTemplates` setting, read and
+written with upstream's `CommitTemplateItem` and serializer, so both apps share them) and the commit message settings
+(`CommitValidation*`: subject and line lengths, empty second line, indentation, auto wrap, the regular expression), with
+upstream's texts, translated through the form's fields.
+
+**FormCommit: "Commit message" menu, reset buttons, message checks, Conventional Commits** (`ported`). The commit window
+parts listed in the FormCommit note: `PreviousCommitMessages` uses upstream's `GitModule.GetPreviousCommitMessages` and
+upstream's merge rule for the last committed message; `CommitMessageValidation` repeats `IsCommitMessageValid` and
+`FormatAllText` with upstream's texts and its `WordWrapper` (linked as is); `ConventionalCommits` repeats the type and
+footer insertion with upstream's cases as tests.
+
+**EditNetSpell (auto-completion)** (`partial`). 2026-10-11: upstream's providers are linked unchanged
+(`CommitAutoCompleteProvider`: the changed files' names and the identifiers its regexes find in their diffs, from
+`AutoCompleteRegexes.txt` or upstream's defaults; `CommitMessageMetadataProvider`: the trailer keywords), with upstream's
+word-at-cursor rules. The list follows typing after upstream's 200 ms pause (a delayed post rather than a dispatcher timer),
+Ctrl+Space asks for it and takes the only match, Tab or Enter takes the selection, Escape closes it; Up and Down move in it,
+which upstream's list leaves to the text box. The message box menu has upstream's "Provide auto completion" toggle. Not
+ported: the spelling checker (upstream's NetSpell is a WinForms component; PLAN.md M8), "Mark ill formed lines", and the
+tooltip shown while the words are still being read.
+
+**Avatars** (`partial`). 2026-10-11: upstream's provider chain without its System.Drawing images, which do not load off
+Windows: "Default" asks GitHub, then Gravatar (with the generated style as Gravatar's fallback); "Custom" follows the
+`CustomAvatarTemplate` segments (URLs with upstream's `{name}`, `{email}`, `{md5}`, `{sha1}`, `{sha256}`, `{imageSize}`
+through upstream's `TemplateFormatter`, `<Default>`, `<None>`); then the fallback: the author's initials (drawn by the view
+with upstream's palette and contrast rule) or Gravatar's generated style. Downloaded images are kept in upstream's cache
+folder under upstream's names (`{email}.{size}px.png`, expiring after `authorimagecachedays`, never for the "None"
+provider), so both apps share it; "Clear image cache" empties it. Differences: the file is kept as the provider sent it
+(upstream re-encodes it as PNG); a bot's GitHub avatar (found through the GitHub API upstream) is not looked up; upstream's
+last-resort user picture is the initials here; GitHub's identicon is recognised by the width in its PNG header.
+
+**PathFormatter** (`ported`). 2026-10-11: "Truncate long filenames" for the Diff tab's and the commit window's file lists:
+"Compact" keeps both ends of the path (Avalonia's path ellipsis; upstream uses Windows' `PathCompactPathEx` and shows the
+whole path elsewhere), "Trim start" drops the start, "Filename only" shows the name (upstream's
+`FormatTextForFileNameOnly`). The full path is the item's tooltip.
+
+**RepositoryCurrentBranchNameProvider** (`ported`). 2026-10-11: the branch through upstream's `Commands.GetSelectedBranch`
+(mostly a read of the HEAD file); none for a folder that is gone, not a repository, or bare, as upstream.
+
+**QuickSearchProvider** (`ported`). 2026-10-10: typed characters search the loaded commits as upstream (its
+`GitRevisionTester.Matches` rules: author, subject, refs and hash), the label above the grid takes the warning color when nothing matches (upstream: red),
+the text clears after `revisiongridquicksearchtimeout`, and the next and previous match keys repeat the search.
+
+**LaneInfoProvider** (`ported`). 2026-10-10: the graph's tooltip for a lane, with upstream's text (the commit or the child
+it leads to, the branch upstream's `BranchFinder` finds, the message summary), on the pointer's lane.
+
+**ArtificialCommitChangeCount / artificial rows** (`partial`). 2026-10-10: the "Working directory" and "Commit index" rows
+before HEAD (on the first page without a filter), their files and diffs, and the change count beside them
+(`showgitstatusforartificialcommits`). Not ported: upstream's summary of the changes by kind (changed, new, deleted,
+submodules).
+
+**BuildReportTabPageExtension** (`partial`). 2026-10-10: a "Build Report" tab while `ShowBuildResultPage` is on and the
+selected commit's build has a report, following the selected build. Difference: the report is a link that opens in the
+browser; upstream shows it in an embedded browser, which Avalonia does not have.

@@ -70,7 +70,8 @@ public sealed record CommitRow(
     IReadOnlyList<RefLabel>? Labels = null,
     RevisionTooltip? Tooltip = null,
     string? Body = null,
-    bool HasMultiLineMessage = false);
+    bool HasMultiLineMessage = false,
+    string? AuthorEmail = null);
 
 public enum RefKind
 {

@@ -17,8 +17,14 @@ public sealed record BlameOptions(
     bool ShowAuthorDate = true,
     bool ShowAuthorTime = true,
     bool ShowLineNumbers = false,
-    bool ShowOriginalFilePath = true)
+    bool ShowOriginalFilePath = true,
+    bool ShowAuthorAvatar = true)
 {
+    /// <summary>
+    ///  The number of upstream's age colors (<c>BlameControl.GetAgeBucketGradientColors</c>), newest last.
+    /// </summary>
+    public const int AgeBucketCount = 7;
+
     /// <summary>
     ///  The <c>git blame</c> flags upstream's <c>GitModule.Blame</c> adds: <c>-M</c>, <c>-C</c> and <c>-w</c>.
     /// </summary>
@@ -84,27 +90,52 @@ public sealed record BlameOptions(
     ///  The blame view's rows: as upstream's gutter, a commit's line and hash are shown on the first line of each run of
     ///  lines from that commit, and left empty on the rest.
     /// </summary>
-    public IReadOnlyList<BlameRow> Rows(IReadOnlyList<BlameLine> lines, string blamedFile, CultureInfo culture)
+    public IReadOnlyList<BlameRow> Rows(IReadOnlyList<BlameLine> lines, string blamedFile, CultureInfo culture,
+        DateTime? now = null)
     {
         List<BlameRow> rows = new(lines.Count);
+        IReadOnlyList<int> ages = AgeBuckets(lines, now ?? DateTime.Now);
         string? previous = null;
-        foreach (BlameLine line in lines)
+        for (int i = 0; i < lines.Count; i++)
         {
+            BlameLine line = lines[i];
             bool first = line.Hash != previous;
             rows.Add(new BlameRow(line, first ? line.Hash : "", first ? AuthorLine(line, blamedFile, culture) : "",
-                ShowLineNumbers ? line.LineNumber.ToString(CultureInfo.InvariantCulture) : ""));
+                ShowLineNumbers ? line.LineNumber.ToString(CultureInfo.InvariantCulture) : "", ages[i],
+                AvatarColumn: ShowAuthorAvatar, ShowAvatar: ShowAuthorAvatar && first));
             previous = line.Hash;
         }
 
         return rows;
     }
+
+    /// <summary>
+    ///  Upstream's <c>BlameControl.CalculateBlameGutterData</c>: the time from the oldest line (at least three years back)
+    ///  to now is cut into <see cref="AgeBucketCount"/> equal parts, and each line gets the part its author time falls in.
+    /// </summary>
+    public static IReadOnlyList<int> AgeBuckets(IReadOnlyList<BlameLine> lines, DateTime now)
+    {
+        DateTime artificialOldBoundary = now.AddYears(-3);
+        long mostRecent = now.Ticks;
+        long lessRecent = Math.Min(artificialOldBoundary.Ticks,
+            lines.Select(line => line.AuthorTime).Where(time => time != DateTime.MinValue)
+                .DefaultIfEmpty(artificialOldBoundary).Min().Ticks);
+        long intervalSize = (mostRecent - lessRecent + 1) / AgeBucketCount;
+        return
+        [
+            .. lines.Select(line => Math.Min((int)(Math.Max(0, line.AuthorTime.Ticks - lessRecent) / intervalSize),
+                AgeBucketCount - 1))
+        ];
+    }
 }
 
 /// <summary>
 ///  A row of the blame view: the line, the commit hash and author line shown beside it (empty when the line above is from
-///  the same commit), and its number when line numbers are shown.
+///  the same commit), its number when line numbers are shown, its age color (upstream's age bucket, 0 the oldest) and,
+///  as upstream's gutter, the author's avatar on the first line of a commit's run when avatars are shown.
 /// </summary>
-public sealed record BlameRow(BlameLine Line, string Hash, string AuthorLine, string LineNumberText)
+public sealed record BlameRow(BlameLine Line, string Hash, string AuthorLine, string LineNumberText, int AgeBucket = 0,
+    bool AvatarColumn = false, bool ShowAvatar = false)
 {
     public string Content => Line.Content;
 }

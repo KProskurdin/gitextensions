@@ -45,8 +45,10 @@ public partial class MainWindow : Window
     private readonly CommitListViewModel _commits;
     private readonly GitRepositoryService _repositoryService;
     private readonly RepositoryViewModel _repository;
-    private readonly RepositoryOperationsViewModel _actions = new(new GitOperations(AppServices.AskPassExecutable));
-    private readonly RecentRepositoriesViewModel _recent = new(AppServices.RecentRepositories);
+    private readonly RepositoryOperationsViewModel _actions = new(new GitOperations(AppServices.AskPassExecutable,
+        () => AppServices.Preferences.ShowErrorsWhenStagingFiles));
+    private readonly RecentRepositoriesViewModel _recent = new(AppServices.RecentRepositories,
+        path => AppServices.Preferences.ShowRepoCurrentBranch ? RecentRepositoryBranches.CurrentBranch(path) : null);
     private readonly ICommitMessageStore _commitMessages = AppServices.CommitMessages;
     private Task _commitDraftSaved = Task.CompletedTask;
     private readonly IAppPreferences _preferences = AppServices.Preferences;
@@ -92,6 +94,7 @@ public partial class MainWindow : Window
         BranchScopeBox.SelectedIndex = _preferences.ShowCurrentBranchOnly ? 1 : 0;
         ShowSortMenus();
         ShowGridTooltips();
+        ShowAvatarSettings();
         _ = _commits.ApplyFilterAsync(new RevisionFilter(CurrentBranchOnly: _preferences.ShowCurrentBranchOnly));
         WireToolbar();
         WireMenus();
@@ -305,6 +308,8 @@ public partial class MainWindow : Window
         CopyMessageMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Message));
         ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
         CommitDiffToolButton.Click += (_, _) => Run(OpenCommitFileInDiffToolAsync);
+        DiffToolChoices.Attach(CommitDiffToolChoiceButton, tool => OpenCommitFileInDiffToolAsync(tool),
+            message => ShowError(message));
         CreateBranchHereMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
         CreateTagHereMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
         BrowseFilesHereMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
@@ -897,6 +902,30 @@ public partial class MainWindow : Window
     }
 
     // Upstream's user menu bar: one button per enabled script whose event is "show in user menu bar".
+    // Upstream's ShowAuthorAvatarColumn and ShowAuthorAvatarInCommitInfo; upstream needs a restart, here they apply when the
+    // settings are saved.
+    private void ShowAvatarSettings()
+    {
+        Resources["ShowAuthorAvatarColumn"] = _preferences.ShowAuthorAvatarColumn;
+        ShowDetailAvatar();
+    }
+
+    // CommitDetails.Author is "name <email>".
+    private void ShowDetailAvatar()
+    {
+        string? author = _commits.Details?.Author;
+        DetailAvatar.IsVisible = author is not null && _preferences.ShowAuthorAvatarInCommitInfo;
+        if (author is null)
+        {
+            return;
+        }
+
+        int open = author.LastIndexOf('<');
+        int close = author.LastIndexOf('>');
+        DetailAvatar.AuthorName = open > 0 ? author[..open].Trim() : author;
+        DetailAvatar.Email = open >= 0 && close > open ? author[(open + 1)..close] : "";
+    }
+
     // Upstream's ShowRevisionGridTooltips; upstream needs a restart, here it applies when the settings are saved.
     private void ShowGridTooltips() => ToolTip.SetServiceEnabled(CommitList, _preferences.ShowRevisionGridTooltips);
 
@@ -1123,7 +1152,11 @@ public partial class MainWindow : Window
         {
             ThemeApplier.Apply(_preferences);
             FontApplier.Apply(_preferences);
+            FilePathTrimming.Apply(_preferences);
             ShowGridTooltips();
+            ShowAvatarSettings();
+            AppServices.Avatars.Reload();
+            DiffToolChoices.Show(CommitDiffToolChoiceButton);
             ShowHotkeys();
             ShowUserScripts();
             ShowGridScripts();
@@ -2039,13 +2072,15 @@ public partial class MainWindow : Window
         return done;
     }
 
-    private async Task OpenCommitFileInDiffToolAsync()
+    private async Task OpenCommitFileInDiffToolAsync() => await OpenCommitFileInDiffToolAsync(tool: null);
+
+    private async Task OpenCommitFileInDiffToolAsync(string? tool)
     {
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {
             (string? hash, bool staged) = DiffSource(row);
-            await _actions.RunDiffToolAsync(path, file.Path, hash, staged);
+            await _actions.RunDiffToolAsync(path, file.Path, hash, staged, tool);
         }
     }
 
@@ -2110,6 +2145,7 @@ public partial class MainWindow : Window
             DetailCommitDate.Text = "";
             DetailParents.Text = "";
             DetailMessage.Text = _commits.DetailsError;
+            ShowDetailAvatar();
             ShowLinks([]);
             CopyHashButton.IsEnabled = false;
             CopyMessageButton.IsEnabled = false;
@@ -2122,6 +2158,7 @@ public partial class MainWindow : Window
         DetailCommitDate.Text = $"Committed: {details.CommitDate}";
         DetailParents.Text = string.IsNullOrEmpty(details.Parents) ? "No parents" : $"Parents: {details.Parents}";
         DetailMessage.Text = details.Message;
+        ShowDetailAvatar();
         ShowLinks(details.Links ?? []);
         CopyHashButton.IsEnabled = true;
         CopyMessageButton.IsEnabled = true;

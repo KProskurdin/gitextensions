@@ -107,6 +107,70 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
+    public void SubmoduleChanges_should_list_the_commits_a_staged_submodule_change_brings_in()
+    {
+        // git refuses local-path submodules unless the file protocol is allowed; this is set for this test's processes only.
+        Environment.SetEnvironmentVariable("GIT_CONFIG_COUNT", "1");
+        Environment.SetEnvironmentVariable("GIT_CONFIG_KEY_0", "protocol.file.allow");
+        Environment.SetEnvironmentVariable("GIT_CONFIG_VALUE_0", "always");
+        using TestRepository library = new();
+        try
+        {
+            _repo.Run("submodule", "add", "-q", library.Path, "lib");
+            _repo.Run("commit", "-q", "-m", "add submodule");
+            string lib = Path.Combine(_repo.Path, "lib");
+            GitProcess.Run(lib, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-q",
+                "--allow-empty", "-m", "third");
+            string third = GitProcess.Run(lib, "log", "-1", "--format=%h").Trim();
+            _repo.Run("add", "lib");
+
+            string message = PreviousCommitMessages.SubmoduleChangesAsync(_repo.Path, ["lib", "a.txt"])
+                .GetAwaiter().GetResult();
+
+            message.ReplaceLineEndings("\n").Should()
+                .Be($"Submodule lib updated\n\nSubmodule lib:\n    > {third} - third");
+            PreviousCommitMessages.SubmoduleChangesAsync(_repo.Path, ["a.txt"]).GetAwaiter().GetResult().Should()
+                .BeEmpty();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GIT_CONFIG_COUNT", null);
+            Environment.SetEnvironmentVariable("GIT_CONFIG_KEY_0", null);
+            Environment.SetEnvironmentVariable("GIT_CONFIG_VALUE_0", null);
+        }
+    }
+
+    [AvaloniaTest]
+    public void PreviousMessages_should_read_the_newest_first_and_only_the_users_own_when_asked()
+    {
+        _repo.Run("-c", "user.name=Other", "-c", "user.email=other@example.com", "commit", "-q", "--allow-empty", "-m",
+            "by other");
+
+        PreviousCommitMessages.ReadAsync(_repo.Path, 2, onlyMine: false).GetAwaiter().GetResult().Should()
+            .Equal("by other", "second\n\nbody line");
+        PreviousCommitMessages.ReadAsync(_repo.Path, 5, onlyMine: true).GetAwaiter().GetResult().Should()
+            .Equal("second\n\nbody line", "first");
+    }
+
+    [AvaloniaTest]
+    public void CurrentBranch_should_read_the_checked_out_branch_and_nothing_outside_a_repository()
+    {
+        string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        string folder = Path.Combine(Path.GetTempPath(), "xplat-not-a-repo-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            RecentRepositoryBranches.CurrentBranch(_repo.Path).Should().Be(current);
+            RecentRepositoryBranches.CurrentBranch(folder).Should().BeNull();
+            RecentRepositoryBranches.CurrentBranch(Path.Combine(folder, "gone")).Should().BeNull();
+        }
+        finally
+        {
+            Directory.Delete(folder);
+        }
+    }
+
+    [AvaloniaTest]
     public void GetSnapshot_should_fail_for_a_folder_that_is_not_a_repository()
     {
         string folder = Path.Combine(Path.GetTempPath(), "xplat-not-a-repo-" + Guid.NewGuid().ToString("N"));

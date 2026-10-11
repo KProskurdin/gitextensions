@@ -345,7 +345,7 @@ public sealed class GitCommitHistory : ICommitHistory
                     style.Format(r.AuthorDate, r.CommitDate, now),
                     r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
                     [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs,
-                    RevisionTooltips.For(r, refs), r.Body, r.HasMultiLineMessage);
+                    RevisionTooltips.For(r, refs), r.Body, r.HasMultiLineMessage, r.AuthorEmail);
             })
             .ToList();
 

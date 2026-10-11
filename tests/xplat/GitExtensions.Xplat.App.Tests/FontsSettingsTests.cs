@@ -45,11 +45,14 @@ internal sealed class FontsSettingsTests
         commitFamily.SelectedItem.Should().Be(SettingsWindow.DefaultFontChoice);
         commitSize.IsEnabled.Should().BeFalse();
         settings.FontBoxes[AppFont.Monospace].Family.SelectedItem.Should().Be("No Such Font");
+        settings.FontStyleBoxes[AppFont.Monospace].Bold.IsChecked.Should().BeTrue();
+        settings.FontStyleBoxes[AppFont.Commit].Bold.IsEnabled.Should().BeFalse();
+        settings.FontStyleBoxes[AppFont.Code].Italic.IsChecked = true;
 
         codeSize.Value = 12;
         Save(window, settings);
 
-        TestAppBuilder.Preferences.GetFont(AppFont.Code).Should().Be(new FontSetting("Courier New", 12));
+        TestAppBuilder.Preferences.GetFont(AppFont.Code).Should().Be(new FontSetting("Courier New", 12, Italic: true));
         TestAppBuilder.Preferences.GetFont(AppFont.Commit).Should().BeNull();
         TestAppBuilder.Preferences.GetFont(AppFont.Monospace).Should()
             .Be(new FontSetting("No Such Font", 9, Bold: true), "an untouched font is kept as stored");
@@ -64,13 +67,15 @@ internal sealed class FontsSettingsTests
         SelectableTextBlock message = Find<SelectableTextBlock>(window, "DetailMessage");
 
         TestAppBuilder.Preferences.SetFont(AppFont.Commit, new FontSetting("Arial", 15));
-        TestAppBuilder.Preferences.SetFont(AppFont.Monospace, new FontSetting("Courier New", 6));
+        TestAppBuilder.Preferences.SetFont(AppFont.Monospace, new FontSetting("Courier New", 6, Bold: true, Italic: true));
         TestAppBuilder.Preferences.SetFont(AppFont.Application, new FontSetting("Arial", 12));
         Save(window, OpenSettings(window));
 
         (message.FontFamily.Name, message.FontSize).Should().Be(("Arial", 20));
         hash.FontFamily.Name.Should().StartWith("Courier New");
         hash.FontSize.Should().Be(8);
+        (hash.FontWeight, hash.FontStyle).Should().Be((FontWeight.Bold, FontStyle.Italic));
+        message.FontWeight.Should().Be(FontWeight.Normal);
         Application.Current!.Resources["ControlContentThemeFontSize"].Should().Be(16.0);
         TextBlock author = Find<TextBlock>(window, "DetailAuthor");
         (author.FontFamily.Name, author.FontSize).Should().Be(("Arial", 16), "the window takes Fluent's font resources");

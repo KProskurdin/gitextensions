@@ -26,8 +26,8 @@ criterion, and the milestones beyond M4 are estimates only.
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS by CI only | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | Browse, commit, branch, remote and conflict workflows; layout follows FormBrowse (2026-10-06) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Tests 2026-10-06: 127 core and 135 app on Windows (127 and 134 on Linux (WSL) before the commit message store). Not run on macOS |
-| Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master 52d08e996). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
+| Avalonia app | M1 to M6 work items done (2026-10-11): browse, commit, write operations, settings, themes, hotkeys, plugins, scripts | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Tests 2026-10-11: 384 core and 276 app on Windows, 384 core on Linux (WSL; the Linux app run is to repeat). Not run on macOS |
+| Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master afc512395, verified 2026-10-11). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
 | CI | Written, not run on GitHub | `.github/workflows/xplat.yml`: shadow tests on Windows and Ubuntu, nightly upstream check. No macOS job. The app is not built in CI |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
 
@@ -152,7 +152,7 @@ Done: window, path box, commit list (read-only), developer screenshot aid.
 Remaining:
 1. Done 2026-10-03 (Windows and Linux): commit selection shows the message, author, dates and parents
    (`RevisionReader.GetRevision`, off the UI thread).
-2. Done 2026-10-03 (Windows and Linux): the list reads one page of 500 commits at a time. Reading stops once the page is full (`CommitHistory.LoadPage`), "Load more" re-reads with a larger limit, and the list is virtualized by Avalonia. Not done: a skip-based page read, which needs `GetLog` to take a count or offset.
+2. Done 2026-10-03 (Windows and Linux): the list reads one page of 500 commits at a time. Reading stops once the page is full (`CommitHistory.LoadPage`), "Load more" re-reads with a larger limit, and the list is virtualized by Avalonia. Done 2026-10-10: "Load more" reads only the next page. `GetLog` did not need a change: its revision filter carries git's `--skip=N`, and rows already loaded are dropped if the history moved meanwhile.
 3. Done 2026-10-03 (Windows and Linux): headless UI tests in `tests/xplat/GitExtensions.Xplat.App.Tests`
    (Avalonia.Headless.NUnit, 5 tests: git missing, git too old, open a repository, select a commit,
    root commit). CI runs them on all three OSes; macOS pending the first CI run.
@@ -232,8 +232,8 @@ and `DISPLAY` are already set for the shadow process. HTTPS and SSH authenticati
 credential helpers (decision 6). Without a helper, a GUI push to an HTTPS remote fails with git's message instead
 of prompting. This is untested against a real remote.
 
-Still open in M2: notifications; the UI-thread abstraction (the view models do not marshal, so it is not
-needed yet); a credential store for Linux and macOS, if git's helpers are not enough.
+Still open in M2 at that point: notifications; the UI-thread abstraction; a credential store for Linux and macOS. All three
+are settled below (notifications ported, the abstraction dropped, git's helpers kept as the store), so M2 is done.
 
 Notifications, 2026-10-09: upstream's notification bars above the grid (`InteractiveGitActionControl`) are ported: one bar
 for a bisect and one for a stopped rebase, merge or patch (`git am`) or for unresolved conflicts, with upstream's texts,
@@ -242,7 +242,14 @@ checks, so a stopped `git am` shows as a patch instead of a rebase; Continue als
 patch. With them came bisect (upstream `FormBisect` and the grid's bisect items, good and bad marks as labels). Message boxes
 were done in M6 (`MessageBoxHost`). Tests: 289 core and 213 app on Windows.
 
-UI-thread abstraction, 2026-10-09 (recommendation, not yet confirmed by the user): drop the item. The view models are created
+Credentials, decided 2026-10-09 (decision 6): git's own credential helpers are the store on every OS. Settings > Git config
+has a `credential.helper` row since 2026-10-10 with upstream's choices (the helpers in the Git for Windows folder, then
+`store` and `cache`; on other OSes `oauth`, `store` and `cache`) plus, off Windows, the helpers installed in git's own folder
+and on the PATH (`osxkeychain`, `libsecret`, Git Credential Manager's `manager`), and the askpass window answers git's and ssh's
+prompts when no helper does (checked end to end on Windows 2026-10-10: a typed password reached git). Plugin credentials
+settings use Windows' credential store as upstream and say on Linux and macOS that they cannot be edited there.
+
+UI-thread abstraction, decided 2026-10-09: dropped (the user's decision, on this recommendation). The view models are created
 and used on the UI thread and await off-thread work, so their continuations return through Avalonia's synchronization
 context; upstream code that switches threads uses `ThreadHelper.JoinableTaskContext`, which the app creates on the UI thread
 at startup. The eight remaining `Dispatcher.UIThread` calls are in views (priority posts, the nested frame of a message box,
@@ -255,7 +262,7 @@ the screenshot and benchmark aids), where a wrapper would add a layer without re
   recorded in `PORTING-MAP.md` (section 6), so upstream changes to the form show up in the drift check.
 - View models (`CommitListViewModel`, `CommitDetailsViewModel`, ...) in the core, with no UI types.
 - Threading: one UI-thread abstraction, built on the existing `ThreadHelper` and `AsyncLoader`
-  (both in the shared core). Replace the Avalonia dispatcher calls with it.
+  (both in the shared core). Replace the Avalonia dispatcher calls with it. (Dropped 2026-10-09, see above.)
 - **Platform services**, each with a Windows implementation and a POSIX one, behind interfaces in
   the core:
   - file and folder pickers (Avalonia storage provider);
@@ -291,6 +298,14 @@ added later.
 Blame, 2026-10-04: the Files window has a Blame button for the selected file. The blame window shows each line with
 its commit, author and day (`git blame --line-porcelain`, parsed by `BlameParser`). Tests: 60 core tests (parser) and
 48 app tests (real repository). The revision graph is still open (the spike, M3.5).
+
+Rest of M3, 2026-10-10: the file history follows renames as upstream's `BuildPathFilter` (the names the file had, read with
+`git log --follow`, then the history of all of them; settings `followrenamesinfilehistory` and its exact-renames variant,
+toggles in the Files window), and a diff from the history uses the file's name in that commit. Syntax highlighting without
+AvaloniaEdit: upstream's own definitions (ICSharpCode's `.xshd` files from `externals`, embedded, not copied) are read by a
+port of the editor's line parser (`Core/Diff/SyntaxHighlighting.cs`) and drawn as colored runs in the diff and file views,
+with the colors adapted to the theme as upstream adapts them. Line numbers were done in M5. With these, the M3 exit is met:
+history, diffs of any commit, the file tree at a commit, blame and file history (Windows and Linux).
 
 Components, in suggested order:
 1. Diff viewer. Editor control: AvaloniaEdit (not yet checked: current version and maintenance;
@@ -345,6 +360,13 @@ highlighting a branch on hover), the lane tooltips (`LaneInfoProvider`), the art
 width that follows the visible rows (each row is as wide as the widest row of the page). A lane to a parent beyond the
 loaded page is not drawn, as in upstream's renderer. Tests: 275 core and 206 app on Windows; 275 and 205 on Linux (WSL).
 Checked by screenshot on Windows on this repository and on the 5500-commit benchmark repository.
+
+Draw styles and the rest, 2026-10-10: upstream's draw styles (non-relatives gray, on by default as upstream; highlight the
+selected branch, Alt+click or the View menu; highlight while the pointer is on a branch label) with upstream's lane color
+rule (`GetBrushForLaneInfo`); lane tooltips (upstream's `LaneInfoProvider` text, with `BranchFinder` linked); the
+artificial "Working directory" and "Commit index" rows with their change counts; and a graph column as wide as the visible
+rows need. The graph of a filtered list is upstream's too: upstream builds its graph over the rows the filter returns.
+With these the spike's open items are closed.
 
 Started 2026-10-04 as a spike. Done: `GraphLayout` in core assigns each commit a lane and the lanes open above it (pure code, 6 tests); each commit row carries its parent hashes and its branch and tag labels; the commit list draws the lanes with `GraphCell` and shows the labels in brackets. A screenshot on Windows of a repository with two merges and a tag shows the lanes and labels as expected. Not done: the 5000-commit target, the 60 fps measurement, colors per branch, and a check on Linux and macOS. The spike has only loaded commits (the first 500), so the graph covers that page.
 
@@ -408,13 +430,18 @@ git starts the app on Windows (the app is a console-subsystem executable).
 Tests after these (2026-10-06): 151 core and 150 app, on Windows and on Linux (WSL). With these, the M4 items listed above
 are done; M4's exit (all write operations) is met on Windows and Linux, macOS pending CI.
 
+Askpass checks, 2026-10-10: the app is now a GUI-subsystem executable on Windows (`OutputType` WinExe), so no console window
+opens when git starts it as the prompt. A typed answer reaching git was checked in a real run on Windows: `git credential
+fill` with no helper started the built app, UI automation typed the user name and password into its window, and git printed
+them back. Still not checked: ssh on macOS.
+
 Notes:
 - Each command goes through the shared `Commands`/`IGitCommand` path, which already declares
   `AccessesRemote` and `ChangesRepoState`. The new shell reuses that declaration to decide
   whether to show a progress indicator and whether to refresh.
 - Credential prompts: the Windows Credential Manager is used on Windows. Linux and macOS need the
-  equivalent (libsecret / Keychain). Upstream `AdysTech.CredentialManager` is Windows-only; this
-  needs its own decision and probably a seam (see section 9).
+  equivalent (libsecret / Keychain). Upstream `AdysTech.CredentialManager` is Windows-only. Decided
+  2026-10-09 (decision 6): git's own helpers, chosen in Settings > Git config; no seam.
 - Conflict resolution is a dedicated milestone if the upstream flow is complex (its
   `FormResolveConflicts` is large).
 
@@ -604,6 +631,32 @@ came from another file; line numbers are off by default, as upstream. The window
 settings menu with its rules, and Settings > Blame viewer has the page. Not ported: author avatars, age colors, blaming the
 line's commit or parent. Tests: 279 core and 205 app on Windows; 279 and 204 on Linux (WSL).
 
+Settings leftovers, 2026-10-10 and 2026-10-11 (finishing M0 to M6): the settings whose feature the shell has, or gained for
+them, are now on their pages (details per page in `PORTING-MAP.md`):
+- General: default pull action, autostash with untracked files, submodule update on checkout (with upstream's question),
+  histogram diff, commit limit, quick search timeout (with upstream's quick search in the grid), uncommitted changes check,
+  ahead/behind and stash count in the status bar, artificial commits' change counts.
+- Appearance: author images (upstream's providers ported without System.Drawing; images in upstream's cache folder; the
+  initials drawn by the view; in the grid, the commit details and the blame gutter), branch names in the dashboard and the
+  recent menu, "Truncate long filenames".
+- Fonts: bold and italic. Theme: the panel, editor, line number and selection colors, and a user theme's system color
+  overrides (WindowText, GrayText, Highlight) on Fluent's resources.
+- Commit dialog: every setting (show errors when staging, compose outside the window with git's editor, previous messages
+  and the "Commit message" menu, the reset buttons, auto-completion with upstream's providers).
+- Diff viewer: nonprinting characters, syntax highlighting toggle, their remember settings, the vertical ruler, the list of
+  all diff tools.
+- Blame viewer: age colors and the author avatar. Revision links: the settings level and the template icons.
+- Hotkeys: the BrowseDiff and Stash sections, Conventional Commits, quick search.
+Moved to M8 (feature parity), because each needs a feature the shell does not have: the spelling checker (upstream's
+NetSpell is a WinForms component), update checks, help images, "always show advanced options", the console emulator, the
+GPG, Console and output history tabs, git-grep search, file history and blame in the main window, the multi-branch push
+view and the merge dialog (Detailed page), the remaining confirmations (undo last commit, tracking reference, stash pop
+after pull and checkout, conflict questions, second abort), the diff appearance choices (word diff, difftastic), git
+coloring, the combined and per-parent diffs of merges, continuous scroll, the submodule diff window, and the hotkey
+commands of all of those. Not applicable off Windows: "Show current branch in Visual Studio" and "Auto scale user
+interface" (Avalonia follows the system's scale). Tests 2026-10-11: 384 core and 276 app on Windows; 384 core on Linux
+(WSL); the Linux app run was stopped by the host for lack of memory and is still to be repeated.
+
 - Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
   values that upstream keeps in the Windows registry (through S1, read-only on Windows).
 - External tools: diff and merge tools are configured per OS. Upstream's presets are Windows
@@ -700,6 +753,20 @@ credentials, the repository host windows with a fake host plugin, and the GitHub
 template) without network. 290 core and 242 app on Windows; 290 and 241 on Linux (WSL). Not done: third-party WinForms
 plugins (still skipped by the loader), the build report tab, the conventional commit items of the templates menu.
 
+Finished 2026-10-10:
+- Third-party WinForms plugins (decision 5): not loadable. Settings > Plugins lists every plugin file upstream's loader passed
+  over, with the reason (built on WinForms, another interface version).
+- Plugin settings: the settings level choice of upstream's page header, and credentials settings (Windows' store, as
+  upstream; on Linux and macOS shown as not editable, with the reason).
+- Scripts: `ShowInFileList` scripts in the file lists' menus with the selected files' options, and the script icons (upstream's
+  images, linked, or the script's icon file), with the icon choice in Settings > Scripts.
+- The build report tab (a link to the report, as Avalonia has no embedded browser) and `ShowBuildResultPage`.
+- The commit window: the Conventional Commits items, upstream's commit template settings window, the message checks and
+  formatting, and the "Word wrap" menu item.
+- Translations of the whole shell: windows that are not named after an upstream form are translated by their English texts
+  (`UpstreamTranslation.ApplyByText`), so every text the shell shares with upstream follows the language (decision 4).
+With these the M6 exit is met on Windows and Linux.
+
 Estimate: 3 to 4 weeks.
 
 ### M7. Packaging and distribution
@@ -767,13 +834,19 @@ These change the plan. Each has a recommendation, but the choice is the user's.
    *Status 2026-10-09:* the files are reused as they are (shipped from `src/app/GitUI/Translation`); a window named after
    upstream's form uses its entries (`UpstreamTranslation`). Applied to the plugin, build server and repository host windows
    so far; the user has not confirmed the recommendation yet.
+   *Decided 2026-10-09:* reuse (the user confirmed). Since 2026-10-10 the other windows are translated by their English texts,
+   and the shell's own texts that upstream does not have stay English.
 5. **Plugins off Windows:** which plugins must work, and is it acceptable that WinForms-based
    plugins stay Windows-only?
    *Recommendation:* non-UI plugins first (M6); UI plugins later, by demand.
    *Status 2026-10-07:* the recommendation is what M6 implemented (BackgroundFetch and AutoCompileSubmodules on every OS,
    WinForms plugins Windows-only); the user has not confirmed it yet.
+   *Decided 2026-10-09:* confirmed. Upstream's own WinForms plugins were since built for the new shell (M6); third-party
+   plugins built on WinForms are not loadable, and Settings > Plugins lists them with the reason.
 6. **Credentials on Linux and macOS:** libsecret and Keychain, or plain git credential helpers?
    *Recommendation:* use git's own credential helpers, and add libsecret and Keychain later.
+   *Decided 2026-10-09:* git's own helpers (`osxkeychain` and `libsecret` are such helpers), with a `credential.helper` choice
+   in Settings > Git config (done 2026-10-10, M2).
 7. **Branch-name rule and commit-message line endings** (decided earlier as "keep upstream
    behavior"): confirm, or change to one fixed set on every OS.
 8. **Apple developer account** for signing and notarization (M7).
@@ -888,13 +961,15 @@ sync that was done during the milestone.
 
 ## 12. Immediate next steps
 
-1. Answer the decisions in section 9, at least 1, 2, 3 and 11.
-2. Commit the current work and move `master` to `upstream/master` (user actions).
-3. M1 item 4: settings persistence off Windows. It blocks any real use, so it comes before the
-   commit details.
-4. M1 item 5: git discovery per OS, with a test for the missing and too-old cases.
-5. M1 item 7: add `macos-latest` to CI, so macOS is checked from the next push.
-6. M1 item 9: create `docs/xplat/PORTING-MAP.md`.
-7. M1 item 1: commit details in the Avalonia app, with a headless test.
-8. macOS: the user runs the build on their own laptop later. Until then, CI-only evidence (section 9,
-   questions 4 and 11). Record the hardware run in `SYNC-LOG.md` when it happens.
+Updated 2026-10-11, after the work items of M1 to M6 were finished (details in each milestone and in `PORTING-MAP.md`).
+M0 keeps its user-side items (CI run on GitHub, `master`); the latest app tests ran on Windows, the Linux run is to repeat.
+
+1. User actions: commit the current work; decide whether to merge `upstream/master` (`afc512395`, 18 commits ahead) and
+   move `master`; remove the two leftovers of a failed test run from the repository (`git config --unset http.proxy`,
+   `git branch -D pr/n7_ann/feature`, see `SYNC-LOG.md` 2026-10-11).
+2. Repeat the Linux (WSL) app test run, which the host stopped for lack of memory on 2026-10-11, and record it.
+3. Confirm the CI workflow on GitHub (M0's open item; macOS evidence for M1 to M6 depends on it, section 9, question 11).
+4. M7: packaging and distribution per OS.
+5. M8 (optional), in the order users would notice: the per-parent and combined diffs of merge commits, the spelling
+   checker, word diff and git coloring, continuous scroll, and the features of the remaining settings (listed under M5).
+6. macOS: the user runs the build on their own laptop. Record the hardware run in `SYNC-LOG.md` when it happens.

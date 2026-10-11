@@ -58,6 +58,7 @@ public partial class BlameWindow : Window
         Toggle(ShowLineNumbersMenuItem, options => options with { ShowLineNumbers = !options.ShowLineNumbers });
         Toggle(ShowOriginalFilePathMenuItem,
             options => options with { ShowOriginalFilePath = !options.ShowOriginalFilePath });
+        Toggle(ShowAuthorAvatarMenuItem, options => options with { ShowAuthorAvatar = !options.ShowAuthorAvatar });
         BlameContextMenu.Opening += (_, _) => ShowRepositoryHostItems();
         ShowMenuChecks();
     }
@@ -96,6 +97,7 @@ public partial class BlameWindow : Window
         ShowAuthorTimeMenuItem.IsEnabled = options.ShowAuthorDate;
         ShowLineNumbersMenuItem.IsChecked = options.ShowLineNumbers;
         ShowOriginalFilePathMenuItem.IsChecked = options.ShowOriginalFilePath;
+        ShowAuthorAvatarMenuItem.IsChecked = options.ShowAuthorAvatar;
     }
 
     // Like upstream's blame, a line leads to the commit that last changed it: that commit's change to the file.

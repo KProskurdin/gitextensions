@@ -25,6 +25,7 @@ internal sealed class BlameParserTests
         "\tsecond line\n" +
         SecondHash + " 3 3 1\n" +
         "author Bob\n" +
+        "author-mail <bob@example.com>\n" +
         "author-time 1700086400\n" +
         "summary second\n" +
         "filename a.txt\n" +
@@ -36,10 +37,14 @@ internal sealed class BlameParserTests
         IReadOnlyList<BlameLine> lines = BlameParser.Parse(Porcelain);
 
         lines.Should().HaveCount(3);
-        lines[0].Should().BeEquivalentTo(new { LineNumber = 1, Hash = "01234567", Author = "Alice", Content = "first line" });
+        lines[0].Should()
+            .BeEquivalentTo(new { LineNumber = 1, Hash = "01234567", Author = "Alice", Content = "first line" });
         lines[1].LineNumber.Should().Be(2);
         lines[1].Content.Should().Be("second line");
-        lines[2].Should().BeEquivalentTo(new { LineNumber = 3, Hash = "fedcba98", Author = "Bob", Content = "third line" });
+        lines[2].Should()
+            .BeEquivalentTo(new { LineNumber = 3, Hash = "fedcba98", Author = "Bob", Content = "third line" });
+        lines[2].AuthorEmail.Should().Be("bob@example.com");
+        lines[0].AuthorEmail.Should().BeEmpty();
     }
 
     [Test]

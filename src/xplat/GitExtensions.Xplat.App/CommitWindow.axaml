@@ -33,7 +33,12 @@
             </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="repo:FileChange">
-                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Text="{Binding Kind, StringFormat='{}{0}: '}" />
+                  <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                             TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+                </DockPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
@@ -53,7 +58,12 @@
             </ListBox.ContextMenu>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="repo:FileChange">
-                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Text="{Binding Kind, StringFormat='{}{0}: '}" />
+                  <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                             TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+                </DockPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
@@ -66,7 +76,9 @@
             <Button x:Name="StageLinesButton" Content="Stage selected lines" Margin="0,0,6,0"
                     ToolTip.Tip="Stage only the selected lines of this file (Ctrl+click or Shift+click to select several)" />
             <Button x:Name="UnstageLinesButton" Content="Unstage selected lines" Margin="0,0,6,0" />
-            <Button x:Name="DiffToolButton" Content="Open in diff tool" Margin="0,0,6,0" ToolTip.Tip="Show this file in the diff tool configured in Settings (diff.tool)" />
+            <Button x:Name="DiffToolButton" Content="Open in diff tool" Margin="0,0,0,0" ToolTip.Tip="Show this file in the diff tool configured in Settings (diff.tool)" />
+            <Button x:Name="DiffToolChoiceButton" Content="&#x25BE;" Padding="4,2" Margin="0,0,6,0" ToolTip.Tip="Open in another diff tool"
+                    IsEnabled="{Binding #DiffToolButton.IsEnabled}" />
           </WrapPanel>
           <local:DiffView x:Name="Diff" />
         </DockPanel>
@@ -75,6 +87,8 @@
           <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
             <Button x:Name="CommitButton" Content="Commit" Margin="0,0,6,4" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)" />
             <Button x:Name="CommitAndPushButton" Content="Commit and push" Margin="0,0,12,4" />
+            <Button x:Name="ResetAllButton" Content="_Reset all changes" Margin="0,0,6,4" />
+            <Button x:Name="ResetUnstagedButton" Content="Reset u_nstaged changes" Margin="0,0,12,4" />
             <CheckBox x:Name="AmendCheck" Content="Amend commit" Margin="0,0,12,4" />
             <CheckBox x:Name="SignOffCheck" Content="Sign-off" Margin="0,0,12,4" />
             <!-- Upstream's "Commit templates" menu: the plugins' templates, then the user's own. -->
@@ -83,10 +97,21 @@
                 <MenuFlyout Placement="TopEdgeAlignedLeft" />
               </Button.Flyout>
             </Button>
+            <!-- Upstream's "Commit message" menu: earlier messages, the submodule change list and "Show only my messages". -->
+            <Button x:Name="CommitMessageMenuButton" Content="Commit _message" Margin="0,0,12,4">
+              <Button.Flyout>
+                <MenuFlyout Placement="TopEdgeAlignedLeft" />
+              </Button.Flyout>
+            </Button>
             <TextBox x:Name="CommitAuthorBox" Width="260" Margin="0,0,6,4" PlaceholderText="Author (optional: Name &lt;email&gt;)" />
           </WrapPanel>
+          <!-- Upstream EditNetSpell's auto-completion list, at the caret; the message box keeps the focus. -->
+          <Popup x:Name="AutoCompletePopup" DockPanel.Dock="Top"
+                 Placement="AnchorAndGravity" PlacementAnchor="BottomLeft" PlacementGravity="BottomRight">
+            <ListBox x:Name="AutoCompleteList" MaxHeight="200" MinWidth="120" Focusable="False" />
+          </Popup>
           <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
-                   FontFamily="{DynamicResource CommitFontFamily}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Commit message" />
+                   FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Commit message" />
         </DockPanel>
       </Grid>
     </Grid>

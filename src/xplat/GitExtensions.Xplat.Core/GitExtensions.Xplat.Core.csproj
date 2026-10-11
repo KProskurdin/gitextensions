@@ -39,6 +39,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's commit message auto-completion words (the changed files' names and the identifiers its regexes find in
+         them) and the word-at-cursor rules of its message box (no WinForms code). Repository/CommitMessageAutoCompletion.cs
+         uses them as upstream's EditNetSpell does. -->
+    <Compile Include="..\..\app\GitUI\AutoCompletion\*.cs" Link="Upstream\AutoCompletion\%(Filename)%(Extension)" />
+    <Compile Include="..\..\app\GitUI\SpellChecker\WordAtCursorExtractor.cs" Link="Upstream\SpellChecker\WordAtCursorExtractor.cs" />
+    <Compile Include="..\..\app\GitUI\SpellChecker\SpellCheckerHelper.cs" Link="Upstream\SpellChecker\SpellCheckerHelper.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Upstream's custom avatar template formatter and hash text (no WinForms code). The rest of upstream's Avatars folder
+         works with System.Drawing images, which do not load off Windows; Avatars/AvatarService.cs ports it to image files. -->
+    <Compile Include="..\..\app\GitUI\Avatars\TemplateFormatter.cs" Link="Upstream\Avatars\TemplateFormatter.cs" />
+    <Compile Include="..\..\app\GitUI\Avatars\HexString.cs" Link="Upstream\Avatars\HexString.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Upstream's plugin settings keys ("<plugin id>.<name>", and the older "<description><name>"), so plugins read the
          values the WinForms app stored. The rest of upstream's PluginRegistry uses WinForms; Plugins/ reimplements it. -->
     <Compile Include="..\..\app\GitUI\Plugin\GitPluginSettingsContainer.cs" Link="Upstream\Plugin\GitPluginSettingsContainer.cs" />

@@ -27,6 +27,12 @@ public interface IGitOperations
     Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author);
 
     /// <summary>
+    ///  Commits with the message git asks for in <paramref name="editorCommand"/> (see <see cref="GitEditorCommand"/>), as
+    ///  upstream's commit window does when messages are not composed in it (<c>UseFormCommitMessage</c>).
+    /// </summary>
+    Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author, string editorCommand);
+
+    /// <summary>
     ///  Creates branch <paramref name="name"/> at <paramref name="startPoint"/>, or at HEAD when none is given.
     /// </summary>
     Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null);
@@ -93,8 +99,9 @@ public interface IGitOperations
     /// <summary>
     ///  Opens the configured diff tool on one file: its working-tree changes (or, with <paramref name="staged"/>, its staged
     ///  changes), or its change in <paramref name="commit"/> against the first parent. Returns once git has started the tool.
+    ///  <paramref name="tool"/> chooses another of git's diff tools than the configured one.
     /// </summary>
-    Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged);
+    Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged, string? tool = null);
 
     /// <summary>
     ///  Restores the files from the index, dropping their unstaged edits. Untracked files are not touched.
@@ -105,6 +112,12 @@ public interface IGitOperations
     ///  Deletes untracked files from the working tree. Only the given files are removed, never directories.
     /// </summary>
     Task DeleteUntrackedAsync(string repositoryPath, IReadOnlyList<string> paths);
+
+    /// <summary>
+    ///  Upstream's <c>GitModule.ResetAllChanges</c>: drops the unstaged edits (<paramref name="onlyWorkTree"/>) or all changes
+    ///  (a hard reset), and with <paramref name="clean"/> also deletes the untracked files and directories that are not ignored.
+    /// </summary>
+    Task ResetAllChangesAsync(string repositoryPath, bool clean, bool onlyWorkTree);
 
     Task AddRemoteAsync(string repositoryPath, string name, string url);
 

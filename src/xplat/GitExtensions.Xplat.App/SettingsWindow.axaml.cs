@@ -74,8 +74,13 @@ public partial class SettingsWindow : Window
     private SettingLevel _pluginLevel = SettingLevel.Effective;
     private readonly Dictionary<Confirmation, CheckBox> _confirmationChecks = [];
     private readonly DistributedSettings _revisionLinkSettings;
-    private readonly RevisionLinkEditor _revisionLinks;
+    private RevisionLinkEditor _revisionLinks;
+
+    // The definitions edited at each settings level so far, all stored on OK.
+    private readonly Dictionary<SettingLevel, (DistributedSettings Settings, RevisionLinkEditor Editor)> _revisionLinkLevels =
+        [];
     private readonly Dictionary<AppFont, (ComboBox Family, NumericUpDown Size)> _fontBoxes = [];
+    private readonly Dictionary<AppFont, (CheckBox Bold, CheckBox Italic)> _fontStyleBoxes = [];
     private readonly Dictionary<AppFont, FontSetting?> _loadedFonts = [];
 
     public SettingsWindow(IAppPreferences preferences, string? repositoryPath,
@@ -88,6 +93,7 @@ public partial class SettingsWindow : Window
         _scripts = new ScriptListEditor(_loadedScripts);
         _revisionLinkSettings = AppServices.RevisionLinks.Open(repositoryPath);
         _revisionLinks = new RevisionLinkEditor(_revisionLinkSettings);
+        _revisionLinkLevels[SettingLevel.Effective] = (_revisionLinkSettings, _revisionLinks);
         InitializeComponent();
 
         ShowThemes(preferences.Theme);
@@ -108,6 +114,7 @@ public partial class SettingsWindow : Window
             option.Action == preferences.DefaultPullAction) ?? PullActionOption.All[0];
         QuickSearchTimeoutBox.Value = preferences.RevisionGridQuickSearchTimeout;
         ShowArtificialCountCheck.IsChecked = preferences.ShowGitStatusForArtificialCommits;
+        LoadAppearanceSettings();
         ShowAheadBehindCheck.IsChecked = preferences.ShowAheadBehindData;
         ShowStashCountCheck.IsChecked = preferences.ShowStashCount;
         CommitsLimitCheck.IsChecked = preferences.MaxRevisionGraphCommits != 0;
@@ -129,10 +136,20 @@ public partial class SettingsWindow : Window
         CommitAndPushForcedCheck.IsChecked = preferences.CommitAndPushForcedWhenAmend;
         SecondLineEmptyCheck.IsChecked = preferences.EnsureCommitMessageSecondLineEmpty;
         RememberAmendCheck.IsChecked = preferences.RememberAmendCommitState;
+        PreviousMessagesBox.Value = preferences.CommitDialogNumberOfPreviousMessages;
         ShowCommitAndPushCheck.IsChecked = preferences.ShowCommitAndPush;
+        ShowResetUnstagedCheck.IsChecked = preferences.ShowResetWorkTreeChanges;
+        ShowResetAllCheck.IsChecked = preferences.ShowResetAllChanges;
+        ShowStagingErrorsCheck.IsChecked = preferences.ShowErrorsWhenStagingFiles;
+        AutocompleteCheck.IsChecked = preferences.ProvideAutocompletion;
+        ComposeInWindowCheck.IsChecked = preferences.UseFormCommitMessage;
         RememberIgnoreWhitespaceCheck.IsChecked = preferences.RememberIgnoreWhiteSpacePreference;
         RememberEntireFileCheck.IsChecked = preferences.RememberShowEntireFilePreference;
         RememberContextLinesCheck.IsChecked = preferences.RememberNumberOfContextLines;
+        RememberNonPrintingCheck.IsChecked = preferences.RememberShowNonPrintingCharsPreference;
+        RememberSyntaxHighlightingCheck.IsChecked = preferences.RememberShowSyntaxHighlightingInDiff;
+        ShowAllDiffToolsCheck.IsChecked = preferences.ShowAvailableDiffTools;
+        VerticalRulerBox.Value = preferences.DiffVerticalRulerPosition;
 
         // As upstream, the button saves at once, not with OK.
         SaveDiffDefaultsButton.Click += (_, _) => preferences.SaveDiffOptionsAsDefault();
@@ -214,6 +231,10 @@ public partial class SettingsWindow : Window
     /// </summary>
     public const string DefaultFontChoice = "(default)";
 
+    // Upstream's font dialog names the styles so.
+    private const string BoldText = "Bold";
+    private const string ItalicText = "Italic";
+
     // Upstream's labels, in upstream's order.
     private static readonly (AppFont Font, string Label)[] _fontLabels =
     [
@@ -225,6 +246,11 @@ public partial class SettingsWindow : Window
     ///  The Fonts tab's family list and size box of each font.
     /// </summary>
     public IReadOnlyDictionary<AppFont, (ComboBox Family, NumericUpDown Size)> FontBoxes => _fontBoxes;
+
+    /// <summary>
+    ///  The Fonts tab's bold and italic check boxes, by font.
+    /// </summary>
+    public IReadOnlyDictionary<AppFont, (CheckBox Bold, CheckBox Italic)> FontStyleBoxes => _fontStyleBoxes;
 
     // Upstream's default sizes (its code font is 10 points, the others 9), for a family chosen where none was stored.
     private static float DefaultFontSize(AppFont font) => font == AppFont.Code ? 10 : 9;
@@ -266,7 +292,24 @@ public partial class SettingsWindow : Window
                 IsEnabled = current is not null,
                 Margin = new Avalonia.Thickness(0, 0, 0, 6),
             };
-            family.SelectionChanged += (_, _) => size.IsEnabled = family.SelectedItem as string != DefaultFontChoice;
+            // Upstream's font dialog sets the style too; here it is two check boxes beside the size.
+            CheckBox bold = new()
+            {
+                Content = BoldText, IsChecked = current?.Bold == true, IsEnabled = current is not null,
+                Margin = new Avalonia.Thickness(0, 0, 0, 6),
+            };
+            CheckBox italic = new()
+            {
+                Content = ItalicText, IsChecked = current?.Italic == true, IsEnabled = current is not null,
+                Margin = new Avalonia.Thickness(0, 0, 0, 6),
+            };
+            family.SelectionChanged += (_, _) =>
+            {
+                bool chosen = family.SelectedItem as string != DefaultFontChoice;
+                size.IsEnabled = chosen;
+                bold.IsEnabled = chosen;
+                italic.IsEnabled = chosen;
+            };
 
             int row = FontsGrid.RowDefinitions.Count;
             FontsGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
@@ -276,14 +319,21 @@ public partial class SettingsWindow : Window
             Grid.SetColumn(family, 2);
             Grid.SetRow(size, row);
             Grid.SetColumn(size, 4);
+            Grid.SetRow(bold, row);
+            Grid.SetColumn(bold, 6);
+            Grid.SetRow(italic, row);
+            Grid.SetColumn(italic, 8);
             FontsGrid.Children.Add(caption);
             FontsGrid.Children.Add(family);
             FontsGrid.Children.Add(size);
+            FontsGrid.Children.Add(bold);
+            FontsGrid.Children.Add(italic);
             _fontBoxes[font] = (family, size);
+            _fontStyleBoxes[font] = (bold, italic);
         }
     }
 
-    // Only a font the user changed is written; "(default)" removes the stored one. Bold and italic are kept as stored.
+    // Only a font the user changed is written; "(default)" removes the stored one.
     private void SaveFonts()
     {
         foreach ((AppFont font, (ComboBox family, NumericUpDown size)) in _fontBoxes)
@@ -293,6 +343,8 @@ public partial class SettingsWindow : Window
                 ? (loaded ?? new FontSetting(name, DefaultFontSize(font))) with
                 {
                     Family = name, Size = (float)(size.Value ?? (decimal)DefaultFontSize(font)),
+                    Bold = _fontStyleBoxes[font].Bold.IsChecked == true,
+                    Italic = _fontStyleBoxes[font].Italic.IsChecked == true,
                 }
                 : null;
             if (chosen != loaded)
@@ -311,6 +363,10 @@ public partial class SettingsWindow : Window
     // button drops down the templates; here they are buttons of their own.
     private void ShowRevisionLinks()
     {
+        RevisionLinkLevelBox.ItemsSource = LevelOptions();
+        RevisionLinkLevelBox.SelectedIndex = 0;
+        RevisionLinkLevelBox.IsEnabled = _repositoryPath is not null;
+        RevisionLinkLevelBox.SelectionChanged += (_, _) => ChangeRevisionLinkLevel();
         RevisionLinksList.ItemsSource = _revisionLinks.Items;
         RevisionLinksList.SelectionChanged += (_, _) => ShowSelectedRevisionLink();
         AddRevisionLinkButton.Click += (_, _) => RevisionLinksList.SelectedItem = _revisionLinks.Add();
@@ -318,7 +374,16 @@ public partial class SettingsWindow : Window
         {
             Button button = new()
             {
-                Content = RevisionLinkTemplates.MenuText(template),
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Children =
+                    {
+                        new Image { Source = ScriptIcons.Named(TemplateIconName(template)), Width = 16, Height = 16 },
+                        new TextBlock { Text = RevisionLinkTemplates.MenuText(template) },
+                    },
+                },
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             button.Click += (_, _) =>
@@ -352,6 +417,36 @@ public partial class SettingsWindow : Window
         ShowSelectedRevisionLink();
     }
 
+    // As upstream's settings page header: the page shows the definitions stored at the chosen level; what was edited at
+    // the other levels is stored too on OK.
+    private void ChangeRevisionLinkLevel()
+    {
+        if (RevisionLinkLevelBox.SelectedItem is not PluginLevelOption { Level: var level })
+        {
+            return;
+        }
+
+        if (!_revisionLinkLevels.TryGetValue(level, out (DistributedSettings Settings, RevisionLinkEditor Editor) source))
+        {
+            DistributedSettings settings = AppServices.RevisionLinks.Open(_repositoryPath, level);
+            source = (settings, new RevisionLinkEditor(settings));
+            _revisionLinkLevels[level] = source;
+        }
+
+        _revisionLinks = source.Editor;
+        RevisionLinksList.ItemsSource = _revisionLinks.Items;
+        RevisionLinksList.SelectedIndex = _revisionLinks.Items.Count > 0 ? 0 : -1;
+        ShowSelectedRevisionLink();
+    }
+
+    // Upstream's template icons are WinForms images of its Images resources; the app has the same pictures by name.
+    private static string? TemplateIconName(ICloudProviderExternalLinkDefinitionExtractor template) => template switch
+    {
+        GitHubExternalLinkDefinitionExtractor => "GitHub",
+        AzureDevopsExternalLinkDefinitionExtractor => "VisualStudioTeamServices",
+        _ => null,
+    };
+
     private void ShowSelectedRevisionLink()
     {
         RevisionLinkItem? item = RevisionLinksList.SelectedItem as RevisionLinkItem;
@@ -382,6 +477,7 @@ public partial class SettingsWindow : Window
         BlameShowAuthorTimeCheck.IsChecked = options.ShowAuthorTime;
         BlameShowLineNumbersCheck.IsChecked = options.ShowLineNumbers;
         BlameShowOriginalFilePathCheck.IsChecked = options.ShowOriginalFilePath;
+        BlameShowAuthorAvatarCheck.IsChecked = options.ShowAuthorAvatar;
         ToolTip.SetTip(BlameDetectMoveInFileCheck, BlameMoveWarning);
         ToolTip.SetTip(BlameDetectMoveInAllFilesCheck, BlameMoveWarning);
     }
@@ -775,16 +871,7 @@ public partial class SettingsWindow : Window
         PluginsList.ItemsSource = items;
         PluginsList.SelectionChanged += (_, _) => ShowSelectedPlugin();
 
-        // Upstream's settings sources of a repository page; without a repository only the global settings exist.
-        List<PluginLevelOption> levels = _repositoryPath is null
-            ? [new PluginLevelOption(SettingLevel.Global, GlobalLevelText)]
-            :
-            [
-                new PluginLevelOption(SettingLevel.Effective, "Effective"),
-                new PluginLevelOption(SettingLevel.Local, "Local for current repository"),
-                new PluginLevelOption(SettingLevel.Distributed, "Distributed with current repository"),
-                new PluginLevelOption(SettingLevel.Global, GlobalLevelText),
-            ];
+        List<PluginLevelOption> levels = LevelOptions();
         _pluginLevel = levels[0].Level;
         PluginLevelBox.ItemsSource = levels;
         PluginLevelBox.SelectedItem = levels[0];
@@ -961,6 +1048,18 @@ public partial class SettingsWindow : Window
         return source;
     }
 
+    // Upstream's settings sources of a repository page; without a repository only the global settings exist.
+    private List<PluginLevelOption> LevelOptions()
+        => _repositoryPath is null
+            ? [new PluginLevelOption(SettingLevel.Global, GlobalLevelText)]
+            :
+            [
+                new PluginLevelOption(SettingLevel.Effective, "Effective"),
+                new PluginLevelOption(SettingLevel.Local, "Local for current repository"),
+                new PluginLevelOption(SettingLevel.Distributed, "Distributed with current repository"),
+                new PluginLevelOption(SettingLevel.Global, GlobalLevelText),
+            ];
+
     // As upstream's settings page header: the values edited so far go to the source they were edited in (written to disk on
     // OK), and the page shows the newly chosen source.
     private void ChangePluginLevel()
@@ -1106,6 +1205,7 @@ public partial class SettingsWindow : Window
 
         _preferences.RevisionGridQuickSearchTimeout = (int)(QuickSearchTimeoutBox.Value ?? 4000);
         _preferences.ShowGitStatusForArtificialCommits = ShowArtificialCountCheck.IsChecked == true;
+        SaveAppearanceSettings();
         _preferences.ShowAheadBehindData = ShowAheadBehindCheck.IsChecked == true;
         _preferences.ShowStashCount = ShowStashCountCheck.IsChecked == true;
 
@@ -1135,10 +1235,21 @@ public partial class SettingsWindow : Window
         _preferences.CommitAndPushForcedWhenAmend = CommitAndPushForcedCheck.IsChecked == true;
         _preferences.EnsureCommitMessageSecondLineEmpty = SecondLineEmptyCheck.IsChecked == true;
         _preferences.RememberAmendCommitState = RememberAmendCheck.IsChecked == true;
+        _preferences.CommitDialogNumberOfPreviousMessages =
+            (int)(PreviousMessagesBox.Value ?? _preferences.CommitDialogNumberOfPreviousMessages);
         _preferences.ShowCommitAndPush = ShowCommitAndPushCheck.IsChecked == true;
+        _preferences.ShowResetWorkTreeChanges = ShowResetUnstagedCheck.IsChecked == true;
+        _preferences.ShowResetAllChanges = ShowResetAllCheck.IsChecked == true;
+        _preferences.ShowErrorsWhenStagingFiles = ShowStagingErrorsCheck.IsChecked == true;
+        _preferences.ProvideAutocompletion = AutocompleteCheck.IsChecked == true;
+        _preferences.UseFormCommitMessage = ComposeInWindowCheck.IsChecked == true;
         _preferences.RememberIgnoreWhiteSpacePreference = RememberIgnoreWhitespaceCheck.IsChecked == true;
         _preferences.RememberShowEntireFilePreference = RememberEntireFileCheck.IsChecked == true;
         _preferences.RememberNumberOfContextLines = RememberContextLinesCheck.IsChecked == true;
+        _preferences.RememberShowNonPrintingCharsPreference = RememberNonPrintingCheck.IsChecked == true;
+        _preferences.RememberShowSyntaxHighlightingInDiff = RememberSyntaxHighlightingCheck.IsChecked == true;
+        _preferences.ShowAvailableDiffTools = ShowAllDiffToolsCheck.IsChecked == true;
+        _preferences.DiffVerticalRulerPosition = (int)(VerticalRulerBox.Value ?? 0);
         _preferences.RecentRepositoriesHistorySize =
             (int)(RecentSizeBox.Value ?? _preferences.RecentRepositoriesHistorySize);
         SaveGitAndSshPages();
@@ -1147,7 +1258,8 @@ public partial class SettingsWindow : Window
             BlameDetectMoveInFileCheck.IsChecked == true, BlameDetectMoveInAllFilesCheck.IsChecked == true,
             BlameDisplayAuthorFirstCheck.IsChecked == true, BlameShowAuthorCheck.IsChecked == true,
             BlameShowAuthorDateCheck.IsChecked == true, BlameShowAuthorTimeCheck.IsChecked == true,
-            BlameShowLineNumbersCheck.IsChecked == true, BlameShowOriginalFilePathCheck.IsChecked == true);
+            BlameShowLineNumbersCheck.IsChecked == true, BlameShowOriginalFilePathCheck.IsChecked == true,
+            BlameShowAuthorAvatarCheck.IsChecked == true);
         _preferences.RevisionSortOrder = Chosen(RevisionSortBox, _preferences.RevisionSortOrder);
         _preferences.RefsSortBy = Chosen(BranchesSortByBox, _preferences.RefsSortBy);
         _preferences.RefsSortOrder = Chosen(BranchesOrderBox, _preferences.RefsSortOrder);
@@ -1185,9 +1297,16 @@ public partial class SettingsWindow : Window
         // HOME and the Linux tools folder as the next git gets them; upstream sets them before every git start too.
         EnvironmentConfiguration.SetEnvironmentVariables();
         SavePluginSettings();
-        _revisionLinks.Save();
+        foreach ((DistributedSettings settings, RevisionLinkEditor editor) in _revisionLinkLevels.Values)
+        {
+            editor.Save();
+        }
+
         SaveBuildServerPage();
-        AppServices.RevisionLinks.Save(_revisionLinkSettings);
+        foreach ((DistributedSettings settings, RevisionLinkEditor _) in _revisionLinkLevels.Values)
+        {
+            AppServices.RevisionLinks.Save(settings);
+        }
 
         // Only values the user changed are written, so a setting made elsewhere since the window opened is kept.
         foreach ((string key, Func<SettingsWindow, TextBox> global, Func<SettingsWindow, TextBox> local) in

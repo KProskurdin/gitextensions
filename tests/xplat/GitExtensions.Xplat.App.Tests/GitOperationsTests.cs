@@ -47,6 +47,52 @@ internal sealed class GitOperationsTests
     }
 
     [AvaloniaTest]
+    public void Stage_should_ignore_the_line_ending_check_unless_errors_are_shown()
+    {
+        // A file with LF line endings cannot come back unchanged under autocrlf, so core.safecrlf stops its staging.
+        _repo.Run("config", "core.autocrlf", "true");
+        _repo.Run("config", "core.safecrlf", "true");
+        File.WriteAllText(Path.Combine(_repo.Path, "lf.txt"), "one\ntwo\n");
+
+        Action strict = () => Wait(new GitOperations(showStagingErrors: () => true).StageAsync(_repo.Path, ["lf.txt"]));
+        strict.Should().Throw<GitOperationException>();
+
+        Wait(new GitOperations(showStagingErrors: () => false).StageAsync(_repo.Path, ["lf.txt"]));
+        _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("lf.txt");
+    }
+
+    [AvaloniaTest]
+    public void ResetAllChanges_should_drop_unstaged_or_all_changes_and_delete_new_files_when_asked()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "staged");
+        _repo.Run("add", "a.txt");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "unstaged");
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "new");
+
+        Wait(_operations.ResetAllChangesAsync(_repo.Path, clean: false, onlyWorkTree: true));
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("staged");
+        File.Exists(Path.Combine(_repo.Path, "new.txt")).Should().BeTrue();
+
+        Wait(_operations.ResetAllChangesAsync(_repo.Path, clean: true, onlyWorkTree: false));
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
+        File.Exists(Path.Combine(_repo.Path, "new.txt")).Should().BeFalse();
+    }
+
+    [AvaloniaTest]
+    public void Commit_with_editor_takes_the_message_the_editor_saved()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+        Wait(_operations.StageAsync(_repo.Path, ["new.txt"]));
+        // git's template holds the sign-off line, so the editor keeps it below the subject.
+        string editor = WriteEditorScript("""{ printf 'from the editor\n'; cat "$1"; } > "$1.tmp" """);
+
+        Wait(_operations.CommitWithEditorAsync(_repo.Path, amend: false, signOff: true, author: "", editor));
+
+        _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("from the editor");
+        _repo.Run("log", "-1", "--format=%b").Should().Contain("Signed-off-by:");
+    }
+
+    [AvaloniaTest]
     public void Commit_with_an_author_records_that_author()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");

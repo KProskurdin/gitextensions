@@ -58,6 +58,12 @@ internal static class ThemeApplier
         SetBrush(app, EditorBackgroundKey, colors.Get(AppColor.EditorBackground));
         SetBrush(app, LineNumberBackgroundKey, colors.Get(AppColor.LineNumberBackground));
         SetBrush(app, SelectionKey, colors.Get(AppColor.Selection));
+
+        // Upstream's system color overrides, where the theme sets them, on the Fluent resources that play their part: the
+        // window text, the highlight (Fluent's accent, which selections and focus use) and the disabled text.
+        Override(app, TextKey, colors.Get(System.Drawing.KnownColor.WindowText), brush: true);
+        Override(app, DisabledTextKey, colors.Get(System.Drawing.KnownColor.GrayText), brush: true);
+        Override(app, AccentKey, colors.Get(System.Drawing.KnownColor.Highlight), brush: false);
         Changed?.Invoke(null, EventArgs.Empty);
     }
 
@@ -65,6 +71,38 @@ internal static class ThemeApplier
     public const string EditorBackgroundKey = "EditorBackgroundBrush";
     public const string LineNumberBackgroundKey = "LineNumberBackgroundBrush";
     public const string SelectionKey = "SelectionBackgroundBrush";
+    public const string TextKey = "SystemControlForegroundBaseHighBrush";
+    public const string DisabledTextKey = "SystemControlDisabledBaseMediumLowBrush";
+    public const string AccentKey = "SystemAccentColor";
+
+    // The app's values of the keys a theme overrides now (Avalonia keeps the platform's accent there), put back when a theme
+    // without the override is applied. A key no theme overrides is left as it is.
+    private static readonly Dictionary<string, object?> _systemValues = [];
+
+    private static void Override(Application app, string key, System.Drawing.Color color, bool brush)
+    {
+        if (!color.IsEmpty)
+        {
+            if (!_systemValues.ContainsKey(key))
+            {
+                _systemValues[key] = app.Resources.TryGetValue(key, out object? value) ? value : null;
+            }
+
+            Avalonia.Media.Color themed = Avalonia.Media.Color.FromArgb(color.A, color.R, color.G, color.B);
+            app.Resources[key] = brush ? new Avalonia.Media.SolidColorBrush(themed).ToImmutable() : themed;
+        }
+        else if (_systemValues.Remove(key, out object? system))
+        {
+            if (system is null)
+            {
+                app.Resources.Remove(key);
+            }
+            else
+            {
+                app.Resources[key] = system;
+            }
+        }
+    }
 
     // A slot the theme leaves empty keeps Fluent's color for the variant.
     private static void SetBrush(Application app, string key, System.Drawing.Color color)

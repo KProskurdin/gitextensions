@@ -1,4 +1,5 @@
 using System.Reflection;
+using GitExtensions.Xplat.Core.Avatars;
 using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Plugins;
@@ -20,6 +21,18 @@ public static class AppServices
     private static ICommitMessageStore? _commitMessages;
     private static IAppThemeService? _themes;
     private static IScriptStore? _scripts;
+    private static AvatarService? _avatars;
+
+    /// <summary>
+    ///  Upstream's avatar providers, with its cache folder (<c>AppSettings.AvatarImageCachePath</c>) and the avatar
+    ///  settings of <see cref="Preferences"/>. Tests replace it with one that does not download.
+    /// </summary>
+    public static AvatarService Avatars
+    {
+        get => _avatars ??= new AvatarService(() => Preferences.Avatars, GitCommands.AppSettings.AvatarImageCachePath,
+            new HttpAvatarDownloader(), GitCommands.AppSettings.AvatarCacheSize);
+        set => _avatars = value;
+    }
 
     /// <summary>
     ///  The user scripts, in upstream's <c>ownScripts</c> setting. Created on first use, like the other settings stores.

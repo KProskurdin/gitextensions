@@ -30,6 +30,10 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author) =>
         Record("Commit", $"{repositoryPath} {message} amend={amend} signOff={signOff} author={author}");
 
+    public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
+        string editorCommand) =>
+        Record("CommitWithEditor", $"{repositoryPath} amend={amend} signOff={signOff} author={author} {editorCommand}");
+
     public Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint) =>
         Record("CreateBranch", $"{repositoryPath} {name} checkout={checkout}");
 
@@ -179,6 +183,9 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task DeleteUntrackedAsync(string repositoryPath, IReadOnlyList<string> paths) =>
         Record("DeleteUntracked", $"{repositoryPath} {string.Join(",", paths)}");
 
+    public Task ResetAllChangesAsync(string repositoryPath, bool clean, bool onlyWorkTree) =>
+        Record("ResetAllChanges", $"{repositoryPath} clean={clean} onlyWorkTree={onlyWorkTree}");
+
     public Task AddRemoteAsync(string repositoryPath, string name, string url) =>
         Record("AddRemote", $"{repositoryPath} {name} {url}");
 
@@ -191,8 +198,8 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task RunMergeToolAsync(string repositoryPath, string path) =>
         Record("RunMergeTool", $"{repositoryPath} {path}");
 
-    public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged) =>
-        Record("RunDiffTool", $"{repositoryPath} {path} {commit} staged={staged}");
+    public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged, string? tool = null) =>
+        Record("RunDiffTool", $"{repositoryPath} {path} {commit} staged={staged}{(tool is null ? "" : " tool=" + tool)}");
 
     public void Complete(int index) => _calls[index].Completion.SetResult();
 

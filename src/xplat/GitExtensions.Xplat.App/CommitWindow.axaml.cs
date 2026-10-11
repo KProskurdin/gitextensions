@@ -40,6 +40,9 @@ public partial class CommitWindow : Window
     private const string ConventionalCommitText = "Conven_tional Commits";
     private const string ConventionalCommitDocumentationText = "Documentation...";
     private const string WordWrapBodyText = "_Word wrap (except subject line)";
+    private const string SubmoduleChangesText = "Generate a list of changes in submodules";
+    private const string ShowOnlyMyMessagesText = "Show only my messages";
+    private const string CommitMessageDisabledText = "Commit Message is requested during commit";
 
     // The Conventional Commits submenu as last built, and whether its types add "()" for a scope (Ctrl+Shift+T).
     private MenuItem? _conventionalCommitsItem;
@@ -47,6 +50,12 @@ public partial class CommitWindow : Window
 
     // True while the message is reformatted, so the change it makes is not formatted again.
     private bool _formatting;
+
+    // Counts the openings of the "Commit message" menu, so a slow read does not fill a menu opened again since.
+    private int _messageMenuOpenings;
+
+    // Upstream's UseFormCommitMessage, read once per window as upstream does: off, git asks for the message in its editor.
+    private readonly bool _useFormCommitMessage;
 
     public CommitWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IRepositoryService repositoryService, IAppPreferences preferences, Func<Task> refresh,
@@ -66,7 +75,20 @@ public partial class CommitWindow : Window
         _messages = messages;
         Opened += (_, _) => Run(LoadMessageAsync);
         Closing += (_, _) => SavedDraft = SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true);
+        _useFormCommitMessage = preferences.UseFormCommitMessage;
+        if (!_useFormCommitMessage)
+        {
+            CommitMessageBox.IsEnabled = false;
+            CommitMessageBox.PlaceholderText = CommitMessageDisabledText;
+            CommitTemplatesButton.IsEnabled = false;
+            CommitMessageMenuButton.IsEnabled = false;
+        }
+
         CommitAndPushButton.IsVisible = preferences.ShowCommitAndPush;
+        ResetAllButton.IsVisible = preferences.ShowResetAllChanges;
+        ResetUnstagedButton.IsVisible = preferences.ShowResetWorkTreeChanges;
+        ResetAllButton.Click += (_, _) => Run(() => ResetChangesAsync(onlyWorkTree: false));
+        ResetUnstagedButton.Click += (_, _) => Run(() => ResetChangesAsync(onlyWorkTree: true));
         CommitMessageBox.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty)
@@ -75,6 +97,7 @@ public partial class CommitWindow : Window
             }
         };
         AddMessageMenu();
+        InitializeAutoCompletion();
 
         StageButton.Click += (_, _) => StageSelected(staged: false);
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
@@ -87,10 +110,12 @@ public partial class CommitWindow : Window
         StashSelectedButton.Click += (_, _) => Run(StashSelectedAsync);
         IgnoreButton.Click += (_, _) => Run(IgnoreSelectedAsync);
         DiffToolButton.Click += (_, _) => Run(OpenDiffToolAsync);
+        DiffToolChoices.Attach(DiffToolChoiceButton, tool => OpenDiffToolAsync(tool), ShowError);
         CommitButton.Click += (_, _) => Run(CommitAsync);
         CommitAndPushButton.Click += (_, _) => Run(CommitAndPushAsync);
         AmendCheck.IsCheckedChanged += (_, _) => Run(ToggleAmendAsync);
         CommitTemplatesFlyout.Opening += (_, _) => ShowCommitTemplates();
+        CommitMessageFlyout.Opening += (_, _) => Run(ShowPreviousMessagesAsync);
         UnstagedContextMenu.Opening += (_, _) => ShowFileListScripts(UnstagedContextMenu, UnstagedRunScriptMenuItem);
         StagedContextMenu.Opening += (_, _) => ShowFileListScripts(StagedContextMenu, StagedRunScriptMenuItem);
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
@@ -130,7 +155,7 @@ public partial class CommitWindow : Window
     private async Task LoadMessageAsync()
     {
         string message = await _messages.LoadAsync(_repositoryPath);
-        if (string.IsNullOrEmpty(CommitMessageBox.Text))
+        if (_useFormCommitMessage && string.IsNullOrEmpty(CommitMessageBox.Text))
         {
             CommitMessageBox.Text = message.TrimEnd();
         }
@@ -171,6 +196,12 @@ public partial class CommitWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        if (HandleAutoCompleteKey(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         bool command = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier);
         if (e.Key == Key.Enter && command && e.Source == CommitMessageBox && CommitButton.IsEnabled)
         {
@@ -248,6 +279,7 @@ public partial class CommitWindow : Window
         {
             case nameof(RepositoryViewModel.Changes):
                 ShowChanges();
+                RefreshAutoCompleteWords();
                 UpdateState();
                 break;
             case nameof(RepositoryViewModel.IsLoading):
@@ -363,11 +395,13 @@ public partial class CommitWindow : Window
         }
     }
 
-    private async Task OpenDiffToolAsync()
+    private async Task OpenDiffToolAsync() => await OpenDiffToolAsync(tool: null);
+
+    private async Task OpenDiffToolAsync(string? tool)
     {
         if (_diffChange is { } change)
         {
-            await _actions.RunDiffToolAsync(_repositoryPath, change.Path, commit: null, _diffStaged);
+            await _actions.RunDiffToolAsync(_repositoryPath, change.Path, commit: null, _diffStaged, tool);
         }
     }
 
@@ -477,8 +511,9 @@ public partial class CommitWindow : Window
         }
 
         // Upstream's IsCommitMessageValid: each failed check of the commit message settings asks whether to go on.
-        foreach (string question in CommitMessageValidation.Questions(CommitMessageBox.Text ?? "",
-                     _preferences.CommitValidation))
+        foreach (string question in _useFormCommitMessage
+                     ? CommitMessageValidation.Questions(CommitMessageBox.Text ?? "", _preferences.CommitValidation)
+                     : [])
         {
             if (!await new ConfirmWindow(question, "Yes", CommitMessageValidation.Caption, cancelText: "No")
                     .ShowDialog<bool>(this))
@@ -501,11 +536,23 @@ public partial class CommitWindow : Window
             return false;
         }
 
-        string message = CommitMessageFormat.Format(CommitMessageBox.Text ?? "",
-            _preferences.EnsureCommitMessageSecondLineEmpty);
-        bool committed = await _actions.CommitAsync(_repositoryPath, message,
-            AmendCheck.IsChecked == true,
-            SignOffCheck.IsChecked == true, CommitAuthorBox.Text ?? "");
+        bool committed;
+        if (_useFormCommitMessage)
+        {
+            // As upstream: the typed message is kept in the settings, so the "Commit message" menu of any repository
+            // offers it.
+            _preferences.LastCommitMessage = CommitMessageBox.Text ?? "";
+            string message = CommitMessageFormat.Format(CommitMessageBox.Text ?? "",
+                _preferences.EnsureCommitMessageSecondLineEmpty);
+            committed = await _actions.CommitAsync(_repositoryPath, message, AmendCheck.IsChecked == true,
+                SignOffCheck.IsChecked == true, CommitAuthorBox.Text ?? "");
+        }
+        else
+        {
+            committed = await _actions.CommitWithEditorAsync(_repositoryPath, AmendCheck.IsChecked == true,
+                SignOffCheck.IsChecked == true, CommitAuthorBox.Text ?? "");
+        }
+
         if (committed)
         {
             _messageBeforeAmend = "";
@@ -550,6 +597,24 @@ public partial class CommitWindow : Window
         }
     }
 
+    // Upstream's ResetChanges (GitUICommands.StartResetChangesDialog): the question is about the unstaged files in both cases,
+    // as upstream passes them for "Reset all changes" too.
+    private async Task ResetChangesAsync(bool onlyWorkTree)
+    {
+        List<FileChange> unstaged = [.. _repository.Changes.Where(change => !change.Staged)];
+        ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
+            hasExistingFiles: unstaged.Any(change => !IsNew(change)), hasNewFiles: unstaged.Any(IsNew));
+        if (action != ResetChangesWindow.ResetAction.Cancel)
+        {
+            await _actions.ResetAllChangesAsync(_repositoryPath,
+                clean: action == ResetChangesWindow.ResetAction.ResetAndDelete, onlyWorkTree);
+        }
+
+        return;
+
+        static bool IsNew(FileChange change) => change.Kind is ChangeKind.Untracked or ChangeKind.Added;
+    }
+
     // Amend starts from the HEAD message; unchecking puts back what was typed before.
     private async Task ToggleAmendAsync()
     {
@@ -578,6 +643,65 @@ public partial class CommitWindow : Window
     }
 
     private MenuFlyout CommitTemplatesFlyout => (MenuFlyout)CommitTemplatesButton.Flyout!;
+
+    private MenuFlyout CommitMessageFlyout => (MenuFlyout)CommitMessageMenuButton.Flyout!;
+
+    // Upstream's CommitMessageToolStripMenuItemDropDownOpening, read each time the menu opens; the fixed items show at once and
+    // the messages are put before them when git has listed them.
+    private async Task ShowPreviousMessagesAsync()
+    {
+        int opening = ++_messageMenuOpenings;
+        CommitMessageFlyout.Items.Clear();
+        MenuItem submodules = new() { Header = SubmoduleChangesText };
+        submodules.Click += (_, _) => Run(InsertSubmoduleChangesAsync);
+        MenuItem onlyMine = new()
+        {
+            Header = ShowOnlyMyMessagesText,
+            ToggleType = MenuItemToggleType.CheckBox,
+            IsChecked = _preferences.CommitDialogShowOnlyMyMessages
+        };
+        onlyMine.Click += (_, _) => _preferences.CommitDialogShowOnlyMyMessages = onlyMine.IsChecked;
+        CommitMessageFlyout.Items.Add(new Separator());
+        CommitMessageFlyout.Items.Add(submodules);
+        CommitMessageFlyout.Items.Add(onlyMine);
+
+        int maxCount = _preferences.CommitDialogNumberOfPreviousMessages;
+        IReadOnlyList<string> messages = PreviousCommitMessages.Merge(
+            await PreviousCommitMessages.ReadAsync(_repositoryPath, maxCount,
+                _preferences.CommitDialogShowOnlyMyMessages),
+            _preferences.LastCommitMessage, maxCount);
+        if (opening != _messageMenuOpenings)
+        {
+            return;
+        }
+
+        int index = 0;
+        foreach (string message in messages)
+        {
+            MenuItem item = new() { Header = new TextBlock { Text = PreviousCommitMessages.Label(message) } };
+            item.Click += (_, _) => ReplaceMessage(message.Trim());
+            CommitMessageFlyout.Items.Insert(index++, item);
+        }
+    }
+
+    // Upstream's generateListOfChangesInSubmodulesChangesToolStripMenuItem_Click, for the staged changes.
+    private async Task InsertSubmoduleChangesAsync()
+    {
+        List<string> staged = [.. _repository.Changes.Where(change => change.Staged).Select(change => change.Path)];
+        string message = await PreviousCommitMessages.SubmoduleChangesAsync(_repositoryPath, staged);
+        if (message.Length > 0)
+        {
+            ReplaceMessage(message);
+        }
+    }
+
+    private void ReplaceMessage(string message)
+    {
+        if (CommitMessageBox.Text != message)
+        {
+            SetMessage(message, message.Length);
+        }
+    }
 
     // Upstream's commitTemplatesToolStripMenuItem_DropDownOpening, read each time it opens: the plugins' templates (e.g.
     // the GitHub plugin's assigned issues), the user's own, the Conventional Commits items and the settings. A template
@@ -720,6 +844,17 @@ public partial class CommitWindow : Window
         copy.Click += (_, _) => CommitMessageBox.Copy();
         MenuItem paste = new() { Header = "Paste", InputGesture = new KeyGesture(Key.V, Hotkeys.CommandModifier) };
         paste.Click += (_, _) => CommitMessageBox.Paste();
-        CommitMessageBox.ContextFlyout = new MenuFlyout { Items = { wordWrap, new Separator(), cut, copy, paste } };
+        CommitMessageBox.ContextFlyout = new MenuFlyout
+        {
+            Items =
+            {
+                wordWrap,
+                AutoCompletionMenuItem(),
+                new Separator(),
+                cut,
+                copy,
+                paste
+            }
+        };
     }
 }

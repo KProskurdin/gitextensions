@@ -20,6 +20,7 @@ public partial class App : Application
         GitUI.ThreadHelper.JoinableTaskContext = new Microsoft.VisualStudio.Threading.JoinableTaskContext();
         ThemeApplier.Apply(AppServices.Preferences);
         FontApplier.Apply(AppServices.Preferences);
+        FilePathTrimming.Apply(AppServices.Preferences);
 
         // Upstream's translations: every window's texts that are upstream's English texts, when the window is shown (the
         // windows named after an upstream form translate themselves by their controls' names first).

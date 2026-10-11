@@ -11,12 +11,16 @@
         <TextBlock x:Name="ContextText" VerticalAlignment="Center" MinWidth="16" TextAlignment="Center" ToolTip.Tip="Lines of context" />
         <Button x:Name="IncreaseContextButton" Content="+" Padding="8,2" ToolTip.Tip="Increase the number of lines of context" />
         <ToggleButton x:Name="EntireFileToggle" Content="Entire file" Padding="8,2" ToolTip.Tip="Show entire file" />
+        <ToggleButton x:Name="NonPrintingToggle" Content="&#xB6;" Padding="8,2" ToolTip.Tip="Show nonprinting characters" />
+        <ToggleButton x:Name="SyntaxHighlightingToggle" Content="Syntax" Padding="8,2" ToolTip.Tip="Show syntax highlighting" />
       </StackPanel>
       <TextBlock x:Name="TitleText" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />
     <!-- Upstream's EditorBackground behind the lines, LineNumberBackground behind the numbers, Selection on selected lines. -->
-    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
+    <!-- Upstream's vertical ruler (diffverticalrulerposition) over the lines. -->
+    <Panel>
+    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
              Background="{DynamicResource EditorBackgroundBrush}">
       <ListBox.Styles>
         <Style Selector="ListBoxItem">
@@ -47,5 +51,9 @@
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
+    <Canvas IsHitTestVisible="False" ClipToBounds="True">
+      <Line x:Name="VerticalRuler" StrokeThickness="1" Stroke="Gray" Opacity="0.6" IsVisible="False" />
+    </Canvas>
+    </Panel>
   </DockPanel>
 </UserControl>

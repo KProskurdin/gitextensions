@@ -22,6 +22,28 @@
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
           <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
           <CheckBox x:Name="RelativeDateCheck" Content="Show relative date instead of full date" />
+          <CheckBox x:Name="ShowRepoBranchCheck" Content="Show current branch names in the dashboard and the recent repositories dropdown menu" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Truncate long filenames" VerticalAlignment="Center" />
+            <ComboBox x:Name="TruncatePathBox" MinWidth="160" />
+          </StackPanel>
+          <!-- Upstream's "Author images" group. -->
+          <TextBlock Text="Author images" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="ShowAvatarColumnCheck" Content="Show author's avatar column in the commit graph" />
+          <CheckBox x:Name="ShowAvatarInCommitInfoCheck" Content="Show author's avatar in the commit info view" />
+          <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto">
+            <TextBlock Grid.Row="0" Text="Avatar provider" VerticalAlignment="Center" />
+            <ComboBox x:Name="AvatarProviderBox" Grid.Row="0" Grid.Column="2" MinWidth="200" />
+            <TextBlock Grid.Row="2" Text="Fallback generated avatar style" VerticalAlignment="Center" />
+            <ComboBox x:Name="AvatarFallbackBox" Grid.Row="2" Grid.Column="2" MinWidth="200" />
+            <TextBlock Grid.Row="4" Text="Custom avatar template" VerticalAlignment="Center" />
+            <TextBox x:Name="CustomAvatarTemplateBox" Grid.Row="4" Grid.Column="2" />
+            <TextBlock Grid.Row="6" Text="Cache images (days)" VerticalAlignment="Center" />
+            <StackPanel Grid.Row="6" Grid.Column="2" Orientation="Horizontal" Spacing="8">
+              <NumericUpDown x:Name="AvatarCacheDaysBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
+              <Button x:Name="ClearImageCacheButton" Content="Clear image cache" />
+            </StackPanel>
+          </Grid>
           <!-- Upstream's "Language" group: upstream's translations (Translation folder), shared with Git Extensions for
                Windows through the same setting. -->
           <TextBlock Text="Language" FontWeight="SemiBold" Margin="0,8,0,0" />
@@ -38,7 +60,7 @@
       <TabItem x:Name="FontsTab" Header="Fonts">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Fonts" FontWeight="SemiBold" />
-          <Grid x:Name="FontsGrid" ColumnDefinitions="Auto,8,*,8,Auto" />
+          <Grid x:Name="FontsGrid" ColumnDefinitions="Auto,8,*,8,Auto,8,Auto,8,Auto" />
           <TextBlock Text="Sizes are in points. &quot;(default)&quot; keeps this app's own font." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
@@ -162,10 +184,19 @@
       <TabItem Header="Commit dialog">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Behaviour" FontWeight="SemiBold" />
+          <CheckBox x:Name="ShowStagingErrorsCheck" Content="Show errors when staging files" />
           <CheckBox x:Name="SecondLineEmptyCheck" Content="Ensure the second line of commit message is empty" />
           <CheckBox x:Name="RememberAmendCheck" Content="Remember 'Amend commit' checkbox on commit form close" />
+          <CheckBox x:Name="AutocompleteCheck" Content="Provide auto-completion in commit dialog" />
+          <CheckBox x:Name="ComposeInWindowCheck" Content="Compose commit messages in Commit dialog (otherwise the message will be requested during commit)" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Number of previous messages in commit dialog" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="PreviousMessagesBox" Minimum="1" Maximum="999" Increment="1" FormatString="0" Width="130" />
+          </StackPanel>
           <TextBlock Text="Show additional buttons in commit button area" FontWeight="SemiBold" Margin="0,8,0,0" />
           <CheckBox x:Name="ShowCommitAndPushCheck" Content="Commit &amp; Push" />
+          <CheckBox x:Name="ShowResetUnstagedCheck" Content="Reset Unstaged Changes" />
+          <CheckBox x:Name="ShowResetAllCheck" Content="Reset All Changes" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Advanced" page: the settings whose feature the new shell has. -->
@@ -186,17 +217,24 @@
           <CheckBox x:Name="CommitAndPushForcedCheck" Content="Push forced with lease when Commit &amp; Push action is performed with Amend option checked" />
         </StackPanel>
       </TabItem>
-      <!-- Upstream's "Diff viewer" page: the settings of the diff view's whitespace, entire file and context choices. -->
+      <!-- Upstream's "Diff viewer" page: the settings of the diff view's choices, its ruler and the difftool list. -->
       <TabItem Header="Diff viewer">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="General" FontWeight="SemiBold" />
           <CheckBox x:Name="RememberIgnoreWhitespaceCheck" Content="Remember the 'Ignore whitespaces' preference" />
+          <CheckBox x:Name="RememberNonPrintingCheck" Content="Remember the 'Show nonprinting characters' preference" />
           <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
           <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
+          <CheckBox x:Name="RememberSyntaxHighlightingCheck" Content="Remember the 'Show syntax highlighting' preference" />
+          <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Vertical ruler position [chars]" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="VerticalRulerBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
+          </StackPanel>
           <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left" />
         </StackPanel>
       </TabItem>
-      <!-- Upstream's "Blame viewer" page, the blame window's settings. The author avatar is not shown by the new shell. -->
+      <!-- Upstream's "Blame viewer" page, the blame window's settings. -->
       <TabItem x:Name="BlameViewerTab" Header="Blame viewer">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Blame settings" FontWeight="SemiBold" />
@@ -210,6 +248,7 @@
           <CheckBox x:Name="BlameShowAuthorTimeCheck" Content="Show author time" />
           <CheckBox x:Name="BlameShowLineNumbersCheck" Content="Show line numbers" />
           <CheckBox x:Name="BlameShowOriginalFilePathCheck" Content="Show original file path" />
+          <CheckBox x:Name="BlameShowAuthorAvatarCheck" Content="Show author avatar" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Sorting" page: the grid's commit order and the left panel's branch order. -->
@@ -229,7 +268,13 @@
       </TabItem>
       <!-- Upstream's "Revision links" page: link definitions that turn commit data into links in the commit details. -->
       <TabItem x:Name="RevisionLinksTab" Header="Revision links">
-        <Grid ColumnDefinitions="200,12,*" Margin="4,8">
+        <DockPanel Margin="4,8">
+        <!-- Upstream's settings page header: the level the definitions are read from and stored at. -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBlock Text="Settings level" VerticalAlignment="Center" />
+          <ComboBox x:Name="RevisionLinkLevelBox" MinWidth="260" />
+        </StackPanel>
+        <Grid ColumnDefinitions="200,12,*">
           <DockPanel Grid.Column="0">
             <TextBlock DockPanel.Dock="Top" Text="Categories" FontWeight="SemiBold" Margin="0,0,0,4" />
             <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,6,0,0">
@@ -298,6 +343,7 @@
             </StackPanel>
           </ScrollViewer>
         </Grid>
+        </DockPanel>
       </TabItem>
       <!-- Upstream's "Build server integration" page, on the repository's settings as the revision links: the type, whether
            the integration is on (undecided: decided by a lower settings level, or detected from the remotes), and the

@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.ResetChangesWindow"
+        Title="Reset changes"
+        Width="420" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="16" Spacing="12">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" Text="Are you sure you want to reset your changes?" />
+    <CheckBox x:Name="DeleteNewFilesCheck" Content="Also delete _new files and/or directories" />
+    <TextBlock x:Name="DeleteHintText" Text="This will delete any uncommitted work." />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="ResetButton" Content="R_eset" />
+      <Button x:Name="CancelButton" Content="_Cancel" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

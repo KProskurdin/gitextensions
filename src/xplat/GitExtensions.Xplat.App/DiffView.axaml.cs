@@ -24,6 +24,10 @@ public partial class DiffView : UserControl
     private bool _textIsDiff = true;
     private IReadOnlyList<DiffLine>? _text;
     private DiffOptions _options;
+
+    // The item template's padding and line number columns, before a line's text.
+    private const double LinePadding = 4;
+    private const double LineNumbersWidth = 88;
     private bool _showingOptions;
 
     public DiffView()
@@ -49,6 +53,29 @@ public partial class DiffView : UserControl
             if (!_showingOptions)
             {
                 ChangeOptions(_options.ToggleEntireFile());
+            }
+        };
+        NonPrintingToggle.IsCheckedChanged += (_, _) =>
+        {
+            if (!_showingOptions)
+            {
+                ChangeOptions(_options with { ShowNonPrintingChars = !_options.ShowNonPrintingChars });
+            }
+        };
+        SyntaxHighlightingToggle.IsCheckedChanged += (_, _) =>
+        {
+            if (!_showingOptions)
+            {
+                ChangeOptions(_options with { ShowSyntaxHighlighting = !_options.ShowSyntaxHighlighting });
+            }
+        };
+        DiffList.SizeChanged += (_, _) => ShowVerticalRuler();
+        DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
+        DiffList.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == FontSizeProperty || e.Property == FontFamilyProperty)
+            {
+                ShowVerticalRuler();
             }
         };
         ActualThemeVariantChanged += (_, _) => ShowLines();
@@ -216,20 +243,53 @@ public partial class DiffView : UserControl
         }
     }
 
-    // Brushes follow the theme, so a theme switch rebuilds the items.
+    // Brushes follow the theme, so a theme switch rebuilds the items. As upstream's FileViewer, a diff is highlighted only
+    // while "Show syntax highlighting" is on, a file's text always.
     private void ShowLines()
     {
-        SyntaxHighlighter? highlighter = _syntaxPath is { } path && SyntaxDefinitions.ForFile(path) is { } syntax
-            ? new SyntaxHighlighter(syntax)
-            : null;
+        SyntaxHighlighter? highlighter = (_options.ShowSyntaxHighlighting || !_textIsDiff) && _syntaxPath is { } path
+            && SyntaxDefinitions.ForFile(path) is { } syntax
+                ? new SyntaxHighlighter(syntax)
+                : null;
         Lines =
         [
-            .. (_text ?? _viewModel.Lines).Select(line => new DiffLineItem(line.Text,
+            .. (_text ?? _viewModel.Lines).Select(line => new DiffLineItem(DisplayText(line),
                 ThemeBrushes.ForegroundFor(line.Kind), ThemeBrushes.BackgroundFor(line.Kind),
                 line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
                 line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "") { Runs = Highlight(highlighter, line), })
         ];
         DiffList.ItemsSource = Lines;
+        ShowVerticalRuler();
+    }
+
+    // Upstream's nonprinting characters mark a line's spaces, tabs and end, not a diff line's +, - or space.
+    private string DisplayText(DiffLine line)
+    {
+        if (!_options.ShowNonPrintingChars || line.Kind is DiffLineKind.Header or DiffLineKind.Hunk)
+        {
+            return line.Text;
+        }
+
+        int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
+        return line.Text[..prefix] + NonPrintingCharacters.Mark(line.Text[prefix..]) + NonPrintingCharacters.EndOfLine;
+    }
+
+    // Upstream's ruler at the column the setting gives, counted from the line's start as upstream's editor counts it.
+    private void ShowVerticalRuler()
+    {
+        int column = AppServices.Preferences.DiffVerticalRulerPosition;
+        VerticalRuler.IsVisible = column > 0 && Lines.Count > 0;
+        if (!VerticalRuler.IsVisible)
+        {
+            return;
+        }
+
+        FormattedText digit = new("0", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface(DiffList.FontFamily, DiffList.FontStyle, DiffList.FontWeight), DiffList.FontSize, null);
+        double x = LinePadding + LineNumbersWidth + (column * digit.WidthIncludingTrailingWhitespace)
+                   - (DiffList.Scroll?.Offset.X ?? 0);
+        VerticalRuler.StartPoint = new Point(x, 0);
+        VerticalRuler.EndPoint = new Point(x, DiffList.Bounds.Height);
     }
 
     private void OnThemeChanged(object? sender, EventArgs e) => ShowLines();
@@ -252,11 +312,18 @@ public partial class DiffView : UserControl
         int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
         List<DiffTextRun> runs = prefix > 0 ? [new DiffTextRun(line.Text[..prefix], null, false, false)] : [];
         string code = line.Text[prefix..];
+        bool marks = _options.ShowNonPrintingChars;
         foreach (SyntaxRun run in highlighter.HighlightLine(code))
         {
-            runs.Add(new DiffTextRun(code.Substring(run.Start, run.Length),
+            string text = code.Substring(run.Start, run.Length);
+            runs.Add(new DiffTextRun(marks ? NonPrintingCharacters.Mark(text) : text,
                 run.Style?.Color is { } color ? ThemeBrushes.Syntax(color) : null,
                 run.Style?.Bold == true, run.Style?.Italic == true));
+        }
+
+        if (marks)
+        {
+            runs.Add(new DiffTextRun(NonPrintingCharacters.EndOfLine.ToString(), null, false, false));
         }
 
         return runs;
@@ -325,15 +392,26 @@ public partial class DiffView : UserControl
             return;
         }
 
+        // Nonprinting characters and syntax highlighting change only the display; the diff is not read again for them.
+        bool sameDiff = options.Arguments.SequenceEqual(_options.Arguments);
         _options = options;
         AppServices.Preferences.SetDiffOptions(options);
         ShowOptions();
-        Reload();
+        if (sameDiff)
+        {
+            ShowLines();
+        }
+        else
+        {
+            Reload();
+        }
     }
 
     private void ShowOptions()
     {
         _showingOptions = true;
+        NonPrintingToggle.IsChecked = _options.ShowNonPrintingChars;
+        SyntaxHighlightingToggle.IsChecked = _options.ShowSyntaxHighlighting;
         WhitespaceBox.SelectedItem = WhitespaceOption.All.First(option => option.Kind == _options.IgnoreWhitespace);
         ContextText.Text = _options.ContextLines.ToString(CultureInfo.InvariantCulture);
         EntireFileToggle.IsChecked = _options.ShowEntireFile;

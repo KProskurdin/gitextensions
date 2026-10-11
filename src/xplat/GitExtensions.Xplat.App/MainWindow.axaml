@@ -279,7 +279,12 @@
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="repo:RecentRepository">
                 <StackPanel Margin="2,3">
-                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                    <!-- Upstream's branch name beside the repository (ShowRepoCurrentBranch). -->
+                    <TextBlock Text="{Binding Branch}" IsVisible="{Binding HasBranch}" Opacity="0.8"
+                               Foreground="{DynamicResource SystemAccentColor}" />
+                  </StackPanel>
                   <TextBlock Text="{Binding Path}" Opacity="0.7" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
               </DataTemplate>
@@ -363,9 +368,15 @@
                     <!-- Upstream's change counts of the artificial rows (ShowGitStatusForArtificialCommits). -->
                     <TextBlock Text="{Binding Badge}" Opacity="0.7" Margin="6,0,0,0" VerticalAlignment="Center" />
                   </StackPanel>
-                  <TextBlock Grid.Column="2" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                  <!-- Upstream's author avatar column (ShowAuthorAvatarColumn), here at the start of the author cell. -->
+                  <DockPanel Grid.Column="2" Margin="0,0,6,0">
+                    <local:AvatarView Classes="gridAvatar" DockPanel.Dock="Left" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
+                                      VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
+                                      Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
+                    <TextBlock Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  </DockPanel>
                   <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
-                  <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                   <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
                        build report. -->
                   <StackPanel Grid.Column="5" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
@@ -392,19 +403,24 @@
             <TabItem x:Name="CommitInfoTab" Header="Commit">
               <Grid ColumnDefinitions="*,8,Auto">
                 <ScrollViewer Grid.Column="0">
+                  <DockPanel>
+                  <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->
+                  <local:AvatarView x:Name="DetailAvatar" DockPanel.Dock="Left" Width="80" Height="80" ImageSize="80"
+                                    VerticalAlignment="Top" Margin="4,2,4,0" IsVisible="False" />
                   <StackPanel Spacing="3" Margin="4,0">
-                    <TextBlock x:Name="DetailHash" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="DetailHash" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
                     <TextBlock x:Name="DetailAuthor" TextWrapping="Wrap" />
                     <TextBlock x:Name="DetailAuthorDate" />
                     <TextBlock x:Name="DetailCommitDate" />
-                    <TextBlock x:Name="DetailParents" FontFamily="{DynamicResource MonospaceFontFamily}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
-                    <SelectableTextBlock x:Name="DetailMessage" FontFamily="{DynamicResource CommitFontFamily}" FontSize="{DynamicResource CommitFontSize}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                    <TextBlock x:Name="DetailParents" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
+                    <SelectableTextBlock x:Name="DetailMessage" FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" TextWrapping="Wrap" Margin="0,8,0,0" />
                     <!-- Upstream's commit info "Related links": the revision links defined in the settings. -->
                     <StackPanel x:Name="DetailLinksPanel" Spacing="2" Margin="0,8,0,0" IsVisible="False">
                       <TextBlock Text="Related links:" FontWeight="SemiBold" />
                       <WrapPanel x:Name="DetailLinks" />
                     </StackPanel>
                   </StackPanel>
+                  </DockPanel>
                 </ScrollViewer>
                 <StackPanel Grid.Column="2" Spacing="4">
                   <Button x:Name="CopyHashButton" Content="Copy hash" HorizontalAlignment="Stretch" />
@@ -415,8 +431,13 @@
             <TabItem x:Name="DiffTab" Header="Diff">
               <Grid ColumnDefinitions="300,5,*">
                 <DockPanel Grid.Column="0" LastChildFill="True">
-                  <Button x:Name="CommitDiffToolButton" DockPanel.Dock="Bottom" Content="Open in diff tool" Margin="0,4,0,0"
-                          ToolTip.Tip="Show the selected file's change in the diff tool configured in Settings (diff.tool)" />
+                  <DockPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
+                    <!-- Upstream's list of all diff tools (difftools.showavailable). -->
+                    <Button x:Name="CommitDiffToolChoiceButton" DockPanel.Dock="Right" Content="&#x25BE;" Padding="4,2"
+                            ToolTip.Tip="Open in another diff tool" IsEnabled="{Binding #CommitDiffToolButton.IsEnabled}" />
+                    <Button x:Name="CommitDiffToolButton" Content="Open in diff tool" HorizontalAlignment="Stretch"
+                            ToolTip.Tip="Show the selected file's change in the diff tool configured in Settings (diff.tool)" />
+                  </DockPanel>
                   <Button x:Name="ShowCommitDiffButton" DockPanel.Dock="Bottom" Content="Open in window" Margin="0,4,0,0"
                           ToolTip.Tip="Show the selected file's diff in its own window" />
                   <ListBox x:Name="CommitFilesList">
@@ -428,7 +449,12 @@
                     </ListBox.ContextMenu>
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="core:CommitFile">
-                        <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
+                        <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
+                        <DockPanel>
+                          <TextBlock DockPanel.Dock="Left" Text="{Binding Status}" Margin="0,0,4,0" />
+                          <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                                     TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+                        </DockPanel>
                       </DataTemplate>
                     </ListBox.ItemTemplate>
                   </ListBox>

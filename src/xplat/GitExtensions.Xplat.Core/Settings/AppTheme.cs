@@ -6,12 +6,14 @@ namespace GitExtensions.Xplat.Core.Settings;
 /// <summary>
 ///  The colors of the active theme, by upstream <see cref="AppColor"/>. <see cref="IsDark"/> picks the light or dark controls;
 ///  <see cref="Error"/> is set when the chosen theme could not be read and the default one is used instead.
+///  <see cref="SystemColors"/> holds the system colors the theme overrides (upstream's <c>SysColorValues</c>).
 /// </summary>
 public sealed record AppThemeColors(
     ThemeId Id,
     bool IsDark,
     IReadOnlyDictionary<AppColor, Color> Colors,
-    string? Error = null)
+    string? Error = null,
+    IReadOnlyDictionary<KnownColor, Color>? SystemColors = null)
 {
     private const float DarkBrightness = 0.5f;
 
@@ -19,6 +21,12 @@ public sealed record AppThemeColors(
     ///  The color, or <see cref="Color.Empty"/> where the theme leaves a slot unused (e.g. dark's GraphBranch8).
     /// </summary>
     public Color Get(AppColor name) => Colors.TryGetValue(name, out Color color) ? color : Color.Empty;
+
+    /// <summary>
+    ///  The system color the theme sets, or <see cref="Color.Empty"/> where it keeps the system's.
+    /// </summary>
+    public Color Get(KnownColor name)
+        => SystemColors?.TryGetValue(name, out Color color) == true ? color : Color.Empty;
 
     /// <summary>
     ///  The colors of <paramref name="theme"/>. A color the theme does not set comes from upstream's defaults, except the
@@ -38,8 +46,17 @@ public sealed record AppThemeColors(
             colors[name] = color;
         }
 
+        Dictionary<KnownColor, Color> systemColors = [];
+        foreach (KnownColor name in Enum.GetValues<KnownColor>().Where(name => Color.FromKnownColor(name).IsSystemColor))
+        {
+            if (theme.GetColor(name) is { IsEmpty: false } color)
+            {
+                systemColors[name] = color;
+            }
+        }
+
         bool isDark = colors[AppColor.PanelBackground].GetBrightness() < DarkBrightness;
-        return new AppThemeColors(theme.Id, isDark, colors, error);
+        return new AppThemeColors(theme.Id, isDark, colors, error, systemColors);
     }
 
     private static bool IsGraphBranch(AppColor name) => name is >= AppColor.GraphBranch1 and <= AppColor.GraphBranch8;

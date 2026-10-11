@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
 using GitCommands.Settings;
+using GitExtensions.Extensibility.Settings;
 using GitExtensions.Xplat.Core.Settings;
 using NUnit.Framework;
 
@@ -40,8 +41,11 @@ internal sealed class RevisionLinksSettingsTests
         Find<ListBox>(settings, "RevisionLinksList").ItemCount.Should().Be(0);
         Find<StackPanel>(settings, "RevisionLinkDetails").IsEnabled.Should().BeFalse();
         Find<StackPanel>(settings, "RevisionLinkTemplateButtons").Children.OfType<Button>()
-            .Select(button => button.Content as string).Should()
+            .Select(button => ((StackPanel)button.Content!).Children.OfType<TextBlock>().Single().Text).Should()
             .Equal("Add GitHub templates", "Add Azure DevOps templates");
+        Find<StackPanel>(settings, "RevisionLinkTemplateButtons").Children.OfType<Button>()
+            .Should().OnlyContain(button => ((StackPanel)button.Content!).Children.OfType<Image>().Single().Source != null,
+                "upstream's menu shows the service's icon");
 
         Click(settings, "AddRevisionLinkButton");
         Find<TextBox>(settings, "RevisionLinkNameBox").Text.Should().Be("<new>");
@@ -115,6 +119,33 @@ internal sealed class RevisionLinksSettingsTests
 
         Find<ListBox>(window, "CommitList").SelectedIndex = 1;
         WaitUntil(() => !Find<StackPanel>(window, "DetailLinksPanel").IsVisible);
+    }
+
+    [AvaloniaTest]
+    public void The_revision_links_tab_edits_the_definitions_of_the_chosen_settings_level()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Find<TextBox>(window, "PathBox").Text = _repo.Path;
+        Click(window, "OpenButton");
+        WaitUntil(() => Find<Button>(window, "OpenButton").IsEnabled);
+        SettingsWindow settings = OpenSettings(window);
+        ComboBox levels = Find<ComboBox>(settings, "RevisionLinkLevelBox");
+        levels.Items.Cast<object>().Select(level => level.ToString()).Should().Equal("Effective",
+            "Local for current repository", "Distributed with current repository", "Global for all repositories");
+
+        levels.SelectedIndex = 1;
+        Click(settings, "AddRevisionLinkButton");
+        Find<TextBox>(settings, "RevisionLinkNameBox").Text = "Local links";
+        levels.SelectedIndex = 0;
+        Find<ListBox>(settings, "RevisionLinksList").ItemCount.Should().Be(0, "the effective list was read before");
+        Click(settings, "SaveButton");
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+        new RevisionLinkEditor(AppServices.RevisionLinks.Open(_repo.Path, SettingLevel.Local)).Items
+            .Select(item => item.Name).Should().Equal("Local links");
+        new RevisionLinkEditor(AppServices.RevisionLinks.Open(_repo.Path, SettingLevel.Global)).Items.Should().BeEmpty();
+        window.Close();
     }
 
     private static SettingsWindow OpenSettings(MainWindow window)

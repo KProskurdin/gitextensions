@@ -15,20 +15,29 @@ namespace GitExtensions.Xplat.Core.Operations;
 public sealed class GitOperations : IGitOperations
 {
     private readonly IReadOnlyDictionary<string, string>? _remoteEnvironment;
+    private readonly Func<bool> _showStagingErrors;
+
+    // Upstream's UpdateIndexCmd: without the setting, git's line ending check (core.safecrlf) does not stop the staging.
+    private static readonly ArgumentString _noSafeCrlf = "-c core.safecrlf=false";
 
     /// <summary>
     ///  <paramref name="askPassExecutable"/> is the app that answers ssh's and git's prompts during remote operations
     ///  (see <see cref="GitAskPass"/>); without it git relies on its credential helpers alone.
+    ///  <paramref name="showStagingErrors"/> is upstream's <c>ShowErrorsWhenStagingFiles</c>, read at each staging (by default
+    ///  from upstream's settings).
     /// </summary>
-    public GitOperations(string? askPassExecutable = null)
+    public GitOperations(string? askPassExecutable = null, Func<bool>? showStagingErrors = null)
     {
+        _showStagingErrors = showStagingErrors ?? (() => AppSettings.ShowErrorsWhenStagingFiles);
         _remoteEnvironment = askPassExecutable is null ? null : GitAskPass.Environment(askPassExecutable);
     }
 
     public Task StageAsync(string repositoryPath, IReadOnlyList<string> paths)
-        => RunAsync(repositoryPath, _ =>
+    {
+        ArgumentString options = _showStagingErrors() ? default : _noSafeCrlf;
+        return RunAsync(repositoryPath, _ =>
         {
-            GitArgumentBuilder arguments = new("add") { "--" };
+            GitArgumentBuilder arguments = new("add", gitOptions: options) { "--" };
             foreach (string path in paths)
             {
                 arguments.Add(path.Quote());
@@ -36,6 +45,7 @@ public sealed class GitOperations : IGitOperations
 
             return arguments;
         });
+    }
 
     public Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths)
         => RunAsync(repositoryPath, _ =>
@@ -99,6 +109,18 @@ public sealed class GitOperations : IGitOperations
             {
                 File.Delete(messageFile);
             }
+        });
+
+    // Upstream's commit without useExplicitCommitMessage: git asks the editor for the message.
+    public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
+        string editorCommand)
+        => Task.Run(async () =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            ArgumentString commit = Commands.Commit(amend, signOff, author, useExplicitCommitMessage: false,
+                commitMessageFile: null, getPathForGitExecution: module.GetPathForGitExecution);
+            await GitOutputRunner.RunAsync(module.WorkingDir, commit, NullOutput.Instance, CancellationToken.None,
+                GitEditorCommand.Environment(editorCommand));
         });
 
     public Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null)
@@ -219,6 +241,21 @@ public sealed class GitOperations : IGitOperations
             return clean;
         });
 
+    // Upstream's GitModule.ResetAllChanges, with each step's failure reported instead of ignored.
+    public Task ResetAllChangesAsync(string repositoryPath, bool clean, bool onlyWorkTree)
+        => Task.Run(() =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            Execute(module.GitExecutable, onlyWorkTree
+                ? new GitArgumentBuilder("checkout") { "--", "." }
+                : Commands.Reset(ResetMode.Hard));
+            if (clean)
+            {
+                Execute(module.GitExecutable,
+                    Commands.Clean(CleanMode.OnlyNonIgnored, dryRun: false, directories: true));
+            }
+        });
+
     public Task AddRemoteAsync(string repositoryPath, string name, string url)
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("remote") { "add", name.Quote(), url.Quote() });
 
@@ -319,11 +356,12 @@ public sealed class GitOperations : IGitOperations
 
     // Like the merge tool: a configured GUI tool is required, as git's fallback is a terminal program with no console here.
     // git difftool waits for the tool, so it is started and not awaited.
-    public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged)
+    // Upstream's "Open with difftool" uses the configured tool; its list of all tools passes the chosen one.
+    public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged, string? tool = null)
         => Task.Run(() =>
         {
             GitModule module = CreateModule(repositoryPath);
-            string tool = module.GetEffectiveSetting("diff.guitool");
+            tool ??= module.GetEffectiveSetting("diff.guitool");
             if (tool.Length == 0)
             {
                 tool = module.GetEffectiveSetting("diff.tool");
