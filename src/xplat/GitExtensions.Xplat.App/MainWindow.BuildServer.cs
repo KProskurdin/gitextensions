@@ -174,7 +174,7 @@ public partial class MainWindow
         bool show = _showBuildReport && !string.IsNullOrEmpty(_reportedBuild?.Url);
         if (!show && DetailTabs.SelectedItem == BuildReportTab)
         {
-            DetailTabs.SelectedItem = CommitInfoTab;
+            DetailTabs.SelectedItem = CommitInfoTab.IsVisible ? CommitInfoTab : DiffTab;
         }
 
         BuildReportTab.IsVisible = show;

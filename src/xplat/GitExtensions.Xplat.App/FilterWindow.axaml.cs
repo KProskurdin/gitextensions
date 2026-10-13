@@ -24,19 +24,21 @@ public partial class FilterWindow : Window
         NoMergesCheck.IsChecked = current.NoMerges;
         FirstParentCheck.IsChecked = current.FirstParent;
         CancelButton.Click += (_, _) => Close(null);
-        ClearButton.Click += (_, _) => Close(new RevisionFilter(CurrentBranchOnly: _current.CurrentBranchOnly));
+        ClearButton.Click += (_, _) => Close(_current.ResetAll());
         ApplyButton.Click += (_, _) => Close(Filter());
     }
 
-    // "Until" means the whole day, as a user reading the date expects.
-    private RevisionFilter Filter() => new(
-        _current.CurrentBranchOnly,
-        AuthorBox.Text?.Trim() ?? "",
-        CommitterBox.Text?.Trim() ?? "",
-        MessageBox.Text?.Trim() ?? "",
-        SinceBox.SelectedDate?.Date,
-        UntilBox.SelectedDate?.Date.AddDays(1).AddSeconds(-1),
-        PathBox.Text?.Trim() ?? "",
-        NoMergesCheck.IsChecked == true,
-        FirstParentCheck.IsChecked == true);
+    // "Until" means the whole day, as a user reading the date expects. The filters this window does not show (the
+    // toolbar's diff, branch and reflog choices) stay as they are.
+    private RevisionFilter Filter() => _current with
+    {
+        Author = AuthorBox.Text?.Trim() ?? "",
+        Committer = CommitterBox.Text?.Trim() ?? "",
+        Message = MessageBox.Text?.Trim() ?? "",
+        Since = SinceBox.SelectedDate?.Date,
+        Until = UntilBox.SelectedDate?.Date.AddDays(1).AddSeconds(-1),
+        PathFilter = PathBox.Text?.Trim() ?? "",
+        NoMerges = NoMergesCheck.IsChecked == true,
+        FirstParent = FirstParentCheck.IsChecked == true,
+    };
 }

@@ -184,6 +184,11 @@ public interface IAppPreferences
 
     bool IncludeUntrackedFilesInAutoStash { get; set; }
 
+    /// <summary>
+    ///  Upstream's <c>includeUntrackedFilesInManualStash</c>: a stash from the toolbar, menu or left panel takes untracked files too.
+    /// </summary>
+    bool IncludeUntrackedFilesInManualStash { get; set; }
+
     bool? UpdateSubmodulesOnCheckout { get; set; }
 
     bool ShowStashCount { get; set; }
@@ -327,6 +332,33 @@ public interface IAppPreferences
     ///  Upstream <c>ShowCurrentBranchOnly</c>: the grid shows only the checked-out branch instead of every branch.
     /// </summary>
     bool ShowCurrentBranchOnly { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>CommitInfoPosition</c>: the commit info as the first tab below the grid, or beside the grid.
+    /// </summary>
+    CommitInfoPosition CommitInfoPosition { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>ShowSplitViewLayout</c>: whether the tabs below the grid are shown.
+    /// </summary>
+    bool ShowSplitViewLayout { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>RevisionFilterDropdowns</c>: the texts the filter toolbar's "Filter:" box remembers, latest first.
+    /// </summary>
+    IReadOnlyList<string> RevisionFilterDropdowns { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>RepoObjectsTreeShow*</c> settings: whether the left panel shows the tree <paramref name="root"/>.
+    /// </summary>
+    bool ShowsRepoObjectsTree(RepoObjectKind root);
+
+    void ShowRepoObjectsTree(RepoObjectKind root, bool show);
+
+    /// <summary>
+    ///  Upstream's <c>RepoObjectsTree*Index</c> settings: the left panel's trees in their order.
+    /// </summary>
+    IReadOnlyList<RepoObjectKind> RepoObjectsTreeOrder { get; set; }
 
     /// <summary>
     ///  Whether the app asks before <paramref name="confirmation"/>'s action: upstream's <c>DontConfirm...</c> settings,
@@ -664,6 +696,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.IncludeUntrackedFilesInAutoStash = value;
     }
 
+    public bool IncludeUntrackedFilesInManualStash
+    {
+        get => AppSettings.IncludeUntrackedFilesInManualStash;
+        set => AppSettings.IncludeUntrackedFilesInManualStash = value;
+    }
+
     public bool? UpdateSubmodulesOnCheckout
     {
         get => AppSettings.UpdateSubmodulesOnCheckout;
@@ -881,6 +919,86 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ShowCurrentBranchOnly.Value;
         set => AppSettings.ShowCurrentBranchOnly.Value = value;
+    }
+
+    public CommitInfoPosition CommitInfoPosition
+    {
+        get => AppSettings.CommitInfoPosition;
+        set => AppSettings.CommitInfoPosition = value;
+    }
+
+    public bool ShowSplitViewLayout
+    {
+        get => AppSettings.ShowSplitViewLayout;
+        set => AppSettings.ShowSplitViewLayout = value;
+    }
+
+    public IReadOnlyList<string> RevisionFilterDropdowns
+    {
+        get => AppSettings.RevisionFilterDropdowns;
+        set => AppSettings.RevisionFilterDropdowns = [.. value];
+    }
+
+    public bool ShowsRepoObjectsTree(RepoObjectKind root) => root switch
+    {
+        RepoObjectKind.BranchesRoot => AppSettings.RepoObjectsTreeShowBranches,
+        RepoObjectKind.RemotesRoot => AppSettings.RepoObjectsTreeShowRemotes,
+        RepoObjectKind.WorktreesRoot => AppSettings.RepoObjectsTreeShowWorktrees,
+        RepoObjectKind.TagsRoot => AppSettings.RepoObjectsTreeShowTags,
+        RepoObjectKind.SubmodulesRoot => AppSettings.RepoObjectsTreeShowSubmodules,
+        RepoObjectKind.StashesRoot => AppSettings.RepoObjectsTreeShowStashes,
+        _ => false,
+    };
+
+    public void ShowRepoObjectsTree(RepoObjectKind root, bool show)
+    {
+        switch (root)
+        {
+            case RepoObjectKind.BranchesRoot:
+                AppSettings.RepoObjectsTreeShowBranches = show;
+                break;
+            case RepoObjectKind.RemotesRoot:
+                AppSettings.RepoObjectsTreeShowRemotes = show;
+                break;
+            case RepoObjectKind.WorktreesRoot:
+                AppSettings.RepoObjectsTreeShowWorktrees = show;
+                break;
+            case RepoObjectKind.TagsRoot:
+                AppSettings.RepoObjectsTreeShowTags = show;
+                break;
+            case RepoObjectKind.SubmodulesRoot:
+                AppSettings.RepoObjectsTreeShowSubmodules = show;
+                break;
+            case RepoObjectKind.StashesRoot:
+                AppSettings.RepoObjectsTreeShowStashes = show;
+                break;
+        }
+    }
+
+    public IReadOnlyList<RepoObjectKind> RepoObjectsTreeOrder
+    {
+        get =>
+        [
+            .. RepoObjectsTree.Roots.OrderBy(root => root switch
+            {
+                RepoObjectKind.BranchesRoot => AppSettings.RepoObjectsTreeBranchesIndex,
+                RepoObjectKind.RemotesRoot => AppSettings.RepoObjectsTreeRemotesIndex,
+                RepoObjectKind.WorktreesRoot => AppSettings.RepoObjectsTreeWorktreesIndex,
+                RepoObjectKind.TagsRoot => AppSettings.RepoObjectsTreeTagsIndex,
+                RepoObjectKind.SubmodulesRoot => AppSettings.RepoObjectsTreeSubmodulesIndex,
+                _ => AppSettings.RepoObjectsTreeStashesIndex,
+            })
+        ];
+        set
+        {
+            List<RepoObjectKind> order = [.. value];
+            AppSettings.RepoObjectsTreeBranchesIndex = order.IndexOf(RepoObjectKind.BranchesRoot);
+            AppSettings.RepoObjectsTreeRemotesIndex = order.IndexOf(RepoObjectKind.RemotesRoot);
+            AppSettings.RepoObjectsTreeWorktreesIndex = order.IndexOf(RepoObjectKind.WorktreesRoot);
+            AppSettings.RepoObjectsTreeTagsIndex = order.IndexOf(RepoObjectKind.TagsRoot);
+            AppSettings.RepoObjectsTreeSubmodulesIndex = order.IndexOf(RepoObjectKind.SubmodulesRoot);
+            AppSettings.RepoObjectsTreeStashesIndex = order.IndexOf(RepoObjectKind.StashesRoot);
+        }
     }
 
     public bool Asks(Confirmation confirmation) => confirmation switch
@@ -1134,6 +1252,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool IncludeUntrackedFilesInAutoStash { get; set; }
 
+    public bool IncludeUntrackedFilesInManualStash { get; set; }
+
     public bool? UpdateSubmodulesOnCheckout { get; set; }
 
     public bool ShowStashCount { get; set; }
@@ -1231,7 +1351,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public void SaveDiffOptionsAsDefault()
         => _savedDiffOptions = _savedDiffOptions with
         {
-            IgnoreWhitespace = _diffOptions.IgnoreWhitespace, ShowEntireFile = _diffOptions.ShowEntireFile,
+            IgnoreWhitespace = _diffOptions.IgnoreWhitespace,
+            ShowEntireFile = _diffOptions.ShowEntireFile,
             ShowNonPrintingChars = _diffOptions.ShowNonPrintingChars,
             ShowSyntaxHighlighting = _diffOptions.ShowSyntaxHighlighting,
         };
@@ -1251,6 +1372,30 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     }
 
     public bool ShowCurrentBranchOnly { get; set; }
+
+    public CommitInfoPosition CommitInfoPosition { get; set; }
+
+    public bool ShowSplitViewLayout { get; set; } = true;
+
+    public IReadOnlyList<string> RevisionFilterDropdowns { get; set; } = [];
+
+    private readonly HashSet<RepoObjectKind> _hiddenTrees = [];
+
+    public bool ShowsRepoObjectsTree(RepoObjectKind root) => !_hiddenTrees.Contains(root);
+
+    public void ShowRepoObjectsTree(RepoObjectKind root, bool show)
+    {
+        if (show)
+        {
+            _hiddenTrees.Remove(root);
+        }
+        else
+        {
+            _hiddenTrees.Add(root);
+        }
+    }
+
+    public IReadOnlyList<RepoObjectKind> RepoObjectsTreeOrder { get; set; } = RepoObjectsTree.Roots;
 
     private readonly Dictionary<Confirmation, bool> _asks = [];
 

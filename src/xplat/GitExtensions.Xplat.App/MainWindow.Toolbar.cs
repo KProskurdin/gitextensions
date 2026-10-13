@@ -3,6 +3,7 @@ using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 using GitUI.ScriptsEngine;
@@ -37,6 +38,9 @@ public partial class MainWindow
     private GridLength _leftPanelWidth = new(280);
     private GridLength _commitInfoHeight = new(300);
 
+    // Upstream's width of the commit info beside the grid: room for the avatar and the commit hash, plus a scroll bar.
+    private const double RevisionInfoWidth = 490 + 17;
+
     /// <summary>
     ///  True while the window reads or writes the repository; the toolbar's repository actions wait for it.
     /// </summary>
@@ -55,7 +59,23 @@ public partial class MainWindow
     private void WireMainToolStrip()
     {
         ToggleLeftPanelButton.Click += (_, _) => ToggleLeftPanel();
-        ToggleSplitViewButton.Click += (_, _) => ToggleCommitInfo();
+        ToggleSplitViewButton.Click += (_, _) =>
+        {
+            _preferences.ShowSplitViewLayout = !_preferences.ShowSplitViewLayout;
+            ShowSplitViewLayout();
+        };
+
+        // Upstream's CommitInfoPositionClick: the button moves to the next position, the menu to the chosen one.
+        CommitInfoPositionButton.Click += (_, _) => SetCommitInfoPosition(
+            (CommitInfoPosition)(((int)_preferences.CommitInfoPosition + 1) %
+                                 Enum.GetValues<CommitInfoPosition>().Length));
+        CommitInfoBelowMenuItem.Click += (_, _) => SetCommitInfoPosition(CommitInfoPosition.BelowList);
+        CommitInfoLeftwardMenuItem.Click += (_, _) => SetCommitInfoPosition(CommitInfoPosition.LeftwardFromList);
+        CommitInfoRightwardMenuItem.Click += (_, _) => SetCommitInfoPosition(CommitInfoPosition.RightwardFromList);
+        LayoutRevisionInfo();
+        ShowSplitViewLayout();
+        FillTerminals();
+        TerminalButton.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         EditSettingsButton.Click += (_, _) => Run(() => ShowSettingsAsync());
         ((MenuFlyout)SubmodulesButton.Flyout!).Opening += (_, _) => ShowSubmodulesMenu();
         ((MenuFlyout)WorktreesButton.Flyout!).Opening += (_, _) => Run(ShowWorktreesMenuAsync);
@@ -244,25 +264,118 @@ public partial class MainWindow
             panel.Width = _leftPanelWidth;
             splitter.Width = new GridLength(5);
         }
+
+        ToggleLeftPanelButton.IsChecked = panel.Width.Value > 0;
     }
 
-    // Upstream's toggleSplitViewLayout: the commit info below the grid collapses, and comes back at its height.
-    private void ToggleCommitInfo()
+    // Upstream's RefreshSplitViewLayout: the tabs below the grid collapse, and come back at their height.
+    private void ShowSplitViewLayout()
     {
-        RowDefinition splitter = BrowsePanel.RowDefinitions[2];
-        RowDefinition info = BrowsePanel.RowDefinitions[3];
-        if (info.Height.Value > 0)
+        bool show = _preferences.ShowSplitViewLayout;
+        RowDefinition splitter = BrowsePanel.RowDefinitions[1];
+        RowDefinition tabs = BrowsePanel.RowDefinitions[2];
+        if (!show && tabs.Height.Value > 0)
         {
-            _commitInfoHeight = info.Height;
-            info.Height = new GridLength(0);
-            splitter.Height = new GridLength(0);
-            DetailTabs.IsVisible = false;
+            _commitInfoHeight = tabs.Height;
+        }
+
+        tabs.Height = show ? _commitInfoHeight : new GridLength(0);
+        splitter.Height = new GridLength(show ? 5 : 0);
+        DetailTabs.IsVisible = show;
+        ToggleSplitViewButton.IsChecked = show;
+    }
+
+    private void SetCommitInfoPosition(CommitInfoPosition position)
+    {
+        _preferences.CommitInfoPosition = position;
+        LayoutRevisionInfo();
+    }
+
+    // Upstream's LayoutRevisionInfo: the commit info is the first tab below the grid, or sits left or right of the grid
+    // at a fixed width while the grid takes the rest.
+    private void LayoutRevisionInfo()
+    {
+        CommitInfoPosition position = _preferences.CommitInfoPosition;
+        ColumnDefinitions columns = RevisionsSplitGrid.ColumnDefinitions;
+        CommitInfoTab.Content = null;
+        RevisionInfoHost.Child = null;
+        bool below = position == CommitInfoPosition.BelowList;
+        if (below)
+        {
+            CommitInfoTab.Content = RevisionInfo;
+            CommitInfoTab.IsVisible = true;
+            DetailTabs.SelectedItem = CommitInfoTab;
+            columns[0].Width = GridLength.Star;
+            columns[1].Width = columns[2].Width = new GridLength(0);
+            Grid.SetColumn(RevisionGridContainer, 0);
         }
         else
         {
-            info.Height = _commitInfoHeight;
-            splitter.Height = new GridLength(5);
-            DetailTabs.IsVisible = true;
+            CommitInfoTab.IsVisible = false;
+            if (DetailTabs.SelectedItem == CommitInfoTab)
+            {
+                DetailTabs.SelectedItem = DiffTab;
+            }
+
+            RevisionInfoHost.Child = RevisionInfo;
+            bool right = position == CommitInfoPosition.RightwardFromList;
+            GridLength info = new(RevisionInfoWidth);
+            columns[0].Width = right ? GridLength.Star : info;
+            columns[1].Width = new GridLength(5);
+            columns[2].Width = right ? info : GridLength.Star;
+            Grid.SetColumn(RevisionGridContainer, right ? 0 : 2);
+            Grid.SetColumn(RevisionInfoHost, right ? 2 : 0);
+        }
+
+        RevisionInfoSplitter.IsVisible = RevisionInfoHost.IsVisible = !below;
+
+        // Upstream's RefreshLayoutToggleButtonStates: the button shows the chosen position's image and text.
+        MenuItem chosen = position switch
+        {
+            CommitInfoPosition.LeftwardFromList => CommitInfoLeftwardMenuItem,
+            CommitInfoPosition.RightwardFromList => CommitInfoRightwardMenuItem,
+            _ => CommitInfoBelowMenuItem,
+        };
+        CommitInfoPositionButton.Image = position switch
+        {
+            CommitInfoPosition.LeftwardFromList => "LayoutSidebarTopLeft",
+            CommitInfoPosition.RightwardFromList => "LayoutSidebarTopRight",
+            _ => "LayoutFooterTab",
+        };
+        ToolTip.SetTip(CommitInfoPositionButton, ((string)chosen.Header!).Replace("_", "", StringComparison.Ordinal));
+    }
+
+    // Upstream's FillUserShells: the installed terminals in the drop-down; the button opens the default one.
+    private void FillTerminals()
+    {
+        IReadOnlyList<TerminalChoice> choices = TerminalChoices.For(HostPlatform.Current,
+            Environment.GetEnvironmentVariable("TERMINAL"), PathUtil.TryFindShellPath);
+        MenuFlyout flyout = (MenuFlyout)TerminalButton.Flyout!;
+        flyout.Items.Clear();
+        foreach (TerminalChoice choice in choices)
+        {
+            MenuItem item = new() { Header = new TextBlock { Text = choice.Name }, Icon = UpstreamIcon(choice.Image) };
+            ToolTip.SetTip(item, choice.Name);
+            item.Click += (_, _) => OpenTerminal(choice);
+            flyout.Items.Add(item);
+        }
+
+        if (TerminalChoices.Default(choices, TerminalChoices.DefaultName) is { } terminal)
+        {
+            TerminalButton.Image = terminal.Image;
+            ToolTip.SetTip(TerminalButton, terminal.Name);
+            TerminalButton.Tag = terminal;
+        }
+
+        TerminalButton.IsVisible = choices.Count > 0;
+    }
+
+    // Upstream's userShell_Click: the terminal opens in the working directory.
+    private void OpenTerminal(TerminalChoice? terminal)
+    {
+        if (terminal is not null)
+        {
+            RunOnRepositoryFolder(path => new SystemTerminalLauncher(_launcher, terminal.Command).OpenTerminal(path));
         }
     }
 

@@ -23,6 +23,9 @@ public interface IRepositoryService
 ///  <see cref="IsBisecting"/> follow upstream's <c>GitModule.InTheMiddleOf*</c> checks: a <c>git am</c> session is a patch,
 ///  not a rebase, although both keep their state in rebase-apply.
 /// </summary>
+/// <param name="AheadBehind">Upstream's left panel ahead and behind texts (<c>AheadBehindData.ToDisplay</c>) by branch
+/// name: a local branch by its name, a remote branch tracked by one by its name with the remote ("origin/main").</param>
+/// <param name="RemoteUrls">The fetch URL of each remote, by its name.</param>
 public sealed record RepositorySnapshot(
     string? CurrentBranch,
     IReadOnlyList<BranchInfo> Branches,
@@ -36,7 +39,10 @@ public sealed record RepositorySnapshot(
     string? TrackingRemote = null,
     IReadOnlyList<SubmoduleInfo>? Submodules = null,
     bool IsApplyingPatch = false,
-    bool IsBisecting = false);
+    bool IsBisecting = false,
+    IReadOnlyDictionary<string, string>? AheadBehind = null,
+    IReadOnlyList<WorktreeInfo>? Worktrees = null,
+    IReadOnlyDictionary<string, string>? RemoteUrls = null);
 
 /// <summary>
 ///  Commits the current branch has that its upstream lacks (<see cref="Ahead"/>) and the reverse (<see cref="Behind"/>).

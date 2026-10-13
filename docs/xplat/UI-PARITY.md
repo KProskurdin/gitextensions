@@ -159,6 +159,16 @@ toolbar icons with upstream's `ToolTipText`.
   action, push ahead/behind text and "Commit (n)" state image; the working directory caption and the window title as
   upstream. Left: the terminal choice drop-down, the third layout toggle, the filter toolstrip's "Branches:" box and funnel
   buttons. See the "FormBrowse toolstrip" note in `PORTING-MAP.md`.
+- 2026-10-13, U2.1 done except toolstrip overflow: checked layout toggles (`ToolToggleButton`) with the split view kept in
+  upstream's `ShowSplitViewLayout`; the commit info position split button (below, left or right of the grid, upstream's
+  `CommitInfoPosition`); the terminal split button with upstream's shells (`TerminalChoices`); upstream's filter toolstrip
+  (advanced filter with its resets and summary, reflog, branch choice, "Branches:" and "Filter:" boxes with their type
+  menus, first parent). The new shell's "filter loaded commits" and "search history" boxes are gone, as upstream has
+  neither. See the "FilterToolBar" and "Terminals" notes in `PORTING-MAP.md`. Checked by screenshot (`XPLAT_SCREENSHOT`).
+- 2026-10-13, U2.2 done: the left panel is upstream's one tree with its six trees, images, bold current branch and
+  worktree, ahead/behind counts, the toolstrip of tree toggles, the search box, and upstream's context menu per node kind
+  (with stand-ins where upstream opens a window the new shell lacks: remotes, reset, stashes). The per-section buttons and
+  boxes are gone. See the "RepoObjectsTree" note in `PORTING-MAP.md`. Checked by screenshot.
 
 ## Risks
 

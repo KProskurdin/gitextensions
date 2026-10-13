@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Data.Converters;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using GitExtensions.Xplat.Ui;
@@ -203,6 +206,43 @@ public class ToolButton : Button
 }
 
 /// <summary>
+///  A toolstrip button that stays pressed while checked (upstream's <c>ToolStripButton</c> with <c>Checked</c>).
+/// </summary>
+public class ToolToggleButton : ToggleButton
+{
+    public static readonly StyledProperty<string?> ImageProperty =
+        AvaloniaProperty.Register<ToolToggleButton, string?>(nameof(Image));
+
+    public static readonly StyledProperty<string?> TextProperty =
+        AvaloniaProperty.Register<ToolToggleButton, string?>(nameof(Text));
+
+    public ToolToggleButton() => Classes.Add("tool");
+
+    public string? Image
+    {
+        get => GetValue(ImageProperty);
+        set => SetValue(ImageProperty, value);
+    }
+
+    public string? Text
+    {
+        get => GetValue(TextProperty);
+        set => SetValue(TextProperty, value);
+    }
+
+    protected override Type StyleKeyOverride => typeof(ToggleButton);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ImageProperty || change.Property == TextProperty)
+        {
+            Content = ToolStripContent.Build(Image, Text);
+        }
+    }
+}
+
+/// <summary>
 ///  A toolstrip drop-down button (upstream's <c>ToolStripDropDownButton</c>): the image and text open the flyout.
 /// </summary>
 public class ToolDropDownButton : DropDownButton
@@ -275,4 +315,32 @@ public class ToolSplitButton : SplitButton
             Content = ToolStripContent.Build(Image, Text);
         }
     }
+}
+
+/// <summary>
+///  Upstream's image by its resource name, for a binding (the left panel's node images).
+/// </summary>
+public sealed class UpstreamImageConverter : IValueConverter
+{
+    public static UpstreamImageConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => UpstreamImages.Named(value as string);
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>
+///  Bold for true, as upstream's tree nodes set <c>FontStyle.Bold</c> for the checked-out branch.
+/// </summary>
+public sealed class BoldConverter : IValueConverter
+{
+    public static BoldConverter Instance { get; } = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is true ? FontWeight.Bold : FontWeight.Normal;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
 }

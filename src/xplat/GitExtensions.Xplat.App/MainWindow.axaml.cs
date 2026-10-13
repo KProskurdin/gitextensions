@@ -57,7 +57,6 @@ public partial class MainWindow : Window
     private readonly IAppPreferences _preferences = AppServices.Preferences;
     private readonly IProcessLauncher _launcher = new SystemProcessLauncher();
     private readonly IFileManager _fileManager;
-    private readonly ITerminalLauncher _terminal;
     private CommitWindow? _commitWindow;
     private ProcessWindow? _processWindow;
     private GitActionBanner? _actionBanner;
@@ -85,16 +84,12 @@ public partial class MainWindow : Window
         _repository = new RepositoryViewModel(_repositoryService);
         _actions.EditorCommand = AppServices.EditorCommand;
         _fileManager = new SystemFileManager(_launcher, HostPlatform.Current);
-        _terminal = new SystemTerminalLauncher(_launcher,
-            TerminalCommand.Default(HostPlatform.Current, Environment.GetEnvironmentVariable("TERMINAL")));
         _plugins = new PluginHost(this, _actions, plugin => Run(() => ShowSettingsAsync(plugin, pluginsPage: true)),
             ShowCommitWindow);
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://GitExtensions/Assets/git-extensions-logo-256px.png")));
 
-        // The branch choice is upstream'"'"'s ShowCurrentBranchOnly; it is set before the toolbar reacts to changes.
-        BranchScopeBox.SelectedIndex = _preferences.ShowCurrentBranchOnly ? 1 : 0;
         ShowSortMenus();
         ShowGridTooltips();
         ShowAvatarSettings();
@@ -134,7 +129,7 @@ public partial class MainWindow : Window
     private string? RepositoryPath => _commits.RepositoryPath;
 
     // The branch of the node selected in the left panel; null for a group or folder node.
-    private BranchInfo? SelectedBranch => (BranchTreeView.SelectedItem as BranchTreeNode)?.Branch;
+    private BranchInfo? SelectedBranch => SelectedRepoObject?.Branch;
 
     private void WireToolbar()
     {
@@ -146,13 +141,9 @@ public partial class MainWindow : Window
             WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
                 () => _actions.PushTagsAsync(path, RemoteName)));
         OpenFolderButton.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
-        TerminalButton.Click += (_, _) => RunOnRepositoryFolder(path => _terminal.OpenTerminal(path));
         WireMainToolStrip();
-        FilterBox.TextChanged += (_, _) => _commits.FilterText = FilterBox.Text ?? "";
-        SearchBox.KeyDown += OnSearchKeyDown;
+        WireFilterToolStrip();
         LoadMoreButton.Click += (_, _) => Run(_commits.LoadMoreAsync);
-        BranchScopeBox.SelectionChanged += (_, _) => Run(ApplyBranchScopeAsync);
-        RevisionFilterButton.Click += (_, _) => Run(EditRevisionFilterAsync);
         ResolveConflictsButton.Click += (_, _) => ShowConflicts();
         ContinueActionButton.Click += (_, _) => ContinueAction();
         AbortActionButton.Click += (_, _) => AbortAction();
@@ -171,7 +162,7 @@ public partial class MainWindow : Window
         ExitMenuItem.Click += (_, _) => Close();
         RefreshMenuItem.Click += (_, _) => RefreshRepository();
         FileExplorerMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
-        TerminalMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => _terminal.OpenTerminal(path));
+        TerminalMenuItem.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         FilesMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
         ReflogMenuItem.Click += (_, _) => Run(ShowReflogAsync);
         GitIgnoreMenuItem.Click += (_, _) => Run(EditGitIgnoreAsync);
@@ -217,44 +208,7 @@ public partial class MainWindow : Window
 
     private void WireLeftPanel()
     {
-        BranchTreeView.SelectionChanged += (_, _) => UpdateBusyState();
-        BranchTreeView.DoubleTapped += (_, _) => CheckoutSelectedBranch();
-
-        // As upstream's branch dialogs, the name is fixed up when the box is left.
-        NewBranchBox.LostFocus += (_, _) => NewBranchBox.Text = NormaliseBranchName(NewBranchBox.Text ?? "");
-        CheckoutButton.Click += (_, _) => CheckoutSelectedBranch();
-        MergeButton.Click += (_, _) => MergeSelectedBranch();
-        RebaseButton.Click += (_, _) => RebaseOnSelectedBranch();
-        DeleteBranchButton.Click += (_, _) => DeleteSelectedBranch();
-        ForceDeleteBranchButton.Click += (_, _) => Run(ForceDeleteBranchAsync);
-        CreateBranchButton.Click += (_, _) => Run(CreateBranchAsync);
-        CreateBranchAtCommitButton.Click += (_, _) => Run(CreateBranchAtCommitAsync);
-        RenameBranchButton.Click += (_, _) => Run(RenameBranchAsync);
-        TagList.SelectionChanged += (_, _) => UpdateBusyState();
-        CreateTagButton.Click += (_, _) => Run(CreateTagAsync);
-        DeleteTagButton.Click += (_, _) => RunOnSelectedTag((path, tag) => _actions.DeleteTagAsync(path, tag));
-        StashList.SelectionChanged += (_, _) => UpdateBusyState();
-        StashButton.Click += (_, _) => Run(() => StashAsync());
-        ApplyStashButton.Click += (_, _) =>
-            RunOnSelectedStash((path, stash) => _actions.ApplyStashAsync(path, stash.Name));
-        PopStashButton.Click += (_, _) => RunOnSelectedStash((path, stash) => _actions.PopStashAsync(path, stash.Name));
-        DropStashButton.Click += (_, _) => RunOnSelectedStash(async (path, stash) =>
-            await ConfirmAsync(Confirmation.StashDrop, Confirmations.StashDropQuestion, "Drop",
-                "Drop Stash Confirmation")
-            && await _actions.DropStashAsync(path, stash.Name));
-        StashDiffButton.Click += (_, _) => ShowStashDiff();
-        RemoteList.SelectionChanged += (_, _) => UpdateBusyState();
-        SubmoduleList.SelectionChanged += (_, _) => UpdateBusyState();
-        OpenSubmoduleButton.Click += (_, _) => OpenSelectedSubmodule();
-        UpdateSubmoduleButton.Click += (_, _) =>
-            RunOnSelectedSubmodule((path, submodule) => UpdateSubmodulesAsync(path, submodule.Path));
-        UpdateSubmodulesButton.Click += (_, _) => RunOnRepository(path => UpdateSubmodulesAsync(path, null));
-        SyncSubmodulesButton.Click += (_, _) => RunOnRepository(path => _actions.SyncSubmodulesAsync(path, path: null));
-        AddRemoteButton.Click += (_, _) => Run(AddRemoteAsync);
-        RemoveRemoteButton.Click += (_, _) => RunOnSelectedRemote(RemoveRemoteAfterConfirmAsync);
-        RenameRemoteButton.Click += (_, _) => RunOnSelectedRemote(RenameRemoteAsync);
-        SetRemoteUrlButton.Click += (_, _) => RunOnSelectedRemote(SetRemoteUrlAsync);
-        DeleteRemoteTagButton.Click += (_, _) => RunOnSelectedTag(DeleteRemoteTagAfterConfirmAsync);
+        WireRepoObjectsTree();
         RecentList.DoubleTapped += (_, _) => OpenSelectedRecent();
         RecentList.KeyDown += (_, e) =>
         {
@@ -465,7 +419,7 @@ public partial class MainWindow : Window
 
         if (IsWithin(e.Source, BranchTreeView) && Hotkeys.LeftPanel.Match(e) is LeftPanelCommand.Delete)
         {
-            DeleteSelectedBranch();
+            DeleteSelectedRepoObject();
             e.Handled = true;
             return;
         }
@@ -519,13 +473,22 @@ public partial class MainWindow : Window
                 Fetch();
                 break;
             case BrowseCommand.Terminal:
-                RunOnRepositoryFolder(path => _terminal.OpenTerminal(path));
+                OpenTerminal(TerminalButton.Tag as TerminalChoice);
                 break;
             case BrowseCommand.Settings:
                 Run(() => ShowSettingsAsync());
                 break;
             case BrowseCommand.FocusFilter:
-                FilterBox.Focus();
+                // Upstream's FilterToolBar.SetFocus: the "Filter:" box, or from there the "Branches:" box.
+                if (RevisionFilterBox.IsKeyboardFocusWithin)
+                {
+                    BranchFilterBox.Focus();
+                }
+                else
+                {
+                    RevisionFilterBox.Focus();
+                }
+
                 break;
             case BrowseCommand.FocusRevisionGrid:
                 CommitList.Focus();
@@ -570,14 +533,13 @@ public partial class MainWindow : Window
                 Run(EditRevisionFilterAsync);
                 return true;
             case GridCommand.ResetRevisionFilter:
-                Run(() => ApplyRevisionFilterAsync(
-                    new RevisionFilter(CurrentBranchOnly: _commits.Filter.CurrentBranchOnly)));
+                ApplyFilter(_commits.Filter.ResetAll());
                 return true;
             case GridCommand.ShowAllBranches:
-                BranchScopeBox.SelectedIndex = 0;
+                ShowBranches(currentOnly: false, filtered: false);
                 return true;
             case GridCommand.ShowCurrentBranchOnly:
-                BranchScopeBox.SelectedIndex = 1;
+                ShowBranches(currentOnly: true, filtered: false);
                 return true;
             case GridCommand.ToggleHideMergeCommits:
                 Run(() => ApplyRevisionFilterAsync(_commits.Filter with { NoMerges = !_commits.Filter.NoMerges }));
@@ -625,18 +587,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ApplyBranchScopeAsync()
-    {
-        bool currentOnly = BranchScopeBox.SelectedIndex == 1;
-        if (currentOnly == _commits.Filter.CurrentBranchOnly)
-        {
-            return;
-        }
-
-        _preferences.ShowCurrentBranchOnly = currentOnly;
-        await _commits.ApplyFilterAsync(_commits.Filter with { CurrentBranchOnly = currentOnly });
-    }
-
     private async Task EditRevisionFilterAsync()
     {
         if (await new FilterWindow(_commits.Filter).ShowDialog<RevisionFilter?>(this) is { } filter)
@@ -645,21 +595,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ApplyRevisionFilterAsync(RevisionFilter filter)
-    {
-        await _commits.ApplyFilterAsync(filter);
-        RevisionFilterButton.Content = filter.IsNarrowed ? "Filter (on)..." : "Filter...";
-    }
-
-    // Enter runs the search over the whole history; an empty box shows the first page again.
-    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            e.Handled = true;
-            Run(() => _commits.SearchAsync(SearchBox.Text ?? ""));
-        }
-    }
+    private Task ApplyRevisionFilterAsync(RevisionFilter filter) => _commits.ApplyFilterAsync(filter);
 
     private async Task OpenRepositoryAsync(string path)
     {
@@ -1328,43 +1264,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CreateBranchAtCommitAsync()
-    {
-        if (RepositoryPath is { } path && _commits.Selected is { } row &&
-            await _actions.CreateBranchAsync(path, NormaliseBranchName(NewBranchBox.Text ?? ""), checkout: true,
-                row.Hash))
-        {
-            NewBranchBox.Text = "";
-        }
-    }
-
-    // Git refuses to delete a branch with commits that are not merged; this deletes it anyway after upstream's question
-    // (unless the user turned it off, as in upstream's FormDeleteBranch).
-    private async Task ForceDeleteBranchAsync()
-    {
-        if (RepositoryPath is not { } path || SelectedBranch is not BranchInfo branch || branch.IsRemote ||
-            branch.IsCurrent)
-        {
-            return;
-        }
-
-        if (await ConfirmAsync(Confirmation.DeleteUnmergedBranch, Confirmations.DeleteUnmergedBranchQuestion,
-                "Force delete", "Delete Confirmation"))
-        {
-            await _actions.DeleteBranchAsync(path, branch.Name, force: true);
-        }
-    }
-
-    private async Task AddRemoteAsync()
-    {
-        if (RepositoryPath is { } path &&
-            await _actions.AddRemoteAsync(path, NewRemoteNameBox.Text ?? "", NewRemoteUrlBox.Text ?? ""))
-        {
-            NewRemoteNameBox.Text = "";
-            NewRemoteUrlBox.Text = "";
-        }
-    }
-
     // Removing a remote also deletes its remote-tracking branches, so it is confirmed first.
     private async Task<bool> RemoveRemoteAfterConfirmAsync(string path, string name)
     {
@@ -1402,24 +1301,6 @@ public partial class MainWindow : Window
                await _actions.DeleteRemoteTagAsync(path, remote, tag);
     }
 
-    private void RunOnSelectedRemote(Func<string, string, Task<bool>> action)
-    {
-        if (RepositoryPath is { } path && RemoteList.SelectedItem is string name)
-        {
-            Run(() => action(path, name));
-        }
-    }
-
-    // Renames the selected local branch to the name in the box; the checked-out branch can be renamed too.
-    private async Task RenameBranchAsync()
-    {
-        if (RepositoryPath is { } path && SelectedBranch is BranchInfo { IsRemote: false } branch &&
-            await _actions.RenameBranchAsync(path, branch.Name, NormaliseBranchName(NewBranchBox.Text ?? "")))
-        {
-            NewBranchBox.Text = "";
-        }
-    }
-
     // Aborting drops whatever was resolved by hand, so it is confirmed first.
     private void AbortAfterConfirm(string operation, Func<string, Task<bool>> abort)
     {
@@ -1448,24 +1329,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CreateBranchAsync()
-    {
-        if (RepositoryPath is { } path &&
-            await _actions.CreateBranchAsync(path, NormaliseBranchName(NewBranchBox.Text ?? ""), checkout: true))
-        {
-            NewBranchBox.Text = "";
-        }
-    }
-
-    // The whole stash, not one file: a stash is a commit that git shows as a diff.
-    private void ShowStashDiff()
-    {
-        if (RepositoryPath is { } path && StashList.SelectedItem is StashInfo stash)
-        {
-            new DiffWindow(path, stash.Name, filePath: null, staged: false).Show(this);
-        }
-    }
-
     private void RunOnRepository(Func<string, Task<bool>> action)
     {
         if (RepositoryPath is { } path)
@@ -1491,40 +1354,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // As upstream's left panel, a submodule opens as a repository of its own in the browse window.
-    private void OpenSelectedSubmodule()
-    {
-        if (RepositoryPath is { } path && SubmoduleList.SelectedItem is SubmoduleInfo { IsInitialized: true } submodule)
-        {
-            string submodulePath = Path.GetFullPath(Path.Combine(path, submodule.Path));
-            Run(() => OpenRepositoryAsync(submodulePath));
-        }
-    }
-
-    private void RunOnSelectedSubmodule(Func<string, SubmoduleInfo, Task<bool>> action)
-    {
-        if (RepositoryPath is { } path && SubmoduleList.SelectedItem is SubmoduleInfo submodule)
-        {
-            Run(() => action(path, submodule));
-        }
-    }
-
-    private void RunOnSelectedStash(Func<string, StashInfo, Task<bool>> action)
-    {
-        if (RepositoryPath is { } path && StashList.SelectedItem is StashInfo stash)
-        {
-            Run(() => action(path, stash));
-        }
-    }
-
-    private void RunOnSelectedTag(Func<string, string, Task<bool>> action)
-    {
-        if (RepositoryPath is { } path && TagList.SelectedItem is string tag)
-        {
-            Run(() => action(path, tag));
-        }
-    }
-
     // Cherry-pick, revert and reset act on the commit selected in the list.
     private void RunOnSelectedCommit(Func<string, CommitRow, Task<bool>> action)
     {
@@ -1540,7 +1369,7 @@ public partial class MainWindow : Window
     {
         if (!branch.IsRemote)
         {
-            return await _actions.DeleteBranchAsync(path, branch.Name, force: false);
+            return await DeleteLocalBranchesAsync(path, [branch.Name]);
         }
 
         int separator = branch.Name.IndexOf('/');
@@ -1557,18 +1386,6 @@ public partial class MainWindow : Window
         }
 
         return await _actions.DeleteRemoteBranchAsync(path, branch.Name[..separator], branch.Name[(separator + 1)..]);
-    }
-
-    // A tag goes on the selected commit, or on HEAD when no commit is selected.
-    private async Task CreateTagAsync()
-    {
-        if (RepositoryPath is { } path &&
-            await _actions.CreateTagAsync(path, NewTagBox.Text ?? "", _commits.Selected?.Hash ?? "HEAD",
-                TagMessageBox.Text ?? ""))
-        {
-            NewTagBox.Text = "";
-            TagMessageBox.Text = "";
-        }
     }
 
     private void OnActionsChanged(string? propertyName)
@@ -1618,6 +1435,9 @@ public partial class MainWindow : Window
             case nameof(CommitListViewModel.Status):
                 StatusText.Text = _commits.Status;
                 break;
+            case nameof(CommitListViewModel.Filter):
+                ShowFilterState();
+                break;
             case nameof(CommitListViewModel.RepositoryName):
                 UpdateTitle();
                 break;
@@ -1656,33 +1476,27 @@ public partial class MainWindow : Window
                 UpdateStateBanner();
                 UpdateBusyState();
                 break;
-            case nameof(RepositoryViewModel.Branches):
-                BranchTreeView.ItemsSource = BranchTree.Build(_repository.Branches, RefSorting());
-                UpdateBusyState();
-                break;
             case nameof(RepositoryViewModel.Changes):
                 UpdateCommitButton();
                 UpdateStateBanner();
                 ShowArtificialChangeCounts();
                 break;
             case nameof(RepositoryViewModel.Stashes):
-                StashList.ItemsSource = _repository.Stashes;
                 UpdateBranchText();
                 UpdateBusyState();
                 break;
-            case nameof(RepositoryViewModel.Tags):
-                TagList.ItemsSource = _repository.Tags;
-                break;
+            case nameof(RepositoryViewModel.Branches):
             case nameof(RepositoryViewModel.Submodules):
-                SubmoduleList.ItemsSource = _repository.Submodules;
-                SubmodulesExpander.IsVisible = _repository.Submodules.Count > 0;
-                UpdateBusyState();
-                break;
             case nameof(RepositoryViewModel.Remotes):
-                RemoteList.ItemsSource = _repository.Remotes;
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.IsLoading):
+                // The left panel is built once the whole snapshot is read (upstream refills its trees after a refresh).
+                if (!_repository.IsLoading)
+                {
+                    ShowRepoObjects();
+                }
+
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.ErrorMessage):
@@ -1817,8 +1631,7 @@ public partial class MainWindow : Window
         RecentList.IsEnabled = !busy && gitAvailable;
         CloseRepositoryMenuItem.IsEnabled = open;
         RefreshButton.IsEnabled = open;
-        RevisionFilterButton.IsEnabled = open;
-        BranchScopeBox.IsEnabled = !busy;
+        FilterToolStrip.IsEnabled = open;
         RefreshMenuItem.IsEnabled = open;
         LoadMoreButton.IsEnabled = !busy;
         CommitDialogButton.IsEnabled = open;
@@ -1844,18 +1657,9 @@ public partial class MainWindow : Window
         ResolveConflictsButton.IsEnabled = open;
         UpdateToolStrip(busy, open);
 
-        CreateBranchButton.IsEnabled = open;
         CreateBranchMenuItem.IsEnabled = open;
-        CreateBranchAtCommitButton.IsEnabled = commitSelected;
-        CheckoutButton.IsEnabled = open && SelectedBranch is BranchInfo { IsCurrent: false };
-        RenameBranchButton.IsEnabled = open && SelectedBranch is BranchInfo { IsRemote: false };
-        DeleteBranchButton.IsEnabled = open && SelectedBranch is BranchInfo { IsCurrent: false };
-        ForceDeleteBranchButton.IsEnabled =
-            open && SelectedBranch is BranchInfo { IsRemote: false, IsCurrent: false };
         bool branchSelected = open && SelectedBranch is BranchInfo { IsCurrent: false };
-        MergeButton.IsEnabled = branchSelected;
         MergeMenuItem.IsEnabled = branchSelected;
-        RebaseButton.IsEnabled = branchSelected;
         RebaseMenuItem.IsEnabled = branchSelected;
         ContinueActionButton.IsEnabled = open;
         AbortActionButton.IsEnabled = open;
@@ -1868,27 +1672,9 @@ public partial class MainWindow : Window
         BisectSkipMenuItem.IsEnabled = commitSelected;
         StopBisectMenuItem.IsEnabled = open;
 
-        StashButton.IsEnabled = open;
         StashMenuItem.IsEnabled = open;
         StashPopMenuItem.IsEnabled = open && _repository.Stashes.Count > 0;
-        bool stashSelected = open && StashList.SelectedItem is not null;
-        ApplyStashButton.IsEnabled = stashSelected;
-        PopStashButton.IsEnabled = stashSelected;
-        DropStashButton.IsEnabled = stashSelected;
-        StashDiffButton.IsEnabled = stashSelected;
-        CreateTagButton.IsEnabled = open;
         CreateTagMenuItem.IsEnabled = open;
-        DeleteTagButton.IsEnabled = open && TagList.SelectedItem is not null;
-        AddRemoteButton.IsEnabled = open;
-        RemoveRemoteButton.IsEnabled = open && RemoteList.SelectedItem is string;
-        bool submoduleSelected = open && SubmoduleList.SelectedItem is SubmoduleInfo;
-        OpenSubmoduleButton.IsEnabled = SubmoduleList.SelectedItem is SubmoduleInfo { IsInitialized: true } && open;
-        UpdateSubmoduleButton.IsEnabled = submoduleSelected;
-        UpdateSubmodulesButton.IsEnabled = open;
-        SyncSubmodulesButton.IsEnabled = open;
-        RenameRemoteButton.IsEnabled = open && RemoteList.SelectedItem is string;
-        SetRemoteUrlButton.IsEnabled = open && RemoteList.SelectedItem is string;
-        DeleteRemoteTagButton.IsEnabled = open && TagList.SelectedItem is not null && _repository.Remotes.Count > 0;
 
         CherryPickMenuItem.IsEnabled = commitSelected;
         RevertMenuItem.IsEnabled = commitSelected;
@@ -1905,13 +1691,13 @@ public partial class MainWindow : Window
         CopyMessageMenuItem.IsEnabled = commitSelected;
     }
 
+    // Upstream's StashSave from the toolbar, menu and left panel: no message, untracked files as upstream's
+    // includeUntrackedFilesInManualStash says.
     private async Task StashAsync()
     {
-        if (RepositoryPath is { } path &&
-            await _actions.StashAsync(path, StashMessageBox.Text ?? "", IncludeUntrackedCheck.IsChecked == true,
-                KeepIndexCheck.IsChecked == true))
+        if (RepositoryPath is { } path)
         {
-            StashMessageBox.Text = "";
+            await _actions.StashAsync(path, "", _preferences.IncludeUntrackedFilesInManualStash, keepIndex: false);
         }
     }
 

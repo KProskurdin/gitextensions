@@ -2,13 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Upstream's hotkeys of the Diff tab's file list (<c>RevisionDiffControl</c>, section "BrowseDiff") and of the stash window
-///  (<c>FormStash</c>, section "Stash", here the left panel's stash list), for the commands the new shell has.
+///  (<c>FormStash</c>, section "Stash", here on the left panel's stashes), for the commands the new shell has.
 /// </summary>
 public partial class MainWindow
 {
@@ -20,7 +21,8 @@ public partial class MainWindow
             return RunBrowseDiffHotkey(diffCommand);
         }
 
-        if (IsWithin(e.Source, StashList) && Hotkeys.Stash.Match(e) is { } stashCommand)
+        if (IsWithin(e.Source, BranchTreeView) && SelectedRepoObject is { Kind: RepoObjectKind.Stash }
+                                               && Hotkeys.Stash.Match(e) is { } stashCommand)
         {
             return RunStashHotkey(stashCommand);
         }
@@ -105,16 +107,31 @@ public partial class MainWindow
         }
     }
 
+    // The stash below or above the selected one in the left panel's Stashes tree.
+    private bool SelectNeighbourStash(bool next)
+    {
+        if (SelectedRepoObject is not { } stash
+            || _repoObjects.FirstOrDefault(root => root.Kind == RepoObjectKind.StashesRoot) is not { } stashes)
+        {
+            return false;
+        }
+
+        int index = stashes.Children.IndexOf(stash) + (next ? 1 : -1);
+        if (index < 0 || index >= stashes.Children.Count)
+        {
+            return false;
+        }
+
+        BranchTreeView.SelectedItem = stashes.Children[index];
+        return true;
+    }
+
     private bool RunStashHotkey(StashCommand command)
     {
         switch (command)
         {
-            case StashCommand.NextStash when StashList.SelectedIndex + 1 < StashList.ItemCount:
-                StashList.SelectedIndex++;
-                return true;
-            case StashCommand.PreviousStash when StashList.SelectedIndex > 0:
-                StashList.SelectedIndex--;
-                return true;
+            case StashCommand.NextStash or StashCommand.PreviousStash:
+                return SelectNeighbourStash(command == StashCommand.NextStash);
             case StashCommand.Refresh:
                 RefreshRepository();
                 return true;

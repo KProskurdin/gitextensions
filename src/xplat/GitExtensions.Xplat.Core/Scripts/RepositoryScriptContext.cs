@@ -1,6 +1,7 @@
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.UserRepositoryHistory;
+using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtUtils;
 using GitUIPluginInterfaces;
@@ -74,10 +75,12 @@ public sealed class RepositoryScriptContext : IScriptContext
         => Task.Run(() =>
         {
             GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
-            string hash = module.GitExecutable
-                .GetOutput(new GitArgumentBuilder("rev-parse") { "--verify", "-q", $"{target}^{{commit}}".Quote() })
-                .Trim();
-            return hash.Length == 0 ? null : hash;
+            // rev-parse --verify exits with 1 when the target names no commit.
+            ExecutionResult result = module.GitExecutable.Execute(
+                new GitArgumentBuilder("rev-parse") { "--verify", "-q", $"{target}^{{commit}}".Quote() },
+                throwOnErrorExit: false);
+            string hash = result.StandardOutput.Trim();
+            return result.ExitCode != ExecutionResult.Success || hash.Length == 0 ? null : hash;
         });
 
     public Task<string> ChooseAsync(IReadOnlyList<string> options) => _choose(options);

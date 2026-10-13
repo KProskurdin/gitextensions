@@ -33,6 +33,8 @@ internal sealed class MainWindowTests
         TestAppBuilder.Preferences.ThemeVariations = [];
         TestAppBuilder.Preferences.ShowCurrentBranchOnly = false;
         TestAppBuilder.Preferences.SerializedHotkeys = null;
+        TestAppBuilder.Preferences.CommitInfoPosition = CommitInfoPosition.BelowList;
+        TestAppBuilder.Preferences.ShowSplitViewLayout = true;
         TestAppBuilder.Preferences.ResetConfirmations();
         TestAppBuilder.Preferences.ResetDiffOptions();
         Hotkeys.Load(null);
@@ -165,11 +167,11 @@ internal sealed class MainWindowTests
         ListBox commits = Find<ListBox>(window, "CommitList");
         commits.ItemCount.Should().Be(3);
 
-        Find<ComboBox>(window, "BranchScopeBox").SelectedIndex = 1;
+        Click(window, "ShowBranchesCurrentMenuItem");
         WaitUntil(() => commits.ItemCount == 2);
         TestAppBuilder.Preferences.ShowCurrentBranchOnly.Should().BeTrue();
 
-        Click(window, "RevisionFilterButton");
+        Click(window, "AdvancedFilterButton");
         WaitUntil(() => window.OwnedWindows.OfType<FilterWindow>().Any());
         FilterWindow filter = window.OwnedWindows.OfType<FilterWindow>().Single();
         Find<TextBox>(filter, "MessageBox").Text = "FIRST";
@@ -239,20 +241,85 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void The_selected_commit_stays_selected_while_the_quick_filter_still_shows_it()
+    public void Filter_box_filters_by_the_checked_kinds_on_Enter_and_remembers_the_text()
     {
+        TestAppBuilder.Preferences.RevisionFilterDropdowns = [];
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
         ListBox commits = Find<ListBox>(window, "CommitList");
-        commits.SelectedIndex = 1;
-        WaitUntil(() => Find<SelectableTextBlock>(window, "DetailMessage").Text == "first");
+        ComboBox box = Find<ComboBox>(window, "RevisionFilterBox");
 
-        Find<TextBox>(window, "FilterBox").Text = "fir";
+        box.Text = "FIR";
+        PressIn(box, Key.Enter, KeyModifiers.None);
 
         WaitUntil(() => commits.ItemCount == 1);
-        ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");
-        WaitUntil(() => Find<SelectableTextBlock>(window, "DetailMessage").Text == "first");
+        ((CommitListItem)commits.Items[0]!).Row.Subject.Should().Be("first");
+        TestAppBuilder.Preferences.RevisionFilterDropdowns.Should().Equal("FIR");
+        Find<ToolSplitButton>(window, "AdvancedFilterButton").Image.Should().Be("FunnelExclamation");
+        ToolTip.GetTip(Find<ToolSplitButton>(window, "AdvancedFilterButton")).Should().Be("Message: FIR");
+
+        // Upstream's revisionFilterBox_CheckedChanged: another kind applies the text again, here by author only.
+        Click(window, "AuthorFilterMenuItem");
+        Click(window, "CommitFilterMenuItem");
+
+        WaitUntil(() => commits.ItemCount == 0);
+        Find<MenuItem>(window, "AuthorFilterMenuItem").IsChecked.Should().BeTrue();
+        Find<MenuItem>(window, "CommitFilterMenuItem").IsChecked.Should().BeFalse();
+
+        Click(window, "ResetRevisionFiltersMenuItem");
+
+        WaitUntil(() => commits.ItemCount == 2);
+        box.Text.Should().BeEmpty();
+        Find<ToolSplitButton>(window, "AdvancedFilterButton").Image.Should().Be("FunnelPencil");
+    }
+
+    [AvaloniaTest]
+    public void Branches_box_shows_the_filtered_branches_and_leaves_out_words_that_are_no_revision()
+    {
+        string baseBranch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("checkout", "-q", "-b", "side");
+        File.WriteAllText(Path.Combine(_repo.Path, "s.txt"), "x");
+        _repo.Run("add", "s.txt");
+        _repo.Run("commit", "-q", "-m", "side work");
+        _repo.Run("checkout", "-q", baseBranch);
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        Click(window, "ShowBranchesCurrentMenuItem");
+        WaitUntil(() => commits.ItemCount == 2);
+        AutoCompleteBox branches = Find<AutoCompleteBox>(window, "BranchFilterBox");
+
+        branches.Text = "side no-such-ref";
+        branches.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.Enter });
+
+        WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
+        MessageBoxWindow warning = window.OwnedWindows.OfType<MessageBoxWindow>().Single();
+        warning.Title.Should().Be("Git revision does not exist");
+        warning.Close();
+        WaitUntil(() => commits.ItemCount == 3);
+        commits.Items.Cast<CommitListItem>().Select(item => item.Row.Subject).Should()
+            .Equal("side work", "second", "first");
+        Find<ToolSplitButton>(window, "ShowBranchesButton").Text.Should().Be("Filtered branches");
+        TestAppBuilder.Preferences.ShowCurrentBranchOnly.Should().BeFalse();
+        branches.Text.Should().Be("side");
+    }
+
+    [AvaloniaTest]
+    public void First_parent_and_reflog_buttons_toggle_their_filters()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+
+        Click(window, "ShowFirstParentButton");
+        Click(window, "ShowReflogButton");
+
+        WaitUntil(() => Find<ToolToggleButton>(window, "ShowFirstParentButton").IsChecked == true);
+        WaitUntil(() => Find<ToolToggleButton>(window, "ShowReflogButton").IsChecked == true);
+        ToolTip.GetTip(Find<ToolSplitButton>(window, "AdvancedFilterButton")).Should()
+            .Be(string.Join(Environment.NewLine, "Show only first parent", "Show reflog"));
     }
 
     [AvaloniaTest]
@@ -297,12 +364,63 @@ internal sealed class MainWindowTests
     {
         MainWindow window = NewWindow();
         Find<Button>(window, "OpenFolderButton").IsEnabled.Should().BeFalse();
-        Find<Button>(window, "TerminalButton").IsEnabled.Should().BeFalse();
+        Find<SplitButton>(window, "TerminalButton").IsEnabled.Should().BeFalse();
 
         Open(window, _repo.Path);
 
         Find<Button>(window, "OpenFolderButton").IsEnabled.Should().BeTrue();
-        Find<Button>(window, "TerminalButton").IsEnabled.Should().BeTrue();
+        Find<SplitButton>(window, "TerminalButton").IsEnabled.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void CommitInfoPosition_should_move_the_commit_info_beside_the_grid_and_back_into_the_first_tab()
+    {
+        MainWindow window = NewWindow();
+        Grid revisionInfo = Find<Grid>(window, "RevisionInfo");
+        Border host = Find<Border>(window, "RevisionInfoHost");
+
+        Click(window, "CommitInfoRightwardMenuItem");
+
+        TestAppBuilder.Preferences.CommitInfoPosition.Should().Be(CommitInfoPosition.RightwardFromList);
+        host.Child.Should().BeSameAs(revisionInfo);
+        host.IsVisible.Should().BeTrue();
+        Grid.GetColumn(host).Should().Be(2);
+        Grid.GetColumn(Find<Grid>(window, "RevisionGridContainer")).Should().Be(0);
+        Find<TabItem>(window, "CommitInfoTab").IsVisible.Should().BeFalse();
+        ToolTip.GetTip(Find<ToolSplitButton>(window, "CommitInfoPositionButton")).Should()
+            .Be("Commit info right of graph");
+
+        Click(window, "CommitInfoLeftwardMenuItem");
+
+        Grid.GetColumn(host).Should().Be(0);
+        Grid.GetColumn(Find<Grid>(window, "RevisionGridContainer")).Should().Be(2);
+
+        // The button itself moves on to the next position, as upstream's: left, then right, then below.
+        Click(window, "CommitInfoPositionButton");
+        Click(window, "CommitInfoPositionButton");
+
+        TestAppBuilder.Preferences.CommitInfoPosition.Should().Be(CommitInfoPosition.BelowList);
+        Find<TabItem>(window, "CommitInfoTab").Content.Should().BeSameAs(revisionInfo);
+        Find<TabItem>(window, "CommitInfoTab").IsVisible.Should().BeTrue();
+        host.IsVisible.Should().BeFalse();
+    }
+
+    [AvaloniaTest]
+    public void ToggleSplitViewButton_should_hide_the_tabs_below_the_grid_and_remember_it()
+    {
+        MainWindow window = NewWindow();
+        Find<ToolToggleButton>(window, "ToggleSplitViewButton").IsChecked.Should().BeTrue();
+
+        Click(window, "ToggleSplitViewButton");
+
+        Find<TabControl>(window, "DetailTabs").IsVisible.Should().BeFalse();
+        Find<ToolToggleButton>(window, "ToggleSplitViewButton").IsChecked.Should().BeFalse();
+        TestAppBuilder.Preferences.ShowSplitViewLayout.Should().BeFalse();
+
+        Click(window, "ToggleSplitViewButton");
+
+        Find<TabControl>(window, "DetailTabs").IsVisible.Should().BeTrue();
+        TestAppBuilder.Preferences.ShowSplitViewLayout.Should().BeTrue();
     }
 
     [AvaloniaTest]
@@ -470,8 +588,8 @@ internal sealed class MainWindowTests
         WaitUntil(() => BranchNode(branches, "feature") is not null);
 
         branches.SelectedItem = BranchNode(branches, "feature");
-        Find<Button>(window, "MergeButton").IsEnabled.Should().BeTrue();
-        Click(window, "MergeButton");
+        Find<MenuItem>(window, "MergeMenuItem").IsEnabled.Should().BeTrue();
+        Click(window, "TreeMergeMenuItem");
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Merged feature");
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
@@ -494,7 +612,7 @@ internal sealed class MainWindowTests
             Find<ToolButton>(window, "CommitDialogButton").Text == "Commit (1)");
         branches.SelectedItem = BranchNode(branches, "other");
 
-        Click(window, "CheckoutButton");
+        Click(window, "TreeCheckoutMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<CheckoutWindow>().Any());
         CheckoutWindow dialog = window.OwnedWindows.OfType<CheckoutWindow>().Single();
         Find<RadioButton>(dialog, "StashRadio").IsChecked = true;
@@ -538,16 +656,16 @@ internal sealed class MainWindowTests
         ToolButton commit = Find<ToolButton>(window, "CommitDialogButton");
         WaitUntil(() => commit.Text == "Commit (1)");
 
-        Find<TextBox>(window, "StashMessageBox").Text = "wip";
-        Click(window, "StashButton");
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        tree.SelectedItem = Root(tree, RepoObjectKind.StashesRoot);
+        Click(window, "TreeStashAllMenuItem");
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Stashed");
         WaitUntil(() => commit.Text == "Commit");
-        _repo.Run("stash", "list").Should().Contain("wip");
+        _repo.Run("stash", "list").Should().Contain("stash@{0}");
 
-        ListBox stashes = Find<ListBox>(window, "StashList");
-        WaitUntil(() => stashes.ItemCount == 1);
-        stashes.SelectedIndex = 0;
-        Click(window, "PopStashButton");
+        WaitUntil(() => Root(tree, RepoObjectKind.StashesRoot)?.Children.Count == 1);
+        tree.SelectedItem = Root(tree, RepoObjectKind.StashesRoot)!.Children[0];
+        Click(window, "TreePopStashMenuItem");
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Stash popped");
         WaitUntil(() => commit.Text == "Commit (1)");
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("changed");
@@ -565,8 +683,8 @@ internal sealed class MainWindowTests
         Click(window, "RefreshButton");
 
         WaitUntil(() => BranchNode(branches, "team/external") is not null);
-        ((IReadOnlyList<BranchTreeNode>)branches.ItemsSource!)[0].Children.Should()
-            .Contain(node => node.Display == "team (1)");
+        ((IReadOnlyList<RepoObjectNode>)branches.ItemsSource!)[0].Children.Should()
+            .Contain(node => node.Kind == RepoObjectKind.Folder && node.Text == "team");
     }
 
     [AvaloniaTest]
@@ -611,17 +729,21 @@ internal sealed class MainWindowTests
     public void Create_and_delete_a_tag_from_the_window()
     {
         MainWindow window = NewWindow();
+        window.Show();
         Open(window, _repo.Path);
-        ListBox tags = Find<ListBox>(window, "TagList");
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
 
-        Find<TextBox>(window, "NewTagBox").Text = "v1.0";
-        Click(window, "CreateTagButton");
-        WaitUntil(() => tags.ItemCount == 1);
+        Click(window, "CreateTagMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
+        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
+        Find<TextBox>(prompt, "ValueBox").Text = "v1.0";
+        Click(prompt, "OkButton");
+        WaitUntil(() => Root(tree, RepoObjectKind.TagsRoot)?.Children.Count == 1);
         _repo.Run("tag", "--list").Trim().Should().Be("v1.0");
 
-        tags.SelectedIndex = 0;
-        Click(window, "DeleteTagButton");
-        WaitUntil(() => tags.ItemCount == 0);
+        tree.SelectedItem = Root(tree, RepoObjectKind.TagsRoot)!.Children[0];
+        Click(window, "TreeDeleteMenuItem");
+        WaitUntil(() => Root(tree, RepoObjectKind.TagsRoot)?.Children.Count == 0);
         _repo.Run("tag", "--list").Trim().Should().BeEmpty();
     }
 
@@ -1058,11 +1180,11 @@ internal sealed class MainWindowTests
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
-        ListBox remotes = Find<ListBox>(window, "RemoteList");
-        WaitUntil(() => remotes.ItemCount == 1);
-        remotes.SelectedIndex = 0;
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => Root(tree, RepoObjectKind.RemotesRoot)?.Children.Count == 1);
+        tree.SelectedItem = Root(tree, RepoObjectKind.RemotesRoot)!.Children[0];
 
-        Click(window, "RenameRemoteButton");
+        Click(window, "TreeRenameRemoteMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
         PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
         Find<TextBox>(prompt, "ValueBox").Text.Should().Be("old");
@@ -1339,7 +1461,7 @@ internal sealed class MainWindowTests
         grid.SelectedIndex.Should().Be(0, "Ctrl+N goes to the child");
         PressIn(grid, Key.M, Hotkeys.CommandModifier | KeyModifiers.Shift);
 
-        WaitUntil(() => Find<Button>(window, "RevisionFilterButton").Content as string == "Filter (on)...");
+        WaitUntil(() => Find<ToolSplitButton>(window, "AdvancedFilterButton").Image == "FunnelExclamation");
     }
 
     [AvaloniaTest]
@@ -1660,7 +1782,7 @@ internal sealed class MainWindowTests
             .Be(new UpstreamHotkey(9003, "Tag by key", System.Windows.Forms.Keys.F7));
 
         // From the filter box too: a function key is not text. As upstream, a disabled script still runs from its hotkey.
-        Find<TextBox>(window, "FilterBox")
+        Find<ComboBox>(window, "RevisionFilterBox")
             .RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F7 });
 
         WaitUntil(() => _repo.Run("tag", "--list").Contains("from-hotkey", StringComparison.Ordinal));
@@ -1712,10 +1834,13 @@ internal sealed class MainWindowTests
     }
 
     // The tree node of a branch by its full name, e.g. "team/external" or "origin/main".
-    private static BranchTreeNode? BranchNode(TreeView tree, string name)
-        => (tree.ItemsSource as IReadOnlyList<BranchTreeNode>)?
+    private static RepoObjectNode? BranchNode(TreeView tree, string name)
+        => (tree.ItemsSource as IReadOnlyList<RepoObjectNode>)?
             .SelectMany(root => root.Descendants())
             .FirstOrDefault(node => node.Branch?.Name == name);
+
+    private static RepoObjectNode? Root(TreeView tree, RepoObjectKind kind)
+        => (tree.ItemsSource as IReadOnlyList<RepoObjectNode>)?.FirstOrDefault(root => root.Kind == kind);
 
     private static MainWindow NewWindow() =>
         new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
@@ -1757,7 +1882,12 @@ internal sealed class MainWindowTests
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
+        RoutedEvent click = control switch
+        {
+            MenuItem => MenuItem.ClickEvent,
+            SplitButton => SplitButton.ClickEvent,
+            _ => Button.ClickEvent,
+        };
         control.RaiseEvent(new RoutedEventArgs(click));
     }
 

@@ -91,8 +91,18 @@
         <StackPanel x:Name="MainToolStrip" Classes="toolStrip">
           <local:ToolButton x:Name="RefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh" />
           <Rectangle Classes="toolSeparator" />
-          <local:ToolButton x:Name="ToggleLeftPanelButton" Image="LayoutSidebarLeft" ToolTip.Tip="Toggle left panel" />
-          <local:ToolButton x:Name="ToggleSplitViewButton" Image="LayoutFooter" ToolTip.Tip="Toggle split view layout" />
+          <local:ToolToggleButton x:Name="ToggleLeftPanelButton" Image="LayoutSidebarLeft" ToolTip.Tip="Toggle left panel" IsChecked="True" />
+          <local:ToolToggleButton x:Name="ToggleSplitViewButton" Image="LayoutFooter" ToolTip.Tip="Toggle split view layout" />
+          <!-- The image and tooltip follow the chosen position, as upstream's RefreshLayoutToggleButtonStates sets them. -->
+          <local:ToolSplitButton x:Name="CommitInfoPositionButton" Image="LayoutFooterTab" ToolTip.Tip="Commit info position">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="CommitInfoBelowMenuItem" Header="Commit info _below graph" Icon="{local:UpstreamIcon LayoutFooterTab}" />
+                <MenuItem x:Name="CommitInfoLeftwardMenuItem" Header="Commit info _left of graph" Icon="{local:UpstreamIcon LayoutSidebarTopLeft}" />
+                <MenuItem x:Name="CommitInfoRightwardMenuItem" Header="Commit info _right of graph" Icon="{local:UpstreamIcon LayoutSidebarTopRight}" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
           <Rectangle Classes="toolSeparator" />
           <local:ToolDropDownButton x:Name="SubmodulesButton" Image="SubmodulesManage" ToolTip.Tip="Submodules">
             <local:ToolDropDownButton.Flyout>
@@ -145,17 +155,66 @@
           </local:ToolSplitButton>
           <Rectangle Classes="toolSeparator" />
           <local:ToolButton x:Name="OpenFolderButton" Image="BrowseFileExplorer" ToolTip.Tip="File Explorer" />
-          <local:ToolButton x:Name="TerminalButton" Image="Console" ToolTip.Tip="Terminal" />
+          <!-- Upstream's userShell: the default terminal, the others in the drop-down (FillUserShells). -->
+          <local:ToolSplitButton x:Name="TerminalButton" Image="GitForWindows" ToolTip.Tip="Git bash">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout />
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
           <local:ToolButton x:Name="EditSettingsButton" Image="Settings" ToolTip.Tip="Settings" />
         </StackPanel>
-        <StackPanel x:Name="FilterToolStrip" Classes="toolStrip" Spacing="4">
-          <ComboBox x:Name="BranchScopeBox" SelectedIndex="0" ToolTip.Tip="Which branches the grid shows">
-            <ComboBoxItem Content="All branches" />
-            <ComboBoxItem Content="Current branch" />
-          </ComboBox>
-          <TextBox x:Name="FilterBox" Width="180" PlaceholderText="Filter loaded commits (Ctrl+E)" />
-          <TextBox x:Name="SearchBox" Width="180" PlaceholderText="Search history (Enter)" />
-          <local:ToolButton x:Name="RevisionFilterButton" Image="EditFilter" Text="Filter..." ToolTip.Tip="Filter by author, committer, message, date or path" />
+        <!-- Upstream's FilterToolBar (FilterToolBar.Designer), in its order. -->
+        <StackPanel x:Name="FilterToolStrip" Classes="toolStrip">
+          <!-- The image and tooltip say whether a filter is on, as upstream's revisionGridFilter_FilterChanged sets them. -->
+          <local:ToolSplitButton x:Name="AdvancedFilterButton" Image="FunnelPencil" ToolTip.Tip="Advanced filter">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="ResetPathFilterMenuItem" Header="Reset _path filter" />
+                <MenuItem x:Name="ResetRevisionFiltersMenuItem" Header="_Reset revision filters" />
+                <Separator />
+                <MenuItem x:Name="AdvancedFilterMenuItem" Header="_Advanced filter" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <local:ToolToggleButton x:Name="ShowReflogButton" Image="Book" ToolTip.Tip="Show all reflog references" />
+          <!-- The image, text and tooltip are the chosen item's, as upstream's SelectShowBranchesFilterOption sets them. -->
+          <local:ToolSplitButton x:Name="ShowBranchesButton" Image="BranchLocal" Text="All branches" ToolTip.Tip="Show all branches">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="ShowBranchesAllMenuItem" Header="_All branches" Icon="{local:UpstreamIcon BranchLocal}" ToolTip.Tip="Show all branches" />
+                <MenuItem x:Name="ShowBranchesCurrentMenuItem" Header="_Current branch only" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show current branch only" />
+                <MenuItem x:Name="ShowBranchesFilteredMenuItem" Header="_Filtered branches" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show filtered branches" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <Label x:Name="BranchFilterLabel" Content="_Branches:" Target="{Binding #BranchFilterBox}" ToolTip.Tip="Branch filter"
+                 VerticalAlignment="Center" Padding="4,0,2,0" />
+          <AutoCompleteBox x:Name="BranchFilterBox" Width="100" MinimumPrefixLength="0" FilterMode="ContainsOrdinal"
+                           VerticalAlignment="Center" />
+          <local:ToolDropDownButton x:Name="BranchTypeButton" Image="EditFilter" ToolTip.Tip="Branch type">
+            <local:ToolDropDownButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="BranchLocalMenuItem" Header="_Local" ToggleType="CheckBox" IsChecked="True" />
+                <MenuItem x:Name="BranchRemoteMenuItem" Header="_Remote" ToggleType="CheckBox" />
+                <MenuItem x:Name="BranchTagMenuItem" Header="_Tag" ToggleType="CheckBox" />
+              </MenuFlyout>
+            </local:ToolDropDownButton.Flyout>
+          </local:ToolDropDownButton>
+          <Rectangle Classes="toolSeparator" />
+          <Label x:Name="RevisionFilterLabel" Content="_Filter:" Target="{Binding #RevisionFilterBox}" ToolTip.Tip="Text filter"
+                 VerticalAlignment="Center" Padding="4,0,2,0" />
+          <ComboBox x:Name="RevisionFilterBox" IsEditable="True" Width="100" VerticalAlignment="Center" />
+          <local:ToolDropDownButton x:Name="RevisionFilterTypeButton" Image="EditFilter" ToolTip.Tip="Filter type">
+            <local:ToolDropDownButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="CommitFilterMenuItem" Header="Commit _message" ToggleType="CheckBox" IsChecked="True" />
+                <MenuItem x:Name="CommitterFilterMenuItem" Header="_Committer" ToggleType="CheckBox" />
+                <MenuItem x:Name="AuthorFilterMenuItem" Header="_Author" ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffContainsFilterMenuItem" Header="_Diff contains (SLOW)" ToggleType="CheckBox" />
+              </MenuFlyout>
+            </local:ToolDropDownButton.Flyout>
+          </local:ToolDropDownButton>
+          <local:ToolToggleButton x:Name="ShowFirstParentButton" Image="ShowOnlyFirstParent" ToolTip.Tip="Show only first parent" />
         </StackPanel>
         <!-- Upstream's user menu bar: the enabled scripts whose event is "show in user menu bar". -->
         <StackPanel x:Name="UserScriptsPanel" Classes="toolStrip" Spacing="4" />
@@ -205,113 +264,130 @@
     </Border>
 
     <Grid x:Name="MainSplitGrid" ColumnDefinitions="280,5,*" Margin="6">
-      <!-- Repository objects: upstream's left panel (RepoObjectsTree) as sections. -->
-      <ScrollViewer x:Name="LeftPanel" Grid.Column="0">
-        <StackPanel Spacing="4">
-          <Expander Header="Branches and remotes" IsExpanded="True" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="4">
-              <TreeView x:Name="BranchTreeView" Height="220">
-                <!-- Upstream's left panel sort menus (GitRefsSortByContextMenuItem, GitRefsSortOrderContextMenuItem). -->
-                <TreeView.ContextMenu>
-                  <ContextMenu x:Name="BranchTreeContextMenu">
-                    <MenuItem x:Name="SortByMenuItem" Header="_Sort by" />
-                    <MenuItem x:Name="SortOrderMenuItem" Header="Sort _order" />
-                  </ContextMenu>
-                </TreeView.ContextMenu>
-                <TreeView.Styles>
-                  <Style Selector="TreeViewItem" x:DataType="repo:BranchTreeNode">
-                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                    <Setter Property="MinHeight" Value="22" />
-                  </Style>
-                </TreeView.Styles>
-                <TreeView.ItemTemplate>
-                  <TreeDataTemplate x:DataType="repo:BranchTreeNode" ItemsSource="{Binding Children}">
-                    <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-                  </TreeDataTemplate>
-                </TreeView.ItemTemplate>
-              </TreeView>
-              <WrapPanel>
-                <Button x:Name="CheckoutButton" Content="Checkout" Margin="0,0,4,4" />
-                <Button x:Name="MergeButton" Content="Merge into current" Margin="0,0,4,4" ToolTip.Tip="Merge the selected branch into the current one (Ctrl+M)" />
-                <Button x:Name="RebaseButton" Content="Rebase onto" Margin="0,0,4,4" ToolTip.Tip="Rebase the current branch onto the selected one (Ctrl+Shift+E)" />
-                <Button x:Name="DeleteBranchButton" Content="Delete" Margin="0,0,4,4" />
-                <Button x:Name="ForceDeleteBranchButton" Content="Force delete" Margin="0,0,4,4" />
-              </WrapPanel>
-              <TextBox x:Name="NewBranchBox" PlaceholderText="New branch name (Ctrl+B)" />
-              <WrapPanel>
-                <Button x:Name="CreateBranchButton" Content="Create" Margin="0,0,4,4" ToolTip.Tip="Create the branch at HEAD and check it out" />
-                <Button x:Name="CreateBranchAtCommitButton" Content="Create at selected commit" Margin="0,0,4,4" />
-                <Button x:Name="RenameBranchButton" Content="Rename selected" Margin="0,0,4,4" />
-              </WrapPanel>
-            </StackPanel>
-          </Expander>
-          <Expander Header="Tags" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="4">
-              <ListBox x:Name="TagList" Height="110" />
-              <TextBox x:Name="NewTagBox" PlaceholderText="New tag name (Ctrl+T)" />
-              <TextBox x:Name="TagMessageBox" PlaceholderText="Message (optional: makes an annotated tag)" />
-              <WrapPanel>
-                <Button x:Name="CreateTagButton" Content="Create" Margin="0,0,4,4" ToolTip.Tip="Tag the selected commit, or HEAD" />
-                <Button x:Name="DeleteTagButton" Content="Delete" Margin="0,0,4,4" />
-                <Button x:Name="DeleteRemoteTagButton" Content="Delete on remote..." Margin="0,0,4,4" />
-              </WrapPanel>
-            </StackPanel>
-          </Expander>
-          <Expander Header="Stashes" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="4">
-              <ListBox x:Name="StashList" Height="110">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="repo:StashInfo">
-                    <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <WrapPanel>
-                <Button x:Name="ApplyStashButton" Content="Apply" Margin="0,0,4,4" />
-                <Button x:Name="PopStashButton" Content="Pop" Margin="0,0,4,4" />
-                <Button x:Name="DropStashButton" Content="Drop" Margin="0,0,4,4" />
-                <Button x:Name="StashDiffButton" Content="Show diff" Margin="0,0,4,4" />
-              </WrapPanel>
-              <TextBox x:Name="StashMessageBox" PlaceholderText="Stash message (optional)" />
-              <WrapPanel>
-                <Button x:Name="StashButton" Content="Stash changes" Margin="0,0,6,4" ToolTip.Tip="Ctrl+Alt+Up" />
-                <CheckBox x:Name="IncludeUntrackedCheck" Content="Untracked" Margin="0,0,6,4" />
-                <CheckBox x:Name="KeepIndexCheck" Content="Keep index" Margin="0,0,6,4" />
-              </WrapPanel>
-            </StackPanel>
-          </Expander>
-          <Expander x:Name="SubmodulesExpander" Header="Submodules" HorizontalAlignment="Stretch" IsVisible="False">
-            <StackPanel Spacing="4">
-              <ListBox x:Name="SubmoduleList" Height="100">
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="repo:SubmoduleInfo">
-                    <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <WrapPanel>
-                <Button x:Name="OpenSubmoduleButton" Content="Open" Margin="0,0,4,4" ToolTip.Tip="Open the selected submodule in this window" />
-                <Button x:Name="UpdateSubmoduleButton" Content="Update" Margin="0,0,4,4" ToolTip.Tip="Initialize and update the selected submodule" />
-                <Button x:Name="UpdateSubmodulesButton" Content="Update all" Margin="0,0,4,4" />
-                <Button x:Name="SyncSubmodulesButton" Content="Sync" Margin="0,0,4,4" ToolTip.Tip="Copy the URLs from .gitmodules to the repository config" />
-              </WrapPanel>
-            </StackPanel>
-          </Expander>
-          <Expander Header="Remotes" HorizontalAlignment="Stretch">
-            <StackPanel Spacing="4">
-              <ListBox x:Name="RemoteList" Height="80" />
-              <TextBox x:Name="NewRemoteNameBox" PlaceholderText="Name" />
-              <TextBox x:Name="NewRemoteUrlBox" PlaceholderText="URL or path" />
-              <WrapPanel>
-                <Button x:Name="AddRemoteButton" Content="Add" Margin="0,0,4,4" />
-                <Button x:Name="RemoveRemoteButton" Content="Remove" Margin="0,0,4,4" />
-                <Button x:Name="RenameRemoteButton" Content="Rename..." Margin="0,0,4,4" />
-                <Button x:Name="SetRemoteUrlButton" Content="Set URL..." Margin="0,0,4,4" />
-              </WrapPanel>
-            </StackPanel>
-          </Expander>
+      <!-- Upstream's left panel (RepoObjectsTree.Designer): the toolstrip that collapses the tree and shows or hides each of
+           its trees, the search box, and one tree. Its context menu is filled for the node it opens on (upstream's
+           contextMenu_Opening), from RepoObjectsTree.ContextActions. -->
+      <DockPanel x:Name="LeftPanel" Grid.Column="0">
+        <StackPanel x:Name="LeftPanelToolStrip" DockPanel.Dock="Top" Classes="toolStrip">
+          <local:ToolButton x:Name="CollapseAllButton" Image="CollapseAll" ToolTip.Tip="Collapse all subnodes" />
+          <local:ToolToggleButton x:Name="ShowBranchesTreeButton" Image="BranchLocalRoot" ToolTip.Tip="Branches" />
+          <local:ToolToggleButton x:Name="ShowRemotesTreeButton" Image="BranchRemoteRoot" ToolTip.Tip="Remotes" />
+          <local:ToolToggleButton x:Name="ShowWorktreesTreeButton" Image="WorkTree" ToolTip.Tip="Worktrees" />
+          <local:ToolToggleButton x:Name="ShowTagsTreeButton" Image="TagHorizontal" ToolTip.Tip="Tags" />
+          <local:ToolToggleButton x:Name="ShowSubmodulesTreeButton" Image="FolderSubmodule" ToolTip.Tip="Submodules" />
+          <local:ToolToggleButton x:Name="ShowStashesTreeButton" Image="Stash" ToolTip.Tip="Stashes" />
         </StackPanel>
-      </ScrollViewer>
+        <DockPanel DockPanel.Dock="Top" Margin="2,0,2,2">
+          <local:ToolButton x:Name="LeftPanelSearchButton" DockPanel.Dock="Right" Image="Preview" ToolTip.Tip="Search" />
+          <AutoCompleteBox x:Name="LeftPanelSearchBox" FilterMode="ContainsOrdinal" MinimumPrefixLength="1" />
+        </DockPanel>
+        <TreeView x:Name="BranchTreeView">
+          <TreeView.ContextMenu>
+            <!-- Upstream's menuMain in its order; MainWindow.LeftPanel shows the items that apply to the node. -->
+            <ContextMenu x:Name="BranchTreeContextMenu">
+              <MenuItem x:Name="TreeFilterMenuItem" Header="_Filter for selected" Icon="{local:UpstreamIcon ShowThisBranchOnly}"
+                        ToolTip.Tip="Filter the revision grid to show the selected ref only." />
+              <Separator />
+              <MenuItem x:Name="TreeCheckoutMenuItem" Icon="{local:UpstreamIcon BranchCheckout}" />
+              <MenuItem x:Name="TreeMergeMenuItem" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" />
+              <MenuItem x:Name="TreeRebaseMenuItem" Icon="{local:UpstreamIcon Rebase}" />
+              <MenuItem x:Name="TreeCreateBranchMenuItem" Header="Create _branch..." Icon="{local:UpstreamIcon Branch}" />
+              <MenuItem x:Name="TreeResetMenuItem" Header="Re_set current branch to here..." Icon="{local:UpstreamIcon ResetCurrentBranchToHere}"
+                        ToolTip.Tip="Reset current branch to here" />
+              <Separator />
+              <MenuItem x:Name="TreeRenameBranchMenuItem" Header="R_ename branch..." Icon="{local:UpstreamIcon Renamed}"
+                        ToolTip.Tip="Rename this branch" />
+              <MenuItem x:Name="TreeDeleteMenuItem" Icon="{local:UpstreamIcon BranchDelete}" />
+              <!-- The new shell's: upstream deletes a remote tag from its push dialog, which the new shell does not have. -->
+              <MenuItem x:Name="TreeDeleteRemoteTagMenuItem" Header="Delete on _remote..." Icon="{local:UpstreamIcon BranchDelete}" />
+              <Separator />
+              <MenuItem x:Name="TreeAddRemoteMenuItem" Header="_Add remote..." Icon="{local:UpstreamIcon Remotes}" />
+              <MenuItem x:Name="TreeFetchAllRemotesMenuItem" Header="Fetch all remotes" Icon="{local:UpstreamIcon PullFetchAll}" />
+              <MenuItem x:Name="TreePruneAllRemotesMenuItem" Header="Fetch and prune all remotes" Icon="{local:UpstreamIcon PullFetchPruneAll}" />
+              <Separator />
+              <MenuItem x:Name="TreeRenameRemoteMenuItem" Header="Re_name..." Icon="{local:UpstreamIcon Remotes}" />
+              <MenuItem x:Name="TreeSetRemoteUrlMenuItem" Header="Set _URL..." Icon="{local:UpstreamIcon Remotes}" />
+              <MenuItem x:Name="TreeRemoveRemoteMenuItem" Header="Re_move..." Icon="{local:UpstreamIcon Remotes}" />
+              <MenuItem x:Name="TreeFetchRemoteMenuItem" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" />
+              <MenuItem x:Name="TreePruneRemoteMenuItem" Header="Fetch and _prune" Icon="{local:UpstreamIcon PullFetchPrune}" />
+              <MenuItem x:Name="TreeOpenRemoteUrlMenuItem" Header="Open remote Url" Icon="{local:UpstreamIcon Globe}"
+                        ToolTip.Tip="Redirects you to the actual repository page" />
+              <Separator />
+              <MenuItem x:Name="TreeOpenSubmoduleMenuItem" Header="_Open" Icon="{local:UpstreamIcon FolderOpen}"
+                        ToolTip.Tip="Open selected submodule" />
+              <MenuItem x:Name="TreeOpenSubmoduleNewInstanceMenuItem" Header="O_pen" Icon="{local:UpstreamIcon GitExtensionsLogo16}"
+                        ToolTip.Tip="Open selected submodule in a new instance" />
+              <MenuItem x:Name="TreeUpdateSubmoduleMenuItem" Header="_Update" Icon="{local:UpstreamIcon SubmodulesUpdate}"
+                        ToolTip.Tip="Update selected submodule recursively" />
+              <MenuItem x:Name="TreeSynchronizeSubmoduleMenuItem" Header="Synchronize" Icon="{local:UpstreamIcon SubmodulesSync}"
+                        ToolTip.Tip="Synchronize selected submodule recursively" />
+              <Separator />
+              <MenuItem x:Name="TreeFetchAndCheckoutMenuItem" Header="_Fetch &amp; Checkout" Icon="{local:UpstreamIcon BranchCheckout}"
+                        ToolTip.Tip="Fetch then checkout this remote branch" />
+              <MenuItem x:Name="TreeFetchAndMergeMenuItem" Header="Fetch &amp; Merge (_Pull)" Icon="{local:UpstreamIcon Pull}"
+                        ToolTip.Tip="Fetch then merge this remote branch into current branch" />
+              <MenuItem x:Name="TreeFetchAndRebaseMenuItem" Header="Fetch &amp; Re_base" Icon="{local:UpstreamIcon Rebase}"
+                        ToolTip.Tip="Fetch then rebase current branch on this remote branch" />
+              <MenuItem x:Name="TreeFetchAndCreateBranchMenuItem" Header="Fetc_h &amp; Create Branch" Icon="{local:UpstreamIcon Branch}"
+                        ToolTip.Tip="Fetch then create a local branch from the remote branch" />
+              <MenuItem x:Name="TreeFetchBranchMenuItem" Header="Fe_tch" Icon="{local:UpstreamIcon Stage}"
+                        ToolTip.Tip="Fetch this remote branch" />
+              <Separator />
+              <MenuItem x:Name="TreeCreateBranchInFolderMenuItem" Header="Create Branch..." Icon="{local:UpstreamIcon BranchCreate}"
+                        ToolTip.Tip="Create a local branch" />
+              <MenuItem x:Name="TreeDeleteAllBranchesMenuItem" Header="Delete All" Icon="{local:UpstreamIcon BranchDelete}"
+                        ToolTip.Tip="Delete all child branches, which must all be fully merged in its upstream branch or in HEAD" />
+              <Separator />
+              <MenuItem x:Name="TreeStashAllMenuItem" Header="_Stash" />
+              <MenuItem x:Name="TreeStashStagedMenuItem" Header="S_tash staged" />
+              <Separator />
+              <MenuItem x:Name="TreeOpenStashMenuItem" Header="_Open stash" ToolTip.Tip="Open this stash" />
+              <MenuItem x:Name="TreeApplyStashMenuItem" Header="_Apply stash" ToolTip.Tip="Apply this stash" />
+              <MenuItem x:Name="TreePopStashMenuItem" Header="_Pop stash" ToolTip.Tip="Pop this stash" />
+              <MenuItem x:Name="TreeDropStashMenuItem" Header="_Drop stash..." ToolTip.Tip="Drop this stash" />
+              <Separator />
+              <MenuItem x:Name="TreeCreateWorktreeMenuItem" Header="_Create worktree..." />
+              <MenuItem x:Name="TreePruneWorktreesMenuItem" Header="_Prune worktrees" />
+              <MenuItem x:Name="TreeManageWorktreesMenuItem" Header="_Manage worktrees..." />
+              <Separator />
+              <MenuItem x:Name="TreeOpenWorktreeMenuItem" Header="_Open worktree" Icon="{local:UpstreamIcon FolderOpen}"
+                        ToolTip.Tip="Open this worktree" />
+              <MenuItem x:Name="TreeDeleteWorktreeMenuItem" Header="_Delete worktree..." ToolTip.Tip="Delete this worktree" />
+              <Separator />
+              <MenuItem x:Name="TreeCopyWorktreePathMenuItem" Header="Copy _path" Icon="{local:UpstreamIcon CopyToClipboard}"
+                        ToolTip.Tip="Copy the worktree path to clipboard" />
+              <MenuItem x:Name="TreeShowWorktreeInFolderMenuItem" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}"
+                        ToolTip.Tip="Show the worktree in File Explorer" />
+              <Separator />
+              <MenuItem x:Name="TreeCollapseMenuItem" Header="Collapse" Icon="{local:UpstreamIcon CollapseAll}" ToolTip.Tip="Collapse all subnodes" />
+              <MenuItem x:Name="TreeExpandMenuItem" Header="Expand" Icon="{local:UpstreamIcon ExpandAll}" ToolTip.Tip="Expand all subnodes" />
+              <Separator />
+              <MenuItem x:Name="TreeMoveUpMenuItem" Header="Move Up" Icon="{local:UpstreamIcon ArrowUp}" ToolTip.Tip="Move node up" />
+              <MenuItem x:Name="TreeMoveDownMenuItem" Header="Move Down" Icon="{local:UpstreamIcon ArrowDown}" ToolTip.Tip="Move node down" />
+              <Separator />
+              <!-- Upstream's left panel sort menus (GitRefsSortByContextMenuItem, GitRefsSortOrderContextMenuItem). -->
+              <MenuItem x:Name="SortByMenuItem" Header="_Sort by" />
+              <MenuItem x:Name="SortOrderMenuItem" Header="Sort _order" />
+            </ContextMenu>
+          </TreeView.ContextMenu>
+          <TreeView.Styles>
+            <Style Selector="TreeViewItem" x:DataType="repo:RepoObjectNode">
+              <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+              <Setter Property="MinHeight" Value="20" />
+            </Style>
+          </TreeView.Styles>
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate x:DataType="repo:RepoObjectNode" ItemsSource="{Binding Children}">
+              <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" ToolTip.Tip="{Binding ToolTip}">
+                <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="16" Height="16"
+                       VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Text}" VerticalAlignment="Center"
+                           FontWeight="{Binding IsBold, Converter={x:Static local:BoldConverter.Instance}}" />
+              </StackPanel>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </DockPanel>
 
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
 
@@ -341,116 +417,125 @@
           </ListBox>
         </DockPanel>
 
-        <Grid x:Name="BrowsePanel" RowDefinitions="Auto,*,5,300" IsVisible="False">
-          <!-- Column headers of the revision grid; the widths match the row template below. -->
-          <Grid Grid.Row="0" ColumnDefinitions="*,160,140,90,Auto" Margin="12,0,12,2">
-            <TextBlock Grid.Column="0" Text="Message" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="1" Text="Author" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="2" Text="Date" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="3" Text="Commit" FontWeight="SemiBold" />
-            <!-- Upstream's last column. As wide as BuildStatusColumnWidth: 0 while no build server shows results. -->
-            <TextBlock x:Name="BuildStatusHeader" Grid.Column="4" Text="Build Status" FontWeight="SemiBold" ClipToBounds="True"
-                       TextTrimming="CharacterEllipsis" Width="{DynamicResource BuildStatusColumnWidth}" />
+        <Grid x:Name="BrowsePanel" RowDefinitions="*,5,300" IsVisible="False">
+          <!-- Upstream's RevisionsSplitContainer: the grid, and the commit info beside it when CommitInfoPosition puts it
+               left or right of the grid (LayoutRevisionInfo sets the columns). -->
+          <Grid x:Name="RevisionsSplitGrid" Grid.Row="0" ColumnDefinitions="*,0,0">
+            <Grid x:Name="RevisionGridContainer" Grid.Column="0" RowDefinitions="Auto,*">
+              <!-- Column headers of the revision grid; the widths match the row template below. -->
+              <Grid Grid.Row="0" ColumnDefinitions="*,160,140,90,Auto" Margin="12,0,12,2">
+                <TextBlock Grid.Column="0" Text="Message" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="Author" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="2" Text="Date" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="3" Text="Commit" FontWeight="SemiBold" />
+                <!-- Upstream's last column. As wide as BuildStatusColumnWidth: 0 while no build server shows results. -->
+                <TextBlock x:Name="BuildStatusHeader" Grid.Column="4" Text="Build Status" FontWeight="SemiBold" ClipToBounds="True"
+                           TextTrimming="CharacterEllipsis" Width="{DynamicResource BuildStatusColumnWidth}" />
+              </Grid>
+              <ListBox x:Name="CommitList" Grid.Row="1">
+                <ListBox.Styles>
+                  <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="4,0" />
+                    <Setter Property="MinHeight" Value="22" />
+                  </Style>
+                </ListBox.Styles>
+                <ListBox.ContextMenu>
+                  <ContextMenu x:Name="CommitContextMenu">
+                    <!-- Upstream's bisect items, at the top and shown only while a bisect runs. -->
+                    <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" IsVisible="False" />
+                    <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" IsVisible="False" />
+                    <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" IsVisible="False" />
+                    <MenuItem x:Name="StopBisectMenuItem" Header="Stop bisect" IsVisible="False" />
+                    <Separator x:Name="BisectSeparator" IsVisible="False" />
+                    <MenuItem x:Name="CopyHashMenuItem" Header="Copy commit hash" />
+                    <MenuItem x:Name="CopyMessageMenuItem" Header="Copy commit message" />
+                    <Separator />
+                    <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create branch here..." />
+                    <MenuItem x:Name="CreateTagHereMenuItem" Header="Create tag here..." />
+                    <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
+                    <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout this commit (detached HEAD)" />
+                    <Separator />
+                    <MenuItem x:Name="CherryPickMenuItem" Header="Cherry-pick this commit" />
+                    <MenuItem x:Name="RevertMenuItem" Header="Revert this commit" />
+                    <MenuItem x:Name="RunScriptMenuItem" Header="Run script" />
+                    <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" />
+                    <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" />
+                    <MenuItem Header="Rebase current branch on">
+                      <MenuItem x:Name="RebaseOnCommitMenuItem" Header="Selected commit" />
+                      <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit interactively..." />
+                    </MenuItem>
+                    <MenuItem Header="Reset current branch to here">
+                      <MenuItem x:Name="ResetSoftMenuItem" Header="Soft: keep index and working tree" />
+                      <MenuItem x:Name="ResetMixedMenuItem" Header="Mixed: keep working tree, reset index" />
+                      <MenuItem x:Name="ResetHardMenuItem" Header="Hard: discard all changes..." />
+                    </MenuItem>
+                  </ContextMenu>
+                </ListBox.ContextMenu>
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="core:CommitListItem">
+                    <Grid ColumnDefinitions="Auto,*,160,140,90,Auto">
+                      <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
+                                  ToolTip.Tip="{Binding Row.Tooltip.Message}">
+                        <ItemsControl Classes="refLabels" ItemsSource="{Binding Labels}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                              <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="core:RefLabel">
+                              <Border BorderThickness="1" CornerRadius="3" Padding="4,0" Margin="0,0,4,0"
+                                      BorderBrush="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"
+                                           Foreground="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}" />
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" />
+                        <!-- Upstream's change counts of the artificial rows (ShowGitStatusForArtificialCommits). -->
+                        <TextBlock Text="{Binding Badge}" Opacity="0.7" Margin="6,0,0,0" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <!-- Upstream's author avatar column (ShowAuthorAvatarColumn), here at the start of the author cell. -->
+                      <DockPanel Grid.Column="2" Margin="0,0,6,0">
+                        <local:AvatarView Classes="gridAvatar" DockPanel.Dock="Left" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
+                                          VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
+                                          Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
+                        <TextBlock Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      </DockPanel>
+                      <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
+                      <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
+                           build report. -->
+                      <StackPanel Grid.Column="5" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
+                                  Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
+                                  ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"
+                                   Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
+                        <TextBlock Text="{Binding Build.Text}" IsVisible="{DynamicResource BuildStatusShowText}" TextTrimming="CharacterEllipsis"
+                                   Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <!-- Upstream's quick search label: what was typed into the grid, red when nothing matches. -->
+              <Border x:Name="QuickSearchPanel" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="False"
+                      Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" Padding="7,5,5,5" IsHitTestVisible="False">
+                <TextBlock x:Name="QuickSearchText" FontWeight="Bold" FontSize="14" />
+              </Border>
+            </Grid>
+            <GridSplitter x:Name="RevisionInfoSplitter" Grid.Column="1" ResizeDirection="Columns" IsVisible="False" />
+            <Border x:Name="RevisionInfoHost" Grid.Column="2" IsVisible="False" Padding="0,4,0,0" />
           </Grid>
-          <ListBox x:Name="CommitList" Grid.Row="1">
-            <ListBox.Styles>
-              <Style Selector="ListBoxItem">
-                <Setter Property="Padding" Value="4,0" />
-                <Setter Property="MinHeight" Value="22" />
-              </Style>
-            </ListBox.Styles>
-            <ListBox.ContextMenu>
-              <ContextMenu x:Name="CommitContextMenu">
-                <!-- Upstream's bisect items, at the top and shown only while a bisect runs. -->
-                <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" IsVisible="False" />
-                <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" IsVisible="False" />
-                <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" IsVisible="False" />
-                <MenuItem x:Name="StopBisectMenuItem" Header="Stop bisect" IsVisible="False" />
-                <Separator x:Name="BisectSeparator" IsVisible="False" />
-                <MenuItem x:Name="CopyHashMenuItem" Header="Copy commit hash" />
-                <MenuItem x:Name="CopyMessageMenuItem" Header="Copy commit message" />
-                <Separator />
-                <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create branch here..." />
-                <MenuItem x:Name="CreateTagHereMenuItem" Header="Create tag here..." />
-                <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
-                <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout this commit (detached HEAD)" />
-                <Separator />
-                <MenuItem x:Name="CherryPickMenuItem" Header="Cherry-pick this commit" />
-                <MenuItem x:Name="RevertMenuItem" Header="Revert this commit" />
-                <MenuItem x:Name="RunScriptMenuItem" Header="Run script" />
-                <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" />
-                <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" />
-                <MenuItem Header="Rebase current branch on">
-                  <MenuItem x:Name="RebaseOnCommitMenuItem" Header="Selected commit" />
-                  <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit interactively..." />
-                </MenuItem>
-                <MenuItem Header="Reset current branch to here">
-                  <MenuItem x:Name="ResetSoftMenuItem" Header="Soft: keep index and working tree" />
-                  <MenuItem x:Name="ResetMixedMenuItem" Header="Mixed: keep working tree, reset index" />
-                  <MenuItem x:Name="ResetHardMenuItem" Header="Hard: discard all changes..." />
-                </MenuItem>
-              </ContextMenu>
-            </ListBox.ContextMenu>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="core:CommitListItem">
-                <Grid ColumnDefinitions="Auto,*,160,140,90,Auto">
-                  <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
-                              ToolTip.Tip="{Binding Row.Tooltip.Message}">
-                    <ItemsControl Classes="refLabels" ItemsSource="{Binding Labels}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="core:RefLabel">
-                          <Border BorderThickness="1" CornerRadius="3" Padding="4,0" Margin="0,0,4,0"
-                                  BorderBrush="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"
-                                       Foreground="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}" />
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" />
-                    <!-- Upstream's change counts of the artificial rows (ShowGitStatusForArtificialCommits). -->
-                    <TextBlock Text="{Binding Badge}" Opacity="0.7" Margin="6,0,0,0" VerticalAlignment="Center" />
-                  </StackPanel>
-                  <!-- Upstream's author avatar column (ShowAuthorAvatarColumn), here at the start of the author cell. -->
-                  <DockPanel Grid.Column="2" Margin="0,0,6,0">
-                    <local:AvatarView Classes="gridAvatar" DockPanel.Dock="Left" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
-                                      VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
-                                      Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
-                    <TextBlock Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                  </DockPanel>
-                  <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
-                  <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                  <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
-                       build report. -->
-                  <StackPanel Grid.Column="5" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
-                              Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
-                              ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"
-                               Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
-                    <TextBlock Text="{Binding Build.Text}" IsVisible="{DynamicResource BuildStatusShowText}" TextTrimming="CharacterEllipsis"
-                               Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
-                  </StackPanel>
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <!-- Upstream's quick search label: what was typed into the grid, red when nothing matches. -->
-          <Border x:Name="QuickSearchPanel" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="False"
-                  Background="{DynamicResource SystemControlBackgroundBaseLowBrush}" Padding="7,5,5,5" IsHitTestVisible="False">
-            <TextBlock x:Name="QuickSearchText" FontWeight="Bold" FontSize="14" />
-          </Border>
 
-          <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+          <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
 
-          <TabControl x:Name="DetailTabs" Grid.Row="3" Padding="0,4,0,0">
+          <TabControl x:Name="DetailTabs" Grid.Row="2" Padding="0,4,0,0">
             <TabItem x:Name="CommitInfoTab" Header="Commit">
-              <Grid ColumnDefinitions="*,8,Auto">
+              <!-- Upstream's RevisionInfo: in this tab, or beside the grid (RevisionInfoHost). -->
+              <Grid x:Name="RevisionInfo" ColumnDefinitions="*,8,Auto">
                 <ScrollViewer Grid.Column="0">
                   <DockPanel>
                   <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->

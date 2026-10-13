@@ -63,11 +63,11 @@ internal sealed class ConfirmationsTests
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
-        ListBox stashes = Find<ListBox>(window, "StashList");
-        WaitUntil(() => stashes.ItemCount == 2);
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => Stashes(tree).Count == 2);
 
-        stashes.SelectedIndex = 0;
-        Click(window, "DropStashButton");
+        tree.SelectedItem = Stashes(tree)[0];
+        Click(window, "TreeDropStashMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
         ConfirmWindow question = window.OwnedWindows.OfType<ConfirmWindow>().Single();
         question.Title.Should().Be("Drop Stash Confirmation");
@@ -75,13 +75,13 @@ internal sealed class ConfirmationsTests
         dontShowAgain.IsVisible.Should().BeTrue();
         dontShowAgain.IsChecked = true;
         Click(question, "ConfirmButton");
-        WaitUntil(() => stashes.ItemCount == 1);
+        WaitUntil(() => Stashes(tree).Count == 1);
 
         // Turned off: the next drop happens without a question.
         TestAppBuilder.Preferences.Asks(Confirmation.StashDrop).Should().BeFalse();
-        stashes.SelectedIndex = 0;
-        Click(window, "DropStashButton");
-        WaitUntil(() => stashes.ItemCount == 0);
+        tree.SelectedItem = Stashes(tree)[0];
+        Click(window, "TreeDropStashMenuItem");
+        WaitUntil(() => Stashes(tree).Count == 0);
         window.OwnedWindows.OfType<ConfirmWindow>().Should().BeEmpty();
     }
 
@@ -98,7 +98,7 @@ internal sealed class ConfirmationsTests
         WaitUntil(() => BranchNode(branches, "other") is not null);
 
         branches.SelectedItem = BranchNode(branches, "other");
-        Click(window, "CheckoutButton");
+        Click(window, "TreeCheckoutMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
         ConfirmWindow question = window.OwnedWindows.OfType<ConfirmWindow>().Single();
 
@@ -138,10 +138,14 @@ internal sealed class ConfirmationsTests
         commit.Close();
     }
 
-    private static BranchTreeNode? BranchNode(TreeView tree, string name)
-        => (tree.ItemsSource as IReadOnlyList<BranchTreeNode>)?
+    private static RepoObjectNode? BranchNode(TreeView tree, string name)
+        => (tree.ItemsSource as IReadOnlyList<RepoObjectNode>)?
             .SelectMany(root => root.Descendants())
             .FirstOrDefault(node => node.Branch?.Name == name);
+
+    private static IReadOnlyList<RepoObjectNode> Stashes(TreeView tree)
+        => (tree.ItemsSource as IReadOnlyList<RepoObjectNode>)?
+            .FirstOrDefault(root => root.Kind == RepoObjectKind.StashesRoot)?.Children ?? [];
 
     private static MainWindow NewWindow() =>
         new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));

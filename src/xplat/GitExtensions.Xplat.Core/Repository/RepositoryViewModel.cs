@@ -21,6 +21,9 @@ public sealed class RepositoryViewModel : ObservableObject
     private IReadOnlyList<StashInfo> _stashes = [];
     private IReadOnlyList<string> _tags = [];
     private IReadOnlyList<SubmoduleInfo> _submodules = [];
+    private IReadOnlyDictionary<string, string> _aheadBehind = new Dictionary<string, string>();
+    private IReadOnlyList<WorktreeInfo> _worktrees = [];
+    private IReadOnlyDictionary<string, string> _remoteUrls = new Dictionary<string, string>();
     private string? _errorMessage;
 
     public RepositoryViewModel(IRepositoryService service)
@@ -101,6 +104,31 @@ public sealed class RepositoryViewModel : ObservableObject
     }
 
     /// <summary>
+    ///  Upstream's ahead and behind texts of the left panel's branches, by branch name (see
+    ///  <see cref="RepositorySnapshot.AheadBehind"/>).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> AheadBehind
+    {
+        get => _aheadBehind;
+        private set => SetProperty(ref _aheadBehind, value);
+    }
+
+    public IReadOnlyList<WorktreeInfo> Worktrees
+    {
+        get => _worktrees;
+        private set => SetProperty(ref _worktrees, value);
+    }
+
+    /// <summary>
+    ///  The fetch URL of each remote, by its name.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> RemoteUrls
+    {
+        get => _remoteUrls;
+        private set => SetProperty(ref _remoteUrls, value);
+    }
+
+    /// <summary>
     ///  True while a rebase is stopped for conflicts or for a commit (upstream's <c>InTheMiddleOfRebase</c>).
     /// </summary>
     public bool IsRebasing
@@ -169,6 +197,9 @@ public sealed class RepositoryViewModel : ObservableObject
         Sync = null;
         TrackingRemote = null;
         Submodules = [];
+        AheadBehind = new Dictionary<string, string>();
+        Worktrees = [];
+        RemoteUrls = new Dictionary<string, string>();
     }
 
     public async Task RefreshAsync(string repositoryPath)
@@ -196,6 +227,9 @@ public sealed class RepositoryViewModel : ObservableObject
             Sync = snapshot.Sync;
             TrackingRemote = snapshot.TrackingRemote;
             Submodules = snapshot.Submodules ?? [];
+            AheadBehind = snapshot.AheadBehind ?? new Dictionary<string, string>();
+            Worktrees = snapshot.Worktrees ?? [];
+            RemoteUrls = snapshot.RemoteUrls ?? new Dictionary<string, string>();
         }
         catch (Exception ex)
         {

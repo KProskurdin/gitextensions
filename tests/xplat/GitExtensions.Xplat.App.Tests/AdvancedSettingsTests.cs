@@ -43,12 +43,12 @@ internal sealed class AdvancedSettingsTests
                         Find<ToolButton>(window, "CommitDialogButton").Text == "Commit (1)");
         branches.SelectedItem = BranchNode(branches, "other");
 
-        Click(window, "CheckoutButton");
+        Click(window, "TreeCheckoutMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<CheckoutWindow>().Any());
         window.OwnedWindows.OfType<CheckoutWindow>().Single().Close();
 
         TestAppBuilder.Preferences.AlwaysShowCheckoutBranchDlg = false;
-        Click(window, "CheckoutButton");
+        Click(window, "TreeCheckoutMenuItem");
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Checked out other");
         window.OwnedWindows.OfType<CheckoutWindow>().Should().BeEmpty();
@@ -61,8 +61,11 @@ internal sealed class AdvancedSettingsTests
         TestAppBuilder.Preferences.AutoNormaliseSymbol = "-";
         MainWindow window = OpenWindow();
 
-        Find<TextBox>(window, "NewBranchBox").Text = "my new feature";
-        Click(window, "CreateBranchButton");
+        Click(window, "CreateBranchMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
+        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
+        Find<TextBox>(prompt, "ValueBox").Text = "my new feature";
+        Click(prompt, "OkButton");
 
         WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "my-new-feature");
     }
@@ -143,8 +146,8 @@ internal sealed class AdvancedSettingsTests
         TestAppBuilder.Preferences.SetAsks(Confirmation.Amend, false);
     }
 
-    private static BranchTreeNode? BranchNode(TreeView tree, string name)
-        => (tree.ItemsSource as IReadOnlyList<BranchTreeNode>)?
+    private static RepoObjectNode? BranchNode(TreeView tree, string name)
+        => (tree.ItemsSource as IReadOnlyList<RepoObjectNode>)?
             .SelectMany(root => root.Descendants())
             .FirstOrDefault(node => node.Branch?.Name == name);
 

@@ -35,16 +35,45 @@ public sealed class GitRepositoryService : IRepositoryService
 
     // Upstream's GitModule.GetWorktrees parses "worktree list --porcelain -z"; git lists the main worktree first.
     public Task<IReadOnlyList<WorktreeInfo>> GetWorktreesAsync(string repositoryPath) =>
-        Task.Run<IReadOnlyList<WorktreeInfo>>(() =>
+        Task.Run(() =>
+            GetWorktrees(new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)));
+
+    /// <summary>
+    ///  True when HEAD contains the local branch <paramref name="branch"/>: upstream's <c>GitModule.GetMergedBranches</c>,
+    ///  which its branch delete dialog uses to ask before deleting unmerged work.
+    /// </summary>
+    public static Task<bool> IsMergedIntoHeadAsync(string repositoryPath, string branch) =>
+        Task.Run(() => new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
+            .GetMergedBranches().Any(merged => merged.Trim().TrimStart('*', '+').Trim() == branch));
+
+    private static IReadOnlyList<WorktreeInfo> GetWorktrees(GitModule module)
+        =>
+        [
+            .. module.GetWorktrees().Select((worktree, index) => new WorktreeInfo(worktree.Path,
+                worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted))
+        ];
+
+    // Upstream's LocalBranchTree and RemoteBranchTree: a local branch shows its counts against its upstream, the remote
+    // branch the counts reversed (the first local branch tracking it). Off when ShowAheadBehindData is off.
+    private static IReadOnlyDictionary<string, string> GetAheadBehind(GitModule module)
+    {
+        Dictionary<string, string> texts = new(StringComparer.Ordinal);
+        if (new AheadBehindDataProvider(() => module.GitExecutable).GetData() is not { } data)
         {
-            IReadOnlyList<GitWorktree> worktrees =
-                new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath).GetWorktrees();
-            return
-            [
-                .. worktrees.Select((worktree, index) => new WorktreeInfo(worktree.Path,
-                    worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted))
-            ];
-        });
+            return texts;
+        }
+
+        foreach (AheadBehindData item in data.Values)
+        {
+            texts[item.Branch] = item.ToDisplay();
+            if (item.RemoteRef.StartsWith(GitRefName.RefsRemotesPrefix, StringComparison.Ordinal))
+            {
+                texts.TryAdd(item.RemoteRef[GitRefName.RefsRemotesPrefix.Length..], item.ToDisplay(reverse: true));
+            }
+        }
+
+        return texts;
+    }
 
     // Upstream's GitModule.GetRefs, with the sort given instead of read from upstream's settings.
     private static IReadOnlyList<IGitRef> GetRefs(GitModule module, RefsFilter filter, RefSorting sorting)
@@ -145,9 +174,13 @@ public sealed class GitRepositoryService : IRepositoryService
                 .Split(Delimiters.LineFeed, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         ];
 
+        IReadOnlyList<string> remotes = module.GetRemoteNames();
         return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes, isMerging,
-            stashes, tags, isRebasing, module.GetRemoteNames(), GetSync(module),
+            stashes, tags, isRebasing, remotes, GetSync(module),
             GetTrackingRemote(module, currentBranch), GetSubmodules(module),
-            isApplyingPatch, module.InTheMiddleOfBisect());
+            isApplyingPatch, module.InTheMiddleOfBisect(), GetAheadBehind(module), GetWorktrees(module),
+            remotes.ToDictionary(remote => remote,
+                remote => module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote)),
+                StringComparer.Ordinal));
     }
 }

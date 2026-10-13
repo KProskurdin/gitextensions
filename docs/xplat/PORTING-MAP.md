@@ -55,7 +55,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormAbout.cs` | `src/xplat/GitExtensions.Xplat.App/AboutWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs` | `52d08e996` | partial |
-| `src/app/GitUI/LeftPanel/RepoObjectsTree.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`LeftPanel`: Branches, Tags, Stashes, Remotes sections) | `52d08e996` | partial |
+| `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.axaml` (`LeftPanel`) | `afc512395` | partial |
 | `src/app/GitUI/Hotkey/HotkeySettingsManager.cs` (FormBrowse and FormCommit defaults) | `src/xplat/GitExtensions.Xplat.App/Hotkeys.cs`, `HotkeyEditor.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/UpstreamHotkeys.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormGitIgnore.cs`, `FormAddToGitIgnore.cs` | `src/xplat/GitExtensions.Xplat.App/GitIgnoreWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitIgnoreFile.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs`, `FormRevisionFilter.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`; `src/xplat/GitExtensions.Xplat.App/FilterWindow.axaml(.cs)`; `MainWindow.axaml` (branch choice, Filter...) | `52d08e996` | partial |
@@ -116,6 +116,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/ArtificialCommitChangeCount.cs`; `RevisionGridControl.cs` (artificial rows) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/ArtificialCommits.cs`, `GitCommitHistory.cs`, `CommitListViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BuildReportTabPageExtension.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs`, `MainWindow.axaml` (`BuildReportTab`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (`ToolStripMain`), `FormBrowse.cs` (toolstrip parts of `InitMenusAndToolbars`, `RefreshDefaultPullAction`, the layout toggles, the title); `Menus/WorkingDirectoryToolStripSplitButton.cs`; `ToolStripPushButton.cs`; `src/app/GitUI/UserControls/RepoStateVisualiser.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs`, `MainWindow.axaml` (toolstrip), `UpstreamImages.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepoState.cs`, `RecentRepositories.cs` (`Caption`), `BrowseWindowTitle.cs` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/FilterToolBar.cs`, `FilterToolBar.Designer.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.FilterToolBar.cs`, `MainWindow.axaml` (`FilterToolStrip`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs` | `afc512395` | partial |
+| `src/app/GitUI/Shells/ShellProvider.cs`, `BashShell.cs`, `CmdShell.cs`, `PwshShell.cs`, `PowerShellShell.cs`; `FormBrowse.InitMenusAndToolbars.cs` (`FillUserShells`), `FormBrowse.cs` (`userShell_Click`) | `src/xplat/GitExtensions.Xplat.Core/Platform/TerminalChoices.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs` (`FillTerminals`) | `afc512395` | partial |
 
 ## Notes per row
 
@@ -141,7 +143,7 @@ revision bad, good or skipped, stop bisect), shown only while a bisect runs, and
 and red where upstream draws icons, with upstream'"'"'s tooltip texts (2026-10-09); 5000 commits
 loaded and scrolled at 60 fps (PLAN.md M3.5). Earlier: a read-only list of the first 500 commits from `HEAD`,
 with short hash, subject, author and date, using the shared `RevisionReader.GetLog`. Selecting a row
-loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (the Search history box, Enter; git log --grep); a lane graph beside each commit (since 2026-10-07 upstream's `RevisionGraph` with the ported renderer, see
+loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (since 2026-10-13 the filter toolstrip's "Filter:" box, see **FilterToolBar**; git log --grep); a lane graph beside each commit (since 2026-10-07 upstream's `RevisionGraph` with the ported renderer, see
 GraphRenderer below). Added 2026-10-10: "Load more" reads only the next page (`--skip`), up to upstream's commit limit
 (`maxrevisiongraphcommits`); typing in the grid searches it as upstream's quick search (QuickSearchProvider row); the
 working directory and index rows; the selected row is kept when the rows are read again. Added 2026-10-11: the author's
@@ -151,7 +153,10 @@ hash, subject or author).
 
 **FormStash** (`partial`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
 stash by its name. Also ported: including untracked files. Also ported: stashing only the selected files (Stash selected). Also ported: keeping the index (Keep index). Not ported: branching from a
-stash. Also ported: the whole stash as a diff (Show diff, first parent only).
+stash. Also ported: the whole stash as a diff (Show diff, first parent only). Changed 2026-10-13: the left panel's stash
+boxes went with the left panel rebuild (see RepoObjectsTree); stashing from the toolbar, menu and left panel is upstream's
+`StashSave` (no message, untracked files as `includeUntrackedFilesInManualStash` says), and the stash message and keep
+index choices wait for the FormStash window, which is not ported.
 
 **FormCreateTag** (`partial`). Ported: a lightweight tag at the selected commit (or HEAD), listed in the window. Also ported: annotated tags when a message is entered. Not ported: signing and the tag-on-remote option.
 
@@ -359,10 +364,26 @@ open with Enter or a double-click; remove an entry. Added 2026-10-11: each repos
 the dashboard and the menu (`dashboardshowcurrentbranch`, see the RepositoryCurrentBranchNameProvider row), read after the
 list shows. Not ported: favourites and categories, the create, open and clone tiles, and the path shortening options.
 
-**RepoObjectsTree** (`partial`). Ported: a branch tree (`BranchTree` in core) with local branches under Branches and remote
-branches under Remotes and their remote, both grouped in folders at '/', with branch counts and the checked-out branch
-marked and kept visible; tags, stashes, remotes and submodules as sections, each with its actions. Not ported: the
-worktree node (worktrees have their own window), filtering the grid by a branch, the tag folders, and the context menus.
+**RepoObjectsTree** (`partial`). Rebuilt 2026-10-13 as upstream's single tree (`RepoObjectsTree` in core, with `BranchTree`
+for the branch grouping): the six trees (Branches, Remotes, Worktrees, Tags, Submodules, Stashes) in upstream's order and
+with its root images, shown and ordered by upstream's `RepoObjectsTreeShow*` and `RepoObjectsTree*Index` settings; branch
+and tag folders at '/'; upstream's node images (local and remote branch, the host's logo on a remote, tag, stash,
+worktree, submodule changed or not); the checked-out branch and the current worktree in bold; upstream's ahead and behind
+text after a local branch and, reversed, after the remote branch it tracks (`AheadBehindDataProvider`, linked code); remotes
+without branches; the expanded nodes and the selection kept across a refresh. The toolstrip collapses the tree and shows or
+hides each tree; the search box selects the next node that matches. The context menu is upstream's `menuMain` in its order,
+each item shown for the nodes upstream shows it for (`contextMenu_Opening`), with the ref texts and tooltips of
+`MenuItemsStrings` per kind of ref; the checked-out branch only offers create branch and rename. Double-click as upstream's
+`OnDoubleClick` (checkout, create branch from a tag, open a stash, worktree or submodule); Delete deletes a branch or tag.
+Deleting a local branch asks upstream's `DeleteUnmergedBranch` question when HEAD does not contain it and then deletes with
+-D, as `FormDeleteBranch` (without that dialog's branch list). The old per-section buttons and boxes are gone.
+Differences: upstream's FormRemotes is not ported, so the Remotes tree offers "Add remote..." and a remote "Rename...",
+"Set URL..." and "Remove..." in place of "Manage..."; "Reset current branch to here..." offers soft, mixed and hard in a
+choice window (FormResetCurrentBranch is not ported); "Create worktree..." opens the worktree window; a tag also has
+"Delete on remote...", which upstream offers in its push dialog; the remote branch fetch items fetch the whole remote.
+Not ported: multi-selection, "Copy to clipboard" (upstream's revision copy submenu), the merged-branch images, hidden
+commits (EyeClosed), remote activation, the submodule tree of super- and subprojects with its detailed status images and
+reset, stash and commit items, "Manage stashes...", the user scripts submenu, and the search's highlighting of all matches.
 
 **HotkeySettingsManager** (`partial`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a
@@ -371,7 +392,7 @@ branch or tag, merge, rebase, stash and stash pop, with Cmd in place of Ctrl on 
 `SerializedHotkeys` setting (the `HotkeySettings[]` XML, by upstream command code and name; other forms' entries are kept
 as they are), and can be changed in Settings > Hotkeys, so a hotkey changed in either app applies in both. Not ported:
 the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name. Added 2026-10-10: the BrowseDiff section (the Diff tab's
-file list, see RevisionDiffControl) and the Stash section (the left panel's stash list: next, previous, refresh), the
+file list, see RevisionDiffControl) and the Stash section (on the left panel's stashes: next, previous, refresh), the
 commit window's Conventional Commits keys, and the grid's ToggleHighlightSelectedBranch and quick search next and previous
 keys. Still not ported: the commands of every section that the new shell has no feature for, and the reset-to-defaults
 button.
@@ -576,9 +597,12 @@ templates, the preview of matched files, the "info/exclude" choice, and patterns
 in upstream's `ShowCurrentBranchOnly` setting; the advanced filter for author, committer, message (ignoring case), since,
 until, path, hide merges and first parent only, built in upstream's argument order; the all-branches view leaves out notes,
 the stash and agent session refs as upstream does with its default settings (including `c16194306`). The status line says
-when the list is filtered. Not ported: the custom branch filter (wildcards), reflog and simplify-by-decoration, the diff
-content search (`-G`), full history and simplify merges, the commit count limit, and applying the filter to the history
-search box (which still searches from HEAD).
+when the list is filtered. 2026-10-13, with the filter toolstrip: the branch filter ("Filtered branches": revisions, ranges
+and options as they are, words with wildcards as `--branches=`), `--reflog`, the diff content search (`-G`), a message
+filter starting with `--` passed as git log options, `HasFilter`, `ResetAllFilters` (keeps the current branch and reflog
+choices) and `GetSummary`. Not ported: simplify-by-decoration, full history and simplify merges, the commit count limit,
+`--boundary` for a message and diff filter together, and the dialog's own fields for the branch filter, diff content and
+reflog (`FilterWindow` keeps what the toolstrip set).
 
 **FormManageWorktree / FormCreateWorktree** (`partial`). Ported: the worktrees as git lists them (upstream's
 `GitModule.GetWorktrees`, used as is), open one in the browse window, add one at a folder starting at the current commit
@@ -820,10 +844,31 @@ with upstream's images by resource name (`UpstreamImages`, which reads the linke
 commit info toggles; the submodules, worktrees, working directory and branch drop-downs; the pull split button (merge,
 rebase, fetch, open dialog, fetch all, fetch and prune all, and the default pull action, shown as the button's image and
 text); push with upstream's `AheadBehindData.ToDisplay` text and tooltips; "Commit (n)" with `RepoStateVisualiser`'s
-image; the stash split button; the folder, terminal and settings buttons; then the branch scope, filter and search boxes.
+image; the stash split button; the folder, terminal and settings buttons; then the filter toolstrip (see **FilterToolBar**).
 The working directory caption is upstream's `RecentRepoSplitter` caption and `PathUtil.GetDisplayPath`, and the window
 title is upstream's `AppTitleGenerator` (both linked GitCommands code, unchanged). The path box, Open, Init, Clone, Fetch,
 Push tags, Files and Reflog buttons were removed; their actions are in the menus, as upstream. Differences: upstream's
-stash button opens its stash window, which the new shell does not have, so the button stashes; the third layout toggle
-(commit info position), the terminal choice drop-down, the filter toolstrip's funnel buttons and the "Branches:" box are
-not there yet (UI-PARITY U2); toolstrip overflow is not ported.
+stash button opens its stash window, which the new shell does not have, so the button stashes; toolstrip overflow is not
+ported. 2026-10-13: the layout toggles are checked buttons (`ToolToggleButton`) as upstream's, and the split view toggle
+is kept in upstream's `ShowSplitViewLayout`; the commit info position split button (`CommitInfoPosition`: below the grid
+as the first tab, or left or right of it at upstream's width, the button cycling through them and showing the chosen
+image and text, as `LayoutRevisionInfo` and `RefreshLayoutToggleButtonStates`); the terminal split button (see
+**Terminals**).
+
+**FilterToolBar** (`partial`). 2026-10-13: upstream's filter toolstrip in its order and with its images: the advanced
+filter split button (opens the dialog, or with a filter on offers "Reset path filter", "Reset revision filters" and
+"Advanced filter"; `FunnelExclamation` and the filter summary as tooltip while a filter is on), the reflog toggle, the
+branches split button (all, current only, filtered; the button shows the chosen item's image and text), the "Branches:"
+box (Enter applies it; a word that is no revision is reported with upstream's text and left out; the list offers local
+branches, remote branches and tags as the "Branch type" menu says), and the "Filter:" box (Enter applies the text to the
+kinds the "Filter type" menu checks, a changed kind applies it again; applied texts are remembered in upstream's
+`RevisionFilterDropdowns`, then upstream's three presets), and the first parent toggle. Ctrl+E moves between the two
+boxes as upstream's `SetFocus`. The new shell's own "filter loaded commits" and "search history" boxes were removed with
+it (upstream has neither; the grid's quick search stays). Not ported: the shortcut texts in the tooltips and menus, the
+"No results found" item, and the drop-down width that fits the longest branch.
+
+**Terminals** (`partial`). 2026-10-13: upstream's terminal split button (`userShell`): on Windows the installed shells in
+upstream's order and with its images (bash as git-bash.exe, else bash.exe or sh.exe; cmd; pwsh; powershell), found with
+upstream's `PathUtil.TryFindShellPath`; the button opens bash, or the first one installed, in the working directory. On
+Linux and macOS the list has the system terminal (the `TERMINAL` variable or `x-terminal-emulator`; Terminal on macOS).
+Not ported: the embedded console tab (ConEmu), which is Windows-only.

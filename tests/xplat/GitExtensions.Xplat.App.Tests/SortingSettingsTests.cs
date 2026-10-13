@@ -146,8 +146,8 @@ internal sealed class SortingSettingsTests
     private static IEnumerable<string> Labels(ComboBox box) => box.Items.Select(item => item!.ToString()!);
 
     private static IReadOnlyList<string> LocalBranches(TreeView tree)
-        => (tree.ItemsSource as IReadOnlyList<BranchTreeNode>)?
-            .First(root => root.Name == BranchTree.LocalGroupName)
+        => (tree.ItemsSource as IReadOnlyList<RepoObjectNode>)?
+            .First(root => root.Kind == RepoObjectKind.BranchesRoot)
             .Descendants().Where(node => node.Branch is not null).Select(node => node.Branch!.Name).ToList() ?? [];
 
     private static MainWindow NewWindow() =>
