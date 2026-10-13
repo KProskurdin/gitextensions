@@ -123,6 +123,14 @@ internal sealed class RecentRepositoriesViewModelTests
 
         public Task<IReadOnlyList<string>> RemoveAsync(string repositoryPath) => Fail();
 
+        public Task<RepositoryHistory> LoadHistoryAsync() => Task.FromException<RepositoryHistory>(new IOException("read-only"));
+
+        public Task AssignCategoryAsync(string repositoryPath, string? category) => Fail();
+
+        public Task RemoveFavouriteAsync(string repositoryPath) => Fail();
+
+        public Task RemoveInvalidAsync(Func<string, bool> isValid) => Fail();
+
         private static Task<IReadOnlyList<string>> Fail()
             => Task.FromException<IReadOnlyList<string>>(new IOException("settings are read-only"));
     }

@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using GitCommands;
 using GitCommands.Settings;
 using GitExtensions.Extensibility.Settings;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Settings;
 using NUnit.Framework;
 
@@ -107,17 +108,19 @@ internal sealed class RevisionLinksSettingsTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
-        WaitUntil(() => Find<StackPanel>(window, "DetailLinksPanel").IsVisible);
+        InfoTextBlock info = Find<InfoTextBlock>(window, "DetailRevisionInfo");
+        IReadOnlyList<InfoSpan> RelatedLinks() =>
+            info.Lines.FirstOrDefault(line => line.FirstOrDefault()?.Text.StartsWith("Related links:") == true) ?? [];
+        WaitUntil(() => RelatedLinks().Count > 0);
 
-        Find<WrapPanel>(window, "DetailLinks").Children.OfType<HyperlinkButton>()
-            .Select(link => (link.Content as string, link.NavigateUri?.ToString())).Should().BeEquivalentTo(
+        RelatedLinks().Where(span => span.Link is not null).Select(span => (span.Text, span.Link)).Should().BeEquivalentTo(
             [
                 ("#77", "https://example.com/issues/77"),
                 ("#42", "https://example.com/issues/42"),
             ]);
 
         Find<ListBox>(window, "CommitList").SelectedIndex = 1;
-        WaitUntil(() => !Find<StackPanel>(window, "DetailLinksPanel").IsVisible);
+        WaitUntil(() => RelatedLinks().Count == 0 && info.Lines.Count > 0);
     }
 
     [AvaloniaTest]

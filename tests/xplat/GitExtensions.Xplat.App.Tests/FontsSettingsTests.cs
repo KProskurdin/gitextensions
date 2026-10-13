@@ -63,8 +63,8 @@ internal sealed class FontsSettingsTests
     {
         MainWindow window = NewWindow();
         window.Show();
-        TextBlock hash = Find<TextBlock>(window, "DetailHash");
-        SelectableTextBlock message = Find<SelectableTextBlock>(window, "DetailMessage");
+
+        InfoTextBlock message = Find<InfoTextBlock>(window, "DetailMessage");
 
         TestAppBuilder.Preferences.SetFont(AppFont.Commit, new FontSetting("Arial", 15));
         TestAppBuilder.Preferences.SetFont(AppFont.Monospace, new FontSetting("Courier New", 6, Bold: true, Italic: true));
@@ -72,12 +72,13 @@ internal sealed class FontsSettingsTests
         Save(window, OpenSettings(window));
 
         (message.FontFamily.Name, message.FontSize).Should().Be(("Arial", 20));
-        hash.FontFamily.Name.Should().StartWith("Courier New");
-        hash.FontSize.Should().Be(8);
-        (hash.FontWeight, hash.FontStyle).Should().Be((FontWeight.Bold, FontStyle.Italic));
+        ((FontFamily)window.FindResource("MonospaceFontFamily")!).Name.Should().StartWith("Courier New");
+        window.FindResource("MonospaceFontSize").Should().Be(8.0);
+        (window.FindResource("MonospaceFontWeight"), window.FindResource("MonospaceFontStyle")).Should()
+            .Be((FontWeight.Bold, FontStyle.Italic));
         message.FontWeight.Should().Be(FontWeight.Normal);
         Application.Current!.Resources["ControlContentThemeFontSize"].Should().Be(16.0);
-        TextBlock author = Find<TextBlock>(window, "DetailAuthor");
+        InfoTextBlock author = Find<InfoTextBlock>(window, "DetailRevisionInfo");
         (author.FontFamily.Name, author.FontSize).Should().Be(("Arial", 16), "the window takes Fluent's font resources");
 
         SettingsWindow settings = OpenSettings(window);

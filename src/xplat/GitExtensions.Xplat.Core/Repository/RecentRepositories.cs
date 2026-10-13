@@ -19,6 +19,26 @@ public interface IRecentRepositoryStore
 
     /// <returns>The list after the change.</returns>
     Task<IReadOnlyList<string>> RemoveAsync(string repositoryPath);
+
+    /// <summary>
+    ///  Upstream's recent and favourite repositories with their categories: a favourite is a repository the user put in a
+    ///  category.
+    /// </summary>
+    Task<RepositoryHistory> LoadHistoryAsync();
+
+    /// <summary>
+    ///  Upstream's <c>AssignCategoryAsync</c>: puts the repository in <paramref name="category"/>, making it a favourite, or
+    ///  takes it out of the favourites when <paramref name="category"/> is empty.
+    /// </summary>
+    Task AssignCategoryAsync(string repositoryPath, string? category);
+
+    Task RemoveFavouriteAsync(string repositoryPath);
+
+    /// <summary>
+    ///  Upstream's <c>RemoveInvalidRepositoriesAsync</c>: drops the recent and favourite entries that
+    ///  <paramref name="isValid"/> rejects.
+    /// </summary>
+    Task RemoveInvalidAsync(Func<string, bool> isValid);
 }
 
 /// <summary>
@@ -44,6 +64,34 @@ public sealed class SettingsRecentRepositoryStore : IRecentRepositoryStore
             : ToPaths(await RepositoryHistoryManager.Locals.RemoveRecentAsync(stored));
     }
 
+    public async Task<RepositoryHistory> LoadHistoryAsync()
+        => new(ToEntries(await RepositoryHistoryManager.Locals.LoadRecentHistoryAsync()),
+            ToEntries(await RepositoryHistoryManager.Locals.LoadFavouriteHistoryAsync()));
+
+    public async Task AssignCategoryAsync(string repositoryPath, string? category)
+    {
+        // Upstream keeps the favourite's entry as the dashboard passed it, so an existing entry keeps its stored path.
+        IList<HistoryEntry> favourites = await RepositoryHistoryManager.Locals.LoadFavouriteHistoryAsync();
+        HistoryEntry entry = favourites.FirstOrDefault(favourite => RecentRepositoryPaths.Same(favourite.Path, repositoryPath))
+                             ?? new HistoryEntry(repositoryPath);
+        await RepositoryHistoryManager.Locals.AssignCategoryAsync(entry, category);
+    }
+
+    public async Task RemoveFavouriteAsync(string repositoryPath)
+    {
+        IList<HistoryEntry> favourites = await RepositoryHistoryManager.Locals.LoadFavouriteHistoryAsync();
+        if (favourites.FirstOrDefault(favourite => RecentRepositoryPaths.Same(favourite.Path, repositoryPath)) is { } stored)
+        {
+            await RepositoryHistoryManager.Locals.RemoveFavouriteAsync(stored.Path);
+        }
+    }
+
+    public Task RemoveInvalidAsync(Func<string, bool> isValid)
+        => RepositoryHistoryManager.Locals.RemoveInvalidRepositoriesAsync(isValid);
+
+    private static IReadOnlyList<RepositoryEntry> ToEntries(IEnumerable<HistoryEntry> history)
+        => [.. history.Select(repository => new RepositoryEntry(repository.Path, repository.Category))];
+
     private static IReadOnlyList<string> ToPaths(IEnumerable<HistoryEntry> history) =>
         [.. history.Select(repository => repository.Path)];
 }
@@ -54,6 +102,7 @@ public sealed class SettingsRecentRepositoryStore : IRecentRepositoryStore
 public sealed class InMemoryRecentRepositoryStore : IRecentRepositoryStore
 {
     private readonly List<string> _paths = [];
+    private readonly List<RepositoryEntry> _favourites = [];
 
     public Task<IReadOnlyList<string>> LoadAsync() => Task.FromResult(Snapshot());
 
@@ -68,6 +117,44 @@ public sealed class InMemoryRecentRepositoryStore : IRecentRepositoryStore
     {
         _paths.RemoveAll(path => RecentRepositoryPaths.Same(path, repositoryPath));
         return Task.FromResult(Snapshot());
+    }
+
+    public Task<RepositoryHistory> LoadHistoryAsync()
+        => Task.FromResult(new RepositoryHistory([.. _paths.Select(path => new RepositoryEntry(path))], [.. _favourites]));
+
+    public Task AssignCategoryAsync(string repositoryPath, string? category)
+    {
+        int index = _favourites.FindIndex(favourite => RecentRepositoryPaths.Same(favourite.Path, repositoryPath));
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            if (index >= 0)
+            {
+                _favourites.RemoveAt(index);
+            }
+        }
+        else if (index >= 0)
+        {
+            _favourites[index] = _favourites[index] with { Category = category };
+        }
+        else
+        {
+            _favourites.Add(new RepositoryEntry(repositoryPath, category));
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveFavouriteAsync(string repositoryPath)
+    {
+        _favourites.RemoveAll(favourite => RecentRepositoryPaths.Same(favourite.Path, repositoryPath));
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveInvalidAsync(Func<string, bool> isValid)
+    {
+        _paths.RemoveAll(path => !isValid(path));
+        _favourites.RemoveAll(favourite => !isValid(favourite.Path));
+        return Task.CompletedTask;
     }
 
     private IReadOnlyList<string> Snapshot() => [.. _paths];
@@ -149,3 +236,13 @@ public static class RecentRepositoryBranches
         }
     }
 }
+
+/// <summary>
+///  An entry of upstream's repository history: the path as stored and, for a favourite, its category.
+/// </summary>
+public sealed record RepositoryEntry(string Path, string? Category = null);
+
+/// <summary>
+///  Upstream's recent repositories, newest first, and its favourites, in the order stored.
+/// </summary>
+public sealed record RepositoryHistory(IReadOnlyList<RepositoryEntry> Recent, IReadOnlyList<RepositoryEntry> Favourites);

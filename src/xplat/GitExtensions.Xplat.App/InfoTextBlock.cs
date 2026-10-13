@@ -18,6 +18,12 @@ public sealed class InfoTextBlock : SelectableTextBlock
     private readonly List<(int Start, int End, string Link)> _links = [];
     private IReadOnlyList<IReadOnlyList<InfoSpan>> _lines = [];
 
+    public InfoTextBlock()
+    {
+        // A transparent background makes the whole text, not only its glyphs, take the pointer, so links are easy to click.
+        Background = Brushes.Transparent;
+    }
+
     protected override Type StyleKeyOverride => typeof(SelectableTextBlock);
 
     /// <summary>

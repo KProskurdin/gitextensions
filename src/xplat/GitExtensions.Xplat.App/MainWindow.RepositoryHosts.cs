@@ -23,12 +23,16 @@ public partial class MainWindow
             }
             else
             {
-                MessageBoxes.ShowError(_plugins.Owner, RepositoryHostTexts.NoReposHostPluginLoaded, RepositoryHostTexts.Error);
+                MessageBoxes.ShowError(_plugins.Owner, RepositoryHostTexts.NoReposHostPluginLoaded,
+                    RepositoryHostTexts.Error);
             }
         };
-        ViewPullRequestsMenuItem.Click += (_, _) => WithRepositoryHost(host => _plugins.StartPullRequestsDialog(_plugins.Owner, host));
-        CreatePullRequestsMenuItem.Click += (_, _) => WithRepositoryHost(host => _plugins.StartCreatePullRequest(_plugins.Owner, host));
-        AddUpstreamRemoteMenuItem.Click += (_, _) => WithRepositoryHost(host => _plugins.AddUpstreamRemote(_plugins.Owner, host));
+        ViewPullRequestsMenuItem.Click += (_, _) =>
+            WithRepositoryHost(host => _plugins.StartPullRequestsDialog(_plugins.Owner, host));
+        CreatePullRequestsMenuItem.Click += (_, _) =>
+            WithRepositoryHost(host => _plugins.StartCreatePullRequest(_plugins.Owner, host));
+        AddUpstreamRemoteMenuItem.Click += (_, _) =>
+            WithRepositoryHost(host => _plugins.AddUpstreamRemote(_plugins.Owner, host));
     }
 
     // Upstream's UpdateRepositoryHostsMenu, once the plugins are loaded.
@@ -40,20 +44,24 @@ public partial class MainWindow
         {
             RepositoryHostsMenu.Header = host.Name;
         }
+
+        ShowDashboardHosts(plugins.OfType<IRepositoryHostPlugin>());
     }
 
     // Upstream's PluginRegistry.TryGetGitHosterForModule.
     private IRepositoryHostPlugin? RelevantRepositoryHost()
         => RepositoryPath is null
             ? null
-            : _plugins.Registered.OfType<IRepositoryHostPlugin>().FirstOrDefault(candidate => candidate.GitModuleIsRelevantToMe());
+            : _plugins.Registered.OfType<IRepositoryHostPlugin>()
+                .FirstOrDefault(candidate => candidate.GitModuleIsRelevantToMe());
 
     // Upstream's TryGetRepositoryHost: the registered host plugin that knows a remote of the open repository.
     private void WithRepositoryHost(Action<IRepositoryHostPlugin> action)
     {
         if (RelevantRepositoryHost() is not { } host)
         {
-            MessageBoxes.Show(_plugins.Owner, RepositoryHostTexts.NoReposHostFound, RepositoryHostTexts.Error, MessageBoxButtons.OK,
+            MessageBoxes.Show(_plugins.Owner, RepositoryHostTexts.NoReposHostFound, RepositoryHostTexts.Error,
+                MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return;
         }

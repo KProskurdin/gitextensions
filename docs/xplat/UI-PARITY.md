@@ -173,6 +173,15 @@ toolbar icons with upstream's `ToolTipText`.
   and Grid info groups; upstream's ref labels (shapes, filled arrow, tracked remote pair, ahead/behind arrows); artificial
   rows as labels with change icons; the gray body after the subject; the authored tint, alternating rows and upstream's
   selection colors. See the "Revision grid rows and View menu" note in `PORTING-MAP.md`. Checked by screenshot.
+- 2026-10-13, U2.4 done (B9, B10): tab images; the GPG tab; the commit info as upstream's header (avatar, labels, links to
+  the author, children and parents), the message on its darker panel with commit hashes as links, and the annotated tag
+  messages, related links, branches and tags containing the commit and the tag it derives from. Links select commits;
+  the commit info menu has upstream's items, and the Copy hash and Copy message buttons are gone. Not ported: the Console
+  and Output tabs. See the "CommitInfo and the detail tabs" note in `PORTING-MAP.md`. Checked by screenshot.
+- 2026-10-13, U2.5 done (B11): upstream's dashboard with its logo, Start and Contribute links, background, and the
+  repository tiles grouped as recent repositories and favourites by category, with the search box, the tile and category
+  menus, and upstream's light and dark colors. See the "Dashboard" note in `PORTING-MAP.md`. Checked by screenshot (the
+  screenshot aid now also captures the dashboard when no repository opens).
 
 ## Risks
 

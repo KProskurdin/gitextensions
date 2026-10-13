@@ -88,6 +88,7 @@ internal static class ThemeApplier
                 : System.Drawing.SystemColors.Window;
         SetBrush(app, CommitInfoBackgroundKey, window);
         SetBrush(app, CommitMessageBackgroundKey, window.MakeDarkerBy(0.04));
+        ApplyDashboard(app, colors);
         Changed?.Invoke(null, EventArgs.Empty);
     }
 
@@ -138,6 +139,74 @@ internal static class ThemeApplier
                 app.Resources[key] = system;
             }
         }
+    }
+
+    // Upstream's DashboardTheme: its palette in light mode; in dark mode the system colors, which a dark theme sets (Fluent's
+    // dark grays where it does not), and the background picture of either.
+    private static void ApplyDashboard(Application app, AppThemeColors colors)
+    {
+        System.Drawing.Color start, contribute, header, logo, primary, branch, accent, heading, search;
+        string background;
+        if (colors.IsDark)
+        {
+            System.Drawing.Color control = Dark(System.Drawing.KnownColor.Control, 0x2B);
+            start = control;
+            search = control;
+            contribute = Dark(System.Drawing.KnownColor.ControlLight, 0x33);
+            header = Dark(System.Drawing.KnownColor.ControlDark, 0x40);
+            logo = Dark(System.Drawing.KnownColor.ControlDarkDark, 0x18);
+            primary = colors.Get(System.Drawing.KnownColor.WindowText) is { IsEmpty: false } text
+                ? text
+                : System.Drawing.Color.FromArgb(0xF0, 0xF0, 0xF0);
+            branch = System.Drawing.Color.LightSkyBlue;
+            accent = System.Drawing.Color.Goldenrod.AdaptBackColor();
+            heading = colors.Get(System.Drawing.KnownColor.GrayText) is { IsEmpty: false } gray
+                ? gray
+                : System.Drawing.Color.FromArgb(0xA0, 0xA0, 0xA0);
+            background = "DashboardBackgroundGrey";
+        }
+        else
+        {
+            // Palette URL: http://paletton.com/#uid=13I0u0k7UUa3cZA5wXlaiQ5cFL3
+            search = System.Drawing.Color.FromArgb(248, 248, 255);
+            start = System.Drawing.Color.FromArgb(219, 235, 248);
+            contribute = System.Drawing.Color.FromArgb(230, 241, 250);
+            header = System.Drawing.Color.FromArgb(172, 208, 239);
+            logo = System.Drawing.Color.FromArgb(19, 122, 212);
+            primary = System.Drawing.Color.FromArgb(30, 30, 30);
+            branch = System.Drawing.Color.FromArgb(100, 127, 210);
+            accent = System.Drawing.Color.DarkGoldenrod;
+            heading = System.Drawing.Color.DimGray;
+            background = "DashboardBackgroundBlue";
+        }
+
+        SetBrush(app, "DashboardStartBrush", start);
+        SetBrush(app, "DashboardContributeBrush", contribute);
+        SetBrush(app, "DashboardHeaderBrush", header);
+        SetBrush(app, "DashboardLogoBrush", logo);
+        SetBrush(app, "DashboardPrimaryTextBrush", primary);
+        SetBrush(app, "DashboardBranchBrush", branch);
+        SetBrush(app, "DashboardAccentBrush", accent);
+        SetBrush(app, "DashboardHeadingBrush", heading);
+        SetBrush(app, "DashboardSearchBrush", search);
+
+        // WinForms tiles a control's background picture.
+        if (UpstreamImages.Named(background) is { } picture)
+        {
+            app.Resources["DashboardBackgroundBrush"] = new Avalonia.Media.ImageBrush(picture)
+            {
+                TileMode = Avalonia.Media.TileMode.Tile,
+                Stretch = Avalonia.Media.Stretch.None,
+                AlignmentX = Avalonia.Media.AlignmentX.Left,
+                AlignmentY = Avalonia.Media.AlignmentY.Top,
+                DestinationRect = new RelativeRect(0, 0, picture.Size.Width, picture.Size.Height, RelativeUnit.Absolute),
+            };
+        }
+
+        return;
+
+        System.Drawing.Color Dark(System.Drawing.KnownColor name, int gray)
+            => colors.Get(name) is { IsEmpty: false } themed ? themed : System.Drawing.Color.FromArgb(gray, gray, gray);
     }
 
     // A slot the theme leaves empty keeps Fluent's color for the variant.

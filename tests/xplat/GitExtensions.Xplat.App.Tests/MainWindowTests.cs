@@ -1,8 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
@@ -81,7 +84,7 @@ internal sealed class MainWindowTests
         string branch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
         WaitUntil(() => window.Title == $"{Path.GetFileName(_repo.Path)} ({branch}) - Git Extensions");
         Find<Grid>(window, "BrowsePanel").IsVisible.Should().BeTrue();
-        Find<DockPanel>(window, "DashboardPanel").IsVisible.Should().BeFalse();
+        Find<Grid>(window, "DashboardPanel").IsVisible.Should().BeFalse();
     }
 
     [AvaloniaTest]
@@ -107,35 +110,38 @@ internal sealed class MainWindowTests
     {
         MainWindow window = NewWindow();
         Open(window, _repo.Path);
-        ListBox recent = Find<ListBox>(window, "RecentList");
-        WaitUntil(() =>
-            ((IReadOnlyList<RecentRepository>?)recent.ItemsSource)?.Any(item =>
-                RecentRepositoryPaths.Same(item.Path, _repo.Path)) == true);
 
         Click(window, "CloseRepositoryMenuItem");
 
-        Find<DockPanel>(window, "DashboardPanel").IsVisible.Should().BeTrue();
+        Find<Grid>(window, "DashboardPanel").IsVisible.Should().BeTrue();
         Find<Grid>(window, "BrowsePanel").IsVisible.Should().BeFalse();
         window.Title.Should().Be("Git Extensions");
         Find<Button>(window, "CommitDialogButton").IsEnabled.Should().BeFalse();
         Find<MenuItem>(window, "RecentMenu").ItemCount.Should().BeGreaterThan(0);
+        WaitUntil(() => DashboardTiles(window).Any(tile =>
+            RecentRepositoryPaths.Same(((DashboardRepository)tile.Tag!).Path, _repo.Path)));
     }
 
     [AvaloniaTest]
-    public void Enter_on_a_recent_repository_opens_it()
+    public void Enter_in_the_dashboard_search_opens_the_first_repository_shown()
     {
         MainWindow window = NewWindow();
         Open(window, _repo.Path);
         Click(window, "CloseRepositoryMenuItem");
-        ListBox recent = Find<ListBox>(window, "RecentList");
-        recent.SelectedIndex = ((IReadOnlyList<RecentRepository>)recent.ItemsSource!).ToList()
-            .FindIndex(item => RecentRepositoryPaths.Same(item.Path, _repo.Path));
+        TextBox search = Find<TextBox>(window, "DashboardSearchBox");
 
-        recent.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+        search.Text = Path.GetFileName(_repo.Path);
+        WaitUntil(() => DashboardTiles(window).Count() == 1);
+        search.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
 
         WaitUntil(() => Find<ListBox>(window, "CommitList").ItemCount == 2);
         Find<Grid>(window, "BrowsePanel").IsVisible.Should().BeTrue();
     }
+
+    // The repository tiles of the dashboard.
+    private static IEnumerable<Button> DashboardTiles(Window window)
+        => Find<StackPanel>(window, "DashboardGroups").GetLogicalDescendants().OfType<Button>()
+            .Where(button => button.Classes.Contains("dashboardTile"));
 
     [AvaloniaTest]
     public void A_closed_window_reopens_with_its_size_and_maximized_state()
@@ -382,7 +388,7 @@ internal sealed class MainWindowTests
     public void CommitInfoPosition_should_move_the_commit_info_beside_the_grid_and_back_into_the_first_tab()
     {
         MainWindow window = NewWindow();
-        Grid revisionInfo = Find<Grid>(window, "RevisionInfo");
+        ScrollViewer revisionInfo = Find<ScrollViewer>(window, "RevisionInfo");
         Border host = Find<Border>(window, "RevisionInfoHost");
 
         Click(window, "CommitInfoRightwardMenuItem");
@@ -436,9 +442,9 @@ internal sealed class MainWindowTests
         window.Show();
         Open(window, _repo.Path);
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
-        WaitUntil(() => Find<Button>(window, "CopyMessageButton").IsEnabled);
+        WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
 
-        Click(window, "CopyMessageButton");
+        Click(window, "CopyMessageMenuItem");
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
@@ -452,7 +458,7 @@ internal sealed class MainWindowTests
         window.Show();
         Open(window, _repo.Path);
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
-        WaitUntil(() => Find<Button>(window, "CopyHashButton").IsEnabled);
+        WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
 
         Click(window, "CopyHashMenuItem");
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
@@ -1819,11 +1825,15 @@ internal sealed class MainWindowTests
         ListBox list = Find<ListBox>(window, "CommitList");
 
         list.SelectedIndex = 0;
-        WaitUntil(() => Find<SelectableTextBlock>(window, "DetailMessage").Text == "second\n\nbody line");
+        WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText == "second\n\nbody line");
 
-        Find<TextBlock>(window, "DetailHash").Text.Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
-        Find<TextBlock>(window, "DetailAuthor").Text.Should().Be("Test <test@example.com>");
-        Find<TextBlock>(window, "DetailParents").Text.Should().StartWith("Parents: ");
+        IReadOnlyDictionary<string, InfoTextBlock> header = CommitInfoHeader(window);
+        header.Keys.Should().Equal("Author:", "Date:", "Commit hash:", "Parent:");
+        header["Author:"].PlainText.Should().Be("Test <test@example.com>");
+        header["Author:"].Lines.Single().Single().Link.Should().Be("mailto:test@example.com");
+        header["Commit hash:"].PlainText.Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
+        header["Parent:"].PlainText.Should().Be(_repo.Run("rev-parse", "--short=8", "HEAD~1").Trim());
+        WaitUntil(() => Find<InfoTextBlock>(window, "DetailRevisionInfo").PlainText.Contains("Contained in branches:"));
     }
 
     [AvaloniaTest]
@@ -1834,9 +1844,38 @@ internal sealed class MainWindowTests
         ListBox list = Find<ListBox>(window, "CommitList");
 
         list.SelectedIndex = 1;
-        WaitUntil(() => Find<TextBlock>(window, "DetailParents").Text == "No parents");
+        WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText == "first");
 
-        Find<SelectableTextBlock>(window, "DetailMessage").Text.Should().Be("first");
+        CommitInfoHeader(window).Keys.Should().Equal("Author:", "Date:", "Commit hash:", "Child:");
+    }
+
+    [AvaloniaTest]
+    public void A_parent_link_in_the_commit_info_selects_the_parent()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox list = Find<ListBox>(window, "CommitList");
+        list.SelectedIndex = 0;
+        WaitUntil(() => CommitInfoHeader(window).ContainsKey("Parent:"));
+        InfoTextBlock parent = CommitInfoHeader(window)["Parent:"];
+
+        Dispatcher.UIThread.RunJobs();
+        Point point = parent.TranslatePoint(new Point(3, parent.Bounds.Height / 2), window)!.Value;
+
+        window.MouseDown(point, MouseButton.Left);
+        window.MouseUp(point, MouseButton.Left);
+
+        WaitUntil(() => list.SelectedIndex == 1);
+    }
+
+    // The commit info header's values by their label.
+    private static IReadOnlyDictionary<string, InfoTextBlock> CommitInfoHeader(Window window)
+    {
+        Grid header = Find<Grid>(window, "DetailHeader");
+        return header.Children.OfType<InfoTextBlock>()
+            .ToDictionary(value => header.Children.OfType<TextBlock>()
+                .First(label => label is not InfoTextBlock && Grid.GetRow(label) == Grid.GetRow(value)).Text!);
     }
 
     // The tree node of a branch by its full name, e.g. "team/external" or "origin/main".

@@ -420,29 +420,96 @@
 
       <Grid Grid.Column="2">
         <!-- Dashboard: recent repositories, shown while no repository is open (upstream's Dashboard). -->
-        <DockPanel x:Name="DashboardPanel" LastChildFill="True" Margin="24,16">
-          <TextBlock DockPanel.Dock="Top" Text="Recent repositories" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8" />
-          <TextBlock DockPanel.Dock="Top" Text="Double-click or press Enter to open. Start > Open, Clone or Create to begin with another one."
-                     Margin="0,0,0,12" TextWrapping="Wrap" Opacity="0.75" />
-          <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-            <Button x:Name="RemoveRecentButton" Content="Remove from list" Margin="0,0,6,0" />
-          </WrapPanel>
-          <ListBox x:Name="RecentList" MaxWidth="900" HorizontalAlignment="Left">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="repo:RecentRepository">
-                <StackPanel Margin="2,3">
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                    <!-- Upstream's branch name beside the repository (ShowRepoCurrentBranch). -->
-                    <TextBlock Text="{Binding Branch}" IsVisible="{Binding HasBranch}" Opacity="0.8"
-                               Foreground="{DynamicResource SystemAccentColor}" />
-                  </StackPanel>
-                  <TextBlock Text="{Binding Path}" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+        <!-- Upstream's Dashboard: on the window color with its background picture, a fixed left column (the logo, the Start
+             links, the Contribute links at the bottom) and the repository list (UserRepositoriesList: a header with the
+             title, the search box, the recent repositories and the favourites grouped by category, as tiles), with 7%
+             margins on both sides. Colors as upstream's DashboardTheme, light or dark (ThemeApplier). -->
+        <Grid x:Name="DashboardPanel" Background="{DynamicResource CommitInfoBackgroundBrush}">
+          <Grid.Styles>
+            <Style Selector="TextBlock.dashboardHeading">
+              <Setter Property="FontSize" Value="19" />
+              <Setter Property="Foreground" Value="{DynamicResource DashboardHeadingBrush}" />
+            </Style>
+            <!-- Upstream's dashboard links (LinkLabel): the image, then the text in the primary text color, the accented color
+                 under the pointer, never underlined. -->
+            <Style Selector="Button.dashboardLink">
+              <Setter Property="Background" Value="Transparent" />
+              <Setter Property="BorderThickness" Value="0" />
+              <Setter Property="Padding" Value="3" />
+              <Setter Property="Margin" Value="3,0,3,8" />
+              <Setter Property="Cursor" Value="Hand" />
+              <Setter Property="Foreground" Value="{DynamicResource DashboardPrimaryTextBrush}" />
+            </Style>
+            <Style Selector="Button.dashboardLink:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+              <Setter Property="Background" Value="Transparent" />
+              <Setter Property="Foreground" Value="{DynamicResource DashboardAccentBrush}" />
+            </Style>
+            <Style Selector="Button.dashboardLink:pressed /template/ ContentPresenter#PART_ContentPresenter">
+              <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <!-- Upstream's repository tiles: the folder image (with a star for a repository in a category), the path, and the
+                 branch below in a smaller font and the branch color; the hover color under the pointer. -->
+            <Style Selector="Button.dashboardTile">
+              <Setter Property="Background" Value="Transparent" />
+              <Setter Property="BorderThickness" Value="0" />
+              <Setter Property="CornerRadius" Value="0" />
+              <Setter Property="Padding" Value="4,6" />
+              <Setter Property="Margin" Value="0,0,2,2" />
+              <Setter Property="HorizontalContentAlignment" Value="Left" />
+              <Setter Property="VerticalContentAlignment" Value="Top" />
+              <Setter Property="Foreground" Value="{DynamicResource DashboardPrimaryTextBrush}" />
+            </Style>
+            <Style Selector="Button.dashboardTile:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.dashboardTile:focus /template/ ContentPresenter#PART_ContentPresenter">
+              <Setter Property="Background" Value="{DynamicResource DashboardStartBrush}" />
+              <Setter Property="Foreground" Value="{DynamicResource DashboardPrimaryTextBrush}" />
+            </Style>
+            <Style Selector="Button.dashboardTile TextBlock.branch">
+              <Setter Property="Foreground" Value="{DynamicResource DashboardBranchBrush}" />
+            </Style>
+            <Style Selector="TextBlock.dashboardGroup">
+              <Setter Property="Foreground" Value="{DynamicResource SystemControlHyperlinkTextBrush}" />
+            </Style>
+          </Grid.Styles>
+          <Border Background="{DynamicResource DashboardBackgroundBrush}" />
+          <!-- Upstream's left column is 213 pixels for its 9-point font; here it grows with a larger font so the links fit. -->
+          <Grid ColumnDefinitions="7*,Auto,86*,7*">
+            <DockPanel Grid.Column="1" MinWidth="213">
+              <Border DockPanel.Dock="Top" Height="68" Background="{DynamicResource DashboardLogoBrush}" Padding="14,15,14,9">
+                <Image Source="{local:UpstreamImage GitExtensionsLogoWide}" Width="185" Height="44" Stretch="Uniform"
+                       HorizontalAlignment="Left" />
+              </Border>
+              <Border DockPanel.Dock="Bottom" Background="{DynamicResource DashboardContributeBrush}" Margin="2"
+                      Padding="20,20,20,30">
+                <StackPanel x:Name="DashboardContribute">
+                  <TextBlock Classes="dashboardHeading" Text="Contribute" Margin="2,0,2,8" />
+                  <Button x:Name="DashboardDevelopLink" Classes="dashboardLink" Tag="Develop" Content="Develop" />
+                  <Button x:Name="DashboardDonateLink" Classes="dashboardLink" Tag="DollarSign" Content="Donate" />
+                  <Button x:Name="DashboardTranslateLink" Classes="dashboardLink" Tag="Translate" Content="Translate" />
+                  <Button x:Name="DashboardIssuesLink" Classes="dashboardLink" Tag="Bug" Content="Issues" />
                 </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </DockPanel>
+              </Border>
+              <Border Background="{DynamicResource DashboardStartBrush}" Margin="2" Padding="20">
+                <StackPanel x:Name="DashboardStart">
+                  <Button x:Name="DashboardCreateLink" Classes="dashboardLink" Tag="RepoCreate" Content="Create new repository" />
+                  <Button x:Name="DashboardOpenLink" Classes="dashboardLink" Tag="RepoOpen" Content="Open repository" />
+                  <Button x:Name="DashboardCloneLink" Classes="dashboardLink" Tag="CloneRepoGit" Content="Clone repository" />
+                </StackPanel>
+              </Border>
+            </DockPanel>
+            <DockPanel Grid.Column="2" MinWidth="450">
+              <Border DockPanel.Dock="Top" Height="68" Background="{DynamicResource DashboardHeaderBrush}" Padding="20,0,20,11">
+                <TextBlock Classes="dashboardHeading" Text="Recent repositories" VerticalAlignment="Bottom" />
+              </Border>
+              <DockPanel Margin="20,18,20,3">
+                <TextBox x:Name="DashboardSearchBox" DockPanel.Dock="Top" Watermark="Search repositories..." Margin="0,0,0,12"
+                         Background="{DynamicResource DashboardSearchBrush}" />
+                <ScrollViewer>
+                  <StackPanel x:Name="DashboardGroups" Spacing="8" />
+                </ScrollViewer>
+              </DockPanel>
+            </DockPanel>
+          </Grid>
+        </Grid>
 
         <Grid x:Name="BrowsePanel" RowDefinitions="*,5,300" IsVisible="False">
           <!-- Upstream's RevisionsSplitContainer: the grid, and the commit info beside it when CommitInfoPosition puts it

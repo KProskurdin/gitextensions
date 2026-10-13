@@ -458,7 +458,7 @@ public sealed class CommitInfoReader
     ///  local branches in priority order, the prioritized remote branches grouped by branch priority and then by remote
     ///  priority, the other local branches and last the other remote branches; equal places by name.
     /// </summary>
-    internal sealed class BranchComparer : IComparer<string>
+    public sealed class BranchComparer : IComparer<string>
     {
         private readonly Dictionary<string, int> _orderByBranch = new(StringComparer.Ordinal);
 

@@ -210,23 +210,7 @@ public partial class MainWindow : Window
     private void WireLeftPanel()
     {
         WireRepoObjectsTree();
-        RecentList.DoubleTapped += (_, _) => OpenSelectedRecent();
-        RecentList.KeyDown += (_, e) =>
-        {
-            if (e.Key == Key.Enter)
-            {
-                e.Handled = true;
-                OpenSelectedRecent();
-            }
-        };
-        RecentList.SelectionChanged += (_, _) => RemoveRecentButton.IsEnabled = RecentList.SelectedItem is not null;
-        RemoveRecentButton.Click += (_, _) =>
-        {
-            if (RecentList.SelectedItem is RecentRepository recent)
-            {
-                Run(() => _recent.RemoveAsync(recent.Path));
-            }
-        };
+        WireDashboard();
     }
 
     private void WireCommitList()
@@ -363,6 +347,15 @@ public partial class MainWindow : Window
                               : null);
         if (initial is null || _git?.Status == GitDiscoveryStatus.NotFound)
         {
+            // The dashboard, after the history and the plugins' links show.
+            if (Screenshot.RequestedFile is { } dashboardScreenshot)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                await Task.Delay(TimeSpan.FromMilliseconds(1000));
+                await Screenshot.SaveAsync(this, dashboardScreenshot);
+                Close();
+            }
+
             return;
         }
 
@@ -645,14 +638,6 @@ public partial class MainWindow : Window
         LeftPanel.IsVisible = open;
     }
 
-    private void OpenSelectedRecent()
-    {
-        if (RecentList.SelectedItem is RecentRepository recent && _git?.Status != GitDiscoveryStatus.NotFound)
-        {
-            Run(() => OpenRepositoryAsync(recent.Path));
-        }
-    }
-
     private void ShowRecentMenu()
     {
         List<MenuItem> items = [];
@@ -665,8 +650,7 @@ public partial class MainWindow : Window
 
         RecentMenu.ItemsSource = items;
         RecentMenu.IsEnabled = items.Count > 0;
-        RecentList.ItemsSource = _recent.Items;
-        RemoveRecentButton.IsEnabled = RecentList.SelectedItem is not null;
+        ReloadDashboardIfChanged();
     }
 
     private void OnRecentChanged(string? propertyName)
@@ -1628,7 +1612,7 @@ public partial class MainWindow : Window
         OpenMenuItem.IsEnabled = !busy && gitAvailable;
         InitMenuItem.IsEnabled = !busy && gitAvailable;
         CloneMenuItem.IsEnabled = !busy && gitAvailable;
-        RecentList.IsEnabled = !busy && gitAvailable;
+        DashboardGroups.IsEnabled = !busy && gitAvailable;
         CloseRepositoryMenuItem.IsEnabled = open;
         RefreshButton.IsEnabled = open;
         FilterToolStrip.IsEnabled = open;

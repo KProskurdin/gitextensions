@@ -54,7 +54,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormSettings.cs` (pages: appearance, commit dialog, git, git config) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)`, `ThemeApplier.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs`, `GitConfigService.cs` | `52d08e996` | partial |
 | `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormAbout.cs` | `src/xplat/GitExtensions.Xplat.App/AboutWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs`, `DashboardTheme.cs`, `UserRepositoriesList.cs`, `UserRepositoriesListController.cs`, `FormDashboardCategoryTitle.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories), `MainWindow.Dashboard.cs`, `ThemeApplier.cs` (dashboard colors); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs`, `Dashboard.cs` | `52d08e996` | partial |
 | `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.axaml` (`LeftPanel`) | `afc512395` | partial |
 | `src/app/GitUI/Hotkey/HotkeySettingsManager.cs` (FormBrowse and FormCommit defaults) | `src/xplat/GitExtensions.Xplat.App/Hotkeys.cs`, `HotkeyEditor.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/UpstreamHotkeys.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormGitIgnore.cs`, `FormAddToGitIgnore.cs` | `src/xplat/GitExtensions.Xplat.App/GitIgnoreWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitIgnoreFile.cs` | `52d08e996` | partial |
@@ -68,6 +68,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitSettingsPage.cs`, `FormFixHome.cs`, `SshSettingsPage.cs`; `src/app/GitCommands/Settings/AppSettings.cs` (`LoadSettings` sets `GIT_SSH`) | `src/xplat/GitExtensions.Xplat.Core/Settings/HomeSettings.cs`, `SshClients.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Git and SSH tabs), `App.axaml.cs` (startup) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/SortingSettingsPage.cs`; `src/app/GitUI/LeftPanel/BaseRefTree.cs` (`OrderByPriority`), `LocalBranchTree.cs`, `RemoteBranchTree.cs` (order), `ContextMenu/GitRefsSortByContextMenuItem.cs`, `GitRefsSortOrderContextMenuItem.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/RefSorting.cs`, `BranchTree.cs`, `GitRepositoryService.cs`; `CommitHistory/RevisionSorting.cs`, `GitCommitHistory.cs`; `Settings/SortingTexts.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Sorting tab), `MainWindow.axaml(.cs)` (branch tree menu) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/RevisionLinksSettingsPage.cs`; `src/app/GitUI/CommitInfo/CommitInfo.cs` (related links) | `src/xplat/GitExtensions.Xplat.Core/Settings/RevisionLinks.cs`, `UpstreamImages.cs` (stand-in); `CommitHistory/GitCommitHistory.cs` (links in the details); `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Revision links tab), `MainWindow.axaml(.cs)` (Related links) | `52d08e996` | partial |
+| `src/app/GitUI/CommitInfo/CommitInfo.cs`, `CommitInfoHeader.cs`, `RefsFormatter.cs`; `src/app/GitUI/CommandsDialogs/RevisionGpgInfoControl.cs`; `FormBrowse.InitCommitDetails.cs` (tab images) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitInfo.cs` (`CommitInfoText`, `CommitInfoReader`, `BranchComparer`), `GitCommitHistory.cs` (commit data and message), `Settings/AppPreferences.cs` (`CommitInfoOptions`, `ShowGpgInformation`); `src/xplat/GitExtensions.Xplat.App/MainWindow.CommitInfo.cs`, `InfoTextBlock.cs`, `MainWindow.axaml` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceFontsSettingsPage.cs`; `src/app/GitExtensions.Extensibility/FontParser.cs` (format) | `src/xplat/GitExtensions.Xplat.Core/Settings/FontSetting.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/FontApplier.cs`, `SettingsWindow.axaml(.cs)` (Fonts tab), `App.axaml` and the views' font resources | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/FormBrowseRepoSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `AuthorNameColumnProvider.cs`, `DateColumnProvider.cs`, `CommitIdColumnProvider.cs` (`TryGetToolTip`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionTooltips.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (grid tooltips), `SettingsWindow.axaml(.cs)` (Browse repository window tab) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BlameViewerSettingsPage.cs`; `src/app/GitUI/UserControls/BlameControl.cs` (`BuildAuthorLine`, gutter); `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` (blame settings menu); `GitModule.Blame` (flags) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameOptions.cs`, `BlameParser.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)`, `SettingsWindow.axaml(.cs)` (Blame viewer tab) | `52d08e996` | partial |
@@ -363,7 +364,18 @@ and the links.
 (`RepositoryHistoryManager`, setting key `history`), shown while no repository is open and in Start > Recent repositories;
 open with Enter or a double-click; remove an entry. Added 2026-10-11: each repository's checked out branch beside it, in
 the dashboard and the menu (`dashboardshowcurrentbranch`, see the RepositoryCurrentBranchNameProvider row), read after the
-list shows. Not ported: favourites and categories, the create, open and clone tiles, and the path shortening options.
+list shows. (The original list and its Remove button are gone.)
+Rebuilt 2026-10-13 as upstream's dashboard: on the window color with upstream's background picture, a left column with the
+wide logo, the Start links (create, open, clone, and "Clone <host> repository" per repository host plugin) and the
+Contribute links (develop, donate, translate, issues), and the repository list with its header, the search box (Enter opens
+the first repository, Down moves into the list) and tiles in groups: the recent repositories, then the favourites by
+category (`AssignCategoryAsync` and the favourite history in upstream's settings). A tile shows the caption upstream's
+`RecentRepoSplitter` gives the path, a star for a repository in a category, the folder or error image, and the branch;
+a click opens it. The tile menu is upstream's (show in folder, categories with "(none)" and "Add new...", remove from the
+list, remove missing projects); a group's "Actions" link renames or deletes a category or clears the recent list, with
+upstream's questions. Colors as `DashboardTheme`, light or dark. The left column grows past upstream's 213 pixels when the
+font needs it. Not ported: dropping a folder on the dashboard, "Recent repositories settings" (the shortening and sorting
+settings are read as upstream stores them), and copying the environment information before "Issues" opens.
 
 **RepoObjectsTree** (`partial`). Rebuilt 2026-10-13 as upstream's single tree (`RepoObjectsTree` in core, with `BranchTree`
 for the branch grouping): the six trees (Branches, Remotes, Worktrees, Tags, Submodules, Stashes) in upstream's order and
@@ -895,3 +907,20 @@ date and topo order), the group captions in italics as `MenuUtil.SetAsCaptionMen
 session refs in the grid, the superproject labels and refs, the notes column, per-remote label colors, the label hover
 frame and tooltip per label, the multi-line indicator, non-relatives drawn in gray text (their lanes are gray), the
 "unknown" artificial state and submodule counts, the merge source arrow, and "Save current view settings as default".
+
+**CommitInfo and the detail tabs** (`partial`). 2026-10-13: the detail tabs carry upstream's images (Commit, Diff, File tree,
+GPG). The commit info is upstream's layout on the window color: the avatar beside the header, whose rows come from
+upstream's `CommitDataHeaderRenderer` (author, dates, committer, hash, children and parents; the children are the loaded
+commits whose parent it is), the message from upstream's `CommitDataBodyRenderer` on a panel 4% darker, then what
+`CommitInfo.UpdateRevisionInfo` lists: the annotated tags' messages, the related links, the branches containing the commit
+(ordered as `BranchComparer`, limited as `RefsFormatter` with its "Show all" link), the tags containing it (newest first)
+and the tag it derives from (`GitDescribeProvider`). Upstream renders XHTML into rich text boxes; the new shell renders
+the same markup with upstream's renderers and `LinkFactory` and reads it back (`CommitInfoText.Parse`) into selectable
+text with links (`InfoTextBlock`). Links to commits, branches and tags select the commit in the grid, or show upstream's
+"not visible in the revision grid" error; other links open in the browser. The context menu has upstream's Copy link,
+Copy commit info (`CommitDataHeaderRenderer.GetPlainText` and the message) and the six "Show ..." choices, kept in
+upstream's settings. Copy hash and Copy message are only in the grid's menu, as upstream. The GPG tab is
+`RevisionGpgInfoControl` over upstream's `GpgInfoProvider` and `GitGpgController`: shown for real commits while
+`ShowGpgInformation` is on, read when the tab is selected. Not ported: the Console tab (ConEmu) and the Output history tab,
+"Add notes", git notes in the message, the back and forward mouse buttons, the settings checkbox for GPG information, and
+translations of the commit info texts that upstream keeps in `CommitInfo` and GitUI's `TranslatedStrings`.

@@ -24,6 +24,9 @@
          GitUI.Properties.Images) finds the same picture (ScriptIcons.cs). -->
     <AvaloniaResource Include="..\..\app\GitUI\Properties\Images.resx" Link="Assets\Upstream\Images.resx" />
     <AvaloniaResource Include="..\..\app\GitUI\Resources\Icons\*.png" Link="Assets\Upstream\Icons\%(Filename)%(Extension)" />
+    <!-- The dashboard's background pictures and wide logo, which upstream's resource list names too. -->
+    <AvaloniaResource Include="..\..\app\GitUI\Resources\Backgrounds\*.png" Link="Assets\Upstream\Backgrounds\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\..\setup\assets\Logo\GitExtensionsLogoWide.png" Link="Assets\Upstream\Logo\GitExtensionsLogoWide.png" />
   </ItemGroup>
 
   <ItemGroup>

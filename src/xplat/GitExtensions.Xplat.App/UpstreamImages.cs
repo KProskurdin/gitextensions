@@ -23,8 +23,14 @@ public static class UpstreamImages
 {
     private const string AssetsRoot = "avares://GitExtensions/Assets/Upstream/";
 
-    // Upstream's resource list points at the icon files relative to itself (..\Resources\Icons\Name.png).
-    private const string IconsFolder = @"Resources\Icons\";
+    // Upstream's resource list points at its files relative to itself (..\Resources\Icons\Name.png); the linked folders, by
+    // the folder the list names.
+    private static readonly (string Folder, string Asset)[] _folders =
+    [
+        (@"Resources\Icons\", "Icons/"),
+        (@"Resources\Backgrounds\", "Backgrounds/"),
+        (@"setup\assets\Logo\", "Logo/"),
+    ];
 
     private static readonly Lazy<IReadOnlyDictionary<string, Uri>> _icons = new(LoadIcons);
     private static readonly Dictionary<string, Bitmap?> _loaded = new(StringComparer.Ordinal);
@@ -76,9 +82,12 @@ public static class UpstreamImages
     private static IReadOnlyDictionary<string, Uri> LoadIcons()
     {
         Dictionary<string, Uri> files = new(StringComparer.OrdinalIgnoreCase);
-        foreach (Uri asset in AssetLoader.GetAssets(new Uri(AssetsRoot + "Icons/"), null))
+        foreach ((_, string folder) in _folders)
         {
-            files[Path.GetFileName(asset.AbsolutePath)] = asset;
+            foreach (Uri asset in AssetLoader.GetAssets(new Uri(AssetsRoot + folder), null))
+            {
+                files[folder + Path.GetFileName(asset.AbsolutePath)] = asset;
+            }
         }
 
         using Stream resx = AssetLoader.Open(new Uri(AssetsRoot + "Images.resx"));
@@ -87,13 +96,16 @@ public static class UpstreamImages
         {
             string? name = (string?)data.Attribute("name");
             string? value = (string?)data.Element("value");
-            if (name is null || value is null || !value.Contains(IconsFolder, StringComparison.OrdinalIgnoreCase))
+            if (name is null || value is null
+                             || _folders.FirstOrDefault(folder =>
+                                     value.Contains(folder.Folder, StringComparison.OrdinalIgnoreCase))
+                                 is not { Asset: { } assetFolder })
             {
                 continue;
             }
 
             string file = Path.GetFileName(value.Split(';')[0].Replace('\\', '/'));
-            if (files.TryGetValue(file, out Uri? uri))
+            if (files.TryGetValue(assetFolder + file, out Uri? uri))
             {
                 icons[name] = uri;
             }
