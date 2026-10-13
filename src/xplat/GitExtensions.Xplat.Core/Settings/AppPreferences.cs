@@ -400,6 +400,27 @@ public interface IAppPreferences
     bool ShowGpgInformation { get; set; }
 
     /// <summary>
+    ///  Upstream's <c>DiffListSortType</c>: how its file lists group their files (path, extension or status).
+    /// </summary>
+    DiffListSortType DiffListSorting { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>closecommitdialogafterlastcommit</c>: the commit window closes after a commit that leaves no unstaged
+    ///  changes.
+    /// </summary>
+    bool CloseCommitDialogAfterLastCommit { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>refreshcommitdialogonformfocus</c>: the commit window reads the status again when it is activated.
+    /// </summary>
+    bool RefreshCommitDialogOnFocus { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>CommitDialogSelectStagedOnEnterMessage</c>: entering the message box selects a staged file.
+    /// </summary>
+    bool CommitDialogSelectStagedOnEnterMessage { get; set; }
+
+    /// <summary>
     ///  Whether the app asks before <paramref name="confirmation"/>'s action: upstream's <c>DontConfirm...</c> settings,
     ///  inverted, and <c>ConfirmBranchCheckout</c> as it is.
     /// </summary>
@@ -1104,6 +1125,30 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.ShowGpgInformation.Value = value;
     }
 
+    public DiffListSortType DiffListSorting
+    {
+        get => AppSettings.DiffListSorting;
+        set => AppSettings.DiffListSorting = value;
+    }
+
+    public bool CloseCommitDialogAfterLastCommit
+    {
+        get => AppSettings.CloseCommitDialogAfterLastCommit;
+        set => AppSettings.CloseCommitDialogAfterLastCommit = value;
+    }
+
+    public bool RefreshCommitDialogOnFocus
+    {
+        get => AppSettings.RefreshArtificialCommitOnApplicationActivated;
+        set => AppSettings.RefreshArtificialCommitOnApplicationActivated = value;
+    }
+
+    public bool CommitDialogSelectStagedOnEnterMessage
+    {
+        get => AppSettings.CommitDialogSelectStagedOnEnterMessage.Value;
+        set => AppSettings.CommitDialogSelectStagedOnEnterMessage.Value = value;
+    }
+
     public bool Asks(Confirmation confirmation) => confirmation switch
     {
         Confirmation.Amend => !AppSettings.DontConfirmAmend.Value,
@@ -1513,6 +1558,14 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public CommitInfoOptions CommitInfoOptions { get; set; } = new();
 
     public bool ShowGpgInformation { get; set; } = true;
+
+    public DiffListSortType DiffListSorting { get; set; } = DiffListSortType.FilePath;
+
+    public bool CloseCommitDialogAfterLastCommit { get; set; } = true;
+
+    public bool RefreshCommitDialogOnFocus { get; set; }
+
+    public bool CommitDialogSelectStagedOnEnterMessage { get; set; } = true;
 
     private readonly Dictionary<Confirmation, bool> _asks = [];
 

@@ -14,6 +14,15 @@ internal static class Screenshot
     public const string EnvironmentVariable = "XPLAT_SCREENSHOT";
 
     /// <summary>
+    ///  Names another window to save instead of the browse window: <see cref="CommitWindow"/>.
+    /// </summary>
+    public const string WindowEnvironmentVariable = "XPLAT_SCREENSHOT_WINDOW";
+
+    public const string CommitWindow = "commit";
+
+    public static string? RequestedWindow => Environment.GetEnvironmentVariable(WindowEnvironmentVariable);
+
+    /// <summary>
     ///  The file to save to, or null when the aid is off.
     /// </summary>
     public static string? RequestedFile

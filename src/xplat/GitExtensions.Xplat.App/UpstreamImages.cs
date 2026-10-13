@@ -33,6 +33,10 @@ public static class UpstreamImages
     ];
 
     private static readonly Lazy<IReadOnlyDictionary<string, Uri>> _icons = new(LoadIcons);
+
+    // The icons named in upstream's other resource list (GitUI.Properties.Resources, e.g. SyntaxHighlighting), under their
+    // file name, which is the resource name there; not offered as script icons, as upstream offers only its Images.
+    private static readonly Lazy<IReadOnlyDictionary<string, Uri>> _resourceIcons = new(LoadResourceIcons);
     private static readonly Dictionary<string, Bitmap?> _loaded = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -46,7 +50,8 @@ public static class UpstreamImages
     /// </summary>
     public static Bitmap? Named(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name) || !_icons.Value.TryGetValue(name, out Uri? uri))
+        if (string.IsNullOrWhiteSpace(name)
+            || !(_icons.Value.TryGetValue(name, out Uri? uri) || _resourceIcons.Value.TryGetValue(name, out uri)))
         {
             return null;
         }
@@ -109,6 +114,17 @@ public static class UpstreamImages
             {
                 icons[name] = uri;
             }
+        }
+
+        return icons;
+    }
+
+    private static IReadOnlyDictionary<string, Uri> LoadResourceIcons()
+    {
+        Dictionary<string, Uri> icons = new(StringComparer.Ordinal);
+        foreach (Uri asset in AssetLoader.GetAssets(new Uri(AssetsRoot + _folders[0].Asset), null))
+        {
+            icons.TryAdd(Path.GetFileNameWithoutExtension(asset.AbsolutePath), asset);
         }
 
         return icons;

@@ -37,38 +37,7 @@ public partial class DiffView : UserControl
 
         // As upstream's FileViewer, each view starts from the options of this run or the saved defaults.
         _options = AppServices.Preferences.InitialDiffOptions();
-        WhitespaceBox.ItemsSource = WhitespaceOption.All;
-        ShowOptions();
-        WhitespaceBox.SelectionChanged += (_, _) =>
-        {
-            if (!_showingOptions && WhitespaceBox.SelectedItem is WhitespaceOption option)
-            {
-                ChangeOptions(_options with { IgnoreWhitespace = option.Kind });
-            }
-        };
-        DecreaseContextButton.Click += (_, _) => ChangeOptions(_options.WithLessContext());
-        IncreaseContextButton.Click += (_, _) => ChangeOptions(_options.WithMoreContext());
-        EntireFileToggle.IsCheckedChanged += (_, _) =>
-        {
-            if (!_showingOptions)
-            {
-                ChangeOptions(_options.ToggleEntireFile());
-            }
-        };
-        NonPrintingToggle.IsCheckedChanged += (_, _) =>
-        {
-            if (!_showingOptions)
-            {
-                ChangeOptions(_options with { ShowNonPrintingChars = !_options.ShowNonPrintingChars });
-            }
-        };
-        SyntaxHighlightingToggle.IsCheckedChanged += (_, _) =>
-        {
-            if (!_showingOptions)
-            {
-                ChangeOptions(_options with { ShowSyntaxHighlighting = !_options.ShowSyntaxHighlighting });
-            }
-        };
+        WireOptions();
         DiffList.SizeChanged += (_, _) => ShowVerticalRuler();
         DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
         DiffList.PropertyChanged += (_, e) =>
@@ -117,7 +86,8 @@ public partial class DiffView : UserControl
         _text = null;
         _syntaxPath = filePath;
         _textIsDiff = true;
-        OptionsPanel.IsVisible = true;
+        _hasOptions = true;
+        ShowToolbar();
         TitleText.Text = title;
         return LoadAsync(_request);
     }
@@ -130,7 +100,8 @@ public partial class DiffView : UserControl
     {
         _request = null;
         TitleText.Text = title;
-        OptionsPanel.IsVisible = false;
+        _hasOptions = false;
+        ShowToolbar();
         ShowError(content is null ? "Binary file, not shown." : null);
         _syntaxPath = title;
         _textIsDiff = false;
@@ -145,7 +116,8 @@ public partial class DiffView : UserControl
     {
         _request = null;
         TitleText.Text = title;
-        OptionsPanel.IsVisible = false;
+        _hasOptions = false;
+        ShowToolbar();
         _syntaxPath = title;
         _textIsDiff = true;
         ShowError(null);
@@ -341,14 +313,7 @@ public partial class DiffView : UserControl
         {
             case DiffCommand.NextChange:
             case DiffCommand.PreviousChange:
-                IReadOnlyList<DiffLine> lines = _text ?? _viewModel.Lines;
-                if (DiffNavigation.FindChange(lines, DiffList.SelectedIndex, command == DiffCommand.NextChange) is
-                    { } index)
-                {
-                    DiffList.SelectedIndex = index;
-                    DiffList.ScrollIntoView(index);
-                }
-
+                GoToChange(next: command == DiffCommand.NextChange);
                 e.Handled = true;
                 break;
             case DiffCommand.IgnoreAllWhitespace:
@@ -407,22 +372,6 @@ public partial class DiffView : UserControl
         }
     }
 
-    private void ShowOptions()
-    {
-        _showingOptions = true;
-        NonPrintingToggle.IsChecked = _options.ShowNonPrintingChars;
-        SyntaxHighlightingToggle.IsChecked = _options.ShowSyntaxHighlighting;
-        WhitespaceBox.SelectedItem = WhitespaceOption.All.First(option => option.Kind == _options.IgnoreWhitespace);
-        ContextText.Text = _options.ContextLines.ToString(CultureInfo.InvariantCulture);
-        EntireFileToggle.IsChecked = _options.ShowEntireFile;
-
-        // As upstream, the context buttons are off while the entire file is shown.
-        DecreaseContextButton.IsEnabled = !_options.ShowEntireFile && _options.ContextLines > 0;
-        IncreaseContextButton.IsEnabled = !_options.ShowEntireFile;
-        ContextText.Opacity = _options.ShowEntireFile ? 0.4 : 1;
-        _showingOptions = false;
-    }
-
     private void ShowError(string? message)
     {
         ErrorText.Text = message ?? "";
@@ -430,22 +379,6 @@ public partial class DiffView : UserControl
     }
 
     private sealed record DiffRequest(string RepositoryPath, string? CommitHash, string? FilePath, bool Staged);
-}
-
-/// <summary>
-///  A choice of the whitespace box, named as upstream's FileViewer menu names it.
-/// </summary>
-public sealed record WhitespaceOption(IgnoreWhitespaceKind Kind, string Label)
-{
-    public static IReadOnlyList<WhitespaceOption> All { get; } =
-    [
-        new(IgnoreWhitespaceKind.None, "Show all whitespace changes"),
-        new(IgnoreWhitespaceKind.Eol, "Ignore whitespace changes at end of line"),
-        new(IgnoreWhitespaceKind.Change, "Ignore changes in amount of whitespace"),
-        new(IgnoreWhitespaceKind.AllSpace, "Ignore all whitespace changes"),
-    ];
-
-    public override string ToString() => Label;
 }
 
 /// <summary>

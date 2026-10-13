@@ -369,6 +369,21 @@ public partial class MainWindow : Window
 
         if (Screenshot.RequestedFile is { } screenshot)
         {
+            // XPLAT_SCREENSHOT_WINDOW=commit: the commit window instead of the browse window.
+            if (Screenshot.RequestedWindow == Screenshot.CommitWindow)
+            {
+                ShowCommitWindow();
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                if (_commitWindow is { } commit)
+                {
+                    await Screenshot.SaveAsync(commit, screenshot);
+                    commit.Close();
+                }
+
+                Close();
+                return;
+            }
+
             if (CommitList.ItemCount > 0)
             {
                 CommitList.SelectedIndex = 0;

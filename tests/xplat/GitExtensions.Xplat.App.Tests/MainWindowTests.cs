@@ -839,8 +839,7 @@ internal sealed class MainWindowTests
         List<DiffLineItem> lines = [.. diff.Lines];
         diffList.Selection.Select(lines.FindIndex(line => line.Text == "-line 2"));
         diffList.Selection.Select(lines.FindIndex(line => line.Text == "+line 2 changed"));
-        WaitUntil(() => Find<Button>(commit, "StageLinesButton").IsEnabled);
-        Click(commit, "StageLinesButton");
+        ClickDiffMenuItem(diff, "StageLinesMenuItem");
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Staged selected lines");
         string staged = _repo.Run("diff", "--cached", "lines.txt");
@@ -864,8 +863,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => diff.Lines.Any(line => line.Text == "+line 5"));
 
         SelectDiffLines(diff, "+line 2", "+line 3");
-        WaitUntil(() => Find<Button>(commit, "StageLinesButton").IsEnabled);
-        Click(commit, "StageLinesButton");
+        ClickDiffMenuItem(diff, "StageLinesMenuItem");
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Staged selected lines");
         _repo.Run("show", ":new.txt").ReplaceLineEndings("\n").Should().Be("line 2\nline 3\n");
@@ -889,8 +887,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => diff.Lines.Any(line => line.Text == "+line 5"));
 
         SelectDiffLines(diff, "+line 3");
-        WaitUntil(() => Find<Button>(commit, "UnstageLinesButton").IsEnabled);
-        Click(commit, "UnstageLinesButton");
+        ClickDiffMenuItem(diff, "UnstageLinesMenuItem");
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Unstaged selected lines");
         _repo.Run("show", ":new.txt").ReplaceLineEndings("\n").Should().Be("line 1\nline 2\nline 4\nline 5\n");
@@ -898,7 +895,7 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void Discard_asks_first_and_restores_the_file_when_confirmed()
+    public void Reset_file_to_the_index_asks_first_and_restores_the_file_when_confirmed()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         MainWindow window = NewWindow();
@@ -909,7 +906,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        Click(commit, "DiscardButton");
+        Click(commit, "UnstagedResetFileToFirstMenuItem");
         WaitUntil(() => commit.OwnedWindows.OfType<ConfirmWindow>().Any());
         Click(commit.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
 
@@ -1161,7 +1158,7 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void Ignore_in_the_commit_window_adds_the_untracked_file_to_gitignore()
+    public void Add_file_to_gitignore_in_the_commit_window_adds_the_untracked_file()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "notes.txt"), "scratch");
         MainWindow window = NewWindow();
@@ -1172,7 +1169,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        Click(commit, "IgnoreButton");
+        Click(commit, "UnstagedAddToGitIgnoreMenuItem");
         WaitUntil(() => commit.OwnedWindows.OfType<GitIgnoreWindow>().Any());
         GitIgnoreWindow ignore = commit.OwnedWindows.OfType<GitIgnoreWindow>().Single();
         WaitUntil(() => Find<Button>(ignore, "SaveButton").IsEnabled);
@@ -1491,7 +1488,7 @@ internal sealed class MainWindowTests
         DiffView diff = Find<DiffView>(commit, "Diff");
         WaitUntil(() => diff.Lines.Any(line => line.Text == "+line 5"));
         SelectDiffLines(diff, "+line 1");
-        WaitUntil(() => Find<Button>(commit, "StageLinesButton").IsEnabled);
+        Dispatcher.UIThread.RunJobs();
 
         PressIn(diff.FindControl<ListBox>("DiffList")!, Key.S, KeyModifiers.None);
 
@@ -1894,6 +1891,18 @@ internal sealed class MainWindowTests
     {
         window.OpenRepository(path);
         WaitUntil(() => !window.IsBusy);
+    }
+
+    // Upstream FileViewer's menu: it updates itself for the selection when it opens; the item must be offered.
+    private static void ClickDiffMenuItem(DiffView diff, string name)
+    {
+        ListBox list = diff.FindControl<ListBox>("DiffList")!;
+        list.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        list.ContextMenu!.Close();
+        MenuItem item = diff.FindControl<MenuItem>(name)!;
+        (item.IsVisible, item.IsEnabled).Should().Be((true, true));
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
     }
 
     private static CommitWindow OpenCommitWindow(MainWindow window)

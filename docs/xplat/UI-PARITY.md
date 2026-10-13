@@ -182,6 +182,19 @@ toolbar icons with upstream's `ToolTipText`.
   repository tiles grouped as recent repositories and favourites by category, with the search box, the tile and category
   menus, and upstream's light and dark colors. See the "Dashboard" note in `PORTING-MAP.md`. Checked by screenshot (the
   screenshot aid now also captures the dashboard when no repository opens).
+- 2026-10-13, U3.1 done (C1, C2): the commit window's lists as upstream's FileStatusList (toolbar with group-by and
+  settings, regex filter box, status images, NoFiles texts) without the tree view, `toolbarStaged` between them, and
+  upstream's item menus in place of the rows of buttons; the "unresolved merge conflicts" button over the diff. See the
+  FormCommit note in `PORTING-MAP.md`. Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=commit` saves the commit window).
+- 2026-10-13, U3.2 done (C3, C4): the commit window's button column (Commit, Commit & push, Amend with Reset author and
+  Reset soft, Stash staged changes, the reset buttons) and the message toolstrip with upstream's Options menu (close
+  choices, refresh on focus, select staged, sign-off, author, no verify, GPG). See the FormCommit note in
+  `PORTING-MAP.md`. Checked by screenshot.
+- 2026-10-13, U3.3 done (C5): the commit window's status strip (committer and author, branch and where it pushes, staged
+  count, line and column) and upstream's window title. See the FormCommit note in `PORTING-MAP.md`. Checked by screenshot.
+- 2026-10-13, U3.4 done (C6), and with it U3: the diff viewer's toolbar as upstream's icon strip over the lines, shown on
+  hover, and upstream's diff menu with line staging, the copy items and the view options; the commit window's buttons
+  under the diff are gone. See the FileViewer note in `PORTING-MAP.md`. Checked by screenshot.
 
 ## Risks
 

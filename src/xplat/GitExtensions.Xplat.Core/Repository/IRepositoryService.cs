@@ -82,6 +82,11 @@ public sealed record FileChange(string Path, ChangeKind Kind, bool Staged)
     ///  The entry in a list that already separates staged from unstaged changes, e.g. "Modified: a.txt".
     /// </summary>
     public string Label => $"{Kind}: {Path}";
+
+    /// <summary>
+    ///  The name of upstream's status image for the file (<see cref="FileStatusList.ImageFor"/>).
+    /// </summary>
+    public string Image => FileStatusList.ImageFor(Kind);
 }
 
 /// <summary>

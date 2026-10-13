@@ -3,19 +3,7 @@
              xmlns:local="using:GitExtensions.Xplat.App"
              x:Class="GitExtensions.Xplat.App.DiffView">
   <DockPanel LastChildFill="True">
-    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
-      <!-- Upstream FileViewer's toolbar: whitespace, lines of context, entire file. -->
-      <StackPanel x:Name="OptionsPanel" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
-        <ComboBox x:Name="WhitespaceBox" MinWidth="200" ToolTip.Tip="Whitespace changes" />
-        <Button x:Name="DecreaseContextButton" Content="−" Padding="8,2" ToolTip.Tip="Decrease the number of lines of context" />
-        <TextBlock x:Name="ContextText" VerticalAlignment="Center" MinWidth="16" TextAlignment="Center" ToolTip.Tip="Lines of context" />
-        <Button x:Name="IncreaseContextButton" Content="+" Padding="8,2" ToolTip.Tip="Increase the number of lines of context" />
-        <ToggleButton x:Name="EntireFileToggle" Content="Entire file" Padding="8,2" ToolTip.Tip="Show entire file" />
-        <ToggleButton x:Name="NonPrintingToggle" Content="&#xB6;" Padding="8,2" ToolTip.Tip="Show nonprinting characters" />
-        <ToggleButton x:Name="SyntaxHighlightingToggle" Content="Syntax" Padding="8,2" ToolTip.Tip="Show syntax highlighting" />
-      </StackPanel>
-      <TextBlock x:Name="TitleText" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-    </DockPanel>
+    <TextBlock x:Name="TitleText" DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />
     <!-- Upstream's EditorBackground behind the lines, LineNumberBackground behind the numbers, Selection on selected lines. -->
     <!-- Upstream's vertical ruler (diffverticalrulerposition) over the lines. -->
@@ -37,6 +25,26 @@
           <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
         </Style>
       </ListBox.Styles>
+      <!-- Upstream FileViewer's menu: line staging (where the window can stage), the copy items, then the view options. -->
+      <ListBox.ContextMenu>
+        <ContextMenu x:Name="DiffContextMenu">
+          <MenuItem x:Name="StageLinesMenuItem" Header="Stage selected line(s)" Icon="{local:UpstreamIcon Stage}" />
+          <MenuItem x:Name="UnstageLinesMenuItem" Header="Unstage selected line(s)" Icon="{local:UpstreamIcon Unstage}" />
+          <MenuItem x:Name="CopyMenuItem" Header="_Copy" />
+          <MenuItem x:Name="CopyPatchMenuItem" Header="Copy _patch" />
+          <MenuItem x:Name="CopyNewVersionMenuItem" Header="Copy _new version" />
+          <MenuItem x:Name="CopyOldVersionMenuItem" Header="Copy _old version" />
+          <Separator x:Name="OptionsSeparator" />
+          <MenuItem x:Name="IncreaseContextMenuItem" Header="_Increase the number of lines of context" Icon="{local:UpstreamIcon NumberOfLinesIncrease}" />
+          <MenuItem x:Name="DecreaseContextMenuItem" Header="_Decrease the number of lines of context" Icon="{local:UpstreamIcon NumberOfLinesDecrease}" />
+          <MenuItem x:Name="EntireFileMenuItem" Header="Show _entire file" ToggleType="CheckBox" />
+          <MenuItem x:Name="NonPrintingMenuItem" Header="S_how nonprinting characters" ToggleType="CheckBox" />
+          <MenuItem x:Name="SyntaxHighlightingMenuItem" Header="Show synta_x highlighting" ToggleType="CheckBox" />
+          <MenuItem x:Name="IgnoreWhitespaceEolMenuItem" Header="Ignore whitespace changes at end of _line" ToggleType="CheckBox" />
+          <MenuItem x:Name="IgnoreWhitespaceChangeMenuItem" Header="Ignore changes in _amount of whitespace" ToggleType="CheckBox" />
+          <MenuItem x:Name="IgnoreAllWhitespaceMenuItem" Header="Ignore all _whitespace changes" ToggleType="CheckBox" />
+        </ContextMenu>
+      </ListBox.ContextMenu>
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:DiffLineItem">
           <Grid ColumnDefinitions="44,44,*">
@@ -54,6 +62,22 @@
     <Canvas IsHitTestVisible="False" ClipToBounds="True">
       <Line x:Name="VerticalRuler" StrokeThickness="1" Stroke="Gray" Opacity="0.6" IsVisible="False" />
     </Canvas>
+    <!-- Upstream FileViewer's toolbar: at the top right over the lines, shown while the pointer is on the viewer. -->
+    <StackPanel x:Name="DiffToolbar" Classes="toolStrip" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,0,40,0" IsVisible="False" Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+      <local:ToolButton x:Name="NextChangeButton" Image="ArrowDown" ToolTip.Tip="Next change" />
+      <local:ToolButton x:Name="PreviousChangeButton" Image="ArrowUp" ToolTip.Tip="Previous change" />
+      <Rectangle Classes="toolSeparator" />
+      <local:ToolButton x:Name="IncreaseContextButton" Image="NumberOfLinesIncrease" ToolTip.Tip="Increase the number of lines of context" />
+      <local:ToolButton x:Name="DecreaseContextButton" Image="NumberOfLinesDecrease" ToolTip.Tip="Decrease the number of lines of context" />
+      <Rectangle Classes="toolSeparator" />
+      <local:ToolToggleButton x:Name="EntireFileToggle" Image="ShowEntireFile" ToolTip.Tip="Show entire file" />
+      <local:ToolToggleButton x:Name="NonPrintingToggle" Image="ShowWhitespace" ToolTip.Tip="Show nonprinting characters" />
+      <local:ToolToggleButton x:Name="SyntaxHighlightingToggle" Image="SyntaxHighlighting" ToolTip.Tip="Show syntax highlighting" />
+      <local:ToolToggleButton x:Name="IgnoreWhitespaceEolToggle" Image="WhitespaceIgnoreEol" ToolTip.Tip="Ignore whitespace changes at end of line" />
+      <local:ToolToggleButton x:Name="IgnoreWhitespaceChangeToggle" Image="WhitespaceIgnore" ToolTip.Tip="Ignore changes in amount of whitespace" />
+      <local:ToolToggleButton x:Name="IgnoreAllWhitespaceToggle" Image="WhitespaceIgnoreAll" ToolTip.Tip="Ignore all whitespace changes" />
+    </StackPanel>
     </Panel>
   </DockPanel>
 </UserControl>

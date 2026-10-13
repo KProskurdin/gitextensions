@@ -24,13 +24,15 @@ public interface IGitOperations
     Task StageLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength, bool unstage,
         bool isNewFile = false);
 
-    Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author);
+    Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
+        CommitExtras? extras = null);
 
     /// <summary>
     ///  Commits with the message git asks for in <paramref name="editorCommand"/> (see <see cref="GitEditorCommand"/>), as
     ///  upstream's commit window does when messages are not composed in it (<c>UseFormCommitMessage</c>).
     /// </summary>
-    Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author, string editorCommand);
+    Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author, string editorCommand,
+        CommitExtras? extras = null);
 
     /// <summary>
     ///  Creates branch <paramref name="name"/> at <paramref name="startPoint"/>, or at HEAD when none is given.
@@ -107,6 +109,17 @@ public interface IGitOperations
     ///  Restores the files from the index, dropping their unstaged edits. Untracked files are not touched.
     /// </summary>
     Task DiscardChangesAsync(string repositoryPath, IReadOnlyList<string> paths);
+
+    /// <summary>
+    ///  Upstream's "Reset file(s) to" (<c>GitModule.CheckoutFiles</c>): the files as <paramref name="revision"/> has them,
+    ///  in the index and the working directory.
+    /// </summary>
+    Task ResetFilesToAsync(string repositoryPath, string revision, IReadOnlyList<string> paths);
+
+    /// <summary>
+    ///  Upstream's "Stop tracking this file" (<c>GitModule.StopTrackingFile</c>): removes it from the index, keeping it on disk.
+    /// </summary>
+    Task StopTrackingAsync(string repositoryPath, string path);
 
     /// <summary>
     ///  Deletes untracked files from the working tree. Only the given files are removed, never directories.
@@ -270,3 +283,10 @@ public interface IGitOperations
 }
 
 public sealed class GitOperationException(string message) : Exception(message);
+
+/// <summary>
+///  Upstream FormCommit's Options for a commit: <c>--no-verify</c>, the GPG choice (null for git's default, false for
+///  <c>--no-gpg-sign</c>, true to sign with <paramref name="GpgKeyId"/> or the default key) and <c>--reset-author</c> for an
+///  amend.
+/// </summary>
+public sealed record CommitExtras(bool NoVerify = false, bool? GpgSign = null, string GpgKeyId = "", bool ResetAuthor = false);

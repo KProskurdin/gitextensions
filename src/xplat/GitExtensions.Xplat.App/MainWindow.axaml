@@ -501,7 +501,7 @@
                 <TextBlock Classes="dashboardHeading" Text="Recent repositories" VerticalAlignment="Bottom" />
               </Border>
               <DockPanel Margin="20,18,20,3">
-                <TextBox x:Name="DashboardSearchBox" DockPanel.Dock="Top" Watermark="Search repositories..." Margin="0,0,0,12"
+                <TextBox x:Name="DashboardSearchBox" DockPanel.Dock="Top" PlaceholderText="Search repositories..." Margin="0,0,0,12"
                          Background="{DynamicResource DashboardSearchBrush}" />
                 <ScrollViewer>
                   <StackPanel x:Name="DashboardGroups" Spacing="8" />

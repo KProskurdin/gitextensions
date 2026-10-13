@@ -129,7 +129,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             () => _operations.StageLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, unstage,
                 isNewFile));
 
-    public Task<bool> CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author)
+    public Task<bool> CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
+        CommitExtras? extras = null)
     {
         if (string.IsNullOrWhiteSpace(message))
         {
@@ -137,17 +138,18 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         }
 
         return RunAsync(amend ? "Amended" : "Committed", repositoryPath,
-            () => _operations.CommitAsync(repositoryPath, message, amend, signOff, author.Trim()));
+            () => _operations.CommitAsync(repositoryPath, message, amend, signOff, author.Trim(), extras));
     }
 
     /// <summary>
     ///  Commits with the message typed in git's editor (<see cref="EditorCommand"/>), for upstream's
     ///  <c>UseFormCommitMessage</c> turned off.
     /// </summary>
-    public Task<bool> CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author)
+    public Task<bool> CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
+        CommitExtras? extras = null)
         => EditorCommand is { } editor
             ? RunAsync(amend ? "Amended" : "Committed", repositoryPath,
-                () => _operations.CommitWithEditorAsync(repositoryPath, amend, signOff, author.Trim(), editor))
+                () => _operations.CommitWithEditorAsync(repositoryPath, amend, signOff, author.Trim(), editor, extras))
             : RejectAsync("No editor is available for the commit message.");
 
     public Task<bool> CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null)
@@ -457,6 +459,13 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> DiscardChangesAsync(string repositoryPath, IReadOnlyList<string> paths)
         => RunAsync($"Discarded changes to {paths.Count} file(s)", repositoryPath,
             () => _operations.DiscardChangesAsync(repositoryPath, paths));
+
+    public Task<bool> ResetFilesToAsync(string repositoryPath, string revision, IReadOnlyList<string> paths)
+        => RunAsync($"Reset {paths.Count} file(s) to {revision}", repositoryPath,
+            () => _operations.ResetFilesToAsync(repositoryPath, revision, paths));
+
+    public Task<bool> StopTrackingAsync(string repositoryPath, string path)
+        => RunAsync($"Stopped tracking {path}", repositoryPath, () => _operations.StopTrackingAsync(repositoryPath, path));
 
     public Task<bool> ResolveConflictsAsync(string repositoryPath, IReadOnlyList<string> paths, bool ours)
         => RunAsync($"Kept {(ours ? "ours" : "theirs")} for {paths.Count} file(s)", repositoryPath,

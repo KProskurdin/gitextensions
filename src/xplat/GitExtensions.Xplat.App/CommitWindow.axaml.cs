@@ -71,7 +71,7 @@ public partial class CommitWindow : Window
         _refresh = refresh;
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.CommitWindow");
-        Title = $"Commit - {RecentRepositoryPaths.DisplayName(repositoryPath)}";
+        Title = CommitStatusBar.Title(repository.CurrentBranch, repositoryPath);
         _messages = messages;
         Opened += (_, _) => Run(LoadMessageAsync);
         Closing += (_, _) => SavedDraft = SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true);
@@ -98,37 +98,28 @@ public partial class CommitWindow : Window
         };
         AddMessageMenu();
         InitializeAutoCompletion();
+        WireBottomPanel();
+        WireStatusBar();
 
         StageButton.Click += (_, _) => StageSelected(staged: false);
         UnstageButton.Click += (_, _) => StageSelected(staged: true);
         StageAllButton.Click += (_, _) => StageAll(staged: false);
         UnstageAllButton.Click += (_, _) => StageAll(staged: true);
-        UseOursButton.Click += (_, _) => ResolveSelectedConflicts(ours: true);
-        UseTheirsButton.Click += (_, _) => ResolveSelectedConflicts(ours: false);
-        DiscardButton.Click += (_, _) => Run(DiscardAsync);
-        DeleteUntrackedButton.Click += (_, _) => Run(DeleteUntrackedAsync);
-        StashSelectedButton.Click += (_, _) => Run(StashSelectedAsync);
-        IgnoreButton.Click += (_, _) => Run(IgnoreSelectedAsync);
-        DiffToolButton.Click += (_, _) => Run(OpenDiffToolAsync);
-        DiffToolChoices.Attach(DiffToolChoiceButton, tool => OpenDiffToolAsync(tool), ShowError);
+        WireFileLists();
         CommitButton.Click += (_, _) => Run(CommitAsync);
         CommitAndPushButton.Click += (_, _) => Run(CommitAndPushAsync);
         AmendCheck.IsCheckedChanged += (_, _) => Run(ToggleAmendAsync);
         CommitTemplatesFlyout.Opening += (_, _) => ShowCommitTemplates();
         CommitMessageFlyout.Opening += (_, _) => Run(ShowPreviousMessagesAsync);
-        UnstagedContextMenu.Opening += (_, _) => ShowFileListScripts(UnstagedContextMenu, UnstagedRunScriptMenuItem);
-        StagedContextMenu.Opening += (_, _) => ShowFileListScripts(StagedContextMenu, StagedRunScriptMenuItem);
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
         StagedList.SelectionChanged += (_, _) => OnFileSelected(StagedList, UnstagedList, staged: true);
         Diff.LineSelectionChanged += (_, _) => UpdateState();
-        StageLinesButton.Click += (_, _) => Run(() => StageSelectedLinesAsync(unstage: false));
-        UnstageLinesButton.Click += (_, _) => Run(() => StageSelectedLinesAsync(unstage: true));
         Diff.LinesHotkey += (_, command) =>
         {
-            Button button = command == DiffCommand.StageLines ? StageLinesButton : UnstageLinesButton;
-            if (button.IsEnabled)
+            bool unstage = command == DiffCommand.UnstageLines;
+            if (unstage ? CanUnstageLines : CanStageLines)
             {
-                Run(() => StageSelectedLinesAsync(unstage: command == DiffCommand.UnstageLines));
+                Run(() => StageSelectedLinesAsync(unstage));
             }
         };
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
@@ -142,6 +133,8 @@ public partial class CommitWindow : Window
         };
 
         ShowChanges();
+        ShowCommitAndPushText();
+        ShowStagedCount();
         UpdateState();
     }
 
@@ -240,7 +233,7 @@ public partial class CommitWindow : Window
             case CommitCommand.StageAll when StageAllButton.IsEnabled:
                 StageAll(staged: false);
                 return true;
-            case CommitCommand.OpenWithDifftool when DiffToolButton.IsEnabled:
+            case CommitCommand.OpenWithDifftool when CanOpenDiffTool:
                 Run(OpenDiffToolAsync);
                 return true;
             case CommitCommand.Refresh:
@@ -281,12 +274,17 @@ public partial class CommitWindow : Window
                 ShowChanges();
                 RefreshAutoCompleteWords();
                 UpdateState();
+                ShowCommitAndPushText();
+                ShowStagedCount();
                 break;
             case nameof(RepositoryViewModel.IsLoading):
             case nameof(RepositoryViewModel.IsMerging):
             case nameof(RepositoryViewModel.IsRebasing):
+                UpdateState();
+                break;
             case nameof(RepositoryViewModel.CurrentBranch):
                 UpdateState();
+                Run(ShowBranchAsync);
                 break;
         }
     }
@@ -305,14 +303,6 @@ public partial class CommitWindow : Window
         }
     }
 
-    private void ShowChanges()
-    {
-        UnstagedList.ItemsSource = _repository.Changes.Where(change => !change.Staged).ToList();
-        StagedList.ItemsSource = _repository.Changes.Where(change => change.Staged).ToList();
-        UnstagedHeader.Text = $"Unstaged changes ({UnstagedList.ItemCount})";
-        StagedHeader.Text = $"Staged changes ({StagedList.ItemCount})";
-    }
-
     // Upstream shows one diff at a time, so selecting in one list clears the other.
     private void OnFileSelected(ListBox list, ListBox other, bool staged)
     {
@@ -325,6 +315,9 @@ public partial class CommitWindow : Window
         other.SelectedItems?.Clear();
         _diffChange = change;
         _diffStaged = staged;
+
+        // Upstream FileViewer's menu stages lines of the working directory's diff and unstages lines of the index's.
+        Diff.LineAction = staged ? DiffLineAction.Unstage : DiffLineAction.Stage;
         Run(() => Diff.ShowAsync(_repositoryPath, commitHash: null, change.Path, staged, change.Label));
     }
 
@@ -339,25 +332,9 @@ public partial class CommitWindow : Window
         StageAllButton.IsEnabled = idle && hasUnstaged;
         UnstageButton.IsEnabled = idle && SelectedChanges(StagedList).Count > 0;
         UnstageAllButton.IsEnabled = idle && hasStaged;
-        DiscardButton.IsEnabled = idle && DiscardablePaths(unstaged).Count > 0;
-        DeleteUntrackedButton.IsEnabled = idle && UntrackedPaths(unstaged).Count > 0;
-        bool conflictSelected = idle && ConflictPaths(unstaged).Count > 0;
-        UseOursButton.IsEnabled = conflictSelected;
-        UseTheirsButton.IsEnabled = conflictSelected;
-        StashSelectedButton.IsEnabled = idle && unstaged.Count > 0;
-        IgnoreButton.IsEnabled = idle && UntrackedPaths(unstaged).Count > 0;
-        DiffToolButton.IsEnabled = idle && _diffChange is { Kind: not (ChangeKind.Untracked or ChangeKind.Conflict) };
+        SolveConflictsButton.IsVisible = _repository.Changes.Any(change => change.Kind == ChangeKind.Conflict);
         CommitButton.IsEnabled = idle;
         CommitAndPushButton.IsEnabled = idle && _repository.CurrentBranch.Length > 0;
-
-        // As upstream, lines can be staged from an edited or untracked file and unstaged from an edited or added one.
-        bool linesSelected = idle && Diff.SelectedRange() is not null;
-        StageLinesButton.IsEnabled = linesSelected && !_diffStaged
-                                                   && _diffChange is
-                                                       { Kind: ChangeKind.Modified or ChangeKind.Untracked };
-        UnstageLinesButton.IsEnabled = linesSelected && _diffStaged
-                                                     && _diffChange is
-                                                         { Kind: ChangeKind.Modified or ChangeKind.Added };
 
         string state = _repository.IsRebasing
             ? "A rebase is in progress: commit continues it only after the conflicts are staged."
@@ -369,31 +346,19 @@ public partial class CommitWindow : Window
         StateText.Foreground = ThemeBrushes.Current.Warning;
     }
 
+    private bool Idle => !_actions.IsBusy && !_repository.IsLoading;
+
+    // As upstream, lines can be staged from an edited or untracked file and unstaged from an edited or added one.
+    private bool CanStageLines => Idle && Diff.SelectedRange() is not null && !_diffStaged
+                                  && _diffChange is { Kind: ChangeKind.Modified or ChangeKind.Untracked };
+
+    private bool CanUnstageLines => Idle && Diff.SelectedRange() is not null && _diffStaged
+                                    && _diffChange is { Kind: ChangeKind.Modified or ChangeKind.Added };
+
+    private bool CanOpenDiffTool => Idle && _diffChange is { Kind: not (ChangeKind.Untracked or ChangeKind.Conflict) };
+
     private static List<FileChange> SelectedChanges(ListBox list) =>
         list.SelectedItems?.OfType<FileChange>().ToList() ?? [];
-
-    private static List<string> ConflictPaths(IEnumerable<FileChange> changes)
-        => [.. changes.Where(change => change.Kind == ChangeKind.Conflict).Select(change => change.Path)];
-
-    private static List<string> UntrackedPaths(IEnumerable<FileChange> changes)
-        => [.. changes.Where(change => change.Kind == ChangeKind.Untracked).Select(change => change.Path)];
-
-    // Only unstaged edits to tracked files can be discarded; untracked files are left alone.
-    private static List<string> DiscardablePaths(IEnumerable<FileChange> changes)
-        =>
-        [
-            .. changes.Where(change => change.Kind is ChangeKind.Modified or ChangeKind.Deleted)
-                .Select(change => change.Path)
-        ];
-
-    private async Task IgnoreSelectedAsync()
-    {
-        List<string> patterns = [.. UntrackedPaths(SelectedChanges(UnstagedList)).Select(GitIgnoreFile.PatternFor)];
-        if (patterns.Count > 0 && await new GitIgnoreWindow(_repositoryPath, patterns).ShowDialog<bool>(this))
-        {
-            await _refresh();
-        }
-    }
 
     private async Task OpenDiffToolAsync() => await OpenDiffToolAsync(tool: null);
 
@@ -452,52 +417,6 @@ public partial class CommitWindow : Window
         }
     }
 
-    // Takes the chosen side of each selected conflicted file and stages it, which marks the file resolved.
-    private void ResolveSelectedConflicts(bool ours)
-    {
-        if (ConflictPaths(SelectedChanges(UnstagedList)) is { Count: > 0 } paths)
-        {
-            Run(() => _actions.ResolveConflictsAsync(_repositoryPath, paths, ours));
-        }
-    }
-
-    private async Task DiscardAsync()
-    {
-        if (DiscardablePaths(SelectedChanges(UnstagedList)) is not { Count: > 0 } paths)
-        {
-            return;
-        }
-
-        string message = $"Discard the unstaged changes to {paths.Count} file(s)? This cannot be undone.";
-        if (await new ConfirmWindow(message, "Discard").ShowDialog<bool>(this))
-        {
-            await _actions.DiscardChangesAsync(_repositoryPath, paths);
-        }
-    }
-
-    private async Task DeleteUntrackedAsync()
-    {
-        if (UntrackedPaths(SelectedChanges(UnstagedList)) is not { Count: > 0 } paths)
-        {
-            return;
-        }
-
-        string message = $"Delete {paths.Count} untracked file(s) from disk? This cannot be undone.";
-        if (await new ConfirmWindow(message, "Delete").ShowDialog<bool>(this))
-        {
-            await _actions.DeleteUntrackedAsync(_repositoryPath, paths);
-        }
-    }
-
-    private async Task StashSelectedAsync()
-    {
-        List<string> paths = [.. SelectedChanges(UnstagedList).Select(change => change.Path)];
-        if (paths.Count > 0)
-        {
-            await _actions.StashAsync(_repositoryPath, message: "", includeUntracked: true, keepIndex: false, paths);
-        }
-    }
-
     // As upstream's FormCommit: the "before commit" scripts can stop the commit; the "after commit" ones run once it is done.
     private async Task<bool> CommitChangesAsync()
     {
@@ -545,12 +464,12 @@ public partial class CommitWindow : Window
             string message = CommitMessageFormat.Format(CommitMessageBox.Text ?? "",
                 _preferences.EnsureCommitMessageSecondLineEmpty);
             committed = await _actions.CommitAsync(_repositoryPath, message, AmendCheck.IsChecked == true,
-                SignOffCheck.IsChecked == true, CommitAuthorBox.Text ?? "");
+                SignOff, CommitAuthorBox.Text ?? "", Extras);
         }
         else
         {
             committed = await _actions.CommitWithEditorAsync(_repositoryPath, AmendCheck.IsChecked == true,
-                SignOffCheck.IsChecked == true, CommitAuthorBox.Text ?? "");
+                SignOff, CommitAuthorBox.Text ?? "", Extras);
         }
 
         if (committed)
@@ -558,6 +477,7 @@ public partial class CommitWindow : Window
             _messageBeforeAmend = "";
             CommitMessageBox.Text = "";
             AmendCheck.IsChecked = false;
+            NoVerifyMenuItem.IsChecked = false;
             await _messages.ResetAsync(_repositoryPath);
             await scripts.RunEventAsync(ScriptEvent.AfterCommit, _repositoryPath, []);
         }
@@ -567,21 +487,36 @@ public partial class CommitWindow : Window
 
     private async Task CommitAsync()
     {
-        if (await CommitChangesAsync() && _preferences.CloseCommitDialogAfterCommit)
+        bool unstagedLeft = _repository.Changes.Any(change => !change.Staged);
+        if (await CommitChangesAsync())
+        {
+            CloseAfterCommit(unstagedLeft);
+        }
+    }
+
+    // Upstream's DoCommit: the window closes after each commit (CloseCommitDialogAfterCommit), or after the commit that
+    // leaves no unstaged changes (CloseCommitDialogAfterLastCommit).
+    private void CloseAfterCommit(bool unstagedLeft)
+    {
+        if (_preferences.CloseCommitDialogAfterCommit
+            || (!unstagedLeft && _preferences.CloseCommitDialogAfterLastCommit))
         {
             Close();
         }
     }
 
-    // Pushes the current branch only when the commit succeeded, to the remote the branch tracks.
+    // Pushes the current branch only when the commit succeeded, to the remote the branch tracks. As upstream, with nothing
+    // to commit the button is "Push" and only pushes.
     private async Task CommitAndPushAsync()
     {
         string branch = _repository.CurrentBranch;
+        bool unstagedLeft = _repository.Changes.Any(change => !change.Staged);
+        bool pushOnly = PushOnly;
 
         // Read before the commit, which clears Amend. As upstream's FormCommit: an amended commit replaces the pushed one,
         // so with CommitAndPushForcedWhenAmend it is pushed with force-with-lease.
         bool forced = AmendCheck.IsChecked == true && _preferences.CommitAndPushForcedWhenAmend;
-        if (branch.Length == 0 || !await CommitChangesAsync())
+        if (branch.Length == 0 || (!pushOnly && !await CommitChangesAsync()))
         {
             return;
         }
@@ -591,9 +526,13 @@ public partial class CommitWindow : Window
             ? await _actions.PushAsync(_repositoryPath,
                 new PushRequest(remote, branch, branch, ForcePushOptions.ForceWithLease, Track: false))
             : await _actions.PushAsync(_repositoryPath, remote, branch);
-        if (pushed && _preferences.CloseCommitDialogAfterCommit)
+        if (pushed && pushOnly && _preferences.CloseCommitDialogAfterCommit)
         {
             Close();
+        }
+        else if (pushed && !pushOnly)
+        {
+            CloseAfterCommit(unstagedLeft);
         }
     }
 

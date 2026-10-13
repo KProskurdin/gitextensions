@@ -9,110 +9,274 @@
        and the commit message below the diff. -->
   <DockPanel Margin="8" LastChildFill="True">
     <TextBlock x:Name="StateText" DockPanel.Dock="Top" Margin="0,0,0,6" FontWeight="SemiBold" IsVisible="False" />
-    <TextBlock x:Name="StatusText" DockPanel.Dock="Bottom" Margin="0,6,0,0" />
+    <!-- Upstream's commitStatusStrip: the committer (and author), the branch and where it pushes, the staged count, and
+         the line and column of the caret in the message. The operation messages, which upstream shows in its process
+         dialog, follow the committer. -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="1,6,11,0" MinHeight="22">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+        <Image Source="{local:UpstreamImage Branch}" Width="16" Height="16" VerticalAlignment="Center" />
+        <TextBlock x:Name="BranchNameText" VerticalAlignment="Center" />
+        <TextBlock x:Name="RemoteNameText" VerticalAlignment="Center" Margin="0,0,25,0" />
+        <TextBlock Text="Staged" VerticalAlignment="Center" />
+        <TextBlock x:Name="StagedCountText" Text="0" Width="40" VerticalAlignment="Center" />
+        <TextBlock Text="Ln" VerticalAlignment="Center" />
+        <TextBlock x:Name="CaretLineText" Text="0" Width="40" VerticalAlignment="Center" />
+        <TextBlock Text="Col" VerticalAlignment="Center" />
+        <TextBlock x:Name="CaretColumnText" Text="0" Width="40" VerticalAlignment="Center" />
+      </StackPanel>
+      <TextBlock x:Name="CommitterText" DockPanel.Dock="Left" VerticalAlignment="Center" />
+      <TextBlock x:Name="StatusText" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
     <Grid ColumnDefinitions="380,6,*">
       <Grid Grid.Column="0" RowDefinitions="*,6,*">
         <DockPanel Grid.Row="0" LastChildFill="True">
-          <TextBlock x:Name="UnstagedHeader" DockPanel.Dock="Top" Text="Unstaged changes" FontWeight="Bold" Margin="0,0,0,4" />
-          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-            <Button x:Name="StageButton" Content="Stage" Margin="0,0,4,4" ToolTip.Tip="Stage the selected files" />
-            <Button x:Name="StageAllButton" Content="Stage all" Margin="0,0,4,4" ToolTip.Tip="Stage every unstaged change (Ctrl+S)" />
-            <Button x:Name="DiscardButton" Content="Discard..." Margin="0,0,4,4" ToolTip.Tip="Discard the unstaged edits of the selected tracked files" />
-            <Button x:Name="DeleteUntrackedButton" Content="Delete untracked..." Margin="0,0,4,4" />
-            <Button x:Name="UseOursButton" Content="Use ours" Margin="0,0,4,4" ToolTip.Tip="Resolve the selected conflicts with our version" />
-            <Button x:Name="UseTheirsButton" Content="Use theirs" Margin="0,0,4,4" ToolTip.Tip="Resolve the selected conflicts with their version" />
-            <Button x:Name="StashSelectedButton" Content="Stash selected" Margin="0,0,4,4" />
-            <Button x:Name="IgnoreButton" Content="Ignore..." Margin="0,0,4,4" ToolTip.Tip="Add the selected untracked files to .gitignore" />
-          </WrapPanel>
-          <ListBox x:Name="UnstagedList" SelectionMode="Multiple">
-            <!-- Upstream's file list menu: the user scripts, those shown in file lists directly. -->
-            <ListBox.ContextMenu>
+          <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
+               settings; then the filter box. -->
+          <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+            <local:ToolButton x:Name="UnstagedRefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh artificial commit" />
+            <Rectangle Classes="toolSeparator" />
+            <local:ToolToggleButton x:Name="UnstagedByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
+            <local:ToolToggleButton x:Name="UnstagedByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
+            <local:ToolToggleButton x:Name="UnstagedByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+            <Rectangle Classes="toolSeparator" />
+            <local:ToolDropDownButton x:Name="UnstagedSettingsButton" Image="Settings" ToolTip.Tip="Settings">
+              <local:ToolDropDownButton.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="UnstagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True" />
+                  <Separator />
+                  <MenuItem x:Name="UnstagedEditGitIgnoreMenuItem" Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <MenuItem x:Name="UnstagedEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                </MenuFlyout>
+              </local:ToolDropDownButton.Flyout>
+            </local:ToolDropDownButton>
+          </StackPanel>
+          <TextBox x:Name="UnstagedFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..." Margin="0,0,0,2" />
+          <Panel>
+            <ListBox x:Name="UnstagedList" SelectionMode="Multiple">
+              <ListBox.ContextMenu>
               <ContextMenu x:Name="UnstagedContextMenu">
-                <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" />
+                <MenuItem x:Name="UnstagedStageFileMenuItem" Header="_Stage selected" FontWeight="Bold" Icon="{local:UpstreamIcon Stage}" />
+                <MenuItem x:Name="UnstagedResetFileMenuItem" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
+                  <MenuItem x:Name="UnstagedResetFileToFirstMenuItem" />
+                </MenuItem>
+                <Separator />
+                <MenuItem x:Name="UnstagedOpenWithDifftoolMenuItem" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" />
+                <MenuItem x:Name="UnstagedOpenWorkingFileMenuItem" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
+                <MenuItem x:Name="UnstagedEditWorkingFileMenuItem" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
+                <MenuItem x:Name="UnstagedDeleteFileMenuItem" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
+                <Separator />
+                <MenuItem x:Name="UnstagedCopyPathsMenuItem" Header="Copy _path(s)" />
+                <MenuItem x:Name="UnstagedShowInFolderMenuItem" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
+                <Separator />
+                <MenuItem x:Name="UnstagedFileHistoryMenuItem" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
+                <MenuItem x:Name="UnstagedBlameMenuItem" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
+                <Separator />
+                <MenuItem x:Name="UnstagedAddToGitIgnoreMenuItem" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
+                <MenuItem x:Name="UnstagedAddToGitInfoExcludeMenuItem" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
+                <MenuItem x:Name="UnstagedStopTrackingMenuItem" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
+                <!-- Not in upstream's commit window (its stash window stashes selected files); kept until the new shell has it. -->
+                <MenuItem x:Name="StashSelectedMenuItem" Header="Stash selected" Icon="{local:UpstreamIcon Stash}" />
+                <Separator />
+                <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
               </ContextMenu>
-            </ListBox.ContextMenu>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="repo:FileChange">
-                <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Text="{Binding Kind, StringFormat='{}{0}: '}" />
-                  <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
-                             TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
-                </DockPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+              </ListBox.ContextMenu>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="repo:FileChange">
+                  <!-- Upstream's status image, then the path, which follows "Truncate long filenames" (FilePathTrimming). -->
+                  <DockPanel>
+                    <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                           Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                    <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                               TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <!-- Upstream's NoFiles label: gray text at the top of the list while it is empty. -->
+            <TextBlock x:Name="UnstagedNoFilesText" Text="There are no unstaged changes" Margin="4,2" IsHitTestVisible="False"
+                       Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+          </Panel>
         </DockPanel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
         <DockPanel Grid.Row="2" LastChildFill="True">
-          <TextBlock x:Name="StagedHeader" DockPanel.Dock="Top" Text="Staged changes" FontWeight="Bold" Margin="0,0,0,4" />
-          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-            <Button x:Name="UnstageButton" Content="Unstage" Margin="0,0,4,4" ToolTip.Tip="Unstage the selected files" />
-            <Button x:Name="UnstageAllButton" Content="Unstage all" Margin="0,0,4,4" />
-          </WrapPanel>
-          <ListBox x:Name="StagedList" SelectionMode="Multiple">
-            <ListBox.ContextMenu>
+          <!-- Upstream's toolbarStaged between the lists: Unstage all and Unstage on the left, Stage and Stage all on the
+               right. -->
+          <DockPanel DockPanel.Dock="Top" Margin="2,1">
+            <local:ToolButton x:Name="StageAllButton" DockPanel.Dock="Right" Image="StageAll" ToolTip.Tip="Stage all" />
+            <Rectangle DockPanel.Dock="Right" Classes="toolSeparator" />
+            <local:ToolButton x:Name="StageButton" DockPanel.Dock="Right" Image="Stage" Text="_Stage" />
+            <local:ToolButton x:Name="UnstageAllButton" DockPanel.Dock="Left" Image="UnstageAll" ToolTip.Tip="Unstage all" />
+            <Rectangle DockPanel.Dock="Left" Classes="toolSeparator" />
+            <local:ToolButton x:Name="UnstageButton" DockPanel.Dock="Left" Image="Unstage" Text="_Unstage" />
+            <Panel />
+          </DockPanel>
+          <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
+               settings; then the filter box. -->
+          <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+            <local:ToolToggleButton x:Name="StagedByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
+            <local:ToolToggleButton x:Name="StagedByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
+            <local:ToolToggleButton x:Name="StagedByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+            <Rectangle Classes="toolSeparator" />
+            <local:ToolDropDownButton x:Name="StagedSettingsButton" Image="Settings" ToolTip.Tip="Settings">
+              <local:ToolDropDownButton.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="StagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True" />
+                  <Separator />
+                  <MenuItem x:Name="StagedEditGitIgnoreMenuItem" Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <MenuItem x:Name="StagedEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                </MenuFlyout>
+              </local:ToolDropDownButton.Flyout>
+            </local:ToolDropDownButton>
+          </StackPanel>
+          <TextBox x:Name="StagedFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..." Margin="0,0,0,2" />
+          <Panel>
+            <ListBox x:Name="StagedList" SelectionMode="Multiple">
+              <ListBox.ContextMenu>
               <ContextMenu x:Name="StagedContextMenu">
-                <MenuItem x:Name="StagedRunScriptMenuItem" Header="Run script" />
+                <MenuItem x:Name="StagedUnstageFileMenuItem" Header="_Unstage selected" FontWeight="Bold" Icon="{local:UpstreamIcon Unstage}" />
+                <MenuItem x:Name="StagedResetFileMenuItem" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
+                  <MenuItem x:Name="StagedResetFileToFirstMenuItem" />
+                </MenuItem>
+                <Separator />
+                <MenuItem x:Name="StagedOpenWithDifftoolMenuItem" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" />
+                <MenuItem x:Name="StagedOpenWorkingFileMenuItem" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
+                <MenuItem x:Name="StagedEditWorkingFileMenuItem" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
+                <MenuItem x:Name="StagedDeleteFileMenuItem" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
+                <Separator />
+                <MenuItem x:Name="StagedCopyPathsMenuItem" Header="Copy _path(s)" />
+                <MenuItem x:Name="StagedShowInFolderMenuItem" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
+                <Separator />
+                <MenuItem x:Name="StagedFileHistoryMenuItem" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
+                <MenuItem x:Name="StagedBlameMenuItem" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
+                <Separator />
+                <MenuItem x:Name="StagedStopTrackingMenuItem" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
+                <Separator />
+                <MenuItem x:Name="StagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
               </ContextMenu>
-            </ListBox.ContextMenu>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="repo:FileChange">
-                <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Text="{Binding Kind, StringFormat='{}{0}: '}" />
-                  <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
-                             TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
-                </DockPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+              </ListBox.ContextMenu>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="repo:FileChange">
+                  <!-- Upstream's status image, then the path, which follows "Truncate long filenames" (FilePathTrimming). -->
+                  <DockPanel>
+                    <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                           Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                    <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                               TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <!-- Upstream's NoFiles label: gray text at the top of the list while it is empty. -->
+            <TextBlock x:Name="StagedNoFilesText" Text="There are no staged changes" Margin="4,2" IsHitTestVisible="False"
+                       Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+          </Panel>
         </DockPanel>
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
       <Grid Grid.Column="2" RowDefinitions="*,6,220">
         <DockPanel Grid.Row="0" LastChildFill="True">
-          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-            <Button x:Name="StageLinesButton" Content="Stage selected lines" Margin="0,0,6,0"
-                    ToolTip.Tip="Stage only the selected lines of this file (Ctrl+click or Shift+click to select several)" />
-            <Button x:Name="UnstageLinesButton" Content="Unstage selected lines" Margin="0,0,6,0" />
-            <Button x:Name="DiffToolButton" Content="Open in diff tool" Margin="0,0,0,0" ToolTip.Tip="Show this file in the diff tool configured in Settings (diff.tool)" />
-            <Button x:Name="DiffToolChoiceButton" Content="&#x25BE;" Padding="4,2" Margin="0,0,6,0" ToolTip.Tip="Open in another diff tool"
-                    IsEnabled="{Binding #DiffToolButton.IsEnabled}" />
-          </WrapPanel>
-          <local:DiffView x:Name="Diff" />
+          <!-- Upstream's SolveMergeconflicts button, over the diff while conflicts are unresolved. -->
+          <Panel>
+            <local:DiffView x:Name="Diff" />
+            <Button x:Name="SolveConflictsButton" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="14,12" Width="188" Height="42" BorderThickness="0" CornerRadius="0">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="{local:UpstreamImage SolveMerge}" Width="16" Height="16" />
+                <TextBlock Text="There are unresolved merge conflicts" TextWrapping="Wrap" Width="140" />
+              </StackPanel>
+            </Button>
+          </Panel>
         </DockPanel>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-        <DockPanel Grid.Row="2" LastChildFill="True">
-          <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-            <Button x:Name="CommitButton" Content="Commit" Margin="0,0,6,4" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)" />
-            <Button x:Name="CommitAndPushButton" Content="Commit and push" Margin="0,0,12,4" />
-            <Button x:Name="ResetAllButton" Content="_Reset all changes" Margin="0,0,6,4" />
-            <Button x:Name="ResetUnstagedButton" Content="Reset u_nstaged changes" Margin="0,0,12,4" />
-            <CheckBox x:Name="AmendCheck" Content="Amend commit" Margin="0,0,12,4" />
-            <CheckBox x:Name="SignOffCheck" Content="Sign-off" Margin="0,0,12,4" />
-            <!-- Upstream's "Commit templates" menu: the plugins' templates, then the user's own. -->
-            <Button x:Name="CommitTemplatesButton" Content="Commit _templates" Margin="0,0,12,4">
-              <Button.Flyout>
-                <MenuFlyout Placement="TopEdgeAlignedLeft" />
-              </Button.Flyout>
-            </Button>
-            <!-- Upstream's "Commit message" menu: earlier messages, the submodule change list and "Show only my messages". -->
-            <Button x:Name="CommitMessageMenuButton" Content="Commit _message" Margin="0,0,12,4">
-              <Button.Flyout>
-                <MenuFlyout Placement="TopEdgeAlignedLeft" />
-              </Button.Flyout>
-            </Button>
-            <TextBox x:Name="CommitAuthorBox" Width="260" Margin="0,0,6,4" PlaceholderText="Author (optional: Name &lt;email&gt;)" />
-          </WrapPanel>
-          <!-- Upstream EditNetSpell's auto-completion list, at the caret; the message box keeps the focus. -->
-          <Popup x:Name="AutoCompletePopup" DockPanel.Dock="Top"
-                 Placement="AnchorAndGravity" PlacementAnchor="BottomLeft" PlacementGravity="BottomRight">
-            <ListBox x:Name="AutoCompleteList" MaxHeight="200" MinWidth="120" Focusable="False" />
-          </Popup>
-          <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
-                   FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Commit message" />
-        </DockPanel>
+        <!-- Upstream's bottom panel: the column of commit buttons on the left (flowCommitButtons), and on the right the
+             message toolstrip (toolbarCommit) above the message box. -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,*">
+          <!-- Upstream's column is 171 pixels for its 9-point font; here it grows with a larger font. -->
+          <StackPanel x:Name="CommitButtons" Grid.RowSpan="2" MinWidth="171" Margin="6,6,6,0" Spacing="6">
+            <StackPanel.Styles>
+              <Style Selector="StackPanel#CommitButtons > Button, StackPanel#AmendPanel > Button">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="MinHeight" Value="26" />
+              </Style>
+            </StackPanel.Styles>
+            <Button x:Name="CommitButton" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)" />
+            <Button x:Name="CommitAndPushButton" />
+            <CheckBox x:Name="AmendCheck" Content="_Amend commit" />
+            <!-- Upstream's AmendPanel, shown while Amend is checked. -->
+            <StackPanel x:Name="AmendPanel" Margin="12,0,0,0" Spacing="6" IsVisible="{Binding #AmendCheck.IsChecked}">
+              <CheckBox x:Name="ResetAuthorCheck" Content="R_eset author" />
+              <Button x:Name="ResetSoftButton"
+                      ToolTip.Tip="Perform a soft reset to the previous commit; leaves working directory and index untouched" />
+            </StackPanel>
+            <Button x:Name="StashStagedButton" />
+            <Button x:Name="ResetAllButton" />
+            <Button x:Name="ResetUnstagedButton" />
+          </StackPanel>
+          <!-- Upstream's toolbarCommit: Commit message, Commit templates and Create branch, with Options on the right. -->
+          <DockPanel Grid.Column="1" Margin="1,1,2,1">
+            <local:ToolDropDownButton x:Name="OptionsButton" DockPanel.Dock="Right" Text="_Options">
+              <local:ToolDropDownButton.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="CloseAfterEachCommitMenuItem" Header="Close dialog after each commit" ToggleType="CheckBox" />
+                  <MenuItem x:Name="CloseAfterAllCommittedMenuItem" Header="Close dialog when all changes are committed" ToggleType="CheckBox" />
+                  <MenuItem x:Name="RefreshOnFocusMenuItem" Header="Refresh dialog on form focus" ToggleType="CheckBox" />
+                  <MenuItem x:Name="SelectStagedOnEnterMessageMenuItem" Header="Select staged on entering message editor" ToggleType="CheckBox" />
+                  <Separator />
+                  <MenuItem x:Name="SignOffMenuItem" Header="Sign-off commit" ToggleType="CheckBox" />
+                  <!-- Upstream's author label: checked and enabled while an author is set; clicking it clears the author. -->
+                  <MenuItem x:Name="AuthorLabelMenuItem" Header="Author: (Format: &quot;name &lt;mail&gt;&quot;)" ToggleType="CheckBox" IsEnabled="False" />
+                  <MenuItem StaysOpenOnClick="True">
+                    <MenuItem.Header>
+                      <TextBox x:Name="CommitAuthorBox" Width="260" />
+                    </MenuItem.Header>
+                  </MenuItem>
+                  <MenuItem x:Name="NoVerifyMenuItem" Header="No verify" ToggleType="CheckBox" />
+                  <Separator />
+                  <MenuItem StaysOpenOnClick="True">
+                    <MenuItem.Header>
+                      <ComboBox x:Name="GpgSignComboBox" Width="260" SelectedIndex="0">
+                        <ComboBoxItem Content="Git default GPG signing" />
+                        <ComboBoxItem Content="Do not sign commit" />
+                        <ComboBoxItem Content="Sign with default GPG" />
+                        <ComboBoxItem Content="Sign with specific GPG" />
+                      </ComboBox>
+                    </MenuItem.Header>
+                  </MenuItem>
+                  <MenuItem x:Name="GpgKeyMenuItem" StaysOpenOnClick="True" IsVisible="False">
+                    <MenuItem.Header>
+                      <TextBox x:Name="GpgKeyBox" Width="260" />
+                    </MenuItem.Header>
+                  </MenuItem>
+                </MenuFlyout>
+              </local:ToolDropDownButton.Flyout>
+            </local:ToolDropDownButton>
+            <StackPanel Classes="toolStrip">
+              <!-- Upstream's "Commit message" menu: earlier messages, the submodule change list and "Show only my messages". -->
+              <local:ToolDropDownButton x:Name="CommitMessageMenuButton" Image="WorkingDirChanges" Text="Commit _message">
+                <local:ToolDropDownButton.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                </local:ToolDropDownButton.Flyout>
+              </local:ToolDropDownButton>
+              <!-- Upstream's "Commit templates" menu: the plugins' templates, then the user's own. -->
+              <local:ToolDropDownButton x:Name="CommitTemplatesButton" Image="CommitTemplates" Text="Commit _templates">
+                <local:ToolDropDownButton.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                </local:ToolDropDownButton.Flyout>
+              </local:ToolDropDownButton>
+              <local:ToolButton x:Name="CreateBranchButton" Image="BranchCreate" Text="Create _branch" />
+            </StackPanel>
+          </DockPanel>
+          <Panel Grid.Column="1" Grid.Row="1">
+            <!-- Upstream EditNetSpell's auto-completion list, at the caret; the message box keeps the focus. -->
+            <Popup x:Name="AutoCompletePopup"
+                   Placement="AnchorAndGravity" PlacementAnchor="BottomLeft" PlacementGravity="BottomRight">
+              <ListBox x:Name="AutoCompleteList" MaxHeight="200" MinWidth="120" Focusable="False" />
+            </Popup>
+            <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
+                     FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Enter commit message" />
+          </Panel>
+        </Grid>
       </Grid>
     </Grid>
   </DockPanel>

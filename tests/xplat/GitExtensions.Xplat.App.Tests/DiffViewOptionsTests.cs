@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -48,14 +50,13 @@ internal sealed class DiffViewOptionsTests
         WaitUntil(() => Added(diff) == 1);
         diff.Lines.Count(line => line.Text.StartsWith(' ')).Should().Be(6);
 
-        diff.FindControl<ComboBox>("WhitespaceBox")!.SelectedItem =
-            WhitespaceOption.All.Single(option => option.Kind == IgnoreWhitespaceKind.Change);
+        diff.FindControl<ToolToggleButton>("IgnoreWhitespaceChangeToggle")!.IsChecked = true;
         WaitUntil(() => Added(diff) == 0);
 
-        diff.FindControl<ComboBox>("WhitespaceBox")!.SelectedIndex = 0;
+        diff.FindControl<ToolToggleButton>("IgnoreWhitespaceChangeToggle")!.IsChecked = false;
         Click(diff, "IncreaseContextButton");
         WaitUntil(() => diff.Lines.Count(line => line.Text.StartsWith(' ')) == 8);
-        diff.FindControl<TextBlock>("ContextText")!.Text.Should().Be("4");
+        diff.Options.ContextLines.Should().Be(4);
 
         diff.FindControl<ToggleButton>("EntireFileToggle")!.IsChecked = true;
         WaitUntil(() => diff.Lines.Count(line => line.Text.StartsWith(' ')) == 19);
@@ -202,6 +203,58 @@ internal sealed class DiffViewOptionsTests
         flyout.Items.OfType<MenuItem>().Select(item => ((TextBlock)item.Header!).Text).Should().Equal("meld", "vscode");
         flyout.Hide();
         window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_toolbar_shows_while_the_pointer_is_on_a_diff_and_next_change_selects_the_change()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed\n");
+        DiffView diff = Show();
+        Window window = (Window)TopLevel.GetTopLevel(diff)!;
+        StackPanel toolbar = diff.FindControl<StackPanel>("DiffToolbar")!;
+        toolbar.IsVisible.Should().BeFalse();
+
+        window.MouseMove(new Avalonia.Point(450, 300));
+        Dispatcher.UIThread.RunJobs();
+
+        toolbar.IsVisible.Should().BeTrue();
+        Click(diff, "NextChangeButton");
+        diff.Lines[diff.FindControl<ListBox>("DiffList")!.SelectedIndex].Text.Should().StartWith("-");
+
+        diff.ShowText("a.txt", "text");
+        toolbar.IsVisible.Should().BeFalse("a file's text has no diff options");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_menu_copies_a_version_and_offers_line_staging_only_when_the_window_asks()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed\n");
+        DiffView diff = Show();
+        ListBox list = diff.FindControl<ListBox>("DiffList")!;
+
+        OpenMenu(list);
+
+        diff.FindControl<MenuItem>("StageLinesMenuItem")!.IsVisible.Should().BeFalse();
+        diff.FindControl<MenuItem>("EntireFileMenuItem")!.IsVisible.Should().BeTrue();
+
+        diff.LineAction = DiffLineAction.Stage;
+        list.SelectedIndex = diff.Lines.ToList().FindIndex(line => line.Text == "+changed");
+        OpenMenu(list);
+
+        diff.FindControl<MenuItem>("StageLinesMenuItem")!.IsVisible.Should().BeTrue();
+        diff.FindControl<MenuItem>("StageLinesMenuItem")!.IsEnabled.Should().BeTrue();
+        diff.FindControl<MenuItem>("CopyNewVersionMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Task<string?> text = TopLevel.GetTopLevel(diff)!.Clipboard!.TryGetTextAsync();
+        WaitUntil(() => text.IsCompleted);
+        text.Result.Should().Be("changed");
+    }
+
+    private static void OpenMenu(ListBox list)
+    {
+        list.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        list.ContextMenu!.Close();
     }
 
     private DiffView Show()

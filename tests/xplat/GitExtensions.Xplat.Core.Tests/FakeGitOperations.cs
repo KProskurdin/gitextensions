@@ -27,11 +27,13 @@ internal sealed class FakeGitOperations : IGitOperations
         bool unstage, bool isNewFile = false) => Record("StageLines",
         $"{repositoryPath} {selectionStart}+{selectionLength} unstage={unstage} new={isNewFile}");
 
-    public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author) =>
-        Record("Commit", $"{repositoryPath} {message} amend={amend} signOff={signOff} author={author}");
+    public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
+        CommitExtras? extras = null) =>
+        Record("Commit", $"{repositoryPath} {message} amend={amend} signOff={signOff} author={author}"
+                         + (extras is null ? "" : $" {extras}"));
 
     public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
-        string editorCommand) =>
+        string editorCommand, CommitExtras? extras = null) =>
         Record("CommitWithEditor", $"{repositoryPath} amend={amend} signOff={signOff} author={author} {editorCommand}");
 
     public Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint) =>
@@ -181,6 +183,12 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task DiscardChangesAsync(string repositoryPath, IReadOnlyList<string> paths) =>
         Record("DiscardChanges", $"{repositoryPath} {string.Join(",", paths)}");
+
+    public Task ResetFilesToAsync(string repositoryPath, string revision, IReadOnlyList<string> paths) =>
+        Record("ResetFilesTo", $"{repositoryPath} {revision} {string.Join(",", paths)}");
+
+    public Task StopTrackingAsync(string repositoryPath, string path) =>
+        Record("StopTracking", $"{repositoryPath} {path}");
 
     public Task DeleteUntrackedAsync(string repositoryPath, IReadOnlyList<string> paths) =>
         Record("DeleteUntracked", $"{repositoryPath} {string.Join(",", paths)}");

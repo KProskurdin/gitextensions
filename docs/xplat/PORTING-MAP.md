@@ -25,13 +25,14 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormBrowse.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.axaml.cs` (view: menu, toolbar, left panel, grid, Commit and Diff tabs); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (state) | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitList`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (reads); `CommitListViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` | `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (commit), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/FileStatusList*.cs` (toolbar, filter, NoFiles, item menu, `GetItemImageKey`); `src/app/GitUI/CommandsDialogs/RevisionDiffController.cs` (menu rules); `CommandsDialogs/Menus/CopyPathsToolStripMenuItem.cs`; `FormCommit.Designer.cs` (`toolbarStaged`, `SolveMergeconflicts`); `GitIgnoreDialog/GitLocalExcludeModel.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`FileStatusList`, `FileMenuState`), `GitIgnoreFile.cs`, `Operations/GitOperations.cs` (reset files to, stop tracking); `src/xplat/GitExtensions.Xplat.App/CommitWindow.FileLists.cs`, `CommitWindow.axaml`, `GitIgnoreWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Push) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (pull), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Pull) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormClone.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (clone), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (new branch box) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (checkout, remote checkout), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Checkout) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
-| `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/DiffWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`, `DiffCopy.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`, `DiffView.Toolbar.cs`, `DiffWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`); `src/xplat/GitExtensions.Xplat.App/FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBlame.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)` | `52d08e996` | partial |
@@ -241,6 +242,43 @@ message box's auto-completion (see the EditNetSpell row) and, with "Compose comm
 commit whose message git asks for in the editor (`GitEditorCommand`). Not ported: GPG signing, skipping hooks, the
 spelling checker, and the commit kinds other than normal and amend (fixup, squash) with their "modify commit message"
 button.
+Changed 2026-10-13 (UI parity U3.1): each list is upstream's FileStatusList without its tree view: the toolbar (refresh
+on the working directory list; group by path, extension or status, kept in upstream's `DiffListSortType` and shared by
+both lists; the settings menu with "Show untracked files", "Edit ignored files" and "Edit locally ignored files"), the
+regular expression filter box (an invalid expression shows its error as a tooltip and filters nothing), upstream's status
+images before each path, and the NoFiles texts. `toolbarStaged` sits between the lists (Unstage all and Unstage on the
+left, Stage and Stage all on the right); the rows of buttons under the lists are gone. The lists' menus are upstream's
+item menu in its order, with the items its rules show for the selection: stage or unstage selected (bold), reset file(s)
+to the index or to HEAD (a file HEAD does not have is only unstaged), open with the diff tool, open and edit the working
+directory file, delete file(s) (after upstream's question; staged files are unstaged first), copy paths (relative POSIX
+and native, full native, WSL and Cygwin), show in folder, file history, blame, add to .gitignore or .git/info/exclude,
+stop tracking, and the scripts. "Stash selected" stays in the working directory list's menu, though upstream has it only
+in its stash window, which the new shell lacks. Upstream's "There are unresolved merge conflicts" button over the diff
+opens the conflicts window, replacing the "Use ours" and "Use theirs" buttons. Not ported: the tree views and their
+options (dense tree, group nodes), collapsing groups, show ignored, skip-worktree and assumed-unchanged files, the
+submodule items, "Reset chunk of file" and "Interactive add", "Open ... with", rename or move, find file, skip worktree
+and assume unchanged, the git-grep search, and refresh on form focus.
+Changed 2026-10-13 (UI parity U3.2): the bottom panel is upstream's: the column of commit buttons (Commit with upstream's
+image, a key while the commit is signed; Commit & push, which reads "Commit & force push" after an amend with
+`CommitAndPushForcedWhenAmend` and "Push", only pushing, when there is nothing to commit; Amend commit with upstream's
+AmendPanel: Reset author and Reset soft, which after the amend question resets softly to HEAD~1; Stash staged changes; the
+two reset buttons), and the message toolstrip (Commit message, Commit templates, Create branch, and Options on the right).
+Options holds upstream's items: close after each commit, close when all changes are committed (on by default, as upstream:
+the window closes after a commit that leaves no unstaged changes), refresh on focus, select a staged file on entering the
+message box, sign-off, the author box with its label (which clears it), no verify (cleared after each commit), and the GPG
+choice with the key box (shown for "Sign with specific GPG"; upstream shows it for "Sign with default GPG", which looks
+like a slip). The commit passes `--no-verify`, the GPG flags and `--reset-author` as upstream's `Commands.Commit` builds
+them. The button column grows past upstream's 171 pixels when the font needs it. The message box's placeholder is
+upstream's "Enter commit message". Not ported: "Stage in superproject" and hiding Stash staged for a git without
+`stash --staged`.
+Changed 2026-10-13 (UI parity U3.3): upstream's status strip (`CommitStatusBar` in core): the committer as upstream's
+`UpdateAuthorInfo` writes it (with the author when one is typed, "/user.name not configured/" for a missing setting; read
+on opening, activation and leaving the author box), the branch with an arrow and where it pushes (the tracked branch, or
+origin or the first remote with "(untracked)", or "(remote not configured)"), the staged count of all changes ("1/3"), and
+the caret's line and column in the message. The title is upstream's "Commit to <branch> (<working directory>)". The
+operation messages, which upstream shows in its process dialog, follow the committer. Not ported: the committer and
+remote links (upstream opens its Git config settings page and its remotes dialog, which the new shell lacks) and the
+progress bar.
 
 **FormPush** (`partial`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
@@ -300,6 +338,15 @@ runtime settings, the vertical ruler (`diffverticalrulerposition`), and the menu
 revert of lines), binary-file handling (the content view says a binary file is not shown), the diff appearance choices
 (git word diff, difftastic), git's own coloring, the combined diff of merges, continuous scroll to the next file, the
 submodule diff window, and end-of-line glyphs.
+Changed 2026-10-13 (UI parity U3.4): the toolbar is upstream's `fileviewerToolbar`: icons at the top right over the
+lines, shown while the pointer is on the viewer (next and previous change, more and fewer lines of context, entire file,
+nonprinting characters, syntax highlighting, and the three whitespace choices as toggles in place of the whitespace box);
+none for a file's text. The menu is upstream's `contextMenu`: Stage or Unstage selected line(s) where the window stages
+(the commit window: the working directory's diff stages, the index's unstages), Copy (without the diff's +, - and space),
+Copy patch, Copy new version and Copy old version (the selected lines, or all), and the view options as items. The commit
+window's buttons under the diff are gone, as upstream has none. Not ported: the encoding box and the settings button,
+"Reset selected line(s)", diff appearance (git word diff, difftastic), treat all files as text, automatic continuous
+scroll, find, replace and go to line, and the commit window's choice of another diff tool.
 
 **RevisionDiffControl** (`partial`). Ported: the files a selected commit changed, with status letters, the selected
 file's diff beside the list (the Diff tab), and an action that opens it in its own window. Added 2026-10-10: the

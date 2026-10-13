@@ -92,7 +92,8 @@ public sealed class GitOperations : IGitOperations
             }
         });
 
-    public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author)
+    public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
+        CommitExtras? extras = null)
         => Task.Run(() =>
         {
             GitModule module = CreateModule(repositoryPath);
@@ -102,7 +103,9 @@ public sealed class GitOperations : IGitOperations
                 File.WriteAllText(messageFile, message);
                 ArgumentString commit = Commands.Commit(amend, signOff, author,
                     useExplicitCommitMessage: true,
-                    commitMessageFile: messageFile, getPathForGitExecution: module.GetPathForGitExecution);
+                    commitMessageFile: messageFile, getPathForGitExecution: module.GetPathForGitExecution,
+                    noVerify: extras?.NoVerify ?? false, gpgSign: extras?.GpgSign, gpgKeyId: extras?.GpgKeyId ?? "",
+                    resetAuthor: extras?.ResetAuthor ?? false);
                 Execute(module.GitExecutable, commit);
             }
             finally
@@ -112,13 +115,15 @@ public sealed class GitOperations : IGitOperations
         });
 
     // Upstream's commit without useExplicitCommitMessage: git asks the editor for the message.
-    public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
-        string editorCommand)
+    public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author, string editorCommand,
+        CommitExtras? extras = null)
         => Task.Run(async () =>
         {
             GitModule module = CreateModule(repositoryPath);
             ArgumentString commit = Commands.Commit(amend, signOff, author, useExplicitCommitMessage: false,
-                commitMessageFile: null, getPathForGitExecution: module.GetPathForGitExecution);
+                commitMessageFile: null, getPathForGitExecution: module.GetPathForGitExecution,
+                noVerify: extras?.NoVerify ?? false, gpgSign: extras?.GpgSign, gpgKeyId: extras?.GpgKeyId ?? "",
+                resetAuthor: extras?.ResetAuthor ?? false);
             await GitOutputRunner.RunAsync(module.WorkingDir, commit, NullOutput.Instance, CancellationToken.None,
                 GitEditorCommand.Environment(editorCommand));
         });
@@ -313,6 +318,22 @@ public sealed class GitOperations : IGitOperations
 
             return checkout;
         });
+
+    public Task ResetFilesToAsync(string repositoryPath, string revision, IReadOnlyList<string> paths)
+        => RunAsync(repositoryPath, _ =>
+        {
+            GitArgumentBuilder checkout = new("checkout") { revision, "--" };
+            foreach (string path in paths)
+            {
+                checkout.Add(path.Quote());
+            }
+
+            return checkout;
+        });
+
+    // Upstream's GitModule.StopTrackingFile.
+    public Task StopTrackingAsync(string repositoryPath, string path)
+        => RunAsync(repositoryPath, _ => new GitArgumentBuilder("rm") { "--cached", path.ToPosixPath().Quote() });
 
     public Task ResolveConflictsAsync(string repositoryPath, IReadOnlyList<string> paths, bool ours)
         => Task.Run(() =>
