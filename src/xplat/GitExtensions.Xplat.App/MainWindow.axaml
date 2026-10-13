@@ -605,36 +605,55 @@
           <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
 
           <TabControl x:Name="DetailTabs" Grid.Row="2" Padding="0,4,0,0">
-            <TabItem x:Name="CommitInfoTab" Header="Commit">
-              <!-- Upstream's RevisionInfo: in this tab, or beside the grid (RevisionInfoHost). -->
-              <Grid x:Name="RevisionInfo" ColumnDefinitions="*,8,Auto">
-                <ScrollViewer Grid.Column="0">
-                  <DockPanel>
-                  <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->
-                  <local:AvatarView x:Name="DetailAvatar" DockPanel.Dock="Left" Width="80" Height="80" ImageSize="80"
-                                    VerticalAlignment="Top" Margin="4,2,4,0" IsVisible="False" />
-                  <StackPanel Spacing="3" Margin="4,0">
-                    <TextBlock x:Name="DetailHash" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
-                    <TextBlock x:Name="DetailAuthor" TextWrapping="Wrap" />
-                    <TextBlock x:Name="DetailAuthorDate" />
-                    <TextBlock x:Name="DetailCommitDate" />
-                    <TextBlock x:Name="DetailParents" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextWrapping="Wrap" />
-                    <SelectableTextBlock x:Name="DetailMessage" FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" TextWrapping="Wrap" Margin="0,8,0,0" />
-                    <!-- Upstream's commit info "Related links": the revision links defined in the settings. -->
-                    <StackPanel x:Name="DetailLinksPanel" Spacing="2" Margin="0,8,0,0" IsVisible="False">
-                      <TextBlock Text="Related links:" FontWeight="SemiBold" />
-                      <WrapPanel x:Name="DetailLinks" />
-                    </StackPanel>
-                  </StackPanel>
-                  </DockPanel>
-                </ScrollViewer>
-                <StackPanel Grid.Column="2" Spacing="4">
-                  <Button x:Name="CopyHashButton" Content="Copy hash" HorizontalAlignment="Stretch" />
-                  <Button x:Name="CopyMessageButton" Content="Copy message" HorizontalAlignment="Stretch" />
+            <TabItem x:Name="CommitInfoTab">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <Image Source="{local:UpstreamImage CommitSummary}" />
+                  <TextBlock Text="Commit" />
                 </StackPanel>
-              </Grid>
+              </TabItem.Header>
+              <!-- Upstream's RevisionInfo (CommitInfo): in this tab, or beside the grid (RevisionInfoHost). On the window color:
+                   the header (CommitInfoHeader: the avatar and the author, date, hash, child and parent lines), the message on
+                   a slightly darker panel, then the annotated tags' messages, related links, branches and tags containing the
+                   commit, and the tag it derives from. Links select commits or open addresses. -->
+              <ScrollViewer x:Name="RevisionInfo" Background="{DynamicResource CommitInfoBackgroundBrush}"
+                            HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer.ContextMenu>
+                  <ContextMenu x:Name="CommitInfoContextMenu">
+                    <MenuItem x:Name="CopyCommitInfoLinkMenuItem" Header="Copy link" IsVisible="False" />
+                    <MenuItem x:Name="CopyCommitInfoMenuItem" Header="_Copy commit info" />
+                    <Separator />
+                    <MenuItem x:Name="ShowContainedInBranchesMenuItem" Header="Show local branches containing this commit" ToggleType="CheckBox" />
+                    <MenuItem x:Name="ShowContainedInBranchesRemoteMenuItem" Header="Show remote branches containing this commit" ToggleType="CheckBox" />
+                    <MenuItem x:Name="ShowContainedInBranchesRemoteIfNoLocalMenuItem" Header="Show remote branches only when no local branch contains this commit" ToggleType="CheckBox" />
+                    <MenuItem x:Name="ShowContainedInTagsMenuItem" Header="Show tags containing this commit" ToggleType="CheckBox" />
+                    <MenuItem x:Name="ShowAnnotatedTagsMessagesMenuItem" Header="Show messages of annotated tags" ToggleType="CheckBox" />
+                    <MenuItem x:Name="ShowDerivesFromTagMenuItem" Header="Show the most recent tag this commit derives from" ToggleType="CheckBox" />
+                  </ContextMenu>
+                </ScrollViewer.ContextMenu>
+                <StackPanel x:Name="RevisionInfoPanel">
+                  <DockPanel Margin="8,8,16,8">
+                    <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->
+                    <local:AvatarView x:Name="DetailAvatar" DockPanel.Dock="Left" Width="80" Height="80" ImageSize="80"
+                                      VerticalAlignment="Top" Margin="0,0,8,0" IsVisible="False" />
+                    <Grid x:Name="DetailHeader" ColumnDefinitions="Auto,*" />
+                  </DockPanel>
+                  <Border x:Name="DetailMessagePanel" Background="{DynamicResource CommitMessageBackgroundBrush}">
+                    <local:InfoTextBlock x:Name="DetailMessage" Margin="8" TextWrapping="Wrap"
+                                         FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}"
+                                         FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" />
+                  </Border>
+                  <local:InfoTextBlock x:Name="DetailRevisionInfo" Margin="8,8,16,8" TextWrapping="Wrap" />
+                </StackPanel>
+              </ScrollViewer>
             </TabItem>
-            <TabItem x:Name="DiffTab" Header="Diff">
+            <TabItem x:Name="DiffTab">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <Image Source="{local:UpstreamImage Diff}" />
+                  <TextBlock Text="Diff" />
+                </StackPanel>
+              </TabItem.Header>
               <Grid ColumnDefinitions="300,5,*">
                 <DockPanel Grid.Column="0" LastChildFill="True">
                   <DockPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
@@ -669,7 +688,13 @@
                 <local:DiffView x:Name="CommitDiff" Grid.Column="2" />
               </Grid>
             </TabItem>
-            <TabItem x:Name="FileTreeTab" Header="File tree">
+            <TabItem x:Name="FileTreeTab">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <Image Source="{local:UpstreamImage FileTree}" />
+                  <TextBlock Text="File tree" />
+                </StackPanel>
+              </TabItem.Header>
               <Grid ColumnDefinitions="300,5,*">
                 <TreeView x:Name="FileTreeView" Grid.Column="0">
                   <TreeView.ItemTemplate>
@@ -680,6 +705,24 @@
                 </TreeView>
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
                 <local:DiffView x:Name="FileContentView" Grid.Column="2" />
+              </Grid>
+            </TabItem>
+            <!-- Upstream's GPG tab (RevisionGpgInfoControl), shown for real commits while ShowGpgInformation is on: the
+                 commit's signature and, when the commit has tags, theirs, each with upstream's status image. -->
+            <TabItem x:Name="GpgInfoTab" IsVisible="False">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <Image Source="{local:UpstreamImage Key}" />
+                  <TextBlock Text="GPG" />
+                </StackPanel>
+              </TabItem.Header>
+              <Grid x:Name="GpgInfo" ColumnDefinitions="38,*" RowDefinitions="*,*">
+                <Image x:Name="CommitSignImage" Width="32" Height="32" VerticalAlignment="Top" Margin="0,3" />
+                <TextBox x:Name="CommitGpgText" Grid.Column="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         BorderThickness="0" Background="Transparent" />
+                <Image x:Name="TagSignImage" Grid.Row="1" Width="32" Height="32" VerticalAlignment="Top" Margin="0,3" />
+                <TextBox x:Name="TagGpgText" Grid.Row="1" Grid.Column="1" IsReadOnly="True" TextWrapping="Wrap"
+                         AcceptsReturn="True" BorderThickness="0" Background="Transparent" />
               </Grid>
             </TabItem>
             <!-- Upstream's build report tab (BuildReportTabPageExtension), shown when the repository's "Show build result

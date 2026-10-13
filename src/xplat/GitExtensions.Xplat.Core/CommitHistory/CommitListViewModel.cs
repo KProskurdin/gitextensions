@@ -178,6 +178,17 @@ public sealed class CommitListViewModel : ObservableObject
     }
 
     /// <summary>
+    ///  Upstream's <c>RevisionGridControl.GetRevisionChildren</c>: the loaded commits that have <paramref name="hash"/> as a
+    ///  parent, in the grid's order.
+    /// </summary>
+    public IReadOnlyList<string> ChildrenOf(string hash)
+        =>
+        [
+            .. _rows.Where(row => row.ParentHashes?.Contains(hash, StringComparer.OrdinalIgnoreCase) == true)
+                .Select(row => row.Hash)
+        ];
+
+    /// <summary>
     ///  The loaded commits that match <see cref="FilterText"/>; all of them when the filter is empty.
     /// </summary>
     public IReadOnlyList<CommitListItem> VisibleRows
@@ -396,6 +407,7 @@ public sealed class CommitListViewModel : ObservableObject
                 {
                     Build = BuildStatusOf(row.Hash),
                     Changes = _artificialChanges.GetValueOrDefault(row.Hash),
+
                     // Upstream draws an artificial row's subject as a label of its own (OtherTag's color).
                     GridLabels = ArtificialCommits.IsArtificial(row.Hash)
                         ? [new GridLabel(row.Subject, RefKind.Head)]

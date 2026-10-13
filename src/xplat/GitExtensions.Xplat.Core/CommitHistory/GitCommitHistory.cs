@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reactive;
 using GitCommands;
 using GitCommands.Config;
@@ -11,6 +12,8 @@ using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtUtils;
 using GitUIPluginInterfaces;
+using ResourceManager;
+using ResourceManager.CommitDataRenders;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
@@ -448,21 +451,31 @@ public sealed class GitCommitHistory : ICommitHistory
             // Upstream's artificial revisions: the user as author, no dates, the index or HEAD as parent.
             bool workTree = hash == ArtificialCommits.WorkTreeHash;
             ObjectId head = module.GetCurrentCheckout();
+            string user =
+                $"{module.GetEffectiveSetting(SettingKeyString.UserName)} <{module.GetEffectiveSetting(SettingKeyString.UserEmail)}>";
+            ObjectId? parent = workTree ? ObjectId.IndexId : head.IsZero ? null : head;
+            string message = workTree ? ArtificialCommits.WorkTreeSubject : ArtificialCommits.IndexSubject;
+            IReadOnlyList<ObjectId> parents = parent is { } id ? [id] : [];
             return new CommitDetails(
                 Hash: hash,
-                Author:
-                $"{module.GetEffectiveSetting(SettingKeyString.UserName)} <{module.GetEffectiveSetting(SettingKeyString.UserEmail)}>",
+                Author: user,
                 AuthorDate: "",
                 CommitDate: "",
-                Parents: workTree ? ObjectId.IndexId.ToShortString() : head.IsZero ? "" : head.ToShortString(),
-                Message: workTree ? ArtificialCommits.WorkTreeSubject : ArtificialCommits.IndexSubject,
-                Links: []);
+                Parents: parent?.ToShortString() ?? "",
+                Message: message,
+                Links: [])
+            {
+                Data = new CommitData(ObjectId.Parse(hash), parents, user, DateTime.Now, user,
+                    DateTime.Now, message),
+                MessageLines = CommitInfoText.Parse(WebUtility.HtmlEncode(message)),
+            };
         }
 
         GitRevision revision = new RevisionReader(module)
                                    .GetRevision(hash, hasNotes: false, throwOnError: true,
                                        cancellationToken: CancellationToken.None)
                                ?? throw new InvalidOperationException($"Commit not found: {hash}");
+        CommitData data = new CommitDataManager(() => module).CreateFromRevision(revision, children: null);
 
         return new CommitDetails(
             Hash: revision.ObjectId.ToString(),
@@ -471,7 +484,14 @@ public sealed class GitCommitHistory : ICommitHistory
             CommitDate: revision.CommitDate.ToString(DateFormat),
             Parents: string.Join(", ", (revision.ParentIds ?? []).Select(parent => parent.ToShortString())),
             Message: (revision.Body ?? revision.Subject).TrimEnd(),
-            Links: LoadLinks(module, revision, path));
+            Links: LoadLinks(module, revision, path))
+        {
+            Data = data,
+
+            // Upstream's commit message, with the hashes of commits in it as links that select them.
+            MessageLines = CommitInfoText.Parse(
+                new CommitDataBodyRenderer(() => module, new LinkFactory()).Render(data, showRevisionsAsLinks: true)),
+        };
     }
 
     // Upstream's CommitInfo "Related links": the definitions in effect for the repository, applied by upstream's parser to the

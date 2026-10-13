@@ -148,6 +148,11 @@ public sealed record RefLabel(string Name, RefKind Kind)
     };
 }
 
+/// <summary>
+///  A commit's details. <see cref="Data"/> is upstream's model of it, from which the commit info header is drawn
+///  (<see cref="CommitInfoText.Header"/>), and <see cref="MessageLines"/> its message with the hashes in it as links, as
+///  upstream's <c>CommitDataBodyRenderer</c> renders it.
+/// </summary>
 public sealed record CommitDetails(
     string Hash,
     string Author,
@@ -155,7 +160,12 @@ public sealed record CommitDetails(
     string CommitDate,
     string Parents,
     string Message,
-    IReadOnlyList<RevisionLink>? Links = null);
+    IReadOnlyList<RevisionLink>? Links = null)
+{
+    public GitUIPluginInterfaces.CommitData? Data { get; init; }
+
+    public IReadOnlyList<IReadOnlyList<InfoSpan>>? MessageLines { get; init; }
+}
 
 /// <summary>
 ///  A link upstream's commit info lists under "Related links": the caption and the address.

@@ -79,6 +79,15 @@ internal static class ThemeApplier
         SetBrush(app, AuthoredHighlightKey, colors.Get(AppColor.AuthoredHighlight));
         SetBrush(app, AlternateRowKey, panel.MakeDarkerBy(colors.IsDark ? -0.018 : 0.025));
         SetBrush(app, GridBodyKey, SystemColor(colors, System.Drawing.KnownColor.GrayText));
+
+        // Upstream's commit info (CommitInfo): on the window color, the message on a panel 4% darker.
+        System.Drawing.Color window = colors.Get(System.Drawing.KnownColor.Window) is { IsEmpty: false } themedWindow
+            ? themedWindow
+            : colors.IsDark
+                ? panel
+                : System.Drawing.SystemColors.Window;
+        SetBrush(app, CommitInfoBackgroundKey, window);
+        SetBrush(app, CommitMessageBackgroundKey, window.MakeDarkerBy(0.04));
         Changed?.Invoke(null, EventArgs.Empty);
     }
 
@@ -95,6 +104,8 @@ internal static class ThemeApplier
     public const string AuthoredHighlightKey = "AuthoredHighlightBrush";
     public const string AlternateRowKey = "AlternateRowBrush";
     public const string GridBodyKey = "GridBodyBrush";
+    public const string CommitInfoBackgroundKey = "CommitInfoBackgroundBrush";
+    public const string CommitMessageBackgroundKey = "CommitMessageBackgroundBrush";
 
     // A system color as the theme sets it, else the system's (on Windows the user's, elsewhere .NET's Windows defaults).
     private static System.Drawing.Color SystemColor(AppThemeColors colors, System.Drawing.KnownColor name)

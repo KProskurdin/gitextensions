@@ -232,6 +232,7 @@ public partial class MainWindow : Window
     private void WireCommitList()
     {
         DetailTabs.SelectionChanged += (_, _) => ShowFileTreeIfVisible();
+        WireCommitInfo();
         FileTreeView.SelectionChanged += (_, _) => Run(ShowSelectedTreeFileAsync);
         CommitList.SelectionChanged += (_, _) =>
         {
@@ -242,8 +243,6 @@ public partial class MainWindow : Window
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
         CommitFilesContextMenu.Opening += (_, _) => ShowFileListScripts();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
-        CopyHashButton.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Hash));
-        CopyMessageButton.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Message));
         CopyHashMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Hash));
         CopyMessageMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Message));
         ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
@@ -1887,59 +1886,6 @@ public partial class MainWindow : Window
         {
             new FileBrowserWindow(path, hash, RelevantRepositoryHost).Show(this);
         }
-    }
-
-    private void ShowDetails()
-    {
-        CommitDetails? details = _commits.Details;
-        if (details is null)
-        {
-            DetailHash.Text = "";
-            DetailAuthor.Text = "";
-            DetailAuthorDate.Text = "";
-            DetailCommitDate.Text = "";
-            DetailParents.Text = "";
-            DetailMessage.Text = _commits.DetailsError;
-            ShowDetailAvatar();
-            ShowLinks([]);
-            CopyHashButton.IsEnabled = false;
-            CopyMessageButton.IsEnabled = false;
-            return;
-        }
-
-        DetailHash.Text = details.Hash;
-        DetailAuthor.Text = details.Author;
-        DetailAuthorDate.Text = $"Authored: {details.AuthorDate}";
-        DetailCommitDate.Text = $"Committed: {details.CommitDate}";
-        DetailParents.Text = string.IsNullOrEmpty(details.Parents) ? "No parents" : $"Parents: {details.Parents}";
-        DetailMessage.Text = details.Message;
-        ShowDetailAvatar();
-        ShowLinks(details.Links ?? []);
-        CopyHashButton.IsEnabled = true;
-        CopyMessageButton.IsEnabled = true;
-    }
-
-    // Each link opens in the browser, as upstream's commit info opens them.
-    private void ShowLinks(IReadOnlyList<RevisionLink> links)
-    {
-        DetailLinks.Children.Clear();
-        foreach (RevisionLink link in links)
-        {
-            HyperlinkButton button = new() { Content = link.Caption, Margin = new Thickness(0, 0, 12, 0) };
-            ToolTip.SetTip(button, link.Uri);
-            if (Uri.TryCreate(link.Uri, UriKind.Absolute, out Uri? address))
-            {
-                button.NavigateUri = address;
-            }
-            else
-            {
-                button.IsEnabled = false;
-            }
-
-            DetailLinks.Children.Add(button);
-        }
-
-        DetailLinksPanel.IsVisible = links.Count > 0;
     }
 
     private void ShowError(string message)

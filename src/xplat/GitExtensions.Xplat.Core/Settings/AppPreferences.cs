@@ -388,6 +388,18 @@ public interface IAppPreferences
     bool RevisionGraphDrawAlternateBackColor { get; set; }
 
     /// <summary>
+    ///  Upstream's commit info menu choices: <c>commitinfoshowcontainedinbrancheslocal</c>, <c>...remote</c>,
+    ///  <c>...remoteifnolocal</c>, <c>commitinfoshowcontainedintags</c>, <c>showannotatedtagsmessages</c> and
+    ///  <c>commitinfoshowtagthiscommitderivesfrom</c>.
+    /// </summary>
+    CommitInfoOptions CommitInfoOptions { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>ShowGpgInformation</c>: the GPG tab beside the commit info.
+    /// </summary>
+    bool ShowGpgInformation { get; set; }
+
+    /// <summary>
     ///  Whether the app asks before <paramref name="confirmation"/>'s action: upstream's <c>DontConfirm...</c> settings,
     ///  inverted, and <c>ConfirmBranchCheckout</c> as it is.
     /// </summary>
@@ -1070,6 +1082,28 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RevisionGraphDrawAlternateBackColor = value;
     }
 
+    public CommitInfoOptions CommitInfoOptions
+    {
+        get => new(AppSettings.CommitInfoShowContainedInBranchesLocal, AppSettings.CommitInfoShowContainedInBranchesRemote,
+            AppSettings.CommitInfoShowContainedInBranchesRemoteIfNoLocal, AppSettings.CommitInfoShowContainedInTags,
+            AppSettings.ShowAnnotatedTagsMessages, AppSettings.CommitInfoShowTagThisCommitDerivesFrom);
+        set
+        {
+            AppSettings.CommitInfoShowContainedInBranchesLocal = value.BranchesLocal;
+            AppSettings.CommitInfoShowContainedInBranchesRemote = value.BranchesRemote;
+            AppSettings.CommitInfoShowContainedInBranchesRemoteIfNoLocal = value.BranchesRemoteIfNoLocal;
+            AppSettings.CommitInfoShowContainedInTags = value.Tags;
+            AppSettings.ShowAnnotatedTagsMessages = value.AnnotatedTagsMessages;
+            AppSettings.CommitInfoShowTagThisCommitDerivesFrom = value.DerivesFromTag;
+        }
+    }
+
+    public bool ShowGpgInformation
+    {
+        get => AppSettings.ShowGpgInformation.Value;
+        set => AppSettings.ShowGpgInformation.Value = value;
+    }
+
     public bool Asks(Confirmation confirmation) => confirmation switch
     {
         Confirmation.Amend => !AppSettings.DontConfirmAmend.Value,
@@ -1476,6 +1510,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool RevisionGraphDrawAlternateBackColor { get; set; } = true;
 
+    public CommitInfoOptions CommitInfoOptions { get; set; } = new();
+
+    public bool ShowGpgInformation { get; set; } = true;
+
     private readonly Dictionary<Confirmation, bool> _asks = [];
 
     // Upstream's defaults: every question is asked except the left panel checkout.
@@ -1567,3 +1605,21 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 ///  Upstream's View > Columns choices of the revision grid.
 /// </summary>
 public sealed record GridColumns(bool Graph = true, bool AuthorName = true, bool Date = true, bool ObjectId = true);
+
+/// <summary>
+///  Upstream's commit info menu choices: which branches and tags containing the commit are listed, the messages of its
+///  annotated tags, and the most recent tag it derives from.
+/// </summary>
+public sealed record CommitInfoOptions(
+    bool BranchesLocal = true,
+    bool BranchesRemote = false,
+    bool BranchesRemoteIfNoLocal = false,
+    bool Tags = true,
+    bool AnnotatedTagsMessages = true,
+    bool DerivesFromTag = true)
+{
+    /// <summary>
+    ///  Upstream's <c>CommitInfoShowContainedInBranches</c>: whether any branches are listed.
+    /// </summary>
+    public bool Branches => BranchesLocal || BranchesRemote || BranchesRemoteIfNoLocal;
+}
