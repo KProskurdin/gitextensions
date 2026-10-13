@@ -2,6 +2,7 @@ using System.IO;
 using GitExtensions.Extensibility.BuildServerIntegration;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.BuildServer;
+using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
@@ -28,9 +29,95 @@ public sealed record CommitListItem(CommitRow Row, GraphRowRef Graph)
     public BuildStatusCell Build { get; init; } = new();
 
     /// <summary>
-    ///  Text after the subject: the number of changed files of an artificial row, as upstream counts them; otherwise empty.
+    ///  The labels as upstream's grid draws them (<see cref="GridLabels.Layout"/>).
     /// </summary>
-    public string Badge { get; init; } = "";
+    public IReadOnlyList<GridLabel> GridLabels { get; init; } = [];
+
+    /// <summary>
+    ///  Upstream's changed files of an artificial row (<c>ArtificialCommitChangeCount</c>); null for a commit, or when the
+    ///  counts are not shown.
+    /// </summary>
+    public ArtificialChanges? Changes { get; init; }
+
+    /// <summary>
+    ///  The commit HEAD points at, whose subject upstream draws bold.
+    /// </summary>
+    public bool IsCheckedOut => Row.Labels?.Any(label => label.Kind == RefKind.Head) == true;
+
+    public bool IsArtificial => ArtificialCommits.IsArtificial(Row.Hash);
+
+    /// <summary>
+    ///  Upstream's fixup, squash and amend commits get a marker before the subject.
+    /// </summary>
+    public bool IsFixup => Row.Subject.StartsWith("fixup!", StringComparison.Ordinal)
+                           || Row.Subject.StartsWith("squash!", StringComparison.Ordinal)
+                           || Row.Subject.StartsWith("amend!", StringComparison.Ordinal);
+
+    /// <summary>
+    ///  Upstream's commit body after the subject (<c>ShowCommitBodyInRevisionGrid</c>): the message's other lines, each after
+    ///  a space; empty when the body is off or not read.
+    /// </summary>
+    public string BodyText { get; init; } = "";
+}
+
+/// <summary>
+///  An icon of an artificial row's counts: upstream's image name and the number of files (none for the clean state).
+/// </summary>
+public sealed record ArtificialChangePart(string Image, int? Count)
+{
+    public string Text => Count?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "";
+}
+
+/// <summary>
+///  The changed files of an artificial row by upstream's groups: changed, new (added or untracked) and deleted.
+/// </summary>
+public sealed record ArtificialChanges(int Changed, int New, int Deleted)
+{
+    public bool HasChanges => Changed + New + Deleted > 0;
+
+    /// <summary>
+    ///  Upstream's DrawArtificialRevision icons: the counts of the groups that have files, or the clean state image.
+    /// </summary>
+    public IReadOnlyList<ArtificialChangePart> Parts =>
+        HasChanges
+            ?
+            [
+                .. new[]
+                    {
+                        new ArtificialChangePart("FileStatusModified", Changed),
+                        new ArtificialChangePart("FileStatusAdded", New),
+                        new ArtificialChangePart("FileStatusRemoved", Deleted),
+                    }
+                    .Where(part => part.Count > 0)
+            ]
+            : [new ArtificialChangePart("RepoStateClean", null)];
+
+    /// <summary>
+    ///  Counts <paramref name="changes"/> as upstream's <c>ArtificialCommitChangeCount</c> groups them.
+    /// </summary>
+    public static ArtificialChanges Of(IEnumerable<ChangeKind> changes)
+    {
+        int changed = 0;
+        int added = 0;
+        int deleted = 0;
+        foreach (ChangeKind change in changes)
+        {
+            switch (change)
+            {
+                case ChangeKind.Added or ChangeKind.Untracked:
+                    added++;
+                    break;
+                case ChangeKind.Deleted:
+                    deleted++;
+                    break;
+                default:
+                    changed++;
+                    break;
+            }
+        }
+
+        return new ArtificialChanges(changed, added, deleted);
+    }
 }
 
 /// <summary>
@@ -49,7 +136,8 @@ public sealed class CommitListViewModel : ObservableObject
     private IReadOnlyList<CommitRow> _rows = [];
     private CommitGraph? _graph;
     private bool _drawNonRelativesGray = true;
-    private Dictionary<string, string> _artificialBadges = new(StringComparer.Ordinal);
+    private Dictionary<string, ArtificialChanges> _artificialChanges = new(StringComparer.Ordinal);
+    private GridViewOptions _viewOptions = new();
     private IReadOnlyList<CommitRow>? _graphRows;
     private IReadOnlyList<CommitListItem> _visibleRows = [];
     private string _filterText = "";
@@ -188,32 +276,45 @@ public sealed class CommitListViewModel : ObservableObject
     ///  Upstream's counts of the artificial rows (<c>ArtificialCommitChangeCount</c>): the files changed in the working
     ///  directory and in the index; null hides them.
     /// </summary>
-    public void SetArtificialChangeCounts(int? workTree, int? index)
+    public void SetArtificialChangeCounts(ArtificialChanges? workTree, ArtificialChanges? index)
     {
-        Dictionary<string, string> badges = new(StringComparer.Ordinal);
-        if (workTree is { } workTreeCount)
+        Dictionary<string, ArtificialChanges> changes = new(StringComparer.Ordinal);
+        if (workTree is not null)
         {
-            badges[ArtificialCommits.WorkTreeHash] = ChangeCount(workTreeCount);
+            changes[ArtificialCommits.WorkTreeHash] = workTree;
         }
 
-        if (index is { } indexCount)
+        if (index is not null)
         {
-            badges[ArtificialCommits.IndexHash] = ChangeCount(indexCount);
+            changes[ArtificialCommits.IndexHash] = index;
         }
 
-        if (badges.Count == _artificialBadges.Count && badges.All(badge =>
-                _artificialBadges.TryGetValue(badge.Key, out string? shown) && shown == badge.Value))
+        if (changes.Count == _artificialChanges.Count && changes.All(change =>
+                _artificialChanges.TryGetValue(change.Key, out ArtificialChanges? shown) && shown == change.Value))
         {
             return;
         }
 
-        _artificialBadges = badges;
+        _artificialChanges = changes;
         if (_rows.Any(row => ArtificialCommits.IsArtificial(row.Hash)))
         {
             RefreshVisibleRows();
         }
+    }
 
-        static string ChangeCount(int count) => count == 1 ? "(1 change)" : $"({count} changes)";
+    /// <summary>
+    ///  Upstream's View menu choices for the rows: which labels show and whether the body follows the subject.
+    /// </summary>
+    public GridViewOptions ViewOptions
+    {
+        get => _viewOptions;
+        set
+        {
+            if (SetProperty(ref _viewOptions, value))
+            {
+                RefreshVisibleRows();
+            }
+        }
     }
 
     /// <summary>
@@ -293,13 +394,26 @@ public sealed class CommitListViewModel : ObservableObject
             {
                 items.Add(new CommitListItem(row, _graph.RowAt(i))
                 {
-                    Build = BuildStatusOf(row.Hash), Badge = _artificialBadges.GetValueOrDefault(row.Hash, ""),
+                    Build = BuildStatusOf(row.Hash),
+                    Changes = _artificialChanges.GetValueOrDefault(row.Hash),
+                    // Upstream draws an artificial row's subject as a label of its own (OtherTag's color).
+                    GridLabels = ArtificialCommits.IsArtificial(row.Hash)
+                        ? [new GridLabel(row.Subject, RefKind.Head)]
+                        : GridLabels.Layout(row.Labels ?? [], _viewOptions),
+                    BodyText = _viewOptions.ShowCommitBody ? BodyOf(row) : "",
                 });
             }
         }
 
         VisibleRows = items;
     }
+
+    // Upstream's DrawCommitMessage: the message's non-empty lines after the subject, each after a space.
+    private static string BodyOf(CommitRow row)
+        => ArtificialCommits.IsArtificial(row.Hash) || row.Body is null
+            ? ""
+            : string.Concat(row.Body.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1)
+                .Select(line => " " + line.TrimEnd('\r')));
 
     private static bool Matches(CommitRow row, string text) =>
         row.Hash.Contains(text, StringComparison.OrdinalIgnoreCase)

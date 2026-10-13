@@ -24,6 +24,7 @@ public sealed class RepositoryViewModel : ObservableObject
     private IReadOnlyDictionary<string, string> _aheadBehind = new Dictionary<string, string>();
     private IReadOnlyList<WorktreeInfo> _worktrees = [];
     private IReadOnlyDictionary<string, string> _remoteUrls = new Dictionary<string, string>();
+    private string _userEmail = "";
     private string? _errorMessage;
 
     public RepositoryViewModel(IRepositoryService service)
@@ -129,6 +130,16 @@ public sealed class RepositoryViewModel : ObservableObject
     }
 
     /// <summary>
+    ///  The effective user.email, whose commits the grid highlights until a commit is selected (upstream's
+    ///  <c>AuthorRevisionHighlighting</c>).
+    /// </summary>
+    public string UserEmail
+    {
+        get => _userEmail;
+        private set => SetProperty(ref _userEmail, value);
+    }
+
+    /// <summary>
     ///  True while a rebase is stopped for conflicts or for a commit (upstream's <c>InTheMiddleOfRebase</c>).
     /// </summary>
     public bool IsRebasing
@@ -200,6 +211,7 @@ public sealed class RepositoryViewModel : ObservableObject
         AheadBehind = new Dictionary<string, string>();
         Worktrees = [];
         RemoteUrls = new Dictionary<string, string>();
+        UserEmail = "";
     }
 
     public async Task RefreshAsync(string repositoryPath)
@@ -230,6 +242,7 @@ public sealed class RepositoryViewModel : ObservableObject
             AheadBehind = snapshot.AheadBehind ?? new Dictionary<string, string>();
             Worktrees = snapshot.Worktrees ?? [];
             RemoteUrls = snapshot.RemoteUrls ?? new Dictionary<string, string>();
+            UserEmail = snapshot.UserEmail ?? "";
         }
         catch (Exception ex)
         {

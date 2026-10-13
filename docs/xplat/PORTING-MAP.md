@@ -118,6 +118,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (`ToolStripMain`), `FormBrowse.cs` (toolstrip parts of `InitMenusAndToolbars`, `RefreshDefaultPullAction`, the layout toggles, the title); `Menus/WorkingDirectoryToolStripSplitButton.cs`; `ToolStripPushButton.cs`; `src/app/GitUI/UserControls/RepoStateVisualiser.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs`, `MainWindow.axaml` (toolstrip), `UpstreamImages.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepoState.cs`, `RecentRepositories.cs` (`Caption`), `BrowseWindowTitle.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/FilterToolBar.cs`, `FilterToolBar.Designer.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.FilterToolBar.cs`, `MainWindow.axaml` (`FilterToolStrip`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs` | `afc512395` | partial |
 | `src/app/GitUI/Shells/ShellProvider.cs`, `BashShell.cs`, `CmdShell.cs`, `PwshShell.cs`, `PowerShellShell.cs`; `FormBrowse.InitMenusAndToolbars.cs` (`FillUserShells`), `FormBrowse.cs` (`userShell_Click`) | `src/xplat/GitExtensions.Xplat.Core/Platform/TerminalChoices.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs` (`FillTerminals`) | `afc512395` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `RevisionGridRefRenderer.cs`, `RefLabelShape.cs`, `RefLabelIcon.cs`, `RevisionDataGridView.cs` (row colors), `AuthorRevisionHighlighting.cs`, `RevisionGridMenuCommands.cs` (`GetViewMenuCommands`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridLabels.cs`, `CommitListViewModel.cs` (`CommitListItem`, `ArtificialChanges`), `GitCommitHistory.cs` (`LoadRefLabels`); `src/xplat/GitExtensions.Xplat.App/RefLabelView.cs`, `MainWindow.GridView.cs`, `MainWindow.axaml` (row template, View menu), `ThemeApplier.cs` (grid colors) | `afc512395` | partial |
 
 ## Notes per row
 
@@ -872,3 +873,25 @@ upstream's order and with its images (bash as git-bash.exe, else bash.exe or sh.
 upstream's `PathUtil.TryFindShellPath`; the button opens bash, or the first one installed, in the working directory. On
 Linux and macOS the list has the system terminal (the `TERMINAL` variable or `x-terminal-emulator`; Terminal on macOS).
 Not ported: the embedded console tab (ConEmu), which is Windows-only.
+
+**Revision grid rows and View menu** (`partial`). 2026-10-13: no column header row, as upstream's grid. The labels as
+`MessageColumnProvider` lays them out (`GridLabels` in core): no HEAD label, sorted as `SortRefs` (checked-out branch,
+local, remote, tags), the checked-out branch bold after upstream's filled arrow, a local branch and the remote branch it
+tracks on the same commit as one pair (the remote shown by its remote's name, notched against the branch's point), the
+ahead and behind arrows of a branch tracking or tracked elsewhere as a dashed virtual label, tags pointing left, a remote
+branch named as the single local branch shown by its remote, bisect marks as upstream's images; drawn as
+`RevisionGridRefRenderer` draws them (`RefLabelView`: its shapes, the colors and their light and dark shades, the window
+color on a selected row, `FillRefLabels`). The labels read the tracked branch (`%(upstream)`) and upstream's
+`AheadBehindDataProvider` with the refs. The checked-out commit's subject is bold; fixup, squash and amend commits get
+upstream's marker; the commit body follows the subject in the gray text color (`ShowCommitBodyInRevisionGrid`). An
+artificial row is a label with upstream's change icons and counts (changed, new, deleted) or the clean image. Row colors as
+`RevisionDataGridView`: the system highlight and highlight text for the selection, `InactiveSelectionHighlight` while the
+grid has no focus, `AuthoredHighlight` for the commits of the selected commit's author or, without a selection, the user's
+(`AuthorRevisionHighlighting`, `HighlightAuthoredRevisions`), every other row a shade darker
+(`RevisionGraphDrawAlternateBackColor`), no hover color. The View menu is upstream's `GetViewMenuCommands` in its groups
+and order with the items the new shell has (branch choices and reflog, advanced filter, graph styles, artificial commits,
+remote branch and tag labels, build status, commit body, dates, the graph, avatar, author, date and SHA-1 columns, author
+date and topo order), the group captions in italics as `MenuUtil.SetAsCaptionMenuItem`. Not ported: stashes, git notes and
+session refs in the grid, the superproject labels and refs, the notes column, per-remote label colors, the label hover
+frame and tooltip per label, the multi-line indicator, non-relatives drawn in gray text (their lanes are gray), the
+"unknown" artificial state and submodule counts, the merge source arrow, and "Save current view settings as default".

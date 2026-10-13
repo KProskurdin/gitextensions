@@ -98,6 +98,7 @@ public partial class MainWindow : Window
         WireMenus();
         WireLeftPanel();
         WireCommitList();
+        WireGridView();
 
         _commits.PropertyChanged += (_, e) => OnCommitsChanged(e.PropertyName);
         _repository.PropertyChanged += (_, e) => OnRepositoryChanged(e.PropertyName);

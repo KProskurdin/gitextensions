@@ -93,7 +93,13 @@ internal sealed class MainWindowTests
 
         string branch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
         CommitListItem first = ((IReadOnlyList<CommitListItem>)Find<ListBox>(window, "CommitList").ItemsSource!)[0];
-        first.Labels.Should().Equal(new RefLabel("HEAD", RefKind.Head), new RefLabel(branch, RefKind.Branch));
+        first.Labels.Should().Equal(new RefLabel("HEAD", RefKind.Head),
+            new RefLabel(branch, RefKind.Branch) { IsCurrent = true });
+
+        // As upstream draws it: no HEAD label, the checked-out branch bold with its arrow, and the subject bold.
+        first.GridLabels.Should()
+            .Equal(new GridLabel(branch, RefKind.Branch, IsCurrent: true) { Ref = first.Labels[1] });
+        first.IsCheckedOut.Should().BeTrue();
     }
 
     [AvaloniaTest]

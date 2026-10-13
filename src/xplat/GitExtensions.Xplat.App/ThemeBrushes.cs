@@ -91,7 +91,8 @@ internal static class ThemeBrushes
             InfoBanner: Brush(dark ? "#1E4A66" : "#87CEFA"),
             ConflictBanner: Brush(dark ? "#7A4A00" : "#FFA500"),
             Lanes: lanes.Count > 0 ? lanes : [Brush(colors.Get(AppColor.GraphNonRelativeBranch))],
-            NonRelativeLane: Brush(colors.Get(AppColor.GraphNonRelativeBranch)));
+            NonRelativeLane: Brush(colors.Get(AppColor.GraphNonRelativeBranch)),
+            Colors: colors);
     }
 
     private static IBrush Brush(DrawingColor color)
@@ -116,7 +117,8 @@ internal static class ThemeBrushes
         IBrush InfoBanner,
         IBrush ConflictBanner,
         IReadOnlyList<IBrush> Lanes,
-        IBrush NonRelativeLane)
+        IBrush NonRelativeLane,
+        AppThemeColors Colors)
     {
         // The syntax colors made for this palette, by the definition's color text.
         public Dictionary<string, IBrush?> SyntaxBrushes { get; } = new(StringComparer.OrdinalIgnoreCase);

@@ -71,8 +71,8 @@ public partial class MainWindow
         }
 
         _commits.SetArtificialChangeCounts(
-            _repository.Changes.Count(change => !change.Staged),
-            _repository.Changes.Count(change => change.Staged));
+            ArtificialChanges.Of(_repository.Changes.Where(change => !change.Staged).Select(change => change.Kind)),
+            ArtificialChanges.Of(_repository.Changes.Where(change => change.Staged).Select(change => change.Kind)));
     }
 
     private void HighlightSelectedBranch()

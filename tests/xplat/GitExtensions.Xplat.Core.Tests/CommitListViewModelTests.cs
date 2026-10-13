@@ -124,9 +124,10 @@ internal sealed class CommitListViewModelTests
             [.. ArtificialCommits.Rows("Ann", null), .. Page(hasMore: false, "aaa1").Rows], HasMore: false));
         await open;
 
-        _viewModel.SetArtificialChangeCounts(workTree: 2, index: 1);
+        _viewModel.SetArtificialChangeCounts(new ArtificialChanges(2, 0, 0), new ArtificialChanges(0, 1, 0));
 
-        _viewModel.VisibleRows.Select(item => item.Badge).Should().Equal("(2 changes)", "(1 change)", "");
+        _viewModel.VisibleRows.Select(item => item.Changes).Should().Equal(
+            new ArtificialChanges(2, 0, 0), new ArtificialChanges(0, 1, 0), null);
         _viewModel.Status.Should().Be("1 commit");
     }
 

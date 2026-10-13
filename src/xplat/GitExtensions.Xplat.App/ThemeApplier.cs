@@ -64,6 +64,21 @@ internal static class ThemeApplier
         Override(app, TextKey, colors.Get(System.Drawing.KnownColor.WindowText), brush: true);
         Override(app, DisabledTextKey, colors.Get(System.Drawing.KnownColor.GrayText), brush: true);
         Override(app, AccentKey, colors.Get(System.Drawing.KnownColor.Highlight), brush: false);
+
+        // Upstream's revision grid rows (RevisionDataGridView): the system highlight for the selected row, the
+        // InactiveSelectionHighlight while the grid has no focus, AuthoredHighlight for the author's commits, every other
+        // row a shade darker than the panel, and the commit body in the gray text color.
+        System.Drawing.Color panel = colors.Get(AppColor.PanelBackground) is { IsEmpty: false } themedPanel
+            ? themedPanel
+            : colors.IsDark
+                ? System.Drawing.Color.FromArgb(0x20, 0x20, 0x20)
+                : System.Drawing.SystemColors.Control;
+        SetBrush(app, GridSelectionKey, SystemColor(colors, System.Drawing.KnownColor.Highlight));
+        SetBrush(app, GridSelectionTextKey, SystemColor(colors, System.Drawing.KnownColor.HighlightText));
+        SetBrush(app, GridInactiveSelectionKey, colors.Get(AppColor.InactiveSelectionHighlight));
+        SetBrush(app, AuthoredHighlightKey, colors.Get(AppColor.AuthoredHighlight));
+        SetBrush(app, AlternateRowKey, panel.MakeDarkerBy(colors.IsDark ? -0.018 : 0.025));
+        SetBrush(app, GridBodyKey, SystemColor(colors, System.Drawing.KnownColor.GrayText));
         Changed?.Invoke(null, EventArgs.Empty);
     }
 
@@ -74,6 +89,16 @@ internal static class ThemeApplier
     public const string TextKey = "SystemControlForegroundBaseHighBrush";
     public const string DisabledTextKey = "SystemControlDisabledBaseMediumLowBrush";
     public const string AccentKey = "SystemAccentColor";
+    public const string GridSelectionKey = "GridSelectionBrush";
+    public const string GridSelectionTextKey = "GridSelectionTextBrush";
+    public const string GridInactiveSelectionKey = "GridInactiveSelectionBrush";
+    public const string AuthoredHighlightKey = "AuthoredHighlightBrush";
+    public const string AlternateRowKey = "AlternateRowBrush";
+    public const string GridBodyKey = "GridBodyBrush";
+
+    // A system color as the theme sets it, else the system's (on Windows the user's, elsewhere .NET's Windows defaults).
+    private static System.Drawing.Color SystemColor(AppThemeColors colors, System.Drawing.KnownColor name)
+        => colors.Get(name) is { IsEmpty: false } themed ? themed : System.Drawing.Color.FromKnownColor(name);
 
     // The app's values of the keys a theme overrides now (Avalonia keeps the platform's accent there), put back when a theme
     // without the override is applied. A key no theme overrides is left as it is.

@@ -29,19 +29,46 @@
         <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit ._gitignore..." />
         <MenuItem x:Name="WorktreesMenuItem" Header="_Worktrees..." />
       </MenuItem>
+      <!-- Upstream's View menu (RevisionGridMenuCommands.GetViewMenuCommands) in its order and groups, with the items the new
+           shell has. -->
       <MenuItem Header="_View">
-        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
+        <MenuItem Classes="groupHeader" Header="Branches" IsEnabled="False" />
+        <MenuItem x:Name="ShowAllBranchesMenuItem" Header="Show _all branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchLocal}" />
+        <MenuItem x:Name="ShowCurrentBranchOnlyMenuItem" Header="Show _current branch only" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
+        <MenuItem x:Name="ShowFilteredBranchesMenuItem" Header="Show _filtered branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
+        <MenuItem x:Name="ShowReflogReferencesMenuItem" Header="Show _reflog references" ToggleType="CheckBox" Icon="{local:UpstreamIcon Book}" />
+        <Separator />
+        <MenuItem x:Name="AdvancedFilterViewMenuItem" Header="Advanced filter..." Icon="{local:UpstreamIcon EditFilter}" />
         <Separator />
         <!-- Upstream's graph styles: gray lanes for commits that are not relatives of the checked-out one, and the selected
              commit's ancestry in color until the next refresh (also Alt+click). -->
         <MenuItem x:Name="DrawNonRelativesGrayMenuItem" Header="Draw non relatives gra_y" ToggleType="CheckBox" />
         <MenuItem x:Name="HighlightSelectedBranchMenuItem" Header="Highlight selected branch (until refresh)" />
+        <Separator />
+        <MenuItem Classes="groupHeader" Header="Commits" IsEnabled="False" />
         <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
         <Separator />
-        <!-- Upstream's "Grid info" toggles for the build status column. -->
+        <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
+        <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowTagsMenuItem" Header="Show _tags" ToggleType="CheckBox" />
+        <Separator />
+        <MenuItem Classes="groupHeader" Header="Grid info" IsEnabled="False" />
         <MenuItem x:Name="ShowBuildStatusIconMenuItem" Header="Show build status _icon" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowBuildStatusTextMenuItem" Header="Show build status te_xt" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowCommitBodyMenuItem" Header="Show commit message body" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
+        <Separator />
+        <MenuItem Classes="groupHeader" Header="Columns" IsEnabled="False" />
+        <MenuItem x:Name="ShowGraphColumnMenuItem" Header="Show revision _graph column" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAvatarColumnMenuItem" Header="Show aut_hor avatar column" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAuthorNameColumnMenuItem" Header="Show a_uthor name column" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowDateColumnMenuItem" Header="Show _date column" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowObjectIdColumnMenuItem" Header="Show SHA_-1 column" ToggleType="CheckBox" />
+        <Separator />
+        <MenuItem Classes="groupHeader" Header="Sorting" IsEnabled="False" />
+        <MenuItem x:Name="AuthorDateSortMenuItem" Header="_Sort commits by author date" ToggleType="CheckBox" />
+        <MenuItem x:Name="TopoOrderMenuItem" Header="Arrange c_ommits by topo order (ancestor order)" ToggleType="CheckBox" />
       </MenuItem>
       <MenuItem Header="_Commands">
         <MenuItem x:Name="CommitMenuItem" Header="_Commit..." />
@@ -422,21 +449,43 @@
                left or right of the grid (LayoutRevisionInfo sets the columns). -->
           <Grid x:Name="RevisionsSplitGrid" Grid.Row="0" ColumnDefinitions="*,0,0">
             <Grid x:Name="RevisionGridContainer" Grid.Column="0" RowDefinitions="Auto,*">
-              <!-- Column headers of the revision grid; the widths match the row template below. -->
-              <Grid Grid.Row="0" ColumnDefinitions="*,160,140,90,Auto" Margin="12,0,12,2">
-                <TextBlock Grid.Column="0" Text="Message" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="1" Text="Author" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="2" Text="Date" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="3" Text="Commit" FontWeight="SemiBold" />
-                <!-- Upstream's last column. As wide as BuildStatusColumnWidth: 0 while no build server shows results. -->
-                <TextBlock x:Name="BuildStatusHeader" Grid.Column="4" Text="Build Status" FontWeight="SemiBold" ClipToBounds="True"
-                           TextTrimming="CharacterEllipsis" Width="{DynamicResource BuildStatusColumnWidth}" />
-              </Grid>
               <ListBox x:Name="CommitList" Grid.Row="1">
+                <!-- Upstream's RevisionDataGridView rows: no hover color, every other row a shade darker
+                     (RevisionGraphDrawAlternateBackColor), the selected commit's author's rows tinted (HighlightAuthoredRevisions),
+                     the selection in the system highlight with its text color, or in InactiveSelectionHighlight while the grid
+                     has no focus, and the commit body in the gray text color. Later styles win. -->
                 <ListBox.Styles>
                   <Style Selector="ListBoxItem">
                     <Setter Property="Padding" Value="4,0" />
                     <Setter Property="MinHeight" Value="22" />
+                  </Style>
+                  <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="Transparent" />
+                  </Style>
+                  <Style Selector="ListBox.alternate ListBoxItem:nth-child(2n+1) /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AlternateRowBrush}" />
+                  </Style>
+                  <Style Selector="ListBoxItem.authored /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AuthoredHighlightBrush}" />
+                  </Style>
+                  <Style Selector="TextBlock.commitBody">
+                    <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
+                  </Style>
+                  <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource GridSelectionBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource GridSelectionTextBrush}" />
+                  </Style>
+                  <Style Selector="ListBoxItem:selected TextBlock.commitBody">
+                    <Setter Property="Foreground" Value="{DynamicResource GridSelectionTextBrush}" />
+                    <Setter Property="Opacity" Value="0.75" />
+                  </Style>
+                  <Style Selector="ListBox:not(:focus-within) ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource GridInactiveSelectionBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                  </Style>
+                  <Style Selector="ListBox:not(:focus-within) ListBoxItem:selected TextBlock.commitBody">
+                    <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
+                    <Setter Property="Opacity" Value="1" />
                   </Style>
                 </ListBox.Styles>
                 <ListBox.ContextMenu>
@@ -472,43 +521,66 @@
                   </ContextMenu>
                 </ListBox.ContextMenu>
                 <ListBox.ItemTemplate>
+                  <!-- Upstream's columns in its order (graph, message, avatar, author, date, SHA-1, build status), each shown as the
+                       View menu's Columns say (MainWindow.GridView sets the Show*Column resources). -->
                   <DataTemplate x:DataType="core:CommitListItem">
-                    <Grid ColumnDefinitions="Auto,*,160,140,90,Auto">
-                      <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
+                      <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch"
+                                       IsVisible="{DynamicResource ShowGraphColumn}" />
+                      <!-- Upstream's MessageColumnProvider: the ref labels, the fixup marker, the subject (bold for the checked-out
+                           commit) and the body in gray; an artificial row's label and its change counts. -->
                       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
-                                  ToolTip.Tip="{Binding Row.Tooltip.Message}">
-                        <ItemsControl Classes="refLabels" ItemsSource="{Binding Labels}">
+                                  Background="Transparent" ToolTip.Tip="{Binding Row.Tooltip.Message}">
+                        <ItemsControl Classes="refLabels" ItemsSource="{Binding GridLabels}">
                           <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                               <StackPanel Orientation="Horizontal" />
                             </ItemsPanelTemplate>
                           </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="core:RefLabel">
-                              <Border BorderThickness="1" CornerRadius="3" Padding="4,0" Margin="0,0,4,0"
-                                      BorderBrush="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}">
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"
-                                           Foreground="{Binding Kind, Converter={x:Static local:RefLabelBrushConverter.Instance}}" />
-                              </Border>
+                            <DataTemplate x:DataType="core:GridLabel">
+                              <local:RefLabelView Label="{Binding}" Fill="{DynamicResource FillRefLabels}"
+                                                  IsRowSelected="{Binding $parent[ListBoxItem].IsSelected}" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" />
-                        <!-- Upstream's change counts of the artificial rows (ShowGitStatusForArtificialCommits). -->
-                        <TextBlock Text="{Binding Badge}" Opacity="0.7" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        <ItemsControl ItemsSource="{Binding Changes.Parts, FallbackValue={x:Null}}" Margin="1,0,0,0" VerticalAlignment="Center">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                              <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="core:ArtificialChangePart">
+                              <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,4,0">
+                                <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="12" Height="12"
+                                       VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Text}" MinWidth="14" VerticalAlignment="Center" />
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Image Source="{local:UpstreamImage FixupAndSquashMessageMarker}" Width="16" Height="16" Margin="0,0,4,0"
+                               VerticalAlignment="Center" IsVisible="{Binding IsFixup}" />
+                        <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" IsVisible="{Binding !IsArtificial}"
+                                   FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
+                        <TextBlock Classes="commitBody" Text="{Binding BodyText}" VerticalAlignment="Center"
+                                   FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
                       </StackPanel>
-                      <!-- Upstream's author avatar column (ShowAuthorAvatarColumn), here at the start of the author cell. -->
-                      <DockPanel Grid.Column="2" Margin="0,0,6,0">
-                        <local:AvatarView Classes="gridAvatar" DockPanel.Dock="Left" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
-                                          VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
-                                          Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
-                        <TextBlock Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                      </DockPanel>
-                      <TextBlock Grid.Column="3" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,6,0" />
-                      <TextBlock Grid.Column="4" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <local:AvatarView Grid.Column="2" Classes="gridAvatar" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
+                                        VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
+                                        Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
+                      <TextBlock Grid.Column="3" Width="150" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorNameColumn}" />
+                      <TextBlock Grid.Column="4" Width="134" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowDateColumn}" />
+                      <TextBlock Grid.Column="5" Width="84" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
+                                 FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}"
+                                 FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowObjectIdColumn}" />
                       <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
                            build report. -->
-                      <StackPanel Grid.Column="5" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
+                      <StackPanel Grid.Column="6" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
                                   Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
                                   ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"

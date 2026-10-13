@@ -87,6 +87,10 @@
     <Style Selector="SplitButton.tool:disabled Image">
       <Setter Property="Opacity" Value="0.4" />
     </Style>
+    <!-- Upstream's menu group captions (MenuUtil.SetAsCaptionMenuItem): disabled, in italics. -->
+    <Style Selector="MenuItem.groupHeader">
+      <Setter Property="FontStyle" Value="Italic" />
+    </Style>
     <!-- Upstream's PanelBackground (ThemeApplier sets it from the theme) behind every window, as upstream's forms use it. -->
     <Style Selector="Window">
       <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />

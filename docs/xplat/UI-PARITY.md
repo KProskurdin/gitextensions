@@ -169,6 +169,10 @@ toolbar icons with upstream's `ToolTipText`.
   worktree, ahead/behind counts, the toolstrip of tree toggles, the search box, and upstream's context menu per node kind
   (with stand-ins where upstream opens a window the new shell lacks: remotes, reset, stashes). The per-section buttons and
   boxes are gone. See the "RepoObjectsTree" note in `PORTING-MAP.md`. Checked by screenshot.
+- 2026-10-13, U2.3 done (B3 to B7, and G5 for the grid): no header row; upstream's View menu with its Columns, Grid labels
+  and Grid info groups; upstream's ref labels (shapes, filled arrow, tracked remote pair, ahead/behind arrows); artificial
+  rows as labels with change icons; the gray body after the subject; the authored tint, alternating rows and upstream's
+  selection colors. See the "Revision grid rows and View menu" note in `PORTING-MAP.md`. Checked by screenshot.
 
 ## Risks
 

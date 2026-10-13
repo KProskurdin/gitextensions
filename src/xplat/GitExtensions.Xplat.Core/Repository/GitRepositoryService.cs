@@ -181,6 +181,7 @@ public sealed class GitRepositoryService : IRepositoryService
             isApplyingPatch, module.InTheMiddleOfBisect(), GetAheadBehind(module), GetWorktrees(module),
             remotes.ToDictionary(remote => remote,
                 remote => module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote)),
-                StringComparer.Ordinal));
+                StringComparer.Ordinal),
+            module.GetEffectiveSetting(SettingKeyString.UserEmail));
     }
 }

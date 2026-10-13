@@ -50,7 +50,9 @@ public interface ICommitHistory
 }
 
 /// <param name="FilePaths">For a file history that follows renames: the path the file had in each commit, by commit hash.</param>
-public sealed record CommitPage(IReadOnlyList<CommitRow> Rows, bool HasMore,
+public sealed record CommitPage(
+    IReadOnlyList<CommitRow> Rows,
+    bool HasMore,
     IReadOnlyDictionary<string, string>? FilePaths = null);
 
 /// <summary>
@@ -104,6 +106,28 @@ public sealed record RefLabel(string Name, RefKind Kind)
     ///  True for a bisect mark, which is not a name git can check out or delete.
     /// </summary>
     public bool IsBisect => Kind is RefKind.BisectGood or RefKind.BisectBad;
+
+    /// <summary>
+    ///  The checked-out branch (upstream's <c>IGitRef.IsSelected</c>), which the grid draws bold with a filled arrow.
+    /// </summary>
+    public bool IsCurrent { get; init; }
+
+    /// <summary>
+    ///  For a local branch, the remote branch it tracks ("origin/main"); null when it tracks none.
+    /// </summary>
+    public string? Upstream { get; init; }
+
+    /// <summary>
+    ///  For a remote branch, the name of its remote.
+    /// </summary>
+    public string? Remote { get; init; }
+
+    /// <summary>
+    ///  Upstream's ahead and behind arrows for the label next to this one (<c>AheadBehindData.ToDisplay</c> without
+    ///  counts): for a local branch from its tracked remote branch's side, for a remote branch from the side of the local
+    ///  branch tracking it; null when there is none.
+    /// </summary>
+    public string? AheadBehind { get; init; }
 
     /// <summary>
     ///  Classifies a full reference name such as "refs/heads/main"; the label shows its short name.

@@ -26,6 +26,7 @@ public interface IRepositoryService
 /// <param name="AheadBehind">Upstream's left panel ahead and behind texts (<c>AheadBehindData.ToDisplay</c>) by branch
 /// name: a local branch by its name, a remote branch tracked by one by its name with the remote ("origin/main").</param>
 /// <param name="RemoteUrls">The fetch URL of each remote, by its name.</param>
+/// <param name="UserEmail">The effective <c>user.email</c>, whose commits the grid highlights until one is selected.</param>
 public sealed record RepositorySnapshot(
     string? CurrentBranch,
     IReadOnlyList<BranchInfo> Branches,
@@ -42,7 +43,8 @@ public sealed record RepositorySnapshot(
     bool IsBisecting = false,
     IReadOnlyDictionary<string, string>? AheadBehind = null,
     IReadOnlyList<WorktreeInfo>? Worktrees = null,
-    IReadOnlyDictionary<string, string>? RemoteUrls = null);
+    IReadOnlyDictionary<string, string>? RemoteUrls = null,
+    string? UserEmail = null);
 
 /// <summary>
 ///  Commits the current branch has that its upstream lacks (<see cref="Ahead"/>) and the reverse (<see cref="Behind"/>).

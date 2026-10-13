@@ -366,10 +366,15 @@ public sealed class GitCommitHistory : ICommitHistory
 
     // Branch and tag labels by the commit they point at; an annotated tag points at the commit it was made on. Other refs
     // (the stash, notes) are not labels.
+    // A label also says what upstream's grid draws with it: the checked-out branch, the tracked remote branch, the remote of
+    // a remote branch and the ahead and behind arrows (upstream's AheadBehindDataProvider, off with ShowAheadBehindData).
     private static Dictionary<string, List<RefLabel>> LoadRefLabels(GitModule module)
     {
         ExecutionResult result = module.GitExecutable.Execute(
-            new GitArgumentBuilder("for-each-ref") { "--format=%(refname) %(objectname) %(*objectname)".Quote() },
+            new GitArgumentBuilder("for-each-ref")
+            {
+                "--format=%(refname) %(objectname) %(*objectname) %(upstream)".Quote()
+            },
             throwOnErrorExit: false);
         Dictionary<string, List<RefLabel>> labels = new();
         if (!result.ExitedSuccessfully)
@@ -377,6 +382,14 @@ public sealed class GitCommitHistory : ICommitHistory
             return labels;
         }
 
+        string current = module.GetSelectedBranch(emptyIfDetached: true);
+        IReadOnlyList<string> remotes = [.. module.GetRemoteNames().OrderByDescending(name => name.Length)];
+        IReadOnlyDictionary<string, AheadBehindData> aheadBehind =
+            new AheadBehindDataProvider(() => module.GitExecutable).GetData() ??
+            new Dictionary<string, AheadBehindData>();
+        Dictionary<string, AheadBehindData> aheadBehindByRemote = aheadBehind.Values
+            .DistinctBy(data => data.RemoteRef)
+            .ToDictionary(data => data.RemoteRef, StringComparer.Ordinal);
         foreach (string line in result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             string[] parts = line.TrimEnd('\r').Split(' ');
@@ -384,6 +397,30 @@ public sealed class GitCommitHistory : ICommitHistory
             {
                 continue;
             }
+
+            string upstream = parts.Length > 3 ? parts[3] : "";
+            label = label.Kind switch
+            {
+                RefKind.Branch => label with
+                {
+                    IsCurrent = label.Name == current,
+                    Upstream = upstream.StartsWith(GitRefName.RefsRemotesPrefix, StringComparison.Ordinal)
+                        ? upstream[GitRefName.RefsRemotesPrefix.Length..]
+                        : null,
+                    AheadBehind = aheadBehind.TryGetValue(label.Name, out AheadBehindData local)
+                        ? local.ToDisplay(withCounts: false, reverse: true)
+                        : null,
+                },
+                RefKind.RemoteBranch => label with
+                {
+                    Remote =
+                    remotes.FirstOrDefault(remote => label.Name.StartsWith(remote + "/", StringComparison.Ordinal)),
+                    AheadBehind = aheadBehindByRemote.TryGetValue(parts[0], out AheadBehindData tracking)
+                        ? tracking.ToDisplay(withCounts: false)
+                        : null,
+                },
+                _ => label,
+            };
 
             // origin/HEAD only repeats the remote's default branch.
             if (label.Kind == RefKind.RemoteBranch && label.Name.EndsWith("/HEAD", StringComparison.Ordinal))

@@ -361,6 +361,33 @@ public interface IAppPreferences
     IReadOnlyList<RepoObjectKind> RepoObjectsTreeOrder { get; set; }
 
     /// <summary>
+    ///  Upstream's View menu choices for the grid's rows: <c>showtags</c>, <c>showRemoteBranches</c> and
+    ///  <c>ShowCommitBodyInRevisionGrid</c>.
+    /// </summary>
+    GridViewOptions GridViewOptions { get; set; }
+
+    /// <summary>
+    ///  Upstream's View > Columns choices: <c>showrevisiongridgraphcolumn</c>, <c>showrevisiongridauthornamecolumn</c>,
+    ///  <c>showrevisiongriddatecolumn</c> and <c>showids</c> (the avatar column is <see cref="ShowAuthorAvatarColumn"/>).
+    /// </summary>
+    GridColumns GridColumns { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>highlightauthoredrevisions</c>: rows by the selected commit's author get the AuthoredHighlight color.
+    /// </summary>
+    bool HighlightAuthoredRevisions { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>FillRefLabels</c>: ref labels filled with a light shade of their color instead of outlined.
+    /// </summary>
+    bool FillRefLabels { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>RevisionGraphDrawAlternateBackColor</c>: every other grid row slightly darker.
+    /// </summary>
+    bool RevisionGraphDrawAlternateBackColor { get; set; }
+
+    /// <summary>
     ///  Whether the app asks before <paramref name="confirmation"/>'s action: upstream's <c>DontConfirm...</c> settings,
     ///  inverted, and <c>ConfirmBranchCheckout</c> as it is.
     /// </summary>
@@ -1001,6 +1028,48 @@ public sealed class SettingsAppPreferences : IAppPreferences
         }
     }
 
+    public GridViewOptions GridViewOptions
+    {
+        get => new(AppSettings.ShowTags, AppSettings.ShowRemoteBranches, AppSettings.ShowCommitBodyInRevisionGrid);
+        set
+        {
+            AppSettings.ShowTags = value.ShowTags;
+            AppSettings.ShowRemoteBranches = value.ShowRemoteBranches;
+            AppSettings.ShowCommitBodyInRevisionGrid = value.ShowCommitBody;
+        }
+    }
+
+    public GridColumns GridColumns
+    {
+        get => new(AppSettings.ShowRevisionGridGraphColumn, AppSettings.ShowAuthorNameColumn, AppSettings.ShowDateColumn,
+            AppSettings.ShowObjectIdColumn);
+        set
+        {
+            AppSettings.ShowRevisionGridGraphColumn = value.Graph;
+            AppSettings.ShowAuthorNameColumn = value.AuthorName;
+            AppSettings.ShowDateColumn = value.Date;
+            AppSettings.ShowObjectIdColumn = value.ObjectId;
+        }
+    }
+
+    public bool HighlightAuthoredRevisions
+    {
+        get => AppSettings.HighlightAuthoredRevisions;
+        set => AppSettings.HighlightAuthoredRevisions = value;
+    }
+
+    public bool FillRefLabels
+    {
+        get => AppSettings.FillRefLabels;
+        set => AppSettings.FillRefLabels = value;
+    }
+
+    public bool RevisionGraphDrawAlternateBackColor
+    {
+        get => AppSettings.RevisionGraphDrawAlternateBackColor;
+        set => AppSettings.RevisionGraphDrawAlternateBackColor = value;
+    }
+
     public bool Asks(Confirmation confirmation) => confirmation switch
     {
         Confirmation.Amend => !AppSettings.DontConfirmAmend.Value,
@@ -1397,6 +1466,16 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public IReadOnlyList<RepoObjectKind> RepoObjectsTreeOrder { get; set; } = RepoObjectsTree.Roots;
 
+    public GridViewOptions GridViewOptions { get; set; } = new();
+
+    public GridColumns GridColumns { get; set; } = new();
+
+    public bool HighlightAuthoredRevisions { get; set; } = true;
+
+    public bool FillRefLabels { get; set; }
+
+    public bool RevisionGraphDrawAlternateBackColor { get; set; } = true;
+
     private readonly Dictionary<Confirmation, bool> _asks = [];
 
     // Upstream's defaults: every question is asked except the left panel checkout.
@@ -1483,3 +1562,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public void Save() => SaveCount++;
 }
+
+/// <summary>
+///  Upstream's View > Columns choices of the revision grid.
+/// </summary>
+public sealed record GridColumns(bool Graph = true, bool AuthorName = true, bool Date = true, bool ObjectId = true);
