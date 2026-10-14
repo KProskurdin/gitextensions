@@ -21,6 +21,9 @@ public enum Confirmation
     /// <summary>Upstream <c>DontConfirmPushNewBranch</c>: pushing a branch the remote does not have yet.</summary>
     PushNewBranch,
 
+    /// <summary>Upstream <c>DontConfirmAddTrackingRef</c>: adding a tracking reference for a newly pushed branch.</summary>
+    AddTrackingRef,
+
     /// <summary>Upstream <c>DontConfirmDeleteUnmergedBranch</c>: deleting a branch that is not merged.</summary>
     DeleteUnmergedBranch,
 
@@ -60,6 +63,7 @@ public static class Confirmations
         new("Commits", Confirmation.Rebase, "Rebase on top of selected commit"),
         new("Branches", Confirmation.FetchAndPrune, "Fetch and prune branches"),
         new("Branches", Confirmation.PushNewBranch, "Push a new branch for the remote"),
+        new("Branches", Confirmation.AddTrackingRef, "Add a tracking reference for newly pushed branch"),
         new("Branches", Confirmation.DeleteUnmergedBranch, "Delete unmerged branches"),
         new("Branches", Confirmation.BranchCheckout, "Checkout branch using left panel"),
         new("Stash", Confirmation.StashDrop, "Drop stash"),

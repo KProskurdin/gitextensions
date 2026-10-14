@@ -421,44 +421,37 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <!-- Upstream's "Config" page under Git. -->
+      <!-- Upstream's "Config" page under Git (GitConfigSettingsPage): one column of git's own settings at the level the
+           page header chooses, in upstream's order. The tool and editor boxes offer what git and this computer have. -->
       <TabItem x:Name="GitConfigTab" Header="Config">
-        <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
-          <!-- As upstream's diff viewer settings page offers the tools git finds, a choice here fills the global value. -->
-          <TextBlock Grid.Row="0" Grid.Column="6" Text="Found on this computer" FontWeight="SemiBold" Margin="0,0,0,6" />
-          <ComboBox x:Name="MergeToolChoices" Grid.Row="3" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
-          <ComboBox x:Name="DiffToolChoices" Grid.Row="4" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
-          <TextBlock Grid.Row="0" Grid.Column="2" Text="Global (all repositories)" FontWeight="SemiBold" Margin="0,0,0,6" />
-          <TextBlock x:Name="LocalHeaderText" Grid.Row="0" Grid.Column="4" Text="This repository" FontWeight="SemiBold" Margin="0,0,0,6" />
-          <TextBlock Grid.Row="1" Grid.Column="0" Text="User name" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalUserNameBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" />
-          <TextBox x:Name="LocalUserNameBox" Grid.Row="1" Grid.Column="4" Margin="0,0,0,6" />
-          <TextBlock Grid.Row="2" Grid.Column="0" Text="User email" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalUserEmailBox" Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" />
-          <TextBox x:Name="LocalUserEmailBox" Grid.Row="2" Grid.Column="4" Margin="0,0,0,6" />
-          <TextBlock Grid.Row="3" Grid.Column="0" Text="Merge tool" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalMergeToolBox" Grid.Row="3" Grid.Column="2" Margin="0,0,0,6" PlaceholderText="e.g. meld, kdiff3, opendiff" />
-          <TextBox x:Name="LocalMergeToolBox" Grid.Row="3" Grid.Column="4" Margin="0,0,0,6" />
-          <TextBlock Grid.Row="4" Grid.Column="0" Text="Diff tool" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalDiffToolBox" Grid.Row="4" Grid.Column="2" Margin="0,0,0,6" PlaceholderText="e.g. meld, kdiff3, opendiff" />
-          <TextBox x:Name="LocalDiffToolBox" Grid.Row="4" Grid.Column="4" Margin="0,0,0,6" />
-          <!-- Upstream's Git config page: credential helper, editor, commit template and line endings. -->
-          <TextBlock x:Name="lblCredentialHelper" Grid.Row="5" Grid.Column="0" Text="Credential helper" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalCredentialHelperBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" />
-          <TextBox x:Name="LocalCredentialHelperBox" Grid.Row="5" Grid.Column="4" Margin="0,0,0,6" />
-          <ComboBox x:Name="CredentialHelperChoices" Grid.Row="5" Grid.Column="6" MinWidth="140" Margin="0,0,0,6" PlaceholderText="Choose..." />
-          <TextBlock x:Name="lblEditor" Grid.Row="6" Grid.Column="0" Text="Editor" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalEditorBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
-          <TextBox x:Name="LocalEditorBox" Grid.Row="6" Grid.Column="4" Margin="0,0,0,6" />
-          <ComboBox x:Name="EditorChoices" Grid.Row="6" Grid.Column="6" MinWidth="140" MaxWidth="260" Margin="0,0,0,6" PlaceholderText="Choose..." />
-          <TextBlock x:Name="lblCommitTemplatePath" Grid.Row="7" Grid.Column="0" Text="Path to commit template" VerticalAlignment="Center" />
-          <TextBox x:Name="GlobalCommitTemplateBox" Grid.Row="7" Grid.Column="2" Margin="0,0,0,6" />
-          <TextBox x:Name="LocalCommitTemplateBox" Grid.Row="7" Grid.Column="4" Margin="0,0,0,6" />
-          <TextBlock x:Name="AutoCrlfLabel" Grid.Row="8" Grid.Column="0" Text="Line endings" VerticalAlignment="Center" />
-          <ComboBox x:Name="GlobalAutoCrlfBox" Grid.Row="8" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-          <ComboBox x:Name="LocalAutoCrlfBox" Grid.Row="8" Grid.Column="4" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-          <TextBlock Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="7" Opacity="0.7" TextWrapping="Wrap" Margin="0,6,0,0"
-                     Text="These are git's own settings (git config). An empty repository value uses the global one." />
+        <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
+          <TextBlock Grid.Row="0" Text="User name" VerticalAlignment="Center" />
+          <TextBox x:Name="UserNameBox" Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="1" Text="User email" VerticalAlignment="Center" />
+          <TextBox x:Name="UserEmailBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBlock x:Name="lblCredentialHelper" Grid.Row="2" Text="Credential helper" VerticalAlignment="Center" />
+          <ComboBox x:Name="CredentialHelperBox" Grid.Row="2" Grid.Column="2" IsEditable="True"
+                    HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="3" Text="Editor" VerticalAlignment="Center" />
+          <ComboBox x:Name="EditorBox" Grid.Row="3" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
+                    Margin="0,0,0,6" />
+          <TextBlock Grid.Row="4" Text="Mergetool" VerticalAlignment="Center" />
+          <ComboBox x:Name="MergeToolBox" Grid.Row="4" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
+                    Margin="0,0,0,6" />
+          <TextBlock Grid.Row="5" Text="Difftool" VerticalAlignment="Center" />
+          <ComboBox x:Name="DiffToolBox" Grid.Row="5" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
+                    Margin="0,0,0,6" />
+          <TextBlock Grid.Row="6" Text="Path to commit template" VerticalAlignment="Center" />
+          <TextBox x:Name="CommitTemplateBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
+          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="6" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <!-- Upstream's groupBoxLineEndings. -->
+          <StackPanel Grid.Row="7" Grid.ColumnSpan="5" Spacing="4" Margin="0,6,0,0">
+            <TextBlock Text="Line endings" FontWeight="SemiBold" />
+            <RadioButton x:Name="AutoCrlfTrueRadio" GroupName="AutoCrlf" />
+            <RadioButton x:Name="AutoCrlfInputRadio" GroupName="AutoCrlf" />
+            <RadioButton x:Name="AutoCrlfFalseRadio" GroupName="AutoCrlf" />
+            <RadioButton x:Name="AutoCrlfNotSetRadio" GroupName="AutoCrlf" />
+          </StackPanel>
         </Grid>
       </TabItem>
       <TabItem x:Name="ConfirmationsTab" Header="Confirmations">

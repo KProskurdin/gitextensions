@@ -1,25 +1,91 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.PullWindow"
         Title="Pull"
-        Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream FormPull: remote and branch, merge, rebase or fetch only, prune, auto stash. -->
-  <StackPanel Margin="16" Spacing="8">
-    <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,Auto">
-      <TextBlock Grid.Row="0" Text="Remote" VerticalAlignment="Center" />
-      <ComboBox x:Name="RemoteBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="1" Text="Remote branch" VerticalAlignment="Center" />
-      <TextBox x:Name="RemoteBranchBox" Grid.Row="1" Grid.Column="2" PlaceholderText="Empty: the branch's upstream (pull) or all branches (fetch)" />
+        SizeToContent="Width" Height="525" MinWidth="674" MinHeight="525" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormPull (a GitExtensionsDialog): the help picture on the left, the option groups on the right, and the
+       buttons in the strip at the bottom, from the right. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+        <Button x:Name="MergetoolButton" Content="_Solve conflicts" MinWidth="141" VerticalAlignment="Center" />
+        <Button x:Name="StashButton" Content="Stash _changes" MinWidth="132" VerticalAlignment="Center" />
+        <CheckBox x:Name="AutoStashCheck" Content="Auto stas_h" VerticalAlignment="Center" />
+        <Border Width="100" />
+        <Button x:Name="PullButton" MinWidth="120" IsDefault="True" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage ArrowDown}" Width="16" Height="16" />
+            <AccessText x:Name="PullButtonText" Text="_Pull" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Border>
+    <Grid Margin="9" ColumnDefinitions="Auto,*">
+      <local:HelpImageView x:Name="HelpImage" Grid.Column="0" Margin="3" />
+      <!-- Upstream's option groups are 598 pixels wide; as its help control, the window grows to fit the picture. -->
+      <ScrollViewer Grid.Column="1" Margin="3,0,0,0" MinWidth="604">
+        <StackPanel Spacing="6">
+          <HeaderedContentControl Classes="groupBox" Header="Pull from">
+            <Grid ColumnDefinitions="140,8,*,6,150" RowDefinitions="Auto,6,Auto">
+              <RadioButton x:Name="PullFromRemoteRadio" GroupName="PullFrom" Content="_Remote" IsChecked="True" />
+              <ComboBox x:Name="RemotesBox" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+              <Button x:Name="AddRemoteButton" Grid.Column="4" HorizontalAlignment="Stretch">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Image Source="{local:UpstreamImage Remotes}" Width="16" Height="16" />
+                  <AccessText Text="Mana_ge remotes" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <RadioButton x:Name="PullFromUrlRadio" Grid.Row="2" GroupName="PullFrom" Content="_URL" />
+              <ComboBox x:Name="UrlBox" Grid.Row="2" Grid.Column="2" IsEditable="True" IsEnabled="False"
+                        HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+              <Button x:Name="BrowseUrlButton" Grid.Row="2" Grid.Column="4" IsEnabled="False" HorizontalAlignment="Stretch">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+                  <AccessText Text="_Browse..." VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </HeaderedContentControl>
+          <HeaderedContentControl Classes="groupBox" Header="Branch">
+            <Grid ColumnDefinitions="140,8,*,156" RowDefinitions="Auto,6,Auto">
+              <TextBlock Text="Local branch" VerticalAlignment="Center" />
+              <TextBox x:Name="LocalBranchBox" Grid.Column="2" />
+              <TextBlock Grid.Row="2" Text="Remote branch" VerticalAlignment="Center" />
+              <ComboBox x:Name="RemoteBranchBox" Grid.Row="2" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch" />
+            </Grid>
+          </HeaderedContentControl>
+          <HeaderedContentControl Classes="groupBox" Header="Merge options">
+            <StackPanel Spacing="4">
+              <RadioButton x:Name="MergeRadio" GroupName="Action">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Image Source="{local:UpstreamImage Merge}" Width="16" Height="16" />
+                  <AccessText Text="_Merge remote branch into current branch" VerticalAlignment="Center" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton x:Name="RebaseRadio" GroupName="Action">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Image Source="{local:UpstreamImage Rebase}" Width="16" Height="16" />
+                  <AccessText Text="R_ebase current branch on top of remote branch, creates linear history (use with caution)"
+                              VerticalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton x:Name="FetchRadio" GroupName="Action" Content="Do not merge, only _fetch remote changes" />
+            </StackPanel>
+          </HeaderedContentControl>
+          <HeaderedContentControl Classes="groupBox" Header="Tag options">
+            <StackPanel Spacing="4">
+              <RadioButton x:Name="ReachableTagsRadio" GroupName="Tags" IsChecked="True"
+                           Content="Follow _tagopt, if not specified, fetch tags reachable from remote HEAD" />
+              <RadioButton x:Name="NoTagsRadio" GroupName="Tags" Content="Fetch _no tag" />
+              <RadioButton x:Name="AllTagsRadio" GroupName="Tags" Content="Fetch _all tags" />
+            </StackPanel>
+          </HeaderedContentControl>
+          <CheckBox x:Name="UnshallowCheck" Content="Do_wnload full history" IsVisible="False" />
+          <CheckBox x:Name="PruneCheck" Content="_Prune remote branches" />
+          <CheckBox x:Name="PruneTagsCheck" Content="Prune remote branches an_d tags" />
+        </StackPanel>
+      </ScrollViewer>
     </Grid>
-    <TextBlock Text="Then" FontWeight="SemiBold" Margin="0,4,0,0" />
-    <RadioButton x:Name="MergeRadio" GroupName="Action" Content="Merge the remote branch into the current branch" IsChecked="True" />
-    <RadioButton x:Name="RebaseRadio" GroupName="Action" Content="Rebase the current branch on the remote branch" />
-    <RadioButton x:Name="FetchRadio" GroupName="Action" Content="Do not merge, only fetch" />
-    <CheckBox x:Name="PruneCheck" Content="Prune remote branches deleted on the remote (fetch only)" />
-    <CheckBox x:Name="AutoStashCheck" Content="Auto stash: stash local changes first and restore them after" />
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
-      <Button x:Name="PullButton" Content="Pull" IsDefault="True" />
-    </StackPanel>
-  </StackPanel>
+  </DockPanel>
 </Window>

@@ -200,16 +200,23 @@ toolbar icons with upstream's `ToolTipText`.
   again, OK, Cancel and Apply in upstream's order, and the theme on upstream's Colors page. A test compares the tree with
   `FormSettings.OnRuntimeLoad`. See the "FormSettings page tree" note in `PORTING-MAP.md`. Checked by screenshot
   (`XPLAT_SCREENSHOT_WINDOW=settings`, or `settings:<text>` to type a search first).
-- 2026-10-14, U4.2 mostly done (S2): upstream's "Settings source" header on every page; the repository pages (Revision
-  links, Build server integration, Detailed, plugins) choose the level there, read-only at Effective as upstream. Left: the
-  Config page still shows the global and repository values side by side; upstream's single column with the header (and
-  System) needs that page rebuilt. See the "SettingsPageHeader" note in `PORTING-MAP.md`. Checked by screenshot.
+- 2026-10-14, U4.2 done (S2): upstream's "Settings source" header on every page; the repository pages (Revision links,
+  Build server integration, Detailed, plugins) choose the level there, read-only at Effective as upstream; the Config page
+  rebuilt as upstream's one column at Effective, Local, Global or System, with the tools in upstream's `guitool` keys. See
+  the "SettingsPageHeader" and "GitConfigSettingsPage" notes in `PORTING-MAP.md`. Checked by screenshot.
 - 2026-10-14, U4.3 done except the startup check (S3, S4): the Checklist page first, with upstream's rows, colors, Repair
   buttons, "Save and rescan" and the instant save notice; the Windows-only rows on Windows. Not ported: "Check settings at
   startup" and the startup check. See the "ChecklistSettingsPage" note in `PORTING-MAP.md`. Checked by screenshot.
   Found then: on Windows the shim's `Application.UserAppDataPath` is `%APPDATA%\GitExtensions`, while WinForms (upstream)
   uses `%APPDATA%\GitExtensions\GitExtensions`, so the two apps read different `GitExtensions.settings` files there. Not
   fixed yet.
+- 2026-10-14, U5 started with the groundwork the dialogs share: upstream's dialog frame (`Border.dialogFooter`: the button
+  strip with its colors and line), the group box (`HeaderedContentControl.groupBox`), the help picture (`HelpImageView`,
+  upstream's help pictures linked), and `XPLAT_SCREENSHOT_WINDOW=<dialog>` to capture a dialog on the open repository.
+- 2026-10-14, U5 Pull done: upstream's FormPull layout, texts, images and help picture, its options (URL, all remotes,
+  local branch, tags, full history, prune tags) and its checks before pulling (`PullDialog`). Manage remotes and Stash
+  changes wait for the remotes and stash windows. See the FormPull note in `PORTING-MAP.md`. Checked by screenshot
+  (`XPLAT_SCREENSHOT_WINDOW=pull`).
 
 ## Risks
 

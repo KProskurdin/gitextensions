@@ -100,6 +100,30 @@
     <Style Selector="SplitButton.tool:disabled Image">
       <Setter Property="Opacity" Value="0.4" />
     </Style>
+    <!-- Upstream's GitExtensionsDialog: the buttons in a strip along the bottom, a shade off the window's color, with a line
+         above it; the buttons from the right. -->
+    <Style Selector="Border.dialogFooter">
+      <Setter Property="Background" Value="{DynamicResource DialogFooterBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource DialogFooterLineBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Padding" Value="5" />
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <!-- WinForms' GroupBox, which upstream's dialogs group their options in: a frame with the caption over its top line. -->
+    <Style Selector="HeaderedContentControl.groupBox">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid>
+            <Border Margin="0,8,0,0" BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    Padding="6,12,6,6">
+              <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </Border>
+            <ContentPresenter Content="{TemplateBinding Header}" Margin="7,0,0,0" Padding="2,0" HorizontalAlignment="Left"
+                              VerticalAlignment="Top" Background="{DynamicResource PanelBackgroundBrush}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+    </Style>
     <!-- Upstream's menu group captions (MenuUtil.SetAsCaptionMenuItem): disabled, in italics. -->
     <Style Selector="MenuItem.groupHeader">
       <Setter Property="FontStyle" Value="Italic" />

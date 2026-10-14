@@ -203,6 +203,35 @@ public interface IAppPreferences
 
     GitPullAction DefaultPullAction { get; set; }
 
+    /// <summary>
+    ///  Upstream's pull dialog: <c>autostash</c> (its "Auto stash" box) and <c>FormPullAction</c> (the action pulled with
+    ///  last).
+    /// </summary>
+    bool AutoStash { get; set; }
+
+    GitPullAction FormPullAction { get; set; }
+
+    /// <summary>
+    ///  Upstream's push dialog: <c>AlwaysShowAdvOpt</c> (its options show without "Show options") and
+    ///  <c>RecursiveSubmodules</c> (0 none, 1 check, 2 on demand).
+    /// </summary>
+    bool AlwaysShowAdvOpt { get; set; }
+
+    int RecursiveSubmodules { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>DontShowHelpImages</c>: the help pictures of the pull, push and other dialogs are hidden.
+    /// </summary>
+    bool DontShowHelpImages { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>HelpIsExpanded</c> followed by the dialog's name: its help picture shows, not only the button that
+    ///  shows it.
+    /// </summary>
+    bool IsHelpExpanded(string dialog);
+
+    void SetHelpExpanded(string dialog, bool expanded);
+
     bool CheckForUncommittedChangesInCheckoutBranch { get; set; }
 
     /// <summary>
@@ -546,6 +575,8 @@ public interface IAppPreferences
 /// </summary>
 public sealed class SettingsAppPreferences : IAppPreferences
 {
+    private const string HelpIsExpandedKey = "HelpIsExpanded";
+
     public bool CloseCommitDialogAfterCommit
     {
         get => AppSettings.CloseCommitDialogAfterCommit;
@@ -803,6 +834,42 @@ public sealed class SettingsAppPreferences : IAppPreferences
         get => AppSettings.DefaultPullAction;
         set => AppSettings.DefaultPullAction = value;
     }
+
+    public bool AutoStash
+    {
+        get => AppSettings.AutoStash;
+        set => AppSettings.AutoStash = value;
+    }
+
+    public GitPullAction FormPullAction
+    {
+        get => AppSettings.FormPullAction;
+        set => AppSettings.FormPullAction = value;
+    }
+
+    public bool AlwaysShowAdvOpt
+    {
+        get => AppSettings.AlwaysShowAdvOpt;
+        set => AppSettings.AlwaysShowAdvOpt = value;
+    }
+
+    public int RecursiveSubmodules
+    {
+        get => AppSettings.RecursiveSubmodules;
+        set => AppSettings.RecursiveSubmodules = value;
+    }
+
+    public bool DontShowHelpImages
+    {
+        get => AppSettings.DontShowHelpImages;
+        set => AppSettings.DontShowHelpImages = value;
+    }
+
+    // Upstream's HelpImageDisplayUserControl: shown unless hidden once.
+    public bool IsHelpExpanded(string dialog) => AppSettings.GetBool(HelpIsExpandedKey + dialog, true);
+
+    public void SetHelpExpanded(string dialog, bool expanded) =>
+        AppSettings.SetBool(HelpIsExpandedKey + dialog, expanded);
 
     public bool CheckForUncommittedChangesInCheckoutBranch
     {
@@ -1074,7 +1141,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public GridColumns GridColumns
     {
-        get => new(AppSettings.ShowRevisionGridGraphColumn, AppSettings.ShowAuthorNameColumn, AppSettings.ShowDateColumn,
+        get => new(AppSettings.ShowRevisionGridGraphColumn, AppSettings.ShowAuthorNameColumn,
+            AppSettings.ShowDateColumn,
             AppSettings.ShowObjectIdColumn);
         set
         {
@@ -1105,7 +1173,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public CommitInfoOptions CommitInfoOptions
     {
-        get => new(AppSettings.CommitInfoShowContainedInBranchesLocal, AppSettings.CommitInfoShowContainedInBranchesRemote,
+        get => new(AppSettings.CommitInfoShowContainedInBranchesLocal,
+            AppSettings.CommitInfoShowContainedInBranchesRemote,
             AppSettings.CommitInfoShowContainedInBranchesRemoteIfNoLocal, AppSettings.CommitInfoShowContainedInTags,
             AppSettings.ShowAnnotatedTagsMessages, AppSettings.CommitInfoShowTagThisCommitDerivesFrom);
         set
@@ -1156,6 +1225,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
         Confirmation.Rebase => !AppSettings.DontConfirmRebase.Value,
         Confirmation.FetchAndPrune => !AppSettings.DontConfirmFetchAndPruneAll.Value,
         Confirmation.PushNewBranch => !AppSettings.DontConfirmPushNewBranch.Value,
+        Confirmation.AddTrackingRef => !AppSettings.DontConfirmAddTrackingRef,
         Confirmation.DeleteUnmergedBranch => !AppSettings.DontConfirmDeleteUnmergedBranch.Value,
         Confirmation.BranchCheckout => AppSettings.ConfirmBranchCheckout.Value,
         Confirmation.StashDrop => !AppSettings.DontConfirmStashDrop,
@@ -1181,6 +1251,9 @@ public sealed class SettingsAppPreferences : IAppPreferences
                 break;
             case Confirmation.PushNewBranch:
                 AppSettings.DontConfirmPushNewBranch.Value = !ask;
+                break;
+            case Confirmation.AddTrackingRef:
+                AppSettings.DontConfirmAddTrackingRef = !ask;
                 break;
             case Confirmation.DeleteUnmergedBranch:
                 AppSettings.DontConfirmDeleteUnmergedBranch.Value = !ask;
@@ -1415,6 +1488,22 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public int RevisionGridQuickSearchTimeout { get; set; } = 4000;
 
     public GitPullAction DefaultPullAction { get; set; } = GitPullAction.Merge;
+
+    public bool AutoStash { get; set; }
+
+    public GitPullAction FormPullAction { get; set; } = GitPullAction.Merge;
+
+    public bool AlwaysShowAdvOpt { get; set; }
+
+    public int RecursiveSubmodules { get; set; } = 1;
+
+    public bool DontShowHelpImages { get; set; }
+
+    private readonly Dictionary<string, bool> _helpExpanded = [];
+
+    public bool IsHelpExpanded(string dialog) => _helpExpanded.GetValueOrDefault(dialog, true);
+
+    public void SetHelpExpanded(string dialog, bool expanded) => _helpExpanded[dialog] = expanded;
 
     public bool CheckForUncommittedChangesInCheckoutBranch { get; set; } = true;
 

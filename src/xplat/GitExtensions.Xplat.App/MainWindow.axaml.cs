@@ -384,6 +384,17 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // XPLAT_SCREENSHOT_WINDOW=<dialog>: one of upstream's dialogs on the open repository.
+            if (await ScreenshotDialogAsync(Screenshot.RequestedWindow) is { } screenshotDialog)
+            {
+                screenshotDialog.Show(this);
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                await Screenshot.SaveAsync(screenshotDialog, screenshot);
+                screenshotDialog.Close();
+                Close();
+                return;
+            }
+
             // XPLAT_SCREENSHOT_WINDOW=settings[:search]: the settings window, with the text typed into its search box.
             if (Screenshot.RequestedWindow?.Split(':', 2) is [Screenshot.SettingsWindow, .. var search])
             {
@@ -991,39 +1002,68 @@ public partial class MainWindow : Window
             return;
         }
 
-        List<string> localBranches =
-            [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)];
-        PushRequest? request = await new PushWindow(_repository.Remotes, TrackingRemote(), localBranches,
-                _repository.CurrentBranch,
-                hasUpstream: _repository.TrackingRemote is not null)
-            .ShowDialog<PushRequest?>(this);
+        PushWindow window = await NewPushWindowAsync(path);
+        PushRequest? request = await window.ShowDialog<PushRequest?>(this);
         if (request is not null
-            && await ConfirmPushAsync(request.Remote,
-                request.RemoteBranch is { Length: > 0 } remoteBranch ? remoteBranch : request.LocalBranch))
+            && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
+                () => _actions.PushAsync(path, request))
+            && window.CreatePullRequestAfterPush)
         {
-            await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
-                () => _actions.PushAsync(path, request));
+            // As upstream: the repository host's pull request window after the push.
+            _plugins.StartCreatePullRequest(_plugins.Owner);
         }
     }
 
-    private async Task ShowPullDialogAsync()
+    // Upstream's StartPushDialog: the dialog on the open repository; its Pull button opens the pull dialog over it.
+    private async Task<PushWindow> NewPushWindowAsync(string path)
+        => new(new PushDialog(await PushRepository.LoadAsync(path)), _preferences, path.EnsureTrailingPathSeparator(),
+            _plugins.HasRepositoryHost, owner => ShowPullDialogAsync(owner));
+
+    private async Task ShowPullDialogAsync() => await ShowPullDialogAsync(this);
+
+    private async Task ShowPullDialogAsync(Window owner)
     {
         if (RepositoryPath is not { } path || !FetchMenuItem.IsEnabled)
         {
             return;
         }
 
-        PullRequest? request =
-            await new PullWindow(_repository.Remotes, TrackingRemote(),
-                    _preferences.DefaultPullAction == GitPullAction.Rebase)
-                .ShowDialog<PullRequest?>(this);
-        if (request is not null && (!request.Prune || await ConfirmPruneAsync(request.Remote)))
+        PullRequest? request = await (await NewPullWindowAsync(path)).ShowDialog<PullRequest?>(owner);
+
+        // As upstream's dialog, a fetch with prune chosen there runs without the question the quick fetch and prune asks.
+        if (request is not null)
         {
             // As upstream's pull dialog, "fetch only" runs the fetch scripts and a pull the pull scripts.
             bool fetchOnly = request.Action == PullAction.FetchOnly;
             await WithScriptsAsync(path, fetchOnly ? ScriptEvent.BeforeFetch : ScriptEvent.BeforePull,
                 fetchOnly ? ScriptEvent.AfterFetch : ScriptEvent.AfterPull, () => _actions.PullAsync(path, request));
         }
+    }
+
+    private async Task<Window?> ScreenshotDialogAsync(string? name)
+        => (name, RepositoryPath) switch
+        {
+            (Screenshot.PullWindow, { } path) => await NewPullWindowAsync(path),
+            (Screenshot.PushWindow, { } path) => await NewPushWindowAsync(path),
+            _ => null,
+        };
+
+    // Upstream's StartPullDialog: the dialog on the open repository, its default action from Settings > General.
+    private async Task<PullWindow> NewPullWindowAsync(string path)
+    {
+        PullDialog dialog = new(_repository.Remotes, _repository.CurrentBranch, GitPullAction.None,
+            _preferences.DefaultPullAction, defaultRemote: null, _repository.TrackingRemote);
+        PullWindowGit git = new(
+            async branch => await AppServices.GitConfig.GetAsync(ConfigScope.Local, $"branch.{branch}.remote", path) is
+                { Length: > 0 } remote
+                ? remote
+                : null,
+            (remote, remoteBranch, currentBranch) =>
+                _actions.RebasesMergeCommitAsync(path, remote, remoteBranch, currentBranch));
+        return new PullWindow(dialog, _preferences, PathUtil.GetDisplayPath(path.EnsureTrailingPathSeparator()),
+            [.. _repository.Branches.Where(branch => branch.IsRemote).Select(branch => branch.Name)],
+            [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)],
+            await Task.Run(() => PullDialog.IsShallowRepository(path)), git, ShowConflicts);
     }
 
     // One commit window at a time, as upstream; asking again brings the open one forward.

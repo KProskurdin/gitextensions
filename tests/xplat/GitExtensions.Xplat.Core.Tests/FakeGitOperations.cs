@@ -100,7 +100,8 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
         CancellationToken cancellationToken = default, int? depth = null) =>
-        RecordRemote("Clone", depth is null ? $"{sourceUrl} {targetPath}" : $"{sourceUrl} {targetPath} --depth {depth}", output,
+        RecordRemote("Clone", depth is null ? $"{sourceUrl} {targetPath}" : $"{sourceUrl} {targetPath} --depth {depth}",
+            output,
             cancellationToken);
 
     public Task InitAsync(string folder) => Record("Init", folder);
@@ -136,6 +137,9 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task ResetAsync(string repositoryPath, string commit, ResetMode mode) =>
         Record("Reset", $"{repositoryPath} {commit} {mode}");
+
+    public Task<bool> RebasesMergeCommitAsync(string repositoryPath, string remote, string remoteBranch,
+        string currentBranch) => Task.FromResult(false);
 
     public Task RevertAsync(string repositoryPath, string commit) => Record("Revert", $"{repositoryPath} {commit}");
 
@@ -208,8 +212,10 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task RunMergeToolAsync(string repositoryPath, string path) =>
         Record("RunMergeTool", $"{repositoryPath} {path}");
 
-    public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged, string? tool = null) =>
-        Record("RunDiffTool", $"{repositoryPath} {path} {commit} staged={staged}{(tool is null ? "" : " tool=" + tool)}");
+    public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged,
+        string? tool = null) =>
+        Record("RunDiffTool",
+            $"{repositoryPath} {path} {commit} staged={staged}{(tool is null ? "" : " tool=" + tool)}");
 
     public void Complete(int index) => _calls[index].Completion.SetResult();
 

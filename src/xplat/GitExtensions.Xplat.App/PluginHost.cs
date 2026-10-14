@@ -387,6 +387,12 @@ internal sealed class PluginHost : IGitUICommands
 
     public bool StartCreateBranchDialog(IWin32Window? owner, string? branch) => throw NotAvailable();
 
+    /// <summary>
+    ///  True when a repository host plugin knows the open repository (upstream's <c>TryGetGitHosterForModule</c>).
+    /// </summary>
+    public bool HasRepositoryHost
+        => _registered.OfType<IRepositoryHostPlugin>().Any(host => host.GitModuleIsRelevantToMe());
+
     // Upstream's StartCreatePullRequest: the one host plugin that knows the repository.
     public void StartCreatePullRequest(IWin32Window? owner)
     {

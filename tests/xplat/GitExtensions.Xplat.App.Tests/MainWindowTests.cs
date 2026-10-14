@@ -1278,11 +1278,18 @@ internal sealed class MainWindowTests
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
-        Find<TextBox>(settings, "GlobalUserEmailBox").Text.Should().Be("kept@example.com");
+        SettingsSourceHeader configLevels = settings.SourceHeaderOf(Find<TabItem>(settings, "GitConfigTab"));
+        configLevels.Levels.Should().Equal(GitExtensions.Extensibility.Settings.SettingLevel.Effective,
+            GitExtensions.Extensibility.Settings.SettingLevel.Local,
+            GitExtensions.Extensibility.Settings.SettingLevel.Global,
+            GitExtensions.Extensibility.Settings.SettingLevel.SystemWide);
+        Find<TextBox>(settings, "UserEmailBox").Text.Should().Be("kept@example.com", "the effective value shows first");
         ComboBox themes = Find<ComboBox>(settings, "ThemeBox");
         themes.SelectedItem = themes.Items.OfType<ThemeOption>().Single(option => option.Id == ThemeId.DefaultDark);
         Find<CheckBox>(settings, "ColorblindCheck").IsChecked = true;
-        Find<TextBox>(settings, "LocalUserNameBox").Text = "Repo Author";
+        configLevels.Level = GitExtensions.Extensibility.Settings.SettingLevel.Local;
+        WaitUntil(() => Find<TextBox>(settings, "UserEmailBox").Text == "");
+        Find<TextBox>(settings, "UserNameBox").Text = "Repo Author";
         Click(settings, "SaveButton");
 
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
@@ -1328,18 +1335,25 @@ internal sealed class MainWindowTests
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
-        ComboBox globalCrlf = Find<ComboBox>(settings, "GlobalAutoCrlfBox");
-        ((AutoCrlfOption)globalCrlf.SelectedItem!).Value.Should().Be("input");
-        Find<TextBox>(settings, "LocalCredentialHelperBox").IsEnabled.Should().BeFalse();
-        ComboBox helpers = Find<ComboBox>(settings, "CredentialHelperChoices");
+        SettingsSourceHeader levels = settings.SourceHeaderOf(Find<TabItem>(settings, "GitConfigTab"));
+        ComboBox helpers = Find<ComboBox>(settings, "CredentialHelperBox");
+        helpers.IsVisible.Should()
+            .BeFalse("upstream hides the effective credential helper, which has only its last value");
+
+        levels.Level = GitExtensions.Extensibility.Settings.SettingLevel.Local;
+        WaitUntil(() => helpers.IsVisible);
+        helpers.IsEnabled.Should().BeFalse("several values are shown, not edited");
+        helpers.Text.Should().Be(", store");
+        Find<RadioButton>(settings, "AutoCrlfTrueRadio").IsChecked = true;
+
+        levels.Level = GitExtensions.Extensibility.Settings.SettingLevel.Global;
+        WaitUntil(() => helpers.IsEnabled);
+        Find<RadioButton>(settings, "AutoCrlfInputRadio").IsChecked.Should().BeTrue();
         WaitUntil(() => helpers.ItemCount > 0);
         helpers.Items.Should().Contain("store");
-
-        helpers.SelectedItem = "store";
-        Find<TextBox>(settings, "GlobalEditorBox").Text = "vi";
-        globalCrlf.SelectedItem = globalCrlf.Items.OfType<AutoCrlfOption>().Single(option => option.Value == "");
-        Find<ComboBox>(settings, "LocalAutoCrlfBox").SelectedItem =
-            globalCrlf.Items.OfType<AutoCrlfOption>().Single(option => option.Value == "true");
+        helpers.Text = "store";
+        Find<ComboBox>(settings, "EditorBox").Text = "vi";
+        Find<RadioButton>(settings, "AutoCrlfNotSetRadio").IsChecked = true;
         Click(settings, "SaveButton");
 
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
@@ -1373,24 +1387,27 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void Settings_offers_the_tools_found_on_this_computer_and_a_choice_fills_the_global_value()
+    public void Settings_offers_the_tools_found_on_this_computer_and_stores_the_choice_as_upstream()
     {
+        TestAppBuilder.GitConfig.Set(ConfigScope.Global, "merge.tool", "meld");
         MainWindow window = NewWindow();
         window.Show();
         Click(window, "SettingsMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
-        ComboBox mergeChoices = Find<ComboBox>(settings, "MergeToolChoices");
-        ComboBox diffChoices = Find<ComboBox>(settings, "DiffToolChoices");
-        WaitUntil(() => mergeChoices.ItemCount == 2 && diffChoices.ItemCount == 2);
+        ComboBox mergeTools = Find<ComboBox>(settings, "MergeToolBox");
+        ComboBox diffTools = Find<ComboBox>(settings, "DiffToolBox");
+        WaitUntil(() => mergeTools.ItemCount == 2 && diffTools.ItemCount == 2);
+        mergeTools.Text.Should().Be("meld", "upstream shows the plain merge tool when no GUI tool is set");
 
-        mergeChoices.SelectedItem = "kdiff3";
-        diffChoices.SelectedItem = "vscode";
+        mergeTools.SelectedItem = "kdiff3";
+        diffTools.SelectedItem = "vscode";
         Click(settings, "SaveButton");
 
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
-        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "merge.tool").Should().Be("kdiff3");
-        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "diff.tool").Should().Be("vscode");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "merge.guitool").Should().Be("kdiff3");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "diff.guitool").Should().Be("vscode");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "merge.tool").Should().Be("meld");
         TestAppBuilder.GitConfig.Clear();
     }
 

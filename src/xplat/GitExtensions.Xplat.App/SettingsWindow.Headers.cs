@@ -17,15 +17,21 @@ public partial class SettingsWindow
 
     private void AddPageHeaders()
     {
-        // The Config page shows the global and the repository's values side by side, so it has no header yet.
-        TabItem[] withoutHeader = [GitRootTab, PluginsRootTab, GitConfigTab];
+        TabItem[] withoutHeader = [GitRootTab, PluginsRootTab];
         TabItem[] repositoryPages = [RevisionLinksTab, BuildServerTab, DetailedTab, PluginsTab];
         IReadOnlyList<SettingLevel> repositoryLevels = _repositoryPath is null
             ? [SettingLevel.Global]
             : [SettingLevel.Effective, SettingLevel.Local, SettingLevel.Distributed, SettingLevel.Global];
+
+        // Upstream's git config pages (IGitConfigSettingsPage) offer the system level instead of the distributed one.
+        IReadOnlyList<SettingLevel> gitConfigLevels = _repositoryPath is null
+            ? [SettingLevel.Global]
+            : [SettingLevel.Effective, SettingLevel.Local, SettingLevel.Global, SettingLevel.SystemWide];
         foreach (TabItem page in Tabs.Items.OfType<TabItem>().Except(withoutHeader))
         {
-            SettingsSourceHeader header = new(repositoryPages.Contains(page) ? repositoryLevels : [SettingLevel.Global]);
+            SettingsSourceHeader header = new(page == GitConfigTab ? gitConfigLevels
+                : repositoryPages.Contains(page) ? repositoryLevels
+                : [SettingLevel.Global]);
             Control body = (Control)page.Content!;
             page.Content = null;
 
@@ -53,6 +59,10 @@ public partial class SettingsWindow
                 else if (page == PluginsTab)
                 {
                     ChangePluginLevel(header.Level);
+                }
+                else if (page == GitConfigTab)
+                {
+                    ChangeGitConfigLevel(header.Level);
                 }
             };
 

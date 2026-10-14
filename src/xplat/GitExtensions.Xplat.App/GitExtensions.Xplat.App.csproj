@@ -26,6 +26,8 @@
     <AvaloniaResource Include="..\..\app\GitUI\Resources\Icons\*.png" Link="Assets\Upstream\Icons\%(Filename)%(Extension)" />
     <!-- The dashboard's background pictures and wide logo, which upstream's resource list names too. -->
     <AvaloniaResource Include="..\..\app\GitUI\Resources\Backgrounds\*.png" Link="Assets\Upstream\Backgrounds\%(Filename)%(Extension)" />
+    <!-- The help pictures of the pull, push, merge and rebase dialogs (HelpImageDisplayUserControl). -->
+    <AvaloniaResource Include="..\..\app\GitUI\Resources\Help\*.png" Link="Assets\Upstream\Help\%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\GitExtensionsLogoWide.png" Link="Assets\Upstream\Logo\GitExtensionsLogoWide.png" />
     <!-- The small logo of the settings tree's Git Extensions group (GitExtensionsLogo16). -->
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-16px.png" Link="Assets\Upstream\Logo\git-extensions-logo-16px.png" />

@@ -272,6 +272,13 @@ public interface IGitOperations
     /// </summary>
     Task ResetAsync(string repositoryPath, string commit, ResetMode mode);
 
+    /// <summary>
+    ///  Upstream's <c>FormPull.MergeCommitExists</c>: true when a commit of <paramref name="currentBranch"/> not on the remote
+    ///  branch is a merge, so a rebase would rebase it. An empty <paramref name="remoteBranch"/> means the branch's
+    ///  configured upstream.
+    /// </summary>
+    Task<bool> RebasesMergeCommitAsync(string repositoryPath, string remote, string remoteBranch, string currentBranch);
+
     /// <param name="depth">Upstream's "Limit depth": a shallow clone of that many commits; null for the whole history.</param>
     Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
         CancellationToken cancellationToken = default, int? depth = null);
@@ -289,4 +296,8 @@ public sealed class GitOperationException(string message) : Exception(message);
 ///  <c>--no-gpg-sign</c>, true to sign with <paramref name="GpgKeyId"/> or the default key) and <c>--reset-author</c> for an
 ///  amend.
 /// </summary>
-public sealed record CommitExtras(bool NoVerify = false, bool? GpgSign = null, string GpgKeyId = "", bool ResetAuthor = false);
+public sealed record CommitExtras(
+    bool NoVerify = false,
+    bool? GpgSign = null,
+    string GpgKeyId = "",
+    bool ResetAuthor = false);

@@ -27,31 +27,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class SettingsWindow : Window
 {
-    private static readonly (string Key, Func<SettingsWindow, TextBox> Global, Func<SettingsWindow, TextBox> Local)[]
-        _gitConfigFields =
-        [
-            ("user.name", window => window.GlobalUserNameBox, window => window.LocalUserNameBox),
-            ("user.email", window => window.GlobalUserEmailBox, window => window.LocalUserEmailBox),
-            ("merge.tool", window => window.GlobalMergeToolBox, window => window.LocalMergeToolBox),
-            ("diff.tool", window => window.GlobalDiffToolBox, window => window.LocalDiffToolBox),
-            (CredentialHelperKey, window => window.GlobalCredentialHelperBox,
-                window => window.LocalCredentialHelperBox),
-            ("core.editor", window => window.GlobalEditorBox, window => window.LocalEditorBox),
-            ("commit.template", window => window.GlobalCommitTemplateBox, window => window.LocalCommitTemplateBox),
-        ];
-
-    private const string CredentialHelperKey = "credential.helper";
-    private const string AutoCrlfKey = "core.autocrlf";
-
-    // Upstream's line ending choices (GitConfigSettingsPage), with their texts; "Not set" removes the key.
-    private static readonly AutoCrlfOption[] _autoCrlfOptions =
-    [
-        new("true", "Checkout Windows-style, commit Unix-style line endings (\"core.autocrlf\"  is set to \"true\")"),
-        new("input", "Checkout as-is, commit Unix-style line endings (\"core.autocrlf\"  is set to \"input\")"),
-        new("false", "Checkout as-is, commit as-is (\"core.autocrlf\"  is set to \"false\")"),
-        new("", "Not set"),
-    ];
-
     private readonly IAppPreferences _preferences;
     private readonly IGitConfigService _gitConfig;
     private readonly string? _repositoryPath;
@@ -166,16 +141,7 @@ public partial class SettingsWindow : Window
         ShowSortingPage();
         ShowGitPage();
         ShowSshPage();
-        LocalHeaderText.Text = repositoryPath is null ? "This repository (none open)" : "This repository";
-        foreach ((_, _, Func<SettingsWindow, TextBox> local) in _gitConfigFields)
-        {
-            local(this).IsEnabled = repositoryPath is not null;
-        }
-
-        GlobalAutoCrlfBox.ItemsSource = _autoCrlfOptions;
-        LocalAutoCrlfBox.ItemsSource = _autoCrlfOptions;
-        LocalAutoCrlfBox.IsEnabled = repositoryPath is not null;
-
+        ShowGitConfigPage();
         ShowHotkeyRows();
         ShowConfirmations();
         ShowScripts();
@@ -185,28 +151,11 @@ public partial class SettingsWindow : Window
         ShowChecklistPage();
         ShowPageTree(pluginsPage ? selectedPlugin ?? (object)PluginsTab : null);
 
-        MergeToolChoices.SelectionChanged += (_, _) => FillFromChoice(MergeToolChoices, GlobalMergeToolBox);
-        DiffToolChoices.SelectionChanged += (_, _) => FillFromChoice(DiffToolChoices, GlobalDiffToolBox);
-        CredentialHelperChoices.SelectionChanged += (_, _) =>
-        {
-            if (GlobalCredentialHelperBox.IsEnabled)
-            {
-                FillFromChoice(CredentialHelperChoices, GlobalCredentialHelperBox);
-            }
-        };
-        EditorChoices.SelectionChanged += (_, _) => FillFromChoice(EditorChoices, GlobalEditorBox);
-
         // As upstream, the window reports a save made with Apply even when it is then closed with Cancel.
         CancelButton.Click += (_, _) => Close(_saved);
         SaveButton.Click += (_, _) => UiActions.Run(() => SaveAsync(close: true), ex => ErrorText.Text = ex.Message);
         ApplyButton.Click += (_, _) => UiActions.Run(() => SaveAsync(close: false), ex => ErrorText.Text = ex.Message);
-        Opened += (_, _) => UiActions.Run(LoadGitConfigAsync, ex => ErrorText.Text = ex.Message);
     }
-
-    /// <summary>
-    ///  True once the git config values are on show; saving before that would write blanks over them.
-    /// </summary>
-    public bool IsGitConfigLoaded { get; private set; }
 
     /// <summary>
     ///  The browse window's hotkey boxes by command, for tests and for the key capture.
@@ -1083,58 +1032,6 @@ public partial class SettingsWindow : Window
         ShowSelectedPlugin();
     }
 
-    private async Task LoadGitConfigAsync()
-    {
-        SaveButton.IsEnabled = false;
-        foreach ((string key, Func<SettingsWindow, TextBox> global, Func<SettingsWindow, TextBox> local) in
-                 _gitConfigFields)
-        {
-            global(this).Text = await LoadAsync(ConfigScope.Global, key);
-            if (_repositoryPath is not null)
-            {
-                local(this).Text = await LoadAsync(ConfigScope.Local, key);
-            }
-        }
-
-        // As upstream, a credential.helper with several values (a list git runs in turn) is shown but not edited: git config
-        // cannot set one value over several.
-        await GuardMultipleValuesAsync(ConfigScope.Global, GlobalCredentialHelperBox);
-        if (_repositoryPath is not null)
-        {
-            await GuardMultipleValuesAsync(ConfigScope.Local, LocalCredentialHelperBox);
-        }
-
-        GlobalAutoCrlfBox.SelectedItem = AutoCrlfOptionOf(await LoadAsync(ConfigScope.Global, AutoCrlfKey));
-        if (_repositoryPath is not null)
-        {
-            LocalAutoCrlfBox.SelectedItem = AutoCrlfOptionOf(await LoadAsync(ConfigScope.Local, AutoCrlfKey));
-        }
-
-        IsGitConfigLoaded = true;
-        SaveButton.IsEnabled = true;
-
-        // Read after the values, so a slow git does not hold back the rest of the page.
-        MergeToolChoices.ItemsSource = await AppServices.DiffMergeTools.GetAvailableAsync(diff: false);
-        DiffToolChoices.ItemsSource = await AppServices.DiffMergeTools.GetAvailableAsync(diff: true);
-        CredentialHelperChoices.ItemsSource = await Task.Run(GitConfigChoices.CredentialHelpers);
-        EditorChoices.ItemsSource = await Task.Run(GitConfigChoices.Editors);
-    }
-
-    private async Task GuardMultipleValuesAsync(ConfigScope scope, TextBox box)
-    {
-        IReadOnlyList<string> values = await _gitConfig.GetAllAsync(scope, CredentialHelperKey,
-            scope == ConfigScope.Local ? _repositoryPath : null);
-        if (values.Count > 1)
-        {
-            box.Text = string.Join(", ", values);
-            box.IsEnabled = false;
-        }
-    }
-
-    private static AutoCrlfOption AutoCrlfOptionOf(string value)
-        => _autoCrlfOptions.FirstOrDefault(option => option.Value.Equals(value, StringComparison.OrdinalIgnoreCase))
-           ?? _autoCrlfOptions[^1];
-
     // As upstream's appearance page: English, then the translations in the Translation folder; the current one stays
     // selected even when its file is missing.
     private void ShowLanguages(string current)
@@ -1147,21 +1044,6 @@ public partial class SettingsWindow : Window
 
         LanguageBox.ItemsSource = languages;
         LanguageBox.SelectedItem = current.Length > 0 ? current : "English";
-    }
-
-    private static void FillFromChoice(ComboBox choices, TextBox target)
-    {
-        if (choices.SelectedItem is string tool)
-        {
-            target.Text = tool;
-        }
-    }
-
-    private async Task<string> LoadAsync(ConfigScope scope, string key)
-    {
-        string value = await _gitConfig.GetAsync(scope, key, scope == ConfigScope.Local ? _repositoryPath : null);
-        _loaded[(scope, key)] = value;
-        return value;
     }
 
     private async Task SaveAsync(bool close)
@@ -1300,48 +1182,13 @@ public partial class SettingsWindow : Window
             AppServices.RevisionLinks.Save(settings);
         }
 
-        // Only values the user changed are written, so a setting made elsewhere since the window opened is kept.
-        foreach ((string key, Func<SettingsWindow, TextBox> global, Func<SettingsWindow, TextBox> local) in
-                 _gitConfigFields)
-        {
-            if (global(this).IsEnabled)
-            {
-                await SaveIfChangedAsync(ConfigScope.Global, key, global(this).Text);
-            }
-
-            if (_repositoryPath is not null && local(this).IsEnabled)
-            {
-                await SaveIfChangedAsync(ConfigScope.Local, key, local(this).Text);
-            }
-        }
-
-        await SaveIfChangedAsync(ConfigScope.Global, AutoCrlfKey,
-            (GlobalAutoCrlfBox.SelectedItem as AutoCrlfOption)?.Value);
-        if (_repositoryPath is not null)
-        {
-            await SaveIfChangedAsync(ConfigScope.Local, AutoCrlfKey,
-                (LocalAutoCrlfBox.SelectedItem as AutoCrlfOption)?.Value);
-        }
+        await SaveGitConfigAsync();
 
         _saved = true;
         if (close)
         {
             Close(true);
         }
-    }
-
-    private async Task SaveIfChangedAsync(ConfigScope scope, string key, string? text)
-    {
-        string value = text?.Trim() ?? "";
-        if (_loaded.TryGetValue((scope, key), out string? loaded) && loaded == value)
-        {
-            return;
-        }
-
-        await _gitConfig.SetAsync(scope, key, value, scope == ConfigScope.Local ? _repositoryPath : null);
-
-        // After Apply, the next save compares with what was written.
-        _loaded[(scope, key)] = value;
     }
 }
 

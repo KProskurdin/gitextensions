@@ -27,7 +27,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` | `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (commit), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/FileStatusList*.cs` (toolbar, filter, NoFiles, item menu, `GetItemImageKey`); `src/app/GitUI/CommandsDialogs/RevisionDiffController.cs` (menu rules); `CommandsDialogs/Menus/CopyPathsToolStripMenuItem.cs`; `FormCommit.Designer.cs` (`toolbarStaged`, `SolveMergeconflicts`); `GitIgnoreDialog/GitLocalExcludeModel.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`FileStatusList`, `FileMenuState`), `GitIgnoreFile.cs`, `Operations/GitOperations.cs` (reset files to, stop tracking); `src/xplat/GitExtensions.Xplat.App/CommitWindow.FileLists.cs`, `CommitWindow.axaml`, `GitIgnoreWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Push) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (pull), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Pull) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormClone.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (clone), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (new branch box) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (checkout, remote checkout), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Checkout) | `52d08e996` | partial |
@@ -97,6 +98,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BuildServerIntegrationSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml`, `SettingsWindow.BuildServer.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormSettings.cs`, `FormSettings.Designer.cs` (page tree, title, buttons, instant save notice); `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsTreeViewUserControl.cs`, `SettingsGroupPages.cs`, `Pages/GitRootIntroductionPage.cs`, `Plugins/PluginRootIntroductionPage.cs` | `src/xplat/GitExtensions.Xplat.Core/Settings/SettingsPageTree.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.Tree.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsPageHeader.cs`, `SettingsPageWithHeader.cs`, `DistributedSettingsPage.cs`; `Pages/DetailedSettingsPage.cs` (`gbRevisionGraph` enabled at the global level) | `src/xplat/GitExtensions.Xplat.App/SettingsSourceHeader.cs`, `SettingsWindow.Headers.cs`, `SettingsWindow.BuildServer.cs`, `SettingsWindow.axaml.cs` (revision links and plugin levels) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitConfigSettingsPage.cs`, `GitConfigBaseSettingsPage.cs`; `src/app/GitCommands/DiffMergeTools/DiffMergeToolConfigurationManager.cs` (`ConfiguredMergeTool`, `ConfiguredDiffTool`) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.GitConfig.cs`, `SettingsWindow.axaml` (`GitConfigTab`); `src/xplat/GitExtensions.Xplat.Core/Settings/GitConfigService.cs` (`ConfigScope.Effective`, `ConfigScope.System`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ChecklistSettingsPage.cs`; `src/app/GitExtUtils/GitUI/Theming/OtherColors.cs` (row colors) | `src/xplat/GitExtensions.Xplat.Core/Settings/SettingsChecklist.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.Checklist.cs`, `SettingsWindow.axaml` (`ChecklistTab`) | `52d08e996` | partial |
 | `src/app/GitUI/HelperDialogs/FormBuildServerCredentials.cs` | `src/xplat/GitExtensions.Xplat.App/BuildServerCredentialsWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/plugins/BuildServerIntegration/AppVeyorIntegration/Settings/AppVeyorSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/AppVeyorIntegration/Settings/AppVeyorSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
@@ -295,6 +297,22 @@ fetch tags, unshallow, fetch all remotes, and the merge-commit message options. 
 (see FormRemoteProcess), and a pull dialog (`PullWindow`, Commands > Pull/Fetch..., Ctrl+Down as upstream) with the remote and
 branch, merge, rebase or fetch only, prune, and auto stash. Upstream's FormPull stashes and pops itself; the port passes
 git's `rebase.autoStash` and `merge.autoStash` for that one command instead.
+Rebuilt 2026-10-14 (UI-PARITY U5): the pull window is upstream's FormPull as a GitExtensionsDialog (the button strip at the
+bottom): the help picture on the left (`HelpImageView`, upstream's `HelpImageDisplayUserControl`: the picture per action,
+the fast forward one on hover for a merge, "Hide help" and the button that shows it again, remembered per dialog as
+upstream's `HelpIsExpanded<dialog>`, hidden by `DontShowHelpImages`), the "Pull from" group (Remote with "[ All ]", or a
+URL or folder), the "Branch" group (local branch, editable for a fetch; remote branch with the remote's known branches),
+the merge options with their images, the tag options, "Download full history" for a shallow clone, the two prune options,
+and Solve conflicts, Stash changes, Auto stash and Pull (with its arrow, "Fetch" for a fetch) at the bottom; the title
+"Pull (path)" or "Fetch (path)". Upstream's rules (`PullDialog`): the action from Settings > General, the remote asked
+for, the branch's or the first; which options apply to which action; the checks before pulling (a missing source or
+remote, "*" without fetch, the rebase of a merge commit asked first, a pull on a detached HEAD asked first, a missing
+remote branch offered as the local branch's name, upstream's `CalculateLocalBranch`); and its fetch and pull arguments
+(`FetchCmd`, `PullCmd` with tags, unshallow, local branch and prune tags). Auto stash and the action are stored as
+upstream's `autostash` and `FormPullAction`. Changed: the dialog's prune no longer asks first (upstream asks only for the
+quick "Fetch and prune all"). Not ported: Manage remotes and Stash changes (shown disabled until the remotes and stash
+windows exist), "Checkout branch" in the detached HEAD question, the URL history, the help pictures' dark theme
+adaptation, the submodule update after a pull and the prune offer when a pull is rejected for a removed branch.
 
 **FormClone** (`partial`). Ported: clone from a URL or local path into a new folder, then open it, with a folder picker
 and git's progress shown while it runs (see FormRemoteProcess). Not ported: branch choice, depth, and recursive submodules.
@@ -405,7 +423,8 @@ command to git's built-in tool definitions (its launches read the `guitool` keys
 own below. Added 2026-10-10 to the Git config tab: `credential.helper` with the helpers git and the OS offer (on Linux and
 macOS git's own helpers are the credential store, PLAN.md decision 6; a value set more than once is left alone),
 `core.editor` (with this app's `fileeditor` command offered), `commit.template` and `core.autocrlf`. Not ported: the tool
-path and command fields.
+path and command fields. Changed 2026-10-14: the tools are stored in the `guitool` keys by name, and the page shows one
+level at a time (see GitConfigSettingsPage).
 
 **FormSettings page tree** (`partial`). Ported 2026-10-14 (UI-PARITY U4.1): the window is upstream's, 958 by 646, with the
 page tree (`SettingsTreeViewUserControl`) on the left: upstream's three groups with their images, the pages in
@@ -428,9 +447,20 @@ Effective is read-only (the page is disabled and nothing is stored from it), the
 on OK, and the Detailed page's revision graph settings are edited at the global level only. Changed: the fork had let the
 effective settings be edited (a value the repository sets changed there, others in the user's settings) and had a level box
 on the Revision links and Plugins tabs only; the Build server page now stores at the chosen level instead of the effective
-settings. Differences: the plugin pages share one level, as they share one page. Not ported: the header on the Config page,
-which still shows the global and repository values side by side (upstream shows one column at the chosen level, with
-System); the System level.
+settings. Differences: the plugin pages share one level, as they share one page.
+
+**GitConfigSettingsPage** (`partial`). Rebuilt 2026-10-14 (UI-PARITY U4.2): the Config page is upstream's one column in its
+order (user name, user email, credential helper, editor, mergetool, difftool, path to commit template with Browse, the line
+endings group with upstream's four choices) at the level its header chooses: Effective, Local, Global and System while a
+repository is open (`IGitConfigSettingsPage`), Global otherwise. Effective and System are read only (`ConfigScope.Effective`
+reads git's value with no scope option, `ConfigScope.System` uses `--system`); the values edited at Local and Global are
+written there on OK, only the changed ones. As upstream, the effective credential helper is hidden (git gives only its last
+value) and a level with several helpers shows them without editing. The editor, tool and helper boxes are editable lists
+of what this computer and git offer. Changed: the fork showed the global and repository values side by side, with a
+column of choices; and it stored the tools in `merge.tool` and `diff.tool`. The page now shows upstream's
+`ConfiguredMergeTool` (`merge.guitool`, else `merge.tool`; the diff tool likewise) and writes a changed tool to the
+`guitool` key, as upstream's page does. Not ported: the tool path and command rows (with Browse and Suggest), the files
+content encoding, the warning when git cannot be found.
 
 **ChecklistSettingsPage** (`partial`). Ported 2026-10-14 (UI-PARITY U4.3): the Checklist page on the Git Extensions node,
 shown first as upstream, with upstream's rows, texts and colors (`OtherColors`, dimmed toward the editor background in a

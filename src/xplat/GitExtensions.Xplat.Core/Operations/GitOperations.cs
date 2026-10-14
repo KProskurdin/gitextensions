@@ -115,7 +115,8 @@ public sealed class GitOperations : IGitOperations
         });
 
     // Upstream's commit without useExplicitCommitMessage: git asks the editor for the message.
-    public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author, string editorCommand,
+    public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
+        string editorCommand,
         CommitExtras? extras = null)
         => Task.Run(async () =>
         {
@@ -194,9 +195,19 @@ public sealed class GitOperations : IGitOperations
     public Task PushAsync(string repositoryPath, PushRequest request, IProgress<GitOutputLine>? output = null,
         CancellationToken cancellationToken = default)
         => RunRemoteAsync(repositoryPath,
-            _ => Commands.Push(request.Remote, request.LocalBranch,
-                request.RemoteBranch.Length == 0 ? null : request.RemoteBranch, request.Force,
-                request.Track, recursiveSubmodules: 0),
+            module => request.Kind switch
+            {
+                PushKind.AllBranches => Commands.PushAll(request.Remote, request.Force, request.Track,
+                    request.RecursiveSubmodules),
+                PushKind.Tag or PushKind.AllTags => Commands.PushTag(request.Remote, request.Tag,
+                    request.Kind == PushKind.AllTags, request.Force),
+                PushKind.Multiple => Commands.PushMultiple(request.Remote, request.Actions ?? []),
+
+                // As upstream's PushChanges: a local branch's full name, so a tag of the same name is not pushed.
+                _ => Commands.Push(request.Remote, module.FormatBranchName(request.LocalBranch),
+                    request.RemoteBranch.Length == 0 ? null : request.RemoteBranch, request.Force, request.Track,
+                    request.RecursiveSubmodules),
+            },
             output, cancellationToken);
 
     // Upstream's PullCmd has no autostash option; git's own settings, given for this command only, stash and restore the
@@ -207,12 +218,12 @@ public sealed class GitOperations : IGitOperations
         {
             if (request.Action == PullAction.FetchOnly)
             {
-                return module.FetchCmd(request.Remote, request.RemoteBranch, localBranch: "",
-                    pruneRemoteBranches: request.Prune);
+                return module.FetchCmd(request.Remote, request.RemoteBranch, request.LocalBranch, request.FetchTags,
+                    request.Unshallow, request.Prune, request.PruneTags);
             }
 
             ArgumentString pull = module.PullCmd(request.Remote, request.RemoteBranch,
-                request.Action == PullAction.Rebase, fetchTags: false);
+                request.Action == PullAction.Rebase, request.FetchTags, request.Unshallow);
             return request.AutoStash
                 ? (ArgumentString)$"-c rebase.autoStash=true -c merge.autoStash=true {pull}"
                 : pull;
@@ -444,6 +455,24 @@ public sealed class GitOperations : IGitOperations
 
     public Task ResetAsync(string repositoryPath, string commit, ResetMode mode)
         => RunAsync(repositoryPath, _ => Commands.Reset(mode, commit));
+
+    // Upstream's CalculateRemoteBranchName: the branch named, else the one branch.<name>.merge names, by name-rev.
+    public Task<bool> RebasesMergeCommitAsync(string repositoryPath, string remote, string remoteBranch,
+        string currentBranch)
+        => Task.Run(() =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            string name = remoteBranch;
+            if (name.Length == 0 && module.GetSetting($"branch.{currentBranch}.merge") is { Length: > 0 } merge)
+            {
+                name = module.GitExecutable.GetOutput(new GitArgumentBuilder("name-rev")
+                {
+                    "--name-only", merge.QuoteNE(),
+                }).Trim();
+            }
+
+            return name.Length > 0 && module.ExistsMergeCommit($"{remote}/{name}", currentBranch);
+        });
 
     public Task RevertAsync(string repositoryPath, string commit)
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("revert") { "--no-edit", commit.Quote() });

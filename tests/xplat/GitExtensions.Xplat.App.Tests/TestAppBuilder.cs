@@ -139,8 +139,13 @@ public sealed class FakeGitConfigService : IGitConfigService
     private readonly Dictionary<(ConfigScope, string), string> _values = [];
     private readonly Dictionary<(ConfigScope, string), List<string>> _multiValues = [];
 
+    // As git, the effective value is the repository's, else the global, else the system one.
     public Task<string> GetAsync(ConfigScope scope, string key, string? repositoryPath = null)
-        => Task.FromResult(_values.GetValueOrDefault((scope, key), ""));
+        => Task.FromResult(scope == ConfigScope.Effective
+            ? new[] { ConfigScope.Local, ConfigScope.Global, ConfigScope.System }
+                .Select(level => _values.GetValueOrDefault((level, key), ""))
+                .FirstOrDefault(value => value.Length > 0) ?? ""
+            : _values.GetValueOrDefault((scope, key), ""));
 
     public Task<IReadOnlyList<string>> GetAllAsync(ConfigScope scope, string key, string? repositoryPath = null)
         => Task.FromResult<IReadOnlyList<string>>(

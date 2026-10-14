@@ -6,12 +6,23 @@ using GitExtUtils;
 namespace GitExtensions.Xplat.Core.Settings;
 
 /// <summary>
-///  Where a git setting is read from and written to: the user's global config, or one repository's own config.
+///  Where a git setting is read from and written to: the user's global config or one repository's own config; the
+///  settings in effect and the system config are read only, as upstream's settings page shows them.
 /// </summary>
 public enum ConfigScope
 {
     Global,
     Local,
+
+    /// <summary>
+    ///  The value git uses: the repository's, else the global, else the system one. Read only.
+    /// </summary>
+    Effective,
+
+    /// <summary>
+    ///  The config of every user of the computer (<c>git config --system</c>). Read only.
+    /// </summary>
+    System,
 }
 
 /// <summary>
@@ -74,21 +85,31 @@ public sealed class GitConfigService : IGitConfigService
         });
 
     public Task SetAsync(ConfigScope scope, string key, string value, string? repositoryPath = null)
-        => Task.Run(() =>
-        {
-            GitArgumentBuilder arguments = value.Length == 0
-                ? new GitArgumentBuilder("config") { ScopeOption(scope), "--unset", key.Quote() }
-                : new GitArgumentBuilder("config") { ScopeOption(scope), key.Quote(), value.Quote() };
-            ExecutionResult result = Executable(repositoryPath).Execute(arguments, throwOnErrorExit: false);
-            if (value.Length == 0 && result.ExitCode == ConfigUnsetMissingExitCode)
+        => scope is ConfigScope.Effective or ConfigScope.System
+            ? throw new ArgumentOutOfRangeException(nameof(scope), scope,
+                "The effective and system settings are read only.")
+            : Task.Run(() =>
             {
-                return;
-            }
+                GitArgumentBuilder arguments = value.Length == 0
+                    ? new GitArgumentBuilder("config") { ScopeOption(scope), "--unset", key.Quote() }
+                    : new GitArgumentBuilder("config") { ScopeOption(scope), key.Quote(), value.Quote() };
+                ExecutionResult result = Executable(repositoryPath).Execute(arguments, throwOnErrorExit: false);
+                if (value.Length == 0 && result.ExitCode == ConfigUnsetMissingExitCode)
+                {
+                    return;
+                }
 
-            ThrowOnError(result, key);
-        });
+                ThrowOnError(result, key);
+            });
 
-    private static string ScopeOption(ConfigScope scope) => scope == ConfigScope.Global ? "--global" : "--local";
+    // The effective value is what git reads with no scope option.
+    private static string? ScopeOption(ConfigScope scope) => scope switch
+    {
+        ConfigScope.Global => "--global",
+        ConfigScope.Local => "--local",
+        ConfigScope.System => "--system",
+        _ => null,
+    };
 
     // Global settings need no repository; git is run in the user's home folder so a repository there is not involved.
     private static IExecutable Executable(string? repositoryPath)

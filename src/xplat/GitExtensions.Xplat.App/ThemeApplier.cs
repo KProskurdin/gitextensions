@@ -88,6 +88,12 @@ internal static class ThemeApplier
                 : System.Drawing.SystemColors.Window;
         SetBrush(app, CommitInfoBackgroundKey, window);
         SetBrush(app, CommitMessageBackgroundKey, window.MakeDarkerBy(0.04));
+
+        // Upstream's GitExtensionsDialog: the button strip a shade lighter than ControlLight, under a line a shade darker.
+        System.Drawing.Color controlLight = SystemColor(colors, System.Drawing.KnownColor.ControlLight);
+        SetBrush(app, DialogFooterKey, controlLight.MakeDarkerBy(-0.04));
+        SetBrush(app, DialogFooterLineKey, controlLight.MakeDarkerBy(0.04));
+
         ApplyDashboard(app, colors);
         Changed?.Invoke(null, EventArgs.Empty);
     }
@@ -107,6 +113,8 @@ internal static class ThemeApplier
     public const string GridBodyKey = "GridBodyBrush";
     public const string CommitInfoBackgroundKey = "CommitInfoBackgroundBrush";
     public const string CommitMessageBackgroundKey = "CommitMessageBackgroundBrush";
+    public const string DialogFooterKey = "DialogFooterBrush";
+    public const string DialogFooterLineKey = "DialogFooterLineBrush";
 
     // A system color as the theme sets it, else the system's (on Windows the user's, elsewhere .NET's Windows defaults).
     private static System.Drawing.Color SystemColor(AppThemeColors colors, System.Drawing.KnownColor name)
@@ -199,7 +207,8 @@ internal static class ThemeApplier
                 Stretch = Avalonia.Media.Stretch.None,
                 AlignmentX = Avalonia.Media.AlignmentX.Left,
                 AlignmentY = Avalonia.Media.AlignmentY.Top,
-                DestinationRect = new RelativeRect(0, 0, picture.Size.Width, picture.Size.Height, RelativeUnit.Absolute),
+                DestinationRect =
+                    new RelativeRect(0, 0, picture.Size.Width, picture.Size.Height, RelativeUnit.Absolute),
             };
         }
 

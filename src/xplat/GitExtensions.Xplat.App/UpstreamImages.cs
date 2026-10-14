@@ -29,6 +29,7 @@ public static class UpstreamImages
     [
         (@"Resources\Icons\", "Icons/"),
         (@"Resources\Backgrounds\", "Backgrounds/"),
+        (@"Resources\Help\", "Help/"),
         (@"setup\assets\Logo\", "Logo/"),
     ];
 

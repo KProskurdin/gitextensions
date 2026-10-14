@@ -1,26 +1,112 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.PushWindow"
         Title="Push"
-        Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream FormPush (the branch part): remote, local and remote branch, force options, tracking. -->
-  <StackPanel Margin="16" Spacing="8">
-    <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,Auto,Auto">
-      <TextBlock Grid.Row="0" Text="Remote" VerticalAlignment="Center" />
-      <ComboBox x:Name="RemoteBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="1" Text="Branch to push" VerticalAlignment="Center" />
-      <ComboBox x:Name="LocalBranchBox" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="2" Text="To remote branch" VerticalAlignment="Center" />
-      <TextBox x:Name="RemoteBranchBox" Grid.Row="2" Grid.Column="2" PlaceholderText="Same name" />
+        Width="584" Height="290" MinWidth="584" MinHeight="290" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormPush: "Push to" (a remote or a URL), the tabs for branches, tags and several branches, and Pull on the
+       left and Push on the right at the bottom. -->
+  <Grid Margin="12,12,12,12" RowDefinitions="Auto,*,Auto">
+    <HeaderedContentControl Classes="groupBox" Header="Push to">
+      <Grid ColumnDefinitions="114,*,6,150" RowDefinitions="Auto,6,Auto">
+        <RadioButton x:Name="PushToRemoteRadio" GroupName="PushTo" Content="_Remote" IsChecked="True" />
+        <ComboBox x:Name="RemotesBox" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+        <Button x:Name="AddRemoteButton" Grid.Column="3" HorizontalAlignment="Stretch">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage Remotes}" Width="16" Height="16" />
+            <AccessText Text="_Manage remotes" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <RadioButton x:Name="PushToUrlRadio" Grid.Row="2" GroupName="PushTo" Content="U_rl" />
+        <ComboBox x:Name="DestinationBox" Grid.Row="2" Grid.Column="1" IsEditable="True" IsEnabled="False"
+                  HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+        <Button x:Name="BrowseDestinationButton" Grid.Row="2" Grid.Column="3" IsEnabled="False" HorizontalAlignment="Stretch">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+            <AccessText Text="Bro_wse..." VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </HeaderedContentControl>
+    <TabControl x:Name="PushTabs" Grid.Row="1" Margin="0,6,0,0">
+      <TabItem x:Name="BranchTab" Header="Push branches" ToolTip.Tip="Push branches and commits to remote repository.">
+        <StackPanel Margin="6" Spacing="6">
+          <Grid ColumnDefinitions="118,*,Auto,*">
+            <TextBlock Text="Branch to push" VerticalAlignment="Center" />
+            <ComboBox x:Name="BranchBox" Grid.Column="1" HorizontalAlignment="Stretch" />
+            <TextBlock Grid.Column="2" Text="to" VerticalAlignment="Center" Margin="6,0" />
+            <ComboBox x:Name="RemoteBranchBox" Grid.Column="3" IsEditable="True" HorizontalAlignment="Stretch" />
+          </Grid>
+          <HyperlinkButton x:Name="ShowOptionsLink" Content="Show options" Padding="0" />
+          <!-- Upstream's PushOptionsPanel, shown by "Show options" or always (AlwaysShowAdvOpt). -->
+          <Grid x:Name="OptionsPanel" IsVisible="False" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <CheckBox x:Name="ForceWithLeaseCheck" Content="_Force with lease" />
+              <CheckBox x:Name="ForcePushCheck" Content="F_orce push" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Recursive submodules" VerticalAlignment="Center" />
+              <ComboBox x:Name="RecursiveSubmodulesBox" MinWidth="98" />
+            </StackPanel>
+            <CheckBox x:Name="ReplaceTrackingCheck" Grid.Row="1" Content="R_eplace tracking reference" />
+            <CheckBox x:Name="CreatePullRequestCheck" Grid.Row="2" Content="_Create pull request after push" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
+      <TabItem x:Name="TagTab" Header="Push tags" ToolTip.Tip="Push tags to remote repository">
+        <Grid Margin="6" ColumnDefinitions="118,262" RowDefinitions="Auto,6,Auto">
+          <TextBlock Text="Tag to push" VerticalAlignment="Center" />
+          <ComboBox x:Name="TagBox" Grid.Column="1" HorizontalAlignment="Stretch" />
+          <CheckBox x:Name="ForcePushTagsCheck" Grid.Row="2" Grid.Column="1" Content="_Force push" />
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="MultipleBranchTab" Header="Push multiple branches">
+        <!-- Upstream's BranchGrid: its columns, and the selection menu on the Push column's header. -->
+        <DockPanel Margin="2">
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,97,36,101,108" Margin="4,0">
+            <TextBlock Text="Local Branch" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="Remote Branch" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Text="Ahead/Behind" FontWeight="SemiBold" />
+            <Button x:Name="PushColumnHeader" Grid.Column="3" Classes="tool" Content="Push" FontWeight="SemiBold">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="UnselectAllMenuItem" Header="Unselect all" />
+                  <MenuItem x:Name="SelectTrackedMenuItem" Header="Select tracked" />
+                  <MenuItem x:Name="SelectAllMenuItem" Header="Select all" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <TextBlock Grid.Column="4" Text="Force" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="5" Text="Delete Remote Branch" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          </Grid>
+          <ListBox x:Name="BranchRowsList">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="ops:PushBranchRow">
+                <Grid ColumnDefinitions="*,*,97,36,101,108">
+                  <TextBlock Text="{Binding Local}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Remote}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding AheadBehind}" VerticalAlignment="Center" />
+                  <CheckBox Grid.Column="3" IsChecked="{Binding Push}" MinWidth="0"
+                            IsVisible="{Binding Local, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <CheckBox Grid.Column="4" IsChecked="{Binding Force}" MinWidth="0"
+                            IsVisible="{Binding Local, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <CheckBox Grid.Column="5" IsChecked="{Binding Delete}" MinWidth="0" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+      <Button x:Name="PullButton" Content="P_ull" MinWidth="101" />
+      <Button x:Name="PushButton" Grid.Column="2" MinWidth="101" IsDefault="True">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage ArrowUp}" Width="16" Height="16" />
+          <AccessText Text="_Push" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
     </Grid>
-    <TextBlock Text="Overwrite the remote branch" FontWeight="SemiBold" Margin="0,4,0,0" />
-    <RadioButton x:Name="NoForceRadio" GroupName="Force" Content="No: only push new commits" IsChecked="True" />
-    <RadioButton x:Name="ForceWithLeaseRadio" GroupName="Force" Content="Force with lease: only if nobody else pushed since the last fetch" />
-    <RadioButton x:Name="ForceRadio" GroupName="Force" Content="Force: replace the remote branch" />
-    <CheckBox x:Name="TrackCheck" Content="Set as the upstream of the branch (-u)" />
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
-      <Button x:Name="PushButton" Content="Push" IsDefault="True" />
-    </StackPanel>
-  </StackPanel>
+  </Grid>
 </Window>

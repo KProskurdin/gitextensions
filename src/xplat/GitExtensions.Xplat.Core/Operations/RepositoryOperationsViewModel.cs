@@ -29,6 +29,13 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     }
 
     /// <summary>
+    ///  Upstream's pull dialog check before a rebase; see <see cref="IGitOperations.RebasesMergeCommitAsync"/>.
+    /// </summary>
+    public Task<bool> RebasesMergeCommitAsync(string repositoryPath, string remote, string remoteBranch,
+        string currentBranch)
+        => _operations.RebasesMergeCommitAsync(repositoryPath, remote, remoteBranch, currentBranch);
+
+    /// <summary>
     ///  The command git runs to edit a rebase todo list or a reworded message (see <see cref="GitEditorCommand"/>); set by the
     ///  app. Without it, interactive rebase is refused and a resumed rebase keeps each message.
     /// </summary>
@@ -379,7 +386,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             : RejectAsync(NoEditorMessage);
 
     public Task<bool> ContinueMergeAsync(string repositoryPath)
-        => RunAsync("Merge continued", repositoryPath, () => _operations.ContinueMergeAsync(repositoryPath, EditorCommand));
+        => RunAsync("Merge continued", repositoryPath,
+            () => _operations.ContinueMergeAsync(repositoryPath, EditorCommand));
 
     public Task<bool> ContinuePatchAsync(string repositoryPath)
         => RunAsync("Patch applied", repositoryPath, () => _operations.ContinuePatchAsync(repositoryPath));
@@ -465,7 +473,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             () => _operations.ResetFilesToAsync(repositoryPath, revision, paths));
 
     public Task<bool> StopTrackingAsync(string repositoryPath, string path)
-        => RunAsync($"Stopped tracking {path}", repositoryPath, () => _operations.StopTrackingAsync(repositoryPath, path));
+        => RunAsync($"Stopped tracking {path}", repositoryPath,
+            () => _operations.StopTrackingAsync(repositoryPath, path));
 
     public Task<bool> ResolveConflictsAsync(string repositoryPath, IReadOnlyList<string> paths, bool ours)
         => RunAsync($"Kept {(ours ? "ours" : "theirs")} for {paths.Count} file(s)", repositoryPath,
