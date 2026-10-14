@@ -45,7 +45,8 @@ internal sealed class RevisionLinksSettingsTests
             .Select(button => ((StackPanel)button.Content!).Children.OfType<TextBlock>().Single().Text).Should()
             .Equal("Add GitHub templates", "Add Azure DevOps templates");
         Find<StackPanel>(settings, "RevisionLinkTemplateButtons").Children.OfType<Button>()
-            .Should().OnlyContain(button => ((StackPanel)button.Content!).Children.OfType<Image>().Single().Source != null,
+            .Should().OnlyContain(
+                button => ((StackPanel)button.Content!).Children.OfType<Image>().Single().Source != null,
                 "upstream's menu shows the service's icon");
 
         Click(settings, "AddRevisionLinkButton");
@@ -61,6 +62,7 @@ internal sealed class RevisionLinksSettingsTests
         item.Formats[0].Format = "https://example.com/issues/{0}";
         Click(settings, "AddRevisionLinkFormatButton");
         Find<TabControl>(settings, "Tabs").SelectedItem = Find<TabItem>(settings, "RevisionLinksTab");
+        Dispatcher.UIThread.RunJobs();
         Button? removeSecond = null;
         WaitUntil(() => (removeSecond = settings.GetVisualDescendants().OfType<Button>()
             .Where(button => button.Name == "RemoveRevisionLinkFormatButton").Skip(1).FirstOrDefault()) is not null);
@@ -109,11 +111,14 @@ internal sealed class RevisionLinksSettingsTests
         WaitUntil(() => !window.IsBusy);
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
         InfoTextBlock info = Find<InfoTextBlock>(window, "DetailRevisionInfo");
+
         IReadOnlyList<InfoSpan> RelatedLinks() =>
             info.Lines.FirstOrDefault(line => line.FirstOrDefault()?.Text.StartsWith("Related links:") == true) ?? [];
+
         WaitUntil(() => RelatedLinks().Count > 0);
 
-        RelatedLinks().Where(span => span.Link is not null).Select(span => (span.Text, span.Link)).Should().BeEquivalentTo(
+        RelatedLinks().Where(span => span.Link is not null).Select(span => (span.Text, span.Link)).Should()
+            .BeEquivalentTo(
             [
                 ("#77", "https://example.com/issues/77"),
                 ("#42", "https://example.com/issues/42"),
@@ -131,21 +136,27 @@ internal sealed class RevisionLinksSettingsTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         SettingsWindow settings = OpenSettings(window);
-        ComboBox levels = Find<ComboBox>(settings, "RevisionLinkLevelBox");
-        levels.Items.Cast<object>().Select(level => level.ToString()).Should().Equal("Effective",
-            "Local for current repository", "Distributed with current repository", "Global for all repositories");
+        Find<TabControl>(settings, "Tabs").SelectedItem = Find<TabItem>(settings, "RevisionLinksTab");
+        Dispatcher.UIThread.RunJobs();
+        SettingsSourceHeader levels = settings.SourceHeaderOf(Find<TabItem>(settings, "RevisionLinksTab"));
+        levels.Levels.Should().Equal(SettingLevel.Effective, SettingLevel.Local, SettingLevel.Distributed,
+            SettingLevel.Global);
+        levels.Level.Should().Be(SettingLevel.Effective);
+        Find<Button>(settings, "AddRevisionLinkButton").IsEffectivelyEnabled.Should()
+            .BeFalse("upstream shows the effective settings read-only");
 
-        levels.SelectedIndex = 1;
+        levels.Level = SettingLevel.Local;
         Click(settings, "AddRevisionLinkButton");
         Find<TextBox>(settings, "RevisionLinkNameBox").Text = "Local links";
-        levels.SelectedIndex = 0;
+        levels.Level = SettingLevel.Effective;
         Find<ListBox>(settings, "RevisionLinksList").ItemCount.Should().Be(0, "the effective list was read before");
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
         new RevisionLinkEditor(AppServices.RevisionLinks.Open(_repo.Path, SettingLevel.Local)).Items
             .Select(item => item.Name).Should().Equal("Local links");
-        new RevisionLinkEditor(AppServices.RevisionLinks.Open(_repo.Path, SettingLevel.Global)).Items.Should().BeEmpty();
+        new RevisionLinkEditor(AppServices.RevisionLinks.Open(_repo.Path, SettingLevel.Global)).Items.Should()
+            .BeEmpty();
         window.Close();
     }
 

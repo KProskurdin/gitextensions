@@ -95,6 +95,9 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/BuildServerIntegration/BuildServerWatcher.cs` | `src/xplat/GitExtensions.Xplat.Core/BuildServer/BuildServerWatcher.cs`, `BuildServerCatalog.cs`, `BuildServerCredentialStore.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/RevisionGrid/Columns/BuildStatusColumnProvider.cs`; `RevisionGridControl.cs` (build report items, cell click); `RevisionGridMenuCommands.cs` (build status toggles) | `src/xplat/GitExtensions.Xplat.Core/BuildServer/BuildStatusCell.cs`, `CommitHistory/CommitListViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.BuildServer.cs`, `BuildStatusBrushConverter.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BuildServerIntegrationSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml`, `SettingsWindow.BuildServer.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormSettings.cs`, `FormSettings.Designer.cs` (page tree, title, buttons, instant save notice); `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsTreeViewUserControl.cs`, `SettingsGroupPages.cs`, `Pages/GitRootIntroductionPage.cs`, `Plugins/PluginRootIntroductionPage.cs` | `src/xplat/GitExtensions.Xplat.Core/Settings/SettingsPageTree.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.Tree.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsPageHeader.cs`, `SettingsPageWithHeader.cs`, `DistributedSettingsPage.cs`; `Pages/DetailedSettingsPage.cs` (`gbRevisionGraph` enabled at the global level) | `src/xplat/GitExtensions.Xplat.App/SettingsSourceHeader.cs`, `SettingsWindow.Headers.cs`, `SettingsWindow.BuildServer.cs`, `SettingsWindow.axaml.cs` (revision links and plugin levels) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ChecklistSettingsPage.cs`; `src/app/GitExtUtils/GitUI/Theming/OtherColors.cs` (row colors) | `src/xplat/GitExtensions.Xplat.Core/Settings/SettingsChecklist.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.Checklist.cs`, `SettingsWindow.axaml` (`ChecklistTab`) | `52d08e996` | partial |
 | `src/app/GitUI/HelperDialogs/FormBuildServerCredentials.cs` | `src/xplat/GitExtensions.Xplat.App/BuildServerCredentialsWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/plugins/BuildServerIntegration/AppVeyorIntegration/Settings/AppVeyorSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/AppVeyorIntegration/Settings/AppVeyorSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
 | `src/plugins/BuildServerIntegration/AzureDevOpsIntegration/Settings/SettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/AzureDevOpsIntegration/Settings/SettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
@@ -404,6 +407,44 @@ macOS git's own helpers are the credential store, PLAN.md decision 6; a value se
 `core.editor` (with this app's `fileeditor` command offered), `commit.template` and `core.autocrlf`. Not ported: the tool
 path and command fields.
 
+**FormSettings page tree** (`partial`). Ported 2026-10-14 (UI-PARITY U4.1): the window is upstream's, 958 by 646, with the
+page tree (`SettingsTreeViewUserControl`) on the left: upstream's three groups with their images, the pages in
+`OnRuntimeLoad`'s order and nesting (`SettingsPageTree.Entries`, compared with `FormSettings.cs` by a test), the groups'
+own pages (Checklist, "Git Settings", "Plugins Settings"), a node per plugin that has settings ordered by title, and the
+"Type to find" box (a page is found by its title or when every word is in one of its controls' texts; found pages are
+marked in the selection colors and their parents expanded; Enter shows them in turn). The window title names the page
+("Plugin: " before a plugin's), the window opens on the page shown last in the session, and OK, Cancel and Apply are
+upstream's buttons in its order (Cancel after Apply reports the save, as upstream's `_saved`). The pages are the former
+tabs, now chosen by the tree (the tab strip is hidden), and the theme moved from Appearance to upstream's Colors page.
+Pages taller than the window scroll. Differences: the plugin files upstream's loader passed over are listed after the
+plugins, with the reason (a fork addition). Not ported: the pages the new shell has no page for (Console style, Shell
+extension, Git > Advanced) are left out of the tree; the Discard button (shown in upstream's debug builds only).
+
+**SettingsPageHeader** (`partial`). Ported 2026-10-14 (UI-PARITY U4.2): every page but the groups' introductions has
+upstream's "Settings source:" header. The pages of the user's settings show only "Global for all repositories"; the
+repository pages (Revision links, Build server integration, Detailed and the plugins' pages) offer Effective, Local,
+Distributed and Global while a repository is open, with upstream's "<<" arrows while Effective is chosen. As upstream,
+Effective is read-only (the page is disabled and nothing is stored from it), the values edited at a level are stored there
+on OK, and the Detailed page's revision graph settings are edited at the global level only. Changed: the fork had let the
+effective settings be edited (a value the repository sets changed there, others in the user's settings) and had a level box
+on the Revision links and Plugins tabs only; the Build server page now stores at the chosen level instead of the effective
+settings. Differences: the plugin pages share one level, as they share one page. Not ported: the header on the Config page,
+which still shows the global and repository values side by side (upstream shows one column at the chosen level, with
+System); the System level.
+
+**ChecklistSettingsPage** (`partial`). Ported 2026-10-14 (UI-PARITY U4.3): the Checklist page on the Git Extensions node,
+shown first as upstream, with upstream's rows, texts and colors (`OtherColors`, dimmed toward the editor background in a
+dark theme): git found and its version against upstream's supported and recommended versions, user name and email, merge
+tool, diff tool, language, and on Windows the linux tools (sh), the ssh client and the obsolete winstore credential helper.
+The checks run each time the page shows; "Save and rescan" saves the window (as Apply) and checks again; a red or yellow
+row's Repair button, and the row itself, shows the page to fix the setting on (the tools rescan when one is configured;
+the winstore row opens upstream's wiki page). The instant save notice shows on the page. Differences: a tool git starts
+itself (listed by `git mergetool --tool-help`) counts as configured even when upstream knows no command for it, since
+upstream knows only its Windows tools; git is asked only for such a tool, as the list takes seconds; the diff tool falls
+back to `diff.tool` as the browse window does. Repair shows the page where upstream first tries to locate git, sh or
+PuTTY itself. Not ported: the Git Extensions install and shell extension rows (the Windows installer's registration),
+"Check settings at startup" and the startup check behind it (upstream keeps the flag in the registry).
+
 **FormAbout** (`partial`). Ported: name, version, operating system, runtime and git version. Not ported: the contributor list
 and the links.
 
@@ -520,7 +561,8 @@ local and remote branches at the commit, each address once; a link opens in the 
 level box of upstream's page header (effective, local, distributed, global; the definitions edited at each level are
 stored on OK) and the templates' icons (upstream's `GitHub` and `VisualStudioTeamServices` images, by name, since the
 templates' own `Icon` is a WinForms image). Not ported: the other commit info parts that upstream renders as links
-(branches, tags).
+(branches, tags). Changed 2026-10-14: the level is chosen in upstream's header, read-only at Effective (see
+SettingsPageHeader).
 
 **AppearanceFontsSettingsPage** (`partial`). Ported 2026-10-07: Settings > Fonts edits upstream's application, commit, code
 and monospace fonts (`font`, `commitfont`, `difffont`, `monospacefont`) in upstream's stored format. Upstream reads them
@@ -646,7 +688,9 @@ repository sets is changed there, any other in the user's settings, as upstream'
 settings otherwise; unchanged values are not written. Added 2026-10-10: the settings level choice of upstream's page
 header (effective, local, distributed, global; the values edited at a level go to it), and credentials settings (user name
 and password, kept in Windows' credential store as upstream does; on Linux and macOS they say why they cannot be edited,
-PLAN.md decision 6). Not ported: settings with their own WinForms control (shown as not editable).
+PLAN.md decision 6). Not ported: settings with their own WinForms control (shown as not editable). Changed 2026-10-14:
+the level is chosen in upstream's header, and the effective settings are read-only as upstream's (see SettingsPageHeader).
+The settings tree lists the plugins that have settings, each as its own node.
 
 **FormGitIgnore / FormAddToGitIgnore** (`partial`). Ported: edit the repository's top-level `.gitignore` as text (Repository >
 Edit .gitignore...), and add the selected untracked files from the commit window (Ignore...), each as a root-anchored pattern
@@ -804,8 +848,9 @@ commit's report as a link to open in the browser, since the shell has no embedde
 revision links): the three-state "Enable build server integration", the type (None and the plugins' types, with upstream's
 reason when one cannot be loaded), and the plugin's settings control for the type, given the repository's folder name and
 remote URLs. The plugin control's values for a type are read from that type's path even before it is saved (upstream reads
-them from the saved type's path). Not ported: "Show build result page" (the shell has no build report tab), the settings
-level choice.
+them from the saved type's path). Changed 2026-10-14: the page has upstream's settings source header and stores at the
+chosen level, read-only at Effective (see SettingsPageHeader). Not ported: "Show build result page" (the shell has no build
+report tab).
 
 **FormBuildServerCredentials** (`ported`). Guest access, user name and password, or bearer token, filled with the known ones;
 asked from the adapter's thread, shown on the UI thread until answered.

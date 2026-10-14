@@ -23,6 +23,8 @@ public partial class SettingsWindow
     private IBuildServerSettingsUserControl? _buildServerControl;
     private string? _buildServerControlType;
     private bool _buildServerPageShown;
+    private bool _showingBuildServerValues;
+    private SettingLevel _buildServerLevel = SettingLevel.Effective;
 
     /// <summary>
     ///  The build server plugin's settings control on the tab, or null.
@@ -45,19 +47,50 @@ public partial class SettingsWindow
     private async Task ShowBuildServerTypesAsync()
     {
         IReadOnlyList<BuildServerType> types = await Task.Run(() => AppServices.BuildServers.Types);
-        SettingsSource settings = _revisionLinkSettings;
-        string? current = BuildServerSettings.ServerName[settings];
         List<ComboBoxItem> items = [new() { Content = NoBuildServer }];
         items.AddRange(types.Select(type => new ComboBoxItem { Content = type.DisplayName, Tag = type.Name }));
         BuildServerTypeBox.ItemsSource = items;
-        BuildServerTypeBox.SelectedItem = items.FirstOrDefault(item => Equals(item.Tag, current)) ?? items[0];
-        EnableBuildServerCheck.IsChecked = BuildServerSettings.IntegrationEnabled[settings];
-        ShowBuildResultPageCheck.IsChecked = BuildServerSettings.ShowBuildResultPage[settings];
+        ShowBuildServerValues();
         ShowBuildResultPageCheck.IsEnabled = true;
         EnableBuildServerCheck.IsEnabled = BuildServerTypeBox.IsEnabled = true;
-        BuildServerTypeBox.SelectionChanged += (_, _) => UiActions.Run(ShowBuildServerControlAsync, ex => ErrorText.Text = ex.Message);
+        BuildServerTypeBox.SelectionChanged += (_, _) =>
+        {
+            if (!_showingBuildServerValues)
+            {
+                UiActions.Run(ShowBuildServerControlAsync, ex => ErrorText.Text = ex.Message);
+            }
+        };
         await ShowBuildServerControlAsync();
         _buildServerPageShown = true;
+    }
+
+    // Upstream's SettingsToPage, from the settings of the level shown.
+    private void ShowBuildServerValues()
+    {
+        SettingsSource settings = BuildServerSettingsSource;
+        string? current = BuildServerSettings.ServerName[settings];
+        _showingBuildServerValues = true;
+        BuildServerTypeBox.SelectedItem = BuildServerTypeBox.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => Equals(item.Tag, current)) ?? BuildServerTypeBox.Items[0];
+        _showingBuildServerValues = false;
+        EnableBuildServerCheck.IsChecked = BuildServerSettings.IntegrationEnabled[settings];
+        ShowBuildResultPageCheck.IsChecked = BuildServerSettings.ShowBuildResultPage[settings];
+    }
+
+    // As upstream's DistributedSettingsPage.SetCurrentSettings: the page's values go to the level they were edited at, and
+    // the page shows the chosen level.
+    private void ChangeBuildServerLevel(SettingLevel level)
+    {
+        if (!_buildServerPageShown)
+        {
+            _buildServerLevel = level;
+            return;
+        }
+
+        SaveBuildServerPage();
+        _buildServerLevel = level;
+        ShowBuildServerValues();
+        UiActions.Run(ShowBuildServerControlAsync, ex => ErrorText.Text = ex.Message);
     }
 
     private string? SelectedBuildServerType => (BuildServerTypeBox.SelectedItem as ComboBoxItem)?.Tag as string;
@@ -82,22 +115,24 @@ public partial class SettingsWindow
 
         string defaultProjectName = repositoryPath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries)[^1];
         control.Initialize(defaultProjectName,
-            remotes.Select(remote => remote.PushUrls.FirstOrDefault(url => !string.IsNullOrEmpty(url)) ?? remote.FetchUrl));
+            remotes.Select(remote =>
+                remote.PushUrls.FirstOrDefault(url => !string.IsNullOrEmpty(url)) ?? remote.FetchUrl));
         control.LoadSettings(SettingsOf(type));
         _buildServerControl = control;
         _buildServerControlType = type;
         BuildServerSettingsPanel.Content = control;
     }
 
-    // Upstream's PageToSettings: an undecided check box stores nothing, so a lower level or the detection decides.
+    // Upstream's PageToSettings: an undecided check box stores nothing, so a lower level or the detection decides. The
+    // effective settings are shown read-only, so nothing is stored from them.
     private void SaveBuildServerPage()
     {
-        if (!_buildServerPageShown)
+        if (!_buildServerPageShown || _buildServerLevel == SettingLevel.Effective)
         {
             return;
         }
 
-        SettingsSource settings = _revisionLinkSettings;
+        SettingsSource settings = BuildServerSettingsSource;
         BuildServerSettings.ServerName[settings] = SelectedBuildServerType;
         BuildServerSettings.IntegrationEnabled[settings] = EnableBuildServerCheck.IsChecked;
         BuildServerSettings.ShowBuildResultPage[settings] = ShowBuildResultPageCheck.IsChecked;
@@ -107,6 +142,8 @@ public partial class SettingsWindow
         }
     }
 
+    private SettingsSource BuildServerSettingsSource => DistributedSettingsAt(_buildServerLevel).Settings;
+
     private SettingsSource SettingsOf(string type)
-        => new SettingsPath(_revisionLinkSettings, new SettingsPath(null, BuildServerSettingsPath).PathFor(type));
+        => new SettingsPath(BuildServerSettingsSource, new SettingsPath(null, BuildServerSettingsPath).PathFor(type));
 }

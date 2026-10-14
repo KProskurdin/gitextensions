@@ -5,22 +5,82 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.SettingsWindow"
         Title="Settings"
-        Width="760" Height="580" WindowStartupLocation="CenterOwner">
-  <DockPanel Margin="12" LastChildFill="True">
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+        Width="958" Height="646" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <!-- The pages are the tab control's items; the tree chooses them, so the tab strip is not shown. -->
+    <Style Selector="TabControl#Tabs /template/ ItemsPresenter">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TreeView#SettingsTree TreeViewItem" x:DataType="local:SettingsPageNode">
+      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+      <Setter Property="MinHeight" Value="20" />
+    </Style>
+    <!-- Upstream marks the pages the search finds in the system's selection colors. -->
+    <Style Selector="StackPanel.found">
+      <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+    </Style>
+    <Style Selector="StackPanel.found > TextBlock">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream's FormSettings: the page tree (SettingsTreeViewUserControl, 200 pixels wide, its search box above it) beside
+       the page, and the buttons under the page. -->
+  <Grid Margin="3" ColumnDefinitions="200,6,*" RowDefinitions="*,Auto">
+    <DockPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="0">
+      <TextBox x:Name="SettingsSearchBox" DockPanel.Dock="Top" Margin="0,8" />
+      <TreeView x:Name="SettingsTree">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate x:DataType="local:SettingsPageNode" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Spacing="4" Classes.found="{Binding IsFound}">
+              <Image Source="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+            </StackPanel>
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+    </DockPanel>
+    <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="0,6,3,3">
       <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
-      <Button x:Name="SaveButton" Content="OK" IsDefault="True" />
+      <!-- Upstream's labelInstantSaveNotice, shown on the pages that save at once (the Checklist). -->
+      <TextBlock x:Name="InstantSaveNoticeText" Text="{x:Static settings:SettingsChecklist.InstantSaveNotice}"
+                 VerticalAlignment="Center" TextAlignment="Right" IsVisible="False" />
+      <!-- Upstream's buttons in its order. -->
+      <Button x:Name="SaveButton" Content="OK" IsDefault="True" MinWidth="84" />
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" MinWidth="88" />
+      <Button x:Name="ApplyButton" Content="Apply" MinWidth="92" />
     </StackPanel>
-    <TabControl x:Name="Tabs">
-      <TabItem Header="Appearance">
+    <TabControl x:Name="Tabs" Grid.Row="0" Grid.Column="2" Padding="0">
+      <!-- Upstream's "Checklist" page, on the Git Extensions group's node: a row per check, green when the setting is
+           right, red or yellow with a Repair button when not (rows built by SettingsWindow.Checklist). -->
+      <TabItem x:Name="ChecklistTab" Header="Checklist">
+        <StackPanel Spacing="4" Margin="4,8">
+          <TextBlock Text="{x:Static settings:SettingsChecklist.Introduction}" TextWrapping="Wrap" Margin="0,0,0,6" />
+          <Grid x:Name="ChecklistGrid" ColumnDefinitions="*,6,Auto" />
+          <Button x:Name="ChecklistRescanButton" Content="{x:Static settings:SettingsChecklist.SaveAndRescanText}"
+                  HorizontalAlignment="Left" Margin="0,6,0,0" />
+        </StackPanel>
+      </TabItem>
+      <!-- Upstream's root pages: the Git and Plugins groups' introductions. -->
+      <TabItem x:Name="GitRootTab" Header="Git Settings">
+        <TextBlock Margin="4,8" TextWrapping="Wrap" Text="Select one of the subnodes to view or edit the Git settings" />
+      </TabItem>
+      <TabItem x:Name="PluginsRootTab" Header="Plugins Settings">
+        <TextBlock Margin="4,8" TextWrapping="Wrap"
+                   Text="Select one of the subnodes to view or edit the settings of a Git Extensions Plugin." />
+      </TabItem>
+      <!-- Upstream's "Colors" page: its "Theme" group, the CSS themes next to the app and the user's own, and the
+           colorblind variation. -->
+      <TabItem x:Name="ColorsTab" Header="Colors">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Theme" FontWeight="SemiBold" />
-          <!-- As upstream's appearance page: the CSS themes next to the app and the user's own, and the colorblind variation. -->
           <ComboBox x:Name="ThemeBox" MinWidth="260" />
           <CheckBox x:Name="ColorblindCheck" Content="Colorblind" />
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
-          <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
+        </StackPanel>
+      </TabItem>
+      <TabItem x:Name="AppearanceTab" Header="Appearance">
+        <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="General" FontWeight="SemiBold" />
           <CheckBox x:Name="RelativeDateCheck" Content="Show relative date instead of full date" />
           <CheckBox x:Name="ShowRepoBranchCheck" Content="Show current branch names in the dashboard and the recent repositories dropdown menu" />
           <StackPanel Orientation="Horizontal" Spacing="8">
@@ -64,7 +124,7 @@
           <TextBlock Text="Sizes are in points. &quot;(default)&quot; keeps this app's own font." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
-      <TabItem Header="General">
+      <TabItem x:Name="GeneralTab" Header="General">
         <StackPanel Spacing="8" Margin="4,8">
           <CheckBox x:Name="CloseAfterCommitCheck" Content="Close the commit window after a commit" />
           <CheckBox x:Name="CloseProcessDialogCheck" Content="Close the output window when a fetch, pull or push succeeds" />
@@ -101,8 +161,9 @@
           </StackPanel>
         </StackPanel>
       </TabItem>
-      <!-- Upstream's "Git" page (paths and environment) with its "Change HOME" choices (FormFixHome) on the page. -->
-      <TabItem x:Name="GitTab" Header="Git">
+      <!-- Upstream's "Paths" page (GitSettingsPage: paths and environment) with its "Change HOME" choices (FormFixHome)
+           on the page. -->
+      <TabItem x:Name="GitTab" Header="Paths">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Paths" FontWeight="SemiBold" />
           <TextBlock Text="Command used to run git (empty: look it up on PATH)" />
@@ -181,7 +242,7 @@
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Commit dialog" page: the settings whose feature the commit window has. -->
-      <TabItem Header="Commit dialog">
+      <TabItem x:Name="CommitDialogTab" Header="Commit dialog">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Behaviour" FontWeight="SemiBold" />
           <CheckBox x:Name="ShowStagingErrorsCheck" Content="Show errors when staging files" />
@@ -200,7 +261,7 @@
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Advanced" page: the settings whose feature the new shell has. -->
-      <TabItem Header="Advanced">
+      <TabItem x:Name="AdvancedTab" Header="Advanced">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Checkout" FontWeight="SemiBold" />
           <CheckBox x:Name="AlwaysShowCheckoutDlgCheck" Content="Always show checkout dialog" />
@@ -218,7 +279,7 @@
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Diff viewer" page: the settings of the diff view's choices, its ruler and the difftool list. -->
-      <TabItem Header="Diff viewer">
+      <TabItem x:Name="DiffViewerTab" Header="Diff viewer">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="General" FontWeight="SemiBold" />
           <CheckBox x:Name="RememberIgnoreWhitespaceCheck" Content="Remember the 'Ignore whitespaces' preference" />
@@ -269,11 +330,6 @@
       <!-- Upstream's "Revision links" page: link definitions that turn commit data into links in the commit details. -->
       <TabItem x:Name="RevisionLinksTab" Header="Revision links">
         <DockPanel Margin="4,8">
-        <!-- Upstream's settings page header: the level the definitions are read from and stored at. -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-          <TextBlock Text="Settings level" VerticalAlignment="Center" />
-          <ComboBox x:Name="RevisionLinkLevelBox" MinWidth="260" />
-        </StackPanel>
         <Grid ColumnDefinitions="200,12,*">
           <DockPanel Grid.Column="0">
             <TextBlock DockPanel.Dock="Top" Text="Categories" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -365,7 +421,8 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <TabItem Header="Git config">
+      <!-- Upstream's "Config" page under Git. -->
+      <TabItem x:Name="GitConfigTab" Header="Config">
         <Grid ColumnDefinitions="Auto,8,*,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
           <!-- As upstream's diff viewer settings page offers the tools git finds, a choice here fills the global value. -->
           <TextBlock Grid.Row="0" Grid.Column="6" Text="Found on this computer" FontWeight="SemiBold" Margin="0,0,0,6" />
@@ -412,7 +469,7 @@
           </ScrollViewer>
         </DockPanel>
       </TabItem>
-      <TabItem Header="Scripts">
+      <TabItem x:Name="ScriptsTab" Header="Scripts">
         <!-- As upstream's scripts settings page: the scripts in the order they run, and the selected script's values. -->
         <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,8,Auto" Margin="4,8">
           <ListBox x:Name="ScriptsList" Grid.Row="0" Grid.Column="0" MinHeight="120">
@@ -473,7 +530,7 @@
           </Grid>
         </Grid>
       </TabItem>
-      <TabItem Header="Hotkeys">
+      <TabItem x:Name="HotkeysTab" Header="Hotkeys">
         <DockPanel Margin="4,8" LastChildFill="True">
           <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8"
                      Text="Click a box and press the new key combination. Shared with Git Extensions for Windows; Ctrl is Cmd on macOS. Script hotkeys list the saved scripts." />
@@ -482,17 +539,11 @@
           </ScrollViewer>
         </DockPanel>
       </TabItem>
-      <TabItem x:Name="PluginsTab" Header="Plugins">
-        <Grid Margin="4,8" ColumnDefinitions="200,12,*">
-          <ListBox x:Name="PluginsList" Grid.Column="0" />
-          <DockPanel Grid.Column="2" LastChildFill="True">
+      <!-- A plugin's page (upstream's PluginSettingsPage); the tree's plugin nodes choose the plugin. -->
+      <TabItem x:Name="PluginsTab" Header="Plugin">
+        <Grid Margin="4,8">
+          <DockPanel LastChildFill="True">
             <TextBlock x:Name="PluginTitleText" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8" />
-            <!-- Upstream's settings page header: the "Settings source" the page edits. -->
-            <StackPanel x:Name="PluginLevelPanel" DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,6">
-              <TextBlock Text="Settings source:" VerticalAlignment="Center" />
-              <ComboBox x:Name="PluginLevelBox" MinWidth="260" />
-            </StackPanel>
-            <TextBlock x:Name="PluginLevelText" DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
             <ScrollViewer>
               <StackPanel x:Name="PluginSettingsPanel" Spacing="6" />
             </ScrollViewer>
@@ -500,5 +551,5 @@
         </Grid>
       </TabItem>
     </TabControl>
-  </DockPanel>
+  </Grid>
 </Window>

@@ -65,11 +65,15 @@ public partial class SettingsWindow : Window
     private readonly HotkeyEditor<BrowseDiffCommand> _browseDiffHotkeys = new(Hotkeys.BrowseDiff);
     private readonly HotkeyEditor<StashCommand> _stashHotkeys = new(Hotkeys.Stash);
     private readonly HotkeyEditor<int> _scriptHotkeys = new(Hotkeys.Scripts);
-    private readonly IReadOnlyList<ScriptDefinition> _loadedScripts;
+    private IReadOnlyList<ScriptDefinition> _loadedScripts;
     private readonly ScriptListEditor _scripts;
     private HelpWindow? _scriptHelp;
     private readonly IReadOnlyList<IGitPlugin> _plugins;
     private readonly Dictionary<IGitPlugin, PluginSettingsEditor> _pluginEditors = [];
+
+    // The plugin page shown: a PluginOption or a SkippedPluginOption.
+    private object? _selectedPlugin;
+    private bool _saved;
     private readonly Dictionary<SettingLevel, SettingsSource> _pluginSources = [];
     private SettingLevel _pluginLevel = SettingLevel.Effective;
     private readonly Dictionary<Confirmation, CheckBox> _confirmationChecks = [];
@@ -77,8 +81,10 @@ public partial class SettingsWindow : Window
     private RevisionLinkEditor _revisionLinks;
 
     // The definitions edited at each settings level so far, all stored on OK.
-    private readonly Dictionary<SettingLevel, (DistributedSettings Settings, RevisionLinkEditor Editor)> _revisionLinkLevels =
-        [];
+    private readonly Dictionary<SettingLevel, (DistributedSettings Settings, RevisionLinkEditor Editor)>
+        _revisionLinkLevels =
+            [];
+
     private readonly Dictionary<AppFont, (ComboBox Family, NumericUpDown Size)> _fontBoxes = [];
     private readonly Dictionary<AppFont, (CheckBox Bold, CheckBox Italic)> _fontStyleBoxes = [];
     private readonly Dictionary<AppFont, FontSetting?> _loadedFonts = [];
@@ -95,6 +101,7 @@ public partial class SettingsWindow : Window
         _revisionLinks = new RevisionLinkEditor(_revisionLinkSettings);
         _revisionLinkLevels[SettingLevel.Effective] = (_revisionLinkSettings, _revisionLinks);
         InitializeComponent();
+        AddPageHeaders();
 
         ShowThemes(preferences.Theme);
         ColorblindCheck.IsChecked = preferences.ThemeVariations.Contains(ThemeVariations.Colorblind);
@@ -175,11 +182,8 @@ public partial class SettingsWindow : Window
         ShowRevisionLinks();
         ShowBuildServerPage();
         _plugins = plugins ?? [];
-        ShowPlugins(selectedPlugin);
-        if (pluginsPage)
-        {
-            Tabs.SelectedItem = PluginsTab;
-        }
+        ShowChecklistPage();
+        ShowPageTree(pluginsPage ? selectedPlugin ?? (object)PluginsTab : null);
 
         MergeToolChoices.SelectionChanged += (_, _) => FillFromChoice(MergeToolChoices, GlobalMergeToolBox);
         DiffToolChoices.SelectionChanged += (_, _) => FillFromChoice(DiffToolChoices, GlobalDiffToolBox);
@@ -191,8 +195,11 @@ public partial class SettingsWindow : Window
             }
         };
         EditorChoices.SelectionChanged += (_, _) => FillFromChoice(EditorChoices, GlobalEditorBox);
-        CancelButton.Click += (_, _) => Close(false);
-        SaveButton.Click += (_, _) => UiActions.Run(SaveAsync, ex => ErrorText.Text = ex.Message);
+
+        // As upstream, the window reports a save made with Apply even when it is then closed with Cancel.
+        CancelButton.Click += (_, _) => Close(_saved);
+        SaveButton.Click += (_, _) => UiActions.Run(() => SaveAsync(close: true), ex => ErrorText.Text = ex.Message);
+        ApplyButton.Click += (_, _) => UiActions.Run(() => SaveAsync(close: false), ex => ErrorText.Text = ex.Message);
         Opened += (_, _) => UiActions.Run(LoadGitConfigAsync, ex => ErrorText.Text = ex.Message);
     }
 
@@ -296,12 +303,16 @@ public partial class SettingsWindow : Window
             // Upstream's font dialog sets the style too; here it is two check boxes beside the size.
             CheckBox bold = new()
             {
-                Content = BoldText, IsChecked = current?.Bold == true, IsEnabled = current is not null,
+                Content = BoldText,
+                IsChecked = current?.Bold == true,
+                IsEnabled = current is not null,
                 Margin = new Avalonia.Thickness(0, 0, 0, 6),
             };
             CheckBox italic = new()
             {
-                Content = ItalicText, IsChecked = current?.Italic == true, IsEnabled = current is not null,
+                Content = ItalicText,
+                IsChecked = current?.Italic == true,
+                IsEnabled = current is not null,
                 Margin = new Avalonia.Thickness(0, 0, 0, 6),
             };
             family.SelectionChanged += (_, _) =>
@@ -343,7 +354,8 @@ public partial class SettingsWindow : Window
             FontSetting? chosen = family.SelectedItem is string name && name != DefaultFontChoice
                 ? (loaded ?? new FontSetting(name, DefaultFontSize(font))) with
                 {
-                    Family = name, Size = (float)(size.Value ?? (decimal)DefaultFontSize(font)),
+                    Family = name,
+                    Size = (float)(size.Value ?? (decimal)DefaultFontSize(font)),
                     Bold = _fontStyleBoxes[font].Bold.IsChecked == true,
                     Italic = _fontStyleBoxes[font].Italic.IsChecked == true,
                 }
@@ -364,10 +376,6 @@ public partial class SettingsWindow : Window
     // button drops down the templates; here they are buttons of their own.
     private void ShowRevisionLinks()
     {
-        RevisionLinkLevelBox.ItemsSource = LevelOptions();
-        RevisionLinkLevelBox.SelectedIndex = 0;
-        RevisionLinkLevelBox.IsEnabled = _repositoryPath is not null;
-        RevisionLinkLevelBox.SelectionChanged += (_, _) => ChangeRevisionLinkLevel();
         RevisionLinksList.ItemsSource = _revisionLinks.Items;
         RevisionLinksList.SelectionChanged += (_, _) => ShowSelectedRevisionLink();
         AddRevisionLinkButton.Click += (_, _) => RevisionLinksList.SelectedItem = _revisionLinks.Add();
@@ -381,7 +389,12 @@ public partial class SettingsWindow : Window
                     Spacing = 6,
                     Children =
                     {
-                        new Image { Source = ScriptIcons.Named(TemplateIconName(template)), Width = 16, Height = 16 },
+                        new Image
+                        {
+                            Source = ScriptIcons.Named(TemplateIconName(template)),
+                            Width = 16,
+                            Height = 16
+                        },
                         new TextBlock { Text = RevisionLinkTemplates.MenuText(template) },
                     },
                 },
@@ -420,24 +433,32 @@ public partial class SettingsWindow : Window
 
     // As upstream's settings page header: the page shows the definitions stored at the chosen level; what was edited at
     // the other levels is stored too on OK.
-    private void ChangeRevisionLinkLevel()
+    private void ChangeRevisionLinkLevel(SettingLevel level)
     {
-        if (RevisionLinkLevelBox.SelectedItem is not PluginLevelOption { Level: var level })
+        _revisionLinks = DistributedSettingsAt(level).Editor;
+        RevisionLinksList.ItemsSource = _revisionLinks.Items;
+        RevisionLinksList.SelectedIndex = _revisionLinks.Items.Count > 0 ? 0 : -1;
+        ShowSelectedRevisionLink();
+    }
+
+    // The repository's settings at a level, shared by the pages that store there (upstream's DistributedSettingsSet), all
+    // stored on OK. Without a repository the settings in effect are the user's, the one global level.
+    private (DistributedSettings Settings, RevisionLinkEditor Editor) DistributedSettingsAt(SettingLevel level)
+    {
+        if (_repositoryPath is null)
         {
-            return;
+            level = SettingLevel.Effective;
         }
 
-        if (!_revisionLinkLevels.TryGetValue(level, out (DistributedSettings Settings, RevisionLinkEditor Editor) source))
+        if (!_revisionLinkLevels.TryGetValue(level,
+                out (DistributedSettings Settings, RevisionLinkEditor Editor) source))
         {
             DistributedSettings settings = AppServices.RevisionLinks.Open(_repositoryPath, level);
             source = (settings, new RevisionLinkEditor(settings));
             _revisionLinkLevels[level] = source;
         }
 
-        _revisionLinks = source.Editor;
-        RevisionLinksList.ItemsSource = _revisionLinks.Items;
-        RevisionLinksList.SelectedIndex = _revisionLinks.Items.Count > 0 ? 0 : -1;
-        ShowSelectedRevisionLink();
+        return source;
     }
 
     // Upstream's template icons are WinForms images of its Images resources; the app has the same pictures by name.
@@ -857,38 +878,32 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>
-    ///  The settings of the plugin selected on the Plugins tab, or null.
+    ///  The settings of the plugin whose page is shown, or null.
     /// </summary>
     public PluginSettingsEditor? SelectedPluginEditor =>
-        PluginsList.SelectedItem is PluginOption option ? _pluginEditors.GetValueOrDefault(option.Plugin) : null;
+        _selectedPlugin is PluginOption option ? _pluginEditors.GetValueOrDefault(option.Plugin) : null;
 
-    // Upstream's settings tree lists every loaded plugin under Plugins; one with no settings says so.
-    private void ShowPlugins(IGitPlugin? selected)
+    // As upstream's settings tree: the plugins that have settings, by title; then the files upstream's loader passed over
+    // (WinForms plugins, other interface versions), with the reason.
+    private IReadOnlyList<object> PluginPages()
+        =>
+        [
+            .. _plugins.Where(plugin => plugin.HasSettings).Select(plugin => new PluginOption(plugin))
+                .OrderBy(option => option.ToString(), StringComparer.CurrentCultureIgnoreCase),
+            .. AppServices.Plugins.Skipped.Select(file => new SkippedPluginOption(file)),
+        ];
+
+    private void ShowPlugin(object plugin)
     {
-        List<PluginOption> options = [.. _plugins.Select(plugin => new PluginOption(plugin))];
-
-        // Files upstream's loader passed over (WinForms plugins, other interface versions) follow, with the reason.
-        List<object> items = [.. options, .. AppServices.Plugins.Skipped.Select(file => new SkippedPluginOption(file))];
-        PluginsList.ItemsSource = items;
-        PluginsList.SelectionChanged += (_, _) => ShowSelectedPlugin();
-
-        List<PluginLevelOption> levels = LevelOptions();
-        _pluginLevel = levels[0].Level;
-        PluginLevelBox.ItemsSource = levels;
-        PluginLevelBox.SelectedItem = levels[0];
-        PluginLevelBox.IsEnabled = levels.Count > 1;
-        PluginLevelBox.SelectionChanged += (_, _) => ChangePluginLevel();
-        ShowPluginLevelText();
-        PluginsList.SelectedItem =
-            options.FirstOrDefault(option => option.Plugin == selected) ?? options.FirstOrDefault();
+        _selectedPlugin = plugin;
         ShowSelectedPlugin();
     }
 
     private void ShowSelectedPlugin()
     {
         PluginSettingsPanel.Children.Clear();
-        PluginLevelText.IsVisible = PluginLevelPanel.IsVisible = PluginsList.SelectedItem is not SkippedPluginOption;
-        if (PluginsList.SelectedItem is SkippedPluginOption { File: var file })
+        SourceHeaderOf(PluginsTab).IsVisible = _selectedPlugin is not SkippedPluginOption;
+        if (_selectedPlugin is SkippedPluginOption { File: var file })
         {
             PluginTitleText.Text = file.FileName;
             PluginSettingsPanel.Children.Add(new TextBlock
@@ -899,18 +914,13 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (PluginsList.SelectedItem is not PluginOption { Plugin: var plugin })
+        if (_selectedPlugin is not PluginOption { Plugin: var plugin })
         {
-            PluginTitleText.Text = _plugins.Count == 0 ? "No plugins are loaded." : "";
+            PluginTitleText.Text = "";
             return;
         }
 
-        if (!_pluginEditors.TryGetValue(plugin, out PluginSettingsEditor? editor))
-        {
-            editor = new PluginSettingsEditor(plugin, PluginSource(_pluginLevel));
-            _pluginEditors[plugin] = editor;
-        }
-
+        PluginSettingsEditor editor = PluginEditor(plugin);
         PluginTitleText.Text = editor.Title;
         if (editor.Rows.Count == 0)
         {
@@ -922,6 +932,18 @@ public partial class SettingsWindow : Window
         {
             PluginSettingsPanel.Children.Add(CreateSettingControl(row));
         }
+    }
+
+    // One editor per plugin, at the settings source chosen when it was first shown.
+    private PluginSettingsEditor PluginEditor(IGitPlugin plugin)
+    {
+        if (!_pluginEditors.TryGetValue(plugin, out PluginSettingsEditor? editor))
+        {
+            editor = new PluginSettingsEditor(plugin, PluginSource(_pluginLevel));
+            _pluginEditors[plugin] = editor;
+        }
+
+        return editor;
     }
 
     // One editor per upstream setting type, as upstream's SettingControlBindingsProvider chooses them.
@@ -1037,8 +1059,6 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private const string GlobalLevelText = "Global for all repositories";
-
     private SettingsSource PluginSource(SettingLevel level)
     {
         if (!_pluginSources.TryGetValue(level, out SettingsSource? source))
@@ -1049,27 +1069,10 @@ public partial class SettingsWindow : Window
         return source;
     }
 
-    // Upstream's settings sources of a repository page; without a repository only the global settings exist.
-    private List<PluginLevelOption> LevelOptions()
-        => _repositoryPath is null
-            ? [new PluginLevelOption(SettingLevel.Global, GlobalLevelText)]
-            :
-            [
-                new PluginLevelOption(SettingLevel.Effective, "Effective"),
-                new PluginLevelOption(SettingLevel.Local, "Local for current repository"),
-                new PluginLevelOption(SettingLevel.Distributed, "Distributed with current repository"),
-                new PluginLevelOption(SettingLevel.Global, GlobalLevelText),
-            ];
-
     // As upstream's settings page header: the values edited so far go to the source they were edited in (written to disk on
     // OK), and the page shows the newly chosen source.
-    private void ChangePluginLevel()
+    private void ChangePluginLevel(SettingLevel level)
     {
-        if (PluginLevelBox.SelectedItem is not PluginLevelOption { Level: var level } || level == _pluginLevel)
-        {
-            return;
-        }
-
         foreach (PluginSettingsEditor editor in _pluginEditors.Values)
         {
             editor.Save();
@@ -1077,21 +1080,8 @@ public partial class SettingsWindow : Window
 
         _pluginEditors.Clear();
         _pluginLevel = level;
-        ShowPluginLevelText();
         ShowSelectedPlugin();
     }
-
-    private void ShowPluginLevelText()
-        => PluginLevelText.Text = _pluginLevel switch
-        {
-            SettingLevel.Effective =>
-                "The settings in effect for this repository. As in Git Extensions for Windows, a value the repository sets " +
-                "is changed there; any other value is stored in your user settings.",
-            SettingLevel.Local => "Stored in this repository's .git folder, for you only.",
-            SettingLevel.Distributed =>
-                "Stored in this repository's GitExtensions.settings file, shared with the repository.",
-            _ => "Your user settings, shared with Git Extensions for Windows.",
-        };
 
     private async Task LoadGitConfigAsync()
     {
@@ -1174,7 +1164,7 @@ public partial class SettingsWindow : Window
         return value;
     }
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(bool close)
     {
         ErrorText.Text = "";
         if (ValidateHome() is { } homeError)
@@ -1288,6 +1278,7 @@ public partial class SettingsWindow : Window
         if (ScriptsXml.Write(scripts) != ScriptsXml.Write(_loadedScripts))
         {
             AppServices.Scripts.Save(scripts);
+            _loadedScripts = scripts;
         }
 
         // After the scripts, so the scripts' hotkeys follow a renamed, added or deleted script.
@@ -1332,7 +1323,11 @@ public partial class SettingsWindow : Window
                 (LocalAutoCrlfBox.SelectedItem as AutoCrlfOption)?.Value);
         }
 
-        Close(true);
+        _saved = true;
+        if (close)
+        {
+            Close(true);
+        }
     }
 
     private async Task SaveIfChangedAsync(ConfigScope scope, string key, string? text)
@@ -1344,6 +1339,9 @@ public partial class SettingsWindow : Window
         }
 
         await _gitConfig.SetAsync(scope, key, value, scope == ConfigScope.Local ? _repositoryPath : null);
+
+        // After Apply, the next save compares with what was written.
+        _loaded[(scope, key)] = value;
     }
 }
 
@@ -1397,14 +1395,6 @@ public sealed record ThemeOption(ThemeId Id)
             : Id == ThemeId.DefaultLight ? "light (default)"
             : Id.IsBuiltin ? Id.Name
             : $"{Id.Name} (user)";
-}
-
-/// <summary>
-///  One of upstream's settings sources on the Plugins tab.
-/// </summary>
-public sealed record PluginLevelOption(SettingLevel Level, string Text)
-{
-    public override string ToString() => Text;
 }
 
 /// <summary>

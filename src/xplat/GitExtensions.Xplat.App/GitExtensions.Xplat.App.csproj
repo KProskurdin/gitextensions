@@ -27,6 +27,8 @@
     <!-- The dashboard's background pictures and wide logo, which upstream's resource list names too. -->
     <AvaloniaResource Include="..\..\app\GitUI\Resources\Backgrounds\*.png" Link="Assets\Upstream\Backgrounds\%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\GitExtensionsLogoWide.png" Link="Assets\Upstream\Logo\GitExtensionsLogoWide.png" />
+    <!-- The small logo of the settings tree's Git Extensions group (GitExtensionsLogo16). -->
+    <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-16px.png" Link="Assets\Upstream\Logo\git-extensions-logo-16px.png" />
   </ItemGroup>
 
   <ItemGroup>

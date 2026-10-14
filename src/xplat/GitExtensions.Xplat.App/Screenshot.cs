@@ -14,11 +14,14 @@ internal static class Screenshot
     public const string EnvironmentVariable = "XPLAT_SCREENSHOT";
 
     /// <summary>
-    ///  Names another window to save instead of the browse window: <see cref="CommitWindow"/>.
+    ///  Names another window to save instead of the browse window: <see cref="CommitWindow"/>, or
+    ///  <see cref="SettingsWindow"/>, optionally followed by ":" and a text typed into its search box.
     /// </summary>
     public const string WindowEnvironmentVariable = "XPLAT_SCREENSHOT_WINDOW";
 
     public const string CommitWindow = "commit";
+
+    public const string SettingsWindow = "settings";
 
     public static string? RequestedWindow => Environment.GetEnvironmentVariable(WindowEnvironmentVariable);
 

@@ -141,11 +141,12 @@ internal sealed class PluginHostTests
         Click(window, "PluginSettingsMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
-        ComboBox levels = Find<ComboBox>(settings, "PluginLevelBox");
-        levels.Items.OfType<PluginLevelOption>().Select(option => option.Level).Should().Equal(
+        SettingsSourceHeader levels = settings.SourceHeaderOf(Find<TabItem>(settings, "PluginsTab"));
+        levels.Levels.Should().Equal(
             SettingLevel.Effective, SettingLevel.Local, SettingLevel.Distributed, SettingLevel.Global);
-        levels.SelectedItem = levels.Items.OfType<PluginLevelOption>()
-            .Single(option => option.Level == SettingLevel.Local);
+        Find<StackPanel>(settings, "PluginSettingsPanel").IsEffectivelyEnabled.Should()
+            .BeFalse("upstream shows the effective settings read-only");
+        levels.Level = SettingLevel.Local;
         Find<StackPanel>(settings, "PluginSettingsPanel").GetLogicalDescendants().OfType<TextBox>().First().Text =
             "local only";
         Click(settings, "SaveButton");
@@ -173,10 +174,10 @@ internal sealed class PluginHostTests
         Click(window, "PluginSettingsMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
-        ListBox plugins = Find<ListBox>(settings, "PluginsList");
-        plugins.Items.Select(item => item!.ToString()).Should()
+        IReadOnlyList<SettingsPageNode> plugins = settings.PageTree[2].Children;
+        plugins.Select(node => node.Title).Should()
             .Equal(RecordingPlugin.PluginName, "GitExtensions.Old.dll (not loaded)");
-        plugins.SelectedIndex = 1;
+        settings.GoToPage(plugins[1]);
 
         Find<TextBlock>(settings, "PluginTitleText").Text.Should().Be("GitExtensions.Old.dll");
         Find<StackPanel>(settings, "PluginSettingsPanel").GetLogicalDescendants().OfType<TextBlock>()

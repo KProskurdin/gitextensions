@@ -144,6 +144,11 @@ internal sealed class BuildServerUiTests
         ComboBox types = Find<ComboBox>(settingsWindow, "BuildServerTypeBox");
         types.Items.OfType<ComboBoxItem>().Select(item => item.Content).Should().Equal("None", Jenkins);
         Find<CheckBox>(settingsWindow, "EnableBuildServerCheck").IsChecked.Should().BeNull("nothing is configured");
+        Find<TabControl>(settingsWindow, "Tabs").SelectedItem = Find<TabItem>(settingsWindow, "BuildServerTab");
+        Dispatcher.UIThread.RunJobs();
+        types.IsEffectivelyEnabled.Should().BeFalse("upstream shows the effective settings read-only");
+        settingsWindow.SourceHeaderOf(Find<TabItem>(settingsWindow, "BuildServerTab")).Level = SettingLevel.Local;
+        types.IsEffectivelyEnabled.Should().BeTrue();
         types.SelectedItem = types.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, Jenkins));
         WaitUntil(() => settingsWindow.BuildServerControl is not null);
         Control control = (Control)settingsWindow.BuildServerControl!;
@@ -155,7 +160,7 @@ internal sealed class BuildServerUiTests
         Click(settingsWindow, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
-        DistributedSettings stored = AppServices.RevisionLinks.Open(_repo.Path);
+        DistributedSettings stored = AppServices.RevisionLinks.Open(_repo.Path, SettingLevel.Local);
         BuildServerSettings.ServerName[stored].Should().Be(Jenkins);
         BuildServerSettings.IntegrationEnabled[stored].Should().BeTrue();
         BuildServerSettings.ShowBuildResultPage[stored].Should().BeFalse();

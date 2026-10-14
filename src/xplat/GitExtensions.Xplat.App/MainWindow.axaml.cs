@@ -384,6 +384,34 @@ public partial class MainWindow : Window
                 return;
             }
 
+            // XPLAT_SCREENSHOT_WINDOW=settings[:search]: the settings window, with the text typed into its search box.
+            if (Screenshot.RequestedWindow?.Split(':', 2) is [Screenshot.SettingsWindow, .. var search])
+            {
+                SettingsWindow settings = new(_preferences, RepositoryPath, await LoadPluginsAsync());
+                settings.Show(this);
+                if (search is [{ } text] && settings.FindControl<TextBox>("SettingsSearchBox") is { } searchBox)
+                {
+                    searchBox.Text = text;
+                    searchBox.RaiseEvent(new KeyEventArgs { RoutedEvent = KeyUpEvent, Key = Key.Enter });
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+
+                // The Checklist's checks ask git, which can take a few seconds.
+                for (int wait = 0;
+                     wait < 100 && settings.SelectedPage?.PageTitle == "Checklist" &&
+                     settings.ChecklistEntries.Count == 0;
+                     wait++)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
+                }
+
+                await Screenshot.SaveAsync(settings, screenshot);
+                settings.Close();
+                Close();
+                return;
+            }
+
             if (CommitList.ItemCount > 0)
             {
                 CommitList.SelectedIndex = 0;
