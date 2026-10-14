@@ -26,7 +26,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitList`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (reads); `CommitListViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` | `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (commit), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/FileStatusList*.cs` (toolbar, filter, NoFiles, item menu, `GetItemImageKey`); `src/app/GitUI/CommandsDialogs/RevisionDiffController.cs` (menu rules); `CommandsDialogs/Menus/CopyPathsToolStripMenuItem.cs`; `FormCommit.Designer.cs` (`toolbarStaged`, `SolveMergeconflicts`); `GitIgnoreDialog/GitLocalExcludeModel.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`FileStatusList`, `FileMenuState`), `GitIgnoreFile.cs`, `Operations/GitOperations.cs` (reset files to, stop tracking); `src/xplat/GitExtensions.Xplat.App/CommitWindow.FileLists.cs`, `CommitWindow.axaml`, `GitIgnoreWindow.axaml.cs` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Push) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PushDialog.cs`, `PushRejection.cs`, `GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PushWindow.axaml(.cs)`, `PushRejectedFlow.cs`, `MainWindow.axaml(.cs)` (Push), `CommitWindow.axaml.cs` (Commit & push) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormClone.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (clone), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)` | `52d08e996` | partial |
@@ -291,6 +291,29 @@ FormRemoteProcess); Push tags uses the upstream `Commands.PushTag` builder; a pu
 Ctrl+Up as upstream) with the remote, the local and remote branch, force or force with lease, and tracking, built with
 upstream's `Commands.Push`. The toolbar's Push stays a quick push of the current branch (upstream's QuickPush,
 Ctrl+Shift+Up).
+Rebuilt 2026-10-14 (UI-PARITY U5): the push window is upstream's FormPush: "Push to" a remote (with Manage remotes) or a
+URL (with Browse), and its three tabs. "Push branches": the branch list ("[ All ]", HEAD and the local branches), the
+remote branch proposed as upstream's `BranchSelectedValueChanged` (the remote's push target, the tracked branch, or the
+remote's prefix and the branch's name) with the remote's other branches, and the options behind "Show options" (or always,
+upstream's `AlwaysShowAdvOpt`): force with lease and force push (excluding each other), recursive submodules (stored as
+upstream's `RecursiveSubmodules`), replace tracking reference, and create pull request after push (enabled when a
+repository host plugin knows the repository). "Push tags": a tag or "[ All ]", with the force box bound to force with
+lease as upstream. "Push multiple branches": upstream's grid (local and remote branch, ahead/behind or "=" and "<>", Push,
+Force and Delete excluding each other, the remote's branches without a local branch to delete) and the Push column's
+menu (Unselect all, Select tracked, Select all). Pull on the left opens the pull dialog over it. The checks before
+pushing are upstream's (`PushDialog`): the URL, a configured remote, a tag, a branch; a branch the remote does not have
+is confirmed (`PushNewBranch`), a branch without a tracking reference is offered one (`AddTrackingRef`), and a force push
+is offered as force with lease. A rejected push is handled as upstream's `HandlePushOnExit` (`PushRejection`,
+`PushRejectedFlow`), for the dialog, the quick push and the commit window's Commit & push: when the current branch was
+rejected, upstream's task dialog over the process window offers a pull with the default action, with rebase or with
+merge, or a force push with lease (another rejected ref: the force push only); the pull or force is followed by the push
+again, the merge commit check comes first when the default action is rebase, and "Don't show me this message again"
+keeps the choice in upstream's `AutoPullOnPushRejectedAction` (a kept force push asks again, as upstream). The task
+dialog itself got upstream's command links and verification box (shim `TaskDialogCommandLinkButton`,
+`TaskDialogVerificationCheckBox`; `MessageBoxWindow`). Not ported: Manage remotes (disabled until the remotes window
+exists), the URL history, Load SSH key and Pageant, `GetRemoteBranchesDirectlyFromRemote` (the rows come from the known
+remote branches), the Azure DevOps pull request link, and the rejection handling of a "Push multiple branches" push
+(upstream adds the force to its command line).
 
 **FormPull** (`partial`). Ported: pull of the current branch from the remote it tracks (origin when it tracks none), merge or rebase. Also ported: prune of remote-tracking branches on fetch (the Prune checkbox, next to Fetch). Not ported:
 fetch tags, unshallow, fetch all remotes, and the merge-commit message options. Added 2026-10-06: the progress dialog

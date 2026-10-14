@@ -1,0 +1,176 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.RemotesWindow"
+        Title="Remote repositories"
+        Width="950" Height="400" MinWidth="950" MinHeight="400" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormRemotes: the remotes with their details, and the default pull behavior of the local branches. -->
+  <TabControl x:Name="Tabs" Margin="3">
+    <TabItem x:Name="RemotesTab" Header="Remote repositories">
+      <DockPanel>
+        <!-- The list (active and inactive remotes as groups) with the New, Delete and Activate/Deactivate buttons. -->
+        <DockPanel DockPanel.Dock="Left" Width="350" Margin="8">
+          <StackPanel DockPanel.Dock="Right" Margin="4,0,0,0" Spacing="6">
+            <Button x:Name="NewButton" Width="26" Height="26" Padding="0">
+              <Image Source="{local:UpstreamImage RemoteAdd}" Width="16" Height="16" />
+            </Button>
+            <Button x:Name="DeleteButton" Width="26" Height="26" Padding="0">
+              <Image Source="{local:UpstreamImage RemoteDelete}" Width="16" Height="16" />
+            </Button>
+            <Button x:Name="ToggleStateButton" Width="26" Height="26" Padding="0">
+              <Image x:Name="ToggleStateImage" Source="{local:UpstreamImage EyeOpened}" Width="16" Height="16" />
+            </Button>
+          </StackPanel>
+          <ListBox x:Name="RemotesList">
+            <ListBox.Styles>
+              <!-- A group's header is not a remote: it cannot be clicked. -->
+              <Style Selector="ListBoxItem" x:DataType="local:RemoteListRow">
+                <Setter Property="IsHitTestVisible" Value="{Binding IsSelectable}" />
+                <Setter Property="Padding" Value="6,2" />
+                <Setter Property="MinHeight" Value="0" />
+              </Style>
+              <Style Selector="TextBlock.groupHeader">
+                <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}" />
+              </Style>
+              <Style Selector="TextBlock.inactive">
+                <Setter Property="Foreground" Value="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:RemoteListRow">
+                <TextBlock Text="{Binding Text}" Classes.groupHeader="{Binding IsHeader}"
+                           Classes.inactive="{Binding IsInactive}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+        <ScrollViewer Margin="0,8,8,8">
+          <HeaderedContentControl x:Name="DetailsGroup" Classes="groupBox" Header="Create New Remote"
+                                  VerticalAlignment="Top">
+            <StackPanel Spacing="6">
+              <Grid x:Name="DetailsGrid" ColumnDefinitions="110,*,6,104" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,4,Auto,4,Auto">
+                <TextBlock VerticalAlignment="Center">
+                  <AccessText x:Name="UrlLabel" Text="_Url" />
+                </TextBlock>
+                <ComboBox x:Name="UrlBox" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+                <Button x:Name="UrlBrowseButton" Grid.Column="3" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+                    <AccessText Text="_Browse..." VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Grid.Row="2" VerticalAlignment="Center">
+                  <AccessText Text="_Name" />
+                </TextBlock>
+                <TextBox x:Name="NameBox" Grid.Row="2" Grid.Column="1" />
+                <TextBlock x:Name="PrefixLabel" Grid.Row="4" Text="Prefix" VerticalAlignment="Center" />
+                <TextBox x:Name="PrefixBox" Grid.Row="4" Grid.Column="1" />
+                <TextBlock x:Name="ColorLabel" Grid.Row="6" Text="Color" VerticalAlignment="Center" />
+                <StackPanel x:Name="ColorPanel" Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                  <Button x:Name="ColorButton" MinWidth="60" Content="Set _color">
+                    <Button.Flyout>
+                      <Flyout Placement="BottomEdgeAlignedLeft">
+                        <StackPanel Spacing="6" Width="232">
+                          <WrapPanel x:Name="ColorSwatches" />
+                          <TextBox x:Name="ColorHtmlBox" Watermark="#RRGGBB" />
+                        </StackPanel>
+                      </Flyout>
+                    </Button.Flyout>
+                  </Button>
+                  <Button x:Name="ColorResetButton" Content="Default color" IsVisible="False" />
+                </StackPanel>
+                <CheckBox x:Name="SeparatePushUrlCheck" Grid.Row="8" Grid.ColumnSpan="2" Content="Sep_arate Push Url" />
+                <TextBlock x:Name="PushUrlLabel" Grid.Row="10" VerticalAlignment="Center" IsVisible="False">
+                  <AccessText Text="_Push Url" />
+                </TextBlock>
+                <ComboBox x:Name="PushUrlBox" Grid.Row="10" Grid.Column="1" IsEditable="True" IsVisible="False"
+                          HorizontalAlignment="Stretch" />
+                <Button x:Name="PushUrlBrowseButton" Grid.Row="10" Grid.Column="3" IsVisible="False"
+                        HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+                    <AccessText Text="Bro_wse..." VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+              <!-- Upstream's PuTTY panel, shown when git uses plink. -->
+              <StackPanel x:Name="PuttyPanel" Spacing="4" IsVisible="False">
+                <Grid ColumnDefinitions="Auto,*">
+                  <TextBlock Text="PuTTY SSH" FontWeight="SemiBold" />
+                  <Rectangle Grid.Column="1" Height="1" Margin="6,0,0,0" VerticalAlignment="Center"
+                             Fill="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+                </Grid>
+                <Grid ColumnDefinitions="110,*,6,104">
+                  <TextBlock VerticalAlignment="Center">
+                    <AccessText Text="Private _key file" />
+                  </TextBlock>
+                  <TextBox x:Name="PuttyKeyBox" Grid.Column="1" />
+                  <Button x:Name="PuttyKeyBrowseButton" Grid.Column="3" HorizontalAlignment="Stretch">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <Image Source="{local:UpstreamImage FileNew}" Width="16" Height="16" />
+                      <AccessText Text="Brows_e..." VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </StackPanel>
+              <Button x:Name="SaveButton" HorizontalAlignment="Right" MinWidth="130" Margin="0,0,20,0" IsEnabled="False">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Image Source="{local:UpstreamImage Save}" Width="16" Height="16" />
+                  <AccessText Text="_Save changes" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </HeaderedContentControl>
+        </ScrollViewer>
+      </DockPanel>
+    </TabItem>
+    <TabItem x:Name="PullBehaviorTab" Header="Default pull behavior (fetch &amp; merge)">
+      <Grid RowDefinitions="*,Auto" Margin="3">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,*" Margin="6,0">
+            <TextBlock Text="Local branch name" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="Remote repository" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Text="Default merge with" FontWeight="SemiBold" />
+          </Grid>
+          <ListBox x:Name="BranchesList">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="6,2" />
+                <Setter Property="MinHeight" Value="0" />
+              </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:PullBehaviorRow">
+                <Grid ColumnDefinitions="*,*,*">
+                  <TextBlock Text="{Binding LocalName}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding TrackingRemote}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding MergeWith}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+        <Grid Grid.Row="1" Margin="36,8,50,8" ColumnDefinitions="122,*" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto">
+          <TextBlock VerticalAlignment="Center">
+            <AccessText Text="_Local branch name" />
+          </TextBlock>
+          <TextBox x:Name="LocalBranchBox" Grid.Column="1" IsReadOnly="True" />
+          <TextBlock Grid.Row="2" VerticalAlignment="Center">
+            <AccessText Text="_Remote repository" />
+          </TextBlock>
+          <ComboBox x:Name="RemoteRepositoryBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
+          <TextBlock Grid.Row="4" VerticalAlignment="Center">
+            <AccessText Text="_Default merge with" />
+          </TextBlock>
+          <ComboBox x:Name="MergeWithBox" Grid.Row="4" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+          <Button x:Name="SavePullBehaviorButton" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Right" MinWidth="130">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Image Source="{local:UpstreamImage Save}" Width="16" Height="16" />
+              <AccessText Text="_Save changes" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Grid>
+    </TabItem>
+  </TabControl>
+</Window>

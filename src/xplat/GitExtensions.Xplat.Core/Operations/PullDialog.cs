@@ -132,9 +132,21 @@ public sealed class PullDialog
     /// <summary>
     ///  "[ All ]" and the repository's remotes, as upstream's list shows them.
     /// </summary>
-    public IReadOnlyList<string> Remotes { get; }
+    public IReadOnlyList<string> Remotes { get; private set; }
 
     public string CurrentBranch { get; }
+
+    /// <summary>
+    ///  Lists the remotes again after the remotes window closed, as upstream's <c>BindRemotesDropDown</c>: the remote
+    ///  chosen before (else <paramref name="branchRemote"/>) when it still exists, else the first remote, else "[ All ]".
+    /// </summary>
+    public void UpdateRemotes(IReadOnlyList<string> remotes, string? chosen, string? branchRemote)
+    {
+        Remotes = [AllRemotes, .. remotes];
+        string? wanted = string.IsNullOrEmpty(chosen) ? branchRemote : chosen;
+        Remote = remotes.FirstOrDefault(remote => StringComparer.OrdinalIgnoreCase.Equals(remote, wanted))
+                 ?? (remotes.Count > 0 ? remotes[0] : AllRemotes);
+    }
 
     /// <summary>
     ///  True when HEAD is detached: no current branch, or upstream's detached head text.

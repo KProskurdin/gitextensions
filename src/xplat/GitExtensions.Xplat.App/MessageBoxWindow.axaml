@@ -4,7 +4,13 @@
         Title="Git Extensions"
         Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
   <StackPanel Margin="16" Spacing="12">
+    <!-- A task dialog's heading, larger as WinForms shows it. -->
+    <TextBlock x:Name="HeadingText" IsVisible="False" TextWrapping="Wrap" FontSize="15" FontWeight="SemiBold" />
     <SelectableTextBlock x:Name="MessageText" TextWrapping="Wrap" MaxHeight="400" />
-    <StackPanel x:Name="ButtonsPanel" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" />
+    <StackPanel x:Name="CommandLinksPanel" IsVisible="False" Spacing="4" />
+    <DockPanel>
+      <CheckBox x:Name="VerificationCheck" IsVisible="False" DockPanel.Dock="Left" VerticalAlignment="Center" />
+      <StackPanel x:Name="ButtonsPanel" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" />
+    </DockPanel>
   </StackPanel>
 </Window>

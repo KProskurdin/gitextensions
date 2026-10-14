@@ -14,11 +14,13 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  The repository's git questions the pull window asks before it closes: a branch's <c>branch.&lt;name&gt;.remote</c>, and
-///  whether a rebase would rebase a merge commit (remote, remote branch, current branch).
+///  whether a rebase would rebase a merge commit (remote, remote branch, current branch). <see cref="ManageRemotes"/>
+///  opens the remotes window over the pull window with a remote chosen (or none) and lists the remotes again.
 /// </summary>
 public sealed record PullWindowGit(
     Func<string, Task<string?>> BranchRemoteOf,
-    Func<string, string, string, Task<bool>> RebasesMergeCommit);
+    Func<string, string, string, Task<bool>> RebasesMergeCommit,
+    Func<Window, string?, Task<IReadOnlyList<string>>>? ManageRemotes = null);
 
 /// <summary>
 ///  Upstream's <c>FormPull</c> in the new shell: where to pull from, the branches, merge, rebase or fetch, the tags and
@@ -57,9 +59,10 @@ public partial class PullWindow : Window
         RemotesBox.ItemsSource = dialog.Remotes;
         UnshallowCheck.IsVisible = isShallow;
 
-        // As upstream, the remotes and stash windows open from here; the new shell has neither yet.
-        AddRemoteButton.IsEnabled = false;
+        // As upstream, the stash window opens from here too; the new shell has none yet.
         StashButton.IsEnabled = false;
+        AddRemoteButton.IsEnabled = git.ManageRemotes is not null;
+        AddRemoteButton.Click += (_, _) => UiActions.Run(ManageRemotesAsync, _ => { });
         MergetoolButton.IsEnabled = solveConflicts is not null;
         MergetoolButton.Click += (_, _) => solveConflicts?.Invoke();
 
@@ -126,6 +129,22 @@ public partial class PullWindow : Window
         _dialog.Prune = PruneCheck.IsChecked == true;
         _dialog.PruneTags = PruneTagsCheck.IsChecked == true;
         _dialog.AutoStash = AutoStashCheck.IsChecked == true;
+    }
+
+    // Upstream's AddRemoteClick: the remotes window with the chosen remote (none for "[ All ]"), then the remotes again with
+    // the same choice.
+    private async Task ManageRemotesAsync()
+    {
+        if (_git.ManageRemotes is null)
+        {
+            return;
+        }
+
+        string chosen = _dialog.Remote;
+        IReadOnlyList<string> remotes = await _git.ManageRemotes(this, _dialog.IsPullAll ? null : chosen);
+        _dialog.UpdateRemotes(remotes, chosen, branchRemote: null);
+        RemotesBox.ItemsSource = _dialog.Remotes;
+        ShowDialogState();
     }
 
     private void ShowDialogState()

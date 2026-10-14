@@ -220,6 +220,12 @@ public interface IAppPreferences
     int RecursiveSubmodules { get; set; }
 
     /// <summary>
+    ///  Upstream's <c>AutoPullOnPushRejectedAction</c>: what a rejected push does without asking (the push dialog's "Don't
+    ///  show me this message again"), or null to ask.
+    /// </summary>
+    GitPullAction? AutoPullOnPushRejectedAction { get; set; }
+
+    /// <summary>
     ///  Upstream's <c>DontShowHelpImages</c>: the help pictures of the pull, push and other dialogs are hidden.
     /// </summary>
     bool DontShowHelpImages { get; set; }
@@ -859,6 +865,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RecursiveSubmodules = value;
     }
 
+    public GitPullAction? AutoPullOnPushRejectedAction
+    {
+        get => AppSettings.AutoPullOnPushRejectedAction;
+        set => AppSettings.AutoPullOnPushRejectedAction = value;
+    }
+
     public bool DontShowHelpImages
     {
         get => AppSettings.DontShowHelpImages;
@@ -1496,6 +1508,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool AlwaysShowAdvOpt { get; set; }
 
     public int RecursiveSubmodules { get; set; } = 1;
+
+    public GitPullAction? AutoPullOnPushRejectedAction { get; set; }
 
     public bool DontShowHelpImages { get; set; }
 

@@ -522,10 +522,12 @@ public partial class CommitWindow : Window
         }
 
         string remote = _repository.TrackingRemote ?? DefaultRemote;
-        bool pushed = forced
-            ? await _actions.PushAsync(_repositoryPath,
-                new PushRequest(remote, branch, branch, ForcePushOptions.ForceWithLease, Track: false))
-            : await _actions.PushAsync(_repositoryPath, remote, branch);
+        // As upstream, which pushes through its push dialog: a rejected push is offered a pull or a force push.
+        bool pushed = await new PushRejectedFlow(_actions, _preferences).PushAsync(() => this, _repositoryPath,
+            forced
+                ? new PushRequest(remote, branch, branch, ForcePushOptions.ForceWithLease, Track: false)
+                : new PushRequest(remote, branch, "", ForcePushOptions.DoNotForce, Track: true),
+            new PushOrigin(branch, branch, _repository.TrackingRemote));
         if (pushed && pushOnly && _preferences.CloseCommitDialogAfterCommit)
         {
             Close();

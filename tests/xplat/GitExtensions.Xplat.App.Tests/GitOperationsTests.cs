@@ -1,4 +1,5 @@
 using Avalonia.Headless.NUnit;
+using GitCommands;
 using GitCommands.Git;
 using GitCommands.Logging;
 using GitExtensions.Extensibility.Git;
@@ -384,6 +385,29 @@ internal sealed class GitOperationsTests
 
         GitProcess.Run(remote, "rev-parse", "published").Trim().Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
         _repo.Run("rev-parse", "--abbrev-ref", "@{u}").Trim().Should().Be("origin/published");
+    }
+
+    [AvaloniaTest]
+    public void Push_of_a_tag_and_of_multiple_branches_runs_upstreams_commands()
+    {
+        string remote = CreateBareRemote();
+        _repo.Run("remote", "add", "origin", remote);
+        string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        GitProcess.Run(remote, "branch", "old", current);
+        _repo.Run("tag", "v1");
+        _repo.Run("branch", "topic");
+
+        Wait(_operations.PushAsync(_repo.Path,
+            new PushRequest("origin", "", "", ForcePushOptions.DoNotForce, false, PushKind.Tag, "v1")));
+        Wait(_operations.PushAsync(_repo.Path,
+            new PushRequest("origin", "", "", ForcePushOptions.DoNotForce, false, PushKind.Multiple,
+                Actions: [new GitPushAction("topic", "topic"), GitPushAction.DeleteRemoteBranch("old")])));
+
+        GitProcess.Run(remote, "tag", "--list").Trim().Should().Be("v1");
+        GitProcess.Run(remote, "branch", "--list", "--format=%(refname:short)")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Should().BeEquivalentTo(current, "topic");
     }
 
     [AvaloniaTest]

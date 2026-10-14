@@ -1,8 +1,12 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Layout;
 using DialogResult = System.Windows.Forms.DialogResult;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 using MessageBoxDefaultButton = System.Windows.Forms.MessageBoxDefaultButton;
 using TaskDialogButton = System.Windows.Forms.TaskDialogButton;
+using TaskDialogCommandLinkButton = System.Windows.Forms.TaskDialogCommandLinkButton;
 using TaskDialogPage = System.Windows.Forms.TaskDialogPage;
 
 namespace GitExtensions.Xplat.App;
@@ -13,6 +17,8 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MessageBoxWindow : Window
 {
+    private const string CommandLinkArrow = "➔";
+
     public MessageBoxWindow(string text, string caption, MessageBoxButtons buttons,
         MessageBoxDefaultButton defaultButton = MessageBoxDefaultButton.Button1)
     {
@@ -53,26 +59,56 @@ public partial class MessageBoxWindow : Window
     }
 
     /// <summary>
-    ///  A WinForms task dialog shown as a message box: the heading above the text, and the page's own buttons.
-    ///  <see cref="ChosenButton"/> is the button pressed; closing the box is WinForms' Cancel.
+    ///  A WinForms task dialog shown as a message box: the heading above the text, the command links in rows of their own,
+    ///  the page's other buttons and its verification check box. <see cref="ChosenButton"/> is the button pressed; closing
+    ///  the box is WinForms' Cancel. The verification choice is written back to the page.
     /// </summary>
     public MessageBoxWindow(TaskDialogPage page)
     {
         InitializeComponent();
         Title = string.IsNullOrEmpty(page.Caption) ? "Git Extensions" : page.Caption;
-        MessageText.Text = string.Join(Environment.NewLine + Environment.NewLine,
-            new string?[] { page.Heading, page.Text }.Where(part => !string.IsNullOrEmpty(part)));
+        HeadingText.Text = page.Heading;
+        HeadingText.IsVisible = !string.IsNullOrEmpty(page.Heading);
+        MessageText.Text = page.Text;
+        if (page.Verification is { } verification)
+        {
+            VerificationCheck.Content = new AccessText { Text = verification.Text?.Replace('&', '_') };
+            VerificationCheck.IsChecked = verification.Checked;
+            VerificationCheck.IsVisible = true;
+            Closed += (_, _) => verification.Checked = VerificationCheck.IsChecked == true;
+        }
+
         for (int index = 0; index < page.Buttons.Count; index++)
         {
             TaskDialogButton choice = page.Buttons[index];
-            Button button = new() { Content = choice.Text, MinWidth = 80, IsDefault = index == 0 };
+            bool isCommandLink = choice is TaskDialogCommandLinkButton;
+
+            // WinForms' access keys are '&', Avalonia's '_'.
+            AccessText label = new() { Text = choice.Text?.Replace('&', '_') };
+            Button button = new()
+            {
+                Content = isCommandLink ? CommandLinkContent(label) : label,
+                MinWidth = 80,
+                IsDefault = index == 0,
+                IsCancel = choice == TaskDialogButton.Cancel,
+                HorizontalAlignment = isCommandLink ? HorizontalAlignment.Stretch : HorizontalAlignment.Right,
+                HorizontalContentAlignment = isCommandLink ? HorizontalAlignment.Left : HorizontalAlignment.Center,
+            };
+            if (isCommandLink)
+            {
+                button.Classes.Add("tool");
+                button.Padding = new Thickness(8, 6);
+            }
+
             button.Click += (_, _) =>
             {
                 ChosenButton = choice;
                 Close();
             };
-            ButtonsPanel.Children.Add(button);
+            (isCommandLink ? CommandLinksPanel : ButtonsPanel).Children.Add(button);
         }
+
+        CommandLinksPanel.IsVisible = CommandLinksPanel.Children.Count > 0;
     }
 
     /// <summary>
@@ -101,4 +137,12 @@ public partial class MessageBoxWindow : Window
         DialogResult.TryAgain => "Try again",
         _ => result.ToString(),
     };
+
+    // WinForms draws command links flat, with an arrow and a frame only under the pointer.
+    private static StackPanel CommandLinkContent(AccessText label)
+    {
+        TextBlock arrow = new() { Text = CommandLinkArrow, VerticalAlignment = VerticalAlignment.Center };
+        arrow.Bind(TextBlock.ForegroundProperty, arrow.GetResourceObservable("SystemControlHighlightAccentBrush"));
+        return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { arrow, label } };
+    }
 }

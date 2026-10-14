@@ -20,15 +20,20 @@ public partial class PushWindow : Window
     private readonly PushDialog _dialog;
     private readonly IAppPreferences _preferences;
     private bool _showing;
+    private readonly Func<Window, string?, Task<PushRepository>>? _manageRemotes;
     private string? _rowsRemote;
 
     /// <param name="canCreatePullRequest">True when a repository host plugin knows the repository.</param>
     /// <param name="openPull">Opens the pull dialog over this window (upstream's Pull button).</param>
+    /// <param name="manageRemotes">Opens the remotes window over this window with a remote chosen, and reads the
+    ///  repository again (upstream's Manage remotes).</param>
     public PushWindow(PushDialog dialog, IAppPreferences preferences, string workingDirectory,
-        bool canCreatePullRequest = false, Func<Window, Task>? openPull = null)
+        bool canCreatePullRequest = false, Func<Window, Task>? openPull = null,
+        Func<Window, string?, Task<PushRepository>>? manageRemotes = null)
     {
         _dialog = dialog;
         _preferences = preferences;
+        _manageRemotes = manageRemotes;
         InitializeComponent();
         Title = string.Format("{0} ({1})", UpstreamTranslation.ByText(PushDialog.PushCaption), workingDirectory);
         dialog.RecursiveSubmodules = preferences.RecursiveSubmodules;
@@ -39,8 +44,8 @@ public partial class PushWindow : Window
         ToolTip.SetTip(ForceWithLeaseCheck, UpstreamTranslation.ByText(PushDialog.ForceWithLeaseTooltip));
         CreatePullRequestCheck.IsEnabled = canCreatePullRequest;
 
-        // As upstream, the remotes window opens from here; the new shell has none yet.
-        AddRemoteButton.IsEnabled = false;
+        AddRemoteButton.IsEnabled = manageRemotes is not null;
+        AddRemoteButton.Click += (_, _) => UiActions.Run(() => ManageRemotesAsync(_dialog.Remote), _ => { });
         PullButton.IsEnabled = openPull is not null;
         PullButton.Click += (_, _) => UiActions.Run(() => openPull!(this), _ => { });
 
@@ -156,6 +161,23 @@ public partial class PushWindow : Window
         _showing = false;
     }
 
+    // Upstream's OpenRemotesDialogAndRefreshList.
+    private async Task ManageRemotesAsync(string? remote)
+    {
+        if (_manageRemotes is null)
+        {
+            return;
+        }
+
+        KeepTypedValues();
+        _dialog.UpdateRepository(await _manageRemotes(this, remote), remote);
+        RemotesBox.ItemsSource = _dialog.Remotes;
+        BranchBox.ItemsSource = _dialog.Branches;
+        TagBox.ItemsSource = _dialog.Tags;
+        _rowsRemote = null;
+        ShowDialogState();
+    }
+
     private async Task BrowseDestinationAsync()
     {
         IReadOnlyList<IStorageFolder> folders =
@@ -170,6 +192,25 @@ public partial class PushWindow : Window
     private async Task PushAsync()
     {
         KeepTypedValues();
+
+        // Upstream's CheckIfRemoteExist: without a remote, the remotes window is offered first.
+        if (_dialog.Remotes.Count == 0 && _manageRemotes is not null && !_dialog.ToUrl)
+        {
+            MessageBoxWindow configure = new(UpstreamTranslation.ByText(PushDialog.ConfigureRemote),
+                UpstreamTranslation.ByText(PushDialog.ErrorPushToRemoteCaption), MessageBoxButtons.YesNo);
+            await configure.ShowDialog(this);
+            if (configure.Result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            await ManageRemotesAsync(null);
+            if (_dialog.Remotes.Count == 0)
+            {
+                return;
+            }
+        }
+
         if (_dialog.ValidationError() is { } error)
         {
             await new MessageBoxWindow(UpstreamTranslation.ByText(error), UpstreamTranslation.ByText(

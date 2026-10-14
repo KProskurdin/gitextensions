@@ -24,7 +24,8 @@ internal sealed class PushDialogTests
         string designer = File.ReadAllText(Path.Combine(root, "src", "app", "GitUI", "CommandsDialogs",
             "FormPush.Designer.cs"));
         foreach (FieldInfo field in typeof(PushDialog).GetFields(BindingFlags.Public | BindingFlags.Static)
-                     .Where(field => field.FieldType == typeof(string) && field.Name is not nameof(PushDialog.HeadText)))
+                     .Where(field =>
+                         field.FieldType == typeof(string) && field.Name is not nameof(PushDialog.HeadText)))
         {
             string text = ((string)field.GetValue(null)!).Replace(Environment.NewLine, "\n").Replace("\"", "\\\"");
             form.Should().Contain(text, field.Name);
@@ -86,7 +87,8 @@ internal sealed class PushDialogTests
 
         dialog.Tab = PushTab.Tags;
         dialog.Tag = "v1";
-        dialog.Request().Should().Be(new PushRequest("origin", "", "", ForcePushOptions.Force, false, PushKind.Tag, "v1"));
+        dialog.Request().Should()
+            .Be(new PushRequest("origin", "", "", ForcePushOptions.Force, false, PushKind.Tag, "v1"));
         dialog.Tag = PushDialog.AllRefs;
         dialog.Request().Kind.Should().Be(PushKind.AllTags);
     }
@@ -127,27 +129,35 @@ internal sealed class PushDialogTests
     [Test]
     public void The_multiple_branches_rows_compare_with_the_remote_and_their_choices_exclude_each_other()
     {
-        PushDialog dialog = Repository("origin");
+        PushRepository data = Data("origin");
+        PushDialog dialog = new(data with
+        {
+            RemoteBranches = [.. data.RemoteBranches, new FakeRef("topic", "origin", _two)],
+            AheadBehind = new Dictionary<string, AheadBehindData>
+            {
+                ["main"] = new("main", "refs/remotes/origin/trunk", "1", ""),
+            },
+        });
         dialog.Tab = PushTab.MultipleBranches;
 
         dialog.LoadMultipleBranches();
 
         dialog.MultipleBranches.Select(row => (row.Local, row.Remote, row.AheadBehind)).Should().Equal(
-            ("main", "trunk", ""), ("topic", "", "<>"), ("", "old", ""), ("", "trunk", ""));
+            ("main", "trunk", "1↑"), ("topic", "", "<>"), ("", "trunk", ""), ("", "old", ""));
         PushBranchRow topic = dialog.MultipleBranches[1];
         topic.Push = true;
         topic.Force = true;
         topic.Push.Should().BeFalse();
-        dialog.MultipleBranches[2].Delete = true;
+        dialog.MultipleBranches[3].Delete = true;
         dialog.SelectTracked();
         dialog.MultipleBranches[0].Push.Should().BeTrue();
-        dialog.MultipleBranches[1].Force.Should().BeFalse("select tracked sets every push choice");
-        dialog.MultipleBranches[1].Force = true;
+        dialog.MultipleBranches[1].Force.Should().BeTrue("select tracked sets only the push choices");
 
         PushRequest request = dialog.Request();
 
         request.Kind.Should().Be(PushKind.Multiple);
-        request.Actions!.Select(action => action.Format()).Should().Equal("main:trunk", "+topic:topic", ":old");
+        request.Actions!.Select(action => action.ToString()).Should().Equal(
+            "refs/heads/main:refs/heads/trunk", "+refs/heads/topic:refs/heads/topic", ":refs/heads/old");
     }
 
     private static PushDialog Repository(string? branchRemote) => new(Data(branchRemote));
@@ -155,8 +165,11 @@ internal sealed class PushDialogTests
     private static PushRepository Data(string? branchRemote)
         => new("main",
             [Remote("origin", pushUrl: "git@example.com:push.git"), Remote("upstream")],
-            [new FakeRef("main", "", _one) { TrackingRemote = "origin", MergeWith = "trunk" }, new FakeRef("topic", "", _one)],
-            [new FakeRef("trunk", "origin", _one), new FakeRef("old", "origin", _two), new FakeRef("topic", "origin", _two)],
+            [
+                new FakeRef("main", "", _one) { TrackingRemote = "origin", MergeWith = "trunk" },
+                new FakeRef("topic", "", _one)
+            ],
+            [new FakeRef("trunk", "origin", _one), new FakeRef("old", "origin", _two)],
             ["v1"],
             branchRemote,
             null,
@@ -174,7 +187,9 @@ internal sealed class PushDialogTests
     {
         public string Name => name;
 
-        public ObjectId? ObjectId => id;
+        public ObjectId ObjectId => id;
+
+        public string? Guid => id.ToString();
 
         public string CompleteName => remote.Length == 0 ? $"refs/heads/{name}" : $"refs/remotes/{remote}/{name}";
 

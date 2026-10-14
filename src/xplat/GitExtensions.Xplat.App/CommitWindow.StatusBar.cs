@@ -13,6 +13,16 @@ public partial class CommitWindow
         Activated += (_, _) => Run(ShowCommitterAsync);
         CommitAuthorBox.LostFocus += (_, _) => Run(ShowCommitterAsync);
         Opened += (_, _) => Run(ShowBranchAsync);
+
+        // Upstream's remoteNameLabel: the remotes window on the branch's pull behavior, then the branch read again.
+        RemoteNameLink.Click += (_, _) => Run(async () =>
+        {
+            CommitBranchStatus status = await CommitStatusBar.BranchAsync(_repositoryPath);
+            await new RemotesWindow(_repositoryPath, _preferences,
+                remote => _actions.FetchAsync(_repositoryPath, remote, prune: false),
+                preselectLocal: status.Branch.Length > 0 ? status.Branch : null).ShowDialog(this);
+            await ShowBranchAsync();
+        });
         CommitMessageBox.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.CaretIndexProperty || e.Property == TextBox.TextProperty)

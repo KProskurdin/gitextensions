@@ -217,6 +217,13 @@ toolbar icons with upstream's `ToolTipText`.
   local branch, tags, full history, prune tags) and its checks before pulling (`PullDialog`). Manage remotes and Stash
   changes wait for the remotes and stash windows. See the FormPull note in `PORTING-MAP.md`. Checked by screenshot
   (`XPLAT_SCREENSHOT_WINDOW=pull`).
+- 2026-10-14, U5 Push done: upstream's FormPush layout, texts and images, its three tabs (branches with the options panel,
+  tags, multiple branches with upstream's grid and header menu), its checks before pushing (`PushDialog`), and upstream's
+  handling of a rejected push (offer a pull with the default action, rebase or merge, or a force push with lease, then push
+  again; `PushRejection`), also for the quick push and the commit window's Commit & push. The task dialog gained command
+  links and "Don't show me this message again". Fixed then: tag, all-tags and multiple-branch pushes from the dialog were
+  refused as "no branch". Manage remotes waits for the remotes window. See the FormPush note in `PORTING-MAP.md`. Checked
+  by screenshot (`XPLAT_SCREENSHOT_WINDOW=push`).
 
 ## Risks
 

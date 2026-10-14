@@ -23,4 +23,12 @@ public static class BranchNames
         => !enabled || !name.Any(PathUtil.IsValidPathChar)
             ? name
             : new GitBranchNameNormaliser().Normalise(name, new GitBranchNameOptions(symbol));
+
+    /// <summary>
+    ///  A remote's branch prefix as upstream's remotes dialog fixes it up when its box is left: always normalised, with
+    ///  the trailing slash a prefix ends with allowed.
+    /// </summary>
+    public static string NormalisePrefix(string prefix, string symbol)
+        => new GitBranchNameNormaliser().Normalise(prefix,
+            new GitBranchNameOptions(replacementToken: symbol, allowTrailingSlash: true));
 }

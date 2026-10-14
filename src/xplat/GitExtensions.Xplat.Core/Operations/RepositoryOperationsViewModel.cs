@@ -220,12 +220,22 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
     public Task<bool> PushAsync(string repositoryPath, PushRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Remote) || string.IsNullOrWhiteSpace(request.LocalBranch))
+        // Only a branch push names a branch; the others push tags, every branch or the rows of several branches.
+        if (string.IsNullOrWhiteSpace(request.Remote) ||
+            (request.Kind == PushKind.Branch && string.IsNullOrWhiteSpace(request.LocalBranch)))
         {
             return RejectAsync("Choose a remote and a branch to push.");
         }
 
-        return RunRemoteAsync($"Push {request.LocalBranch} to {request.Remote}", "Pushed", repositoryPath,
+        string what = request.Kind switch
+        {
+            PushKind.Tag => $"tag {request.Tag}",
+            PushKind.AllTags => "tags",
+            PushKind.AllBranches => "all branches",
+            PushKind.Multiple => "branches",
+            _ => request.LocalBranch,
+        };
+        return RunRemoteAsync($"Push {what} to {request.Remote}", "Pushed", repositoryPath,
             (output, cancellation) => _operations.PushAsync(repositoryPath, request, output, cancellation));
     }
 

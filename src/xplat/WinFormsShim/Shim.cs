@@ -84,7 +84,8 @@ public static class TextRenderer
         }
 
         return Measurer?.Invoke(text, font)
-            ?? new Size((int)(text.Length * font.Size * AverageGlyphWidthInEm), (int)Math.Ceiling(font.Height * 1.0));
+               ?? new Size((int)(text.Length * font.Size * AverageGlyphWidthInEm),
+                   (int)Math.Ceiling(font.Height * 1.0));
     }
 }
 
@@ -133,7 +134,8 @@ public class Control : System.ComponentModel.Component, IWin32Window
 /// </summary>
 public class KeysConverter : System.ComponentModel.TypeConverter
 {
-    public override object? ConvertTo(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, Type destinationType)
+    public override object? ConvertTo(System.ComponentModel.ITypeDescriptorContext? context,
+        System.Globalization.CultureInfo? culture, object? value, Type destinationType)
     {
         if (destinationType != typeof(string) || value is not Keys keys)
         {
@@ -301,9 +303,12 @@ public class CheckBox : Control
 /// </summary>
 public static class MessageBox
 {
-    public static Func<IWin32Window?, string, string, MessageBoxButtons, MessageBoxIcon, MessageBoxDefaultButton, DialogResult>? Handler { get; set; }
+    public static
+        Func<IWin32Window?, string, string, MessageBoxButtons, MessageBoxIcon, MessageBoxDefaultButton, DialogResult>?
+        Handler { get; set; }
 
-    public static DialogResult Show(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
+    public static DialogResult Show(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons,
+        MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
         => Handler?.Invoke(owner, text, caption, buttons, icon, defaultButton) ?? DialogResult.None;
 }
 
@@ -324,7 +329,8 @@ public static class Application
 
     public static string ProductName => "Git Extensions";
 
-    public static string ProductVersion => System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "0.0.0.0";
+    public static string ProductVersion =>
+        System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "0.0.0.0";
 
     public static bool IsDarkModeEnabled => SystemColorMode == SystemColorMode.Dark;
 
@@ -338,7 +344,8 @@ public static class Application
     {
         get
         {
-            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitExtensions");
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "GitExtensions");
             Directory.CreateDirectory(path);
             return path;
         }
@@ -349,7 +356,8 @@ public static class Application
     /// </summary>
     public static event System.Threading.ThreadExceptionEventHandler? ThreadException;
 
-    public static void OnThreadException(Exception t) => ThreadException?.Invoke(null, new System.Threading.ThreadExceptionEventArgs(t));
+    public static void OnThreadException(Exception t) =>
+        ThreadException?.Invoke(null, new System.Threading.ThreadExceptionEventArgs(t));
 
     /// <summary>
     ///  There is no message pump to run; kept so WinForms-era test helpers still compile.
@@ -404,6 +412,22 @@ public class TaskDialogButton(string? text = null)
     public static TaskDialogButton Cancel { get; } = new("Cancel");
 }
 
+/// <summary>
+///  A task dialog button shown as a command link: a row of its own above the dialog's other buttons.
+/// </summary>
+public class TaskDialogCommandLinkButton(string? text = null) : TaskDialogButton(text);
+
+/// <summary>
+///  The check box at the bottom of a task dialog, e.g. "Don't show me this message again"; <see cref="Checked"/> holds the
+///  choice once the dialog closes.
+/// </summary>
+public class TaskDialogVerificationCheckBox
+{
+    public string? Text { get; set; }
+
+    public bool Checked { get; set; }
+}
+
 public class TaskDialogPage
 {
     public string? Caption { get; set; }
@@ -416,7 +440,11 @@ public class TaskDialogPage
 
     public bool AllowCancel { get; set; }
 
+    public bool SizeToContent { get; set; }
+
     public List<TaskDialogButton> Buttons { get; } = [];
+
+    public TaskDialogVerificationCheckBox? Verification { get; set; }
 }
 
 /// <summary>

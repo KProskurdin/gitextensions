@@ -84,6 +84,11 @@ public static class AppServices
     }
 
     /// <summary>
+    ///  The URLs of remotes used before (upstream's remote history), which the remotes window adds to.
+    /// </summary>
+    public static IRemoteUrlHistory RemoteUrls { get; set; } = new UpstreamRemoteUrlHistory();
+
+    /// <summary>
     ///  The app preferences, stored under the upstream setting keys. Created on first use, like the recent list.
     /// </summary>
     public static IAppPreferences Preferences

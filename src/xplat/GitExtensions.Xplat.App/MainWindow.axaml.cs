@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
 using GitCommands.Git;
+using GitCommands.Remotes;
 using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
@@ -162,6 +163,7 @@ public partial class MainWindow : Window
         CloseRepositoryMenuItem.Click += (_, _) => CloseRepository();
         ExitMenuItem.Click += (_, _) => Close();
         RefreshMenuItem.Click += (_, _) => RefreshRepository();
+        RemoteRepositoriesMenuItem.Click += (_, _) => Run(() => ShowRemotesAsync(this));
         FileExplorerMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
         TerminalMenuItem.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         FilesMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
@@ -795,7 +797,9 @@ public partial class MainWindow : Window
     private void Push() => RunOnCurrentBranch(async (path, branch) =>
         await ConfirmPushAsync(TrackingRemote(), branch)
         && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
-            () => _actions.PushAsync(path, TrackingRemote(), branch)));
+            () => PushFlow.PushAsync(ProcessOwner, path,
+                new PushRequest(TrackingRemote(), branch, "", ForcePushOptions.DoNotForce, Track: true),
+                new PushOrigin(branch, branch, _repository.TrackingRemote))));
 
     // Upstream's quick fetch (Fetch in the pull menu), and its fetch-all and prune variants; a prune asks first.
     private void Fetch(string remote = RemoteName, bool prune = false) =>
@@ -1006,7 +1010,9 @@ public partial class MainWindow : Window
         PushRequest? request = await window.ShowDialog<PushRequest?>(this);
         if (request is not null
             && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
-                () => _actions.PushAsync(path, request))
+                () => PushFlow.PushAsync(ProcessOwner, path, request,
+                    new PushOrigin(window.Dialog.Branch, _repository.CurrentBranch, _repository.TrackingRemote,
+                        window.Dialog.ToUrl)))
             && window.CreatePullRequestAfterPush)
         {
             // As upstream: the repository host's pull request window after the push.
@@ -1017,7 +1023,12 @@ public partial class MainWindow : Window
     // Upstream's StartPushDialog: the dialog on the open repository; its Pull button opens the pull dialog over it.
     private async Task<PushWindow> NewPushWindowAsync(string path)
         => new(new PushDialog(await PushRepository.LoadAsync(path)), _preferences, path.EnsureTrailingPathSeparator(),
-            _plugins.HasRepositoryHost, owner => ShowPullDialogAsync(owner));
+            _plugins.HasRepositoryHost, owner => ShowPullDialogAsync(owner),
+            async (owner, remote) =>
+            {
+                await ShowRemotesAsync(owner, remote);
+                return await PushRepository.LoadAsync(path);
+            });
 
     private async Task ShowPullDialogAsync() => await ShowPullDialogAsync(this);
 
@@ -1059,7 +1070,13 @@ public partial class MainWindow : Window
                 ? remote
                 : null,
             (remote, remoteBranch, currentBranch) =>
-                _actions.RebasesMergeCommitAsync(path, remote, remoteBranch, currentBranch));
+                _actions.RebasesMergeCommitAsync(path, remote, remoteBranch, currentBranch),
+            async (owner, remote) =>
+            {
+                await ShowRemotesAsync(owner, remote);
+                return await Task.Run(() => new ConfigFileRemoteSettingsManager(() => GitModules.Open(path))
+                    .LoadRemotes(false).Select(loaded => loaded.Name ?? "").ToList());
+            });
         return new PullWindow(dialog, _preferences, PathUtil.GetDisplayPath(path.EnsureTrailingPathSeparator()),
             [.. _repository.Branches.Where(branch => branch.IsRemote).Select(branch => branch.Name)],
             [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)],
@@ -1105,6 +1122,11 @@ public partial class MainWindow : Window
             window.Show(this);
         });
     }
+
+    // Upstream's handling of a rejected push, with its questions over the process window that shows git's output.
+    private PushRejectedFlow PushFlow => new(_actions, _preferences);
+
+    private Window ProcessOwner() => _processWindow ?? (Window)this;
 
     // One output window, reused for the next remote operation, like upstream's process dialog.
     private void ShowProcessWindow()
@@ -1329,34 +1351,6 @@ public partial class MainWindow : Window
         {
             await _actions.CreateTagAsync(path, result.Value, commit, result.SecondValue);
         }
-    }
-
-    // Removing a remote also deletes its remote-tracking branches, so it is confirmed first.
-    private async Task<bool> RemoveRemoteAfterConfirmAsync(string path, string name)
-    {
-        string message = $"Remove the remote {name}? Its remote-tracking branches are deleted locally.";
-        return await new ConfirmWindow(message, "Remove").ShowDialog<bool>(this) &&
-               await _actions.RemoveRemoteAsync(path, name);
-    }
-
-    private async Task<bool> RenameRemoteAsync(string path, string name)
-    {
-        PromptResult? result = await new PromptWindow("Rename remote",
-                $"New name of the remote {name}. Its remote-tracking branches are renamed too.",
-                "Rename", initialValue: name)
-            .ShowDialog<PromptResult?>(this);
-        return result is not null && result.Value != name && await _actions.RenameRemoteAsync(path, name, result.Value);
-    }
-
-    // The URL is read from the repository's own config, so the box starts with the current value.
-    private async Task<bool> SetRemoteUrlAsync(string path, string name)
-    {
-        string current = await AppServices.GitConfig.GetAsync(ConfigScope.Local, $"remote.{name}.url", path);
-        PromptResult? result = await new PromptWindow("Set remote URL", $"URL or path of the remote {name}.", "Save",
-                initialValue: current)
-            .ShowDialog<PromptResult?>(this);
-        return result is not null && result.Value != current &&
-               await _actions.SetRemoteUrlAsync(path, name, result.Value);
     }
 
     // Deleting a tag on the remote removes it for everyone who fetches, so it is confirmed first; the local tag stays.
@@ -1824,6 +1818,20 @@ public partial class MainWindow : Window
     }
 
     // A worktree chosen in the window is opened here, as upstream's FormManageWorktree switches the browse window to it.
+    // Upstream's StartRemotesDialog: the remotes window on the open repository; a saved remote is fetched, and the
+    // repository is read again when the window closes.
+    private async Task ShowRemotesAsync(Window owner, string? preselectRemote = null, string? preselectLocal = null)
+    {
+        if (RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        await new RemotesWindow(path, _preferences, remote => _actions.FetchAsync(path, remote, prune: false),
+            preselectRemote, preselectLocal).ShowDialog(owner);
+        RefreshRepository();
+    }
+
     private async Task ShowWorktreesAsync()
     {
         if (RepositoryPath is { } path &&

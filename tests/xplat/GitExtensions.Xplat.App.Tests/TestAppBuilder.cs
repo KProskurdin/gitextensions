@@ -21,6 +21,8 @@ public static class TestAppBuilder
     /// </summary>
     public static InMemoryAppPreferences Preferences { get; } = new();
 
+    public static InMemoryRemoteUrlHistory RemoteUrls { get; } = new();
+
     /// <summary>
     ///  The git config the windows see during the tests, so no test writes the user's global git config.
     /// </summary>
@@ -104,6 +106,7 @@ public static class TestAppBuilder
 
         // Replaced before the app starts, so no window ever touches the user's settings file.
         AppServices.RecentRepositories = new InMemoryRecentRepositoryStore();
+        AppServices.RemoteUrls = RemoteUrls;
         AppServices.Preferences = Preferences;
         AppServices.GitConfig = GitConfig;
         AppServices.WindowPlacements = WindowPlacements;

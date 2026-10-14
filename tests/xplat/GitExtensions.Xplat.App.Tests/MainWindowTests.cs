@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
@@ -12,6 +13,7 @@ using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Xplat.App;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
@@ -1021,6 +1023,58 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void A_rejected_push_offers_upstreams_choices_and_pushes_again_after_the_pull()
+    {
+        string remote = Path.Combine(Path.GetTempPath(), "xplat-remote-" + Guid.NewGuid().ToString("N"));
+        string other = Path.Combine(Path.GetTempPath(), "xplat-other-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(remote);
+        try
+        {
+            GitProcess.Run(remote, "init", "--bare", "-q");
+            string branch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+            _repo.Run("remote", "add", "origin", remote);
+            _repo.Run("push", "-q", "-u", "origin", branch);
+            GitProcess.Run(Path.GetTempPath(), "clone", "-q", remote, other);
+            File.WriteAllText(Path.Combine(other, "theirs.txt"), "theirs");
+            GitProcess.Run(other, "add", "theirs.txt");
+            GitProcess.Run(other, "-c", "user.name=Other", "-c", "user.email=other@example.com", "commit", "-q", "-m",
+                "theirs");
+            GitProcess.Run(other, "push", "-q", "origin", branch);
+            File.WriteAllText(Path.Combine(_repo.Path, "ours.txt"), "ours");
+            _repo.Run("add", "ours.txt");
+            _repo.Run("commit", "-q", "-m", "ours");
+            MainWindow window = NewWindow();
+            window.Show();
+            Open(window, _repo.Path);
+
+            Click(window, "PushButton");
+
+            WaitUntil(() => window.OwnedWindows.OfType<ProcessWindow>().Any());
+            ProcessWindow process = window.OwnedWindows.OfType<ProcessWindow>().Single();
+            WaitUntil(() => process.OwnedWindows.OfType<MessageBoxWindow>().Any());
+            MessageBoxWindow question = process.OwnedWindows.OfType<MessageBoxWindow>().Single();
+            question.Title.Should().Be("Push was rejected from \"origin\"");
+            Find<TextBlock>(question, "HeadingText").Text.Should().Be(PushRejection.MergeHeading);
+            List<Button> links = [.. Find<StackPanel>(question, "CommandLinksPanel").Children.OfType<Button>()];
+            links.Select(button => button.GetLogicalDescendants().OfType<AccessText>().Single().Text).Should().Equal(
+                "_Pull with the default pull action (merge)", "Pull with _rebase", "Pull with _merge",
+                "_Force push with lease");
+            links[1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Pushed");
+            GitProcess.Run(remote, "log", "--format=%s", branch).Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2).Should().Equal("ours", "theirs");
+            TestAppBuilder.Preferences.AutoPullOnPushRejectedAction.Should().BeNull();
+            process.Close();
+        }
+        finally
+        {
+            GitProcess.DeleteFolder(remote);
+            GitProcess.DeleteFolder(other);
+        }
+    }
+
+    [AvaloniaTest]
     public void Push_dialog_pushes_the_chosen_branch_with_lease()
     {
         string remote = Path.Combine(Path.GetTempPath(), "xplat-remote-" + Guid.NewGuid().ToString("N"));
@@ -1040,9 +1094,10 @@ internal sealed class MainWindowTests
             Click(window, "PushDialogMenuItem");
             WaitUntil(() => window.OwnedWindows.OfType<PushWindow>().Any());
             PushWindow dialog = window.OwnedWindows.OfType<PushWindow>().Single();
-            Find<ComboBox>(dialog, "RemoteBox").SelectedItem.Should().Be("origin");
-            Find<ComboBox>(dialog, "LocalBranchBox").SelectedItem.Should().Be(branch);
-            Find<RadioButton>(dialog, "ForceWithLeaseRadio").IsChecked = true;
+            Find<ComboBox>(dialog, "RemotesBox").SelectedItem.Should().Be("origin");
+            Find<ComboBox>(dialog, "BranchBox").SelectedItem.Should().Be(branch);
+            Click(dialog, "ShowOptionsLink");
+            Find<CheckBox>(dialog, "ForceWithLeaseCheck").IsChecked = true;
             Click(dialog, "PushButton");
 
             WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Pushed");

@@ -154,7 +154,7 @@ public sealed class PushDialog
     /// </summary>
     public static IReadOnlyList<string> RecursiveSubmoduleChoices { get; } = ["None", "Check", "On-demand"];
 
-    private readonly PushRepository _repository;
+    private PushRepository _repository;
     private ConfigFileRemote? _remote;
     private bool _forceWithLease;
     private bool _force;
@@ -167,14 +167,17 @@ public sealed class PushDialog
         branch ??= repository.CurrentBranch;
         _branch = branch.Length == 0 ? HeadText : branch;
 
-        // Upstream's BindRemotesDropDown: the branch's remote, else origin, else the first.
-        _remote = repository.Remotes.FirstOrDefault(remote =>
-                      StringComparer.OrdinalIgnoreCase.Equals(remote.Name, repository.CurrentBranchRemote))
-                  ?? repository.Remotes.FirstOrDefault(remote =>
-                      StringComparer.OrdinalIgnoreCase.Equals(remote.Name, "origin"))
-                  ?? repository.Remotes.FirstOrDefault();
-        ShowRemoteDestination();
-        ProposeRemoteBranch();
+        BindRemotes(null);
+    }
+
+    /// <summary>
+    ///  Reads the repository again after the remotes window closed, choosing <paramref name="remote"/> when it still
+    ///  exists (upstream's <c>OpenRemotesDialogAndRefreshList</c>).
+    /// </summary>
+    public void UpdateRepository(PushRepository repository, string? remote)
+    {
+        _repository = repository;
+        BindRemotes(remote);
     }
 
     public IReadOnlyList<string> Remotes => [.. _repository.Remotes.Select(remote => remote.Name ?? "")];
@@ -434,6 +437,19 @@ public sealed class PushDialog
             _ => new PushRequest(destination, _branch, RemoteBranch, force, track,
                 RecursiveSubmodules: RecursiveSubmodules),
         };
+    }
+
+    // Upstream's BindRemotesDropDown: the remote asked for, else the branch's, else origin, else the first.
+    private void BindRemotes(string? remote)
+    {
+        string? wanted = string.IsNullOrEmpty(remote) ? _repository.CurrentBranchRemote : remote;
+        _remote = _repository.Remotes.FirstOrDefault(candidate =>
+                      StringComparer.OrdinalIgnoreCase.Equals(candidate.Name, wanted))
+                  ?? _repository.Remotes.FirstOrDefault(candidate =>
+                      StringComparer.OrdinalIgnoreCase.Equals(candidate.Name, "origin"))
+                  ?? _repository.Remotes.FirstOrDefault();
+        ShowRemoteDestination();
+        ProposeRemoteBranch();
     }
 
     // Upstream's RemotesUpdated: the URL box shows the remote's push URL, else its URL.

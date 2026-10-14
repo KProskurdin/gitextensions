@@ -241,14 +241,12 @@ public partial class MainWindow
         }
 
         bool remotesRoot = kind == RepoObjectKind.RemotesRoot;
-        Show(TreeAddRemoteMenuItem, remotesRoot);
+        Show(TreeManageRemotesMenuItem, remotesRoot);
         Show(TreeFetchAllRemotesMenuItem, remotesRoot);
         Show(TreePruneAllRemotesMenuItem, remotesRoot);
 
         bool remote = kind == RepoObjectKind.Remote;
-        Show(TreeRenameRemoteMenuItem, remote);
-        Show(TreeSetRemoteUrlMenuItem, remote);
-        Show(TreeRemoveRemoteMenuItem, remote);
+        Show(TreeManageRemoteMenuItem, remote);
         Show(TreeFetchRemoteMenuItem, remote);
         Show(TreePruneRemoteMenuItem, remote);
         Show(TreeOpenRemoteUrlMenuItem, remote, enabled: RemoteWebUrl(node) is not null);
@@ -395,12 +393,10 @@ public partial class MainWindow
             }
         };
 
-        TreeAddRemoteMenuItem.Click += (_, _) => Run(AddRemoteAsync);
+        TreeManageRemotesMenuItem.Click += (_, _) => Run(() => ShowRemotesAsync(this));
         TreeFetchAllRemotesMenuItem.Click += (_, _) => Fetch(remote: "--all", prune: false);
         TreePruneAllRemotesMenuItem.Click += (_, _) => Fetch(remote: "--all", prune: true);
-        TreeRenameRemoteMenuItem.Click += (_, _) => OnSelectedRemote(RenameRemoteAsync);
-        TreeSetRemoteUrlMenuItem.Click += (_, _) => OnSelectedRemote(SetRemoteUrlAsync);
-        TreeRemoveRemoteMenuItem.Click += (_, _) => OnSelectedRemote(RemoveRemoteAfterConfirmAsync);
+        TreeManageRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Run(() => ShowRemotesAsync(this, name)));
         TreeFetchRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Fetch(remote: name, prune: false));
         TreePruneRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Fetch(remote: name, prune: true));
         TreeOpenRemoteUrlMenuItem.Click += (_, _) =>
@@ -547,9 +543,6 @@ public partial class MainWindow
         }
     }
 
-    private void OnSelectedRemote(Func<string, string, Task<bool>> action)
-        => OnSelectedRemoteName(name => RunOnRepository(path => action(path, name)));
-
     private void OnSelectedRemoteName(Action<string> action)
     {
         if (SelectedRepoObject is { Kind: RepoObjectKind.Remote, Item: string name })
@@ -674,23 +667,6 @@ public partial class MainWindow
         if (result is not null)
         {
             await _actions.CreateBranchAsync(path, NormaliseBranchName(result.Value), checkout: true);
-        }
-    }
-
-    // Stands in for upstream's FormRemotes, which the new shell does not have yet: the name and URL of a new remote.
-    private async Task AddRemoteAsync()
-    {
-        if (RepositoryPath is not { } path)
-        {
-            return;
-        }
-
-        PromptResult? result = await new PromptWindow("Add remote", "Name of the new remote.", "Add",
-                secondPlaceholder: "URL or path")
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null)
-        {
-            await _actions.AddRemoteAsync(path, result.Value, result.SecondValue);
         }
     }
 

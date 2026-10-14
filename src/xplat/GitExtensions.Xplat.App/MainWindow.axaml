@@ -24,6 +24,8 @@
         <MenuItem x:Name="FileExplorerMenuItem" Header="File _explorer" />
         <MenuItem x:Name="TerminalMenuItem" Header="Open _terminal" />
         <Separator />
+        <MenuItem x:Name="RemoteRepositoriesMenuItem" Header="Remo_te repositories..." Icon="{local:UpstreamIcon Remotes}" />
+        <Separator />
         <MenuItem x:Name="FilesMenuItem" Header="_Browse files..." />
         <MenuItem x:Name="ReflogMenuItem" Header="Show _reflog..." />
         <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit ._gitignore..." />
@@ -328,13 +330,11 @@
               <!-- The new shell's: upstream deletes a remote tag from its push dialog, which the new shell does not have. -->
               <MenuItem x:Name="TreeDeleteRemoteTagMenuItem" Header="Delete on _remote..." Icon="{local:UpstreamIcon BranchDelete}" />
               <Separator />
-              <MenuItem x:Name="TreeAddRemoteMenuItem" Header="_Add remote..." Icon="{local:UpstreamIcon Remotes}" />
+              <MenuItem x:Name="TreeManageRemotesMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
               <MenuItem x:Name="TreeFetchAllRemotesMenuItem" Header="Fetch all remotes" Icon="{local:UpstreamIcon PullFetchAll}" />
               <MenuItem x:Name="TreePruneAllRemotesMenuItem" Header="Fetch and prune all remotes" Icon="{local:UpstreamIcon PullFetchPruneAll}" />
               <Separator />
-              <MenuItem x:Name="TreeRenameRemoteMenuItem" Header="Re_name..." Icon="{local:UpstreamIcon Remotes}" />
-              <MenuItem x:Name="TreeSetRemoteUrlMenuItem" Header="Set _URL..." Icon="{local:UpstreamIcon Remotes}" />
-              <MenuItem x:Name="TreeRemoveRemoteMenuItem" Header="Re_move..." Icon="{local:UpstreamIcon Remotes}" />
+              <MenuItem x:Name="TreeManageRemoteMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
               <MenuItem x:Name="TreeFetchRemoteMenuItem" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" />
               <MenuItem x:Name="TreePruneRemoteMenuItem" Header="Fetch and _prune" Icon="{local:UpstreamIcon PullFetchPrune}" />
               <MenuItem x:Name="TreeOpenRemoteUrlMenuItem" Header="Open remote Url" Icon="{local:UpstreamIcon Globe}"
