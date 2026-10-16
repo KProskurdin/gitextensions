@@ -40,3 +40,40 @@ public sealed class InMemoryRemoteUrlHistory : IRemoteUrlHistory
         return Task.CompletedTask;
     }
 }
+
+/// <summary>
+///  Changes to the remote history as upstream's <c>RemoteRepositoryManager</c> makes them.
+/// </summary>
+public static class RemoteUrlHistoryExtensions
+{
+    /// <summary>
+    ///  Upstream's <c>AddAsMostRecentAsync</c>: moves <paramref name="url"/> to the top of the history (matched ignoring
+    ///  case), adding it when it is not there, and saves the history unless it was already on top.
+    /// </summary>
+    public static async Task AddAsMostRecentAsync(this IRemoteUrlHistory history, string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        IList<UserRepository> entries = await history.LoadAsync();
+        UserRepository? entry = entries.FirstOrDefault(r => r.Path.Equals(url, StringComparison.CurrentCultureIgnoreCase));
+        if (entry is not null)
+        {
+            if (entries[0] == entry)
+            {
+                return;
+            }
+
+            entries.Remove(entry);
+        }
+        else
+        {
+            entry = new UserRepository(url);
+        }
+
+        entries.Insert(0, entry);
+        await history.SaveAsync(entries);
+    }
+}

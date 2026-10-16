@@ -1065,8 +1065,11 @@ public partial class SettingsWindow : Window
         _preferences.CloseCommitDialogAfterCommit = CloseAfterCommitCheck.IsChecked == true;
         _preferences.CloseProcessDialog = CloseProcessDialogCheck.IsChecked == true;
         _preferences.StartWithRecentWorkingDir = StartWithRecentWorkingDirCheck.IsChecked == true;
-        _preferences.FileHistory = new FileHistoryOptions(FollowRenamesInFileHistoryCheck.IsChecked == true,
-            FollowRenamesExactCheck.IsChecked == true);
+        _preferences.FileHistory = _preferences.FileHistory with
+        {
+            FollowRenames = FollowRenamesInFileHistoryCheck.IsChecked == true,
+            ExactRenamesOnly = FollowRenamesExactCheck.IsChecked == true,
+        };
         _preferences.UseHistogramDiffAlgorithm = UseHistogramDiffCheck.IsChecked == true;
         _preferences.IncludeUntrackedFilesInAutoStash = StashUntrackedFilesCheck.IsChecked == true;
         _preferences.UpdateSubmodulesOnCheckout = UpdateSubmodulesCheck.IsChecked;

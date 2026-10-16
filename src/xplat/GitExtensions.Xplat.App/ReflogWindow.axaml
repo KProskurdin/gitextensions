@@ -1,25 +1,61 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.ReflogWindow"
         Title="Reflog"
-        Width="680" Height="480" WindowStartupLocation="CenterOwner">
-  <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
-    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="ResetButton" Content="Reset branch here (mixed)" IsEnabled="False" />
-      <Button x:Name="CloseButton" Content="Close" />
+        Width="782" Height="555" MinWidth="400" MinHeight="200" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormReflog: the warning about local changes, the reference with the current branch and HEAD links, and
+       the reflog with its context menu, which a click opens too. -->
+  <Grid RowDefinitions="Auto,40,*" ColumnDefinitions="Auto,*">
+    <TextBlock x:Name="DirtyWarningText" Grid.ColumnSpan="2" IsVisible="False" Margin="3,0" TextAlignment="Center"
+               TextWrapping="Wrap"
+               Text="Warning: you've got changes in your working directory that could be lost if you want to reset the current branch to another commit.&#10;Stash them before if you don't want to lose them." />
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="4">
+      <TextBlock Text="Reference:" VerticalAlignment="Center" />
+      <ComboBox x:Name="ReferencesBox" Width="272" VerticalAlignment="Center" />
     </StackPanel>
-    <ListBox x:Name="EntryList" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="repo:ReflogEntry">
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Text="{Binding ShortHash}" />
-            <TextBlock Text="{Binding Selector}" />
-            <TextBlock Text="{Binding Message}" />
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-  </DockPanel>
+    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="4">
+      <TextBlock Text="Display reflog for:" VerticalAlignment="Center" />
+      <HyperlinkButton x:Name="CurrentBranchLink" Padding="0" VerticalAlignment="Center" />
+      <HyperlinkButton x:Name="HeadLink" Content="HEAD" Padding="0" VerticalAlignment="Center" />
+    </StackPanel>
+    <DockPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="3" Grid.IsSharedSizeScope="True">
+      <Grid DockPanel.Dock="Top" Margin="4,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" SharedSizeGroup="Sha" />
+          <ColumnDefinition Width="Auto" SharedSizeGroup="Ref" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="SHA-1" FontWeight="SemiBold" Margin="0,0,12,0" />
+        <TextBlock Grid.Column="1" Text="Ref" FontWeight="SemiBold" Margin="0,0,12,0" />
+        <TextBlock Grid.Column="2" Text="Action" FontWeight="SemiBold" />
+      </Grid>
+      <ListBox x:Name="EntryList">
+        <ListBox.ContextMenu>
+          <ContextMenu x:Name="EntryMenu">
+            <MenuItem x:Name="CopyShaMenuItem" Header="Copy SHA-1" Icon="{local:UpstreamIcon CommitId}" />
+            <MenuItem x:Name="CreateBranchMenuItem" Header="Create a branch on this commit..."
+                      Icon="{local:UpstreamIcon BranchCreate}" />
+            <MenuItem x:Name="ResetBranchMenuItem" Header="Reset current branch to this commit..."
+                      Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" />
+          </ContextMenu>
+        </ListBox.ContextMenu>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="repo:ReflogEntry">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" SharedSizeGroup="Sha" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="Ref" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{Binding Sha}" Margin="0,0,12,0" />
+              <TextBlock Grid.Column="1" Text="{Binding Ref}" Margin="0,0,12,0" />
+              <TextBlock Grid.Column="2" Text="{Binding Action}" TextTrimming="CharacterEllipsis" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+  </Grid>
 </Window>

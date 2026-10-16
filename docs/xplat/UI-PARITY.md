@@ -250,6 +250,39 @@ toolbar icons with upstream's `ToolTipText`.
   question, scripts, submodules); Commands > Checkout branch... with upstream's Ctrl+. hotkey. Tags and commits keep the
   old local-changes window until FormCheckoutRevision is ported. See the FormCheckoutBranch note in `PORTING-MAP.md`.
   Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=checkout`).
+- 2026-10-16, U5 Checkout revision done: upstream's FormCheckoutRevision (the commit picker and "Force (reset local
+  changes)"), for Commands > Checkout revision... (new), the grid's "Checkout this commit..." and a tag's checkout; the
+  commit picker became a shared control (`CommitPickerView`) used by the create branch window too, and the old
+  local-changes window is gone. See the FormCheckoutRevision note in `PORTING-MAP.md`. Checked by screenshot
+  (`XPLAT_SCREENSHOT_WINDOW=checkoutrevision`).
+- 2026-10-16, U5 Merge done: upstream's FormMergeBranch (help pictures, fast forward or merge commit, no commit, and the
+  advanced options: strategy, squash, unrelated histories, log messages, merge message), its kept settings, and upstream's
+  "solve conflicts now?" after a merge that stops on conflicts (a new "Resolve conflicts" confirmation); Commands > Merge
+  branches... and the left panel's merge open it instead of merging at once. See the FormMergeBranch note in
+  `PORTING-MAP.md`. Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=merge`).
+- 2026-10-16, U5 Clone done: upstream's FormClone (repository to clone with the remote history, destination with the
+  recent repositories' folders, subdirectory, branch read from the remote when its list opens, the location line in
+  upstream's Info colors, repository type, "Initialize all submodules", "Download full history", Load SSH key for plink),
+  its start from the clipboard or the open repository's remote, and its "open the new repository now?" question; Commands >
+  Clone, the toolbar and the dashboard open it. See the FormClone note in `PORTING-MAP.md`. Checked by screenshot
+  (`XPLAT_SCREENSHOT_WINDOW=clone`).
+- 2026-10-16, U5 Rebase done: upstream's FormRebase (help picture, rebase on a branch, tag or commit, the options with
+  their exclusions and the specific range, the commits to re-apply while a rebase is in progress, and Commit, Edit todo,
+  Skip, Solve conflicts, Continue and Abort); Commands > Rebase..., the grid's "Rebase current branch on" (now with
+  "Selected commit with advanced options..."), the left panel's rebase and the action bar's More... open it. See the
+  FormRebase note in `PORTING-MAP.md`. Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=rebase`).
+- 2026-10-16, U5 Reflog done: upstream's FormReflog (the local changes warning, the reference with its current branch and
+  HEAD links, the SHA-1, Ref and Action columns, and the menu a click opens: copy SHA-1, create a branch, reset the
+  current branch), with upstream's FormResetCurrentBranch ported for it (the commit summary, the five reset types on their
+  colors, the hard reset question), which the grid's and the left panel's "Reset current branch to here..." open too. See
+  the FormReflog and FormResetCurrentBranch notes in `PORTING-MAP.md`. Checked by screenshot
+  (`XPLAT_SCREENSHOT_WINDOW=reflog`, `reset`).
+- 2026-10-16, U5 File history and Blame done: upstream's FormFileHistory (its toolstrip, the file's revision grid with the
+  browse window's rows and its menu, and the Commit, Diff, View and Blame tabs as upstream shows them per commit) and
+  upstream's BlameControl as a view shared with the blame window; the grid's rows moved to a shared template
+  (`RevisionGrid.axaml`), and a path filter follows renames as upstream's `BuildPathFilter` does. File lists' "File history"
+  and "Blame" open it. See the FormFileHistory, FormBlame and RevisionGridControl notes in `PORTING-MAP.md`. Checked by
+  screenshot (`XPLAT_SCREENSHOT_WINDOW=filehistory` with `XPLAT_SCREENSHOT_FILE=<file>`).
 
 ## Risks
 

@@ -85,8 +85,9 @@
         <Separator />
         <MenuItem x:Name="CreateBranchMenuItem" Header="Create _branch..." />
         <MenuItem x:Name="CheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" />
-        <MenuItem x:Name="MergeMenuItem" Header="_Merge selected branch" />
-        <MenuItem x:Name="RebaseMenuItem" Header="Re_base onto selected branch" />
+        <MenuItem x:Name="CheckoutRevisionMenuItem" Header="Check_out revision..." Icon="{local:UpstreamIcon Checkout}" />
+        <MenuItem x:Name="MergeMenuItem" Header="_Merge branches..." Icon="{local:UpstreamIcon Merge}" />
+        <MenuItem x:Name="RebaseMenuItem" Header="R_ebase..." Icon="{local:UpstreamIcon Rebase}" />
         <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." />
         <MenuItem x:Name="BisectMenuItem" Header="B_isect..." />
         <Separator />
@@ -280,12 +281,10 @@
           <Button x:Name="ResolveConflictsButton" Content="Resolve..." />
           <Button x:Name="ContinueActionButton" Content="Continue" />
           <Button x:Name="AbortActionButton" Content="Abort" />
-          <!-- Upstream's More... opens FormRebase or FormApplyPatch; the new shell offers their extra steps here. -->
+          <!-- Upstream's More... opens FormRebase (the rebase window here) or FormApplyPatch, whose extra step the new shell offers here. -->
           <Button x:Name="MoreActionButton" Content="M_ore...">
             <Button.Flyout>
               <MenuFlyout>
-                <MenuItem x:Name="SkipRebaseMenuItem" Header="_Skip commit" ToolTip.Tip="Leave out the commit the rebase stopped at" />
-                <MenuItem x:Name="EditRebaseTodoMenuItem" Header="_Edit todo" ToolTip.Tip="Edit the steps the rebase has not done yet" />
                 <MenuItem x:Name="SkipPatchMenuItem" Header="_Skip patch" ToolTip.Tip="Leave out the patch git am stopped at" />
               </MenuFlyout>
             </Button.Flyout>
@@ -523,45 +522,7 @@
                left or right of the grid (LayoutRevisionInfo sets the columns). -->
           <Grid x:Name="RevisionsSplitGrid" Grid.Row="0" ColumnDefinitions="*,0,0">
             <Grid x:Name="RevisionGridContainer" Grid.Column="0" RowDefinitions="Auto,*">
-              <ListBox x:Name="CommitList" Grid.Row="1">
-                <!-- Upstream's RevisionDataGridView rows: no hover color, every other row a shade darker
-                     (RevisionGraphDrawAlternateBackColor), the selected commit's author's rows tinted (HighlightAuthoredRevisions),
-                     the selection in the system highlight with its text color, or in InactiveSelectionHighlight while the grid
-                     has no focus, and the commit body in the gray text color. Later styles win. -->
-                <ListBox.Styles>
-                  <Style Selector="ListBoxItem">
-                    <Setter Property="Padding" Value="4,0" />
-                    <Setter Property="MinHeight" Value="22" />
-                  </Style>
-                  <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="Transparent" />
-                  </Style>
-                  <Style Selector="ListBox.alternate ListBoxItem:nth-child(2n+1) /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource AlternateRowBrush}" />
-                  </Style>
-                  <Style Selector="ListBoxItem.authored /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource AuthoredHighlightBrush}" />
-                  </Style>
-                  <Style Selector="TextBlock.commitBody">
-                    <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
-                  </Style>
-                  <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource GridSelectionBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource GridSelectionTextBrush}" />
-                  </Style>
-                  <Style Selector="ListBoxItem:selected TextBlock.commitBody">
-                    <Setter Property="Foreground" Value="{DynamicResource GridSelectionTextBrush}" />
-                    <Setter Property="Opacity" Value="0.75" />
-                  </Style>
-                  <Style Selector="ListBox:not(:focus-within) ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-                    <Setter Property="Background" Value="{DynamicResource GridInactiveSelectionBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                  </Style>
-                  <Style Selector="ListBox:not(:focus-within) ListBoxItem:selected TextBlock.commitBody">
-                    <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
-                    <Setter Property="Opacity" Value="1" />
-                  </Style>
-                </ListBox.Styles>
+              <ListBox x:Name="CommitList" Grid.Row="1" Classes="revisionGrid" ItemTemplate="{StaticResource RevisionRowTemplate}">
                 <ListBox.ContextMenu>
                   <ContextMenu x:Name="CommitContextMenu">
                     <!-- Upstream's bisect items, at the top and shown only while a bisect runs. -->
@@ -576,95 +537,22 @@
                     <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create branch here..." />
                     <MenuItem x:Name="CreateTagHereMenuItem" Header="Create tag here..." />
                     <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
-                    <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout this commit (detached HEAD)" />
+                    <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout _this commit..." Icon="{local:UpstreamIcon Checkout}" />
                     <Separator />
                     <MenuItem x:Name="CherryPickMenuItem" Header="Cherry-pick this commit" />
                     <MenuItem x:Name="RevertMenuItem" Header="Revert this commit" />
                     <MenuItem x:Name="RunScriptMenuItem" Header="Run script" />
                     <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" />
                     <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" />
-                    <MenuItem Header="Rebase current branch on">
-                      <MenuItem x:Name="RebaseOnCommitMenuItem" Header="Selected commit" />
-                      <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit interactively..." />
+                    <MenuItem Header="_Rebase current branch on">
+                      <MenuItem x:Name="RebaseOnCommitMenuItem" Header="_Selected commit" />
+                      <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit _interactively..." />
+                      <MenuItem x:Name="RebaseAdvancedMenuItem" Header="Selected commit with _advanced options..." />
                     </MenuItem>
-                    <MenuItem Header="Reset current branch to here">
-                      <MenuItem x:Name="ResetSoftMenuItem" Header="Soft: keep index and working tree" />
-                      <MenuItem x:Name="ResetMixedMenuItem" Header="Mixed: keep working tree, reset index" />
-                      <MenuItem x:Name="ResetHardMenuItem" Header="Hard: discard all changes..." />
-                    </MenuItem>
+                    <MenuItem x:Name="ResetCurrentBranchMenuItem" Header="Reset c_urrent branch to here..."
+                              Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" />
                   </ContextMenu>
                 </ListBox.ContextMenu>
-                <ListBox.ItemTemplate>
-                  <!-- Upstream's columns in its order (graph, message, avatar, author, date, SHA-1, build status), each shown as the
-                       View menu's Columns say (MainWindow.GridView sets the Show*Column resources). -->
-                  <DataTemplate x:DataType="core:CommitListItem">
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
-                      <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch"
-                                       IsVisible="{DynamicResource ShowGraphColumn}" />
-                      <!-- Upstream's MessageColumnProvider: the ref labels, the fixup marker, the subject (bold for the checked-out
-                           commit) and the body in gray; an artificial row's label and its change counts. -->
-                      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
-                                  Background="Transparent" ToolTip.Tip="{Binding Row.Tooltip.Message}">
-                        <ItemsControl Classes="refLabels" ItemsSource="{Binding GridLabels}">
-                          <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                              <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                          </ItemsControl.ItemsPanel>
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="core:GridLabel">
-                              <local:RefLabelView Label="{Binding}" Fill="{DynamicResource FillRefLabels}"
-                                                  IsRowSelected="{Binding $parent[ListBoxItem].IsSelected}" />
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <ItemsControl ItemsSource="{Binding Changes.Parts, FallbackValue={x:Null}}" Margin="1,0,0,0" VerticalAlignment="Center">
-                          <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                              <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                          </ItemsControl.ItemsPanel>
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="core:ArtificialChangePart">
-                              <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,4,0">
-                                <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="12" Height="12"
-                                       VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding Text}" MinWidth="14" VerticalAlignment="Center" />
-                              </StackPanel>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Image Source="{local:UpstreamImage FixupAndSquashMessageMarker}" Width="16" Height="16" Margin="0,0,4,0"
-                               VerticalAlignment="Center" IsVisible="{Binding IsFixup}" />
-                        <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" IsVisible="{Binding !IsArtificial}"
-                                   FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
-                        <TextBlock Classes="commitBody" Text="{Binding BodyText}" VerticalAlignment="Center"
-                                   FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
-                      </StackPanel>
-                      <local:AvatarView Grid.Column="2" Classes="gridAvatar" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
-                                        VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
-                                        Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
-                      <TextBlock Grid.Column="3" Width="150" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
-                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorNameColumn}" />
-                      <TextBlock Grid.Column="4" Width="134" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
-                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowDateColumn}" />
-                      <TextBlock Grid.Column="5" Width="84" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
-                                 FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}"
-                                 FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}"
-                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowObjectIdColumn}" />
-                      <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
-                           build report. -->
-                      <StackPanel Grid.Column="6" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
-                                  Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
-                                  ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"
-                                   Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
-                        <TextBlock Text="{Binding Build.Text}" IsVisible="{DynamicResource BuildStatusShowText}" TextTrimming="CharacterEllipsis"
-                                   Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
-                      </StackPanel>
-                    </Grid>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
               </ListBox>
               <!-- Upstream's quick search label: what was typed into the grid, red when nothing matches. -->
               <Border x:Name="QuickSearchPanel" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" IsVisible="False"

@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.CheckoutRevisionWindow"
+        Title="Checkout revision"
+        Width="481" SizeToContent="Height" MinWidth="460" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormCheckoutRevision (a GitExtensionsDialog): the commit and "Force"; Checkout at the bottom. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button x:Name="CheckoutButton" MinWidth="75" IsDefault="True" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage Checkout}" Width="16" Height="16" />
+            <AccessText Text="_Checkout" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Border>
+    <Grid Margin="12" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+      <AccessText Text="Checkout this _revision" VerticalAlignment="Center" Margin="3,3,12,3" />
+      <local:CommitPickerView x:Name="CommitPicker" Grid.Column="1" Margin="3" />
+      <CheckBox x:Name="ForceCheck" Grid.Row="1" Grid.Column="1" Content="_Force (reset local changes)" Margin="3" />
+    </Grid>
+  </DockPanel>
+</Window>

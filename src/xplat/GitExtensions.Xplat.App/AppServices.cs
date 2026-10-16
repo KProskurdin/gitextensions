@@ -89,6 +89,11 @@ public static class AppServices
     public static IRemoteUrlHistory RemoteUrls { get; set; } = new UpstreamRemoteUrlHistory();
 
     /// <summary>
+    ///  The merge dialog's repository settings (upstream's NoFastForwardMerge and merge log settings).
+    /// </summary>
+    public static IMergeSettingsStore MergeSettings { get; set; } = new UpstreamMergeSettingsStore();
+
+    /// <summary>
     ///  The app preferences, stored under the upstream setting keys. Created on first use, like the recent list.
     /// </summary>
     public static IAppPreferences Preferences

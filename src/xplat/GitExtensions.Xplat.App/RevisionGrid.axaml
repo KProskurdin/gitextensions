@@ -1,0 +1,115 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory">
+  <!-- Upstream's RevisionGridControl rows, shared by the browse window's grid and the file history's: a ListBox with the
+       revisionGrid class and the RevisionRowTemplate. Its window sets the Show*Column, FillRefLabels and build status
+       resources the template reads. -->
+  <Styles.Resources>
+    <!-- Upstream's columns in its order (graph, message, avatar, author, date, SHA-1, build status), each shown as the
+         View menu's Columns say (MainWindow.GridView sets the Show*Column resources). -->
+    <DataTemplate x:Key="RevisionRowTemplate" x:DataType="core:CommitListItem">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
+        <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch"
+                         IsVisible="{DynamicResource ShowGraphColumn}" />
+        <!-- Upstream's MessageColumnProvider: the ref labels, the fixup marker, the subject (bold for the checked-out
+             commit) and the body in gray; an artificial row's label and its change counts. -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
+                    Background="Transparent" ToolTip.Tip="{Binding Row.Tooltip.Message}">
+          <ItemsControl Classes="refLabels" ItemsSource="{Binding GridLabels}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="core:GridLabel">
+                <local:RefLabelView Label="{Binding}" Fill="{DynamicResource FillRefLabels}"
+                                    IsRowSelected="{Binding $parent[ListBoxItem].IsSelected}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <ItemsControl ItemsSource="{Binding Changes.Parts, FallbackValue={x:Null}}" Margin="1,0,0,0" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="core:ArtificialChangePart">
+                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,4,0">
+                  <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="12" Height="12"
+                         VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Text}" MinWidth="14" VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Image Source="{local:UpstreamImage FixupAndSquashMessageMarker}" Width="16" Height="16" Margin="0,0,4,0"
+                 VerticalAlignment="Center" IsVisible="{Binding IsFixup}" />
+          <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" IsVisible="{Binding !IsArtificial}"
+                     FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
+          <TextBlock Classes="commitBody" Text="{Binding BodyText}" VerticalAlignment="Center"
+                     FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
+        </StackPanel>
+        <local:AvatarView Grid.Column="2" Classes="gridAvatar" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
+                          VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
+                          Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
+        <TextBlock Grid.Column="3" Width="150" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorNameColumn}" />
+        <TextBlock Grid.Column="4" Width="134" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowDateColumn}" />
+        <TextBlock Grid.Column="5" Width="84" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
+                   FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}"
+                   FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowObjectIdColumn}" />
+        <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
+             build report. -->
+        <StackPanel Grid.Column="6" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
+                    Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
+                    ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"
+                     Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
+          <TextBlock Text="{Binding Build.Text}" IsVisible="{DynamicResource BuildStatusShowText}" TextTrimming="CharacterEllipsis"
+                     Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+  </Styles.Resources>
+  <!-- Upstream's RevisionDataGridView rows: no hover color, every other row a shade darker
+       (RevisionGraphDrawAlternateBackColor), the selected commit's author's rows tinted (HighlightAuthoredRevisions),
+       the selection in the system highlight with its text color, or in InactiveSelectionHighlight while the grid
+       has no focus, and the commit body in the gray text color. Later styles win. -->
+  <Style Selector="ListBox.revisionGrid ListBoxItem">
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="MinHeight" Value="22" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid.alternate ListBoxItem:nth-child(2n+1) /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AlternateRowBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid ListBoxItem.authored /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AuthoredHighlightBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid TextBlock.commitBody">
+    <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GridSelectionBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource GridSelectionTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid ListBoxItem:selected TextBlock.commitBody">
+    <Setter Property="Foreground" Value="{DynamicResource GridSelectionTextBrush}" />
+    <Setter Property="Opacity" Value="0.75" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid:not(:focus-within) ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GridInactiveSelectionBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid:not(:focus-within) ListBoxItem:selected TextBlock.commitBody">
+    <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+</Styles>

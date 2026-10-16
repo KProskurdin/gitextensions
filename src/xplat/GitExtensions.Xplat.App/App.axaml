@@ -10,6 +10,8 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
+    <!-- The revision grid rows (RevisionGrid.axaml), shared by the windows that show a commit grid. -->
+    <StyleInclude Source="avares://GitExtensions/RevisionGrid.axaml" />
     <!-- Fluent's tab headers are sized for touch; the browse window's tabs are a compact strip, as in upstream. The tab's
          content inherits the size, so it is the application font's (FontApplier). -->
     <Style Selector="TabItem">

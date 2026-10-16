@@ -1,40 +1,64 @@
+using System.Text.RegularExpressions;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility;
+using GitExtensions.Extensibility.Git;
 using GitExtUtils;
 
 namespace GitExtensions.Xplat.Core.Repository;
 
 /// <summary>
-///  One entry of HEAD's reflog: where HEAD pointed, and the action that moved it there.
+///  One line of a reflog (upstream's <c>RefLine</c>): the commit, the ref selector (e.g. <c>HEAD@{0}</c>) and the action
+///  that moved the ref there.
 /// </summary>
-public sealed record ReflogEntry(string Hash, string ShortHash, string Selector, string Message);
+public sealed record ReflogEntry(ObjectId Sha, string Ref, string Action)
+{
+    public string ShortHash => Sha.ToShortString();
+}
 
 /// <summary>
-///  Reads HEAD's reflog, so a commit that a reset or rebase moved away from can be found again.
+///  Upstream's <c>FormReflog</c> reading: the references it offers and a reference's reflog, so a commit that a reset or
+///  rebase moved away from can be found again.
 /// </summary>
-public static class Reflog
+public static partial class Reflog
 {
-    private const string Format = "--format=%H%x09%h%x09%gd%x09%gs";
-    private const char Tab = '\t';
+    public const string Head = "HEAD";
 
-    public static Task<IReadOnlyList<ReflogEntry>> LoadAsync(string repositoryPath, int limit)
+    [GeneratedRegex(@"^(?<sha>[^ ]+) (?<ref>[^:]+): (?<action>.+)$", RegexOptions.ExplicitCapture)]
+    private static partial Regex ReflogRegex { get; }
+
+    /// <summary>
+    ///  Upstream's <c>FormReflog_Load</c> list: HEAD, then the local branches and the remote branches, each by name.
+    /// </summary>
+    public static IReadOnlyList<string> References(IGitModule module)
+        =>
+        [
+            Head,
+            .. module.GetRefs(RefsFilter.Heads).Select(gitRef => gitRef.Name).OrderBy(name => name),
+            .. module.GetRemoteBranches().Select(gitRef => gitRef.Name).OrderBy(name => name),
+        ];
+
+    /// <summary>
+    ///  Upstream's <c>DisplayRefLogAsync</c>: <c>git reflog --no-abbrev</c> of <paramref name="reference"/>, the lines its
+    ///  pattern matches.
+    /// </summary>
+    public static Task<IReadOnlyList<ReflogEntry>> LoadAsync(string repositoryPath, string reference = Head)
         => Task.Run(() =>
         {
-            GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
-            ExecutionResult result = module.GitExecutable.Execute(
-                new GitArgumentBuilder("reflog") { "-n", limit.ToString(System.Globalization.CultureInfo.InvariantCulture), Format },
-                throwOnErrorExit: false);
-            if (!result.ExitedSuccessfully)
-            {
-                throw new InvalidOperationException(result.StandardError.Trim());
-            }
-
-            return (IReadOnlyList<ReflogEntry>)result.StandardOutput
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Split(Tab))
-                .Where(parts => parts.Length == 4)
-                .Select(parts => new ReflogEntry(parts[0], parts[1], parts[2], parts[3]))
-                .ToList();
+            GitModule module = GitModules.Open(repositoryPath);
+            string output = module.GitExecutable.GetOutput(new GitArgumentBuilder("reflog") { "--no-abbrev", reference });
+            return Parse(output);
         });
+
+    public static IReadOnlyList<ReflogEntry> Parse(string output)
+        =>
+        [
+            .. from line in output.LazySplit('\n')
+               where line.Length != 0
+               select ReflogRegex.Match(line)
+               into match
+               where match.Success
+               select new ReflogEntry(ObjectId.Parse(match.Groups["sha"].Value), match.Groups["ref"].Value,
+                   match.Groups["action"].Value),
+        ];
 }

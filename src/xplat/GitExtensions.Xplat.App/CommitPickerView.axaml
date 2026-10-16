@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="GitExtensions.Xplat.App.CommitPickerView">
+  <!-- Upstream's CommitPickerSmallControl: the commit's short hash, editable, and how far it is from HEAD. -->
+  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+    <TextBox x:Name="CommitHashBox" Width="104" VerticalContentAlignment="Center" />
+    <TextBlock x:Name="CommitCountText" VerticalAlignment="Center" Margin="6,0,0,0" />
+  </StackPanel>
+</UserControl>

@@ -5,6 +5,7 @@ using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.App;
 using GitExtensions.Xplat.Core.Avatars;
 using GitExtensions.Xplat.Core.BuildServer;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
@@ -22,6 +23,11 @@ public static class TestAppBuilder
     public static InMemoryAppPreferences Preferences { get; } = new();
 
     public static InMemoryRemoteUrlHistory RemoteUrls { get; } = new();
+
+    /// <summary>
+    ///  The merge dialog's settings during the tests, so no test writes the user's global settings.
+    /// </summary>
+    public static InMemoryMergeSettingsStore MergeSettings { get; } = new();
 
     /// <summary>
     ///  The git config the windows see during the tests, so no test writes the user's global git config.
@@ -107,6 +113,7 @@ public static class TestAppBuilder
         // Replaced before the app starts, so no window ever touches the user's settings file.
         AppServices.RecentRepositories = new InMemoryRecentRepositoryStore();
         AppServices.RemoteUrls = RemoteUrls;
+        AppServices.MergeSettings = MergeSettings;
         AppServices.Preferences = Preferences;
         AppServices.GitConfig = GitConfig;
         AppServices.WindowPlacements = WindowPlacements;

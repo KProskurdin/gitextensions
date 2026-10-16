@@ -48,11 +48,6 @@ public partial class MainWindow
     private const string DeleteRemoteBranchTooltip = "Delete the branch from the remote";
     private const string DeleteTagTooltip = "Delete this tag";
 
-    // The commit context menu's reset texts, offered by the left panel's "Reset current branch to here...".
-    private const string ResetSoftText = "Soft: keep index and working tree";
-    private const string ResetMixedText = "Mixed: keep working tree, reset index";
-    private const string ResetHardText = "Hard: discard all changes...";
-
     private IReadOnlyList<RepoObjectNode> _repoObjects = [];
 
     private RepoObjectNode? SelectedRepoObject => BranchTreeView.SelectedItem as RepoObjectNode;
@@ -366,13 +361,16 @@ public partial class MainWindow
         };
 
         TreeCheckoutMenuItem.Click += (_, _) => OnSelectedRef(CheckoutSelectedBranch,
-            tag => RunOnRepository(path => WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
-                () => CheckoutLocalBranchAsync(path, tag), PluginEvent.CheckoutRevision)));
-        TreeMergeMenuItem.Click += (_, _) => OnSelectedRef(MergeSelectedBranch,
-            tag => RunOnRepository(path => WithScriptsAsync(path, ScriptEvent.BeforeMerge, ScriptEvent.AfterMerge,
-                () => _actions.MergeAsync(path, tag))));
+            tag => RunOnRepository(path => ShowCheckoutRevisionAsync(path, tag)));
+        TreeMergeMenuItem.Click += (_, _) =>
+        {
+            if (RefName(SelectedRepoObject) is { } name)
+            {
+                RunOnRepository(path => ShowMergeAsync(path, name));
+            }
+        };
         TreeRebaseMenuItem.Click += (_, _) => OnSelectedRef(RebaseOnSelectedBranch,
-            tag => RunOnRepository(path => _actions.RebaseAsync(path, tag)));
+            tag => RunOnRepository(path => ShowRebaseAsync(path, tag)));
         TreeCreateBranchMenuItem.Click += (_, _) =>
         {
             if (RefName(SelectedRepoObject) is { } name)
@@ -384,7 +382,7 @@ public partial class MainWindow
         {
             if (RefName(SelectedRepoObject) is { } name)
             {
-                Run(() => ResetCurrentBranchToAsync(name));
+                RunOnRepository(path => ShowResetCurrentBranchAsync(this, path, name, ResetMode.Soft));
             }
         };
         TreeRenameBranchMenuItem.Click += (_, _) =>
@@ -678,26 +676,5 @@ public partial class MainWindow
         {
             await _actions.RenameBranchAsync(path, branch, name);
         }
-    }
-
-    // Upstream's BranchPathNode.CreateBranch: the create branch dialog with the folder's path as the name's start.
-    // Stands in for upstream's FormResetCurrentBranch: soft, mixed or hard, the hard reset after a question.
-    private async Task ResetCurrentBranchToAsync(string target)
-    {
-        if (RepositoryPath is not { } path
-            || await new ChooseWindow([ResetSoftText, ResetMixedText, ResetHardText]).ShowDialog<string?>(this) is not { } choice)
-        {
-            return;
-        }
-
-        ResetMode mode = choice == ResetSoftText ? ResetMode.Soft : choice == ResetMixedText ? ResetMode.Mixed : ResetMode.Hard;
-        if (mode == ResetMode.Hard
-            && !await new ConfirmWindow($"Reset the branch to {target} and discard all local changes? This cannot be undone.",
-                "Reset").ShowDialog<bool>(this))
-        {
-            return;
-        }
-
-        await _actions.ResetAsync(path, target, mode);
     }
 }

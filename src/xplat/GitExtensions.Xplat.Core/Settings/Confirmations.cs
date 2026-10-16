@@ -35,6 +35,15 @@ public enum Confirmation
 
     /// <summary>Upstream <c>DontConfirmSwitchWorktree</c>: opening another worktree in the window.</summary>
     SwitchWorktree,
+
+    /// <summary>Upstream <c>DontConfirmResolveConflicts</c>: opening the conflicts window after a merge stopped on conflicts.</summary>
+    ResolveConflicts,
+
+    /// <summary>Upstream <c>DontConfirmCommitAfterConflictsResolved</c>: offering to commit once every conflict is resolved.</summary>
+    CommitAfterConflictsResolved,
+
+    /// <summary>Upstream <c>DontConfirmSecondAbortConfirmation</c>: the second question before the conflicts window resets hard.</summary>
+    SecondAbortConfirmation,
 }
 
 /// <summary>
@@ -67,8 +76,20 @@ public static class Confirmations
         new("Branches", Confirmation.DeleteUnmergedBranch, "Delete unmerged branches"),
         new("Branches", Confirmation.BranchCheckout, "Checkout branch using left panel"),
         new("Stash", Confirmation.StashDrop, "Drop stash"),
+        new("Rebase / conflict resolution", Confirmation.ResolveConflicts, "Resolve conflicts"),
+        new("Rebase / conflict resolution", Confirmation.CommitAfterConflictsResolved,
+            "Commit changes after conflicts have been resolved"),
+        new("Rebase / conflict resolution", Confirmation.SecondAbortConfirmation,
+            "Confirm for the second time to abort a merge"),
         new("Worktrees", Confirmation.SwitchWorktree, "Switch worktree"),
     ];
+
+    /// <summary>
+    ///  Upstream's <c>ConfirmResolveMergeConflicts</c> question and caption.
+    /// </summary>
+    public const string ResolveConflictsQuestion = "There are unresolved merge conflicts, solve conflicts now?";
+
+    public const string ResolveConflictsCaption = "Merge conflicts";
 
     /// <summary>
     ///  Upstream FormCommit's amend question.

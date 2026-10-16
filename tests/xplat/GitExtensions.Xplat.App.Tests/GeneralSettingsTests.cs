@@ -81,24 +81,6 @@ internal sealed class GeneralSettingsTests
     }
 
     [AvaloniaTest]
-    public void The_clone_window_suggests_a_folder_in_the_default_destination_until_one_is_typed()
-    {
-        string parent = Path.Combine(Path.GetTempPath(), "clones");
-        CloneWindow clone = new(parent);
-        clone.Show();
-        TextBox url = Find<TextBox>(clone, "UrlBox");
-        TextBox target = Find<TextBox>(clone, "TargetBox");
-
-        url.Text = "https://example.com/owner/project.git";
-        target.Text.Should().Be(Path.Combine(parent, "project"));
-
-        target.Text = "/somewhere/else";
-        url.Text = "https://example.com/owner/other.git";
-        target.Text.Should().Be("/somewhere/else");
-        clone.Close();
-    }
-
-    [AvaloniaTest]
     public void The_settings_window_saves_the_general_and_appearance_choices()
     {
         MainWindow window = NewWindow();

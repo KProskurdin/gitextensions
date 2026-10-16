@@ -107,6 +107,10 @@ internal sealed class FakeGitOperations : IGitOperations
             output,
             cancellationToken);
 
+    public Task RunCloneAsync(string targetPath, GitExtensions.Extensibility.ArgumentString arguments, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default) =>
+        RecordRemote("RunClone", $"{targetPath} {arguments}", output, cancellationToken);
+
     public Task InitAsync(string folder) => Record("Init", folder);
 
     public Task StashAsync(string repositoryPath, string message, bool includeUntracked, bool keepIndex,
@@ -147,6 +151,11 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task RevertAsync(string repositoryPath, string commit) => Record("Revert", $"{repositoryPath} {commit}");
 
     public Task RebaseAsync(string repositoryPath, string branch) => Record("Rebase", $"{repositoryPath} {branch}");
+
+    public Task RunRebaseAsync(string repositoryPath, GitExtensions.Extensibility.ArgumentString arguments,
+        string? editorCommand, IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default) =>
+        RecordRemote("RunRebase", $"{repositoryPath} {arguments} editor={editorCommand is not null}", output,
+            cancellationToken);
 
     public Task AbortRebaseAsync(string repositoryPath) => Record("AbortRebase", repositoryPath);
 

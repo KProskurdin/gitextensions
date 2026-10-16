@@ -56,10 +56,18 @@ public sealed record CommitPage(
     IReadOnlyDictionary<string, string>? FilePaths = null);
 
 /// <summary>
-///  How a file history is read: upstream's <c>FollowRenamesInFileHistory</c> (on by default) and
-///  <c>FollowRenamesInFileHistoryExactOnly</c>.
+///  How a file history is read and shown: upstream's <c>FollowRenamesInFileHistory</c> (on by default),
+///  <c>FollowRenamesInFileHistoryExactOnly</c>, <c>FullHistoryInFileHistory</c> (<c>--full-history</c>),
+///  <c>SimplifyMergesInFileHistory</c> (<c>--simplify-merges</c> with the full history), and the file history window's
+///  <c>LoadFileHistoryOnShow</c> and <c>LoadBlameOnShow</c> (both on by default).
 /// </summary>
-public sealed record FileHistoryOptions(bool FollowRenames = true, bool ExactRenamesOnly = false);
+public sealed record FileHistoryOptions(
+    bool FollowRenames = true,
+    bool ExactRenamesOnly = false,
+    bool FullHistory = false,
+    bool SimplifyMerges = false,
+    bool LoadHistoryOnShow = true,
+    bool LoadBlameOnShow = true);
 
 public sealed record CommitRow(
     string Hash,

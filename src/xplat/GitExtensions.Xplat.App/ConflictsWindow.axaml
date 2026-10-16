@@ -2,24 +2,72 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.ConflictsWindow"
-        Title="Solve merge conflicts"
-        Width="1000" Height="620">
-  <!-- Mirrors upstream FormResolveConflicts: the unresolved files on the left, the ways to resolve the selected one on the
-       right, and the combined diff of the selected file. -->
-  <Grid ColumnDefinitions="320,6,*" Margin="8">
-    <DockPanel Grid.Column="0" LastChildFill="True">
-      <TextBlock x:Name="HeaderText" DockPanel.Dock="Top" FontWeight="Bold" Margin="0,0,0,4" />
-      <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,6,0,0">
-        <Button x:Name="MergeToolButton" Content="Open in merge tool" HorizontalAlignment="Stretch" />
-        <Button x:Name="UseOursButton" Content="Choose ours (local)" HorizontalAlignment="Stretch" />
-        <Button x:Name="UseTheirsButton" Content="Choose theirs (remote)" HorizontalAlignment="Stretch" />
-        <Button x:Name="MarkResolvedButton" Content="Mark as resolved" HorizontalAlignment="Stretch"
-                ToolTip.Tip="Stage the file as it is in the working tree, after editing out the conflict markers" />
-        <TextBlock x:Name="DoneText" TextWrapping="Wrap" Margin="0,6,0,0" />
-      </StackPanel>
-      <ListBox x:Name="ConflictList" SelectionMode="Multiple" />
-    </DockPanel>
-    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-    <local:DiffView x:Name="Diff" Grid.Column="2" />
+        Title="Resolve merge conflicts"
+        Width="619" Height="392" MinWidth="450" MinHeight="299" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormResolveConflicts: the unresolved files with their menu, the selected one's description and Merge
+       button, the buttons on the right, the local, base and remote names, and the help link. -->
+  <Grid Margin="4" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto,30">
+    <Grid RowDefinitions="Auto,*,Auto,20">
+      <TextBlock Text="Unresolved merge conflicts" Margin="3" />
+      <DockPanel Grid.Row="1" Margin="3">
+        <TextBlock DockPanel.Dock="Top" Text="Filename" FontWeight="SemiBold" Margin="4,0" />
+        <ListBox x:Name="ConflictList" SelectionMode="Multiple">
+          <ListBox.ContextMenu>
+            <ContextMenu x:Name="ConflictMenu">
+              <MenuItem x:Name="OpenMergeToolMenuItem" Header="Open in mergetool" />
+              <MenuItem x:Name="CustomMergeToolMenuItem" Header="Open in _mergetool" />
+              <MenuItem x:Name="MarkAsSolvedMenuItem" Header="Mark conflict as solved" />
+              <Separator />
+              <MenuItem x:Name="ChooseLocalMenuItem" Header="Choose local" InputGesture="Ctrl+D1" />
+              <MenuItem x:Name="ChooseRemoteMenuItem" Header="Choose remote" InputGesture="Ctrl+D2" />
+              <MenuItem x:Name="ChooseBaseMenuItem" Header="Choose base" InputGesture="Ctrl+D3" />
+              <Separator />
+              <MenuItem x:Name="OpenLocalWithMenuItem" Header="Open local with" />
+              <MenuItem x:Name="OpenRemoteWithMenuItem" Header="Open remote with" />
+              <MenuItem x:Name="OpenBaseWithMenuItem" Header="Open base with" />
+              <Separator />
+              <MenuItem x:Name="SaveLocalAsMenuItem" Header="Save local as" />
+              <MenuItem x:Name="SaveRemoteAsMenuItem" Header="Save remote as" />
+              <MenuItem x:Name="SaveBaseAsMenuItem" Header="Save base as" />
+              <Separator />
+              <MenuItem x:Name="OpenMenuItem" Header="Open" />
+              <MenuItem x:Name="OpenWithMenuItem" Header="Open With" />
+              <MenuItem x:Name="ShowInFolderMenuItem" Header="Show in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
+              <Separator />
+              <MenuItem x:Name="FileHistoryMenuItem" Header="File history" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+        </ListBox>
+      </DockPanel>
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="3">
+        <Image Source="{local:UpstreamImage Information}" Width="16" Height="16" VerticalAlignment="Center" />
+        <TextBlock x:Name="ConflictDescriptionText" Grid.Column="1" Text="Select file" TextWrapping="Wrap"
+                   VerticalAlignment="Center" Margin="6,0" />
+        <Button x:Name="MergeButton" Grid.Column="2" MinWidth="130" IsDefault="True">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage SelectBranch}" Width="16" Height="16" />
+            <TextBlock Text="Merge" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Grid>
+    <StackPanel Grid.Column="1" Spacing="3" Margin="3">
+      <Button x:Name="OpenMergeToolButton" Content="Open in mergetool" MinWidth="140" HorizontalAlignment="Stretch" />
+      <Button x:Name="StartMergeToolButton" Content="Start mergetool" MinWidth="140" HorizontalAlignment="Stretch" />
+      <Button x:Name="RescanButton" Content="Rescan merge conflicts" MinWidth="140" HorizontalAlignment="Stretch" />
+      <Button x:Name="ResetButton" MinWidth="140" HorizontalAlignment="Stretch">
+        <AccessText Text="_Reset" />
+      </Button>
+      <ProgressBar x:Name="Progress" IsVisible="False" Minimum="0" />
+    </StackPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="3">
+      <TextBlock x:Name="LocalLabelText" Text="Local/current" Margin="0,2,12,2" />
+      <SelectableTextBlock x:Name="LocalNameText" Grid.Column="1" Text="..." Margin="0,2" />
+      <TextBlock Grid.Row="1" Text="Base" Margin="0,2,12,2" />
+      <SelectableTextBlock x:Name="BaseNameText" Grid.Row="1" Grid.Column="1" Text="..." Margin="0,2" />
+      <TextBlock x:Name="RemoteLabelText" Grid.Row="2" Text="Remote/incoming" Margin="0,2,12,2" />
+      <SelectableTextBlock x:Name="RemoteNameText" Grid.Row="2" Grid.Column="1" Text="..." Margin="0,2" />
+    </Grid>
+    <HyperlinkButton x:Name="HelpLink" Grid.Row="2" Content="Help" Padding="3,0" VerticalAlignment="Bottom" />
   </Grid>
 </Window>

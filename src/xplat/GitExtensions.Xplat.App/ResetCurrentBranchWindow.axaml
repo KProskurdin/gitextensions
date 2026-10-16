@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ResetCurrentBranchWindow"
+        Title="Reset current branch"
+        MinWidth="479" SizeToContent="WidthAndHeight" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormResetCurrentBranch: the branch and the commit's summary, the reset types on their colors, and OK and
+       Cancel at the bottom right. -->
+  <StackPanel Margin="5">
+    <TextBlock x:Name="BranchInfoText" Margin="3" />
+    <local:CommitSummaryView x:Name="Summary" Margin="3" MinHeight="147" />
+    <HeaderedContentControl Classes="groupBox" Header="Reset type" Margin="3">
+      <StackPanel Spacing="3" Margin="5">
+        <RadioButton x:Name="SoftRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
+                     Content="_Soft: leave working directory and index untouched" />
+        <RadioButton x:Name="MixedRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
+                     Content="Mi_xed: leave working directory untouched, reset index" />
+        <RadioButton x:Name="KeepRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
+                     Content="_Keep: update working directory to the commit &#10;(abort if there are local changes), reset index" />
+        <RadioButton x:Name="MergeRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
+                     Content="_Merge: update working directory to the commit and keep local changes &#10;(abort if there are conflicts), reset index" />
+        <RadioButton x:Name="HardRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
+                     Content="_Hard: reset working directory and index&#10;(discard ALL local changes, even uncommitted changes)" />
+      </StackPanel>
+    </HeaderedContentControl>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3">
+      <Button x:Name="OkButton" Content="OK" MinWidth="91" IsDefault="True" />
+      <Button x:Name="CancelButton" Content="Cancel" MinWidth="91" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

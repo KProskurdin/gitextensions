@@ -66,6 +66,30 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
+    public void LoadPage_should_follow_a_single_path_filter_through_its_renames_as_upstreams_grid()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "old.txt"), "old\n");
+        _repo.Run("add", "old.txt");
+        _repo.Run("commit", "-q", "-m", "add old");
+        _repo.Run("mv", "old.txt", "new.txt");
+        _repo.Run("commit", "-q", "-m", "rename");
+        string added = _repo.Run("rev-parse", "HEAD~1").Trim();
+
+        CommitPage followed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
+            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt")).GetAwaiter().GetResult();
+        CommitPage notFollowed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions(FollowRenames: false))
+            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt")).GetAwaiter().GetResult();
+        CommitPage twoPaths = new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
+            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt a.txt")).GetAwaiter().GetResult();
+
+        followed.Rows.Select(row => row.Subject).Should().Equal("rename", "add old");
+        followed.FilePaths![added].Should().Be("old.txt");
+        notFollowed.Rows.Select(row => row.Subject).Should().Equal("rename");
+        twoPaths.FilePaths.Should().BeNull("upstream follows only one path");
+        twoPaths.Rows.Select(row => row.Subject).Should().Equal("rename", "second", "first");
+    }
+
+    [AvaloniaTest]
     public void LoadPage_should_label_commits_with_their_branches_and_tags()
     {
         _repo.Run("branch", "feature");
@@ -83,10 +107,10 @@ internal sealed class CommitHistoryTests
         string previous = _repo.Run("rev-parse", "HEAD").Trim();
         _repo.Run("reset", "-q", "--hard", "HEAD~1");
 
-        IReadOnlyList<ReflogEntry> entries = Reflog.LoadAsync(_repo.Path, 10).GetAwaiter().GetResult();
+        IReadOnlyList<ReflogEntry> entries = Reflog.LoadAsync(_repo.Path).GetAwaiter().GetResult();
 
-        entries[0].Message.Should().StartWith("reset:");
-        entries.Should().Contain(entry => entry.Hash == previous);
+        entries[0].Action.Should().StartWith("reset:");
+        entries.Should().Contain(entry => entry.Sha.ToString() == previous);
     }
 
     [AvaloniaTest]

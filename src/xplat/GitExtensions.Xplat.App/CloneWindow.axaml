@@ -1,19 +1,73 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.CloneWindow"
-        Title="Clone repository"
-        Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <StackPanel Margin="16" Spacing="8">
-    <TextBlock Text="Repository URL or local path" />
-    <TextBox x:Name="UrlBox" PlaceholderText="https://github.com/owner/repo.git" />
-    <TextBlock Text="Clone into folder" />
-    <DockPanel LastChildFill="True">
-      <Button x:Name="BrowseButton" DockPanel.Dock="Right" Content="Browse..." Margin="8,0,0,0" />
-      <TextBox x:Name="TargetBox" PlaceholderText="Folder to create" />
-    </DockPanel>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="CancelButton" Content="Cancel" />
-      <Button x:Name="CloneButton" Content="Clone" />
+        Title="Clone"
+        Width="647" MinWidth="450" MaxWidth="950" SizeToContent="Height" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <!-- Upstream's Info label: the control text color, or red for a problem with the location. -->
+    <Style Selector="TextBlock#InfoText">
+      <Setter Property="Foreground" Value="{DynamicResource InfoTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock#InfoText.error">
+      <Setter Property="Foreground" Value="{DynamicResource InfoErrorTextBrush}" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream's FormClone (a GitExtensionsDialog): the source, destination, subdirectory and branch, the line that says
+       where the clone goes, the repository type and the options; Load SSH key and Clone at the bottom. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+        <Button x:Name="LoadSshKeyButton" MinWidth="120" VerticalAlignment="Center" IsVisible="False">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
+            <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button x:Name="CloneButton" Content="Clone" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+    <StackPanel Margin="12">
+      <Grid ColumnDefinitions="Auto,*,100" RowDefinitions="Auto,Auto,Auto,Auto">
+        <AccessText Text="Repository to _clone:" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <ComboBox x:Name="FromBox" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" Margin="3" />
+        <Button x:Name="FromBrowseButton" Grid.Column="2" HorizontalAlignment="Stretch" Margin="3">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+            <AccessText Text="_Browse" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <AccessText Grid.Row="1" Text="_Destination:" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <ComboBox x:Name="ToBox" Grid.Row="1" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" Margin="3" />
+        <Button x:Name="ToBrowseButton" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" Margin="3">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+            <AccessText Text="B_rowse" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <AccessText Grid.Row="2" Text="_Subdirectory to create:" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <TextBox x:Name="SubdirectoryBox" Grid.Row="2" Grid.Column="1" Margin="3" />
+        <AccessText Grid.Row="3" Text="Br_anch:" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <ComboBox x:Name="BranchesBox" Grid.Row="3" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch"
+                  Margin="3" />
+      </Grid>
+      <Border Margin="3,13,3,0" MinHeight="42" Padding="3" BorderThickness="1"
+              Background="{DynamicResource InfoBackgroundBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+        <TextBlock x:Name="InfoText" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </Border>
+      <HeaderedContentControl Classes="groupBox" Header="Repository type" Margin="3,4,3,0">
+        <StackPanel Margin="14,0,0,0">
+          <RadioButton x:Name="PersonalRepositoryRadio" Content="_Personal repository" IsChecked="True" />
+          <RadioButton x:Name="CentralRepositoryRadio" Content="P_ublic repository, no working directory  (--bare)" />
+        </StackPanel>
+      </HeaderedContentControl>
+      <WrapPanel Margin="0,10,0,0">
+        <CheckBox x:Name="InitializeSubmodulesCheck" Content="Initialize all submodules" IsChecked="True"
+                  Margin="15,3,9,3" />
+        <CheckBox x:Name="DownloadFullHistoryCheck" Content="Download full _history" IsChecked="True" Margin="15,3,9,3"
+                  ToolTip.Tip="The default Git behavior is to download all historical revisions.&#10;If you turn this off, we'll only download the latest revision for all branches.&#10;&#10;Actual command line (if unchecked): --depth 1 --no-single-branch" />
+      </WrapPanel>
     </StackPanel>
-  </StackPanel>
+  </DockPanel>
 </Window>

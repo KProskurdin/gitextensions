@@ -1,0 +1,139 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+        x:Class="GitExtensions.Xplat.App.FileHistoryWindow"
+        Title="File History"
+        Width="748" Height="444" MinWidth="299" MinHeight="198" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormFileHistory: the toolstrip (Load, full history, blame options, git command log), the file's revision
+       grid with its menu, and below it the Commit, Diff, View and Blame tabs. -->
+  <Grid RowDefinitions="Auto,*,5,*">
+    <StackPanel Orientation="Horizontal" Spacing="2" Margin="2">
+      <SplitButton x:Name="LoadButton" Classes="tool" ToolTip.Tip="Load file history">
+        <Image Source="{local:UpstreamImage ReloadRevisions}" Width="16" Height="16" />
+        <SplitButton.Flyout>
+          <MenuFlyout>
+            <MenuItem x:Name="LoadHistoryOnShowMenuItem" Header="Load history on show" ToggleType="CheckBox" />
+            <MenuItem x:Name="LoadBlameOnShowMenuItem" Header="Load blame on show" ToggleType="CheckBox" />
+          </MenuFlyout>
+        </SplitButton.Flyout>
+      </SplitButton>
+      <DropDownButton x:Name="FullHistoryButton" Classes="tool" ToolTip.Tip="Show Full History">
+        <Image Source="{local:UpstreamImage FileHistory}" Width="16" Height="16" />
+        <DropDownButton.Flyout>
+          <MenuFlyout>
+            <MenuItem x:Name="ShowFullHistoryMenuItem" Header="Show full history" ToggleType="CheckBox" />
+            <MenuItem x:Name="SimplifyMergesMenuItem" Header="Simplify merges" ToggleType="CheckBox" />
+          </MenuFlyout>
+        </DropDownButton.Flyout>
+      </DropDownButton>
+      <DropDownButton x:Name="BlameOptionsButton" Classes="tool" ToolTip.Tip="Blame options">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage Blame}" Width="16" Height="16" />
+          <TextBlock Text="Blame options" VerticalAlignment="Center" />
+        </StackPanel>
+        <DropDownButton.Flyout>
+          <MenuFlyout>
+            <MenuItem Header="Blame settings:" IsEnabled="False" />
+            <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox" />
+            <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox" />
+            <MenuItem x:Name="DetectMoveInAllFilesMenuItem" Header="Detect move and copy in all files" ToggleType="CheckBox" />
+            <Separator />
+            <MenuItem Header="Display result settings:" IsEnabled="False" />
+            <MenuItem x:Name="DisplayAuthorFirstMenuItem" Header="Display author first" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorMenuItem" Header="Show author" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Show author date" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorTimeMenuItem" Header="Show author time" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowLineNumbersMenuItem" Header="Show line numbers" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowOriginalFilePathMenuItem" Header="Show original file path" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorAvatarMenuItem" Header="Show author avatar" ToggleType="CheckBox" />
+          </MenuFlyout>
+        </DropDownButton.Flyout>
+      </DropDownButton>
+      <Button x:Name="CommandLogButton" Classes="tool" ToolTip.Tip="Git command log">
+        <Image Source="{local:UpstreamImage GitCommandLog}" Width="16" Height="16" />
+      </Button>
+    </StackPanel>
+    <ListBox x:Name="HistoryList" Grid.Row="1" Classes="revisionGrid" ItemTemplate="{StaticResource RevisionRowTemplate}"
+             IsVisible="False">
+      <ListBox.ContextMenu>
+        <ContextMenu x:Name="HistoryContextMenu">
+          <MenuItem x:Name="CopyToClipboardMenuItem" Header="Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
+            <MenuItem x:Name="CopyHashMenuItem" Header="Commit hash" />
+            <MenuItem x:Name="CopyMessageMenuItem" Header="Message" />
+            <MenuItem x:Name="CopyAuthorMenuItem" Header="Author" />
+            <MenuItem x:Name="CopyDateMenuItem" Header="Date" />
+          </MenuItem>
+          <Separator />
+          <MenuItem x:Name="OpenWithDifftoolMenuItem" Header="Open with difftool" Icon="{local:UpstreamIcon Diff}" />
+          <MenuItem x:Name="SaveAsMenuItem" Header="Save as" Icon="{local:UpstreamIcon SaveAs}" />
+          <Separator />
+          <MenuItem x:Name="ManipulateCommitMenuItem" Header="Manipulate commit">
+            <MenuItem x:Name="RevertCommitMenuItem" Header="Revert commit" Icon="{local:UpstreamIcon RevertCommit}" />
+            <MenuItem x:Name="CherryPickMenuItem" Header="Cherry pick commit" Icon="{local:UpstreamIcon CherryPick}" />
+          </MenuItem>
+          <Separator />
+          <MenuItem x:Name="FollowRenamesMenuItem" Header="Detect and follow renames" ToggleType="CheckBox" />
+          <MenuItem x:Name="FollowExactRenamesMenuItem" Header="Detect and follow - exact renames and copies only"
+                    ToggleType="CheckBox" />
+        </ContextMenu>
+      </ListBox.ContextMenu>
+    </ListBox>
+    <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+    <TabControl x:Name="Tabs" Grid.Row="3" Padding="0,4,0,0">
+      <TabItem x:Name="CommitTab">
+        <TabItem.Header>
+          <StackPanel Classes="tabHeader">
+            <Image Source="{local:UpstreamImage CommitSummary}" />
+            <TextBlock x:Name="CommitTabText" Text="Commit" />
+          </StackPanel>
+        </TabItem.Header>
+        <!-- Upstream's CommitDiff: the commit's information, its changed files and the selected one's diff. -->
+        <Grid RowDefinitions="Auto,*">
+          <SelectableTextBlock x:Name="CommitInfoText" Margin="4" TextWrapping="Wrap" MaxHeight="120" />
+          <Grid Grid.Row="1" ColumnDefinitions="220,5,*">
+            <ListBox x:Name="CommitFilesList">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="core:CommitFile">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Status}" Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+            <local:DiffView x:Name="CommitDiff" Grid.Column="2" />
+          </Grid>
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="DiffTab">
+        <TabItem.Header>
+          <StackPanel Classes="tabHeader">
+            <Image Source="{local:UpstreamImage Diff}" />
+            <TextBlock Text="Diff" />
+          </StackPanel>
+        </TabItem.Header>
+        <local:DiffView x:Name="Diff" />
+      </TabItem>
+      <TabItem x:Name="ViewTab">
+        <TabItem.Header>
+          <StackPanel Classes="tabHeader">
+            <Image Source="{local:UpstreamImage ViewFile}" />
+            <TextBlock Text="View" />
+          </StackPanel>
+        </TabItem.Header>
+        <local:DiffView x:Name="View" />
+      </TabItem>
+      <TabItem x:Name="BlameTab">
+        <TabItem.Header>
+          <StackPanel Classes="tabHeader">
+            <Image Source="{local:UpstreamImage Blame}" />
+            <TextBlock Text="Blame" />
+          </StackPanel>
+        </TabItem.Header>
+        <local:BlameView x:Name="Blame" />
+      </TabItem>
+    </TabControl>
+  </Grid>
+</Window>

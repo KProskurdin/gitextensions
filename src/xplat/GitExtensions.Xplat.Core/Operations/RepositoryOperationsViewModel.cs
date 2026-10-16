@@ -368,6 +368,22 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> RebaseAsync(string repositoryPath, string branch)
         => RunAsync($"Rebased onto {branch}", repositoryPath, () => _operations.RebaseAsync(repositoryPath, branch));
 
+    /// <summary>
+    ///  Upstream's <c>FormRebase</c>: runs the rebase command the dialog built, showing git's output as a remote operation
+    ///  does. An interactive rebase needs <see cref="EditorCommand"/>.
+    /// </summary>
+    public Task<bool> RebaseAsync(string repositoryPath, string onto, ArgumentString arguments, bool interactive)
+    {
+        if (interactive && EditorCommand is null)
+        {
+            return RejectAsync(NoEditorMessage);
+        }
+
+        string? editor = EditorCommand;
+        return RunRemoteAsync($"Rebase onto {(ObjectId.TryParse(onto, out _) ? ShortHash(onto) : onto)}", "Rebased", repositoryPath,
+            (output, cancellation) => _operations.RunRebaseAsync(repositoryPath, arguments, editor, output, cancellation));
+    }
+
     public Task<bool> AbortRebaseAsync(string repositoryPath)
         => RunAsync("Rebase aborted", repositoryPath, () => _operations.AbortRebaseAsync(repositoryPath));
 
@@ -457,6 +473,12 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
     public Task<bool> MergeAsync(string repositoryPath, string branch)
         => RunAsync($"Merged {branch}", repositoryPath, () => _operations.MergeAsync(repositoryPath, branch));
+
+    /// <summary>
+    ///  Upstream's <c>FormMergeBranch</c>: runs the merge command the dialog built.
+    /// </summary>
+    public Task<bool> MergeBranchAsync(string repositoryPath, string branch, ArgumentString arguments)
+        => RunAsync($"Merged {branch}", repositoryPath, () => _operations.RunCommandsAsync(repositoryPath, [arguments]));
 
     public Task<bool> AbortMergeAsync(string repositoryPath)
         => RunAsync("Merge aborted", repositoryPath, () => _operations.AbortMergeAsync(repositoryPath));
@@ -574,7 +596,16 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
                 _operations.CloneAsync(sourceUrl.Trim(), targetPath.Trim(), output, cancellation, depth));
     }
 
-    private async Task<bool> RunRemoteAsync(string title, string successMessage, string repositoryPath,
+    /// <summary>
+    ///  Upstream's <c>FormClone</c> clone: <paramref name="arguments"/> (from <see cref="CloneDialog.Arguments"/>) run in
+    ///  <paramref name="targetPath"/>. Not reported through <see cref="RepositoryChanged"/>: the clone window asks whether
+    ///  to open the new repository, as upstream.
+    /// </summary>
+    public Task<bool> CloneAsync(string sourceUrl, string targetPath, ArgumentString arguments)
+        => RunRemoteAsync($"Clone {sourceUrl.Trim()}", "Cloned", repositoryPath: null,
+            (output, cancellation) => _operations.RunCloneAsync(targetPath, arguments, output, cancellation));
+
+    private async Task<bool> RunRemoteAsync(string title, string successMessage, string? repositoryPath,
         Func<IProgress<GitOutputLine>, CancellationToken, Task> operation, bool keepOutputOpen = false)
     {
         lock (_outputLock)
@@ -598,7 +629,11 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             await operation(progress, cancellation.Token);
             StatusMessage = successMessage;
             RemoteState = RemoteOperationState.Succeeded;
-            RepositoryChanged?.Invoke(this, new RepositoryChangedEventArgs(repositoryPath));
+            if (repositoryPath is not null)
+            {
+                RepositoryChanged?.Invoke(this, new RepositoryChangedEventArgs(repositoryPath));
+            }
+
             return true;
         }
         catch (OperationCanceledException)
@@ -606,7 +641,11 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             // A cancelled fetch or pull may have updated some refs, so the repository is still reloaded.
             StatusMessage = "Cancelled";
             RemoteState = RemoteOperationState.Cancelled;
-            RepositoryChanged?.Invoke(this, new RepositoryChangedEventArgs(repositoryPath));
+            if (repositoryPath is not null)
+            {
+                RepositoryChanged?.Invoke(this, new RepositoryChangedEventArgs(repositoryPath));
+            }
+
             return false;
         }
         catch (Exception ex)

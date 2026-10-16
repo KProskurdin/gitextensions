@@ -206,6 +206,16 @@ public interface IAppPreferences
     /// </summary>
     bool CreateLocalBranchForRemote { get; set; }
 
+    /// <summary>
+    ///  Upstream's <c>DontCommitMerge</c>: the merge dialog's "Do not commit", kept between merges.
+    /// </summary>
+    bool DontCommitMerge { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>RebaseAutoStash</c>: the rebase dialog's "Auto stash", kept between rebases.
+    /// </summary>
+    bool RebaseAutoStash { get; set; }
+
     bool? UpdateSubmodulesOnCheckout { get; set; }
 
     bool ShowStashCount { get; set; }
@@ -736,11 +746,17 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public FileHistoryOptions FileHistory
     {
-        get => new(AppSettings.FollowRenamesInFileHistory, AppSettings.FollowRenamesInFileHistoryExactOnly);
+        get => new(AppSettings.FollowRenamesInFileHistory, AppSettings.FollowRenamesInFileHistoryExactOnly,
+            AppSettings.FullHistoryInFileHistory, AppSettings.SimplifyMergesInFileHistory, AppSettings.LoadFileHistoryOnShow,
+            AppSettings.LoadBlameOnShow);
         set
         {
             AppSettings.FollowRenamesInFileHistory = value.FollowRenames;
             AppSettings.FollowRenamesInFileHistoryExactOnly = value.ExactRenamesOnly;
+            AppSettings.FullHistoryInFileHistory = value.FullHistory;
+            AppSettings.SimplifyMergesInFileHistory = value.SimplifyMerges;
+            AppSettings.LoadFileHistoryOnShow = value.LoadHistoryOnShow;
+            AppSettings.LoadBlameOnShow = value.LoadBlameOnShow;
         }
     }
 
@@ -832,6 +848,18 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.CreateLocalBranchForRemote;
         set => AppSettings.CreateLocalBranchForRemote = value;
+    }
+
+    public bool DontCommitMerge
+    {
+        get => AppSettings.DontCommitMerge;
+        set => AppSettings.DontCommitMerge = value;
+    }
+
+    public bool RebaseAutoStash
+    {
+        get => AppSettings.RebaseAutoStash;
+        set => AppSettings.RebaseAutoStash = value;
     }
 
     public bool? UpdateSubmodulesOnCheckout
@@ -1277,6 +1305,9 @@ public sealed class SettingsAppPreferences : IAppPreferences
         Confirmation.BranchCheckout => AppSettings.ConfirmBranchCheckout.Value,
         Confirmation.StashDrop => !AppSettings.DontConfirmStashDrop,
         Confirmation.SwitchWorktree => !AppSettings.DontConfirmSwitchWorktree.Value,
+        Confirmation.ResolveConflicts => !AppSettings.DontConfirmResolveConflicts.Value,
+        Confirmation.CommitAfterConflictsResolved => !AppSettings.DontConfirmCommitAfterConflictsResolved.Value,
+        Confirmation.SecondAbortConfirmation => !AppSettings.DontConfirmSecondAbortConfirmation.Value,
         _ => throw new ArgumentOutOfRangeException(nameof(confirmation)),
     };
 
@@ -1313,6 +1344,15 @@ public sealed class SettingsAppPreferences : IAppPreferences
                 break;
             case Confirmation.SwitchWorktree:
                 AppSettings.DontConfirmSwitchWorktree.Value = !ask;
+                break;
+            case Confirmation.ResolveConflicts:
+                AppSettings.DontConfirmResolveConflicts.Value = !ask;
+                break;
+            case Confirmation.CommitAfterConflictsResolved:
+                AppSettings.DontConfirmCommitAfterConflictsResolved.Value = !ask;
+                break;
+            case Confirmation.SecondAbortConfirmation:
+                AppSettings.DontConfirmSecondAbortConfirmation.Value = !ask;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(confirmation));
@@ -1527,6 +1567,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool? AutoPopStashAfterCheckoutBranch { get; set; }
 
     public bool CreateLocalBranchForRemote { get; set; }
+
+    public bool DontCommitMerge { get; set; }
+
+    public bool RebaseAutoStash { get; set; }
 
     public bool? UpdateSubmodulesOnCheckout { get; set; }
 

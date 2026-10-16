@@ -99,7 +99,8 @@ public interface IGitOperations
     Task ResolveConflictsAsync(string repositoryPath, IReadOnlyList<string> paths, bool ours);
 
     /// <summary>
-    ///  Runs the configured merge tool on one conflicted file and waits until the tool is closed. Throws
+    ///  Runs the configured merge tool on one conflicted file (every one when <paramref name="path"/> is empty, as
+    ///  upstream's "Start mergetool") and waits until the tool is closed. Throws
     ///  <see cref="GitOperationException"/> when no merge tool is configured, because git would otherwise fall back to a
     ///  terminal tool that cannot run without a console.
     /// </summary>
@@ -219,6 +220,14 @@ public interface IGitOperations
     Task RebaseInteractiveAsync(string repositoryPath, string onto, string editorCommand,
         IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    ///  Upstream's <c>FormRebase</c> rebase: runs <paramref name="arguments"/> (a <c>Commands.Rebase</c>). Git opens
+    ///  <paramref name="editorCommand"/> for an interactive rebase's todo list and the messages; without one git keeps each
+    ///  message.
+    /// </summary>
+    Task RunRebaseAsync(string repositoryPath, ArgumentString arguments, string? editorCommand,
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default);
+
     Task AbortRebaseAsync(string repositoryPath);
 
     /// <summary>
@@ -289,6 +298,13 @@ public interface IGitOperations
     /// <param name="depth">Upstream's "Limit depth": a shallow clone of that many commits; null for the whole history.</param>
     Task CloneAsync(string sourceUrl, string targetPath, IProgress<GitOutputLine>? output = null,
         CancellationToken cancellationToken = default, int? depth = null);
+
+    /// <summary>
+    ///  Upstream's <c>FormClone</c> clone: creates <paramref name="targetPath"/> and runs <paramref name="arguments"/> (a
+    ///  <c>Commands.Clone</c>) in it, as upstream runs it in the new folder.
+    /// </summary>
+    Task RunCloneAsync(string targetPath, ArgumentString arguments, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     ///  Creates a repository in <paramref name="folder"/>, creating the folder when it does not exist.

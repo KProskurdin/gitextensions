@@ -28,9 +28,6 @@ internal sealed class CreateBranchDialogTests
         summary.Should().Contain($"\"{CreateBranchDialog.NoRevision}\"").And.Contain($"\"{CreateBranchDialog.NotAvailable}\"");
         UpstreamSource("src/app/GitUI/UserControls/CommitSummaryUserControl.Designer.cs").Should()
             .Contain($"\"{CreateBranchDialog.TagsCaption}\"").And.Contain($"\"{CreateBranchDialog.BranchesCaption}\"");
-        UpstreamSource("src/app/GitUI/UserControls/CommitPickerSmallControl.cs").Should()
-            .Contain($"\"{CreateBranchDialog.InvalidCommitHash}\"");
-        UpstreamSource("src/app/GitUI/TranslatedStrings.cs").Should().Contain($"_error = new(\"{CreateBranchDialog.ErrorCaption}\")");
     }
 
     [Test]

@@ -53,7 +53,9 @@ public partial class CommitWindow
 
         // Upstream's OtherColors.MergeConflictsColor.
         SolveConflictsButton.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(230, 99, 99));
-        SolveConflictsButton.Click += (_, _) => new ConflictsWindow(_repositoryPath, _repository, _actions).Show(this);
+        // Upstream's FormCommit opens the conflicts window without its offer to commit.
+        SolveConflictsButton.Click += (_, _) => _ = new ConflictsWindow(_repositoryPath, _repository, _actions, _preferences,
+            (_, file) => ShowFileHistory(file, showBlame: false), offerCommit: false).ShowDialog(this);
         foreach (FileListParts parts in new[] { _unstaged, _staged })
         {
             Wire(parts);
@@ -81,9 +83,9 @@ public partial class CommitWindow
             parts.DeleteFile.Click += (_, _) => Run(() => DeleteSelectedAsync(parts));
             parts.ShowInFolder.Click += (_, _) => _fileManager.OpenFolder(
                 Path.GetDirectoryName(FullPath(Selected(parts)[0])) ?? _repositoryPath);
-            parts.FileHistory.Click += (_, _) =>
-                new FileBrowserWindow(_repositoryPath, "HEAD", selectedFile: Selected(parts)[0].Path).Show(this);
-            parts.Blame.Click += (_, _) => new BlameWindow(_repositoryPath, "HEAD", Selected(parts)[0].Path).Show(this);
+            // Upstream's FileStatusList menu: the file history window, on its Blame tab for Blame.
+            parts.FileHistory.Click += (_, _) => ShowFileHistory(Selected(parts)[0].Path, showBlame: false);
+            parts.Blame.Click += (_, _) => ShowFileHistory(Selected(parts)[0].Path, showBlame: true);
             parts.AddToGitIgnore?.Click += (_, _) => Run(() => IgnoreSelectedAsync(localExclude: false));
             parts.AddToGitInfoExclude?.Click += (_, _) => Run(() => IgnoreSelectedAsync(localExclude: true));
             parts.StopTracking.Click += (_, _) => Run(() => StopTrackingSelectedAsync(parts));
@@ -336,4 +338,8 @@ public partial class CommitWindow
         MenuItem? AddToGitInfoExclude,
         MenuItem StopTracking,
         MenuItem RunScript);
+    private void ShowFileHistory(string file, bool showBlame)
+        => new FileHistoryWindow(_repositoryPath, _actions, _preferences, file, revision: null, showBlame,
+            (repository, hash) => _actions.CherryPickAsync(repository, hash),
+            (repository, hash) => _actions.RevertAsync(repository, hash)).Show(this);
 }

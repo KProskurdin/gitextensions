@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+             xmlns:local="using:GitExtensions.Xplat.App"
+             x:Class="GitExtensions.Xplat.App.BlameView">
+  <!-- Upstream's BlameControl, shared by the blame window and the file history's Blame tab. Upstream's gutter: the commit's
+       author line on the first line of each run of lines from one commit. -->
+  <ListBox x:Name="BlameList" Grid.IsSharedSizeScope="True"
+           FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}">
+    <!-- Upstream's blame settings menu (FormFileHistory); the choices are upstream's Blame viewer settings. -->
+    <ListBox.ContextMenu>
+      <ContextMenu x:Name="BlameContextMenu">
+        <MenuItem Header="Blame settings:" IsEnabled="False" />
+        <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox" />
+        <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox" />
+        <MenuItem x:Name="DetectMoveInAllFilesMenuItem" Header="Detect move and copy in all files" ToggleType="CheckBox" />
+        <Separator />
+        <MenuItem x:Name="DisplayAuthorFirstMenuItem" Header="Display author first" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAuthorMenuItem" Header="Show author" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Show author date" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAuthorTimeMenuItem" Header="Show author time" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowLineNumbersMenuItem" Header="Show line numbers" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowOriginalFilePathMenuItem" Header="Show original file path" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAuthorAvatarMenuItem" Header="Show author avatar" ToggleType="CheckBox" />
+      </ContextMenu>
+    </ListBox.ContextMenu>
+    <ListBox.ItemTemplate>
+      <DataTemplate x:DataType="core:BlameRow">
+        <Grid Margin="2,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="BlameLineNumber" />
+            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="BlameAuthorLine" MaxWidth="420" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <!-- Upstream's gutter: the line's age color, then the author's avatar on the first line of a commit's run. -->
+          <Border Grid.Column="0" Width="4" Margin="0,0,2,0"
+                  Background="{Binding AgeBucket, Converter={x:Static local:BlameAgeBrushConverter.Instance}}" />
+          <Panel Grid.Column="1" Width="16" Margin="0,0,6,0" IsVisible="{Binding AvatarColumn}">
+            <local:AvatarView Width="16" Height="16" ImageSize="32" IsVisible="{Binding ShowAvatar}"
+                              Email="{Binding Line.AuthorEmail}" AuthorName="{Binding Line.Author}" />
+          </Panel>
+          <TextBlock Grid.Column="2" Text="{Binding LineNumberText}" Foreground="Gray" Margin="0,0,8,0" />
+          <TextBlock Grid.Column="3" Text="{Binding Hash}" />
+          <TextBlock Grid.Column="4" Text="{Binding AuthorLine}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+          <TextBlock Grid.Column="5" Text="{Binding Content}" />
+        </Grid>
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+  </ListBox>
+</UserControl>

@@ -20,35 +20,38 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class CreateBranchWindow : Window
 {
-    // CommitSummaryUserControl's label colors.
-    private static readonly System.Drawing.Color _tagsBackColor = System.Drawing.Color.LightSteelBlue;
-    private static readonly System.Drawing.Color _branchesBackColor = System.Drawing.Color.LightSalmon;
-
     private readonly string _repositoryPath;
     private readonly RepositoryOperationsViewModel _actions;
     private readonly IAppPreferences _preferences;
     private readonly string? _revision;
     private readonly string? _namePrefix;
+    private readonly bool _checkoutAfterCreation;
+    private readonly bool _userAbleToChangeRevision;
+    private readonly bool _couldBeOrphan;
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private CreateBranchDialog _dialog = new(hasCommits: true);
     private ObjectId _originalCheckout;
 
     /// <param name="revision">The commit to create the branch at (a hash or ref); HEAD when null or an artificial commit.</param>
     /// <param name="namePrefix">The proposed name, e.g. a left panel folder's path with a trailing slash.</param>
+    /// <param name="checkoutAfterCreation">Upstream's <c>CheckoutAfterCreation</c>: "Checkout after create" to start with.</param>
+    /// <param name="userAbleToChangeRevision">Upstream's <c>UserAbleToChangeRevision</c>.</param>
+    /// <param name="couldBeOrphan">Upstream's <c>CouldBeOrphan</c>: the orphan options can be used.</param>
     public CreateBranchWindow(string repositoryPath, RepositoryOperationsViewModel actions, IAppPreferences preferences,
-        string? revision = null, string? namePrefix = null)
+        string? revision = null, string? namePrefix = null, bool checkoutAfterCreation = true,
+        bool userAbleToChangeRevision = true, bool couldBeOrphan = true)
     {
         _repositoryPath = repositoryPath;
         _actions = actions;
         _preferences = preferences;
         _revision = revision;
         _namePrefix = namePrefix;
+        _checkoutAfterCreation = checkoutAfterCreation;
+        _userAbleToChangeRevision = userAbleToChangeRevision;
+        _couldBeOrphan = couldBeOrphan;
         InitializeComponent();
-        AuthorCaption.Text = ResourceManager.TranslatedStrings.Author + ":";
-        DateCaption.Text = ResourceManager.TranslatedStrings.CommitDate + ":";
 
         BranchNameBox.LostFocus += (_, _) => NormaliseName();
-        CommitHashBox.LostFocus += (_, _) => Run(() => SelectCommitAsync(CommitHashBox.Text?.Trim() ?? ""));
         CheckoutAfterCreateCheck.IsCheckedChanged += (_, _) => _dialog.CheckoutAfterCreate = CheckoutAfterCreateCheck.IsChecked == true;
         CreateOrphanCheck.IsCheckedChanged += (_, _) =>
         {
@@ -102,7 +105,10 @@ public partial class CreateBranchWindow : Window
         if (revision is not null)
         {
             _dialog.ProposeName(revision.Refs);
-            await ShowCommitAsync(module, start, revision);
+            _dialog.Revision = start;
+            ShowSummary(CreateBranchDialog.Summarize(revision));
+            CommitPicker.Module = module;
+            await CommitPicker.SetCommitAsync(start.ToString());
         }
 
         if (_dialog.IsOrphanOnly)
@@ -115,71 +121,40 @@ public partial class CreateBranchWindow : Window
         }
 
         BranchNameBox.Text = _dialog.BranchName;
+
+        // Upstream's OnShown: the caller's choices over the loaded state.
+        _dialog.CheckoutAfterCreate = _checkoutAfterCreation;
         CheckoutAfterCreateCheck.IsChecked = _dialog.CheckoutAfterCreate;
         CreateOrphanCheck.IsChecked = _dialog.CreateOrphan;
         ShowOptions();
         BranchNameBox.Focus();
         BranchNameBox.CaretIndex = BranchNameBox.Text?.Length ?? 0;
+        CommitPicker.SelectedChanged += (_, _) => Run(ShowPickedCommitAsync);
         _loaded.TrySetResult();
     }
 
-    // Upstream's CommitPickerSmallControl.SetSelectedCommitHash: a hash git does not know is refused and the old one kept.
-    private async Task SelectCommitAsync(string text)
+    // Upstream's commitPicker_SelectedObjectIdChanged: the summary of the picked commit.
+    private async Task ShowPickedCommitAsync()
     {
-        if (text.Length == 0 || text == (_dialog.Revision?.ToShortString() ?? ""))
+        if (CommitPicker is not { Selected: { } id, Module: { } module })
         {
             return;
         }
 
-        GitModule module = GitModules.Open(_repositoryPath);
-        ObjectId id = await Task.Run(() => module.RevParse(text));
-        if (id.IsZero)
-        {
-            await new MessageBoxWindow(UpstreamTranslation.ByText(CreateBranchDialog.InvalidCommitHash),
-                UpstreamTranslation.ByText(CreateBranchDialog.ErrorCaption), MessageBoxButtons.OK).ShowDialog(this);
-            CommitHashBox.Text = _dialog.Revision?.ToShortString() ?? "";
-            return;
-        }
-
-        GitRevision revision = await Task.Run(() => module.GetRevision(id, shortFormat: true, loadRefs: true));
-        await ShowCommitAsync(module, id, revision);
-    }
-
-    private async Task ShowCommitAsync(GitModule module, ObjectId id, GitRevision revision)
-    {
         _dialog.Revision = id;
-        CommitHashBox.Text = id.ToShortString();
-        ShowSummary(CreateBranchDialog.Summarize(revision));
-        CommitCountText.Text = _originalCheckout.IsZero
-            ? ""
-            : await Task.Run(() => module.GetCommitCountString(_originalCheckout, id.ToString()));
-    }
-
-    private void ShowSummary(CommitSummary? summary)
-    {
-        string notAvailable = UpstreamTranslation.ByText(CreateBranchDialog.NotAvailable);
-        SummaryGroup.Header = summary?.ShortId ?? UpstreamTranslation.ByText(CreateBranchDialog.NoRevision);
-        AuthorText.Text = summary?.Author ?? "---";
-        DateText.Text = summary?.Date ?? "---";
-        MessageText.Text = summary?.Subject ?? "---";
-        ShowRefs(TagsBorder, TagsText, summary?.Tags, _tagsBackColor);
-        ShowRefs(BranchesBorder, BranchesText, summary?.Branches, _branchesBackColor);
-
-        // Upstream colors and bolds the tags and branches when there are some, else shows "n/a".
-        void ShowRefs(Border border, TextBlock text, string? refs, System.Drawing.Color color)
+        GitRevision revision = await Task.Run(() => module.GetRevision(id, shortFormat: true, loadRefs: true));
+        if (CommitPicker.Selected == id)
         {
-            bool any = !string.IsNullOrEmpty(refs);
-            text.Text = refs is null ? "---" : any ? refs : notAvailable;
-            text.FontWeight = any ? FontWeight.Bold : FontWeight.Normal;
-            System.Drawing.Color back = color.AdaptBackColor();
-            border.Background = any ? new SolidColorBrush(Color.FromRgb(back.R, back.G, back.B)) : null;
-            text.Foreground = any ? Brushes.Black : null;
+            ShowSummary(CreateBranchDialog.Summarize(revision));
         }
     }
+
+    private void ShowSummary(CommitSummary? summary) => Summary.Show(summary);
 
     private void ShowOptions()
     {
-        CommitPicker.IsEnabled = _dialog.CanChangeRevision;
+        CommitPicker.IsEnabled = _dialog.CanChangeRevision && _userAbleToChangeRevision;
+        OrphanGroup.IsEnabled = _couldBeOrphan;
         CheckoutAfterCreateCheck.IsEnabled = _dialog.CanChangeCheckout;
         CheckoutAfterCreateCheck.IsChecked = _dialog.CheckoutAfterCreate;
         CreateOrphanCheck.IsEnabled = _dialog.CanChangeOrphan;

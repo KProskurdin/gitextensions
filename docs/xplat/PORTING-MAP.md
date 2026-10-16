@@ -29,25 +29,27 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PushDialog.cs`, `PushRejection.cs`, `GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PushWindow.axaml(.cs)`, `PushRejectedFlow.cs`, `MainWindow.axaml(.cs)` (Push), `CommitWindow.axaml.cs` (Commit & push) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormClone.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (clone), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormClone.cs`; `src/app/GitUI/BrowseForPrivateKey.cs` (browse only) | `src/xplat/GitExtensions.Xplat.Core/Operations/CloneDialog.cs`, `GitOperations.cs` (clone, `RunCloneAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RemoteUrlHistory.cs` (`AddAsMostRecentAsync`); `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)`, `ThemeApplier.cs` (info label colors) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs`, `CommitSummaryUserControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CreateBranchDialog.cs`, `GitOperations.cs` (create, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CreateBranchWindow.axaml(.cs)`, `MainWindow.axaml.cs`, `MainWindow.LeftPanel.cs`, `CommitWindow.Bottom.cs` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutBranchDialog.cs`, `GitOperations.cs` (checkout, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutBranchWindow.axaml(.cs)`, `CheckoutBranchFlow.cs`, `CheckoutWindow.axaml(.cs)` (revisions), `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutBranchDialog.cs`, `GitOperations.cs` (checkout, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutBranchWindow.axaml(.cs)`, `CheckoutBranchFlow.cs`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCheckoutRevision.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutRevisionDialog.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutRevisionWindow.axaml(.cs)`, `CommitPickerView.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
 | `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`, `DiffCopy.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`, `DiffView.Toolbar.cs`, `DiffWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`); `src/xplat/GitExtensions.Xplat.App/FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormBlame.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (`MergeAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Merge into current, Abort merge) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormFileHistory.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`BuildPathFilter`, `FilePathByObjectId`), `FilterInfo.cs` (full history) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileHistoryDialog.cs`, `FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`, `PathFilter`), `CommitListViewModel.FilePaths`, `RevisionFilter.cs` (`FullHistory`, `SimplifyMerges`); `src/xplat/GitExtensions.Xplat.App/FileHistoryWindow.axaml(.cs)`, `RevisionGrid.axaml`, `FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormBlame.cs`; `src/app/GitUI/UserControls/BlameControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameView.axaml(.cs)`, `BlameWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (tag list, Create) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCherryPick.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (cherry-pick), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Cherry-pick on the selected commit) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormResetChanges.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (reset), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Reset soft here, Reset mixed here) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormRebase.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (rebase, interactive rebase, abort, continue, skip, edit todo), `GitEditorCommand.cs`, `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsRebasing`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Rebase onto selected, grid menu "Rebase current branch on", warning bar buttons) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormRebase.cs`; `src/app/GitUI/UserControls/PatchGrid.cs`, `PatchFile.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/RebaseDialog.cs`, `RebasePatches.cs`, `GitOperations.cs` (rebase, `RunRebaseAsync`, interactive rebase, abort, continue, skip, edit todo), `GitEditorCommand.cs`, `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsRebasing`; `src/xplat/GitExtensions.Xplat.App/RebaseWindow.axaml(.cs)`, `MainWindow.axaml` (Commands > Rebase..., grid menu "Rebase current branch on", warning bar buttons) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormEditor.cs` (and the `fileeditor` verb of `GitUICommands.RunCommand`) | `src/xplat/GitExtensions.Xplat.App/EditorWindow.axaml(.cs)`, `Program.cs`, `App.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Editing/EditorFile.cs` | `52d08e996` | partial |
 | `src/native/GitExtSshAskPass` (native askpass dialog, set as `SSH_ASKPASS` by `EnvironmentConfiguration`) | `src/xplat/GitExtensions.Xplat.App/AskPassWindow.axaml(.cs)`, `Program.cs`, `App.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitAskPass.cs`, `GitOperations.cs` (remote environment) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRemotes.cs`; `src/app/GitUI/LeftPanel/RemoteBranchTree.cs`, `RemoteRepoNode.cs`, `RemoteRepoFolderNode.cs` (inactive remotes) | `src/xplat/GitExtensions.Xplat.Core/Operations/RemotesDialog.cs`, `Repository/RemoteUrlHistory.cs`, `Repository/GitRepositoryService.cs` (remote list, inactive remotes), `Repository/RepoObjectsTree.cs`; `src/xplat/GitExtensions.Xplat.App/RemotesWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs`, `MainWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormReflog.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/Reflog.cs` (entries of HEAD); `src/xplat/GitExtensions.Xplat.App/ReflogWindow.axaml(.cs)`; `MainWindow.axaml` (Reflog..., reset to an entry) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormReflog.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/Reflog.cs` (references, a reference's reflog); `src/xplat/GitExtensions.Xplat.App/ReflogWindow.axaml(.cs)`; `MainWindow.axaml(.cs)` (Reflog...) | `52d08e996` | ported |
+| `src/app/GitUI/HelperDialogs/FormResetCurrentBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/ResetCurrentBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/ResetCurrentBranchWindow.axaml(.cs)`, `CommitSummaryView.axaml(.cs)`; `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` (its callers) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRevertCommit.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (revert), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Revert) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRenameBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (rename), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Rename selected, with the new name in the branch box) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormResolveConflicts.cs` | `src/xplat/GitExtensions.Xplat.App/ConflictsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (`RunMergeToolAsync`, `ResolveConflictsAsync`), `RepositoryOperationsViewModel.cs` (`MarkResolvedAsync`) | `52d08e996` | partial |
@@ -146,7 +148,7 @@ button following the default pull action. Added 2026-10-11: the author's avatar 
 
 **RevisionGridControl** (`partial`). Added 2026-10-06: columns (graph and message, author, date, commit); HEAD, branch,
 remote-branch and tag labels colored by kind; a context menu (copy hash or message, create a branch or tag here, browse
-files, cherry-pick, revert, reset soft, mixed or hard); lanes that keep one color for their whole length; upstream'"'"'s bisect items at the top of the context menu (mark the selected
+files, cherry-pick, revert, reset soft, mixed or hard; since 2026-10-16 upstream's "Reset current branch to here..." opening the reset current branch window); lanes that keep one color for their whole length; upstream'"'"'s bisect items at the top of the context menu (mark the selected
 revision bad, good or skipped, stop bisect), shown only while a bisect runs, and the good and bad marks as labels in green
 and red where upstream draws icons, with upstream'"'"'s tooltip texts (2026-10-09); 5000 commits
 loaded and scrolled at 60 fps (PLAN.md M3.5). Earlier: a read-only list of the first 500 commits from `HEAD`,
@@ -158,6 +160,13 @@ working directory and index rows; the selected row is kept when the rows are rea
 avatar at the start of the author cell (`showrevisiongridauthoravatarcolumn`; upstream has a column of its own). Not
 ported: column layout and sorting, and the upstream filter bar (the box in the window filters only the loaded commits, by
 hash, subject or author).
+Changed 2026-10-16 (UI-PARITY U5, file history): the rows' template and styles moved to `RevisionGrid.axaml`
+(`RevisionRowTemplate`, the `revisionGrid` class) so the file history's grid is the same; a path filter is read as
+upstream's `BuildPathFilter` reads it (a path without spaces or quotes is quoted, otherwise passed as it is) and one path
+that is not a folder follows its renames as `FollowRenamesInFileHistory` says, with the names it had kept per commit
+(`CommitListViewModel.FilePaths`, upstream's `FilePathByObjectId`). `RevisionFilter` has upstream's `--full-history` and
+`--simplify-merges` for a narrowed history (`FullHistoryInFileHistory`, `SimplifyMergesInFileHistory`); only the file
+history sets them so far.
 
 **FormStash** (`partial`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
 stash by its name. Also ported: including untracked files. Also ported: stashing only the selected files (Stash selected). Also ported: keeping the index (Keep index). Not ported: branching from a
@@ -208,6 +217,26 @@ git call instead (`GitEditorCommand`), so the user's git config is not changed. 
 editor for messages (a resolved commit, a reword or squash). Not ported: the rebase dialog itself (range, `--onto`,
 ignore date, committer date, update refs, autostash, preserve merges), and the rebase-in-progress state from other tools
 (only git's own folders are read).
+Rebuilt 2026-10-16 (UI-PARITY U5): the rebase window (`RebaseWindow`, rules in core `RebaseDialog`, the commit list in
+core `RebasePatches`) is upstream's FormRebase: the help picture (`HelpCommandRebase`, kept as `Rebase`), the current
+branch, "Rebase on" (local and remote branches and tags; none read for a rebase at once, as upstream), "Show options"
+(shown at once unless rebasing at once, or always with `AlwaysShowAdvOpt`) with Interactive Rebase, Preserve Merges
+(`--rebase-merges`), Autosquash (git's `rebase.autosquash` to start with), Auto stash (upstream's `RebaseAutoStash`,
+only for a dirty working directory), Ignore date and Committer date is author date (each ruling out the other and the
+interactive options), Update dependent refs (git's `rebase.updaterefs`, passed only when changed, shown when git supports
+it) and the specific range (`--onto` with From and To). The rebase is upstream's `Commands.Rebase` with git's output
+shown; the window closes unless the rebase stopped. While a rebase is in progress it shows upstream's PatchGrid rows (the
+todo and done lists of a merge based rebase or the patch files of an apply based one, the commit being applied selected
+in OrangeRed, skipped ones kept in upstream's static list) and Commit..., Edit todo..., "Skip currently applying commit",
+Solve conflicts (highlighted in the yellow panel while there are conflicts), Continue rebase and Abort, with "There are
+unresolved merge conflicts" at the bottom left; upstream's rerere check continues by itself. Commands > R_ebase... (on
+the selected commit), the grid's "Selected commit" (at once), "Selected commit interactively..." (at once) and the new
+"Selected commit with advanced options...", the left panel's "Rebase current branch on this ..." and the action bar's
+More... (which no longer offers Skip commit and Edit todo itself) open it. Changed: the commit and conflicts windows are
+not modal, so the state is read again when the rebase window is active again. Not ported: "Add files" (FormAddFiles is not
+in the new shell), the From revision picker (FormChooseCommit), the range from two selected commits (the grid selects
+one), double-click on a commit, upstream's "Current branch a is up to date" message (it compares with a fixed text that
+only a branch named "a" matches), and the rerere check after continue (only the rebase's output is read).
 
 **FormEditor** (`partial`). Ported 2026-10-06: the app's `fileeditor <file>` verb opens only the editor window; it shows the
 file, saves with the toolbar button or Ctrl+S (Cmd+S on macOS), and on close with unsaved changes asks Save, Don't save or
@@ -247,9 +276,27 @@ branch's label, and the label nestled against a local branch on the side of the 
 ported: Test connection and Load SSH key (PuTTY), and WinForms' color dialog (the color button offers its basic colors
 and an HTML box).
 
-**FormReflog** (`partial`). Ported: the list of HEAD's reflog (the last 200 entries, with hash, selector and action), and a mixed
-reset of the branch to the chosen entry. Not ported: the reflog of other refs, the reset modes other than mixed, the
-branch and tag actions from the list, and the entry count setting.
+**FormReflog** (`ported`). Ported: the list of HEAD's reflog (the last 200 entries, with hash, selector and action), and a mixed
+reset of the branch to the chosen entry.
+Rebuilt 2026-10-16 (UI-PARITY U5): the reflog window is upstream's FormReflog: the warning about local changes, the
+reference (HEAD, the local branches, the remote branches) with the "current branch (...)" (on a branch only) and HEAD
+links, and upstream's `git reflog --no-abbrev` read with its pattern into SHA-1, Ref and Action columns (every entry, no
+longer the last 200). Its menu, which a click opens on the row under the mouse as upstream's does, copies the SHA-1, opens
+the create branch window on the commit (no checkout, the commit fixed, no orphan: upstream's `CheckoutAfterCreation`,
+`UserAbleToChangeRevision` and `CouldBeOrphan`, now options of the create branch window) and, on a branch, opens the reset
+current branch window (after upstream's question when there are local changes, soft then, else hard). The Reset and Close
+buttons are gone, as upstream has none. Not ported: sorting by a column.
+
+**FormResetCurrentBranch** (`partial`). Ported 2026-10-16 (UI-PARITY U5): the reset current branch window
+(`ResetCurrentBranchWindow`, rules in core `ResetCurrentBranchDialog`): "Reset branch '...' to revision:", upstream's
+`CommitSummaryUserControl` (now `CommitSummaryView`, shared with the create branch window), the soft, mixed, keep, merge
+and hard types on upstream's green, yellow and red (dimmed in dark mode), the question before a hard reset, and the
+submodule update after a hard reset that moved HEAD or when `UpdateSubmodulesOnCheckout` is on. The grid's "Reset
+c_urrent branch to here..." (in place of the soft, mixed and hard submenu, soft first), the left panel's reset (in place
+of the choice window) and the reflog open it. Differences: the reset runs quietly without the process window, and the
+submodules are updated once where upstream may run its update twice. Not ported: the help button (git's documentation of
+the chosen type, `ResetCurrentBranchDialog.HelpUrl`). Fixed with it: the summary's "n/a" for a commit without tags or
+branches had no text brush and did not show (in the create branch window too).
 
 ## Not in this map
 
@@ -374,6 +421,22 @@ adaptation, the submodule update after a pull and the prune offer when a pull is
 
 **FormClone** (`partial`). Ported: clone from a URL or local path into a new folder, then open it, with a folder picker
 and git's progress shown while it runs (see FormRemoteProcess). Not ported: branch choice, depth, and recursive submodules.
+Rebuilt 2026-10-16 (UI-PARITY U5): the clone window (`CloneWindow`, rules in core `CloneDialog`) is upstream's FormClone:
+the repository to clone (upstream's remote history, `RepositoryHistoryManager.Remotes`, offered and added to after a
+clone), the destination (the parent folders of the recent repositories offered), the subdirectory named after the
+repository (`PathUtil.GetRepositoryName`), and the branch ("(default: remote HEAD)", "(none: don't checkout after
+clone)", and the remote's branches read with `GetRemoteServerRefs` when the list opens). The start is upstream's
+`OnRuntimeLoad`: a URL given, else a URL in the clipboard (`TryExtractUrl`), else the open repository's push or fetch
+URL of the branch's remote (or origin, or the first remote), with `DefaultCloneDestinationPath` or the open repository's
+parent folder as destination. Upstream's location line (on the Info color, red for a missing value or a folder that
+exists and is not empty), "Repository type" (personal or `--bare`), "Initialize all submodules" and "Download full
+history" (else `--depth 1 --no-single-branch`), the checks (destination given and absolute), and upstream's
+`Commands.Clone` run in the new folder with git's progress. After a clone the PuTTY key chosen with "Load SSH key" (shown
+for plink only) is set on origin, the clone is added to the recent repositories, and upstream's "Do you want to open
+the new repository now?" decides whether it opens (it no longer opens by itself). Changed: the location line's missing
+value labels have no access key mark (upstream shows "&Destination:"'s underline). Not ported: loading the key into
+Pageant, the PuTTY host key and authentication prompts when the branches are read (the error is shown), the help
+button, and `StartCloneDialog` for plugins and the protocol handler (still not available).
 
 **FormCreateBranch** (`partial`). Ported: create a branch at HEAD and check it out. Not ported: creating from a
 specific revision, the branch name rules shown in the form, and the no-checkout option.
@@ -413,10 +476,20 @@ with "Don't show me this message again" (`AutoPopStashAfterCheckoutBranch`); `Co
 scripts and plugin events; the submodule update when HEAD moved. Opened as upstream's `StartCheckoutBranch`: Commands >
 Checkout branch... (new, with upstream's Ctrl+. hotkey `CheckoutBranch`), the left panel's checkout and double-click of a
 local or remote branch, "Fetch and checkout" of a remote branch, and the toolbar's branch drop-down. Changed: the choice
-of local-changes action becomes the default only with "Set as default", as upstream (it always did before). The old
-`CheckoutWindow` remains for checking out a tag or a commit, standing in for upstream's FormCheckoutRevision, which is not
-ported. Not ported: the branches containing given commits (core `CheckoutBranchSource.Containing*` exists; no caller
+of local-changes action becomes the default only with "Set as default", as upstream (it always did before). A tag or a
+commit is checked out with the checkout revision window (see FormCheckoutRevision); the old `CheckoutWindow` is gone. Not
+ported: the branches containing given commits (core `CheckoutBranchSource.Containing*` exists; no caller
 yet).
+
+**FormCheckoutRevision** (`partial`). Added 2026-10-16 (UI-PARITY U5): the checkout revision window
+(`CheckoutRevisionWindow`, rules in core `CheckoutRevisionDialog`) is upstream's FormCheckoutRevision: "Checkout this
+revision" with the commit picker and "Force (reset local changes)"; Checkout checks for a commit (upstream's message), runs
+upstream's `Commands.Checkout` (with `--force` when forced) between the checkout scripts and the CheckoutRevision plugin
+events, and updates the submodules when HEAD moved. The commit picker is `CommitPickerView`, upstream's
+`CommitPickerSmallControl` without its button, shared with the create branch window. Opened as upstream's
+`StartCheckoutRevisionDialog`: Commands > Checkout revision... (new; no commit proposed, as upstream), the grid's "Checkout
+this commit..." (was a checkout at once), and the left panel's checkout of a tag. Not ported: the commit picker's button
+(FormChooseCommit).
 
 **FormDeleteBranch** (`partial`). Ported: delete a local branch that is not checked out, with a force delete after a confirmation, and
 delete a remote branch on its own remote after a confirmation (`git push --delete`); origin/HEAD is never deleted. Not ported: force delete
@@ -431,7 +504,7 @@ reimplemented behavior, so the rows now use `52d08e996` as their base:
   the commit details panel does not show signatures.
 - `1c98cad37` (grid tooltip in `RevisionGridControl`): skipped, the commit list has no tooltips.
 - `36d8b34f6`, `d2b1e3528` (`FormCommit` focus scrolling and status bar height): skipped, layout of the WinForms file lists.
-- `af375e1be` (`FormClone` option to init submodules): skipped, the clone form does not expose submodule options.
+- `af375e1be` (`FormClone` option to init submodules): skipped then, ported with the clone window rebuild (2026-10-16).
 
 **FileViewer** (`partial`). Ported: the diff of one file, for a commit or the working tree (staged or unstaged), with
 added, removed, hunk and header lines colored, with an Ignore whitespace toggle (git diff -w). An untracked file is shown as added, from /dev/null. For a merge commit the
@@ -473,17 +546,51 @@ and a diff of that file in a chosen commit. Added 2026-10-10: the history follow
 `BuildPathFilter` does (`followrenamesinfilehistory`, `followrenamesinfilehistoryexactonly`, toggles in the window), and
 the diff of a commit uses the file's name in that commit; blame from the window. Not ported: the tree view with folders
 (the list is flat), the file's content view, and the branch and revision filters of the upstream form.
+Rebuilt 2026-10-16 (UI-PARITY U5): the file history window (`FileHistoryWindow`, rules in core `FileHistoryDialog`) is
+upstream's FormFileHistory: the title ("File History - file (its name in the selected commit) - repository"), the
+toolstrip (Load with "Load history on show" and "Load blame on show", which upstream's `LoadFileHistoryOnShow` and
+`LoadBlameOnShow` keep, the grid hidden until Load when they are off; "Show full history" and "Simplify merges"; the blame
+options; the git command log), the file's revision grid (the browse window's rows, following renames), its menu (copy
+hash, message, author or date; open with difftool; save as; revert and cherry pick; the two rename choices) with
+upstream's enabled rules, and the Commit (the commit's information and files with the file's diff), Diff, View and Blame
+tabs, shown as upstream shows them for the commit (no Blame for a submodule, only Commit with "Git could not identify the
+file" for a commit without it). The browse window's diff hotkeys (file history, blame) and the commit window's file menus
+open it, in this process where upstream starts a new one. Not ported: the filter toolstrip (branch and revision filters)
+and the grid's Navigate and View menus, "Difftool selected < - > local", the copy menu's branch and tag items, the Build
+Report tab, the custom diff tools, double-click (upstream opens the commit's diff dialog), `UseBrowseForFileHistory`, and
+the file history and blame command line verbs. The Files window (browse files at a commit) still has its own simple
+history list.
 
 **FormBlame** (`partial`). Ported: per-line blame of a file as of a commit (line number, short hash, author, date, text),
 read from `git blame --line-porcelain`; since 2026-10-06 a double-click or Enter on a line shows that commit's change to the
 file. The blame settings, the gutter and its age colors and avatars: see the BlameViewerSettingsPage row. Not ported:
 selecting the commit in the grid and blame of a diff against the parent.
+Changed 2026-10-16 (UI-PARITY U5): the blame list is upstream's BlameControl as a shared view (`BlameView`), which the
+blame window and the file history's Blame tab show; in the file history a line selects its commit in the grid (upstream's
+"gotocommit", with upstream's "Revision ... is not visible" message when the grid does not show it). "Blame" in the file
+lists (the commit window's, the browse window's diff hotkey) opens the file history on its Blame tab, as upstream's
+`StartFileHistoryDialog(showBlame: true)` does; the blame window stays for the browse files window.
 
 **FormMergeBranch** (`partial`). Ported: merge the selected branch into the current one with git's fast-forward
 default, abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. Conflicting files appear in the
 Changes list with the Conflict kind. Not ported: the strategy and strategy options, squash, no-commit, the
 allow-unrelated-histories option, and the merge message editor. Conflicts are resolved in the conflicts window (see
 FormResolveConflicts).
+Rebuilt 2026-10-16 (UI-PARITY U5): the merge window (`MergeBranchWindow`, rules in core `MergeBranchDialog`) is upstream's
+FormMergeBranch: upstream's help pictures (`HelpCommandMerge`, the fast-forward one on hover, kept expanded or not as
+`HelpIsExpandedMergeBranches`), the branch (local and remote branches and tags; proposed from the caller, else the branch
+the current one tracks, `GetRemoteBranch`), the current branch, fast forward or "Always create a new merge commit", "Do not
+commit" (upstream's `DontCommitMerge`), and "Show advanced options" (`AlwaysShowAdvOpt`): the merge strategy with its help
+link to upstream's user manual (linked `UserManual` files), squash (not with a merge commit), allow unrelated histories,
+log messages with their count, and a merge message written to MERGE_MSG through upstream's `CommitMessageManager`; hiding
+the options clears them. The merge is upstream's `Commands.MergeBranch` between the merge scripts; the repository's
+`NoFastForwardMerge`, `AddMergeLogMessages` and `MergeLogMessagesCount` are kept (store `IMergeSettingsStore`, in memory in
+the tests), and a merge that stops on conflicts asks upstream's "There are unresolved merge conflicts, solve conflicts
+now?" (`DontConfirmResolveConflicts`, a new row "Resolve conflicts" on the Confirmations page) and opens the conflicts
+window, as `MergeConflictHandler`. Opened as upstream's `StartMergeBranchDialog`: Commands > Merge branches... (was "Merge
+selected branch", which merged at once) with upstream's Ctrl+M, and the left panel's merge of a branch, remote branch or
+tag (was a merge at once). Changed: the log message settings are kept when merging, not on each change as upstream. Not
+ported: the grid's "Merge into current branch" submenu.
 
 **FormResolveConflicts** (`partial`). Ported: the list of unresolved files, choose ours or theirs for the selected files,
 open the configured merge tool on one file (`merge.guitool`, then `merge.tool`; without one the app asks for a tool to be
@@ -605,7 +712,7 @@ remote...", "Rename...", "Set URL..." and "Remove..."; since 2026-10-16 it lists
 with Activate, Activate and fetch, and Deactivate (`RemoteRepoNode.Enable`/`Disable`), the fetch items only on active
 remotes, and double-click on a remote opens the remotes window. Since 2026-10-16 the Stashes tree has "Manage
 stashes...", and "Open stash" and double-click open the stash window on that stash. Differences: "Reset current branch to
-here..." offers soft, mixed and hard in a choice window (FormResetCurrentBranch is not ported); "Create worktree..." opens the worktree window; a tag also has
+here..." opens the reset current branch window (FormResetCurrentBranch, since 2026-10-16; before, a choice window); "Create worktree..." opens the worktree window; a tag also has
 "Delete on remote...", which upstream offers in its push dialog; the remote branch fetch items fetch the whole remote.
 Not ported: multi-selection, "Copy to clipboard" (upstream's revision copy submenu), the merged-branch images, hidden
 commits (EyeClosed), the submodule tree of super- and subprojects with its detailed status images and
@@ -873,8 +980,8 @@ orange with conflicts; darker in a dark theme). The state is read with upstream'
 now a patch and no longer shown as a rebase. Continue runs upstream's command for the action (`rebase --continue`,
 `merge --continue` with the app as the message editor, `am --3way --resolved`). Differences: Abort asks first, as the shell
 already did; conflicts are taken from the status the window already reads, not from a second `ls-files --unmerged`. More...
-for a rebase offers Skip commit and Edit todo, and for a patch Skip patch (`am --3way --skip`), instead of opening
-`FormRebase` or `FormApplyPatch`, which are not ported; for a bisect it opens the bisect window.
+for a patch offers Skip patch (`am --3way --skip`) instead of opening `FormApplyPatch`, which is not ported; for a
+bisect it opens the bisect window, and for a rebase the rebase window (upstream's FormRebase, since 2026-10-16).
 
 **FormBisect** (`partial`). Ported 2026-10-09: Commands > Bisect... and the bisect bar's More... open the bisect window with
 upstream's five buttons and their enabled rules; Start runs while the window stays open, the marks and Stop close it, as

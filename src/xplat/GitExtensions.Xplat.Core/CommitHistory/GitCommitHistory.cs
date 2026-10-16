@@ -61,9 +61,16 @@ public sealed class GitCommitHistory : ICommitHistory
         // As upstream: the artificial commits come with the first page of an unfiltered list (a branch choice is no filter).
         bool artificial = skip == 0 && _showArtificialCommits() && filter is not { IsNarrowed: true }
                           && filter is not { PathFilter.Length: > 0 };
-        return Task.Run(() => ReadPage(repositoryPath, revision,
-            pathFilter: filter is { PathFilter.Length: > 0 } ? filter.PathFilter.Quote() : "", limit, markHead: true,
-            style, artificial));
+        FileHistoryOptions options = _fileHistory();
+        return Task.Run(() =>
+        {
+            (string pathFilter, IReadOnlyDictionary<string, string>? paths) =
+                PathFilter(repositoryPath, filter?.PathFilter ?? "", options);
+            return ReadPage(repositoryPath, revision, pathFilter, limit, markHead: true, style, artificial) with
+            {
+                FilePaths = paths
+            };
+        });
     }
 
     public Task<CommitDetails> LoadDetailsAsync(string repositoryPath, string hash)
@@ -95,6 +102,47 @@ public sealed class GitCommitHistory : ICommitHistory
                 FilePaths = paths
             };
         });
+    }
+
+    // Upstream's RevisionGridControl.BuildPathFilter: a path without quotes or spaces is quoted, one with spaces is several
+    // paths and passed as it is, as are quoted ones; one path that is not a folder is followed through its renames when
+    // upstream's FollowRenamesInFileHistory says so, and the history is read for every name it had.
+    private static (string PathFilter, IReadOnlyDictionary<string, string>? Paths) PathFilter(string repositoryPath,
+        string path, FileHistoryOptions options)
+    {
+        path = path.Trim();
+        if (path.Length == 0)
+        {
+            return ("", null);
+        }
+
+        bool multipleArgs = false;
+        if (!path.Contains('"') && !path.Contains('\''))
+        {
+            if (!path.Contains(' '))
+            {
+                path = path.Quote();
+            }
+            else
+            {
+                multipleArgs = true;
+            }
+        }
+        else if (path.Count(c => c == '"') + path.Count(c => c == '\'') > 2)
+        {
+            multipleArgs = true;
+        }
+
+        if (!options.FollowRenames || path.EndsWith('/') || path.EndsWith("/\"", StringComparison.Ordinal) || multipleArgs)
+        {
+            return (path, null);
+        }
+
+        IReadOnlyDictionary<string, string>? paths = FollowedPaths(repositoryPath, "HEAD", path.Trim('"', '\''),
+            options.ExactRenamesOnly);
+        return paths is { Count: > 0 }
+            ? (string.Join(" ", paths.Values.Distinct(StringComparer.Ordinal).Select(name => name.Quote())), paths)
+            : (path, null);
     }
 
     // Upstream's RevisionGridControl.BuildPathFilter: "git log --follow" is not reliable for a history graph, so it only gives

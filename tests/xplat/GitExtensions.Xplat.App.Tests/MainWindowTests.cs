@@ -247,8 +247,10 @@ internal sealed class MainWindowTests
         files.SelectedIndex = 0;
 
         PressIn(files, Key.B, KeyModifiers.None);
-        WaitUntil(() => window.OwnedWindows.OfType<BlameWindow>().Any());
-        window.OwnedWindows.OfType<BlameWindow>().Single().Close();
+        WaitUntil(() => window.OwnedWindows.OfType<FileHistoryWindow>().Any());
+        FileHistoryWindow history = window.OwnedWindows.OfType<FileHistoryWindow>().Single();
+        Find<TabControl>(history, "Tabs").SelectedItem.Should().Be(Find<TabItem>(history, "BlameTab"));
+        history.Close();
 
         PressIn(files, Key.Left, KeyModifiers.Control);
         ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");
@@ -574,7 +576,7 @@ internal sealed class MainWindowTests
         Click(files, "BlameButton");
         WaitUntil(() => files.OwnedWindows.OfType<BlameWindow>().Any());
         BlameWindow blame = files.OwnedWindows.OfType<BlameWindow>().Single();
-        ListBox lines = blame.FindControl<ListBox>("BlameList")!;
+        ListBox lines = blame.FindControl<BlameView>("Blame")!.FindControl<ListBox>("BlameList")!;
         WaitUntil(() => lines.ItemCount == 1);
 
         // As upstream's gutter: the author's avatar (initials here, as no provider is set) beside the commit's first line.
@@ -604,6 +606,10 @@ internal sealed class MainWindowTests
         branches.SelectedItem = BranchNode(branches, "feature");
         Find<MenuItem>(window, "MergeMenuItem").IsEnabled.Should().BeTrue();
         Click(window, "TreeMergeMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<MergeBranchWindow>().SingleOrDefault()?.MergeLoaded.IsCompleted == true);
+        MergeBranchWindow merge = window.OwnedWindows.OfType<MergeBranchWindow>().Single();
+        merge.Dialog.Branch.Should().Be("feature");
+        Click(merge, "MergeButton");
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Merged feature");
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
@@ -655,6 +661,8 @@ internal sealed class MainWindowTests
         WaitUntil(() => Find<MenuItem>(window, "CheckoutCommitMenuItem").IsEnabled);
 
         Click(window, "CheckoutCommitMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<CheckoutRevisionWindow>().SingleOrDefault()?.RevisionLoaded.IsCompleted == true);
+        Click(window.OwnedWindows.OfType<CheckoutRevisionWindow>().Single(), "CheckoutButton");
 
         WaitUntil(() =>
             (Find<TextBlock>(window, "OperationStatusText").Text ?? "").StartsWith("Checked out",
@@ -715,9 +723,17 @@ internal sealed class MainWindowTests
         WaitUntil(() => commits.ItemCount == 2);
         commits.SelectedIndex = 1;
 
-        Click(window, "ResetHardMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
-        Click(window.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
+        Click(window, "ResetCurrentBranchMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<ResetCurrentBranchWindow>().Any());
+        ResetCurrentBranchWindow reset = window.OwnedWindows.OfType<ResetCurrentBranchWindow>().Single();
+        WaitUntil(() => reset.ResetLoaded.IsCompleted);
+        Find<RadioButton>(reset, "SoftRadio").IsChecked.Should().BeTrue();
+        Find<RadioButton>(reset, "HardRadio").IsChecked = true;
+        Click(reset, "OkButton");
+        WaitUntil(() => reset.OwnedWindows.OfType<MessageBoxWindow>().Any());
+        MessageBoxWindow question = reset.OwnedWindows.OfType<MessageBoxWindow>().Single();
+        question.Title.Should().Be("Reset branch");
+        Click(question, "YesButton");
 
         WaitUntil(() =>
             (Find<TextBlock>(window, "OperationStatusText").Text ?? "").StartsWith("Reset to",
@@ -740,7 +756,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => entries.ItemCount > 0);
 
         entries.ItemCount.Should().BeGreaterThan(1);
-        reflog.Close(null);
+        reflog.Close();
     }
 
     [AvaloniaTest]
@@ -1198,6 +1214,9 @@ internal sealed class MainWindowTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "ours");
         _repo.Run("commit", "-q", "-am", "ours");
         GitProcess.RunAllowingFailure(_repo.Path, "merge", "other");
+        _repo.Run("config", "merge.tool", "fake");
+        _repo.Run("config", "merge.guitool", "fake");
+        _repo.Run("config", "mergetool.fake.path", ConflictsWindowTests.GitPath());
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
@@ -1206,14 +1225,14 @@ internal sealed class MainWindowTests
         Click(window, "ResolveConflictsButton");
         WaitUntil(() => window.OwnedWindows.OfType<ConflictsWindow>().Any());
         ConflictsWindow conflicts = window.OwnedWindows.OfType<ConflictsWindow>().Single();
-        conflicts.Conflicts.Should().Equal("a.txt");
-        Find<ListBox>(conflicts, "ConflictList").SelectedIndex = 0;
-        Click(conflicts, "UseTheirsButton");
+        WaitUntil(() => conflicts.ConflictsLoaded.IsCompleted);
+        conflicts.Conflicts.Select(conflict => conflict.Filename).Should().Equal("a.txt");
+        Click(conflicts, "ChooseRemoteMenuItem");
 
-        WaitUntil(() => conflicts.Conflicts.Count == 0);
+        WaitUntil(() => conflicts.OwnedWindows.OfType<ConfirmWindow>().Any());
+        Click(conflicts.OwnedWindows.OfType<ConfirmWindow>().Single(), "CancelButton");
+        WaitUntil(() => !conflicts.IsVisible);
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("theirs");
-        Find<TextBlock>(conflicts, "DoneText").Text.Should().Contain("Commit to complete the merge");
-        conflicts.Close();
     }
 
     [AvaloniaTest]
@@ -2029,7 +2048,9 @@ internal sealed class MainWindowTests
     }
 
     private static T Find<T>(Window window, string name) where T : Control
-        => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");
+        => window.FindControl<T>(name) ??
+           window.GetLogicalDescendants().OfType<T>().FirstOrDefault(control => control.Name == name) ??
+           throw new InvalidOperationException($"Control {name} not found");
 
     // Background work posts its results back to the UI thread; run those jobs until the condition holds.
     private static void WaitUntil(Func<bool> condition)

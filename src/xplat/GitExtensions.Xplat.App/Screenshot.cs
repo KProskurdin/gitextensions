@@ -16,7 +16,7 @@ internal static class Screenshot
     /// <summary>
     ///  Names another window to save instead of the browse window: <see cref="CommitWindow"/>, or
     ///  <see cref="SettingsWindow"/>, optionally followed by ":" and a text typed into its search box, or a dialog
-    ///  (<see cref="PullWindow"/>, <see cref="PushWindow"/>, <see cref="RemotesWindow"/>, <see cref="StashWindow"/>, <see cref="CreateBranchWindow"/>, <see cref="CheckoutBranchWindow"/>).
+    ///  (<see cref="PullWindow"/>, <see cref="PushWindow"/>, <see cref="RemotesWindow"/>, <see cref="StashWindow"/>, <see cref="CreateBranchWindow"/>, <see cref="CheckoutBranchWindow"/>, <see cref="CheckoutRevisionWindow"/>, <see cref="MergeBranchWindow"/>).
     /// </summary>
     public const string WindowEnvironmentVariable = "XPLAT_SCREENSHOT_WINDOW";
 
@@ -35,6 +35,27 @@ internal static class Screenshot
     public const string CreateBranchWindow = "createbranch";
 
     public const string CheckoutBranchWindow = "checkout";
+
+    public const string CheckoutRevisionWindow = "checkoutrevision";
+
+    public const string MergeBranchWindow = "merge";
+
+    public const string CloneWindow = "clone";
+
+    public const string RebaseWindow = "rebase";
+
+    public const string ReflogWindow = "reflog";
+
+    public const string ResetCurrentBranchWindow = "reset";
+
+    public const string FileHistoryWindow = "filehistory";
+
+    public const string ConflictsWindow = "conflicts";
+
+    /// <summary>
+    ///  The file a window about one file shows (the file history), for the screenshot aid.
+    /// </summary>
+    public const string FileEnvironmentVariable = "XPLAT_SCREENSHOT_FILE";
 
     public static string? RequestedWindow => Environment.GetEnvironmentVariable(WindowEnvironmentVariable);
 

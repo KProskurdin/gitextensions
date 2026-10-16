@@ -54,8 +54,11 @@ public partial class FileBrowserWindow : Window
     // As upstream's menu items: the setting changes for every file history, and this one is read again.
     private void ChangeFileHistoryOptions()
     {
-        AppServices.Preferences.FileHistory = new FileHistoryOptions(FollowRenamesCheck.IsChecked == true,
-            ExactRenamesCheck.IsChecked == true);
+        AppServices.Preferences.FileHistory = AppServices.Preferences.FileHistory with
+        {
+            FollowRenames = FollowRenamesCheck.IsChecked == true,
+            ExactRenamesOnly = ExactRenamesCheck.IsChecked == true,
+        };
         ExactRenamesCheck.IsEnabled = FollowRenamesCheck.IsChecked == true;
         Run(_viewModel.ReloadHistoryAsync);
     }

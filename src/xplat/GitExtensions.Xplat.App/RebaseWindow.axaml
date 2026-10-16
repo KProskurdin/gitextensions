@@ -1,0 +1,124 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
+        x:Class="GitExtensions.Xplat.App.RebaseWindow"
+        Title="Rebase"
+        Width="1034" Height="461" MinWidth="1050" MinHeight="500" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormRebase (a GitExtensionsDialog): the help picture on the left; the branch, the options, the specific
+       range and the commits to re-apply with the rebase steps on the right; "There are unresolved merge conflicts" and
+       Rebase, Solve conflicts, Continue rebase and Abort at the bottom. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="UnresolvedConflictsButton" IsVisible="False" MinWidth="213" MinHeight="27" BorderThickness="0"
+                CornerRadius="0" VerticalAlignment="Center" Margin="7,0,0,0"
+                Content="There are unresolved merge conflicts" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+          <Button x:Name="RebaseButton" MinWidth="100" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Image Source="{local:UpstreamImage Rebase}" Width="16" Height="16" />
+              <TextBlock Text="Rebase" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <!-- Upstream's MergeToolPanel: yellow around Solve conflicts while there are conflicts. -->
+          <Border x:Name="MergeToolPanel" Padding="1" VerticalAlignment="Center">
+            <Button x:Name="SolveConflictsButton" MinWidth="100" IsVisible="False">
+              <AccessText x:Name="SolveConflictsText" Text="_Solve conflicts" />
+            </Button>
+          </Border>
+          <Button x:Name="ContinueButton" MinWidth="103" IsVisible="False" VerticalAlignment="Center">
+            <AccessText x:Name="ContinueText" Text="_Continue rebase" />
+          </Button>
+          <Button x:Name="AbortButton" MinWidth="75" IsVisible="False" VerticalAlignment="Center">
+            <AccessText Text="A_bort" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+    <Grid Margin="9" ColumnDefinitions="Auto,*">
+      <local:HelpImageView x:Name="HelpImage" Margin="3" />
+      <Grid Grid.Column="1" Margin="3" RowDefinitions="Auto,Auto,Auto,Auto,Auto,8,Auto,*,Auto">
+        <TextBlock Text="Rebase current branch on top of another branch" Margin="3,0" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5">
+          <TextBlock Text="Current branch:" Margin="3,0" />
+          <TextBlock x:Name="CurrentBranchText" Margin="3,0" />
+        </StackPanel>
+        <StackPanel x:Name="RebasePanel" Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="3">
+          <AccessText Text="_Rebase on" VerticalAlignment="Center" />
+          <ComboBox x:Name="BranchesBox" IsEditable="True" Width="270" />
+          <HyperlinkButton x:Name="ShowOptionsLink" Content="Show options" Padding="0" VerticalAlignment="Center" />
+        </StackPanel>
+        <WrapPanel x:Name="OptionsTopPanel" Grid.Row="3" IsVisible="False" Margin="3">
+          <CheckBox x:Name="InteractiveCheck" Content="_Interactive Rebase" Margin="0,0,9,0" />
+          <CheckBox x:Name="PreserveMergesCheck" Content="_Preserve Merges" Margin="0,0,9,0" />
+          <CheckBox x:Name="AutosquashCheck" Content="Autos_quash" IsEnabled="False" Margin="0,0,9,0" />
+          <CheckBox x:Name="AutoStashCheck" Content="A_uto stash" IsEnabled="False" Margin="0,0,9,0" />
+          <CheckBox x:Name="IgnoreDateCheck" Content="Ignore _date" Margin="0,0,9,0"
+                    ToolTip.Tip="Sets the author date to the current date (same as&#10;commit date), ignoring the original author date." />
+          <CheckBox x:Name="CommitterDateCheck" Content="Co_mmitter date is author date" Margin="0,0,9,0"
+                    ToolTip.Tip="Sets the commit date to the original author date&#10;(instead of the current date)." />
+          <CheckBox x:Name="UpdateRefsCheck" Content="Update dependent r_efs" Margin="0,0,9,0" />
+        </WrapPanel>
+        <StackPanel x:Name="OptionsBottomPanel" Grid.Row="4" Orientation="Horizontal" Spacing="6" IsVisible="False"
+                    Margin="3">
+          <CheckBox x:Name="SpecificRangeCheck" Content="Specific ra_nge" />
+          <AccessText Text="_From (exc.)" VerticalAlignment="Center" />
+          <TextBox x:Name="FromBox" Width="80" IsEnabled="False" />
+          <AccessText Text="_To" VerticalAlignment="Center" />
+          <ComboBox x:Name="ToBox" IsEditable="True" Width="184" IsEnabled="False" />
+        </StackPanel>
+        <TextBlock Grid.Row="6" Text="Commits to re-apply:" Margin="3,0" />
+        <!-- Upstream's PatchGrid while it manages a rebase: Status, Action, Subject, Author, Date and Commit hash. -->
+        <DockPanel Grid.Row="7" Margin="3,2" MinHeight="100">
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="70,60,*,140,110,55" Margin="4,0">
+            <TextBlock Text="Status" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="Action" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Text="Subject" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="3" Text="Author" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="4" Text="Date" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="5" Text="Commit hash" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          </Grid>
+          <ListBox x:Name="PatchesList">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:RebasePatchRow">
+                <Grid ColumnDefinitions="70,60,*,140,110,55" Background="Transparent"
+                      ToolTip.Tip="{Binding Patch.Subject}">
+                  <TextBlock Text="{Binding Patch.Status}" Foreground="{Binding Foreground}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Patch.Action}" Foreground="{Binding Foreground}" />
+                  <TextBlock Grid.Column="2" Text="{Binding Subject}" Foreground="{Binding Foreground}"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="3" Text="{Binding Patch.Author}" Foreground="{Binding Foreground}"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="4" Text="{Binding Patch.Date}" Foreground="{Binding Foreground}"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="5" Text="{Binding Patch.ShortHash}" Foreground="{Binding Foreground}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+        <Grid Grid.Row="8" ColumnDefinitions="*,*" Margin="0,3">
+          <StackPanel Orientation="Horizontal" Spacing="6" Margin="3">
+            <Button x:Name="CommitButton" MinWidth="86" IsVisible="False">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Image Source="{local:UpstreamImage RepoStateStaged}" Width="16" Height="16" />
+                <AccessText Text="C_ommit..." VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button x:Name="EditTodoButton" MinWidth="90" IsVisible="False">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Image Source="{local:UpstreamImage EditFile}" Width="16" Height="16" />
+                <AccessText Text="_Edit todo..." VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <Button x:Name="SkipButton" Grid.Column="1" MinWidth="183" HorizontalAlignment="Right" IsVisible="False"
+                  Margin="3">
+            <AccessText Text="S_kip currently applying commit" />
+          </Button>
+        </Grid>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

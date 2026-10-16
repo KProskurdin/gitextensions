@@ -135,6 +135,7 @@ public enum ConflictsCommand
     Rescan,
     ChooseRemote,
     ChooseLocal,
+    ChooseBase,
 }
 
 /// <summary>
@@ -460,8 +461,7 @@ public static class Hotkeys
         });
 
     /// <summary>
-    ///  The conflicts window (upstream FormResolveConflicts, section "FormMergeConflicts"). Choose base is not ported: the
-    ///  window has no base choice.
+    ///  The conflicts window (upstream FormResolveConflicts, section "FormMergeConflicts").
     /// </summary>
     public static HotkeyTable<ConflictsCommand> Conflicts { get; } = new(UpstreamHotkeys.ResolveConflictsName,
         new Dictionary<ConflictsCommand, (int, string)>
@@ -470,6 +470,7 @@ public static class Hotkeys
             [ConflictsCommand.Rescan] = (1, "Rescan"),
             [ConflictsCommand.ChooseRemote] = (2, "ChooseRemote"),
             [ConflictsCommand.ChooseLocal] = (3, "ChooseLocal"),
+            [ConflictsCommand.ChooseBase] = (4, "ChooseBase"),
         },
         new Dictionary<ConflictsCommand, WinFormsKeys>
         {
@@ -477,6 +478,7 @@ public static class Hotkeys
             [ConflictsCommand.Rescan] = WinFormsKeys.F5,
             [ConflictsCommand.ChooseRemote] = WinFormsKeys.R,
             [ConflictsCommand.ChooseLocal] = WinFormsKeys.L,
+            [ConflictsCommand.ChooseBase] = WinFormsKeys.B,
         });
 
     /// <summary>

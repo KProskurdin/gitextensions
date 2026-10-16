@@ -26,8 +26,6 @@ public sealed class CreateBranchDialog
     public const string BranchNameIsEmpty = "Enter branch name.";
     public const string BranchNameIsNotValid = "“{0}” is not valid branch name.";
     public const string CreatingOrphanBranch = "Creating orphan branch (repository has no commits)";
-    public const string InvalidCommitHash = "The given commit hash is not valid for this repository and was therefore discarded.";
-    public const string ErrorCaption = "Error";
 
     // CommitSummaryUserControl's texts.
     public const string NoRevision = "No revision";

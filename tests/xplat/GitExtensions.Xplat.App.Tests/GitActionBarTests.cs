@@ -123,27 +123,6 @@ internal sealed class GitActionBarTests
     }
 
     [AvaloniaTest]
-    public void The_action_bar_offers_skip_and_edit_todo_for_a_rebase_under_more()
-    {
-        MakeConflictingBranches();
-        GitProcess.RunAllowingFailure(_repo.Path, "rebase", "other");
-        MainWindow window = NewWindow();
-        window.Show();
-        Open(window, _repo.Path);
-
-        WaitUntil(() => Find<Border>(window, "StateBanner").IsVisible);
-        Find<TextBlock>(window, "StateBannerText").Text.Should().Be("Rebase is currently in progress with merge conflicts.");
-        Find<Button>(window, "MoreActionButton").IsVisible.Should().BeTrue();
-        Find<MenuItem>(window, "SkipRebaseMenuItem").IsVisible.Should().BeTrue();
-        Find<MenuItem>(window, "SkipPatchMenuItem").IsVisible.Should().BeFalse();
-
-        Click(window, "SkipRebaseMenuItem");
-
-        WaitUntil(() => !Find<Border>(window, "StateBanner").IsVisible);
-        _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("theirs");
-    }
-
-    [AvaloniaTest]
     public void The_bisect_window_starts_a_bisect_and_marks_the_checked_out_commit()
     {
         MainWindow window = NewWindow();

@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.MergeBranchWindow"
+        Title="Merge branches"
+        SizeToContent="WidthAndHeight" MinWidth="560" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormMergeBranch: the help picture on the left, the "Merge" group on the right and Merge below it. -->
+  <Grid Margin="9" ColumnDefinitions="Auto,*" RowDefinitions="*,Auto">
+    <local:HelpImageView x:Name="HelpImage" Grid.RowSpan="2" Margin="3" />
+    <HeaderedContentControl Grid.Column="1" Classes="groupBox" Header="Merge" Margin="3" MinWidth="460">
+      <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <AccessText Text="Merge branch" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <ComboBox x:Name="BranchesBox" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" Margin="3" />
+        <TextBlock Grid.Row="1" Text="Into current branch" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <TextBlock x:Name="CurrentBranchText" Grid.Row="1" Grid.Column="1" Text="?" FontWeight="Bold" VerticalAlignment="Center"
+                   Margin="3" />
+        <RadioButton x:Name="FastForwardRadio" Grid.Row="2" Grid.ColumnSpan="2" GroupName="FastForward" IsChecked="True"
+                     Content="Keep a single branch line if possible (fast forward)" Margin="3" />
+        <RadioButton x:Name="NoFastForwardRadio" Grid.Row="3" Grid.ColumnSpan="2" GroupName="FastForward"
+                     Content="Always create a new merge commit" Margin="3" />
+        <CheckBox x:Name="NoCommitCheck" Grid.Row="4" Grid.ColumnSpan="2" Content="Do not commit" Margin="3" />
+        <CheckBox x:Name="AdvancedCheck" Grid.Row="5" Grid.ColumnSpan="2" Content="Show advanced options" Margin="3" />
+        <!-- Upstream's advancedPanel. -->
+        <Grid x:Name="AdvancedPanel" Grid.Row="6" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*"
+              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" IsVisible="False">
+          <CheckBox x:Name="UseStrategyCheck" Content="Use non-default merge strategy" Margin="3" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="3">
+            <ComboBox x:Name="StrategyBox" MinWidth="120" IsVisible="False">
+              <ComboBoxItem>resolve</ComboBoxItem>
+              <ComboBoxItem>recursive</ComboBoxItem>
+              <ComboBoxItem>octopus</ComboBoxItem>
+              <ComboBoxItem>ours</ComboBoxItem>
+              <ComboBoxItem>subtree</ComboBoxItem>
+            </ComboBox>
+            <HyperlinkButton x:Name="StrategyHelpLink" Content="Help" IsVisible="False" VerticalAlignment="Center" />
+          </StackPanel>
+          <CheckBox x:Name="SquashCheck" Grid.Row="1" Grid.ColumnSpan="2" Content="Squash commits" Margin="3" />
+          <CheckBox x:Name="AllowUnrelatedCheck" Grid.Row="2" Grid.ColumnSpan="2" Content="Allow unrelated histories" Margin="3" />
+          <CheckBox x:Name="AddLogMessagesCheck" Grid.Row="3" Content="Add log messages" Margin="3" />
+          <NumericUpDown x:Name="LogMessagesCountBox" Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1000" Increment="1"
+                         FormatString="0" Width="110" HorizontalAlignment="Left" Margin="3" />
+          <CheckBox x:Name="AddMergeMessageCheck" Grid.Row="4" Grid.ColumnSpan="2" Content="Specify merge message" Margin="3" />
+          <TextBox x:Name="MergeMessageBox" Grid.Row="5" Grid.ColumnSpan="2" AcceptsReturn="True" TextWrapping="Wrap" Height="77"
+                   IsEnabled="False" Margin="3" />
+        </Grid>
+      </Grid>
+    </HeaderedContentControl>
+    <Button x:Name="MergeButton" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" MinWidth="104" IsDefault="True"
+            Content="_Merge" Margin="3" />
+  </Grid>
+</Window>

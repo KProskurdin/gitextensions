@@ -153,11 +153,18 @@ public sealed class CommitListViewModel : ObservableObject
     private IReadOnlyList<CommitFile> _commitFiles = [];
     private readonly Dictionary<string, BuildStatusCell> _buildStatuses = new(StringComparer.OrdinalIgnoreCase);
     private volatile HashSet<string> _loadedHashes = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, string> _filePaths = new Dictionary<string, string>(StringComparer.Ordinal);
 
     public CommitListViewModel(ICommitHistory history)
     {
         _history = history;
     }
+
+    /// <summary>
+    ///  For a path filter whose renames were followed (upstream's <c>FilePathByObjectId</c>): the file's name in each loaded
+    ///  commit, by hash; empty otherwise.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> FilePaths => _filePaths;
 
     /// <summary>
     ///  The repository whose history is shown, or null when none could be opened.
@@ -539,6 +546,17 @@ public sealed class CommitListViewModel : ObservableObject
             }
 
             _pages++;
+            if (page.FilePaths is { Count: > 0 } paths)
+            {
+                Dictionary<string, string> merged = new(_filePaths, StringComparer.Ordinal);
+                foreach ((string hash, string path) in paths)
+                {
+                    merged.TryAdd(hash, path);
+                }
+
+                _filePaths = merged;
+            }
+
             Rows = rows;
             HasMore = page.HasMore && Remaining(CommitCount(rows)) > 0;
             Status = PageStatus(CommitCount(rows), page.HasMore);
@@ -745,6 +763,7 @@ public sealed class CommitListViewModel : ObservableObject
             }
 
             _repositoryPath = repositoryPath;
+            _filePaths = page.FilePaths ?? new Dictionary<string, string>(StringComparer.Ordinal);
             _pages = pages;
             RepositoryName = Path.GetFileName(repositoryPath.TrimEnd('/', '\\'));
             Rows = page.Rows;

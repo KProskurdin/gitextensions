@@ -57,10 +57,10 @@ public partial class MainWindow
                 Run(OpenCommitFileInDiffToolAsync);
                 return true;
             case BrowseDiffCommand.ShowHistory when file is not null && !workTree && !index:
-                new FileBrowserWindow(path, row.Hash, RelevantRepositoryHost, file).Show(this);
+                NewFileHistoryWindow(path, file, row.Hash, showBlame: false).Show(this);
                 return true;
             case BrowseDiffCommand.Blame when file is not null && !workTree && !index:
-                new BlameWindow(path, row.Hash, file, RelevantRepositoryHost).Show(this);
+                NewFileHistoryWindow(path, file, row.Hash, showBlame: true).Show(this);
                 return true;
             case BrowseDiffCommand.ShowFileTree when file is not null && !workTree && !index:
                 DetailTabs.SelectedItem = FileTreeTab;

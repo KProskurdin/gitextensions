@@ -52,6 +52,10 @@
          works with System.Drawing images, which do not load off Windows; Avatars/AvatarService.cs ports it to image files. -->
     <Compile Include="..\..\app\GitUI\Avatars\TemplateFormatter.cs" Link="Upstream\Avatars\TemplateFormatter.cs" />
     <Compile Include="..\..\app\GitUI\Avatars\HexString.cs" Link="Upstream\Avatars\HexString.cs" />
+    <!-- The user manual links (the merge dialog's strategy help). -->
+    <Compile Include="..\..\app\GitUI\UserManual\UserManual.cs" Link="Upstream\UserManual\UserManual.cs" />
+    <Compile Include="..\..\app\GitUI\UserManual\IProvideUserManual.cs" Link="Upstream\UserManual\IProvideUserManual.cs" />
+    <Compile Include="..\..\app\GitUI\UserManual\StandardHtmlUserManual.cs" Link="Upstream\UserManual\StandardHtmlUserManual.cs" />
   </ItemGroup>
 
   <ItemGroup>

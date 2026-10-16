@@ -61,6 +61,9 @@ public partial class MainWindow : Window
     private CommitWindow? _commitWindow;
     private ProcessWindow? _processWindow;
     private GitActionBanner? _actionBanner;
+
+    // The More... menu of a patch in progress; a rebase in progress opens the rebase window instead.
+    private Avalonia.Controls.Primitives.FlyoutBase? _moreFlyout;
     private ScriptHost? _scriptHost;
     private readonly PluginHost _plugins;
     private IReadOnlyList<IGitPlugin>? _loadedPlugins;
@@ -149,8 +152,15 @@ public partial class MainWindow : Window
         ResolveConflictsButton.Click += (_, _) => ShowConflicts();
         ContinueActionButton.Click += (_, _) => ContinueAction();
         AbortActionButton.Click += (_, _) => AbortAction();
-        SkipRebaseMenuItem.Click += (_, _) => RunOnRepository(path => _actions.SkipRebaseAsync(path));
-        EditRebaseTodoMenuItem.Click += (_, _) => RunOnRepository(path => _actions.EditRebaseTodoAsync(path));
+        _moreFlyout = MoreActionButton.Flyout;
+        MoreActionButton.Click += (_, _) =>
+        {
+            // Upstream's More... of a rebase opens FormRebase (StartTheContinueRebaseDialog).
+            if (_actionBanner?.Action == GitAction.Rebase)
+            {
+                RunOnRepository(path => ShowRebaseAsync(path, onto: null));
+            }
+        };
         SkipPatchMenuItem.Click += (_, _) => RunOnRepository(path => _actions.SkipPatchAsync(path));
         BisectMoreButton.Click += (_, _) => Run(ShowBisectAsync);
     }
@@ -179,8 +189,9 @@ public partial class MainWindow : Window
         ManageStashesCommandMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
         CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
         CheckoutBranchMenuItem.Click += (_, _) => RunOnRepository(path => StartCheckoutBranchAsync(path));
-        MergeMenuItem.Click += (_, _) => MergeSelectedBranch();
-        RebaseMenuItem.Click += (_, _) => RebaseOnSelectedBranch();
+        CheckoutRevisionMenuItem.Click += (_, _) => RunOnRepository(path => ShowCheckoutRevisionAsync(path, revision: null));
+        MergeMenuItem.Click += (_, _) => RunOnRepository(path => ShowMergeAsync(path, branch: null));
+        RebaseMenuItem.Click += (_, _) => ShowRebaseOnSelectedCommit();
         CreateTagMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
         BisectMenuItem.Click += (_, _) => Run(ShowBisectAsync);
         ResolveConflictsMenuItem.Click += (_, _) => ShowConflicts();
@@ -239,19 +250,15 @@ public partial class MainWindow : Window
         CreateTagHereMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
         BrowseFilesHereMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
         CheckoutCommitMenuItem.Click +=
-            (_, _) => RunOnSelectedCommit((path, row) =>
-                WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
-                    () => CheckoutLocalBranchAsync(path, row.Hash), PluginEvent.CheckoutRevision));
+            (_, _) => RunOnSelectedCommit((path, row) => ShowCheckoutRevisionAsync(path, row.Hash));
         CherryPickMenuItem.Click +=
             (_, _) => RunOnSelectedCommit((path, row) => _actions.CherryPickAsync(path, row.Hash));
         RevertMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => _actions.RevertAsync(path, row.Hash));
-        ResetSoftMenuItem.Click += (_, _) =>
-            RunOnSelectedCommit((path, row) => _actions.ResetAsync(path, row.Hash, ResetMode.Soft));
-        ResetMixedMenuItem.Click += (_, _) =>
-            RunOnSelectedCommit((path, row) => _actions.ResetAsync(path, row.Hash, ResetMode.Mixed));
-        ResetHardMenuItem.Click += (_, _) => Run(ResetHardAsync);
+        ResetCurrentBranchMenuItem.Click += (_, _) =>
+            RunOnSelectedCommit((path, row) => ShowResetCurrentBranchAsync(this, path, row.Hash, ResetMode.Soft));
         RebaseOnCommitMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: false));
         RebaseInteractiveMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: true));
+        RebaseAdvancedMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => ShowRebaseAsync(path, row.Hash));
         MarkBadMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Bad);
         MarkGoodMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Good);
         BisectSkipMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Skip);
@@ -556,10 +563,10 @@ public partial class MainWindow : Window
                 Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
                 break;
             case BrowseCommand.Merge:
-                MergeSelectedBranch();
+                RunOnRepository(path => ShowMergeAsync(path, branch: null));
                 break;
             case BrowseCommand.Rebase:
-                RebaseOnSelectedBranch();
+                ShowRebaseOnSelectedCommit();
                 break;
             case BrowseCommand.Stash:
                 Run(() => StashAsync());
@@ -762,15 +769,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CloneAsync()
-    {
-        CloneRequest? request =
-            await new CloneWindow(_preferences.DefaultCloneDestinationPath).ShowDialog<CloneRequest?>(this);
-        if (request is not null)
-        {
-            await _actions.CloneAsync(request.Url, request.TargetPath);
-        }
-    }
+    // Upstream's StartCloneDialog from the browse window: the clone window asks whether to open the clone here.
+    private Task CloneAsync() => NewCloneWindow().ShowDialog<bool>(this);
+
+    private CloneWindow NewCloneWindow()
+        => new(RepositoryPath, _actions, _preferences, [.. _recent.Items.Select(item => item.Path)], _recent.AddAsync,
+            OpenRepositoryAsync);
 
     // Pull and push use the remote the branch tracks, falling back to origin for a branch without one.
     private string TrackingRemote() => _repository.TrackingRemote ?? RemoteName;
@@ -1064,6 +1068,15 @@ public partial class MainWindow : Window
             (Screenshot.StashWindow, { } path) => new StashWindow(path, _actions, _preferences),
             (Screenshot.CreateBranchWindow, { } path) => new CreateBranchWindow(path, _actions, _preferences),
             (Screenshot.CheckoutBranchWindow, { } path) => await CheckoutFlow().NewWindowAsync(path),
+            (Screenshot.CheckoutRevisionWindow, { } path) => NewCheckoutRevisionWindow(path, "HEAD~1"),
+            (Screenshot.MergeBranchWindow, { } path) => NewMergeWindow(path, branch: null),
+            (Screenshot.CloneWindow, _) => NewCloneWindow(),
+            (Screenshot.ReflogWindow, { } path) => NewReflogWindow(path),
+            (Screenshot.ConflictsWindow, { } path) => NewConflictsWindow(path),
+            (Screenshot.FileHistoryWindow, { } path) => NewFileHistoryWindow(path,
+                Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? "", revision: null, showBlame: false),
+            (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
+            (Screenshot.RebaseWindow, { } path) => NewRebaseWindow(path, "HEAD~1", interactive: false, immediately: false),
             _ => null,
         };
 
@@ -1150,13 +1163,19 @@ public partial class MainWindow : Window
         _processWindow.Show(this);
     }
 
+    // Upstream's StartResolveConflictsDialog: the conflicts window, modal as upstream's.
     private void ShowConflicts()
     {
         if (RepositoryPath is { } path)
         {
-            new ConflictsWindow(path, _repository, _actions).Show(this);
+            _ = NewConflictsWindow(path).ShowDialog(this);
         }
     }
+
+    private ConflictsWindow NewConflictsWindow(string path)
+        => new(path, _repository, _actions, _preferences,
+            (owner, file) => NewFileHistoryWindow(path, file, revision: null, showBlame: false).Show(owner),
+            _ => ShowCommitWindow(), UpdateSubmodulesAfterCheckoutAsync);
 
     // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved.
     private async Task ShowSettingsAsync(IGitPlugin? plugin = null, bool pluginsPage = false)
@@ -1290,42 +1309,45 @@ public partial class MainWindow : Window
                 checkout, PluginEvent.CheckoutBranch),
             UpdateSubmodulesAfterCheckoutAsync);
 
-    // Like upstream, local changes to tracked files make the checkout ask what to do with them; the choice becomes the
-    // default for next time (upstream's checkoutbranchaction). Untracked files do not block a checkout and are not counted.
-    private async Task<bool> CheckoutLocalBranchAsync(string path, string branch)
+    // Upstream's StartCheckoutRevisionDialog: the checkout revision window proposing <revision> (none from the menu).
+    private async Task<bool> ShowCheckoutRevisionAsync(string path, string? revision)
+        => await NewCheckoutRevisionWindow(path, revision).ShowDialog<bool>(this);
+
+    private CheckoutRevisionWindow NewCheckoutRevisionWindow(string path, string? revision)
+        => new(path, _actions, revision,
+            (repository, checkout) => WithScriptsAsync(repository, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
+                checkout, PluginEvent.CheckoutRevision),
+            UpdateSubmodulesAfterCheckoutAsync);
+
+    // Upstream's StartMergeBranchDialog: the merge window proposing <branch> (the tracked branch when null).
+    private async Task<bool> ShowMergeAsync(string path, string? branch)
+        => await NewMergeWindow(path, branch).ShowDialog<bool>(this);
+
+    private MergeBranchWindow NewMergeWindow(string path, string? branch)
+        => new(path, _actions, _preferences, branch,
+            (repository, merge) => WithScriptsAsync(repository, ScriptEvent.BeforeMerge, ScriptEvent.AfterMerge, merge),
+            ShowConflicts);
+
+    // Upstream's left panel "Rebase current branch on this branch...": the rebase window on it (StartRebaseDialog).
+    private void RebaseOnSelectedBranch() =>
+        RunOnSelectedBranch((path, branch) => ShowRebaseAsync(path, branch.Name));
+
+    // Upstream's Commands > Rebase...: the rebase window on the selected commit, which must not be an artificial one.
+    private void ShowRebaseOnSelectedCommit()
     {
-        int changes = _repository.Changes.Where(change => change.Kind != ChangeKind.Untracked)
-            .Select(change => change.Path).Distinct(StringComparer.Ordinal).Count();
-
-        // Upstream's "Check for uncommitted changes in checkout branch dialog" off: git decides, as for no changes.
-        if (changes == 0 || !_preferences.CheckForUncommittedChangesInCheckoutBranch)
+        if (_commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
         {
-            return await _actions.CheckoutAsync(path, branch);
+            RunOnRepository(path => ShowRebaseAsync(path, row.Hash));
         }
-
-        // As upstream's FormCheckoutBranch: with UseDefaultCheckoutBranchAction the last choice is used without asking,
-        // unless AlwaysShowCheckoutBranchDlg asks every time.
-        if (_preferences.UseDefaultCheckoutBranchAction && !_preferences.AlwaysShowCheckoutBranchDlg)
-        {
-            return await _actions.CheckoutAsync(path, branch, _preferences.CheckoutBranchAction);
-        }
-
-        if (await new CheckoutWindow(branch, changes, _preferences.CheckoutBranchAction)
-                .ShowDialog<LocalChangesAction?>(this) is not { } action)
-        {
-            return false;
-        }
-
-        _preferences.CheckoutBranchAction = action;
-        return await _actions.CheckoutAsync(path, branch, action);
     }
 
-    private void MergeSelectedBranch() => RunOnSelectedBranch((path, branch) =>
-        WithScriptsAsync(path, ScriptEvent.BeforeMerge, ScriptEvent.AfterMerge,
-            () => _actions.MergeAsync(path, branch.Name)));
+    // Upstream's StartRebaseDialog: the rebase window on the open repository.
+    private Task<bool> ShowRebaseAsync(string path, string? onto, bool interactive = false, bool immediately = false)
+        => NewRebaseWindow(path, onto, interactive, immediately).ShowDialog<bool>(this);
 
-    private void RebaseOnSelectedBranch() =>
-        RunOnSelectedBranch((path, branch) => _actions.RebaseAsync(path, branch.Name));
+    private RebaseWindow NewRebaseWindow(string path, string? onto, bool interactive, bool immediately)
+        => new(path, _actions, _preferences, from: "", to: null, onto, interactive, immediately, _ => ShowCommitWindow(),
+            owner => _ = NewConflictsWindow(path).ShowDialog(owner));
 
     private void PopTopStash()
     {
@@ -1396,14 +1418,34 @@ public partial class MainWindow : Window
         });
     }
 
-    // Reset mixed keeps the working changes; the branch moves to the chosen entry, so earlier commits can be recovered.
+    // Upstream's StartFileHistoryDialog: the file history window on <file>, selecting <revision>, on its Blame tab for
+    // blame. Upstream starts it in a new process; here it is a window of this one.
+    private FileHistoryWindow NewFileHistoryWindow(string path, string file, string? revision, bool showBlame)
+        => new(path, _actions, _preferences, file, revision, showBlame,
+            (repository, hash) => _actions.CherryPickAsync(repository, hash),
+            (repository, hash) => _actions.RevertAsync(repository, hash), RelevantRepositoryHost);
+
+    // Upstream's StartReflogDialog: its create branch and reset windows open over it.
     private async Task ShowReflogAsync()
     {
-        if (RepositoryPath is { } path && await new ReflogWindow(path).ShowDialog<string?>(this) is { } hash)
+        if (RepositoryPath is { } path)
         {
-            await _actions.ResetAsync(path, hash, ResetMode.Mixed);
+            await NewReflogWindow(path).ShowDialog(this);
         }
     }
+
+    private ReflogWindow NewReflogWindow(string path)
+        => new(path,
+            (owner, id) => new CreateBranchWindow(path, _actions, _preferences, id.ToString(), checkoutAfterCreation: false,
+                userAbleToChangeRevision: false, couldBeOrphan: false).ShowDialog<bool>(owner),
+            (owner, id, mode) => ShowResetCurrentBranchAsync(owner, path, id.ToString(), mode));
+
+    // Upstream's FormResetCurrentBranch from the grid, the left panel and the reflog.
+    private Task<bool> ShowResetCurrentBranchAsync(Window owner, string path, string target, ResetMode mode)
+        => NewResetCurrentBranchWindow(path, target, mode).ShowDialog<bool>(owner);
+
+    private ResetCurrentBranchWindow NewResetCurrentBranchWindow(string path, string target, ResetMode mode)
+        => new(path, _actions, _preferences, target, mode, UpdateSubmodulesAfterCheckoutAsync);
 
     private void RunOnRepository(Func<string, Task<bool>> action)
     {
@@ -1601,8 +1643,7 @@ public partial class MainWindow : Window
         ContinueActionButton.IsVisible = buttons.Contains(GitActionButton.Continue);
         AbortActionButton.IsVisible = buttons.Contains(GitActionButton.Abort);
         MoreActionButton.IsVisible = buttons.Contains(GitActionButton.More);
-        SkipRebaseMenuItem.IsVisible = _actionBanner?.Action == GitAction.Rebase;
-        EditRebaseTodoMenuItem.IsVisible = _actionBanner?.Action == GitAction.Rebase;
+        MoreActionButton.Flyout = _actionBanner?.Action == GitAction.Rebase ? null : _moreFlyout;
         SkipPatchMenuItem.IsVisible = _actionBanner?.Action == GitAction.Patch;
 
         ShowBanner(BisectBanner, BisectBannerText, GitActionBanner.ForBisect(_repository.IsBisecting));
@@ -1737,13 +1778,11 @@ public partial class MainWindow : Window
         UpdateToolStrip(busy, open);
 
         CreateBranchMenuItem.IsEnabled = open;
-        bool branchSelected = open && SelectedBranch is BranchInfo { IsCurrent: false };
-        MergeMenuItem.IsEnabled = branchSelected;
-        RebaseMenuItem.IsEnabled = branchSelected;
+        MergeMenuItem.IsEnabled = open;
+        RebaseMenuItem.IsEnabled = open;
         ContinueActionButton.IsEnabled = open;
         AbortActionButton.IsEnabled = open;
         MoreActionButton.IsEnabled = open;
-        EditRebaseTodoMenuItem.IsEnabled = _actions.EditorCommand is not null;
         BisectMoreButton.IsEnabled = open;
         BisectMenuItem.IsEnabled = commitSelected;
         MarkBadMenuItem.IsEnabled = commitSelected;
@@ -1753,13 +1792,12 @@ public partial class MainWindow : Window
 
         ManageStashesCommandMenuItem.IsEnabled = open;
         CheckoutBranchMenuItem.IsEnabled = open;
+        CheckoutRevisionMenuItem.IsEnabled = open;
         CreateTagMenuItem.IsEnabled = open;
 
         CherryPickMenuItem.IsEnabled = commitSelected;
         RevertMenuItem.IsEnabled = commitSelected;
-        ResetSoftMenuItem.IsEnabled = commitSelected;
-        ResetMixedMenuItem.IsEnabled = commitSelected;
-        ResetHardMenuItem.IsEnabled = commitSelected;
+        ResetCurrentBranchMenuItem.IsEnabled = commitSelected;
         RebaseOnCommitMenuItem.IsEnabled = commitSelected;
         RebaseInteractiveMenuItem.IsEnabled = commitSelected && _actions.EditorCommand is not null;
         CreateBranchHereMenuItem.IsEnabled = commitSelected;
@@ -1780,20 +1818,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ResetHardAsync()
-    {
-        if (RepositoryPath is not { } path || _commits.Selected is not { } row)
-        {
-            return;
-        }
-
-        string message = $"Reset the branch to {row.ShortHash} and discard all local changes? This cannot be undone.";
-        if (await new ConfirmWindow(message, "Reset hard").ShowDialog<bool>(this))
-        {
-            await _actions.ResetAsync(path, row.Hash, ResetMode.Hard);
-        }
-    }
-
     // As upstream's grid menu "Rebase current branch on": asks first unless upstream's DontConfirmRebase is set. The
     // interactive rebase opens this app's editor for the todo list (a separate process that git starts and waits for).
     private async Task RebaseOnSelectedCommitAsync(bool interactive)
@@ -1809,7 +1833,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        await (interactive ? _actions.RebaseInteractiveAsync(path, row.Hash) : _actions.RebaseAsync(path, row.Hash));
+        await ShowRebaseAsync(path, row.Hash, interactive, immediately: true);
     }
 
     private async Task CopyDetailAsync(Func<CommitDetails, string> select)

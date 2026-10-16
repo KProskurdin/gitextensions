@@ -37,7 +37,8 @@ internal sealed class ConfirmationsTests
         string[] texts =
         [
             Confirmations.RebaseQuestion, Confirmations.FetchAndPruneQuestion, Confirmations.StashDropQuestion,
-            Confirmations.SwitchWorktreeQuestion, Confirmations.BranchCheckoutQuestion.Replace("\"", "\"\""),
+            Confirmations.SwitchWorktreeQuestion, Confirmations.ResolveConflictsQuestion, Confirmations.ResolveConflictsCaption,
+            Confirmations.BranchCheckoutQuestion.Replace("\"", "\"\""),
             "You are about to rewrite history.", "Only use Amend if the commit has not been published yet!",
             "You are not working on a branch",
             "This commit will be unreferenced when switching to another branch and can be lost.",

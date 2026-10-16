@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
@@ -32,8 +33,9 @@ internal sealed class CreateBranchWindowTests
         (Window owner, CreateBranchWindow window, _) = Open();
 
         Find<TextBox>(window, "BranchNameBox").Text.Should().Be(head);
-        Find<TextBox>(window, "CommitHashBox").Text.Should().Be(hash);
-        Find<TextBlock>(window, "CommitCountText").Text.Should().Be("=");
+        CommitPickerView picker = Find<CommitPickerView>(window, "CommitPicker");
+        picker.FindControl<TextBox>("CommitHashBox")!.Text.Should().Be(hash);
+        picker.FindControl<TextBlock>("CommitCountText")!.Text.Should().Be("=");
         Find<HeaderedContentControl>(window, "SummaryGroup").Header.Should().Be(hash);
         Find<TextBlock>(window, "MessageText").Text.Should().Be("second");
         Find<TextBlock>(window, "TagsText").Text.Should().Be("n/a");
@@ -149,7 +151,9 @@ internal sealed class CreateBranchWindowTests
         => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
     private static T Find<T>(Window window, string name) where T : Control
-        => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");
+        => window.FindControl<T>(name) ??
+           window.GetLogicalDescendants().OfType<T>().FirstOrDefault(control => control.Name == name) ??
+           throw new InvalidOperationException($"Control {name} not found");
 
     private static void WaitUntil(Func<bool> condition)
     {

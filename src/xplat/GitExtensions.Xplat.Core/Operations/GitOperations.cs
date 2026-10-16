@@ -392,7 +392,7 @@ public sealed class GitOperations : IGitOperations
             Execute(module.GitExecutable,
                 new GitArgumentBuilder("mergetool")
                 {
-                    "--no-prompt", $"--tool={tool}".Quote(), "--", path.ToPosixPath().Quote()
+                    "--no-prompt", $"--tool={tool}".Quote(), "--", { path.Length > 0, path.ToPosixPath().Quote() }
                 });
         });
 
@@ -490,6 +490,17 @@ public sealed class GitOperations : IGitOperations
     public Task RebaseAsync(string repositoryPath, string branch)
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("rebase") { branch.Quote() });
 
+    public Task RunRebaseAsync(string repositoryPath, ArgumentString arguments, string? editorCommand,
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default)
+        => Task.Run(async () =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            await GitOutputRunner.RunAsync(module.WorkingDir,
+                editorCommand is null ? (ArgumentString)$"-c core.editor=true {arguments}" : arguments,
+                output ?? NullOutput.Instance, cancellationToken,
+                editorCommand is null ? null : GitEditorCommand.Environment(editorCommand));
+        }, cancellationToken);
+
     public Task AbortRebaseAsync(string repositoryPath)
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("rebase") { "--abort" });
 
@@ -568,6 +579,21 @@ public sealed class GitOperations : IGitOperations
             else
             {
                 await GitOutputRunner.RunAsync(parent, clone, output, cancellationToken, _remoteEnvironment);
+            }
+        }, cancellationToken);
+
+    public Task RunCloneAsync(string targetPath, ArgumentString arguments, IProgress<GitOutputLine>? output = null,
+        CancellationToken cancellationToken = default)
+        => Task.Run(async () =>
+        {
+            Directory.CreateDirectory(targetPath);
+            if (output is null)
+            {
+                Execute(new Executable(AppSettings.GitCommand, targetPath), arguments);
+            }
+            else
+            {
+                await GitOutputRunner.RunAsync(targetPath, arguments, output, cancellationToken, _remoteEnvironment);
             }
         }, cancellationToken);
 

@@ -11,6 +11,10 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 /// <param name="BranchFilter">Upstream's "Branches:" box: revisions, branch patterns or git log options, separated by
 /// spaces.</param>
 /// <param name="ShowReflog">Upstream's "Show reflog" button: the commits only the reflog still reaches are shown too.</param>
+/// <param name="FullHistory">Upstream's <c>FullHistoryInFileHistory</c>: a filtered history is read with
+/// <c>--full-history</c>.</param>
+/// <param name="SimplifyMerges">Upstream's <c>SimplifyMergesInFileHistory</c>: with the full history, also
+/// <c>--simplify-merges</c>.</param>
 public sealed record RevisionFilter(
     bool CurrentBranchOnly = false,
     string Author = "",
@@ -24,7 +28,9 @@ public sealed record RevisionFilter(
     string DiffContent = "",
     bool ShowFilteredBranches = false,
     string BranchFilter = "",
-    bool ShowReflog = false)
+    bool ShowReflog = false,
+    bool FullHistory = false,
+    bool SimplifyMerges = false)
 {
     // Upstream's Delimiters.WildcardBranchSearchValues: a branch filter word with these is a pattern for --branches=.
     private static readonly char[] _wildcards = ['?', '*', '['];
@@ -112,6 +118,18 @@ public sealed record RevisionFilter(
         if (FirstParent)
         {
             arguments.Add("--first-parent");
+        }
+
+        // Upstream's FilterInfo: the full history (and merge simplification) apply to a history its revision filter narrows
+        // (author, committer, message, diff content, path or no merges).
+        if (FullHistory && (Author.Length > 0 || Committer.Length > 0 || Message.Length > 0 || DiffContent.Length > 0
+                            || PathFilter.Length > 0 || NoMerges))
+        {
+            arguments.Add("--full-history");
+            if (SimplifyMerges)
+            {
+                arguments.Add("--simplify-merges");
+            }
         }
 
         if (ShowReflog)

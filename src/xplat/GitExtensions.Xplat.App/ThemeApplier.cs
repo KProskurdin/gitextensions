@@ -94,6 +94,13 @@ internal static class ThemeApplier
         SetBrush(app, DialogFooterKey, controlLight.MakeDarkerBy(-0.04));
         SetBrush(app, DialogFooterLineKey, controlLight.MakeDarkerBy(0.04));
 
+        // Upstream's info labels (FormClone's location line): on the Info color, in the control text color, or in red made
+        // readable on it for a problem (ColorHelper.AdaptForeColor).
+        System.Drawing.Color info = SystemColor(colors, System.Drawing.KnownColor.Info);
+        SetBrush(app, InfoBackgroundKey, info);
+        SetBrush(app, InfoTextKey, SystemColor(colors, System.Drawing.KnownColor.ControlText));
+        SetBrush(app, InfoErrorTextKey, System.Drawing.Color.Red.AdaptForeColor(info));
+
         ApplyDashboard(app, colors);
         Changed?.Invoke(null, EventArgs.Empty);
     }
@@ -115,6 +122,9 @@ internal static class ThemeApplier
     public const string CommitMessageBackgroundKey = "CommitMessageBackgroundBrush";
     public const string DialogFooterKey = "DialogFooterBrush";
     public const string DialogFooterLineKey = "DialogFooterLineBrush";
+    public const string InfoBackgroundKey = "InfoBackgroundBrush";
+    public const string InfoTextKey = "InfoTextBrush";
+    public const string InfoErrorTextKey = "InfoErrorTextBrush";
 
     // A system color as the theme sets it, else the system's (on Windows the user's, elsewhere .NET's Windows defaults).
     private static System.Drawing.Color SystemColor(AppThemeColors colors, System.Drawing.KnownColor name)
