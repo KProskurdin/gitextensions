@@ -90,7 +90,10 @@ public sealed class UpstreamPluginCatalog : IPluginCatalog
         {
             if (!_initialized)
             {
+                // Looked up first, so a missing upstream handler fails before Initialise subscribes it.
+                ResolveEventHandler upstreamResolve = PluginAssemblyResolve.UpstreamHandler();
                 ManagedExtensibility.Initialise(userPluginsPath: AppSettings.UserPluginsPath);
+                PluginAssemblyResolve.Replace(upstreamResolve);
                 _initialized = true;
             }
         }
