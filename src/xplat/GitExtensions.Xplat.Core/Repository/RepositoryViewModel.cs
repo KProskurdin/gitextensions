@@ -16,6 +16,7 @@ public sealed class RepositoryViewModel : ObservableObject
     private bool _isApplyingPatch;
     private bool _isBisecting;
     private IReadOnlyList<string> _remotes = [];
+    private IReadOnlyList<string> _inactiveRemotes = [];
     private string? _trackingRemote;
     private SyncStatus? _sync;
     private IReadOnlyList<StashInfo> _stashes = [];
@@ -24,6 +25,7 @@ public sealed class RepositoryViewModel : ObservableObject
     private IReadOnlyDictionary<string, string> _aheadBehind = new Dictionary<string, string>();
     private IReadOnlyList<WorktreeInfo> _worktrees = [];
     private IReadOnlyDictionary<string, string> _remoteUrls = new Dictionary<string, string>();
+    private IReadOnlyDictionary<string, System.Drawing.Color> _remoteColors = new Dictionary<string, System.Drawing.Color>();
     private string _userEmail = "";
     private string? _errorMessage;
 
@@ -92,6 +94,15 @@ public sealed class RepositoryViewModel : ObservableObject
         private set => SetProperty(ref _remotes, value);
     }
 
+    /// <summary>
+    ///  The remotes upstream's <c>FormRemotes</c> deactivated (see <see cref="RepositorySnapshot.InactiveRemotes"/>).
+    /// </summary>
+    public IReadOnlyList<string> InactiveRemotes
+    {
+        get => _inactiveRemotes;
+        private set => SetProperty(ref _inactiveRemotes, value);
+    }
+
     public IReadOnlyList<SubmoduleInfo> Submodules
     {
         get => _submodules;
@@ -127,6 +138,15 @@ public sealed class RepositoryViewModel : ObservableObject
     {
         get => _remoteUrls;
         private set => SetProperty(ref _remoteUrls, value);
+    }
+
+    /// <summary>
+    ///  The colors set on remotes, by remote name (see <see cref="RepositorySnapshot.RemoteColors"/>).
+    /// </summary>
+    public IReadOnlyDictionary<string, System.Drawing.Color> RemoteColors
+    {
+        get => _remoteColors;
+        private set => SetProperty(ref _remoteColors, value);
     }
 
     /// <summary>
@@ -205,12 +225,14 @@ public sealed class RepositoryViewModel : ObservableObject
         Stashes = [];
         Tags = [];
         Remotes = [];
+        InactiveRemotes = [];
         Sync = null;
         TrackingRemote = null;
         Submodules = [];
         AheadBehind = new Dictionary<string, string>();
         Worktrees = [];
         RemoteUrls = new Dictionary<string, string>();
+        RemoteColors = new Dictionary<string, System.Drawing.Color>();
         UserEmail = "";
     }
 
@@ -236,12 +258,14 @@ public sealed class RepositoryViewModel : ObservableObject
             Stashes = snapshot.Stashes;
             Tags = snapshot.Tags;
             Remotes = snapshot.Remotes ?? [];
+            InactiveRemotes = snapshot.InactiveRemotes ?? [];
             Sync = snapshot.Sync;
             TrackingRemote = snapshot.TrackingRemote;
             Submodules = snapshot.Submodules ?? [];
             AheadBehind = snapshot.AheadBehind ?? new Dictionary<string, string>();
             Worktrees = snapshot.Worktrees ?? [];
             RemoteUrls = snapshot.RemoteUrls ?? new Dictionary<string, string>();
+            RemoteColors = snapshot.RemoteColors ?? new Dictionary<string, System.Drawing.Color>();
             UserEmail = snapshot.UserEmail ?? "";
         }
         catch (Exception ex)

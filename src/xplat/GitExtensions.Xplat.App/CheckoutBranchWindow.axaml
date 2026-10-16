@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.CheckoutBranchWindow"
+        Title="Checkout branch"
+        Width="626" SizeToContent="Height" MinWidth="560" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormCheckoutBranch (a GitExtensionsDialog): the branch kind and branch, for a remote branch what happens to
+       the local branch, and for a dirty working directory what happens to the local changes; Checkout at the bottom. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button x:Name="CheckoutButton" Content="_Checkout" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+    <StackPanel Margin="12" Spacing="3">
+      <!-- Upstream's tlpnlBranches. -->
+      <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+        <RadioButton x:Name="LocalBranchRadio" GroupName="Kind" Content="Local _branch" IsChecked="True" Margin="3" />
+        <RadioButton x:Name="RemoteBranchRadio" Grid.Column="1" GroupName="Kind" Content="Remote _branch" Margin="3" />
+        <AccessText Grid.Row="1" Text="_Select branch" VerticalAlignment="Center" Margin="3,3,12,3" />
+        <ComboBox x:Name="BranchesBox" Grid.Row="1" Grid.Column="1" Margin="3" IsEditable="True" HorizontalAlignment="Stretch" />
+        <TextBlock x:Name="ChangesText" Grid.Row="1" Grid.Column="2" Text="-" VerticalAlignment="Center" Margin="3"
+                   MinWidth="40" />
+      </Grid>
+      <Separator Margin="3" />
+      <!-- Upstream's tlpnlRemoteOptions, shown for a remote branch. -->
+      <Grid x:Name="RemoteOptions" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" IsVisible="False">
+        <RadioButton x:Name="ResetBranchRadio" GroupName="NewBranch" Margin="3">
+          <AccessText x:Name="ResetBranchText" Text="R_eset local branch with the name:" />
+        </RadioButton>
+        <TextBlock x:Name="LocalBranchNameText" Grid.Column="1" VerticalAlignment="Center" FontWeight="Bold" Margin="3" />
+        <RadioButton x:Name="CreateBranchRadio" Grid.Row="1" GroupName="NewBranch" Content="Cr_eate local branch with custom name:"
+                     Margin="3" />
+        <TextBox x:Name="CustomBranchNameBox" Grid.Row="1" Grid.Column="1" Margin="3" IsEnabled="False" />
+        <RadioButton x:Name="DontCreateRadio" Grid.Row="2" GroupName="NewBranch"
+                     Content="Ch_eckout the commit (in detached head)" Margin="3" />
+      </Grid>
+      <!-- Upstream's localChangesGB, shown when the working directory has changes. -->
+      <HeaderedContentControl x:Name="LocalChangesGroup" Classes="groupBox" Header="Local changes" Margin="3">
+        <WrapPanel>
+          <RadioButton x:Name="DontChangeRadio" GroupName="Changes" Content="Do_n't change" Margin="0,0,12,0" />
+          <RadioButton x:Name="MergeRadio" GroupName="Changes" Content="_Merge" Margin="0,0,12,0" />
+          <RadioButton x:Name="StashRadio" GroupName="Changes" Content="S_tash" Margin="0,0,12,0" />
+          <RadioButton x:Name="ResetRadio" GroupName="Changes" Content="_Reset" Margin="0,0,12,0" />
+          <CheckBox x:Name="SetAsDefaultCheck" Content="Set as _default" />
+        </WrapPanel>
+      </HeaderedContentControl>
+    </StackPanel>
+  </DockPanel>
+</Window>

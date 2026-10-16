@@ -158,6 +158,54 @@ internal sealed class LeftPanelTests
         folder.IsExpanded.Should().BeTrue();
     }
 
+    [AvaloniaTest]
+    public void Deactivate_moves_a_remote_to_the_inactive_folder_and_activate_brings_it_back()
+    {
+        _repo.Run("remote", "add", "origin", "/srv/origin.git");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        tree.SelectedItem = RemoteNode(tree, "origin");
+        OpenMenu(window);
+
+        Find<MenuItem>(window, "TreeActivateRemoteMenuItem").IsVisible.Should().BeFalse();
+        Find<MenuItem>(window, "TreeFetchRemoteMenuItem").IsVisible.Should().BeTrue();
+        Click(window, "TreeDeactivateRemoteMenuItem");
+
+        WaitUntil(() => RemoteNode(tree, "origin") is { IsInactive: true });
+        Roots(tree)[1].Children.Single().Kind.Should().Be(RepoObjectKind.InactiveRemotes);
+        _repo.Run("remote").Trim().Should().BeEmpty();
+        tree.SelectedItem = RemoteNode(tree, "origin");
+        OpenMenu(window);
+        Find<MenuItem>(window, "TreeFetchRemoteMenuItem").IsVisible.Should().BeFalse();
+        Find<MenuItem>(window, "TreeDeactivateRemoteMenuItem").IsVisible.Should().BeFalse();
+
+        Click(window, "TreeActivateRemoteMenuItem");
+
+        WaitUntil(() => RemoteNode(tree, "origin") is { IsInactive: false });
+        Roots(tree)[1].Children.Should().NotContain(node => node.Kind == RepoObjectKind.InactiveRemotes);
+        _repo.Run("remote").Trim().Should().Be("origin");
+    }
+
+    [AvaloniaTest]
+    public void Open_stash_opens_the_stash_window_on_that_stash()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "older");
+        _repo.Run("stash", "push", "-q", "-m", "older");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "newer");
+        _repo.Run("stash", "push", "-q", "-m", "newer");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        tree.SelectedItem = Roots(tree).SelectMany(root => root.Descendants())
+            .Single(node => node.Item is StashInfo { Name: "stash@{1}" });
+
+        Click(window, "TreeOpenStashMenuItem");
+
+        WaitUntil(() => window.OwnedWindows.OfType<StashWindow>().SingleOrDefault()?.StashesLoaded.IsCompleted == true);
+        StashWindow stash = window.OwnedWindows.OfType<StashWindow>().Single();
+        stash.Dialog.Selected!.Name.Should().Be("stash@{1}");
+        stash.Close();
+    }
+
     private static void Reset()
     {
         foreach (RepoObjectKind root in RepoObjectsTree.Roots)
@@ -175,6 +223,10 @@ internal sealed class LeftPanelTests
 
     private static RepoObjectNode? BranchNode(TreeView tree, string name)
         => Roots(tree).SelectMany(root => root.Descendants()).FirstOrDefault(node => node.Branch?.Name == name);
+
+    private static RepoObjectNode? RemoteNode(TreeView tree, string name)
+        => Roots(tree).SelectMany(root => root.Descendants())
+            .FirstOrDefault(node => node.Kind == RepoObjectKind.Remote && node.Name == name);
 
     // The menu fills itself for the selected node when it opens, as upstream's contextMenu_Opening.
     private static void OpenMenu(Window window)

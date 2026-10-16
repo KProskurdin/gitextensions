@@ -80,6 +80,27 @@ internal sealed class GridViewTests
         WaitUntil(() => Tinted(commits).SequenceEqual(["other's work"]));
     }
 
+    [AvaloniaTest]
+    public void A_remotes_color_reaches_the_grid_with_the_labels_that_take_it()
+    {
+        string head = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("remote", "add", "origin", Path.GetTempPath());
+        _repo.Run("config", "remote.origin.color", "#FF8000");
+        _repo.Run("update-ref", $"refs/remotes/origin/{head}", "HEAD");
+        _repo.Run("config", $"branch.{head}.remote", "origin");
+        _repo.Run("config", $"branch.{head}.merge", $"refs/heads/{head}");
+        MainWindow window = OpenWindow();
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        CommitListItem Head() => Rows(commits).First(item => item.Row.Subject == "second");
+
+        WaitUntil(() => Head().GridLabels.Any(label => label.Nestled is not null)
+                        && commits.GetValue(RefLabelView.RemoteColorsProperty) is { Count: > 0 });
+
+        Head().GridLabels.Single(label => label.Nestled is not null).Nestled!.Remote.Should().Be("origin");
+        commits.GetValue(RefLabelView.RemoteColorsProperty)!["origin"].ToArgb().Should()
+            .Be(System.Drawing.Color.FromArgb(0xFF, 0x80, 0x00).ToArgb());
+    }
+
     private static IReadOnlyList<CommitListItem> Rows(ListBox commits)
         => commits.ItemsSource as IReadOnlyList<CommitListItem> ?? [];
 

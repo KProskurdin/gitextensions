@@ -176,9 +176,9 @@ public partial class MainWindow : Window
         PullMenuItem.Click += (_, _) => Pull();
         PushMenuItem.Click += (_, _) => Push();
         FetchMenuItem.Click += (_, _) => Fetch();
-        StashMenuItem.Click += (_, _) => Run(() => StashAsync());
-        StashPopMenuItem.Click += (_, _) => PopTopStash();
-        CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(startPoint: null));
+        ManageStashesCommandMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
+        CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
+        CheckoutBranchMenuItem.Click += (_, _) => RunOnRepository(path => StartCheckoutBranchAsync(path));
         MergeMenuItem.Click += (_, _) => MergeSelectedBranch();
         RebaseMenuItem.Click += (_, _) => RebaseOnSelectedBranch();
         CreateTagMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
@@ -321,9 +321,10 @@ public partial class MainWindow : Window
         PullMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.QuickPull);
         PushMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.QuickPush);
         FetchMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.QuickFetch);
-        StashMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Stash);
-        StashPopMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.StashPop);
+        StashChangesMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Stash);
+        StashPopToolMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.StashPop);
         CreateBranchMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CreateBranch);
+        CheckoutBranchMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CheckoutBranch);
         MergeMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Merge);
         RebaseMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Rebase);
         CreateTagMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CreateTag);
@@ -546,7 +547,10 @@ public partial class MainWindow : Window
                 BranchTreeView.Focus();
                 break;
             case BrowseCommand.CreateBranch:
-                Run(() => PromptCreateBranchAsync(startPoint: null));
+                Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
+                break;
+            case BrowseCommand.CheckoutBranch:
+                RunOnRepository(path => StartCheckoutBranchAsync(path));
                 break;
             case BrowseCommand.CreateTag:
                 Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
@@ -1056,6 +1060,10 @@ public partial class MainWindow : Window
         {
             (Screenshot.PullWindow, { } path) => await NewPullWindowAsync(path),
             (Screenshot.PushWindow, { } path) => await NewPushWindowAsync(path),
+            (Screenshot.RemotesWindow, { } path) => new RemotesWindow(path, _preferences),
+            (Screenshot.StashWindow, { } path) => new StashWindow(path, _actions, _preferences),
+            (Screenshot.CreateBranchWindow, { } path) => new CreateBranchWindow(path, _actions, _preferences),
+            (Screenshot.CheckoutBranchWindow, { } path) => await CheckoutFlow().NewWindowAsync(path),
             _ => null,
         };
 
@@ -1080,7 +1088,7 @@ public partial class MainWindow : Window
         return new PullWindow(dialog, _preferences, PathUtil.GetDisplayPath(path.EnsureTrailingPathSeparator()),
             [.. _repository.Branches.Where(branch => branch.IsRemote).Select(branch => branch.Name)],
             [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)],
-            await Task.Run(() => PullDialog.IsShallowRepository(path)), git, ShowConflicts);
+            await Task.Run(() => PullDialog.IsShallowRepository(path)), git, ShowConflicts, owner => ShowStashWindowAsync(owner));
     }
 
     // One commit window at a time, as upstream; asking again brings the open one forward.
@@ -1269,10 +1277,18 @@ public partial class MainWindow : Window
         await ConfirmAsync(Confirmation.BranchCheckout,
             string.Format(Confirmations.BranchCheckoutQuestion, branch.Name),
             "Checkout", "Confirm checkout")
-        && await WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout, () => branch.IsRemote
-            ? _actions.CheckoutRemoteAsync(path, branch.Name)
-            : CheckoutLocalBranchAsync(path, branch.Name), PluginEvent.CheckoutBranch)
-        && await UpdateSubmodulesAfterCheckoutAsync(path));
+        && await StartCheckoutBranchAsync(path, branch.Name, branch.IsRemote));
+
+    // Upstream's StartCheckoutBranch: the checkout window (or the checkout at once when it is not needed), between the
+    // checkout scripts and plugin events, followed by the submodule update.
+    private Task<bool> StartCheckoutBranchAsync(string path, string branch = "", bool remote = false)
+        => CheckoutFlow().StartAsync(this, path, branch, remote);
+
+    private CheckoutBranchFlow CheckoutFlow()
+        => new(_actions, _preferences,
+            (repository, checkout) => WithScriptsAsync(repository, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
+                checkout, PluginEvent.CheckoutBranch),
+            UpdateSubmodulesAfterCheckoutAsync);
 
     // Like upstream, local changes to tracked files make the checkout ask what to do with them; the choice becomes the
     // default for next time (upstream's checkoutbranchaction). Untracked files do not block a checkout and are not counted.
@@ -1319,20 +1335,19 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task PromptCreateBranchAsync(string? startPoint)
+    // Upstream's StartCreateBranchDialog: the create branch window at the commit (HEAD when none or an artificial one), with
+    // a proposed name; as upstream, the submodules are updated when the new branch is checked out at another commit.
+    private async Task PromptCreateBranchAsync(string? startPoint, string? namePrefix = null)
     {
         if (RepositoryPath is not { } path)
         {
             return;
         }
 
-        string at = startPoint is null ? "HEAD" : startPoint[..Math.Min(8, startPoint.Length)];
-        PromptResult? result = await new PromptWindow("Create branch",
-                $"Name of the new branch at {at}. It is checked out after it is created.", "Create")
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null)
+        CreateBranchWindow window = new(path, _actions, _preferences, startPoint, namePrefix);
+        if (await window.ShowDialog<bool>(this) && window.CheckedOutOtherCommit)
         {
-            await _actions.CreateBranchAsync(path, NormaliseBranchName(result.Value), checkout: true, startPoint);
+            await UpdateSubmodulesAfterCheckoutAsync(path);
         }
     }
 
@@ -1551,6 +1566,9 @@ public partial class MainWindow : Window
             case nameof(RepositoryViewModel.Remotes):
                 UpdateBusyState();
                 break;
+            case nameof(RepositoryViewModel.RemoteColors):
+                RefLabelView.SetRemoteColors(CommitList, _repository.RemoteColors);
+                break;
             case nameof(RepositoryViewModel.IsLoading):
                 // The left panel is built once the whole snapshot is read (upstream refills its trees after a refresh).
                 if (!_repository.IsLoading)
@@ -1733,8 +1751,8 @@ public partial class MainWindow : Window
         BisectSkipMenuItem.IsEnabled = commitSelected;
         StopBisectMenuItem.IsEnabled = open;
 
-        StashMenuItem.IsEnabled = open;
-        StashPopMenuItem.IsEnabled = open && _repository.Stashes.Count > 0;
+        ManageStashesCommandMenuItem.IsEnabled = open;
+        CheckoutBranchMenuItem.IsEnabled = open;
         CreateTagMenuItem.IsEnabled = open;
 
         CherryPickMenuItem.IsEnabled = commitSelected;
@@ -1829,6 +1847,18 @@ public partial class MainWindow : Window
 
         await new RemotesWindow(path, _preferences, remote => _actions.FetchAsync(path, remote, prune: false),
             preselectRemote, preselectLocal).ShowDialog(owner);
+        RefreshRepository();
+    }
+
+    // Upstream's StartStashDialog: the stash window on the open repository; the repository is read again after it.
+    private async Task ShowStashWindowAsync(Window owner, bool manageStashes = true, string? initialStash = null)
+    {
+        if (RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        await new StashWindow(path, _actions, _preferences, manageStashes, initialStash).ShowDialog(owner);
         RefreshRepository();
     }
 
@@ -1963,8 +1993,10 @@ public partial class MainWindow : Window
         }
     }
 
+    // Over the window that is active, as upstream shows an error over the form that ran the command: a modal window
+    // (the stash window) runs operations whose errors arrive here, and an error owned by this window would open behind it.
     private void ShowError(string message)
     {
-        _ = new ErrorWindow(message).ShowDialog(this);
+        _ = new ErrorWindow(message).ShowDialog(OwnedWindows.FirstOrDefault(window => window.IsActive) ?? this);
     }
 }

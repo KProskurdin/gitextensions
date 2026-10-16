@@ -50,7 +50,6 @@ public partial class CommitWindow
             StagedStopTrackingMenuItem, StagedRunScriptMenuItem);
 
         UnstagedRefreshButton.Click += (_, _) => Run(_refresh);
-        StashSelectedMenuItem.Click += (_, _) => Run(StashSelectedAsync);
 
         // Upstream's OtherColors.MergeConflictsColor.
         SolveConflictsButton.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(230, 99, 99));
@@ -185,7 +184,6 @@ public partial class CommitWindow
         parts.AddToGitIgnore?.IsVisible = state.Ignore;
         parts.AddToGitInfoExclude?.IsVisible = state.Ignore;
         parts.StopTracking.IsVisible = state.StopTracking;
-        StashSelectedMenuItem.IsVisible = !parts.Staged && selected.Count > 0;
         ShowFileListScripts(parts.Menu, parts.RunScript);
     }
 
@@ -295,15 +293,6 @@ public partial class CommitWindow
         if (await new GitIgnoreWindow(_repositoryPath, localExclude: localExclude).ShowDialog<bool>(this))
         {
             await _refresh();
-        }
-    }
-
-    private async Task StashSelectedAsync()
-    {
-        List<string> paths = [.. Selected(_unstaged).Select(change => change.Path)];
-        if (paths.Count > 0)
-        {
-            await _actions.StashAsync(_repositoryPath, message: "", includeUntracked: true, keepIndex: false, paths);
         }
     }
 

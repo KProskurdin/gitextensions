@@ -123,6 +123,12 @@ public sealed record RefLabel(string Name, RefKind Kind)
     public string? Remote { get; init; }
 
     /// <summary>
+    ///  For a local branch, the remote of the branch it tracks (upstream's <c>IGitRef.TrackingRemote</c>); null when it
+    ///  tracks none.
+    /// </summary>
+    public string? TrackingRemote { get; init; }
+
+    /// <summary>
     ///  Upstream's ahead and behind arrows for the label next to this one (<c>AheadBehindData.ToDisplay</c> without
     ///  counts): for a local branch from its tracked remote branch's side, for a remote branch from the side of the local
     ///  branch tracking it; null when there is none.

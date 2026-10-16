@@ -614,6 +614,7 @@ internal sealed class MainWindowTests
     [AvaloniaTest]
     public void Checkout_with_local_changes_asks_and_can_stash_them_across_the_checkout()
     {
+        TestAppBuilder.Preferences.AutoPopStashAfterCheckoutBranch = true;
         string baseBranch = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
         _repo.Run("branch", "other");
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "local edit");
@@ -627,16 +628,19 @@ internal sealed class MainWindowTests
         branches.SelectedItem = BranchNode(branches, "other");
 
         Click(window, "TreeCheckoutMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<CheckoutWindow>().Any());
-        CheckoutWindow dialog = window.OwnedWindows.OfType<CheckoutWindow>().Single();
+        WaitUntil(() => window.OwnedWindows.OfType<CheckoutBranchWindow>().Any());
+        CheckoutBranchWindow dialog = window.OwnedWindows.OfType<CheckoutBranchWindow>().Single();
         Find<RadioButton>(dialog, "StashRadio").IsChecked = true;
+        Find<CheckBox>(dialog, "SetAsDefaultCheck").IsChecked = true;
         Click(dialog, "CheckoutButton");
 
-        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Checked out other");
+        WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "other"
+                        && File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "local edit" && !window.IsBusy);
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("other").And.NotBe(baseBranch);
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("local edit");
         _repo.Run("stash", "list").Trim().Should().BeEmpty();
         TestAppBuilder.Preferences.CheckoutBranchAction.Should().Be(GitCommands.LocalChangesAction.Stash);
+        TestAppBuilder.Preferences.AutoPopStashAfterCheckoutBranch = null;
         TestAppBuilder.Preferences.CheckoutBranchAction = GitCommands.LocalChangesAction.DontChange;
     }
 
@@ -772,10 +776,10 @@ internal sealed class MainWindowTests
         WaitUntil(() => Find<MenuItem>(window, "CreateBranchHereMenuItem").IsEnabled);
 
         Click(window, "CreateBranchHereMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
-        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
-        Find<TextBox>(prompt, "ValueBox").Text = "from-first";
-        Click(prompt, "OkButton");
+        WaitUntil(() => window.OwnedWindows.OfType<CreateBranchWindow>().SingleOrDefault()?.BranchLoaded.IsCompleted == true);
+        CreateBranchWindow create = window.OwnedWindows.OfType<CreateBranchWindow>().Single();
+        Find<TextBox>(create, "BranchNameBox").Text = "from-first";
+        Click(create, "CreateButton");
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Created from-first");
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("from-first");
@@ -1238,25 +1242,23 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void Rename_remote_asks_for_the_new_name_and_renames_it()
+    public void Manage_on_a_remote_opens_the_remotes_window_on_it()
     {
-        _repo.Run("remote", "add", "old", Path.GetTempPath());
+        _repo.Run("remote", "add", "first", Path.GetTempPath());
+        _repo.Run("remote", "add", "second", Path.GetTempPath());
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
         TreeView tree = Find<TreeView>(window, "BranchTreeView");
-        WaitUntil(() => Root(tree, RepoObjectKind.RemotesRoot)?.Children.Count == 1);
-        tree.SelectedItem = Root(tree, RepoObjectKind.RemotesRoot)!.Children[0];
+        WaitUntil(() => Root(tree, RepoObjectKind.RemotesRoot)?.Children.Count == 2);
+        tree.SelectedItem = Root(tree, RepoObjectKind.RemotesRoot)!.Children.Single(node => node.Name == "second");
 
-        Click(window, "TreeRenameRemoteMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
-        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
-        Find<TextBox>(prompt, "ValueBox").Text.Should().Be("old");
-        Find<TextBox>(prompt, "ValueBox").Text = "renamed";
-        Click(prompt, "OkButton");
+        Click(window, "TreeManageRemoteMenuItem");
 
-        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Renamed remote old to renamed");
-        _repo.Run("remote").Trim().Should().Be("renamed");
+        WaitUntil(() => window.OwnedWindows.OfType<RemotesWindow>().SingleOrDefault()?.RemotesLoaded.IsCompleted == true);
+        RemotesWindow remotes = window.OwnedWindows.OfType<RemotesWindow>().Single();
+        remotes.Dialog.Selected!.Name.Should().Be("second");
+        remotes.Close();
     }
 
     [AvaloniaTest]

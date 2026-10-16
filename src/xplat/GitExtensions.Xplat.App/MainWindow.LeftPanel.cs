@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
+using GitCommands.Remotes;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
@@ -126,7 +127,8 @@ public partial class MainWindow
             ? []
             : RepoObjectsTree.Build(
                 new RepoObjects(_repository.Branches, _repository.Remotes, _repository.Tags, _repository.Stashes,
-                    _repository.Submodules, _repository.Worktrees, _repository.AheadBehind, _repository.RemoteUrls, path),
+                    _repository.Submodules, _repository.Worktrees, _repository.AheadBehind, _repository.RemoteUrls, path,
+                    _repository.InactiveRemotes),
                 [.. _preferences.RepoObjectsTreeOrder.Where(_preferences.ShowsRepoObjectsTree)], UpstreamTranslation.ByText,
                 RefSorting());
         RepoObjectsTree.KeepExpansion(_repoObjects, roots);
@@ -172,13 +174,16 @@ public partial class MainWindow
                 Run(() => PromptCreateBranchAsync((string)node.Item!));
                 break;
             case RepoObjectKind.Stash:
-                ShowStashDiff((StashInfo)node.Item!);
+                Run(() => ShowStashWindowAsync(this, initialStash: ((StashInfo)node.Item!).Name));
                 break;
             case RepoObjectKind.Worktree when !node.IsBold:
                 OpenWorktree((WorktreeInfo)node.Item!);
                 break;
             case RepoObjectKind.Submodule:
                 OpenSubmodule((SubmoduleInfo)node.Item!);
+                break;
+            case RepoObjectKind.Remote:
+                Run(() => ShowRemotesAsync(this, (string)node.Item!));
                 break;
         }
     }
@@ -247,8 +252,12 @@ public partial class MainWindow
 
         bool remote = kind == RepoObjectKind.Remote;
         Show(TreeManageRemoteMenuItem, remote);
-        Show(TreeFetchRemoteMenuItem, remote);
-        Show(TreePruneRemoteMenuItem, remote);
+        bool activeRemote = remote && !node!.IsInactive;
+        Show(TreeActivateRemoteMenuItem, remote && !activeRemote);
+        Show(TreeActivateAndFetchRemoteMenuItem, remote && !activeRemote);
+        Show(TreeDeactivateRemoteMenuItem, activeRemote);
+        Show(TreeFetchRemoteMenuItem, activeRemote);
+        Show(TreePruneRemoteMenuItem, activeRemote);
         Show(TreeOpenRemoteUrlMenuItem, remote, enabled: RemoteWebUrl(node) is not null);
 
         bool submodule = kind == RepoObjectKind.Submodule;
@@ -270,6 +279,7 @@ public partial class MainWindow
 
         Show(TreeStashAllMenuItem, kind == RepoObjectKind.StashesRoot);
         Show(TreeStashStagedMenuItem, kind == RepoObjectKind.StashesRoot);
+        Show(TreeManageStashesMenuItem, kind == RepoObjectKind.StashesRoot);
         bool stash = kind == RepoObjectKind.Stash;
         Show(TreeOpenStashMenuItem, stash);
         Show(TreeApplyStashMenuItem, stash);
@@ -397,6 +407,10 @@ public partial class MainWindow
         TreeFetchAllRemotesMenuItem.Click += (_, _) => Fetch(remote: "--all", prune: false);
         TreePruneAllRemotesMenuItem.Click += (_, _) => Fetch(remote: "--all", prune: true);
         TreeManageRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Run(() => ShowRemotesAsync(this, name)));
+        TreeActivateRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => SetRemoteActive(name, active: true));
+        TreeActivateAndFetchRemoteMenuItem.Click += (_, _) =>
+            OnSelectedRemoteName(name => SetRemoteActive(name, active: true, fetch: true));
+        TreeDeactivateRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => SetRemoteActive(name, active: false));
         TreeFetchRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Fetch(remote: name, prune: false));
         TreePruneRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Fetch(remote: name, prune: true));
         TreeOpenRemoteUrlMenuItem.Click += (_, _) =>
@@ -421,7 +435,7 @@ public partial class MainWindow
 
         // Upstream's RemoteBranchNode actions; the new shell fetches the whole remote.
         TreeFetchAndCheckoutMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, branch) =>
-            FetchThenAsync(path, remote, () => _actions.CheckoutRemoteAsync(path, branch.Name)));
+            FetchThenAsync(path, remote, () => StartCheckoutBranchAsync(path, branch.Name, remote: true)));
         TreeFetchAndMergeMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, name, _) =>
             _actions.PullAsync(path, remote, name, rebase: false));
         TreeFetchAndRebaseMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, name, _) =>
@@ -439,7 +453,7 @@ public partial class MainWindow
         {
             if (SelectedRepoObject is { Kind: RepoObjectKind.Folder, Item: string folder })
             {
-                Run(() => PromptCreateBranchInFolderAsync(folder));
+                Run(() => PromptCreateBranchAsync(startPoint: null, namePrefix: $"{folder}/"));
             }
         };
         TreeDeleteAllBranchesMenuItem.Click += (_, _) =>
@@ -457,7 +471,9 @@ public partial class MainWindow
 
         TreeStashAllMenuItem.Click += (_, _) => Run(StashAsync);
         TreeStashStagedMenuItem.Click += (_, _) => RunOnRepository(path => _actions.StashStagedAsync(path));
-        TreeOpenStashMenuItem.Click += (_, _) => OnSelected<StashInfo>(ShowStashDiff);
+        TreeManageStashesMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
+        TreeOpenStashMenuItem.Click += (_, _) =>
+            OnSelected<StashInfo>(stash => Run(() => ShowStashWindowAsync(this, initialStash: stash.Name)));
         TreeApplyStashMenuItem.Click += (_, _) => OnSelected<StashInfo>(stash =>
             RunOnRepository(path => _actions.ApplyStashAsync(path, stash.Name)));
         TreePopStashMenuItem.Click += (_, _) => OnSelected<StashInfo>(stash =>
@@ -551,6 +567,27 @@ public partial class MainWindow
         }
     }
 
+    // Upstream's RemoteRepoNode.Enable and Disable: the remote's section moves between "remote" and "-remote" in
+    // .git/config, so git no longer sees an inactive remote; an activated remote can be fetched at once.
+    private void SetRemoteActive(string name, bool active, bool fetch = false)
+    {
+        if (RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        Run(async () =>
+        {
+            await Task.Run(() => new ConfigFileRemoteSettingsManager(() => GitModules.Open(path))
+                .ToggleRemoteState(name, disabled: !active));
+            RefreshRepository();
+            if (fetch)
+            {
+                Fetch(remote: name);
+            }
+        });
+    }
+
     // A remote branch's remote and its name there ("origin/feature/x": "origin" and "feature/x").
     private void OnSelectedRemoteBranch(Func<string, string, string, BranchInfo, Task<bool>> action)
     {
@@ -584,15 +621,6 @@ public partial class MainWindow
         => RepoObjectsTree.PathTo(roots, node).FirstOrDefault();
 
     private RepoObjectNode? RootOf(RepoObjectNode node) => RootOf(node, _repoObjects);
-
-    // The whole stash, not one file: a stash is a commit that git shows as a diff (upstream opens it in its stash window).
-    private void ShowStashDiff(StashInfo stash)
-    {
-        if (RepositoryPath is { } path)
-        {
-            new DiffWindow(path, stash.Name, filePath: null, staged: false).Show(this);
-        }
-    }
 
     // As upstream's left panel, a submodule opens as a repository of its own in the browse window.
     private void OpenSubmodule(SubmoduleInfo submodule)
@@ -653,23 +681,6 @@ public partial class MainWindow
     }
 
     // Upstream's BranchPathNode.CreateBranch: the create branch dialog with the folder's path as the name's start.
-    private async Task PromptCreateBranchInFolderAsync(string folder)
-    {
-        if (RepositoryPath is not { } path)
-        {
-            return;
-        }
-
-        PromptResult? result = await new PromptWindow("Create branch",
-                "Name of the new branch at HEAD. It is checked out after it is created.", "Create",
-                initialValue: $"{folder}/")
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null)
-        {
-            await _actions.CreateBranchAsync(path, NormaliseBranchName(result.Value), checkout: true);
-        }
-    }
-
     // Stands in for upstream's FormResetCurrentBranch: soft, mixed or hard, the hard reset after a question.
     private async Task ResetCurrentBranchToAsync(string target)
     {

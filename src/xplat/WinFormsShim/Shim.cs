@@ -410,6 +410,16 @@ public class TaskDialogButton(string? text = null)
     ///  WinForms' standard Cancel button, which a dialog that allows cancelling returns when it is closed.
     /// </summary>
     public static TaskDialogButton Cancel { get; } = new("Cancel");
+
+    /// <summary>
+    ///  WinForms' standard Yes button.
+    /// </summary>
+    public static TaskDialogButton Yes { get; } = new("&Yes");
+
+    /// <summary>
+    ///  WinForms' standard No button.
+    /// </summary>
+    public static TaskDialogButton No { get; } = new("&No");
 }
 
 /// <summary>

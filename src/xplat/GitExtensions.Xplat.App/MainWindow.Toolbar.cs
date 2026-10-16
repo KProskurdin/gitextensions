@@ -92,10 +92,12 @@ public partial class MainWindow
         ShowDefaultPullAction();
 
         // Upstream's stash split button opens its stash window; the new shell has none, so the button stashes.
-        StashToolButton.Click += (_, _) => Run(() => StashAsync());
+        StashToolButton.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
         StashChangesMenuItem.Click += (_, _) => Run(() => StashAsync());
         StashStagedMenuItem.Click += (_, _) => RunOnRepository(path => _actions.StashStagedAsync(path));
         StashPopToolMenuItem.Click += (_, _) => PopTopStash();
+        ManageStashesMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
+        CreateStashMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this, manageStashes: false));
     }
 
     // The toolstrip's state after each read or write, as upstream's FormBrowse refreshes it.
@@ -487,10 +489,7 @@ public partial class MainWindow
             {
                 if (!branch.IsCurrent)
                 {
-                    RunOnRepository(async path =>
-                        await WithScriptsAsync(path, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
-                            () => CheckoutLocalBranchAsync(path, name), PluginEvent.CheckoutBranch)
-                        && await UpdateSubmodulesAfterCheckoutAsync(path));
+                    RunOnRepository(path => StartCheckoutBranchAsync(path, name));
                 }
             };
             flyout.Items.Add(item);

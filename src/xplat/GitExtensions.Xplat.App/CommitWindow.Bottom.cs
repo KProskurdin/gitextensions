@@ -153,19 +153,9 @@ public partial class CommitWindow
         }
     }
 
-    // Upstream's createBranchToolStripButton_Click: the create branch dialog, which checks the new branch out.
+    // Upstream's createBranchToolStripButton_Click: the create branch dialog at HEAD.
     private async Task CreateBranchAsync()
-    {
-        PromptResult? result = await new PromptWindow("Create branch",
-                "Name of the new branch at HEAD. It is checked out after it is created.", "Create")
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null)
-        {
-            await _actions.CreateBranchAsync(_repositoryPath,
-                BranchNames.Normalise(result.Value, _preferences.AutoNormaliseBranchName, _preferences.AutoNormaliseSymbol),
-                checkout: true);
-        }
-    }
+        => await new CreateBranchWindow(_repositoryPath, _actions, _preferences).ShowDialog<bool>(this);
 
     // Upstream's refreshDialogOnFormFocus (RefreshArtificialCommitOnApplicationActivated).
     private void RefreshOnActivation()

@@ -42,9 +42,10 @@ public partial class PullWindow : Window
     /// <param name="localBranches">The local branches it offers when pulling from a URL.</param>
     /// <param name="isShallow">True when the repository is a shallow clone, which offers the full history.</param>
     /// <param name="solveConflicts">Opens the conflicts window (upstream's "Solve conflicts").</param>
+    /// <param name="manageStashes">Opens the stash window over this one (upstream's "Stash changes").</param>
     public PullWindow(PullDialog dialog, IAppPreferences preferences, string displayPath,
         IReadOnlyList<string> remoteBranches, IReadOnlyList<string> localBranches, bool isShallow, PullWindowGit git,
-        Action? solveConflicts = null)
+        Action? solveConflicts = null, Func<Window, Task>? manageStashes = null)
     {
         _dialog = dialog;
         _preferences = preferences;
@@ -59,8 +60,8 @@ public partial class PullWindow : Window
         RemotesBox.ItemsSource = dialog.Remotes;
         UnshallowCheck.IsVisible = isShallow;
 
-        // As upstream, the stash window opens from here too; the new shell has none yet.
-        StashButton.IsEnabled = false;
+        StashButton.IsEnabled = manageStashes is not null;
+        StashButton.Click += (_, _) => UiActions.Run(() => manageStashes?.Invoke(this) ?? Task.CompletedTask, _ => { });
         AddRemoteButton.IsEnabled = git.ManageRemotes is not null;
         AddRemoteButton.Click += (_, _) => UiActions.Run(ManageRemotesAsync, _ => { });
         MergetoolButton.IsEnabled = solveConflicts is not null;

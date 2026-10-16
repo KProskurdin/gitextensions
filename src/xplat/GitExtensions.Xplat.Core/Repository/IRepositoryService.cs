@@ -25,8 +25,12 @@ public interface IRepositoryService
 /// </summary>
 /// <param name="AheadBehind">Upstream's left panel ahead and behind texts (<c>AheadBehindData.ToDisplay</c>) by branch
 /// name: a local branch by its name, a remote branch tracked by one by its name with the remote ("origin/main").</param>
-/// <param name="RemoteUrls">The fetch URL of each remote, by its name.</param>
+/// <param name="RemoteUrls">The fetch URL of each remote, by its name, the inactive ones included.</param>
 /// <param name="UserEmail">The effective <c>user.email</c>, whose commits the grid highlights until one is selected.</param>
+/// <param name="InactiveRemotes">The remotes upstream's <c>FormRemotes</c> deactivated (kept in .git/config, invisible to
+/// git), which upstream's left panel lists apart.</param>
+/// <param name="RemoteColors">The colors set on remotes in upstream's remotes window, by remote name, which the grid's
+/// labels of their branches take (upstream's <c>GitModule.GetRemoteColors</c>).</param>
 public sealed record RepositorySnapshot(
     string? CurrentBranch,
     IReadOnlyList<BranchInfo> Branches,
@@ -44,7 +48,9 @@ public sealed record RepositorySnapshot(
     IReadOnlyDictionary<string, string>? AheadBehind = null,
     IReadOnlyList<WorktreeInfo>? Worktrees = null,
     IReadOnlyDictionary<string, string>? RemoteUrls = null,
-    string? UserEmail = null);
+    string? UserEmail = null,
+    IReadOnlyList<string>? InactiveRemotes = null,
+    IReadOnlyDictionary<string, System.Drawing.Color>? RemoteColors = null);
 
 /// <summary>
 ///  Commits the current branch has that its upstream lacks (<see cref="Ahead"/>) and the reverse (<see cref="Behind"/>).

@@ -77,8 +77,6 @@
                 <MenuItem x:Name="UnstagedAddToGitIgnoreMenuItem" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
                 <MenuItem x:Name="UnstagedAddToGitInfoExcludeMenuItem" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
                 <MenuItem x:Name="UnstagedStopTrackingMenuItem" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
-                <!-- Not in upstream's commit window (its stash window stashes selected files); kept until the new shell has it. -->
-                <MenuItem x:Name="StashSelectedMenuItem" Header="Stash selected" Icon="{local:UpstreamIcon Stash}" />
                 <Separator />
                 <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
               </ContextMenu>

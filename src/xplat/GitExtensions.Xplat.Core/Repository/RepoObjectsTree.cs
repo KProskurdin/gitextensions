@@ -19,6 +19,11 @@ public enum RepoObjectKind
     Submodule,
     Stash,
     Worktree,
+
+    /// <summary>
+    ///  Upstream's <c>RemoteRepoFolderNode</c>: the folder of the inactive remotes below the remotes.
+    /// </summary>
+    InactiveRemotes,
 }
 
 /// <summary>
@@ -70,6 +75,11 @@ public sealed class RepoObjectNode : ObservableObject
     public string? ToolTip { get; init; }
 
     /// <summary>
+    ///  An inactive remote (upstream's <c>RemoteRepoNode.Enabled</c> false), which can be activated but not fetched.
+    /// </summary>
+    public bool IsInactive { get; init; }
+
+    /// <summary>
     ///  Upstream's <c>DisplayText</c>: the name, and the ahead and behind counts of a branch in parentheses.
     /// </summary>
     public string Text => string.IsNullOrEmpty(AheadBehind) ? Name : $"{Name} ({AheadBehind})";
@@ -112,7 +122,8 @@ public sealed record RepoObjects(
     IReadOnlyList<WorktreeInfo> Worktrees,
     IReadOnlyDictionary<string, string> AheadBehind,
     IReadOnlyDictionary<string, string> RemoteUrls,
-    string RepositoryPath);
+    string RepositoryPath,
+    IReadOnlyList<string>? InactiveRemotes = null);
 
 /// <summary>
 ///  Builds upstream's left panel (<c>RepoObjectsTree</c> and its trees): the shown trees in their order, each with
@@ -127,6 +138,7 @@ public static class RepoObjectsTree
     public const string TagsText = "Tags";
     public const string SubmodulesText = "Submodules";
     public const string StashesText = "Stashes";
+    public const string InactiveText = "[ Inactive ]";
 
     /// <summary>
     ///  The six trees in upstream's default order (its <c>RepoObjectsTree.*Index</c> defaults).
@@ -170,7 +182,7 @@ public static class RepoObjectsTree
             {
                 case RepoObjectKind.BranchesRoot:
                 case RepoObjectKind.RemotesRoot:
-                    AddBranches(root, objects, sorting);
+                    AddBranches(root, objects, sorting, translate);
                     break;
                 case RepoObjectKind.WorktreesRoot:
                     foreach (WorktreeInfo worktree in objects.Worktrees.Where(worktree => !worktree.IsDeleted))
@@ -308,7 +320,8 @@ public static class RepoObjectsTree
 
     // The branch trees as BranchTree groups them (upstream's prioritized branches and remotes first), with upstream's
     // images, the current branch in bold and the ahead and behind counts; remotes without branches are listed too.
-    private static void AddBranches(RepoObjectNode root, RepoObjects objects, RefSorting? sorting)
+    private static void AddBranches(RepoObjectNode root, RepoObjects objects, RefSorting? sorting,
+        Func<string, string> translate)
     {
         IReadOnlyList<BranchTreeNode> groups = BranchTree.Build(objects.Branches, sorting);
         if (root.Kind == RepoObjectKind.BranchesRoot)
@@ -331,16 +344,32 @@ public static class RepoObjectsTree
         {
             root.Children.Add(RemoteNode(name, root.Key, objects, [], isExpanded: true));
         }
+
+        // Upstream's RemoteBranchTree: the inactive remotes last, in a folder of their own.
+        if (objects.InactiveRemotes is { Count: > 0 } inactiveRemotes)
+        {
+            RepoObjectNode folder = new(RepoObjectKind.InactiveRemotes, translate(InactiveText), "EyeClosed")
+            {
+                Key = $"{root.Key}/{InactiveText}",
+            };
+            foreach (string name in inactiveRemotes.Order(StringComparer.Ordinal))
+            {
+                folder.Children.Add(RemoteNode(name, folder.Key, objects, [], isExpanded: false, isInactive: true));
+            }
+
+            root.Children.Add(folder);
+        }
     }
 
     private static RepoObjectNode RemoteNode(string name, string parentKey, RepoObjects objects,
-        IReadOnlyList<BranchTreeNode> branches, bool isExpanded)
+        IReadOnlyList<BranchTreeNode> branches, bool isExpanded, bool isInactive = false)
     {
         objects.RemoteUrls.TryGetValue(name, out string? url);
         RepoObjectNode node = new(RepoObjectKind.Remote, name, RemoteImage(url), name, isExpanded)
         {
             Key = $"{parentKey}/{name}",
             ToolTip = url,
+            IsInactive = isInactive,
         };
         foreach (BranchTreeNode branch in branches)
         {

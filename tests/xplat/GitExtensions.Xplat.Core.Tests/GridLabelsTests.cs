@@ -71,6 +71,25 @@ internal sealed class GridLabelsTests
     }
 
     [Test]
+    public void Layout_should_name_the_remote_whose_color_a_label_takes()
+    {
+        IReadOnlyList<GridLabel> layout = GridLabels.Layout(
+        [
+            new RefLabel("main", RefKind.Branch) { Upstream = "origin/main", TrackingRemote = "origin" },
+            new RefLabel("origin/main", RefKind.RemoteBranch) { Remote = "origin" },
+            new RefLabel("feature", RefKind.Branch) { Upstream = "fork/feature", TrackingRemote = "fork", AheadBehind = "↑" },
+            new RefLabel("fork/other", RefKind.RemoteBranch) { Remote = "fork" },
+            new RefLabel("v1", RefKind.Tag),
+        ], _all);
+
+        layout.Select(label => (label.Text, label.Remote, label.Nestled?.Remote)).Should().Equal(
+            ("feature", null, "fork"),
+            ("main", null, "origin"),
+            ("fork/other", "fork", null),
+            ("v1", null, null));
+    }
+
+    [Test]
     public void Layout_should_hide_tags_and_remote_branches_as_the_view_menu_says()
     {
         RefLabel[] labels = [new("v1", RefKind.Tag), new("origin/x", RefKind.RemoteBranch), new("x", RefKind.Branch)];

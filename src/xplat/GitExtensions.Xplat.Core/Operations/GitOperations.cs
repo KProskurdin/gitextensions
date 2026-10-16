@@ -129,6 +129,16 @@ public sealed class GitOperations : IGitOperations
                 GitEditorCommand.Environment(editorCommand));
         });
 
+    public Task RunCommandsAsync(string repositoryPath, IReadOnlyList<ArgumentString> commands)
+        => Task.Run(() =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            foreach (ArgumentString command in commands)
+            {
+                Execute(module.GitExecutable, command);
+            }
+        });
+
     public Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null)
         => Task.Run(() =>
         {

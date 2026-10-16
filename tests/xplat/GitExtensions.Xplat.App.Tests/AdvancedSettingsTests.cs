@@ -37,6 +37,7 @@ internal sealed class AdvancedSettingsTests
         TestAppBuilder.Preferences.CheckoutBranchAction = LocalChangesAction.Stash;
         TestAppBuilder.Preferences.UseDefaultCheckoutBranchAction = true;
         TestAppBuilder.Preferences.AlwaysShowCheckoutBranchDlg = true;
+        TestAppBuilder.Preferences.AutoPopStashAfterCheckoutBranch = true;
         MainWindow window = OpenWindow();
         TreeView branches = Find<TreeView>(window, "BranchTreeView");
         WaitUntil(() => BranchNode(branches, "other") is not null &&
@@ -44,15 +45,17 @@ internal sealed class AdvancedSettingsTests
         branches.SelectedItem = BranchNode(branches, "other");
 
         Click(window, "TreeCheckoutMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<CheckoutWindow>().Any());
-        window.OwnedWindows.OfType<CheckoutWindow>().Single().Close();
+        WaitUntil(() => window.OwnedWindows.OfType<CheckoutBranchWindow>().Any());
+        window.OwnedWindows.OfType<CheckoutBranchWindow>().Single().Close();
 
         TestAppBuilder.Preferences.AlwaysShowCheckoutBranchDlg = false;
         Click(window, "TreeCheckoutMenuItem");
 
-        WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Checked out other");
-        window.OwnedWindows.OfType<CheckoutWindow>().Should().BeEmpty();
+        WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "other"
+                        && File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "local edit" && !window.IsBusy);
+        window.OwnedWindows.OfType<CheckoutBranchWindow>().Should().BeEmpty();
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("local edit");
+        TestAppBuilder.Preferences.AutoPopStashAfterCheckoutBranch = null;
     }
 
     [AvaloniaTest]
@@ -62,10 +65,10 @@ internal sealed class AdvancedSettingsTests
         MainWindow window = OpenWindow();
 
         Click(window, "CreateBranchMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
-        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
-        Find<TextBox>(prompt, "ValueBox").Text = "my new feature";
-        Click(prompt, "OkButton");
+        WaitUntil(() => window.OwnedWindows.OfType<CreateBranchWindow>().SingleOrDefault()?.BranchLoaded.IsCompleted == true);
+        CreateBranchWindow create = window.OwnedWindows.OfType<CreateBranchWindow>().Single();
+        Find<TextBox>(create, "BranchNameBox").Text = "my new feature";
+        Click(create, "CreateButton");
 
         WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "my-new-feature");
     }

@@ -1,6 +1,7 @@
 using GitCommands;
 using GitCommands.Config;
 using GitCommands.Git;
+using GitCommands.Remotes;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtUtils;
@@ -175,13 +176,19 @@ public sealed class GitRepositoryService : IRepositoryService
         ];
 
         IReadOnlyList<string> remotes = module.GetRemoteNames();
+        IReadOnlyList<Remote> inactiveRemotes = new ConfigFileRemoteSettingsManager(() => module).GetDisabledRemotes();
+        Dictionary<string, string> remoteUrls = remotes.ToDictionary(remote => remote,
+            remote => module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote)), StringComparer.Ordinal);
+        foreach (Remote inactive in inactiveRemotes)
+        {
+            remoteUrls.TryAdd(inactive.Name, inactive.FetchUrl);
+        }
+
         return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes, isMerging,
             stashes, tags, isRebasing, remotes, GetSync(module),
             GetTrackingRemote(module, currentBranch), GetSubmodules(module),
             isApplyingPatch, module.InTheMiddleOfBisect(), GetAheadBehind(module), GetWorktrees(module),
-            remotes.ToDictionary(remote => remote,
-                remote => module.GetSetting(string.Format(SettingKeyString.RemoteUrl, remote)),
-                StringComparer.Ordinal),
-            module.GetEffectiveSetting(SettingKeyString.UserEmail));
+            remoteUrls, module.GetEffectiveSetting(SettingKeyString.UserEmail),
+            [.. inactiveRemotes.Select(inactive => inactive.Name)], module.GetRemoteColors());
     }
 }

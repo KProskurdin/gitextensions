@@ -376,7 +376,7 @@ public sealed class GitCommitHistory : ICommitHistory
         ExecutionResult result = module.GitExecutable.Execute(
             new GitArgumentBuilder("for-each-ref")
             {
-                "--format=%(refname) %(objectname) %(*objectname) %(upstream)".Quote()
+                "--format=%(refname) %(objectname) %(*objectname) %(upstream) %(upstream:remotename)".Quote()
             },
             throwOnErrorExit: false);
         Dictionary<string, List<RefLabel>> labels = new();
@@ -402,6 +402,7 @@ public sealed class GitCommitHistory : ICommitHistory
             }
 
             string upstream = parts.Length > 3 ? parts[3] : "";
+            string trackingRemote = parts.Length > 4 ? parts[4] : "";
             label = label.Kind switch
             {
                 RefKind.Branch => label with
@@ -410,6 +411,7 @@ public sealed class GitCommitHistory : ICommitHistory
                     Upstream = upstream.StartsWith(GitRefName.RefsRemotesPrefix, StringComparison.Ordinal)
                         ? upstream[GitRefName.RefsRemotesPrefix.Length..]
                         : null,
+                    TrackingRemote = trackingRemote.Length > 0 ? trackingRemote : null,
                     AheadBehind = aheadBehind.TryGetValue(label.Name, out AheadBehindData local)
                         ? local.ToDisplay(withCounts: false, reverse: true)
                         : null,

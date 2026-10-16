@@ -172,7 +172,7 @@ public partial class RemotesWindow : Window
     /// <summary>
     ///  Completes when the remotes and branches shown first are read, for tests.
     /// </summary>
-    public Task Loaded => _loaded.Task;
+    public Task RemotesLoaded => _loaded.Task;
 
     private IGitRef? SelectedHead => (BranchesList.SelectedItem as PullBehaviorRow)?.Head;
 
@@ -374,10 +374,10 @@ public partial class RemotesWindow : Window
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = UpstreamTranslation.ByText(RemotesDialog.SshKeyOpenCaption),
-            FileTypeFilter = [new FilePickerFileType(UpstreamTranslation.ByText(RemotesDialog.SshKeyOpenFilter))
-            {
-                Patterns = ["*.ppk"],
-            }],
+            FileTypeFilter =
+            [
+                new FilePickerFileType(UpstreamTranslation.ByText(RemotesDialog.SshKeyOpenFilter)) { Patterns = ["*.ppk"] },
+            ],
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
         {

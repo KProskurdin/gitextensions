@@ -30,15 +30,15 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormClone.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (clone), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (new branch box) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (checkout, remote checkout), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Checkout) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs`, `CommitSummaryUserControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CreateBranchDialog.cs`, `GitOperations.cs` (create, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CreateBranchWindow.axaml(.cs)`, `MainWindow.axaml.cs`, `MainWindow.LeftPanel.cs`, `CommitWindow.Bottom.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutBranchDialog.cs`, `GitOperations.cs` (checkout, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutBranchWindow.axaml(.cs)`, `CheckoutBranchFlow.cs`, `CheckoutWindow.axaml(.cs)` (revisions), `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
 | `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`, `DiffCopy.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`, `DiffView.Toolbar.cs`, `DiffWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`); `src/xplat/GitExtensions.Xplat.App/FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBlame.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (`MergeAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Merge into current, Abort merge) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `MainWindow.axaml` (Stash, Apply, Pop, Drop) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (tag list, Create) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCherryPick.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (cherry-pick), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Cherry-pick on the selected commit) | `52d08e996` | partial |
@@ -46,7 +46,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormRebase.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (rebase, interactive rebase, abort, continue, skip, edit todo), `GitEditorCommand.cs`, `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsRebasing`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Rebase onto selected, grid menu "Rebase current branch on", warning bar buttons) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormEditor.cs` (and the `fileeditor` verb of `GitUICommands.RunCommand`) | `src/xplat/GitExtensions.Xplat.App/EditorWindow.axaml(.cs)`, `Program.cs`, `App.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Editing/EditorFile.cs` | `52d08e996` | partial |
 | `src/native/GitExtSshAskPass` (native askpass dialog, set as `SSH_ASKPASS` by `EnvironmentConfiguration`) | `src/xplat/GitExtensions.Xplat.App/AskPassWindow.axaml(.cs)`, `Program.cs`, `App.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitAskPass.cs`, `GitOperations.cs` (remote environment) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormRemotes.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (add and remove a remote), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (remote list); `MainWindow.axaml` (Remotes section) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormRemotes.cs`; `src/app/GitUI/LeftPanel/RemoteBranchTree.cs`, `RemoteRepoNode.cs`, `RemoteRepoFolderNode.cs` (inactive remotes) | `src/xplat/GitExtensions.Xplat.Core/Operations/RemotesDialog.cs`, `Repository/RemoteUrlHistory.cs`, `Repository/GitRepositoryService.cs` (remote list, inactive remotes), `Repository/RepoObjectsTree.cs`; `src/xplat/GitExtensions.Xplat.App/RemotesWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs`, `MainWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormReflog.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/Reflog.cs` (entries of HEAD); `src/xplat/GitExtensions.Xplat.App/ReflogWindow.axaml(.cs)`; `MainWindow.axaml` (Reflog..., reset to an entry) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRevertCommit.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (revert), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Revert) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRenameBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (rename), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Rename selected, with the new name in the branch box) | `52d08e996` | partial |
@@ -165,6 +165,21 @@ stash. Also ported: the whole stash as a diff (Show diff, first parent only). Ch
 boxes went with the left panel rebuild (see RepoObjectsTree); stashing from the toolbar, menu and left panel is upstream's
 `StashSave` (no message, untracked files as `includeUntrackedFilesInManualStash` says), and the stash message and keep
 index choices wait for the FormStash window, which is not ported.
+Rebuilt 2026-10-16 (UI-PARITY U5): the stash window (`StashWindow`, rules in core `StashDialog`) is upstream's FormStash:
+"Show:" with "Current working directory changes" and the stashes as upstream's `GitStash.Summary`; the selection's files
+(the working directory's as upstream's two groups, "Commit index" and "Working directory"; a stash's against the commit it
+was made on, with the untracked files it kept from its third parent, upstream's `GetStashDiffFiles`) and the selected
+file's diff; the message (typed for a new stash, a stash's own read-only, "There are no stashes." without any); Keep index
+and Include untracked files (upstream's `StashKeepIndex` and `includeUntrackedFilesInManualStash`, kept on close); Stash
+all changes, Stash selected changes (working directory files only), Drop Selected Stash (after the drop confirmation,
+upstream's `DontConfirmStashDrop`) and Apply Selected Stash. Which stash shows is upstream's `Initialize`: the newest on the
+first load when managing stashes, the next one after a drop, the one asked for by the left panel, else the working
+directory; the Stash hotkeys (next, previous, refresh) and Escape work as upstream's. The left panel is fitted to the
+options as upstream's splitter (`Math.Max(280, preferred width)`). Opened as upstream's `StartStashDialog`: the toolbar's
+stash button and "Manage stashes...", "Create a stash..." (the working directory first), Commands > Manage stashes...,
+the left panel's "Manage stashes...", "Open stash" and double-click on a stash, and the pull window's Stash changes. Not
+ported: the file list's menu (upstream's cherry-pick of changes), the loading animation, and the diff viewer's move to the
+neighbouring file at the top or bottom of a diff.
 
 **FormCreateTag** (`partial`). Ported: a lightweight tag at the selected commit (or HEAD), listed in the window. Also ported: annotated tags when a message is entered. Not ported: signing and the tag-on-remote option.
 
@@ -211,6 +226,26 @@ remote branch rename, and the check that the new name is valid before git runs.
 confirmation, and (2026-10-06) rename it (`git remote rename`, as upstream's `GitModule.RenameRemote`) and change its URL
 (the current URL is read from the repository's config). Not ported: the push URL, pruning, the per-remote settings, and
 disabling a remote.
+Rebuilt 2026-10-14 to 2026-10-16 (UI-PARITY U5): the remotes window (`RemotesWindow`) is upstream's FormRemotes, its state
+and rules in core (`RemotesDialog`) over upstream's `ConfigFileRemoteSettingsManager`. "Remote repositories": the remotes
+in upstream's "Active" and "Inactive" groups, New, Delete (after upstream's question) and Activate/Deactivate with
+upstream's images and tooltips, and the details group ("Create New Remote" or "Edit Remote Details", read-only for an
+inactive remote): URL ("Fetch Url" when the push URL is separate) with Browse, name (proposed from the URL's owner when
+the box gets the focus, as upstream), prefix and color (shown with upstream's `AlwaysShowAdvOpt`), separate push URL, and
+the PuTTY key when git uses plink. The URL boxes offer upstream's remote URL history (`RepositoryHistoryManager.Remotes`,
+`RemoteUrlHistory`) and, on focus, upstream's `FillWithSomeGeneratedRemoteUrls` proposals from the other remotes; Save
+writes through upstream's manager, shows its message, keeps the URLs in the history and fetches the saved remote, as
+upstream. "Default pull behavior (fetch & merge)": the local branches with their remote and merge branch, edited as
+upstream (written when a box is left), the merge choices from the remote's branches. Opened from Repository > Remote
+repositories..., the left panel's Manage... items and double-click on a remote, Manage remotes in the pull and push
+windows (which read the remotes again after it), and the commit window's remote link (on the branch's pull behavior,
+upstream's `PreselectLocalOnLoad`). Fixed 2026-10-16: the labels were `AccessText` inside a `TextBlock`, which Avalonia
+measures during rendering, so changing the URL label threw "Visual was invalidated during the render pass". The grid's labels take the
+remotes' colors (2026-10-16, upstream's `GitModule.GetRemoteColors` and `RevisionDataGridView.RemoteColors`): a remote
+branch's label, and the label nestled against a local branch on the side of the remote it tracks (`GridLabel.Remote`,
+`RefLabel.TrackingRemote` from `%(upstream:remotename)`, `RefLabelView.RemoteColors` inherited from the grid). Not
+ported: Test connection and Load SSH key (PuTTY), and WinForms' color dialog (the color button offers its basic colors
+and an HTML box).
 
 **FormReflog** (`partial`). Ported: the list of HEAD's reflog (the last 200 entries, with hash, selector and action), and a mixed
 reset of the branch to the chosen entry. Not ported: the reflog of other refs, the reset modes other than mixed, the
@@ -257,8 +292,8 @@ item menu in its order, with the items its rules show for the selection: stage o
 to the index or to HEAD (a file HEAD does not have is only unstaged), open with the diff tool, open and edit the working
 directory file, delete file(s) (after upstream's question; staged files are unstaged first), copy paths (relative POSIX
 and native, full native, WSL and Cygwin), show in folder, file history, blame, add to .gitignore or .git/info/exclude,
-stop tracking, and the scripts. "Stash selected" stays in the working directory list's menu, though upstream has it only
-in its stash window, which the new shell lacks. Upstream's "There are unresolved merge conflicts" button over the diff
+stop tracking, and the scripts. "Stash selected" left the working directory list's menu on 2026-10-16, as upstream has it
+only in its stash window (see FormStash). Upstream's "There are unresolved merge conflicts" button over the diff
 opens the conflicts window, replacing the "Use ours" and "Use theirs" buttons. Not ported: the tree views and their
 options (dense tree, group nodes), collapsing groups, show ignored, skip-worktree and assumed-unchanged files, the
 submodule items, "Reset chunk of file" and "Interactive add", "Open ... with", rename or move, find file, skip worktree
@@ -310,8 +345,8 @@ merge, or a force push with lease (another rejected ref: the force push only); t
 again, the merge commit check comes first when the default action is rebase, and "Don't show me this message again"
 keeps the choice in upstream's `AutoPullOnPushRejectedAction` (a kept force push asks again, as upstream). The task
 dialog itself got upstream's command links and verification box (shim `TaskDialogCommandLinkButton`,
-`TaskDialogVerificationCheckBox`; `MessageBoxWindow`). Not ported: Manage remotes (disabled until the remotes window
-exists), the URL history, Load SSH key and Pageant, `GetRemoteBranchesDirectlyFromRemote` (the rows come from the known
+`TaskDialogVerificationCheckBox`; `MessageBoxWindow`). Manage remotes opens the remotes window and reads the remotes again
+after it (2026-10-14). Not ported: the URL history, Load SSH key and Pageant, `GetRemoteBranchesDirectlyFromRemote` (the rows come from the known
 remote branches), the Azure DevOps pull request link, and the rejection handling of a "Push multiple branches" push
 (upstream adds the force to its command line).
 
@@ -333,8 +368,8 @@ remote, "*" without fetch, the rebase of a merge commit asked first, a pull on a
 remote branch offered as the local branch's name, upstream's `CalculateLocalBranch`); and its fetch and pull arguments
 (`FetchCmd`, `PullCmd` with tags, unshallow, local branch and prune tags). Auto stash and the action are stored as
 upstream's `autostash` and `FormPullAction`. Changed: the dialog's prune no longer asks first (upstream asks only for the
-quick "Fetch and prune all"). Not ported: Manage remotes and Stash changes (shown disabled until the remotes and stash
-windows exist), "Checkout branch" in the detached HEAD question, the URL history, the help pictures' dark theme
+quick "Fetch and prune all"). Manage remotes opens the remotes window and reads the remotes again after it (2026-10-14).
+Stash changes opens the stash window (2026-10-16). Not ported: "Checkout branch" in the detached HEAD question, the URL history, the help pictures' dark theme
 adaptation, the submodule update after a pull and the prune offer when a pull is rejected for a removed branch.
 
 **FormClone** (`partial`). Ported: clone from a URL or local path into a new folder, then open it, with a folder picker
@@ -342,6 +377,20 @@ and git's progress shown while it runs (see FormRemoteProcess). Not ported: bran
 
 **FormCreateBranch** (`partial`). Ported: create a branch at HEAD and check it out. Not ported: creating from a
 specific revision, the branch name rules shown in the form, and the no-checkout option.
+Rebuilt 2026-10-16 (UI-PARITY U5): the create branch window (`CreateBranchWindow`, rules in core `CreateBranchDialog`) is
+upstream's FormCreateBranch: the branch name (proposed from the commit's first branch, else its first tag, or a left
+panel folder's path; normalised when the box is left, upstream's `AutoNormaliseBranchName`), the commit as upstream's
+`CommitPickerSmallControl` (its short hash, a typed hash or ref resolved when the box is left and refused with upstream's
+message when git does not know it, and `GetCommitCountString` against HEAD), upstream's `CommitSummaryUserControl` (author,
+relative commit date, subject, tags and branches on their colors, "n/a" or "No revision"), "Checkout after create", and the
+Orphan group (create orphan, which is checked out, and clear the working directory and index); a repository without
+commits only offers an orphan, as `ConfigureForOrphanBranch`. Create branch checks as `cmdOk_Click` (a commit, a name, a
+name `git check-ref-format` accepts, each with upstream's message) and runs upstream's `Commands.Branch`, or
+`Commands.CreateOrphan` and `Commands.Remove`; the submodules are updated when the branch was checked out at another
+commit. Opened as upstream's `StartCreateBranchDialog`: Commands > Create branch and its hotkey (at the selected commit, as
+upstream; it was HEAD), the grid's create branch item, the left panel's branch, remote branch, tag and folder items, a
+tag's double-click, and the commit window's Create branch (at HEAD). Not ported: the commit picker's button (upstream's
+FormChooseCommit is not in the new shell).
 
 **FormCheckoutBranch** (`partial`). Ported: check out a local branch, and a remote branch as a tracking branch.
 Since 2026-10-06 also the local-change handling: when tracked files have changes, a dialog (`CheckoutWindow`) offers keep,
@@ -349,6 +398,25 @@ merge, stash (stash, checkout, pop, as upstream does around the checkout) or dis
 `Commands.Checkout(LocalChangesAction)`; the choice is kept in upstream's `checkoutbranchaction` setting. Not ported: the
 local-change choice for remote branches, the "always use the default" option, and checkout of tags. A commit can be checked
 out detached from the grid's context menu (upstream's Checkout revision), with the same local-change dialog.
+Rebuilt 2026-10-16 (UI-PARITY U5): the checkout window (`CheckoutBranchWindow`, rules in core `CheckoutBranchDialog`, the
+checkout in `CheckoutBranchFlow`) is upstream's FormCheckoutBranch: local or remote branches, the branch box with
+upstream's `GetCommitCountString` against HEAD, for a remote branch "Reset local branch with the name:" (or "Create local
+branch with same name:" when none exists) with the tracking branch's name, "Create local branch with custom name:" with
+upstream's proposal (remote_branch, numbered when taken; normalised when left), or "Checkout the commit (in detached
+head)", and, when the working directory is dirty (`CheckForUncommittedChangesInCheckoutBranch`, else assumed dirty as
+upstream), the local changes group (don't change, merge, stash, reset, "Set as default", not for reset). The flow is
+upstream's `DoDefaultActionOrShow` and `PerformCheckout`: a local branch is checked out without the window unless
+`AlwaysShowCheckoutBranchDlg`, or the working directory is dirty and `UseDefaultCheckoutBranchAction` is off; the checks
+(an existing branch, a valid custom name); the warning before a reset that is not a fast-forward; a stash made with
+`IncludeUntrackedFilesInAutoStash` and, after the checkout, upstream's "Apply stashed items to working directory again?"
+with "Don't show me this message again" (`AutoPopStashAfterCheckoutBranch`); `Commands.CheckoutBranch`; the checkout
+scripts and plugin events; the submodule update when HEAD moved. Opened as upstream's `StartCheckoutBranch`: Commands >
+Checkout branch... (new, with upstream's Ctrl+. hotkey `CheckoutBranch`), the left panel's checkout and double-click of a
+local or remote branch, "Fetch and checkout" of a remote branch, and the toolbar's branch drop-down. Changed: the choice
+of local-changes action becomes the default only with "Set as default", as upstream (it always did before). The old
+`CheckoutWindow` remains for checking out a tag or a commit, standing in for upstream's FormCheckoutRevision, which is not
+ported. Not ported: the branches containing given commits (core `CheckoutBranchSource.Containing*` exists; no caller
+yet).
 
 **FormDeleteBranch** (`partial`). Ported: delete a local branch that is not checked out, with a force delete after a confirmation, and
 delete a remote branch on its own remote after a confirmation (`git push --delete`); origin/HEAD is never deleted. Not ported: force delete
@@ -531,13 +599,17 @@ each item shown for the nodes upstream shows it for (`contextMenu_Opening`), wit
 `OnDoubleClick` (checkout, create branch from a tag, open a stash, worktree or submodule); Delete deletes a branch or tag.
 Deleting a local branch asks upstream's `DeleteUnmergedBranch` question when HEAD does not contain it and then deletes with
 -D, as `FormDeleteBranch` (without that dialog's branch list). The old per-section buttons and boxes are gone.
-Differences: upstream's FormRemotes is not ported, so the Remotes tree offers "Add remote..." and a remote "Rename...",
-"Set URL..." and "Remove..." in place of "Manage..."; "Reset current branch to here..." offers soft, mixed and hard in a
-choice window (FormResetCurrentBranch is not ported); "Create worktree..." opens the worktree window; a tag also has
+Since 2026-10-14 the Remotes tree has upstream's "Manage..." items (the remotes window) in place of the earlier "Add
+remote...", "Rename...", "Set URL..." and "Remove..."; since 2026-10-16 it lists the inactive remotes in upstream's
+"[ Inactive ]" folder (`RepoObjectKind.InactiveRemotes`, read with `ConfigFileRemoteSettingsManager.GetDisabledRemotes`)
+with Activate, Activate and fetch, and Deactivate (`RemoteRepoNode.Enable`/`Disable`), the fetch items only on active
+remotes, and double-click on a remote opens the remotes window. Since 2026-10-16 the Stashes tree has "Manage
+stashes...", and "Open stash" and double-click open the stash window on that stash. Differences: "Reset current branch to
+here..." offers soft, mixed and hard in a choice window (FormResetCurrentBranch is not ported); "Create worktree..." opens the worktree window; a tag also has
 "Delete on remote...", which upstream offers in its push dialog; the remote branch fetch items fetch the whole remote.
 Not ported: multi-selection, "Copy to clipboard" (upstream's revision copy submenu), the merged-branch images, hidden
-commits (EyeClosed), remote activation, the submodule tree of super- and subprojects with its detailed status images and
-reset, stash and commit items, "Manage stashes...", the user scripts submenu, and the search's highlighting of all matches.
+commits (EyeClosed), the submodule tree of super- and subprojects with its detailed status images and
+reset, stash and commit items, the user scripts submenu, and the search's highlighting of all matches.
 
 **HotkeySettingsManager** (`partial`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a
@@ -1005,9 +1077,9 @@ text); push with upstream's `AheadBehindData.ToDisplay` text and tooltips; "Comm
 image; the stash split button; the folder, terminal and settings buttons; then the filter toolstrip (see **FilterToolBar**).
 The working directory caption is upstream's `RecentRepoSplitter` caption and `PathUtil.GetDisplayPath`, and the window
 title is upstream's `AppTitleGenerator` (both linked GitCommands code, unchanged). The path box, Open, Init, Clone, Fetch,
-Push tags, Files and Reflog buttons were removed; their actions are in the menus, as upstream. Differences: upstream's
-stash button opens its stash window, which the new shell does not have, so the button stashes; toolstrip overflow is not
-ported. 2026-10-13: the layout toggles are checked buttons (`ToolToggleButton`) as upstream's, and the split view toggle
+Push tags, Files and Reflog buttons were removed; their actions are in the menus, as upstream. Differences: toolstrip overflow is not ported. Since 2026-10-16 the stash button opens the stash window as upstream's, and
+its menu has "Manage stashes..." and "Create a stash..."; Commands has upstream's "Manage stashes..." in place of the new
+shell's "Stash changes" and "Stash pop" (both stay in the stash button's menu, with their hotkeys shown there). 2026-10-13: the layout toggles are checked buttons (`ToolToggleButton`) as upstream's, and the split view toggle
 is kept in upstream's `ShowSplitViewLayout`; the commit info position split button (`CommitInfoPosition`: below the grid
 as the first tab, or left or right of it at upstream's width, the button cycling through them and showing the chosen
 image and text, as `LayoutRevisionInfo` and `RefreshLayoutToggleButtonStates`); the terminal split button (see

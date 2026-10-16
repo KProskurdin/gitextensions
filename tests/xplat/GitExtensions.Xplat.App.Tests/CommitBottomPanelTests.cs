@@ -116,10 +116,10 @@ internal sealed class CommitBottomPanelTests
         CommitWindow commit = OpenCommitWindow();
 
         Click(commit, "CreateBranchButton");
-        WaitUntil(() => commit.OwnedWindows.OfType<PromptWindow>().Any());
-        PromptWindow prompt = commit.OwnedWindows.OfType<PromptWindow>().Single();
-        Find<TextBox>(prompt, "ValueBox").Text = "topic";
-        Click(prompt, "OkButton");
+        WaitUntil(() => commit.OwnedWindows.OfType<CreateBranchWindow>().SingleOrDefault()?.BranchLoaded.IsCompleted == true);
+        CreateBranchWindow create = commit.OwnedWindows.OfType<CreateBranchWindow>().Single();
+        Find<TextBox>(create, "BranchNameBox").Text = "topic";
+        Click(create, "CreateButton");
 
         WaitUntil(() => _repo.Run("branch", "--show-current").Trim() == "topic");
         commit.Close();

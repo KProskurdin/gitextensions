@@ -28,6 +28,14 @@ public sealed class RefLabelView : Control
     public static readonly StyledProperty<bool> FillProperty =
         AvaloniaProperty.Register<RefLabelView, bool>(nameof(Fill));
 
+    /// <summary>
+    ///  Upstream's <c>RevisionDataGridView.RemoteColors</c>: the colors set on remotes, by name, which the labels of their
+    ///  branches take. Set on the grid and inherited by its labels.
+    /// </summary>
+    public static readonly AttachedProperty<IReadOnlyDictionary<string, DrawingColor>?> RemoteColorsProperty =
+        AvaloniaProperty.RegisterAttached<RefLabelView, Control, IReadOnlyDictionary<string, DrawingColor>?>(
+            "RemoteColors", inherits: true);
+
     // Upstream's sizes at 100 % (RevisionGridRefRenderer and MessageColumnProvider).
     private const double PaddingTopBottom = 2;
     private const double CornerRadius = 2.5;
@@ -38,7 +46,7 @@ public sealed class RefLabelView : Control
     static RefLabelView()
     {
         AffectsMeasure<RefLabelView>(LabelProperty, TextElement.FontSizeProperty, TextElement.FontFamilyProperty);
-        AffectsRender<RefLabelView>(LabelProperty, IsRowSelectedProperty, FillProperty);
+        AffectsRender<RefLabelView>(LabelProperty, IsRowSelectedProperty, FillProperty, RemoteColorsProperty);
     }
 
     public GridLabel? Label
@@ -58,6 +66,9 @@ public sealed class RefLabelView : Control
         get => GetValue(FillProperty);
         set => SetValue(FillProperty, value);
     }
+
+    public static void SetRemoteColors(Control control, IReadOnlyDictionary<string, DrawingColor>? colors)
+        => control.SetValue(RemoteColorsProperty, colors);
 
     protected override Size MeasureOverride(Size availableSize)
     {
@@ -130,11 +141,18 @@ public sealed class RefLabelView : Control
         double textX = rect.X + iconOffset + iconWidth + paddingLeftRight
                        - (label.Shape == GridLabelShape.PointLeft ? pointWidth / 2 : 0);
         return new LabelPart(label, rect, pointWidth, iconOffset, text, new Point(textX, rect.Y + PaddingTopBottom - 1),
-            ColorOf(label.Kind), dashed, Fill, IsRowSelected)
+            ColorOf(label), dashed, Fill, IsRowSelected)
         {
             End = rect.Right + MarginRight,
         };
     }
+
+    // Upstream's DrawRef: the color set on the label's remote, else its kind's.
+    private DrawingColor ColorOf(GridLabel label)
+        => label.Remote is { } remote && GetValue(RemoteColorsProperty) is { } colors
+           && colors.TryGetValue(remote, out DrawingColor color)
+            ? color
+            : ColorOf(label.Kind);
 
     // Upstream's GetHeadColor; an artificial row's label (HEAD here) has OtherTag's color.
     private static DrawingColor ColorOf(RefKind kind)

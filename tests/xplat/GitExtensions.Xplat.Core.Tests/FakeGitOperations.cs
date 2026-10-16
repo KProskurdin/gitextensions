@@ -39,6 +39,9 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint) =>
         Record("CreateBranch", $"{repositoryPath} {name} checkout={checkout}");
 
+    public Task RunCommandsAsync(string repositoryPath, IReadOnlyList<GitExtensions.Extensibility.ArgumentString> commands) =>
+        Record("RunCommands", $"{repositoryPath} {string.Join(" ; ", commands)}");
+
     public Task CheckoutAsync(string repositoryPath, string branch,
         GitCommands.LocalChangesAction localChanges = GitCommands.LocalChangesAction.DontChange) =>
         Record("Checkout", $"{repositoryPath} {branch}");

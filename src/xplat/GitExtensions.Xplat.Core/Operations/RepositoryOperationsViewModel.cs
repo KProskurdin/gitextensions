@@ -1,4 +1,5 @@
 using GitCommands.Git;
+using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Operations;
@@ -169,6 +170,20 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         return RunAsync($"Created {name.Trim()}", repositoryPath,
             () => _operations.CreateBranchAsync(repositoryPath, name.Trim(), checkout, startPoint));
     }
+
+    /// <summary>
+    ///  Upstream's <c>FormCheckoutBranch</c>: runs the checkout command the dialog built.
+    /// </summary>
+    public Task<bool> CheckoutBranchAsync(string repositoryPath, string branch, ArgumentString arguments)
+        => RunAsync($"Checked out {branch}", repositoryPath,
+            () => _operations.RunCommandsAsync(repositoryPath, [arguments]));
+
+    /// <summary>
+    ///  Upstream's <c>FormCreateBranch</c>: creates the branch the dialog describes.
+    /// </summary>
+    public Task<bool> CreateBranchAsync(string repositoryPath, CreateBranchDialog dialog)
+        => RunAsync($"Created {dialog.BranchName.Trim()}", repositoryPath,
+            () => _operations.RunCommandsAsync(repositoryPath, dialog.Commands()));
 
     public Task<bool> CheckoutAsync(string repositoryPath, string branch,
         GitCommands.LocalChangesAction localChanges = GitCommands.LocalChangesAction.DontChange)

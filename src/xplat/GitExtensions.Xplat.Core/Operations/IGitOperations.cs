@@ -1,5 +1,6 @@
 using GitCommands;
 using GitCommands.Git;
+using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Operations;
@@ -38,6 +39,12 @@ public interface IGitOperations
     ///  Creates branch <paramref name="name"/> at <paramref name="startPoint"/>, or at HEAD when none is given.
     /// </summary>
     Task CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null);
+
+    /// <summary>
+    ///  Runs <paramref name="commands"/> in order, as a dialog of upstream built them (e.g. the create branch dialog's
+    ///  orphan branch and clearing of the working directory); stops at the first that fails.
+    /// </summary>
+    Task RunCommandsAsync(string repositoryPath, IReadOnlyList<ArgumentString> commands);
 
     /// <summary>
     ///  Checks out <paramref name="branch"/>. <paramref name="localChanges"/> says what happens to local changes, as in upstream's

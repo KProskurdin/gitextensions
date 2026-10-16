@@ -32,6 +32,12 @@ public sealed record GridLabel(string Text, RefKind Kind, GridLabelShape Shape =
     ///  The ref the label stands for; null for a virtual label.
     /// </summary>
     public RefLabel? Ref { get; init; }
+
+    /// <summary>
+    ///  The remote whose color (upstream's <c>RemoteColors</c>, a remote's color in its settings) the label takes instead of
+    ///  its kind's: a remote branch's remote, or for the label nestled against a local branch the remote it tracks.
+    /// </summary>
+    public string? Remote { get; init; }
 }
 
 /// <summary>
@@ -89,6 +95,7 @@ public static class GridLabels
                     Nestled = new GridLabel(tracked.Remote ?? tracked.Name, RefKind.RemoteBranch, GridLabelShape.NotchLeft)
                     {
                         Ref = tracked,
+                        Remote = tracked.Remote,
                     },
                 });
                 continue;
@@ -101,8 +108,12 @@ public static class GridLabels
                     label.IsCurrent)
                 {
                     Ref = label,
+                    Remote = label.Remote,
                     Nestled = new GridLabel(arrows, remote ? RefKind.Branch : RefKind.RemoteBranch,
-                        remote ? GridLabelShape.PointLeft : GridLabelShape.NotchLeft),
+                        remote ? GridLabelShape.PointLeft : GridLabelShape.NotchLeft)
+                    {
+                        Remote = remote ? null : label.TrackingRemote,
+                    },
                 });
                 continue;
             }
@@ -115,6 +126,7 @@ public static class GridLabels
                 label.IsCurrent)
             {
                 Ref = label,
+                Remote = label.Remote,
             });
         }
 

@@ -47,6 +47,25 @@ internal sealed class RepoObjectsTreeTests
     }
 
     [Test]
+    public void Build_should_list_inactive_remotes_last_in_upstreams_inactive_folder()
+    {
+        RepoObjects objects = Objects() with
+        {
+            InactiveRemotes = ["old"],
+            RemoteUrls = new Dictionary<string, string> { ["origin"] = "https://github.com/me/repo.git", ["old"] = "/srv/old.git" },
+        };
+
+        RepoObjectNode remotes = RepoObjectsTree.Build(objects, RepoObjectsTree.Roots, text => $"<{text}>")[1];
+
+        RepoObjectNode folder = remotes.Children[^1];
+        (folder.Kind, folder.Text, folder.Image, folder.IsExpanded).Should()
+            .Be((RepoObjectKind.InactiveRemotes, "<[ Inactive ]>", "EyeClosed", false));
+        folder.Children.Single().Should().Match<RepoObjectNode>(node =>
+            node.Kind == RepoObjectKind.Remote && node.Text == "old" && node.IsInactive && node.ToolTip == "/srv/old.git");
+        remotes.Children.Where(node => node.Kind == RepoObjectKind.Remote).Should().OnlyContain(node => !node.IsInactive);
+    }
+
+    [Test]
     public void Build_should_list_worktrees_tags_in_folders_submodules_and_stashes()
     {
         IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects(), RepoObjectsTree.Roots, text => text);

@@ -189,6 +189,23 @@ public interface IAppPreferences
     /// </summary>
     bool IncludeUntrackedFilesInManualStash { get; set; }
 
+    /// <summary>
+    ///  Upstream's <c>StashKeepIndex</c>: the stash window's "Keep index", kept between its openings.
+    /// </summary>
+    bool StashKeepIndex { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>AutoPopStashAfterCheckoutBranch</c>: after a checkout that stashed, pop the stash (true), keep it (false),
+    ///  or ask (null).
+    /// </summary>
+    bool? AutoPopStashAfterCheckoutBranch { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>CreateLocalBranchForRemote</c>: the checkout dialog proposes a local branch with a custom name for a
+    ///  remote branch.
+    /// </summary>
+    bool CreateLocalBranchForRemote { get; set; }
+
     bool? UpdateSubmodulesOnCheckout { get; set; }
 
     bool ShowStashCount { get; set; }
@@ -797,6 +814,24 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.IncludeUntrackedFilesInManualStash;
         set => AppSettings.IncludeUntrackedFilesInManualStash = value;
+    }
+
+    public bool StashKeepIndex
+    {
+        get => AppSettings.StashKeepIndex;
+        set => AppSettings.StashKeepIndex = value;
+    }
+
+    public bool? AutoPopStashAfterCheckoutBranch
+    {
+        get => AppSettings.AutoPopStashAfterCheckoutBranch;
+        set => AppSettings.AutoPopStashAfterCheckoutBranch = value;
+    }
+
+    public bool CreateLocalBranchForRemote
+    {
+        get => AppSettings.CreateLocalBranchForRemote;
+        set => AppSettings.CreateLocalBranchForRemote = value;
     }
 
     public bool? UpdateSubmodulesOnCheckout
@@ -1486,6 +1521,12 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool IncludeUntrackedFilesInAutoStash { get; set; }
 
     public bool IncludeUntrackedFilesInManualStash { get; set; }
+
+    public bool StashKeepIndex { get; set; }
+
+    public bool? AutoPopStashAfterCheckoutBranch { get; set; }
+
+    public bool CreateLocalBranchForRemote { get; set; }
 
     public bool? UpdateSubmodulesOnCheckout { get; set; }
 

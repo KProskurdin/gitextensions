@@ -81,10 +81,10 @@
         <MenuItem x:Name="FetchMenuItem" Header="Quick _fetch" />
         <MenuItem x:Name="PushTagsMenuItem" Header="Push _tags" />
         <Separator />
-        <MenuItem x:Name="StashMenuItem" Header="_Stash changes" />
-        <MenuItem x:Name="StashPopMenuItem" Header="Stash p_op" />
+        <MenuItem x:Name="ManageStashesCommandMenuItem" Header="Ma_nage stashes..." Icon="{local:UpstreamIcon Stash}" />
         <Separator />
         <MenuItem x:Name="CreateBranchMenuItem" Header="Create _branch..." />
+        <MenuItem x:Name="CheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" />
         <MenuItem x:Name="MergeMenuItem" Header="_Merge selected branch" />
         <MenuItem x:Name="RebaseMenuItem" Header="Re_base onto selected branch" />
         <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." />
@@ -179,6 +179,9 @@
                 <MenuItem x:Name="StashChangesMenuItem" Header="_Stash" ToolTip.Tip="Stash changes" />
                 <MenuItem x:Name="StashStagedMenuItem" Header="S_tash staged" ToolTip.Tip="Stash staged changes" />
                 <MenuItem x:Name="StashPopToolMenuItem" Header="Stash _pop" ToolTip.Tip="Apply and drop single stash" />
+                <Separator />
+                <MenuItem x:Name="ManageStashesMenuItem" Header="_Manage stashes..." ToolTip.Tip="Manage stashes" />
+                <MenuItem x:Name="CreateStashMenuItem" Header="_Create a stash..." />
               </MenuFlyout>
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
@@ -335,6 +338,9 @@
               <MenuItem x:Name="TreePruneAllRemotesMenuItem" Header="Fetch and prune all remotes" Icon="{local:UpstreamIcon PullFetchPruneAll}" />
               <Separator />
               <MenuItem x:Name="TreeManageRemoteMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
+              <MenuItem x:Name="TreeActivateRemoteMenuItem" Header="_Activate" Icon="{local:UpstreamIcon EyeOpened}" />
+              <MenuItem x:Name="TreeActivateAndFetchRemoteMenuItem" Header="A_ctivate and fetch" Icon="{local:UpstreamIcon RemoteEnableAndFetch}" />
+              <MenuItem x:Name="TreeDeactivateRemoteMenuItem" Header="_Deactivate" Icon="{local:UpstreamIcon EyeClosed}" />
               <MenuItem x:Name="TreeFetchRemoteMenuItem" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" />
               <MenuItem x:Name="TreePruneRemoteMenuItem" Header="Fetch and _prune" Icon="{local:UpstreamIcon PullFetchPrune}" />
               <MenuItem x:Name="TreeOpenRemoteUrlMenuItem" Header="Open remote Url" Icon="{local:UpstreamIcon Globe}"
@@ -367,6 +373,7 @@
               <Separator />
               <MenuItem x:Name="TreeStashAllMenuItem" Header="_Stash" />
               <MenuItem x:Name="TreeStashStagedMenuItem" Header="S_tash staged" />
+              <MenuItem x:Name="TreeManageStashesMenuItem" Header="_Manage stashes..." />
               <Separator />
               <MenuItem x:Name="TreeOpenStashMenuItem" Header="_Open stash" ToolTip.Tip="Open this stash" />
               <MenuItem x:Name="TreeApplyStashMenuItem" Header="_Apply stash" ToolTip.Tip="Apply this stash" />

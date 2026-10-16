@@ -16,7 +16,7 @@ internal static class Screenshot
     /// <summary>
     ///  Names another window to save instead of the browse window: <see cref="CommitWindow"/>, or
     ///  <see cref="SettingsWindow"/>, optionally followed by ":" and a text typed into its search box, or a dialog
-    ///  (<see cref="PullWindow"/>, <see cref="PushWindow"/>).
+    ///  (<see cref="PullWindow"/>, <see cref="PushWindow"/>, <see cref="RemotesWindow"/>, <see cref="StashWindow"/>, <see cref="CreateBranchWindow"/>, <see cref="CheckoutBranchWindow"/>).
     /// </summary>
     public const string WindowEnvironmentVariable = "XPLAT_SCREENSHOT_WINDOW";
 
@@ -27,6 +27,14 @@ internal static class Screenshot
     public const string PullWindow = "pull";
 
     public const string PushWindow = "push";
+
+    public const string RemotesWindow = "remotes";
+
+    public const string StashWindow = "stash";
+
+    public const string CreateBranchWindow = "createbranch";
+
+    public const string CheckoutBranchWindow = "checkout";
 
     public static string? RequestedWindow => Environment.GetEnvironmentVariable(WindowEnvironmentVariable);
 

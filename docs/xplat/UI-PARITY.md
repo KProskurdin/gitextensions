@@ -224,6 +224,32 @@ toolbar icons with upstream's `ToolTipText`.
   links and "Don't show me this message again". Fixed then: tag, all-tags and multiple-branch pushes from the dialog were
   refused as "no branch". Manage remotes waits for the remotes window. See the FormPush note in `PORTING-MAP.md`. Checked
   by screenshot (`XPLAT_SCREENSHOT_WINDOW=push`).
+- 2026-10-14 to 2026-10-16, U5 Remotes done: upstream's FormRemotes (the active and inactive remotes with their details,
+  New, Delete and Activate/Deactivate, the URL history and proposals, prefix, color, push URL and PuTTY key, and the
+  default pull behavior tab), opened from the menus, the left panel, the pull and push windows' Manage remotes and the
+  commit window's remote link. The left panel gained upstream's "[ Inactive ]" folder with Activate, Activate and fetch
+  and Deactivate, and double-click on a remote. Fixed then: the window threw "Visual was invalidated during the render
+  pass" when it opened (labels nested as `AccessText` in a `TextBlock`). The grid's labels take the remotes' colors, as
+  upstream's. Not ported: Test connection and Load SSH key. See the FormRemotes note in `PORTING-MAP.md`. Checked by
+  screenshot (`XPLAT_SCREENSHOT_WINDOW=remotes`).
+- 2026-10-16, U5 Stash done: upstream's FormStash (the working directory's changes and the stashes, their files in
+  upstream's groups and diffs, the message, Keep index and Include untracked files, stash all or selected changes, drop
+  after the confirmation, apply), opened where upstream opens it: the toolbar's stash button and its "Manage stashes..."
+  and "Create a stash...", Commands, the left panel (also "Open stash" and double-click on a stash) and the pull window's
+  Stash changes. The commit window's "Stash selected" item left, as upstream has it only here. Errors of operations now
+  open over the active window, so they are not hidden behind a modal one. See the FormStash note in `PORTING-MAP.md`.
+  Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=stash`).
+- 2026-10-16, U5 Create branch done: upstream's FormCreateBranch (name proposal and normalising, the commit with its count
+  against HEAD and upstream's commit summary, checkout after create, the orphan options, upstream's checks and commands),
+  in place of the name prompt everywhere a branch is created; Commands > Create branch now starts at the selected commit,
+  as upstream. Not ported: the commit picker's button (FormChooseCommit). See the FormCreateBranch note in
+  `PORTING-MAP.md`. Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=createbranch`).
+- 2026-10-16, U5 Checkout branch done: upstream's FormCheckoutBranch (local and remote branches with the count against
+  HEAD, reset or create a local branch or detach for a remote branch, the local changes group with "Set as default") and
+  its flow (checkout at once when the window is not needed, the reset warning, stash and the "apply stashed items again"
+  question, scripts, submodules); Commands > Checkout branch... with upstream's Ctrl+. hotkey. Tags and commits keep the
+  old local-changes window until FormCheckoutRevision is ported. See the FormCheckoutBranch note in `PORTING-MAP.md`.
+  Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=checkout`).
 
 ## Risks
 

@@ -49,9 +49,7 @@
                                   VerticalAlignment="Top">
             <StackPanel Spacing="6">
               <Grid x:Name="DetailsGrid" ColumnDefinitions="110,*,6,104" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,4,Auto,4,Auto">
-                <TextBlock VerticalAlignment="Center">
-                  <AccessText x:Name="UrlLabel" Text="_Url" />
-                </TextBlock>
+                <AccessText x:Name="UrlLabel" Text="_Url" VerticalAlignment="Center" />
                 <ComboBox x:Name="UrlBox" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
                 <Button x:Name="UrlBrowseButton" Grid.Column="3" HorizontalAlignment="Stretch">
                   <StackPanel Orientation="Horizontal" Spacing="4">
@@ -59,9 +57,7 @@
                     <AccessText Text="_Browse..." VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
-                <TextBlock Grid.Row="2" VerticalAlignment="Center">
-                  <AccessText Text="_Name" />
-                </TextBlock>
+                <AccessText Text="_Name" Grid.Row="2" VerticalAlignment="Center" />
                 <TextBox x:Name="NameBox" Grid.Row="2" Grid.Column="1" />
                 <TextBlock x:Name="PrefixLabel" Grid.Row="4" Text="Prefix" VerticalAlignment="Center" />
                 <TextBox x:Name="PrefixBox" Grid.Row="4" Grid.Column="1" />
@@ -80,9 +76,7 @@
                   <Button x:Name="ColorResetButton" Content="Default color" IsVisible="False" />
                 </StackPanel>
                 <CheckBox x:Name="SeparatePushUrlCheck" Grid.Row="8" Grid.ColumnSpan="2" Content="Sep_arate Push Url" />
-                <TextBlock x:Name="PushUrlLabel" Grid.Row="10" VerticalAlignment="Center" IsVisible="False">
-                  <AccessText Text="_Push Url" />
-                </TextBlock>
+                <AccessText x:Name="PushUrlLabel" Text="_Push Url" Grid.Row="10" VerticalAlignment="Center" IsVisible="False" />
                 <ComboBox x:Name="PushUrlBox" Grid.Row="10" Grid.Column="1" IsEditable="True" IsVisible="False"
                           HorizontalAlignment="Stretch" />
                 <Button x:Name="PushUrlBrowseButton" Grid.Row="10" Grid.Column="3" IsVisible="False"
@@ -101,9 +95,7 @@
                              Fill="{DynamicResource SystemControlForegroundBaseLowBrush}" />
                 </Grid>
                 <Grid ColumnDefinitions="110,*,6,104">
-                  <TextBlock VerticalAlignment="Center">
-                    <AccessText Text="Private _key file" />
-                  </TextBlock>
+                  <AccessText Text="Private _key file" VerticalAlignment="Center" />
                   <TextBox x:Name="PuttyKeyBox" Grid.Column="1" />
                   <Button x:Name="PuttyKeyBrowseButton" Grid.Column="3" HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -151,17 +143,11 @@
           </ListBox>
         </DockPanel>
         <Grid Grid.Row="1" Margin="36,8,50,8" ColumnDefinitions="122,*" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto">
-          <TextBlock VerticalAlignment="Center">
-            <AccessText Text="_Local branch name" />
-          </TextBlock>
+          <AccessText Text="_Local branch name" VerticalAlignment="Center" />
           <TextBox x:Name="LocalBranchBox" Grid.Column="1" IsReadOnly="True" />
-          <TextBlock Grid.Row="2" VerticalAlignment="Center">
-            <AccessText Text="_Remote repository" />
-          </TextBlock>
+          <AccessText Text="_Remote repository" Grid.Row="2" VerticalAlignment="Center" />
           <ComboBox x:Name="RemoteRepositoryBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
-          <TextBlock Grid.Row="4" VerticalAlignment="Center">
-            <AccessText Text="_Default merge with" />
-          </TextBlock>
+          <AccessText Text="_Default merge with" Grid.Row="4" VerticalAlignment="Center" />
           <ComboBox x:Name="MergeWithBox" Grid.Row="4" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
           <Button x:Name="SavePullBehaviorButton" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Right" MinWidth="130">
             <StackPanel Orientation="Horizontal" Spacing="4">
