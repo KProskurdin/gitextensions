@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.CreateWorktreeWindow"
+        Title="Create a new worktree"
+        Width="620" MinWidth="500" SizeToContent="Height" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormCreateWorktree (a GitExtensionsDialog): what to check out (an existing branch, or a new branch from
+       the current commit), the new worktree's directory with Browse, and "Create the new worktree" at the bottom. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <Button x:Name="CreateButton" Content="_Create the new worktree" MinWidth="75" IsDefault="True"
+              HorizontalAlignment="Right" VerticalAlignment="Center" />
+    </Border>
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="12">
+      <HeaderedContentControl Classes="groupBox" Grid.ColumnSpan="3" Header="What to checkout:" Margin="3">
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="3">
+          <RadioButton x:Name="ExistingBranchRadio" GroupName="WhatToCheckout" IsChecked="True" Margin="3"
+                       VerticalAlignment="Center" Content="Checkout an _existing branch:" />
+          <ComboBox x:Name="BranchesBox" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                    Margin="3" />
+          <RadioButton x:Name="NewBranchRadio" Grid.Row="1" GroupName="WhatToCheckout" Margin="3"
+                       VerticalAlignment="Center">
+            <AccessText Text="Create a _new branch:&#10;(from current commit)" />
+          </RadioButton>
+          <TextBox x:Name="NewBranchNameBox" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="3" />
+        </Grid>
+      </HeaderedContentControl>
+      <AccessText Grid.Row="1" Text="New worktree _directory:" VerticalAlignment="Center" Margin="3" />
+      <TextBox x:Name="DirectoryBox" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="8,3,3,3" />
+      <Button x:Name="BrowseButton" Grid.Row="1" Grid.Column="2" Content="_Browse..." MinWidth="110" Margin="3"
+              VerticalAlignment="Center" />
+    </Grid>
+  </DockPanel>
+</Window>

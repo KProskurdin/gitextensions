@@ -234,6 +234,32 @@ public sealed class CheckoutBranchDialog
         return string.Format(translate?.Invoke(ResetNonFastForwardBranch) ?? ResetNonFastForwardBranch, LocalBranchName, mergeBaseText);
     }
 
+    /// <summary>
+    ///  Upstream's <c>GetContainsObjectIdBranches</c>: the branches that contain every one of <paramref name="ids"/>,
+    ///  without a detached HEAD or a remote's HEAD.
+    /// </summary>
+    /// <param name="branchesContaining">Upstream's <c>GetAllBranchesWhichContainGivenCommit</c> for one kind of branch.</param>
+    public static IReadOnlyList<string> ContainingBranches(IReadOnlyList<ObjectId> ids,
+        Func<ObjectId, IEnumerable<string>> branchesContaining)
+    {
+        HashSet<string> result = [];
+        for (int index = 0; index < ids.Count; index++)
+        {
+            IEnumerable<string> branches = branchesContaining(ids[index])
+                .Where(branch => !DetachedHeadParser.IsDetachedHead(branch) && !branch.EndsWith("/HEAD"));
+            if (index == 0)
+            {
+                result.UnionWith(branches);
+            }
+            else
+            {
+                result.IntersectWith(branches);
+            }
+        }
+
+        return [.. result];
+    }
+
     private IReadOnlyList<string> BranchesOfKind()
         => [.. (IsRemote
                 ? _source.ContainingRemote ?? _source.RemoteBranches

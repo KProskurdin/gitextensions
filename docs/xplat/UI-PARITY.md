@@ -283,6 +283,26 @@ toolbar icons with upstream's `ToolTipText`.
   (`RevisionGrid.axaml`), and a path filter follows renames as upstream's `BuildPathFilter` does. File lists' "File history"
   and "Blame" open it. See the FormFileHistory, FormBlame and RevisionGridControl notes in `PORTING-MAP.md`. Checked by
   screenshot (`XPLAT_SCREENSHOT_WINDOW=filehistory` with `XPLAT_SCREENSHOT_FILE=<file>`).
+- 2026-10-17, U5 Worktrees done: upstream's FormManageWorktree (the Path, Type, Branch and SHA-1 columns with deleted
+  worktrees struck out, Open selected, Delete selected, Prune deleted worktrees and Create... with upstream's rules) and
+  FormCreateWorktree (an existing branch or a new one, the proposed directory, Browse..., upstream's checks and its `git
+  worktree add` command), with upstream's switch, create and delete flows (`WorktreeFlow`: a delete removes the folder and
+  prunes, as upstream's). The toolbar's worktree drop-down and the left panel's worktree items now behave as upstream's.
+  See the FormManageWorktree note in `PORTING-MAP.md`. Checked by screenshot (`XPLAT_SCREENSHOT_WINDOW=worktrees`,
+  `createworktree`).
+- 2026-10-16 to 2026-10-17, U5 Conflicts done, and with it U5: upstream's FormResolveConflicts (the files with
+  upstream's menu and hotkeys, the description and the base, local and remote names, ours and theirs swapped in a rebase,
+  the merge tool run with its command and the file staged as upstream decides, the "Solve merge conflict" choices for a
+  file deleted on one side, created on both or binary, Reset's two questions, and the offer to commit when done), the list
+  of git's merge tools under "Open in mergetool", and upstream's FormMergeSubmodule for a conflicted submodule, whose
+  Checkout Branch offers only the branches containing both commits. Not ported: the custom merge scripts for Word and
+  OpenOffice files (Windows' `wscript`). See the FormResolveConflicts note in `PORTING-MAP.md`. Checked by screenshot
+  (`XPLAT_SCREENSHOT_WINDOW=conflicts`, `mergesubmodule` with `XPLAT_SCREENSHOT_FILE=<submodule>`).
+- 2026-10-17, U6 started with the splitter positions: upstream's `SplitterManager` keys in GitExtensions.settings, shared
+  with the WinForms app, for the browse window's left panel (with whether it is hidden), the grid above the tabs and the
+  Diff and File tree tabs' file lists, and the commit window's three splitters; restored as upstream restores them for
+  another window size or DPI. See the SplitterManager note in `PORTING-MAP.md`. Still open in U6: column widths, access
+  keys and tab order checked against the designers, the double-click and Enter behavior of each list, and tooltips.
 
 ## Risks
 

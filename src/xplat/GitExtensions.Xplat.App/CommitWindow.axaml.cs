@@ -71,6 +71,13 @@ public partial class CommitWindow : Window
         _refresh = refresh;
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.CommitWindow");
+
+        // Upstream's RestoreSplitters ("CommitDialog"): the file lists beside the diff, unstaged above staged, and the diff
+        // above the message.
+        SplitterTracker splitters = new(this, AppServices.Splitters, "CommitDialog");
+        splitters.Add("splitMain", SplitMainGrid, rows: false, SplitterFixedPanel.Panel1);
+        splitters.Add("splitRight", SplitRightGrid, rows: true, SplitterFixedPanel.Panel2);
+        splitters.Add("splitLeft", SplitLeftGrid, rows: true, SplitterFixedPanel.None, splitterWidth: 6);
         Title = CommitStatusBar.Title(repository.CurrentBranch, repositoryPath);
         _messages = messages;
         Opened += (_, _) => Run(LoadMessageAsync);

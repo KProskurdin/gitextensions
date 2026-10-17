@@ -149,6 +149,24 @@ internal sealed class CheckoutBranchDialogTests
         dialog.ResetWarning(_local, _remote, mergeBase: _remote).Should().BeNull();
     }
 
+    [Test]
+    public void With_commits_given_only_the_branches_containing_them_are_offered()
+    {
+        CheckoutBranchDialog one = new(Source() with { ContainingLocal = ["feature"], ContainingRemote = [] },
+            LocalChangesAction.DontChange, false);
+        one.IsContainingCommits.Should().BeTrue();
+        one.Branches.Should().Equal("feature");
+        one.Branch.Should().Be("feature", "upstream selects the only branch");
+
+        // Upstream: no local branch contains them, so the remote branches that do are shown.
+        CheckoutBranchDialog remote = new(
+            Source() with { ContainingLocal = [], ContainingRemote = ["origin/feature", "origin/new"] },
+            LocalChangesAction.DontChange, false);
+        remote.IsRemote.Should().BeTrue();
+        remote.Branches.Should().Equal("origin/feature", "origin/new");
+        remote.Branch.Should().BeEmpty();
+    }
+
     private static CheckoutBranchSource Source(bool? dirty = true)
         => new(
             ["main", "feature", "origin_feature"],

@@ -40,6 +40,12 @@ public static class TestAppBuilder
     public static InMemoryWindowPlacementStore WindowPlacements { get; } = new();
 
     /// <summary>
+    ///  Splitter positions during the tests, so no test writes the user's GitExtensions.settings, and no test's saved
+    ///  positions reach the next one.
+    /// </summary>
+    public static TestSplitterStore Splitters { get; } = new();
+
+    /// <summary>
     ///  The user scripts during the tests, so no test reads or writes the user's scripts.
     /// </summary>
     public static InMemoryScriptStore Scripts { get; } = new();
@@ -117,6 +123,7 @@ public static class TestAppBuilder
         AppServices.Preferences = Preferences;
         AppServices.GitConfig = GitConfig;
         AppServices.WindowPlacements = WindowPlacements;
+        AppServices.Splitters = Splitters;
 
         // The test host is not the app, so git must never be told to start it as an editor.
         AppServices.EditorCommand = null;
@@ -200,6 +207,35 @@ public sealed class FakeGitConfigService : IGitConfigService
 /// <summary>
 ///  A fixed list of tools, so the settings tests do not depend on what is installed on the machine.
 /// </summary>
+/// <summary>
+///  Splitter positions a test sets up, and the ones windows saved. Saves are only recorded, so they never reach a later
+///  test.
+/// </summary>
+public sealed class TestSplitterStore : ISplitterStore
+{
+    private readonly Dictionary<string, SplitterSettings> _stored = [];
+
+    public Dictionary<string, SplitterSettings> Saved { get; } = [];
+
+    /// <summary>
+    ///  Sets what <see cref="Load"/> returns for upstream's <paramref name="form"/> and <paramref name="name"/>.
+    /// </summary>
+    public void Store(string form, string name, SplitterSettings settings) => _stored[$"{form}.{name}"] = settings;
+
+    public void Clear()
+    {
+        _stored.Clear();
+        Saved.Clear();
+    }
+
+    public SplitterSettings Load(string form, string name)
+        => _stored.GetValueOrDefault($"{form}.{name}") ?? SplitterSettings.None;
+
+    public void Save(string form, string name, int size, int dpi, int distance, bool panel1Collapsed,
+        bool panel2Collapsed)
+        => Saved[$"{form}.{name}"] = new SplitterSettings(size, dpi, distance, panel1Collapsed, panel2Collapsed);
+}
+
 public sealed class FixedDiffMergeToolCatalog : IDiffMergeToolCatalog
 {
     public Task<IReadOnlyList<string>> GetAvailableAsync(bool diff, CancellationToken cancellationToken = default)

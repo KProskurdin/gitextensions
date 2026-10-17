@@ -1,3 +1,5 @@
+using GitExtensions.Extensibility.Git;
+
 namespace GitExtensions.Xplat.Core.Repository;
 
 /// <summary>
@@ -97,8 +99,10 @@ public sealed record FileChange(string Path, ChangeKind Kind, bool Staged)
 
 /// <summary>
 ///  A worktree of the repository. The main worktree (the first git lists) holds the repository and cannot be removed.
+///  <see cref="HeadType"/>, <see cref="Branch"/> and <see cref="Sha1"/> are upstream's <c>GitWorktree</c> fields.
 /// </summary>
-public sealed record WorktreeInfo(string Path, string Display, bool IsMain, bool IsDeleted);
+public sealed record WorktreeInfo(string Path, string Display, bool IsMain, bool IsDeleted,
+    GitWorktreeHeadType HeadType = GitWorktreeHeadType.Branch, string? Branch = null, string? Sha1 = null);
 
 /// <summary>
 ///  A submodule as <c>git submodule status</c> reports it, read through upstream's <c>GitModule.GetSubmodulesInfo</c>.

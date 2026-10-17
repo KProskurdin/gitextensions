@@ -52,6 +52,12 @@ internal static class Screenshot
 
     public const string ConflictsWindow = "conflicts";
 
+    public const string WorktreesWindow = "worktrees";
+
+    public const string CreateWorktreeWindow = "createworktree";
+
+    public const string MergeSubmoduleWindow = "mergesubmodule";
+
     /// <summary>
     ///  The file a window about one file shows (the file history), for the screenshot aid.
     /// </summary>

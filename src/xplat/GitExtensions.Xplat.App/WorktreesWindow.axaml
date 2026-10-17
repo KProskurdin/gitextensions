@@ -1,25 +1,78 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.WorktreesWindow"
-        Title="Worktrees"
-        Width="720" Height="420" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream FormManageWorktree: the worktrees, open one, add, remove, prune. -->
-  <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" />
-    <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-      <Button x:Name="OpenWorktreeButton" Content="Open" Margin="0,0,6,0" ToolTip.Tip="Open the selected worktree in this window" />
-      <Button x:Name="AddWorktreeButton" Content="Add..." Margin="0,0,6,0" />
-      <Button x:Name="RemoveWorktreeButton" Content="Remove..." Margin="0,0,6,0" />
-      <Button x:Name="PruneWorktreesButton" Content="Prune" Margin="0,0,6,0" ToolTip.Tip="Forget worktrees whose folders were deleted" />
-      <Button x:Name="CloseButton" Content="Close" IsCancel="True" />
-    </WrapPanel>
-    <ListBox x:Name="WorktreeList">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="repo:WorktreeInfo">
-          <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+        Title="Existing worktrees"
+        Width="710" Height="400" MinWidth="710" MinHeight="200" CanMaximize="False" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <!-- Upstream strikes out the rows of worktrees whose folders are gone. -->
+    <Style Selector="Grid.deleted TextBlock">
+      <Setter Property="TextDecorations" Value="Strikethrough" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream's FormManageWorktree: the worktrees with their path, type, branch and SHA-1, Delete selected and Open
+       selected under them on the right, and Prune deleted worktrees and Create... at the bottom. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button x:Name="PruneButton" Content="_Prune deleted worktrees" VerticalAlignment="Center" />
+        <Button x:Name="CreateButton" Grid.Column="2" MinWidth="100" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage FileStatusAdded}" Width="16" Height="16" />
+            <AccessText Text="_Create..." VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+    <Grid RowDefinitions="*,Auto" Margin="9">
+      <DockPanel Grid.IsSharedSizeScope="True" Margin="3">
+        <Grid DockPanel.Dock="Top" Margin="4,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Path" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Type" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Branch" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="Path" FontWeight="SemiBold" Margin="0,0,12,0" />
+          <TextBlock Grid.Column="1" Text="Type" FontWeight="SemiBold" Margin="0,0,12,0" />
+          <TextBlock Grid.Column="2" Text="Branch" FontWeight="SemiBold" Margin="0,0,12,0" />
+          <TextBlock Grid.Column="3" Text="SHA-1" FontWeight="SemiBold" />
+        </Grid>
+        <ListBox x:Name="WorktreeList">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="repo:WorktreeInfo">
+              <Grid Classes.deleted="{Binding IsDeleted}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="Path" />
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="Type" />
+                  <ColumnDefinition Width="Auto" SharedSizeGroup="Branch" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Path}" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="1" Text="{Binding HeadType}" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="2" Text="{Binding Branch}" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="3" Text="{Binding Sha1}" TextWrapping="Wrap"
+                           FontFamily="{DynamicResource MonospaceFontFamily}" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+      <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3">
+        <Button x:Name="DeleteButton" MinWidth="112">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage DeleteFile}" Width="16" Height="16" />
+            <AccessText Text="_Delete selected" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button x:Name="OpenButton" MinWidth="108" IsDefault="True">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+            <AccessText Text="_Open selected" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
   </DockPanel>
 </Window>

@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.MergeSubmoduleWindow"
+        Title="Submodule conflict"
+        Width="595" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormMergeSubmodule: the submodule, its base, local, remote and current commits (current with a refresh
+       button), and Open submodule, Checkout Branch and Stage Current at the bottom. -->
+  <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="12,8,12,12">
+    <StackPanel Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8" Margin="0,0,0,10">
+      <TextBlock Text="There is a conflict on the submodule:" />
+      <TextBlock x:Name="SubmoduleText" />
+    </StackPanel>
+    <TextBlock Grid.Row="1" Text="Base:" VerticalAlignment="Center" Margin="3,3,12,3" />
+    <TextBox x:Name="BaseBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True" Margin="3" />
+    <TextBlock Grid.Row="2" Text="Local:" VerticalAlignment="Center" Margin="3,3,12,3" />
+    <TextBox x:Name="LocalBox" Grid.Row="2" Grid.Column="1" IsReadOnly="True" Margin="3" />
+    <TextBlock Grid.Row="3" Text="Remote:" VerticalAlignment="Center" Margin="3,3,12,3" />
+    <TextBox x:Name="RemoteBox" Grid.Row="3" Grid.Column="1" IsReadOnly="True" Margin="3" />
+    <TextBlock Grid.Row="4" Text="Current:" VerticalAlignment="Center" Margin="3,3,12,3" />
+    <TextBox x:Name="CurrentBox" Grid.Row="4" Grid.Column="1" IsReadOnly="True" Margin="3" />
+    <Button x:Name="RefreshButton" Grid.Row="4" Grid.Column="2" Margin="3" Width="34">
+      <Image Source="{local:UpstreamImage ReloadRevisions}" Width="16" Height="16" />
+    </Button>
+    <Grid Grid.Row="5" Grid.ColumnSpan="3" ColumnDefinitions="*,*,*" Margin="0,14,0,0">
+      <Button x:Name="OpenSubmoduleButton" HorizontalAlignment="Stretch" Margin="3" IsDefault="True">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage FolderSubmodule}" Width="16" Height="16" />
+          <TextBlock Text="Open submodule" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button x:Name="CheckoutBranchButton" Grid.Column="1" Content="Checkout Branch" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" Margin="3" />
+      <Button x:Name="StageCurrentButton" Grid.Column="2" Content="Stage Current" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" Margin="3" />
+    </Grid>
+  </Grid>
+</Window>

@@ -481,14 +481,12 @@ public partial class MainWindow
                 await ConfirmAsync(Confirmation.StashDrop, Confirmations.StashDropQuestion, "Drop", "Drop Stash Confirmation")
                 && await _actions.DropStashAsync(path, stash.Name)));
 
-        TreeCreateWorktreeMenuItem.Click += (_, _) => Run(ShowWorktreesAsync);
-        TreePruneWorktreesMenuItem.Click += (_, _) => RunOnRepository(path => _actions.PruneWorktreesAsync(path));
+        TreeCreateWorktreeMenuItem.Click += (_, _) => Run(CreateWorktreeAsync);
+        TreePruneWorktreesMenuItem.Click += (_, _) => RunOnRepository(path => WorktreeFlow().PruneAsync(path));
         TreeManageWorktreesMenuItem.Click += (_, _) => Run(ShowWorktreesAsync);
         TreeOpenWorktreeMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(OpenWorktree);
         TreeDeleteWorktreeMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(worktree =>
-            RunOnRepository(async path =>
-                await new ConfirmWindow($"Delete the worktree at {worktree.Path}?", "Delete").ShowDialog<bool>(this)
-                && await _actions.RemoveWorktreeAsync(path, worktree.Path, force: false)));
+            RunOnRepository(path => WorktreeFlow().DeleteAsync(this, path, worktree.Path)));
         TreeCopyWorktreePathMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(worktree => Run(async () =>
         {
             if (GetTopLevel(this)?.Clipboard is { } clipboard)
@@ -630,7 +628,8 @@ public partial class MainWindow
         }
     }
 
-    private void OpenWorktree(WorktreeInfo worktree) => Run(() => OpenRepositoryAsync(worktree.Path));
+    // Upstream's WorktreeNode.OpenWorktree: upstream's WorktreeSwitch, with its question.
+    private void OpenWorktree(WorktreeInfo worktree) => Run(() => WorktreeFlow().SwitchAsync(this, worktree.Path));
 
     // Upstream's FormDeleteBranch: work not merged into HEAD (or a detached HEAD) is deleted only after upstream's
     // question, unless the user turned it off; the branches are then deleted with -D.

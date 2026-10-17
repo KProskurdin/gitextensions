@@ -132,6 +132,11 @@ public static class AppServices
     }
 
     /// <summary>
+    ///  Splitter positions, in upstream's SplitterManager keys of GitExtensions.settings.
+    /// </summary>
+    public static ISplitterStore Splitters { get; set; } = new UpstreamSplitterStore();
+
+    /// <summary>
     ///  The command git runs to edit a rebase todo list or a message: this app with the <c>fileeditor</c> verb. Tests
     ///  replace it, because the test host is not the app; null turns interactive rebase off.
     /// </summary>

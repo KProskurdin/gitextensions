@@ -1,34 +1,33 @@
 using Avalonia.Controls;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
-using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Lists and manages the repository's worktrees: the new shell's version of upstream <c>FormManageWorktree</c> and
-///  <c>FormCreateWorktree</c>. Closes with the path of a worktree to open, or null.
+///  Upstream's <c>FormManageWorktree</c> in the new shell (rules in <see cref="ManageWorktreeDialog"/>): the worktrees,
+///  open or delete the selected one, prune the deleted ones and create one, through upstream's <see cref="WorktreeFlow"/>.
+///  Closes after a worktree is opened; <see cref="ShouldRefresh"/> says whether one was created.
 /// </summary>
 public partial class WorktreesWindow : Window
 {
     private readonly string _repositoryPath;
     private readonly IRepositoryService _repositoryService;
-    private readonly RepositoryOperationsViewModel _actions;
+    private readonly WorktreeFlow _flow;
+    private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public WorktreesWindow(string repositoryPath, IRepositoryService repositoryService,
-        RepositoryOperationsViewModel actions)
+    public WorktreesWindow(string repositoryPath, IRepositoryService repositoryService, WorktreeFlow flow)
     {
         _repositoryPath = repositoryPath;
         _repositoryService = repositoryService;
-        _actions = actions;
+        _flow = flow;
         InitializeComponent();
         WorktreeList.SelectionChanged += (_, _) => UpdateButtons();
-        OpenWorktreeButton.Click += (_, _) => Close(SelectedWorktree()?.Path);
-        AddWorktreeButton.Click += (_, _) => Run(AddAsync);
-        RemoveWorktreeButton.Click += (_, _) => Run(RemoveAsync);
-        PruneWorktreesButton.Click += (_, _) =>
-            Run(() => RunThenReloadAsync(() => _actions.PruneWorktreesAsync(_repositoryPath)));
-        CloseButton.Click += (_, _) => Close(null);
+        WorktreeList.DoubleTapped += (_, _) => Run(OpenSelectedAsync);
+        OpenButton.Click += (_, _) => Run(OpenSelectedAsync);
+        DeleteButton.Click += (_, _) => Run(DeleteSelectedAsync);
+        PruneButton.Click += (_, _) => Run(PruneAsync);
+        CreateButton.Click += (_, _) => Run(CreateAsync);
         Opened += (_, _) => Run(LoadAsync);
         UpdateButtons();
     }
@@ -38,67 +37,66 @@ public partial class WorktreesWindow : Window
     /// </summary>
     public IReadOnlyList<WorktreeInfo> Worktrees { get; private set; } = [];
 
-    private void Run(Func<Task> action) => UiActions.Run(action, ex => ErrorText.Text = ex.Message);
+    /// <summary>
+    ///  Upstream's <c>ShouldRefreshRevisionGrid</c>: a worktree was created, so its new branch shows in the grid.
+    /// </summary>
+    public bool ShouldRefresh { get; private set; }
 
-    private WorktreeInfo? SelectedWorktree() => WorktreeList.SelectedItem as WorktreeInfo;
+    /// <summary>
+    ///  Completes when the worktrees are first shown, for tests.
+    /// </summary>
+    public Task WorktreesLoaded => _loaded.Task;
 
+    private void Run(Func<Task> action) =>
+        UiActions.Run(action, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+
+    // Upstream's Initialize: the worktrees, and Prune only when one other than the main one lost its folder.
     private async Task LoadAsync()
     {
         Worktrees = await _repositoryService.GetWorktreesAsync(_repositoryPath);
         WorktreeList.ItemsSource = Worktrees;
+        PruneButton.IsEnabled = ManageWorktreeDialog.CanPrune(Worktrees);
         UpdateButtons();
+        _loaded.TrySetResult();
     }
 
     private void UpdateButtons()
     {
-        WorktreeInfo? selected = SelectedWorktree();
-        OpenWorktreeButton.IsEnabled = selected is { IsDeleted: false };
-
-        // As upstream (065da3680), the main worktree holds the repository and is never offered for removal.
-        RemoveWorktreeButton.IsEnabled = selected is { IsMain: false };
+        OpenButton.IsEnabled = ManageWorktreeDialog.CanOpen(Worktrees, WorktreeList.SelectedIndex, _repositoryPath);
+        DeleteButton.IsEnabled = ManageWorktreeDialog.CanDelete(Worktrees, WorktreeList.SelectedIndex, _repositoryPath);
     }
 
-    private async Task AddAsync()
+    private async Task OpenSelectedAsync()
     {
-        PromptResult? result = await new PromptWindow("Add worktree",
-                "Folder of the new worktree. It starts at the current commit, on a new branch when a name is given.",
-                "Add",
-                secondPlaceholder: "New branch name (optional; empty: detached at the current commit)")
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null)
+        if (ManageWorktreeDialog.CanOpen(Worktrees, WorktreeList.SelectedIndex, _repositoryPath)
+            && await _flow.SwitchAsync(this, Worktrees[WorktreeList.SelectedIndex].Path))
         {
-            // The new branch's name is fixed up as upstream's FormCreateWorktree does.
-            IAppPreferences preferences = AppServices.Preferences;
-            string branch = BranchNames.Normalise(result.SecondValue, preferences.AutoNormaliseBranchName,
-                preferences.AutoNormaliseSymbol);
-            await RunThenReloadAsync(() => _actions.AddWorktreeAsync(_repositoryPath, result.Value, "HEAD", branch));
+            Close();
         }
     }
 
-    private async Task RemoveAsync()
+    private async Task DeleteSelectedAsync()
     {
-        if (SelectedWorktree() is not { IsMain: false } worktree)
+        if (ManageWorktreeDialog.CanDelete(Worktrees, WorktreeList.SelectedIndex, _repositoryPath)
+            && await _flow.DeleteAsync(this, _repositoryPath, Worktrees[WorktreeList.SelectedIndex].Path))
         {
-            return;
-        }
-
-        string message =
-            $"Remove the worktree {worktree.Path}? Its folder is deleted; changes that are not committed are lost.";
-        if (await new ConfirmWindow(message, "Remove").ShowDialog<bool>(this))
-        {
-            await RunThenReloadAsync(() => _actions.RemoveWorktreeAsync(_repositoryPath, worktree.Path, force: true));
+            await LoadAsync();
         }
     }
 
-    private async Task RunThenReloadAsync(Func<Task<bool>> action)
+    private async Task PruneAsync()
     {
-        ErrorText.Text = "";
-        if (!await action())
-        {
-            ErrorText.Text = _actions.ErrorMessage ?? "";
-            _actions.ClearError();
-        }
-
+        await _flow.PruneAsync(_repositoryPath);
         await LoadAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        if (await _flow.CreateAsync(this, _repositoryPath,
+                ManageWorktreeDialog.MainWorktreePath(Worktrees, _repositoryPath)))
+        {
+            ShouldRefresh = true;
+            await LoadAsync();
+        }
     }
 }

@@ -312,20 +312,13 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             (output, cancellation) =>
                 _operations.DeleteRemoteTagAsync(repositoryPath, remote, name, output, cancellation));
 
-    public Task<bool> AddWorktreeAsync(string repositoryPath, string path, string branch, string newBranch)
-    {
-        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(branch))
-        {
-            return RejectAsync("Enter the folder of the new worktree and the branch to check out in it.");
-        }
-
-        return RunAsync($"Added worktree {path.Trim()}", repositoryPath,
-            () => _operations.AddWorktreeAsync(repositoryPath, path.Trim(), branch.Trim(), newBranch.Trim()));
-    }
-
-    public Task<bool> RemoveWorktreeAsync(string repositoryPath, string path, bool force)
-        => RunAsync($"Removed worktree {path}", repositoryPath,
-            () => _operations.RemoveWorktreeAsync(repositoryPath, path, force));
+    /// <summary>
+    ///  Upstream's <c>FormCreateWorktree</c>: runs the command the dialog built for the worktree at
+    ///  <paramref name="directory"/>.
+    /// </summary>
+    public Task<bool> CreateWorktreeAsync(string repositoryPath, string directory, ArgumentString arguments)
+        => RunAsync($"Added worktree {directory}", repositoryPath,
+            () => _operations.RunCommandsAsync(repositoryPath, [arguments]));
 
     public Task<bool> PruneWorktreesAsync(string repositoryPath)
         => RunAsync("Pruned worktrees", repositoryPath, () => _operations.PruneWorktreesAsync(repositoryPath));
@@ -531,9 +524,9 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     ///  Runs the merge tool on <paramref name="path"/>. The repository is reloaded afterwards, since the tool usually stages
     ///  the resolved file.
     /// </summary>
-    public Task<bool> RunMergeToolAsync(string repositoryPath, string path)
+    public Task<bool> RunMergeToolAsync(string repositoryPath, string path, string? tool = null)
         => RunAsync($"Merge tool closed for {path}", repositoryPath,
-            () => _operations.RunMergeToolAsync(repositoryPath, path));
+            () => _operations.RunMergeToolAsync(repositoryPath, path, tool));
 
     /// <summary>
     ///  Opens a file in the configured diff tool. Nothing is reloaded: the tool only shows the change.

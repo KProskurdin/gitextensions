@@ -52,7 +52,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/HelperDialogs/FormResetCurrentBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/ResetCurrentBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/ResetCurrentBranchWindow.axaml(.cs)`, `CommitSummaryView.axaml(.cs)`; `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` (its callers) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRevertCommit.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (revert), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Revert) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRenameBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (rename), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Rename selected, with the new name in the branch box) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormResolveConflicts.cs` | `src/xplat/GitExtensions.Xplat.App/ConflictsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (`RunMergeToolAsync`, `ResolveConflictsAsync`), `RepositoryOperationsViewModel.cs` (`MarkResolvedAsync`) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormResolveConflicts.cs` | `src/xplat/GitExtensions.Xplat.App/ConflictsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/ConflictsDialog.cs`, `GitOperations.cs` (`RunMergeToolAsync`), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormMergeSubmodule.cs`; `FormCheckoutBranch.cs` (`containObjectIds`) | `src/xplat/GitExtensions.Xplat.App/MergeSubmoduleWindow.axaml(.cs)`, `CheckoutBranchFlow.cs` (`containObjectIds`); `src/xplat/GitExtensions.Xplat.Core/Operations/MergeSubmoduleDialog.cs`, `CheckoutBranchDialog.cs` (`ContainingBranches`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/FormGitCommandLog.cs` | `src/xplat/GitExtensions.Xplat.App/CommandLogWindow.axaml(.cs)` (reads upstream `CommandLog` as is) | `52d08e996` | partial |
 | `src/app/GitUI/HelperDialogs/FormRemoteProcess.cs`, `FormProcess.cs` | `src/xplat/GitExtensions.Xplat.App/ProcessWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOutputRunner.cs`, `RepositoryOperationsViewModel.cs` (`OutputLines`, `Cancel`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormSettings.cs` (pages: appearance, commit dialog, git, git config) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)`, `ThemeApplier.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs`, `GitConfigService.cs` | `52d08e996` | partial |
@@ -61,9 +62,10 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs`, `DashboardTheme.cs`, `UserRepositoriesList.cs`, `UserRepositoriesListController.cs`, `FormDashboardCategoryTitle.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories), `MainWindow.Dashboard.cs`, `ThemeApplier.cs` (dashboard colors); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs`, `Dashboard.cs` | `52d08e996` | partial |
 | `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.axaml` (`LeftPanel`) | `afc512395` | partial |
 | `src/app/GitUI/Hotkey/HotkeySettingsManager.cs` (FormBrowse and FormCommit defaults) | `src/xplat/GitExtensions.Xplat.App/Hotkeys.cs`, `HotkeyEditor.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/UpstreamHotkeys.cs` | `52d08e996` | partial |
+| `src/app/GitUI/SplitterManager.cs`, `NestedSplitterManager.cs`; `FormBrowse.cs` (`SetSplitterPositions`), `FormCommit.cs` (`RestoreSplitters`), `RevisionDiffControl.cs` (`InitSplitterManager`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Splitters.cs`; `src/xplat/GitExtensions.Xplat.App/SplitterTracker.cs`, `MainWindow.Toolbar.cs` (`TrackSplitters`), `CommitWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormGitIgnore.cs`, `FormAddToGitIgnore.cs` | `src/xplat/GitExtensions.Xplat.App/GitIgnoreWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitIgnoreFile.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs`, `FormRevisionFilter.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`; `src/xplat/GitExtensions.Xplat.App/FilterWindow.axaml(.cs)`; `MainWindow.axaml` (branch choice, Filter...) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/WorktreeDialog/FormManageWorktree.cs`, `FormCreateWorktree.cs` | `src/xplat/GitExtensions.Xplat.App/WorktreesWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (`GetWorktreesAsync`), `Operations/GitOperations.cs` (add, remove, prune) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/WorktreeDialog/FormManageWorktree.cs`, `FormCreateWorktree.cs`; `src/app/GitUI/GitUICommands.cs` (`WorktreeSwitch`, `WorktreeCreate`, `WorktreeDelete`); `FormBrowse.cs` (worktree drop-down) | `src/xplat/GitExtensions.Xplat.App/WorktreesWindow.axaml(.cs)`, `CreateWorktreeWindow.axaml(.cs)`, `WorktreeFlow.cs`, `MainWindow.Toolbar.cs` (drop-down); `src/xplat/GitExtensions.Xplat.Core/Operations/ManageWorktreeDialog.cs`, `CreateWorktreeDialog.cs`, `Repository/GitRepositoryService.cs` (`GetWorktreesAsync`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormSubmodules.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Submodules section); `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (`GetSubmodules`), `Operations/GitOperations.cs` (update, sync) | `52d08e996` | partial |
 | `src/app/GitUI/ScriptsEngine/ScriptsManager.cs`, `ScriptsManager.ScriptRunner.cs`, `ScriptOptionsParser.cs`, `ScriptInfo.cs`, `SimplePrompt.cs`, `FormFilePrompt.cs`; `src/app/GitUI/GitModuleForm.cs` (`ExecuteScriptCommand`) | `src/xplat/GitExtensions.Xplat.Core/Scripts/` (`ScriptDefinition`, `ScriptStore.cs` with `ScriptsXml`, `ScriptRunner`, `ScriptVariables`, `RepositoryScriptContext`); `src/xplat/GitExtensions.Xplat.App/ScriptHost.cs`; `MainWindow.axaml(.cs)` (user menu bar, grid Run script, event hooks); `CommitWindow.axaml.cs` (commit events) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ScriptsSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Scripts tab); `src/xplat/GitExtensions.Xplat.Core/Scripts/ScriptListEditor.cs`, `ScriptHelp.cs` | `52d08e996` | partial |
@@ -598,6 +600,25 @@ configured rather than letting git fall back to a terminal tool), mark the selec
 selected file, and the hint to commit or continue the rebase once the list is empty. Not ported: the base, local and remote
 description of each file (upstream `a4d51838f` changed those texts; skipped, as the port does not show them), keeping or
 deleting a file deleted on one side, the per-file context menu, and opening the base, local or remote version.
+Rebuilt 2026-10-16 and 2026-10-17 (UI-PARITY U5): the conflicts window is upstream's FormResolveConflicts, with its rules
+in core `ConflictsDialog`: the unresolved files with upstream's menu ("Open in" with the tool's name, Open in mergetool, Mark conflict as
+solved, Choose local, remote and base with Ctrl+1, 2 and 3, Open and Save each side, Open, Open With, Show in folder, File
+history), the selected file's description and its base, local and remote names (a submodule's with its commits), the
+local and remote labels with ours and theirs swapped during a rebase, the Merge, "Open in" with the tool's name, Start mergetool, Rescan
+and Reset buttons, the progress bar and the help link. Merge runs the configured tool itself with its `cmd` (upstream's
+`InitMergetool`, kdiff3's default command, the two-way fallback without a base), stages the file as the tool's exit code
+and the file's time say, or asks; a file deleted on one side or created on both, and a binary file, get upstream's "Solve
+merge conflict" task dialog with its command links and "Apply to ... other file(s)". Reset asks upstream's two questions.
+Once no conflict is left, the submodules are updated and, outside a rebase or patch, upstream's suppressible "Do you want
+to commit now?" opens the commit window. 2026-10-17: "Open in mergetool" lists git's available merge tools (upstream's
+`LoadCustomMergetools`, the first in bold) and runs `git mergetool --tool=<tool>` on the selected files; a conflicted
+submodule opens the new `MergeSubmoduleWindow` (upstream's FormMergeSubmodule: base, local, remote and current commits,
+Open submodule in a new instance, Checkout Branch through the checkout window limited to the branches containing the
+local and remote commits, as upstream's `containObjectIds`, and Stage Current), and is staged when that window is done.
+Differences: with the tool list shown, "Open in mergetool" itself does not run (an Avalonia item with a submenu does not
+click), so its first, bold entry is the default tool. Not ported: upstream's custom merge scripts for Word and OpenOffice
+files (`merge-doc.js`, `merge-ods.vbs`, run with Windows' `wscript` from the `Diff-Scripts` folder the new shell does not
+ship).
 
 **FormGitCommandLog** (`partial`). Ported: the git commands the app ran, newest first, the detail of the selected one, and a
 copy of its command line, read from upstream's `CommandLog` as is. Not ported: the capture-call-stacks option and the tab
@@ -729,6 +750,19 @@ file list, see RevisionDiffControl) and the Stash section (on the left panel's s
 commit window's Conventional Commits keys, and the grid's ToggleHighlightSelectedBranch and quick search next and previous
 keys. Still not ported: the commands of every section that the new shell has no feature for, and the reset-to-defaults
 button.
+
+**SplitterManager** (`ported`). Ported 2026-10-17 (UI-PARITY U6): the splitter positions are kept under upstream's keys
+in GitExtensions.settings (`<form>.<splitter>_Size`, `_Dpi`, `_Distance`, `_Panel1Collapsed`, `_Panel2Collapsed`), in
+pixels with the DPI as upstream stores them, so the two apps share them. Restoring is upstream's `RestoreFromSettings`
+(core `SplitterLayout`): the stored distance for the same size and DPI, else in proportion, or the fixed panel's size
+kept or scaled to the DPI; a distance that squeezes a panel is not used. The browse window keeps upstream's
+`FormBrowse.MainSplitContainer` (the left panel, with whether it is hidden), `RightSplitContainer` (the grid above the
+tabs; kept while the split view is off) and `revisionDiff.DiffSplitContainer` and `fileTree.DiffSplitContainer` (the
+Diff and File tree tabs' file lists); the commit window keeps `CommitDialog.splitMain`, `splitLeft` and `splitRight`.
+Each splitter is restored the first time its grid is laid out, as some start hidden, and saved when the window closes.
+Not kept: `RevisionsSplitContainer` (upstream resets the commit info's width beside the grid on every layout), the
+diff tab's `LeftSplitContainer` and the blame splitters (the new shell has no such splitters), and `_FontSize`, which
+upstream writes but never reads.
 
 **ScriptsManager / ScriptRunner / ScriptOptionsParser** (`partial`). Ported: the scripts in upstream's `ownScripts` setting
 (same XML, upstream's defaults when none are stored, the older separator format, duplicate identifiers renumbered), every
@@ -940,11 +974,29 @@ choices) and `GetSummary`. Not ported: simplify-by-decoration, full history and 
 `--boundary` for a message and diff filter together, and the dialog's own fields for the branch filter, diff content and
 reflog (`FilterWindow` keeps what the toolstrip set).
 
-**FormManageWorktree / FormCreateWorktree** (`partial`). Ported: the worktrees as git lists them (upstream's
+**FormManageWorktree / FormCreateWorktree** (`ported`). Ported: the worktrees as git lists them (upstream's
 `GitModule.GetWorktrees`, used as is), open one in the browse window, add one at a folder starting at the current commit
 (on a new branch when a name is given, detached otherwise), remove one after a confirmation, and prune. As upstream
 `065da3680` does, the first worktree is the main one and is never offered for removal. Not ported: creating from another
 branch or commit, the open-in-new-window choice, and deleting the folder of a worktree git no longer knows.
+Rebuilt 2026-10-17 (UI-PARITY U5): the worktree window is upstream's FormManageWorktree ("Existing
+worktrees": Path, Type, Branch and SHA-1 columns, the SHA-1 in the monospace font, the rows of worktrees whose folders are
+gone struck out; Delete selected and Open selected under the list, Prune deleted worktrees and Create... at the bottom),
+with upstream's rules in core `ManageWorktreeDialog`: open and delete need another worktree than the open one whose folder
+exists, the main worktree is never deleted, and prune is enabled only when a worktree other than the main one lost its
+folder. Double-click and Enter open. The new `CreateWorktreeWindow` is upstream's FormCreateWorktree (rules in core
+`CreateWorktreeDialog`): an existing local branch (not the current one; disabled when there is none) or a new branch from
+the current commit, normalised as upstream does, the directory proposed as the main worktree's folder, "_" and the
+branch, Browse..., and upstream's checks (a branch no branch has, a folder that is new or empty). It runs upstream's
+command: `git worktree add` with the folder relative to the working directory, `-b <name>` for a new branch, and `-c
+worktree.useRelativePaths=true` when git's config does not set it. `WorktreeFlow` ports upstream's `WorktreeSwitch` (the
+suppressible "Switch to worktree at ...?" question, then the browse window opens it), `WorktreeCreate` (the create window,
+then that question) and `WorktreeDelete` (the "cannot be undone" question, the folder deleted, then `git worktree prune`;
+the shell used `git worktree remove` before). The toolbar's worktree drop-down is upstream's: every worktree by its
+folder's name with its branch or detached commit (the open one checked, those whose folders are gone disabled), then Create
+worktree..., Prune worktrees and Manage worktrees...; an item opens its worktree at once, or says the folder is gone. The
+left panel's create opens the create window (it opened the worktree window), its open and double-click ask first as
+upstream's, and its delete is upstream's. Differences: the commands run without the process window.
 
 **FormSubmodules** (`partial`). Ported: the submodules in a left-panel section (shown only when the repository has any) with
 their state (not initialized, changed), open one as a repository, update the selected one or all (upstream's

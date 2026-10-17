@@ -30,8 +30,8 @@
       <TextBlock x:Name="CommitterText" DockPanel.Dock="Left" VerticalAlignment="Center" />
       <TextBlock x:Name="StatusText" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
-    <Grid ColumnDefinitions="380,6,*">
-      <Grid Grid.Column="0" RowDefinitions="*,6,*">
+    <Grid x:Name="SplitMainGrid" ColumnDefinitions="380,6,*">
+      <Grid x:Name="SplitLeftGrid" Grid.Column="0" RowDefinitions="*,6,*">
         <DockPanel Grid.Row="0" LastChildFill="True">
           <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
                settings; then the filter box. -->
@@ -174,7 +174,7 @@
         </DockPanel>
       </Grid>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-      <Grid Grid.Column="2" RowDefinitions="*,6,220">
+      <Grid x:Name="SplitRightGrid" Grid.Column="2" RowDefinitions="*,6,220">
         <DockPanel Grid.Row="0" LastChildFill="True">
           <!-- Upstream's SolveMergeconflicts button, over the diff while conflicts are unresolved. -->
           <Panel>

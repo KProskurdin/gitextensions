@@ -3,8 +3,10 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
@@ -136,6 +138,109 @@ internal sealed class ConflictsWindowTests
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("ours");
     }
 
+    [AvaloniaTest]
+    public void Open_in_mergetool_lists_gits_merge_tools_the_first_in_bold()
+    {
+        MergeConflict(theirs: "theirs");
+
+        ConflictsWindow conflicts = Open();
+
+        List<MenuItem> tools = [.. Find<MenuItem>(conflicts, "CustomMergeToolMenuItem").Items.OfType<MenuItem>()];
+        tools.Select(item => (item.Header as TextBlock)?.Text).Should().Equal("kdiff3", "meld");
+        tools.Select(item => item.FontWeight).Should().Equal(FontWeight.Bold, FontWeight.Normal);
+        conflicts.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_submodule_conflict_opens_upstreams_submodule_window_and_stages_the_current_commit()
+    {
+        using TestRepository sub = new();
+        (string baseCommit, string local, string remote) = SubmoduleConflict(sub);
+        ConflictsWindow conflicts = Open();
+        conflicts.Conflicts.Select(conflict => conflict.Filename).Should().Equal("sub");
+
+        Click(conflicts, "MergeButton");
+        WaitUntil(() => conflicts.OwnedWindows.OfType<MergeSubmoduleWindow>().Any());
+        MergeSubmoduleWindow submodule = conflicts.OwnedWindows.OfType<MergeSubmoduleWindow>().Single();
+        WaitUntil(() => submodule.SubmoduleLoaded.IsCompleted);
+
+        Find<TextBlock>(submodule, "SubmoduleText").Text.Should().Be("sub");
+        (Find<TextBox>(submodule, "BaseBox").Text, Find<TextBox>(submodule, "LocalBox").Text,
+            Find<TextBox>(submodule, "RemoteBox").Text, Find<TextBox>(submodule, "CurrentBox").Text).Should()
+            .Be((baseCommit, local, remote, local));
+        Find<Button>(submodule, "CheckoutBranchButton").IsEnabled.Should().BeFalse("no checkout was given");
+        Click(submodule, "StageCurrentButton");
+
+        WaitUntil(() => conflicts.OwnedWindows.OfType<ConfirmWindow>().Any());
+        _repo.Run("ls-files", "-u").Should().BeEmpty();
+        _repo.Run("ls-files", "-s", "sub").Should().Contain(local);
+        conflicts.Close();
+    }
+
+    [AvaloniaTest]
+    public void Checkout_branch_in_a_conflicted_submodule_asks_for_a_branch_with_both_commits()
+    {
+        using TestRepository sub = new();
+        (_, string local, string remote) = SubmoduleConflict(sub);
+        string submodulePath = Path.Combine(_repo.Path, "sub");
+        GitProcess.Run(submodulePath, "checkout", "-q", "-b", "both", local);
+        GitProcess.Run(submodulePath, "-c", "user.name=Test", "-c", "user.email=test@example.com", "merge", "-q", "--no-edit",
+            remote);
+        string both = GitProcess.Run(submodulePath, "rev-parse", "HEAD").Trim();
+        GitProcess.Run(submodulePath, "checkout", "-q", local);
+        List<(string Path, IReadOnlyList<ObjectId> Commits)> checkouts = [];
+        ConflictsWindow conflicts = Open((_, path, commits) =>
+        {
+            checkouts.Add((path, commits));
+            GitProcess.Run(path, "checkout", "-q", "both");
+            return Task.FromResult(true);
+        });
+
+        Click(conflicts, "MergeButton");
+        WaitUntil(() => conflicts.OwnedWindows.OfType<MergeSubmoduleWindow>().Any());
+        MergeSubmoduleWindow submodule = conflicts.OwnedWindows.OfType<MergeSubmoduleWindow>().Single();
+        WaitUntil(() => submodule.SubmoduleLoaded.IsCompleted);
+        Click(submodule, "CheckoutBranchButton");
+
+        WaitUntil(() => conflicts.OwnedWindows.OfType<ConfirmWindow>().Any());
+        checkouts.Should().ContainSingle();
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(checkouts[0].Path)).Should().Be(Path.GetFullPath(submodulePath));
+        checkouts[0].Commits.Should().Equal(ObjectId.Parse(local), ObjectId.Parse(remote));
+        _repo.Run("ls-files", "-s", "sub").Should().Contain(both);
+        conflicts.Close();
+    }
+
+    // The submodule "sub" at sub's HEAD, moved to sibling commits on "other" (remote) and on the base branch (local), then
+    // "other" merged: git cannot merge two commits that do not contain each other, so the submodule conflicts.
+    private (string Base, string Local, string Remote) SubmoduleConflict(TestRepository sub)
+    {
+        string baseCommit = sub.Run("rev-parse", "HEAD").Trim();
+        string remote = Commit(sub, "remote");
+        sub.Run("checkout", "-q", "-b", "local", baseCommit);
+        string local = Commit(sub, "local");
+        _repo.Run("-c", "protocol.file.allow=always", "submodule", "add", "-q", sub.Path, "sub");
+        string submodulePath = Path.Combine(_repo.Path, "sub");
+        GitProcess.Run(submodulePath, "checkout", "-q", baseCommit);
+        _repo.Run("commit", "-q", "-am", "add sub");
+
+        _repo.Run("checkout", "-q", "-b", "other");
+        GitProcess.Run(submodulePath, "checkout", "-q", remote);
+        _repo.Run("commit", "-q", "-am", "sub remote");
+        _repo.Run("checkout", "-q", _base);
+        GitProcess.Run(submodulePath, "checkout", "-q", local);
+        _repo.Run("commit", "-q", "-am", "sub local");
+        GitProcess.RunAllowingFailure(_repo.Path, "merge", "other");
+        return (baseCommit, local, remote);
+
+        static string Commit(TestRepository repository, string text)
+        {
+            File.WriteAllText(Path.Combine(repository.Path, text + ".txt"), text);
+            repository.Run("add", text + ".txt");
+            repository.Run("commit", "-q", "-m", text);
+            return repository.Run("rev-parse", "HEAD").Trim();
+        }
+    }
+
     // "other" changes a.txt to theirs (or deletes it), the base branch to "ours"; then a merge of other, or a rebase onto it.
     private void MergeConflict(string? theirs, bool rebase = false)
     {
@@ -166,13 +271,14 @@ internal sealed class ConflictsWindowTests
             .SelectMany(folder => new[] { Path.Combine(folder, "git.exe"), Path.Combine(folder, "git") })
             .First(File.Exists);
 
-    private ConflictsWindow Open()
+    private ConflictsWindow Open(Func<Window, string, IReadOnlyList<ObjectId>, Task<bool>>? checkoutSubmoduleBranch = null)
     {
         Window owner = new();
         owner.Show();
         RepositoryViewModel repository = new(new GitRepositoryService());
         ConflictsWindow conflicts = new(_repo.Path, repository, new RepositoryOperationsViewModel(new GitOperations()),
-            TestAppBuilder.Preferences, (_, _) => { }, _ => _commitsOffered++);
+            TestAppBuilder.Preferences, (_, _) => { }, _ => _commitsOffered++,
+            checkoutSubmoduleBranch: checkoutSubmoduleBranch);
         _ = conflicts.ShowDialog(owner);
         WaitUntil(() => conflicts.ConflictsLoaded.IsCompleted);
         return conflicts;

@@ -303,21 +303,6 @@ public sealed class GitOperations : IGitOperations
             _ => new GitArgumentBuilder("push") { "--progress", remote.Quote(), $":refs/tags/{name}".Quote() },
             output, cancellationToken);
 
-    // The same arguments as upstream's FormCreateWorktree and FormManageWorktree.
-    public Task AddWorktreeAsync(string repositoryPath, string path, string branch, string newBranch)
-        => RunAsync(repositoryPath,
-            _ => new GitArgumentBuilder("worktree")
-            {
-                "add",
-                path.ToPosixPath().Quote(),
-                { newBranch.Length > 0, $"-b {newBranch.Quote()}" },
-                branch.Quote()
-            });
-
-    public Task RemoveWorktreeAsync(string repositoryPath, string path, bool force)
-        => RunAsync(repositoryPath,
-            _ => new GitArgumentBuilder("worktree") { "remove", { force, "--force" }, path.ToPosixPath().Quote() });
-
     public Task PruneWorktreesAsync(string repositoryPath)
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("worktree") { "prune" });
 
@@ -372,11 +357,11 @@ public sealed class GitOperations : IGitOperations
             Execute(module.GitExecutable, add);
         });
 
-    public Task RunMergeToolAsync(string repositoryPath, string path)
+    public Task RunMergeToolAsync(string repositoryPath, string path, string? tool = null)
         => Task.Run(() =>
         {
             GitModule module = CreateModule(repositoryPath);
-            string tool = module.GetEffectiveSetting("merge.guitool");
+            tool ??= module.GetEffectiveSetting("merge.guitool");
             if (tool.Length == 0)
             {
                 tool = module.GetEffectiveSetting("merge.tool");

@@ -147,6 +147,7 @@ public partial class MainWindow : Window
                 () => _actions.PushTagsAsync(path, RemoteName)));
         OpenFolderButton.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
         WireMainToolStrip();
+        TrackSplitters();
         WireFilterToolStrip();
         LoadMoreButton.Click += (_, _) => Run(_commits.LoadMoreAsync);
         ResolveConflictsButton.Click += (_, _) => ShowConflicts();
@@ -1073,6 +1074,11 @@ public partial class MainWindow : Window
             (Screenshot.CloneWindow, _) => NewCloneWindow(),
             (Screenshot.ReflogWindow, { } path) => NewReflogWindow(path),
             (Screenshot.ConflictsWindow, { } path) => NewConflictsWindow(path),
+            (Screenshot.MergeSubmoduleWindow, { } path) => new MergeSubmoduleWindow(path,
+                Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? ""),
+            (Screenshot.WorktreesWindow, { } path) => new WorktreesWindow(path, _repositoryService, WorktreeFlow()),
+            (Screenshot.CreateWorktreeWindow, { } path) => new CreateWorktreeWindow(path,
+                ManageWorktreeDialog.MainWorktreePath(_repository.Worktrees, path), _actions, _preferences),
             (Screenshot.FileHistoryWindow, { } path) => NewFileHistoryWindow(path,
                 Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? "", revision: null, showBlame: false),
             (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
@@ -1175,7 +1181,9 @@ public partial class MainWindow : Window
     private ConflictsWindow NewConflictsWindow(string path)
         => new(path, _repository, _actions, _preferences,
             (owner, file) => NewFileHistoryWindow(path, file, revision: null, showBlame: false).Show(owner),
-            _ => ShowCommitWindow(), UpdateSubmodulesAfterCheckoutAsync);
+            _ => ShowCommitWindow(), UpdateSubmodulesAfterCheckoutAsync,
+            checkoutSubmoduleBranch: (owner, submodulePath, commits) =>
+                CheckoutFlow().StartAsync(owner, submodulePath, containObjectIds: commits));
 
     // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved.
     private async Task ShowSettingsAsync(IGitPlugin? plugin = null, bool pluginsPage = false)
@@ -1859,7 +1867,6 @@ public partial class MainWindow : Window
         Run(() => _repository.RefreshAsync(path));
     }
 
-    // A worktree chosen in the window is opened here, as upstream's FormManageWorktree switches the browse window to it.
     // Upstream's StartRemotesDialog: the remotes window on the open repository; a saved remote is fetched, and the
     // repository is read again when the window closes.
     private async Task ShowRemotesAsync(Window owner, string? preselectRemote = null, string? preselectLocal = null)
@@ -1886,17 +1893,34 @@ public partial class MainWindow : Window
         RefreshRepository();
     }
 
+    // Upstream's manageWorktreeToolStripMenuItem_Click: the worktree window, which opens a worktree in this window; the
+    // repository is read again when a worktree was created there.
     private async Task ShowWorktreesAsync()
     {
-        if (RepositoryPath is { } path &&
-            await new WorktreesWindow(path, _repositoryService, _actions).ShowDialog<string?>(this) is { } worktree &&
-            await ConfirmAsync(Confirmation.SwitchWorktree,
-                string.Format(Confirmations.SwitchWorktreeQuestion, worktree),
-                "Open", "Open worktree"))
+        if (RepositoryPath is not { } path)
         {
-            await OpenRepositoryAsync(worktree);
+            return;
+        }
+
+        WorktreesWindow window = new(path, _repositoryService, WorktreeFlow());
+        await window.ShowDialog(this);
+        if (window.ShouldRefresh)
+        {
+            RefreshRepository();
         }
     }
+
+    // Upstream's WorktreeTree.CreateWorktree and the drop-down's Create worktree...: starts at the main worktree.
+    private async Task CreateWorktreeAsync()
+    {
+        if (RepositoryPath is { } path &&
+            await WorktreeFlow().CreateAsync(this, path, ManageWorktreeDialog.MainWorktreePath(_repository.Worktrees, path)))
+        {
+            RefreshRepository();
+        }
+    }
+
+    private WorktreeFlow WorktreeFlow() => new(_actions, _preferences, OpenRepositoryAsync);
 
     private async Task EditGitIgnoreAsync()
     {

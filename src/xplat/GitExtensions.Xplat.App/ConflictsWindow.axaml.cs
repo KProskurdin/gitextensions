@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using GitCommands;
 using GitCommands.Git;
@@ -38,6 +39,7 @@ public partial class ConflictsWindow : Window
     private readonly Action<Window>? _showCommit;
     private readonly Func<string, Task<bool>>? _updateSubmodules;
     private readonly bool _offerCommit;
+    private readonly Func<Window, string, IReadOnlyList<ObjectId>, Task<bool>>? _checkoutSubmoduleBranch;
     private readonly GitModule _module;
 
     private readonly IFileManager _fileManager =
@@ -59,9 +61,12 @@ public partial class ConflictsWindow : Window
     /// <param name="showCommit">Opens the commit window, as upstream offers once every conflict is resolved.</param>
     /// <param name="updateSubmodules">Upstream's <c>UpdateSubmodules</c> once the conflicts are resolved.</param>
     /// <param name="offerCommit">Upstream's <c>offerCommit</c>: false when the commit window opened this one.</param>
+    /// <param name="checkoutSubmoduleBranch">The submodule conflict window's "Checkout Branch": upstream's
+    ///  <c>StartCheckoutBranch</c> in a submodule's folder, limited to the branches that contain the given commits.</param>
     public ConflictsWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IAppPreferences preferences, Action<Window, string> showFileHistory, Action<Window>? showCommit = null,
-        Func<string, Task<bool>>? updateSubmodules = null, bool offerCommit = true)
+        Func<string, Task<bool>>? updateSubmodules = null, bool offerCommit = true,
+        Func<Window, string, IReadOnlyList<ObjectId>, Task<bool>>? checkoutSubmoduleBranch = null)
     {
         _repositoryPath = repositoryPath;
         _repository = repository;
@@ -71,6 +76,7 @@ public partial class ConflictsWindow : Window
         _showCommit = showCommit;
         _updateSubmodules = updateSubmodules;
         _offerCommit = offerCommit;
+        _checkoutSubmoduleBranch = checkoutSubmoduleBranch;
         _module = GitModules.Open(repositoryPath);
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.ConflictsWindow");
@@ -80,7 +86,14 @@ public partial class ConflictsWindow : Window
         MergeButton.Click += (_, _) => Run(OpenMergeToolAsync);
         OpenMergeToolButton.Click += (_, _) => Run(OpenMergeToolAsync);
         OpenMergeToolMenuItem.Click += (_, _) => Run(OpenMergeToolAsync);
-        CustomMergeToolMenuItem.Click += (_, _) => Run(RunGitMergeToolOnSelectedAsync);
+        CustomMergeToolMenuItem.Click += (_, e) =>
+        {
+            // A tool's item bubbles its click up here; it runs its own tool.
+            if (e.Source == CustomMergeToolMenuItem)
+            {
+                Run(() => RunGitMergeToolOnSelectedAsync());
+            }
+        };
         StartMergeToolButton.Click += (_, _) => Run(StartMergeToolAsync);
         RescanButton.Click += (_, _) => Run(InitializeAsync);
         ResetButton.Click += (_, _) => Run(ResetAsync);
@@ -147,7 +160,31 @@ public partial class ConflictsWindow : Window
 
         await InitializeAsync();
         MergeButton.Focus();
+        await LoadCustomMergeToolsAsync();
         _loaded.TrySetResult();
+    }
+
+    // Upstream's LoadCustomMergetools: with more than one of git's merge tools available, "Open in mergetool" lists them,
+    // the first (the configured one) in bold. An Avalonia item with a submenu does not run on click, so the default tool
+    // is that first entry.
+    private async Task LoadCustomMergeToolsAsync()
+    {
+        IReadOnlyList<string> tools = await AppServices.DiffMergeTools.GetAvailableAsync(diff: false);
+        if (tools.Count <= 1)
+        {
+            return;
+        }
+
+        foreach (string tool in tools)
+        {
+            MenuItem item = new()
+            {
+                Header = new TextBlock { Text = tool },
+                FontWeight = CustomMergeToolMenuItem.Items.Count == 0 ? FontWeight.Bold : FontWeight.Normal,
+            };
+            item.Click += (_, _) => Run(() => RunGitMergeToolOnSelectedAsync(tool));
+            CustomMergeToolMenuItem.Items.Add(item);
+        }
     }
 
     // Upstream's Initialize: the files (keeping the selected row), the texts for a merge or a rebase, and once no conflict
@@ -332,9 +369,25 @@ public partial class ConflictsWindow : Window
         return (deletedLocally, deletedRemotely, remaining);
     }
 
-    // Upstream's ResolveItemConflictAsync. A submodule's conflict needs upstream's FormMergeSubmodule, which is not ported.
-    private Task ResolveItemAsync(ConflictData item)
-        => ItemTypeOf(item.Filename) == ItemType.File ? ResolveFileAsync(item) : Task.CompletedTask;
+    // Upstream's ResolveItemConflictAsync: a submodule in upstream's FormMergeSubmodule, staged once that window is done;
+    // a file through the merge tool.
+    private async Task ResolveItemAsync(ConflictData item)
+    {
+        switch (ItemTypeOf(item.Filename))
+        {
+            case ItemType.Submodule:
+                if (await new MergeSubmoduleWindow(_repositoryPath, item.Filename, _checkoutSubmoduleBranch)
+                        .ShowDialog<bool>(this))
+                {
+                    await StageFileAsync(item.Filename);
+                }
+
+                break;
+            case ItemType.File:
+                await ResolveFileAsync(item);
+                break;
+        }
+    }
 
     // Upstream's ResolveFilesConflictAsync: the three versions checked out to temporary files, the questions for a missing
     // side or a binary file, then the tool with upstream's command, and the file staged as its exit code and the merged
@@ -651,12 +704,12 @@ public partial class ConflictsWindow : Window
         }
     }
 
-    // Upstream's customMergetool_Click without a tool: git mergetool on each selected file.
-    private async Task RunGitMergeToolOnSelectedAsync()
+    // Upstream's customMergetool_Click: git mergetool on each selected file, with the chosen tool or the configured one.
+    private async Task RunGitMergeToolOnSelectedAsync(string? tool = null)
     {
         foreach (ConflictData item in Selected())
         {
-            await _actions.RunMergeToolAsync(_repositoryPath, item.Filename);
+            await _actions.RunMergeToolAsync(_repositoryPath, item.Filename, tool);
             await InitializeAsync();
         }
     }

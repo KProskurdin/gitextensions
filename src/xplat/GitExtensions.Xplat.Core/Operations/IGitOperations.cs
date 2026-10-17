@@ -103,8 +103,9 @@ public interface IGitOperations
     ///  upstream's "Start mergetool") and waits until the tool is closed. Throws
     ///  <see cref="GitOperationException"/> when no merge tool is configured, because git would otherwise fall back to a
     ///  terminal tool that cannot run without a console.
+    ///  <paramref name="tool"/> chooses another of git's merge tools than the configured one.
     /// </summary>
-    Task RunMergeToolAsync(string repositoryPath, string path);
+    Task RunMergeToolAsync(string repositoryPath, string path, string? tool = null);
 
     /// <summary>
     ///  Opens the configured diff tool on one file: its working-tree changes (or, with <paramref name="staged"/>, its staged
@@ -143,14 +144,6 @@ public interface IGitOperations
     Task AddRemoteAsync(string repositoryPath, string name, string url);
 
     Task RemoveRemoteAsync(string repositoryPath, string name);
-
-    /// <summary>
-    ///  Adds a worktree at <paramref name="path"/> that checks out <paramref name="branch"/>, or a new branch
-    ///  <paramref name="newBranch"/> started at <paramref name="branch"/> when one is given.
-    /// </summary>
-    Task AddWorktreeAsync(string repositoryPath, string path, string branch, string newBranch);
-
-    Task RemoveWorktreeAsync(string repositoryPath, string path, bool force);
 
     /// <summary>
     ///  Forgets worktrees whose folders were deleted.

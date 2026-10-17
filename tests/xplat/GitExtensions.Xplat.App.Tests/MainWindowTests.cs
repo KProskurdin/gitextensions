@@ -1301,45 +1301,33 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void Worktrees_window_adds_and_removes_a_worktree_but_never_offers_the_main_one()
+    public void Worktrees_menu_opens_upstreams_worktree_window()
     {
-        string folder = Path.Combine(Path.GetTempPath(), "xplat-worktree-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            MainWindow window = NewWindow();
-            window.Show();
-            Open(window, _repo.Path);
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
 
-            Click(window, "WorktreesMenuItem");
-            WaitUntil(() => window.OwnedWindows.OfType<WorktreesWindow>().Any());
-            WorktreesWindow worktrees = window.OwnedWindows.OfType<WorktreesWindow>().Single();
-            WaitUntil(() => worktrees.Worktrees.Count == 1);
-            ListBox list = Find<ListBox>(worktrees, "WorktreeList");
-            list.SelectedIndex = 0;
-            Find<Button>(worktrees, "RemoveWorktreeButton").IsEnabled.Should().BeFalse();
+        Click(window, "WorktreesMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<WorktreesWindow>().Any());
+        WorktreesWindow worktrees = window.OwnedWindows.OfType<WorktreesWindow>().Single();
+        WaitUntil(() => worktrees.WorktreesLoaded.IsCompleted);
 
-            Click(worktrees, "AddWorktreeButton");
-            WaitUntil(() => worktrees.OwnedWindows.OfType<PromptWindow>().Any());
-            PromptWindow prompt = worktrees.OwnedWindows.OfType<PromptWindow>().Single();
-            Find<TextBox>(prompt, "ValueBox").Text = folder;
-            Find<TextBox>(prompt, "SecondValueBox").Text = "wt-branch";
-            Click(prompt, "OkButton");
+        worktrees.Title.Should().Be("Existing worktrees");
+        worktrees.Worktrees.Should().ContainSingle();
+        worktrees.Close();
 
-            WaitUntil(() => worktrees.Worktrees.Count == 2);
-            worktrees.Worktrees[1].Display.Should().Contain("wt-branch");
-            list.SelectedIndex = 1;
-            Click(worktrees, "RemoveWorktreeButton");
-            WaitUntil(() => worktrees.OwnedWindows.OfType<ConfirmWindow>().Any());
-            Click(worktrees.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
-
-            WaitUntil(() => worktrees.Worktrees.Count == 1);
-            Directory.Exists(folder).Should().BeFalse();
-            worktrees.Close();
-        }
-        finally
-        {
-            GitProcess.DeleteFolder(folder);
-        }
+        // Upstream's drop-down: the worktrees by folder name, the open one checked and disabled, then its three items.
+        Button button = Find<Button>(window, "WorktreesButton");
+        MenuFlyout flyout = (MenuFlyout)button.Flyout!;
+        flyout.ShowAt(button);
+        WaitUntil(() => flyout.Items.Count == 5);
+        List<MenuItem> items = [.. flyout.Items.OfType<MenuItem>()];
+        items.Select(item => item.Header as string ?? (item.Header as TextBlock)?.Text).Should().Equal(
+            $"{Path.GetFileName(_repo.Path)} ({_repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim()})",
+            "Create worktree...", "Prune worktrees", "Manage worktrees...");
+        items[0].IsChecked.Should().BeTrue();
+        items[0].IsEnabled.Should().BeFalse();
+        flyout.Hide();
     }
 
     [AvaloniaTest]

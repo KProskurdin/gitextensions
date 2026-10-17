@@ -51,7 +51,8 @@ public sealed class GitRepositoryService : IRepositoryService
         =>
         [
             .. module.GetWorktrees().Select((worktree, index) => new WorktreeInfo(worktree.Path,
-                worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted))
+                worktree.GetDisplayName(worktree.Path), IsMain: index == 0, worktree.IsDeleted, worktree.HeadType,
+                worktree.Branch, worktree.Sha1))
         ];
 
     // Upstream's LocalBranchTree and RemoteBranchTree: a local branch shows its counts against its upstream, the remote

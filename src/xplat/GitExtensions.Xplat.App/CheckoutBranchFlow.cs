@@ -33,10 +33,12 @@ internal sealed class CheckoutBranchFlow(
     ///  Checks out <paramref name="branch"/> (a local branch, or a remote one when <paramref name="remote"/>), with the
     ///  window when upstream shows it. True when the checkout happened.
     /// </summary>
-    public async Task<bool> StartAsync(Window owner, string path, string branch = "", bool remote = false)
+    /// <param name="containObjectIds">Upstream's <c>containObjectIds</c>: only the branches that contain these commits.</param>
+    public async Task<bool> StartAsync(Window owner, string path, string branch = "", bool remote = false,
+        IReadOnlyList<ObjectId>? containObjectIds = null)
     {
         (GitModule module, CheckoutBranchSource source, CheckoutBranchDialog dialog) =
-            await LoadAsync(path, branch, remote);
+            await LoadAsync(path, branch, remote, containObjectIds);
         if (dialog.ChecksOutWithoutWindow(preferences.AlwaysShowCheckoutBranchDlg,
                 preferences.UseDefaultCheckoutBranchAction))
         {
@@ -58,7 +60,7 @@ internal sealed class CheckoutBranchFlow(
 
     private async Task<(GitModule Module, CheckoutBranchSource Source, CheckoutBranchDialog Dialog)> LoadAsync(
         string path,
-        string branch, bool remote)
+        string branch, bool remote, IReadOnlyList<ObjectId>? containObjectIds = null)
     {
         GitModule module = GitModules.Open(path);
         bool checkDirty = preferences.CheckForUncommittedChangesInCheckoutBranch;
@@ -67,9 +69,15 @@ internal sealed class CheckoutBranchFlow(
             [.. module.GetRefs(RefsFilter.Remotes).Select(head => head.Name)],
             module.GetRemoteNames(),
             module.GetLocalTrackingBranchName,
-            checkDirty ? module.IsDirtyDir() : null));
+            checkDirty ? module.IsDirtyDir() : null,
+            containObjectIds is null ? null : Containing(containObjectIds, local: true),
+            containObjectIds is null ? null : Containing(containObjectIds, local: false)));
         return (module, source, new CheckoutBranchDialog(source, preferences.CheckoutBranchAction,
             preferences.CreateLocalBranchForRemote, branch, remote));
+
+        IReadOnlyList<string> Containing(IReadOnlyList<ObjectId> ids, bool local)
+            => CheckoutBranchDialog.ContainingBranches(ids, id => module.GetAllBranchesWhichContainGivenCommit(id,
+                getLocal: local, getRemote: !local, cancellationToken: default));
     }
 
     private CheckoutBranchWindow NewWindow(string path, GitModule module, CheckoutBranchSource source,

@@ -3,10 +3,13 @@ using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 using GitUI.ScriptsEngine;
+using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
 
@@ -287,6 +290,42 @@ public partial class MainWindow
         ToggleSplitViewButton.IsChecked = show;
     }
 
+    // Upstream's SetSplitterPositions and its SplitterManager ("FormBrowse"): the left panel (MainSplitContainer, which
+    // also stores whether the left panel is hidden), the grid above the tabs (RightSplitContainer) and the file lists of
+    // the Diff and File tree tabs (RevisionDiffControl's DiffSplitContainer, one per tab). Upstream resets the commit
+    // info's width beside the grid on every layout, so RevisionsSplitContainer is not kept.
+    private void TrackSplitters()
+    {
+        const int MainSplitterWidth = 6;
+        const int MainPanel1MinSize = 192;
+        const int DiffSplitterWidth = 7;
+        const double TabsSplitterHeight = 5;
+        SplitterTracker splitters = new(this, AppServices.Splitters, "FormBrowse");
+        splitters.Add("MainSplitContainer", MainSplitGrid, rows: false, SplitterFixedPanel.Panel1, MainSplitterWidth,
+            MainPanel1MinSize,
+            hidden: new HiddenPanel(LeftPanelHidden, _ => _leftPanelWidth.Value,
+                (_, distance) => _leftPanelWidth = new GridLength(distance)),
+            panel1Collapsed: (LeftPanelHidden, collapse =>
+            {
+                if (collapse != LeftPanelHidden())
+                {
+                    ToggleLeftPanel();
+                }
+            }));
+        splitters.Add("RightSplitContainer", BrowsePanel, rows: true, SplitterFixedPanel.None, MainSplitterWidth,
+            panel2MinSize: 0,
+            hidden: new HiddenPanel(() => !_preferences.ShowSplitViewLayout,
+                length => length - TabsSplitterHeight - _commitInfoHeight.Value,
+                (length, distance) =>
+                    _commitInfoHeight = new GridLength(Math.Max(0, length - TabsSplitterHeight - distance))));
+        splitters.Add("revisionDiff.DiffSplitContainer", DiffSplitGrid, rows: false, SplitterFixedPanel.Panel1,
+            DiffSplitterWidth);
+        splitters.Add("fileTree.DiffSplitContainer", FileTreeSplitGrid, rows: false, SplitterFixedPanel.Panel1,
+            DiffSplitterWidth);
+
+        bool LeftPanelHidden() => MainSplitGrid.ColumnDefinitions[0].Width.Value == 0;
+    }
+
     private void SetCommitInfoPosition(CommitInfoPosition position)
     {
         _preferences.CommitInfoPosition = position;
@@ -413,34 +452,60 @@ public partial class MainWindow
         flyout.Items.Add(sync);
     }
 
-    // Upstream's worktree drop-down: the worktrees to open, then the worktree window.
+    // Upstream's toolStripWorktrees_DropDownOpening: every worktree by its folder's name (the open one checked, those
+    // whose folders are gone disabled), then Create worktree..., Prune worktrees and Manage worktrees....
     private async Task ShowWorktreesMenuAsync()
     {
         MenuFlyout flyout = (MenuFlyout)WorktreesButton.Flyout!;
         flyout.Items.Clear();
-        MenuItem manage = new() { Header = "_Manage worktrees...", Icon = UpstreamIcon("WorkTree") };
-        manage.Click += (_, _) => Run(ShowWorktreesAsync);
-        flyout.Items.Add(manage);
         if (RepositoryPath is not { } path)
         {
             return;
         }
 
         IReadOnlyList<WorktreeInfo> worktrees = await _repositoryService.GetWorktreesAsync(path);
-        int index = 0;
-        foreach (WorktreeInfo worktree in worktrees.Where(worktree => !worktree.IsDeleted))
+        foreach (WorktreeInfo worktree in worktrees)
         {
+            bool current = ManageWorktreeDialog.IsCurrent(worktree, path);
             MenuItem item = new()
             {
-                Header = new TextBlock { Text = worktree.Display },
-                ToggleType = MenuItemToggleType.Radio,
-                IsChecked = RecentRepositoryPaths.Same(worktree.Path, path),
+                Header = new TextBlock { Text = ManageWorktreeDialog.MenuText(worktree) },
+                Icon = UpstreamIcon("WorkTree"),
+                ToggleType = current ? MenuItemToggleType.CheckBox : MenuItemToggleType.None,
+                IsChecked = current,
+                IsEnabled = !current && !worktree.IsDeleted,
             };
-            item.Click += (_, _) => Run(() => OpenRepositoryAsync(worktree.Path));
-            flyout.Items.Insert(index++, item);
+            item.Click += (_, _) => Run(() => OpenWorktreeFolderAsync(worktree.Path));
+            flyout.Items.Add(item);
         }
 
-        flyout.Items.Insert(index, new Separator());
+        flyout.Items.Add(new Separator());
+        MenuItem create = new()
+        {
+            Header = UpstreamTranslation.ByText(ManageWorktreeDialog.CreateWorktree), Icon = UpstreamIcon("WorkTree"),
+        };
+        create.Click += (_, _) => Run(CreateWorktreeAsync);
+        MenuItem prune = new() { Header = UpstreamTranslation.ByText(ManageWorktreeDialog.PruneWorktrees) };
+        prune.Click += (_, _) => RunOnRepository(repository => WorktreeFlow().PruneAsync(repository));
+        MenuItem manage = new() { Header = UpstreamTranslation.ByText(ManageWorktreeDialog.ManageWorktrees) };
+        manage.Click += (_, _) => Run(ShowWorktreesAsync);
+        flyout.Items.Add(create);
+        flyout.Items.Add(prune);
+        flyout.Items.Add(manage);
+    }
+
+    // Upstream's WorktreeToolStripMenuItem_Click: opens the worktree at once, or says its folder is gone.
+    private async Task OpenWorktreeFolderAsync(string worktreePath)
+    {
+        if (!Directory.Exists(worktreePath))
+        {
+            await new MessageBoxWindow(
+                string.Format(UpstreamTranslation.ByText(ManageWorktreeDialog.DirectoryNotFound), worktreePath),
+                UpstreamTranslation.ByText(ManageWorktreeDialog.Error), MessageBoxButtons.OK).ShowDialog(this);
+            return;
+        }
+
+        await OpenRepositoryAsync(Path.GetFullPath(worktreePath));
     }
 
     // Upstream's working directory drop-down: the recent repositories, then open, clone and create.

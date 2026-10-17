@@ -86,12 +86,6 @@ internal sealed class FakeGitOperations : IGitOperations
         IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default) =>
         RecordRemote("DeleteRemoteTag", $"{repositoryPath} {remote} {name}", output, cancellationToken);
 
-    public Task AddWorktreeAsync(string repositoryPath, string path, string branch, string newBranch) =>
-        Record("AddWorktree", $"{repositoryPath} {path} {branch} {newBranch}");
-
-    public Task RemoveWorktreeAsync(string repositoryPath, string path, bool force) =>
-        Record("RemoveWorktree", $"{repositoryPath} {path} force={force}");
-
     public Task PruneWorktreesAsync(string repositoryPath) => Record("PruneWorktrees", repositoryPath);
 
     public Task UpdateSubmodulesAsync(string repositoryPath, string? path, IProgress<GitOutputLine>? output = null,
@@ -221,8 +215,8 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task ResolveConflictsAsync(string repositoryPath, IReadOnlyList<string> paths, bool ours) =>
         Record("ResolveConflicts", $"{repositoryPath} {string.Join(",", paths)} ours={ours}");
 
-    public Task RunMergeToolAsync(string repositoryPath, string path) =>
-        Record("RunMergeTool", $"{repositoryPath} {path}");
+    public Task RunMergeToolAsync(string repositoryPath, string path, string? tool = null) =>
+        Record("RunMergeTool", tool is null ? $"{repositoryPath} {path}" : $"{repositoryPath} {path} {tool}");
 
     public Task RunDiffToolAsync(string repositoryPath, string path, string? commit, bool staged,
         string? tool = null) =>
