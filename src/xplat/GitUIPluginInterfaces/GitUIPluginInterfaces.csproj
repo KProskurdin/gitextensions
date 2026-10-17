@@ -11,6 +11,17 @@
     <Compile Include="..\..\app\GitExtUtils\Validates.cs" Link="Validates.cs" />
   </ItemGroup>
 
+  <!-- Anchors only (Old equals New): PluginAssemblyResolve unsubscribes this static method group by reflection, which
+       silently does nothing if upstream renames it or subscribes it another way. These make that a build error. -->
+  <ItemGroup>
+    <XplatPatch Include="ManagedExtensibility.cs"
+                Old="AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;"
+                New="AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;" />
+    <XplatPatch Include="ManagedExtensibility.cs"
+                Old="private static Assembly? CurrentDomain_AssemblyResolve(object? sender, ResolveEventArgs args)"
+                New="private static Assembly? CurrentDomain_AssemblyResolve(object? sender, ResolveEventArgs args)" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="JetBrains.Annotations" />
     <PackageReference Include="Microsoft.VisualStudio.Composition" />

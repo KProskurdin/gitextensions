@@ -37,19 +37,20 @@ internal sealed class PluginAssemblyResolveTests
     {
         int calls = 0;
         Assembly? inner = typeof(object).Assembly;
-        ResolveEventHandler? upstream = null;
-        upstream = (sender, _) =>
-        {
-            calls++;
-            inner = PluginAssemblyResolve.Resolve(upstream!, sender, new ResolveEventArgs("Nested.Dependency"));
-            return typeof(PluginAssemblyResolveTests).Assembly;
-        };
 
-        Assembly? assembly = PluginAssemblyResolve.Resolve(upstream, null, new ResolveEventArgs("Plugin.Dependency"));
+        Assembly? assembly = PluginAssemblyResolve.Resolve(Upstream, null, new ResolveEventArgs("Plugin.Dependency"));
 
         assembly.Should().BeSameAs(typeof(PluginAssemblyResolveTests).Assembly);
         inner.Should().BeNull();
         calls.Should().Be(1);
+        return;
+
+        Assembly? Upstream(object? sender, ResolveEventArgs args)
+        {
+            calls++;
+            inner = PluginAssemblyResolve.Resolve(Upstream, sender, new ResolveEventArgs("Nested.Dependency"));
+            return typeof(PluginAssemblyResolveTests).Assembly;
+        }
     }
 
     [Test]

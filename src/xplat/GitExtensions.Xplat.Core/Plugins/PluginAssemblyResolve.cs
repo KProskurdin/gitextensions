@@ -8,8 +8,11 @@ namespace GitExtensions.Xplat.Core.Plugins;
 /// </summary>
 /// <remarks>
 ///  Upstream's handler reads <c>FileVersionInfo</c> of every file next to the requesting assembly. Off Windows that parses
-///  each file as a PE image and throws for any other file; the exception message is a resource lookup, which under a
-///  non-English UI culture asks for a satellite assembly, which raises the handler again until the stack overflows.
+///  each file as a PE image, and for any other file a <see cref="BadImageFormatException"/> is built (and caught inside
+///  <c>FileVersionInfo</c>). Its message is a resource lookup, which under a non-English UI culture asks for a satellite
+///  assembly, which raises the handler again until the stack overflows. The handler's name and subscription are pinned
+///  by anchor-only <c>XplatPatch</c> items in the shadow <c>GitUIPluginInterfaces</c> project, so the build fails if
+///  upstream changes them.
 /// </remarks>
 public static class PluginAssemblyResolve
 {
