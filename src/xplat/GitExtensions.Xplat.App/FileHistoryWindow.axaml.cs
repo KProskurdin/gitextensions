@@ -468,6 +468,7 @@ public partial class FileHistoryWindow : Window
         Resources["ShowGraphColumn"] = columns.Graph;
         Resources["ShowAuthorNameColumn"] = columns.AuthorName;
         Resources["ShowDateColumn"] = columns.Date;
+        RevisionGridColumns.SetWidths(this, _preferences.RelativeDate);
         Resources["ShowObjectIdColumn"] = columns.ObjectId;
         Resources["ShowAuthorAvatarColumn"] = _preferences.ShowAuthorAvatarColumn;
         Resources["FillRefLabels"] = _preferences.FillRefLabels;

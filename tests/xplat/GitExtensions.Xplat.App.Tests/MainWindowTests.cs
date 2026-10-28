@@ -257,6 +257,76 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Double_click_on_a_diff_tab_file_opens_its_history()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        Find<ListBox>(window, "CommitList").SelectedIndex = 0;
+        ListBox files = Find<ListBox>(window, "CommitFilesList");
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+        WaitUntil(() => files.ItemCount > 0);
+        files.SelectedIndex = 0;
+
+        files.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => window.OwnedWindows.OfType<FileHistoryWindow>().Any());
+        window.OwnedWindows.OfType<FileHistoryWindow>().Single().Close();
+    }
+
+    [AvaloniaTest]
+    public void The_dashboard_shows_upstreams_Dashboard_menu_in_place_of_the_repository_menus()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+
+        Find<MenuItem>(window, "DashboardMenu").IsVisible.Should().BeTrue();
+        Find<MenuItem>(window, "RepositoryMainMenu").IsVisible.Should().BeFalse();
+        Find<MenuItem>(window, "CommandsMenu").IsVisible.Should().BeFalse();
+        Find<MenuItem>(window, "ViewMenu").IsVisible.Should().BeFalse();
+
+        Open(window, _repo.Path);
+
+        Find<MenuItem>(window, "DashboardMenu").IsVisible.Should().BeFalse();
+        Find<MenuItem>(window, "RepositoryMainMenu").IsVisible.Should().BeTrue();
+        Find<MenuItem>(window, "CommandsMenu").IsVisible.Should().BeTrue();
+        Find<MenuItem>(window, "ViewMenu").IsVisible.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void The_recent_repositories_are_numbered_as_upstreams_and_Clear_list_empties_them()
+    {
+        MainWindow window = NewWindow();
+        Open(window, _repo.Path);
+        MenuItem recent = Find<MenuItem>(window, "RecentMenu");
+
+        WaitUntil(() => recent.Items.OfType<MenuItem>().Any(item => item.Header is DockPanel));
+        MenuItem first = recent.Items.OfType<MenuItem>().First();
+        ((DockPanel)first.Header!).Children.OfType<AccessText>().Single().Text.Should().StartWith("_1: ");
+        MenuItem clear = recent.Items.OfType<MenuItem>().Last();
+        clear.Header.Should().Be("Clear list");
+
+        clear.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => !recent.IsEnabled);
+    }
+
+    [AvaloniaTest]
+    public void Commands_Reset_changes_asks_and_resets_the_work_tree()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        Open(window, _repo.Path);
+
+        Click(window, "ResetChangesMenuItem");
+
+        WaitUntil(() => window.OwnedWindows.OfType<ResetChangesWindow>().Any());
+        Click(window.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
+        WaitUntil(() => File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "two");
+    }
+
+    [AvaloniaTest]
     public void Filter_box_filters_by_the_checked_kinds_on_Enter_and_remembers_the_text()
     {
         TestAppBuilder.Preferences.RevisionFilterDropdowns = [];

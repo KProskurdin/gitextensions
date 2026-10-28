@@ -36,6 +36,7 @@ public partial class CreateWorktreeWindow : Window
         _actions = actions;
         _preferences = preferences;
         InitializeComponent();
+        InitialFocus.Attach(this);
         BranchesBox.PlaceholderText = UpstreamTranslation.ByText(CreateWorktreeDialog.LoadingData);
         CreateButton.IsEnabled = false;
         ExistingBranchRadio.IsCheckedChanged += (_, _) => UpdateDirectoryAndValidate();

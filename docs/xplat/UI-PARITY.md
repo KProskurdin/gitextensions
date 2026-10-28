@@ -303,6 +303,35 @@ toolbar icons with upstream's `ToolTipText`.
   Diff and File tree tabs' file lists, and the commit window's three splitters; restored as upstream restores them for
   another window size or DPI. See the SplitterManager note in `PORTING-MAP.md`. Still open in U6: column widths, access
   keys and tab order checked against the designers, the double-click and Enter behavior of each list, and tooltips.
+- 2026-10-28, U6 column widths and tooltips done: upstream keeps no column widths (its grid has no header row and its
+  dialogs' grids size themselves), so the grid's author, date and SHA-1 columns now start at upstream's providers'
+  widths (`RevisionGridColumns`). Every `ToolTipText` and `SetToolTip` of the ported forms' designers was compared
+  with the new shell; the missing ones were added (stash, pull, push, create branch, the Diff viewer settings page),
+  and with them two behaviors the tooltips name: the commit window's committer is upstream's link to the Config
+  settings page, and Stage all and Unstage all act on a filtered list's files as upstream's "Stage filtered". Left:
+  the tooltips of features not ported (the file list's tree view, A/B filter and git-grep toggle, the left panel's
+  submodule actions, the console tab). See the "Revision grid rows and View menu" and FormCommit notes in
+  `PORTING-MAP.md`. Still open in U6: access keys and tab order checked against the designers, and the double-click
+  and Enter behavior of each list.
+- 2026-10-28, U6 double-click partly done: every `DoubleClick` and Enter handler of the ported forms was compared.
+  Added: a double-click in the commit window's lists stages or unstages the file (`Unstaged_DoubleClick`,
+  `Staged_DoubleClick`), and one in the browse window's Diff tab opens the file's history (`DiffFiles_DoubleClick`).
+  The left panel, conflicts, worktrees, blame, the dashboard, the filter boxes and the settings search already
+  behaved as upstream. Left: a double-click on the grid (browse window and file history) opens upstream's
+  FormCommitDiff, which is not ported, so the new shell still shows the Diff tab; upstream's FileStatusList default
+  (the file's history) in the stash window. Still open in U6: access keys and tab order against the designers.
+- 2026-10-28, U6 access keys and tab order done, and with them U6: every `&` text of the ported forms' designers was
+  compared with the new shell's `_` texts. The dialogs matched; the browse window's menus did not, so they were rebuilt
+  from upstream's designers (Start with upstream's numbered favourite and recent repositories, the Dashboard menu,
+  Repository, Commands, Tools and Help in upstream's order, texts, keys and images), checked by a test that reads the
+  designers. Tab order: the order of every ported dialog's buttons, check boxes and radio buttons was compared with the
+  designer's `TabIndex` order as a cycle (a window's Tab order wraps, and the docked button strip only rotates it). The
+  differences left are upstream's own accidents and are not copied: buttons in right-to-left flow panels that Tab visits
+  from right to left (reset changes, worktrees), and `TabIndex` numbers against the layout (merge's
+  hidden advanced options first, checkout branch's local changes group first, stash's "Stash selected changes" last).
+  Found then: the dialogs opened with nothing focused, so the first Tab reached their buttons; they now open on
+  upstream's control (`InitialFocus`). See the "FormBrowse menus" and "Initial focus" notes in `PORTING-MAP.md`. Left
+  from U6: the grid's double-click (FormCommitDiff), the Navigate menu and the menus' unported items.
 
 ## Risks
 

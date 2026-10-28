@@ -16,8 +16,8 @@ internal static class FontApplier
     /// </summary>
     public const string CodeFamilies = "Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, Liberation Mono, monospace";
 
-    private const string ApplicationFamilyKey = "ContentControlThemeFontFamily";
-    private const string ApplicationSizeKey = "ControlContentThemeFontSize";
+    internal const string ApplicationFamilyKey = "ContentControlThemeFontFamily";
+    internal const string ApplicationSizeKey = "ControlContentThemeFontSize";
 
     // Fluent's own application font, read before the first change so "(default)" can bring it back.
     private static (FontFamily Family, double Size)? _themeFont;

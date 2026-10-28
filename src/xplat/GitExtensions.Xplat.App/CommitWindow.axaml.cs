@@ -26,6 +26,7 @@ public partial class CommitWindow : Window
     private readonly Func<Task> _refresh;
     private readonly ICommitMessageStore _messages;
     private readonly Func<string, bool>? _runPlugin;
+    private readonly Func<Window, string, Task>? _showSettings;
     private string _messageBeforeAmend = "";
 
     // True while the remembered Amend state is put back; the draft is then the amend message already.
@@ -59,8 +60,11 @@ public partial class CommitWindow : Window
 
     public CommitWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IRepositoryService repositoryService, IAppPreferences preferences, Func<Task> refresh,
-        ICommitMessageStore messages, Func<string, bool>? runPlugin = null)
+        ICommitMessageStore messages, Func<string, bool>? runPlugin = null,
+        Func<Window, string, Task>? showSettings = null)
     {
+        // Opens the browse window's settings over this one on an upstream page.
+        _showSettings = showSettings;
         // Runs a plugin named by a script's plugin command, as the browse window does.
         _runPlugin = runPlugin;
         _repositoryPath = repositoryPath;
@@ -408,14 +412,21 @@ public partial class CommitWindow : Window
         }
     }
 
+    // Upstream's StageAllAccordingToFilter and UnstageAllFiles: a filtered list stages or unstages the files it shows and
+    // loses its filter.
     private void StageAll(bool staged)
     {
+        FileListParts parts = staged ? _staged : _unstaged;
+        IEnumerable<FileChange> changes = IsFiltered(parts)
+            ? parts.List.ItemsSource as IEnumerable<FileChange> ?? []
+            : _repository.Changes.Where(change => change.Staged == staged);
         List<string> paths =
         [
-            .. _repository.Changes
-                .Where(change => change.Staged == staged && change.Kind != ChangeKind.Conflict)
+            .. changes
+                .Where(change => change.Kind != ChangeKind.Conflict)
                 .Select(change => change.Path)
         ];
+        parts.Filter.Text = "";
         if (paths.Count > 0)
         {
             Run(() => staged

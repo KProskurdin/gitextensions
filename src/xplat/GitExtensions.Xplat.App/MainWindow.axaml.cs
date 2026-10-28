@@ -142,9 +142,6 @@ public partial class MainWindow : Window
         CommitDialogButton.Click += (_, _) => ShowCommitWindow();
         PullButton.Click += (_, _) => Pull();
         PushButton.Click += (_, _) => Push();
-        PushTagsMenuItem.Click += (_, _) => RunOnRepository(path =>
-            WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
-                () => _actions.PushTagsAsync(path, RemoteName)));
         OpenFolderButton.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
         WireMainToolStrip();
         TrackSplitters();
@@ -179,15 +176,17 @@ public partial class MainWindow : Window
         TerminalMenuItem.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         FilesMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
         ReflogMenuItem.Click += (_, _) => Run(ShowReflogAsync);
-        GitIgnoreMenuItem.Click += (_, _) => Run(EditGitIgnoreAsync);
+        GitIgnoreMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: false));
+        GitInfoExcludeMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: true));
+        UpdateAllSubmodulesMenuItem.Click += (_, _) => RunOnRepository(path => UpdateSubmodulesAsync(path, null));
+        SyncAllSubmodulesMenuItem.Click += (_, _) =>
+            RunOnRepository(path => _actions.SyncSubmodulesAsync(path, path: null));
         WorktreesMenuItem.Click += (_, _) => Run(ShowWorktreesAsync);
         CommitMenuItem.Click += (_, _) => ShowCommitWindow();
         PullDialogMenuItem.Click += (_, _) => Run(ShowPullDialogAsync);
         PushDialogMenuItem.Click += (_, _) => Run(ShowPushDialogAsync);
-        PullMenuItem.Click += (_, _) => Pull();
-        PushMenuItem.Click += (_, _) => Push();
-        FetchMenuItem.Click += (_, _) => Fetch();
         ManageStashesCommandMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
+        ResetChangesMenuItem.Click += (_, _) => RunOnRepository(ResetChangesAsync);
         CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
         CheckoutBranchMenuItem.Click += (_, _) => RunOnRepository(path => StartCheckoutBranchAsync(path));
         CheckoutRevisionMenuItem.Click += (_, _) => RunOnRepository(path => ShowCheckoutRevisionAsync(path, revision: null));
@@ -198,6 +197,7 @@ public partial class MainWindow : Window
         ResolveConflictsMenuItem.Click += (_, _) => ShowConflicts();
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
         SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
+        WireStartMenu();
         PluginSettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(pluginsPage: true));
 
         // Upstream's View menu toggles for the grid's date column.
@@ -241,6 +241,9 @@ public partial class MainWindow : Window
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
         CommitFilesContextMenu.Opening += (_, _) => ShowFileListScripts();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
+
+        // Upstream's DiffFiles_DoubleClick: the file's history at the selected commit.
+        CommitFilesList.DoubleTapped += (_, _) => RunBrowseDiffHotkey(BrowseDiffCommand.ShowHistory);
         CopyHashMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Hash));
         CopyMessageMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Message));
         ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
@@ -326,9 +329,6 @@ public partial class MainWindow : Window
         CommitMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Commit);
         PullDialogMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Pull);
         PushDialogMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Push);
-        PullMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.QuickPull);
-        PushMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.QuickPush);
-        FetchMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.QuickFetch);
         StashChangesMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Stash);
         StashPopToolMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.StashPop);
         CreateBranchMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CreateBranch);
@@ -704,21 +704,10 @@ public partial class MainWindow : Window
         BrowsePanel.IsVisible = open;
         DashboardPanel.IsVisible = !open;
         LeftPanel.IsVisible = open;
-    }
 
-    private void ShowRecentMenu()
-    {
-        List<MenuItem> items = [];
-        foreach (RecentRepository recent in _recent.Items)
-        {
-            MenuItem item = new() { Header = recent.Display };
-            item.Click += (_, _) => Run(() => OpenRepositoryAsync(recent.Path));
-            items.Add(item);
-        }
-
-        RecentMenu.ItemsSource = items;
-        RecentMenu.IsEnabled = items.Count > 0;
-        ReloadDashboardIfChanged();
+        // Upstream's menus for the dashboard: its Dashboard menu instead of the repository's menus.
+        DashboardMenu.IsVisible = !open;
+        RepositoryMainMenu.IsVisible = ViewMenu.IsVisible = CommandsMenu.IsVisible = PluginsMenu.IsVisible = open;
     }
 
     private void OnRecentChanged(string? propertyName)
@@ -1010,7 +999,7 @@ public partial class MainWindow : Window
     // Upstream's Ctrl+Up opens the push dialog; the toolbar's Push and Ctrl+Shift+Up push at once.
     private async Task ShowPushDialogAsync()
     {
-        if (RepositoryPath is not { } path || !PushMenuItem.IsEnabled)
+        if (RepositoryPath is not { } path || !PushButton.IsEnabled)
         {
             return;
         }
@@ -1043,7 +1032,7 @@ public partial class MainWindow : Window
 
     private async Task ShowPullDialogAsync(Window owner)
     {
-        if (RepositoryPath is not { } path || !FetchMenuItem.IsEnabled)
+        if (RepositoryPath is not { } path || !RefreshMenuItem.IsEnabled)
         {
             return;
         }
@@ -1132,7 +1121,8 @@ public partial class MainWindow : Window
 
         CommitWindow window = new(path, _repository, _actions, _repositoryService, _preferences,
             () => OpenRepositoryAsync(path),
-            _commitMessages, _plugins.ExecuteByName);
+            _commitMessages, _plugins.ExecuteByName,
+            (owner, page) => ShowSettingsAsync(owner: owner, page: page));
         _commitWindow = window;
         window.Closed += (_, _) =>
         {
@@ -1185,15 +1175,23 @@ public partial class MainWindow : Window
             checkoutSubmoduleBranch: (owner, submodulePath, commits) =>
                 CheckoutFlow().StartAsync(owner, submodulePath, containObjectIds: commits));
 
-    // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved.
-    private async Task ShowSettingsAsync(IGitPlugin? plugin = null, bool pluginsPage = false)
+    // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved. A
+    // window other than this one can open it over itself on one of upstream's pages (StartSettingsDialog with a page).
+    private async Task ShowSettingsAsync(IGitPlugin? plugin = null, bool pluginsPage = false, Window? owner = null,
+        string? page = null)
     {
-        bool saved = await new SettingsWindow(_preferences, RepositoryPath, await LoadPluginsAsync(),
-            plugin, pluginsPage).ShowDialog<bool>(this);
+        SettingsWindow settings = new(_preferences, RepositoryPath, await LoadPluginsAsync(), plugin, pluginsPage);
+        if (page is not null)
+        {
+            settings.GoToPage(page);
+        }
+
+        bool saved = await settings.ShowDialog<bool>(owner ?? this);
         if (saved)
         {
             ThemeApplier.Apply(_preferences);
             FontApplier.Apply(_preferences);
+            RevisionGridColumns.SetWidths(this, _preferences.RelativeDate);
             FilePathTrimming.Apply(_preferences);
             ShowGridTooltips();
             ShowAvatarSettings();
@@ -1764,20 +1762,18 @@ public partial class MainWindow : Window
         LoadMoreButton.IsEnabled = !busy;
         CommitDialogButton.IsEnabled = open;
         CommitMenuItem.IsEnabled = open;
-        FetchMenuItem.IsEnabled = open;
         PullDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0;
         PushDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0 &&
                                        _repository.Branches.Any(branch => !branch.IsRemote);
         PullButton.IsEnabled = open && hasBranch;
-        PullMenuItem.IsEnabled = open && hasBranch;
         PushButton.IsEnabled = open && hasBranch;
-        PushMenuItem.IsEnabled = open && hasBranch;
-        PushTagsMenuItem.IsEnabled = open;
         OpenFolderButton.IsEnabled = open;
         FileExplorerMenuItem.IsEnabled = open;
         TerminalButton.IsEnabled = open;
         TerminalMenuItem.IsEnabled = open;
         FilesMenuItem.IsEnabled = open;
+        UpdateAllSubmodulesMenuItem.IsEnabled = SyncAllSubmodulesMenuItem.IsEnabled = open;
+        GitInfoExcludeMenuItem.IsEnabled = ResetChangesMenuItem.IsEnabled = open;
         ReflogMenuItem.IsEnabled = open;
         GitIgnoreMenuItem.IsEnabled = open;
         WorktreesMenuItem.IsEnabled = open;
@@ -1922,14 +1918,28 @@ public partial class MainWindow : Window
 
     private WorktreeFlow WorktreeFlow() => new(_actions, _preferences, OpenRepositoryAsync);
 
-    private async Task EditGitIgnoreAsync()
+    // Upstream's ResetToolStripMenuItem_Click: StartResetChangesDialog with the work tree's files, all changes reset.
+    private async Task<bool> ResetChangesAsync(string path)
+    {
+        List<FileChange> workTree = [.. _repository.Changes.Where(change => !change.Staged)];
+        ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
+            hasExistingFiles: workTree.Any(change => !IsNew(change)), hasNewFiles: workTree.Any(IsNew));
+        return action != ResetChangesWindow.ResetAction.Cancel
+               && await _actions.ResetAllChangesAsync(path, clean: action == ResetChangesWindow.ResetAction.ResetAndDelete,
+                   onlyWorkTree: false);
+
+        static bool IsNew(FileChange change) => change.Kind is ChangeKind.Untracked or ChangeKind.Added;
+    }
+
+    // Upstream's StartEditGitIgnoreDialog, for .gitignore or .git/info/exclude.
+    private async Task EditGitIgnoreAsync(bool localExclude)
     {
         if (RepositoryPath is not { } path)
         {
             return;
         }
 
-        bool saved = await new GitIgnoreWindow(path).ShowDialog<bool>(this);
+        bool saved = await new GitIgnoreWindow(path, localExclude: localExclude).ShowDialog<bool>(this);
         _plugins.RaisePost(PluginEvent.EditGitIgnore, saved);
         if (saved)
         {

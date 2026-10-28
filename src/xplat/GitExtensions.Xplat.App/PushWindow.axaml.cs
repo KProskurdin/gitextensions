@@ -35,6 +35,7 @@ public partial class PushWindow : Window
         _preferences = preferences;
         _manageRemotes = manageRemotes;
         InitializeComponent();
+        InitialFocus.Attach(this, () => PushButton);
         Title = string.Format("{0} ({1})", UpstreamTranslation.ByText(PushDialog.PushCaption), workingDirectory);
         dialog.RecursiveSubmodules = preferences.RecursiveSubmodules;
         RemotesBox.ItemsSource = dialog.Remotes;

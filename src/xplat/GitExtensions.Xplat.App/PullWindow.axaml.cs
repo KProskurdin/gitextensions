@@ -54,6 +54,7 @@ public partial class PullWindow : Window
         _localBranches = localBranches;
         _displayPath = displayPath;
         InitializeComponent();
+        InitialFocus.Attach(this, () => RemotesBox);
         HelpImage.Load(preferences, "Pull");
         HelpImage.NoticeText = UpstreamTranslation.ByText(PullDialog.HoverShowImageText);
         dialog.AutoStash = preferences.AutoStash;

@@ -6,6 +6,8 @@ namespace GitExtensions.Xplat.App;
 // Upstream FormCommit's status strip (commitStatusStrip) and window title.
 public partial class CommitWindow
 {
+    private const string GitConfigSettingsPage = "GitConfigSettingsPage";
+
     private void WireStatusBar()
     {
         // Upstream reads the committer when the window opens and is activated, and when the author box is left.
@@ -13,6 +15,16 @@ public partial class CommitWindow
         Activated += (_, _) => Run(ShowCommitterAsync);
         CommitAuthorBox.LostFocus += (_, _) => Run(ShowCommitterAsync);
         Opened += (_, _) => Run(ShowBranchAsync);
+
+        // Upstream's commitAuthorStatus: the Git config settings page, where user.name and user.email are set.
+        CommitterLink.Click += (_, _) => Run(async () =>
+        {
+            if (_showSettings is not null)
+            {
+                await _showSettings(this, GitConfigSettingsPage);
+                await ShowCommitterAsync();
+            }
+        });
 
         // Upstream's remoteNameLabel: the remotes window on the branch's pull behavior, then the branch read again.
         RemoteNameLink.Click += (_, _) => Run(async () =>

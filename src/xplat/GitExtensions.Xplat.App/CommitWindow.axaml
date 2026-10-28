@@ -27,7 +27,11 @@
         <TextBlock Text="Col" VerticalAlignment="Center" />
         <TextBlock x:Name="CaretColumnText" Text="0" Width="40" VerticalAlignment="Center" />
       </StackPanel>
-      <TextBlock x:Name="CommitterText" DockPanel.Dock="Left" VerticalAlignment="Center" />
+      <!-- As upstream, the committer is a link to the Git config settings page. -->
+      <HyperlinkButton x:Name="CommitterLink" DockPanel.Dock="Left" Padding="0" VerticalAlignment="Center"
+                       ToolTip.Tip="Click to change committer information.">
+        <TextBlock x:Name="CommitterText" />
+      </HyperlinkButton>
       <TextBlock x:Name="StatusText" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
     <Grid x:Name="SplitMainGrid" ColumnDefinitions="380,6,*">

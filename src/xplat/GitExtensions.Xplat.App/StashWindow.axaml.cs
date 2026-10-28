@@ -53,6 +53,7 @@ public partial class StashWindow : Window
         _preferences = preferences;
         _dialog = new StashDialog(manageStashes, initialStash);
         InitializeComponent();
+        InitialFocus.Attach(this);
         WindowPlacementTracker.Attach(this, "Xplat.StashWindow");
 
         KeepIndexCheck.IsChecked = preferences.StashKeepIndex;

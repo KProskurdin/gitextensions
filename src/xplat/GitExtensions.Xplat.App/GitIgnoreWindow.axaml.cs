@@ -20,6 +20,7 @@ public partial class GitIgnoreWindow : Window
         _patternsToAdd = patternsToAdd ?? [];
         _localExclude = localExclude;
         InitializeComponent();
+        InitialFocus.Attach(this);
 
         // Upstream's GitIgnoreModel, GitLocalExcludeModel and FormAddToGitIgnore captions.
         Title = (_patternsToAdd.Count > 0, localExclude) switch

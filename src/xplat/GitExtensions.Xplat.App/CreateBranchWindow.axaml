@@ -27,8 +27,9 @@
       <local:CommitSummaryView x:Name="Summary" Grid.Row="3" Grid.ColumnSpan="2" Margin="3" />
       <HeaderedContentControl x:Name="OrphanGroup" Grid.Row="4" Grid.ColumnSpan="2" Classes="groupBox" Header="Orphan" Margin="3">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <CheckBox x:Name="CreateOrphanCheck" Content="Create or_phan" />
-          <CheckBox x:Name="ClearOrphanCheck" Content="Clear _working directory and index" IsEnabled="False" />
+          <CheckBox x:Name="CreateOrphanCheck" Content="Create or_phan" ToolTip.Tip="New branch will have NO parents" />
+          <CheckBox x:Name="ClearOrphanCheck" Content="Clear _working directory and index" IsEnabled="False"
+                    ToolTip.Tip="Remove files from the working directory and from the index" />
         </StackPanel>
       </HeaderedContentControl>
     </Grid>

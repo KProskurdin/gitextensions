@@ -15,6 +15,7 @@ public partial class FilterWindow : Window
     {
         _current = current;
         InitializeComponent();
+        InitialFocus.Attach(this);
         AuthorBox.Text = current.Author;
         CommitterBox.Text = current.Committer;
         MessageBox.Text = current.Message;

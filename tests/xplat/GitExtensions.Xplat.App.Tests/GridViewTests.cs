@@ -46,6 +46,25 @@ internal sealed class GridViewTests
     }
 
     [AvaloniaTest]
+    public void The_date_and_SHA1_columns_start_at_upstreams_widths()
+    {
+        MainWindow window = OpenWindow();
+
+        window.Resources["DateColumnWidth"].Should().Be(130.0);
+        window.Resources["ObjectIdColumnWidth"].Should().BeOfType<double>().Which.Should().BePositive();
+    }
+
+    [AvaloniaTest]
+    public void The_date_column_fits_an_absolute_date()
+    {
+        TestAppBuilder.Preferences.RelativeDate = false;
+
+        MainWindow window = OpenWindow();
+
+        window.Resources["DateColumnWidth"].Should().BeOfType<double>().Which.Should().BePositive().And.NotBe(130.0);
+    }
+
+    [AvaloniaTest]
     public void Show_tags_and_show_commit_body_change_the_rows()
     {
         _repo.Run("tag", "v1");
@@ -115,6 +134,7 @@ internal sealed class GridViewTests
         TestAppBuilder.Preferences.GridColumns = new GridColumns();
         TestAppBuilder.Preferences.HighlightAuthoredRevisions = true;
         TestAppBuilder.Preferences.RevisionSortOrder = RevisionSortOrder.GitDefault;
+        TestAppBuilder.Preferences.RelativeDate = true;
     }
 
     private static MainWindow NewWindow() =>

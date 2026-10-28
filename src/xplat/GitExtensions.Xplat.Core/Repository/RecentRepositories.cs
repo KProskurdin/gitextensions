@@ -90,7 +90,7 @@ public sealed class SettingsRecentRepositoryStore : IRecentRepositoryStore
         => RepositoryHistoryManager.Locals.RemoveInvalidRepositoriesAsync(isValid);
 
     private static IReadOnlyList<RepositoryEntry> ToEntries(IEnumerable<HistoryEntry> history)
-        => [.. history.Select(repository => new RepositoryEntry(repository.Path, repository.Category))];
+        => [.. history.Select(repository => new RepositoryEntry(repository.Path, repository.Category, repository.Anchor))];
 
     private static IReadOnlyList<string> ToPaths(IEnumerable<HistoryEntry> history) =>
         [.. history.Select(repository => repository.Path)];
@@ -238,9 +238,11 @@ public static class RecentRepositoryBranches
 }
 
 /// <summary>
-///  An entry of upstream's repository history: the path as stored and, for a favourite, its category.
+///  An entry of upstream's repository history: the path as stored, for a favourite its category, and where the user
+///  pinned it (upstream's <c>Anchor</c>).
 /// </summary>
-public sealed record RepositoryEntry(string Path, string? Category = null);
+public sealed record RepositoryEntry(string Path, string? Category = null,
+    HistoryEntry.RepositoryAnchor Anchor = HistoryEntry.RepositoryAnchor.None);
 
 /// <summary>
 ///  Upstream's recent repositories, newest first, and its favourites, in the order stored.

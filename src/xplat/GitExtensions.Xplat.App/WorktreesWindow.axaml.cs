@@ -22,6 +22,7 @@ public partial class WorktreesWindow : Window
         _repositoryService = repositoryService;
         _flow = flow;
         InitializeComponent();
+        InitialFocus.Attach(this, () => WorktreeList);
         WorktreeList.SelectionChanged += (_, _) => UpdateButtons();
         WorktreeList.DoubleTapped += (_, _) => Run(OpenSelectedAsync);
         OpenButton.Click += (_, _) => Run(OpenSelectedAsync);

@@ -23,6 +23,12 @@ public partial class CommitWindow
     private const string StopTrackingFailText = "Fail to stop tracking the file '{0}'.";
     private const string RegexErrorTitle = "RegEx";
 
+    // Upstream FormCommit's tooltips of the stage and unstage all buttons.
+    private const string StageAllText = "Stage all";
+    private const string StageFilteredText = "Stage filtered";
+    private const string UnstageAllText = "Unstage all";
+    private const string UnstageFilteredText = "Unstage filtered";
+
     private readonly IFileManager _fileManager =
         new SystemFileManager(new SystemProcessLauncher(), HostPlatform.Current);
 
@@ -75,6 +81,9 @@ public partial class CommitWindow
             parts.EditLocallyIgnored.Click += (_, _) => Run(() => EditIgnoreFileAsync(localExclude: true));
             parts.Menu.Opening += (_, _) => ShowFileMenu(parts);
             parts.StageOrUnstage.Click += (_, _) => StageSelected(parts.Staged);
+
+            // Upstream's Unstaged_DoubleClick and Staged_DoubleClick.
+            parts.List.DoubleTapped += (_, _) => StageSelected(parts.Staged);
             parts.ResetToFirst.Click += (_, _) => Run(() => ResetSelectedAsync(parts));
             parts.OpenWithDifftool.Click += (_, _) => Run(() => OpenSelectedInDiffToolAsync(parts));
             parts.OpenWorkingFile.Click += (_, _) =>
@@ -125,6 +134,16 @@ public partial class CommitWindow
     {
         Show(_unstaged, _repository.Changes.Where(change => !change.Staged));
         Show(_staged, _repository.Changes.Where(change => change.Staged));
+
+        // Upstream's Unstaged_FilterChanged and Staged_FilterChanged: while a list is filtered, its button stages or
+        // unstages the files shown.
+        bool unstagedFiltered = IsFiltered(_unstaged);
+        StageAllButton.Image = unstagedFiltered ? "StageAllFiltered" : "StageAll";
+        ToolTip.SetTip(StageAllButton, UpstreamTranslation.ByText(unstagedFiltered ? StageFilteredText : StageAllText));
+        bool stagedFiltered = IsFiltered(_staged);
+        UnstageAllButton.Image = stagedFiltered ? "UnstageAllFiltered" : "UnstageAll";
+        ToolTip.SetTip(UnstageAllButton,
+            UpstreamTranslation.ByText(stagedFiltered ? UnstageFilteredText : UnstageAllText));
         return;
 
         void Show(FileListParts parts, IEnumerable<FileChange> changes)
@@ -140,6 +159,9 @@ public partial class CommitWindow
             parts.NoFiles.IsVisible = shown.Count == 0;
         }
     }
+
+    // Upstream's FileStatusList.IsFilterActive.
+    private static bool IsFiltered(FileListParts parts) => !string.IsNullOrEmpty(parts.Filter.Text);
 
     // Upstream's group-by buttons choose the grouping and keep the tree or flat variant.
     private void SetGroupBy(DiffListSortType sorting)

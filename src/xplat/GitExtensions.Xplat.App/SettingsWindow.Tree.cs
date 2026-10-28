@@ -52,6 +52,16 @@ public partial class SettingsWindow
         ShowPage(node);
     }
 
+    /// <summary>
+    ///  Shows the page of upstream's page type <paramref name="upstreamPage"/> (such as <c>GitConfigSettingsPage</c>), as
+    ///  upstream's settings dialog started with a page reference.
+    /// </summary>
+    public void GoToPage(string upstreamPage)
+    {
+        TabItem page = PortedPages()[upstreamPage];
+        GoToPage(_allPageNodes.First(node => node.Page == page));
+    }
+
     // The pages the new shell has, by upstream's page type; the others are left out of the tree.
     private Dictionary<string, TabItem> PortedPages() => new()
     {

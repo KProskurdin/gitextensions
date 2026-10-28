@@ -7,7 +7,8 @@
        resources the template reads. -->
   <Styles.Resources>
     <!-- Upstream's columns in its order (graph, message, avatar, author, date, SHA-1, build status), each shown as the
-         View menu's Columns say (MainWindow.GridView sets the Show*Column resources). -->
+         View menu's Columns say (MainWindow.GridView sets the Show*Column resources); upstream's initial widths, the
+         author 130 px, the date and SHA-1 as RevisionGridColumns sets them. -->
     <DataTemplate x:Key="RevisionRowTemplate" x:DataType="core:CommitListItem">
       <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
         <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch"
@@ -55,11 +56,11 @@
         <local:AvatarView Grid.Column="2" Classes="gridAvatar" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
                           VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
                           Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
-        <TextBlock Grid.Column="3" Width="150" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
+        <TextBlock Grid.Column="3" Width="130" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorNameColumn}" />
-        <TextBlock Grid.Column="4" Width="134" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
+        <TextBlock Grid.Column="4" Width="{DynamicResource DateColumnWidth}" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowDateColumn}" />
-        <TextBlock Grid.Column="5" Width="84" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
+        <TextBlock Grid.Column="5" Width="{DynamicResource ObjectIdColumnWidth}" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
                    FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}"
                    FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowObjectIdColumn}" />

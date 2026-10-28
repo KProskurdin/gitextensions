@@ -64,6 +64,53 @@ internal sealed class CommitFileListsTests
     }
 
     [AvaloniaTest]
+    public void Stage_all_stages_only_the_filtered_files_and_clears_the_filter()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        File.WriteAllText(Path.Combine(_repo.Path, "notes.md"), "new");
+        CommitWindow commit = OpenCommitWindow();
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        WaitUntil(() => unstaged.ItemCount == 2);
+        ToolButton stageAll = Find<ToolButton>(commit, "StageAllButton");
+        ToolTip.GetTip(stageAll).Should().Be("Stage all");
+
+        Find<TextBox>(commit, "UnstagedFilterBox").Text = @"\.md$";
+
+        WaitUntil(() => Paths(unstaged).SequenceEqual(["notes.md"]));
+        ToolTip.GetTip(stageAll).Should().Be("Stage filtered");
+        stageAll.Image.Should().Be("StageAllFiltered");
+
+        Click(commit, "StageAllButton");
+
+        WaitUntil(() => Paths(Find<ListBox>(commit, "StagedList")).SequenceEqual(["notes.md"]));
+        WaitUntil(() => Paths(unstaged).SequenceEqual(["a.txt"]));
+        Find<TextBox>(commit, "UnstagedFilterBox").Text.Should().BeEmpty();
+        ToolTip.GetTip(stageAll).Should().Be("Stage all");
+        commit.Close();
+    }
+
+    [AvaloniaTest]
+    public void Double_click_stages_an_unstaged_file_and_unstages_a_staged_one()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        CommitWindow commit = OpenCommitWindow();
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        ListBox staged = Find<ListBox>(commit, "StagedList");
+        WaitUntil(() => unstaged.ItemCount == 1);
+        unstaged.SelectedIndex = 0;
+
+        unstaged.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => Paths(staged).SequenceEqual(["a.txt"]) && unstaged.ItemCount == 0);
+        staged.SelectedIndex = 0;
+
+        staged.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => Paths(unstaged).SequenceEqual(["a.txt"]) && staged.ItemCount == 0);
+        commit.Close();
+    }
+
+    [AvaloniaTest]
     public void Group_by_status_orders_both_lists_and_keeps_the_choice()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");

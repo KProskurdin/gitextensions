@@ -10,30 +10,45 @@
        and the selected commit's tabs below it. -->
   <DockPanel LastChildFill="True">
     <Menu x:Name="MainMenu" DockPanel.Dock="Top">
+      <!-- Upstream's menus (FormBrowse.Designer and its Menus folder) in its order, with its texts, access keys and images,
+           and the items the new shell has. -->
       <MenuItem Header="_Start">
-        <MenuItem x:Name="OpenMenuItem" Header="_Open..." />
-        <MenuItem x:Name="CloneMenuItem" Header="_Clone repository..." />
-        <MenuItem x:Name="InitMenuItem" Header="Create _new repository..." />
-        <MenuItem x:Name="RecentMenu" Header="_Recent repositories" />
+        <MenuItem x:Name="InitMenuItem" Header="_Create new repository..." Icon="{local:UpstreamIcon RepoCreate}" />
+        <MenuItem x:Name="OpenMenuItem" Header="_Open..." Icon="{local:UpstreamIcon RepoOpen}" />
+        <MenuItem x:Name="FavouritesMenu" Header="_Favorite repositories" Icon="{local:UpstreamIcon Star}" />
+        <MenuItem x:Name="RecentMenu" Header="_Recent repositories" Icon="{local:UpstreamIcon RecentRepositories}" />
         <Separator />
-        <MenuItem x:Name="CloseRepositoryMenuItem" Header="Close repository" />
+        <MenuItem x:Name="CloneMenuItem" Header="C_lone repository..." Icon="{local:UpstreamIcon CloneRepoGit}" />
+        <Separator />
         <MenuItem x:Name="ExitMenuItem" Header="E_xit" />
       </MenuItem>
-      <MenuItem Header="_Repository">
-        <MenuItem x:Name="RefreshMenuItem" Header="_Refresh" />
-        <MenuItem x:Name="FileExplorerMenuItem" Header="File _explorer" />
-        <MenuItem x:Name="TerminalMenuItem" Header="Open _terminal" />
+      <!-- Shown instead of Repository, View, Commands and Plugins while the dashboard shows, as upstream's. -->
+      <MenuItem x:Name="DashboardMenu" Header="_Dashboard">
+        <MenuItem x:Name="DashboardRefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
+      </MenuItem>
+      <!-- Not ported: Manage submodules, .gitattributes, .mailmap, Sparse Working Copy, Git maintenance and Repository
+           settings. "Browse files..." is the new shell's own. -->
+      <MenuItem x:Name="RepositoryMainMenu" Header="_Repository">
+        <MenuItem x:Name="RefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
+        <MenuItem x:Name="FileExplorerMenuItem" Header="File E_xplorer" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
         <Separator />
         <MenuItem x:Name="RemoteRepositoriesMenuItem" Header="Remo_te repositories..." Icon="{local:UpstreamIcon Remotes}" />
         <Separator />
-        <MenuItem x:Name="FilesMenuItem" Header="_Browse files..." />
-        <MenuItem x:Name="ReflogMenuItem" Header="Show _reflog..." />
-        <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit ._gitignore..." />
-        <MenuItem x:Name="WorktreesMenuItem" Header="_Worktrees..." />
+        <MenuItem x:Name="UpdateAllSubmodulesMenuItem" Header="_Update all submodules" Icon="{local:UpstreamIcon SubmodulesUpdate}" />
+        <MenuItem x:Name="SyncAllSubmodulesMenuItem" Header="Synchronize all su_bmodules" Icon="{local:UpstreamIcon SubmodulesSync}" />
+        <Separator />
+        <MenuItem x:Name="WorktreesMenuItem" Header="Manage _worktrees..." Icon="{local:UpstreamIcon WorkTree}" />
+        <Separator />
+        <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit .git_ignore" Icon="{local:UpstreamIcon EditGitIgnore}" />
+        <MenuItem x:Name="GitInfoExcludeMenuItem" Header="Edit .git/info/_exclude" />
+        <Separator />
+        <MenuItem x:Name="FilesMenuItem" Header="Browse _files..." />
+        <Separator />
+        <MenuItem x:Name="CloseRepositoryMenuItem" Header="_Close (go to Dashboard)" Icon="{local:UpstreamIcon DashboardFolderGit}" />
       </MenuItem>
       <!-- Upstream's View menu (RevisionGridMenuCommands.GetViewMenuCommands) in its order and groups, with the items the new
            shell has. -->
-      <MenuItem Header="_View">
+      <MenuItem x:Name="ViewMenu" Header="_View">
         <MenuItem Classes="groupHeader" Header="Branches" IsEnabled="False" />
         <MenuItem x:Name="ShowAllBranchesMenuItem" Header="Show _all branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchLocal}" />
         <MenuItem x:Name="ShowCurrentBranchOnlyMenuItem" Header="Show _current branch only" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
@@ -72,26 +87,27 @@
         <MenuItem x:Name="AuthorDateSortMenuItem" Header="_Sort commits by author date" ToggleType="CheckBox" />
         <MenuItem x:Name="TopoOrderMenuItem" Header="Arrange c_ommits by topo order (ancestor order)" ToggleType="CheckBox" />
       </MenuItem>
-      <MenuItem Header="_Commands">
-        <MenuItem x:Name="CommitMenuItem" Header="_Commit..." />
-        <MenuItem x:Name="PullDialogMenuItem" Header="_Pull/Fetch..." />
-        <MenuItem x:Name="PushDialogMenuItem" Header="P_ush..." />
-        <MenuItem x:Name="PullMenuItem" Header="Quick pull" />
-        <MenuItem x:Name="PushMenuItem" Header="Quick push" />
-        <MenuItem x:Name="FetchMenuItem" Header="Quick _fetch" />
-        <MenuItem x:Name="PushTagsMenuItem" Header="Push _tags" />
+      <!-- Not ported: Undo last commit, Clean working directory, Delete branch, Delete tag, Cherry pick, Archive revision and
+           the patch items. -->
+      <MenuItem x:Name="CommandsMenu" Header="_Commands">
+        <MenuItem x:Name="CommitMenuItem" Header="_Commit..." Icon="{local:UpstreamIcon RepoStateClean}" />
+        <MenuItem x:Name="PullDialogMenuItem" Header="Pull_/Fetch..." Icon="{local:UpstreamIcon Pull}" />
+        <MenuItem x:Name="PushDialogMenuItem" Header="_Push..." Icon="{local:UpstreamIcon Push}" />
         <Separator />
         <MenuItem x:Name="ManageStashesCommandMenuItem" Header="Ma_nage stashes..." Icon="{local:UpstreamIcon Stash}" />
+        <MenuItem x:Name="ResetChangesMenuItem" Header="_Reset changes..." Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
         <Separator />
-        <MenuItem x:Name="CreateBranchMenuItem" Header="Create _branch..." />
+        <MenuItem x:Name="CreateBranchMenuItem" Header="Create _branch..." Icon="{local:UpstreamIcon BranchCreate}" />
         <MenuItem x:Name="CheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" />
-        <MenuItem x:Name="CheckoutRevisionMenuItem" Header="Check_out revision..." Icon="{local:UpstreamIcon Checkout}" />
         <MenuItem x:Name="MergeMenuItem" Header="_Merge branches..." Icon="{local:UpstreamIcon Merge}" />
         <MenuItem x:Name="RebaseMenuItem" Header="R_ebase..." Icon="{local:UpstreamIcon Rebase}" />
-        <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." />
-        <MenuItem x:Name="BisectMenuItem" Header="B_isect..." />
+        <MenuItem x:Name="ResolveConflictsMenuItem" Header="_Solve merge conflicts..." Icon="{local:UpstreamIcon Unmerged}" />
         <Separator />
-        <MenuItem x:Name="ResolveConflictsMenuItem" Header="Solve _conflicts..." />
+        <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." Icon="{local:UpstreamIcon TagCreate}" />
+        <Separator />
+        <MenuItem x:Name="CheckoutRevisionMenuItem" Header="Check_out revision..." Icon="{local:UpstreamIcon Checkout}" />
+        <MenuItem x:Name="BisectMenuItem" Header="B_isect..." Icon="{local:UpstreamIcon Bisect}" />
+        <MenuItem x:Name="ReflogMenuItem" Header="Show reflo_g..." Icon="{local:UpstreamIcon Book}" />
       </MenuItem>
       <!-- Upstream's "(Repository hosts)" menu: named after the repository host plugin, shown when one is loaded. -->
       <MenuItem x:Name="RepositoryHostsMenu" Header="(Repository hosts)" IsVisible="False">
@@ -103,14 +119,24 @@
       <MenuItem x:Name="PluginsMenu" Header="_Plugins">
         <MenuItem x:Name="PluginsLoadingMenuItem" Header="Loading..." IsEnabled="False" />
         <Separator />
-        <MenuItem x:Name="PluginSettingsMenuItem" Header="Plugins _settings..." />
+        <MenuItem x:Name="PluginSettingsMenuItem" Header="Plugins _settings..." Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
+      <!-- Not ported: Git GUI, GitK and PuTTY. -->
       <MenuItem Header="_Tools">
-        <MenuItem x:Name="CommandLogMenuItem" Header="Git _command log..." />
-        <MenuItem x:Name="SettingsMenuItem" Header="_Settings..." />
+        <MenuItem x:Name="TerminalMenuItem" Header="Git _bash" Icon="{local:UpstreamIcon GitForWindows}" />
+        <Separator />
+        <MenuItem x:Name="CommandLogMenuItem" Header="Git _command log" Icon="{local:UpstreamIcon GitCommandLog}" />
+        <Separator />
+        <MenuItem x:Name="SettingsMenuItem" Header="_Settings..." Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
+      <!-- Not ported: Changelog, Donate, the telemetry choice and Check for updates. -->
       <MenuItem Header="_Help">
-        <MenuItem x:Name="AboutMenuItem" Header="_About" />
+        <MenuItem x:Name="UserManualMenuItem" Header="User _manual" Icon="{local:UpstreamIcon GotoManual}" />
+        <Separator />
+        <MenuItem x:Name="TranslateMenuItem" Header="_Translate" Icon="{local:UpstreamIcon Translate}" />
+        <Separator />
+        <MenuItem x:Name="ReportIssueMenuItem" Header="_Report an issue" Icon="{local:UpstreamIcon BugReport}" />
+        <MenuItem x:Name="AboutMenuItem" Header="_About" Icon="{local:UpstreamIcon Information}" />
       </MenuItem>
     </Menu>
 

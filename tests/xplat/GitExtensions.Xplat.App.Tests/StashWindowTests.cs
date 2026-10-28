@@ -31,6 +31,15 @@ internal sealed class StashWindowTests
     }
 
     [AvaloniaTest]
+    public void The_window_opens_with_its_first_control_focused_not_a_dialog_button()
+    {
+        StashWindow window = Open(manageStashes: true);
+
+        window.FocusManager.GetFocusedElement().Should().BeSameAs(window.FindControl<ComboBox>("StashesBox"));
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void The_window_shows_the_newest_stash_first_and_the_working_directory_in_groups()
     {
         Write("a.txt", "stashed");

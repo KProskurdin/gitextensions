@@ -48,6 +48,7 @@ public partial class ReflogWindow : Window
         _resetCurrentBranch = resetCurrentBranch;
         _module = GitModules.Open(repositoryPath);
         InitializeComponent();
+        InitialFocus.Attach(this);
         DirtyWarningText.Foreground = new SolidColorBrush(ToAvalonia(System.Drawing.Color.Red.AdaptForeColor(
             ThemeBrushes.Current.IsDark
                 ? System.Drawing.Color.FromArgb(0x20, 0x20, 0x20)

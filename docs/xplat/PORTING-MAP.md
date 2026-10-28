@@ -126,6 +126,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/Graph/LaneInfoProvider.cs`; `Graph/BranchFinder.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/LaneInfoProvider.cs`, `CommitGraph.cs`; `src/xplat/GitExtensions.Xplat.App/GraphCell.cs` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/RevisionGrid/ArtificialCommitChangeCount.cs`; `RevisionGridControl.cs` (artificial rows) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/ArtificialCommits.cs`, `GitCommitHistory.cs`, `CommitListViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BuildReportTabPageExtension.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs`, `MainWindow.axaml` (`BuildReportTab`) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (menus), `FormBrowse.cs` (menu visibility on the dashboard); `Menus/StartToolStripMenuItem.cs`, `ToolsToolStripMenuItem.cs`, `HelpToolStripMenuItem.cs`; `src/app/GitUI/RepositoryHistoryUIService.cs` (`PopulateRecentRepositoriesMenu`, `PopulateFavouriteRepositoriesMenu`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (menus), `MainWindow.StartMenu.cs`, `MainWindow.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepositoryMenus.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (`ToolStripMain`), `FormBrowse.cs` (toolstrip parts of `InitMenusAndToolbars`, `RefreshDefaultPullAction`, the layout toggles, the title); `Menus/WorkingDirectoryToolStripSplitButton.cs`; `ToolStripPushButton.cs`; `src/app/GitUI/UserControls/RepoStateVisualiser.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs`, `MainWindow.axaml` (toolstrip), `UpstreamImages.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepoState.cs`, `RecentRepositories.cs` (`Caption`), `BrowseWindowTitle.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/FilterToolBar.cs`, `FilterToolBar.Designer.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.FilterToolBar.cs`, `MainWindow.axaml` (`FilterToolStrip`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs` | `afc512395` | partial |
 | `src/app/GitUI/Shells/ShellProvider.cs`, `BashShell.cs`, `CmdShell.cs`, `PwshShell.cs`, `PowerShellShell.cs`; `FormBrowse.InitMenusAndToolbars.cs` (`FillUserShells`), `FormBrowse.cs` (`userShell_Click`) | `src/xplat/GitExtensions.Xplat.Core/Platform/TerminalChoices.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs` (`FillTerminals`) | `afc512395` | partial |
@@ -365,9 +366,14 @@ Changed 2026-10-13 (UI parity U3.3): upstream's status strip (`CommitStatusBar` 
 on opening, activation and leaving the author box), the branch with an arrow and where it pushes (the tracked branch, or
 origin or the first remote with "(untracked)", or "(remote not configured)"), the staged count of all changes ("1/3"), and
 the caret's line and column in the message. The title is upstream's "Commit to <branch> (<working directory>)". The
-operation messages, which upstream shows in its process dialog, follow the committer. Not ported: the committer and
-remote links (upstream opens its Git config settings page and its remotes dialog, which the new shell lacks) and the
-progress bar.
+operation messages, which upstream shows in its process dialog, follow the committer. Not ported: the progress bar.
+Changed 2026-10-28 (UI parity U6): the committer is upstream's link ("Click to change committer information.") to
+the settings window's Config page, opened over the commit window (`SettingsWindow.GoToPage` with upstream's page
+type, as `StartSettingsDialog` with a page reference); the remote link opens the remotes window since U5. Stage all
+and Unstage all act on the files a filtered list shows and clear its filter, with upstream's "Stage filtered" and
+"Unstage filtered" tooltips and images (`StageAllAccordingToFilter`, `UnstageAllFiles`, `*_FilterChanged`). A
+double-click in a list stages or unstages the file (`Unstaged_DoubleClick`, `Staged_DoubleClick`); upstream then
+moves the focus to the message when the unstaged list is empty, which the new shell does not.
 
 **FormPush** (`partial`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
@@ -750,6 +756,32 @@ file list, see RevisionDiffControl) and the Stash section (on the left panel's s
 commit window's Conventional Commits keys, and the grid's ToggleHighlightSelectedBranch and quick search next and previous
 keys. Still not ported: the commands of every section that the new shell has no feature for, and the reset-to-defaults
 button.
+
+**FormBrowse menus** (`partial`). Rebuilt 2026-10-28 (UI-PARITY U6) from upstream's designers: Start, Dashboard,
+Repository, View, Commands, the repository host's menu, Plugins, Tools and Help in upstream's order, with upstream's
+texts, access keys and images and the items whose window or flow the new shell has; a test reads the designers and
+checks the texts and the order (`MainMenuParityTests`). While the dashboard shows, the Dashboard menu (Refresh) stands
+in for Repository, View, Commands and Plugins, as upstream's. The Start menu's favourite and recent repositories are
+upstream's `PopulateFavouriteRepositoriesMenu` and `PopulateRecentRepositoriesMenu` (core `RepositoryMenus`): split and
+shortened by `RecentRepoSplitter`, numbered with the first ten as access keys, pinned ones with the pin image, the path
+as the tooltip when shortened, the checked out branch on the right, favourites per category, and the recent list's
+"Clear list" without a question. New: Commands > Reset changes... (upstream's `StartResetChangesDialog` with the work
+tree's files), Repository > Edit .git/info/exclude, Update all submodules and Synchronize all submodules, Help > User
+manual, Translate and Report an issue. Moved to upstream's places: Show reflog (Commands), Close (Repository, "Close
+(go to Dashboard)") and the terminal (Tools, "Git bash"). Removed, as upstream has them only on the toolbar or in the
+push window: Quick pull, Quick push, Quick fetch and Push tags (their hotkeys still work). "Browse files..." stays as
+the new shell's own. Not ported: the Navigate menu; Manage submodules, .gitattributes, .mailmap, Sparse Working Copy,
+Git maintenance and Repository settings; Undo last commit, Clean working directory, Delete branch, Delete tag, Cherry
+pick, Archive revision and the patch items; Git GUI, GitK and PuTTY; Changelog, Donate, the telemetry choice and
+Check for updates; Report an issue does not copy the environment information first.
+
+**Initial focus** (`ported`). 2026-10-28 (UI-PARITY U6): a WinForms form opens with a control focused (the one it
+selects on load, else the first in its tab order); an Avalonia window opens with none, and the first Tab would reach
+the dialog's buttons, which come first in the XAML. `InitialFocus` focuses upstream's control when the window opens,
+and again once it is enabled after the window's loading: the remotes box of the pull window (`FormPullLoad`), the Push
+button (`FormPush`), the worktree list (`FormManageWorktree`), and the first content control of the stash, checkout
+revision, merge submodule, create worktree, reset changes, .gitignore, reflog and filter windows. The other ported
+dialogs already focused their control.
 
 **SplitterManager** (`ported`). Ported 2026-10-17 (UI-PARITY U6): the splitter positions are kept under upstream's keys
 in GitExtensions.settings (`<form>.<splitter>_Size`, `_Dpi`, `_Distance`, `_Panel1Collapsed`, `_Panel2Collapsed`), in
@@ -1279,7 +1311,11 @@ grid has no focus, `AuthoredHighlight` for the commits of the selected commit's 
 (`RevisionGraphDrawAlternateBackColor`), no hover color. The View menu is upstream's `GetViewMenuCommands` in its groups
 and order with the items the new shell has (branch choices and reflog, advanced filter, graph styles, artificial commits,
 remote branch and tag labels, build status, commit body, dates, the graph, avatar, author, date and SHA-1 columns, author
-date and topo order), the group captions in italics as `MenuUtil.SetAsCaptionMenuItem`. Not ported: stashes, git notes and
+date and topo order), the group captions in italics as `MenuUtil.SetAsCaptionMenuItem`. 2026-10-28 (UI-PARITY U6): the
+author, date and SHA-1 columns start at upstream's providers' widths (`RevisionGridColumns`): the author 130 px, the date
+130 px for relative dates, else the width of the current time in the general format; the SHA-1 the width of the eight
+characters upstream's 60 px hold in its default font. Upstream keeps no column widths, as its grid has no header row to
+resize them. Not ported: stashes, git notes and
 session refs in the grid, the superproject labels and refs, the notes column, per-remote label colors, the label hover
 frame and tooltip per label, the multi-line indicator, non-relatives drawn in gray text (their lanes are gray), the
 "unknown" artificial state and submodule counts, the merge source arrow, and "Save current view settings as default".

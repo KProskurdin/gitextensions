@@ -287,12 +287,14 @@
           <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
           <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
           <CheckBox x:Name="RememberSyntaxHighlightingCheck" Content="Remember the 'Show syntax highlighting' preference" />
-          <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools" />
+          <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools"
+                    ToolTip.Tip="Show all configured difftools in a dropdown.&#10;The primary difftool can still be selected by clicking the main menu entry." />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Vertical ruler position [chars]" VerticalAlignment="Center" />
             <NumericUpDown x:Name="VerticalRulerBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
-          <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left" />
+          <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left"
+                  ToolTip.Tip="Saves all current view settings as the default for future sessions.&#10;Note: The checkboxes 'Remember the &quot;xyz&quot; preference' only affect the running instance&#10;as long as the default has not been saved. These preference values are held in memory&#10;and must be explicitly saved to become persistent defaults." />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Blame viewer" page, the blame window's settings. -->

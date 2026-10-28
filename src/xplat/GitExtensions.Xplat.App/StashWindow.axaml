@@ -46,17 +46,22 @@
       <TextBox x:Name="MessageBox" Grid.Row="3" AcceptsReturn="True" TextWrapping="Wrap" />
       <!-- Upstream's tableLayoutPanel1: the two options, then a button per row. -->
       <Grid x:Name="OptionsGrid" Grid.Row="4" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-        <CheckBox x:Name="KeepIndexCheck" Content="_Keep index" Margin="3" HorizontalAlignment="Left" />
+        <CheckBox x:Name="KeepIndexCheck" Content="_Keep index" Margin="3" HorizontalAlignment="Left"
+                  ToolTip.Tip="All changes already added to the index are left intact" />
         <CheckBox x:Name="IncludeUntrackedCheck" Grid.Column="1" Content="_Include untracked files" Margin="3"
-                  HorizontalAlignment="Right" />
+                  HorizontalAlignment="Right" ToolTip.Tip="All untracked files are also stashed and then cleaned" />
         <Button x:Name="StashAllButton" Grid.Row="1" Grid.ColumnSpan="2" Content="S_tash all changes" Margin="3,3,0,3"
-                MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Save local changes to a new stash, then revert local changes" />
         <Button x:Name="StashSelectedButton" Grid.Row="2" Grid.ColumnSpan="2" Content="Stash _selected changes"
-                Margin="3,3,0,3" MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                Margin="3,3,0,3" MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Stash changes for the selected files, then revert them to the original state" />
         <Button x:Name="DropButton" Grid.Row="3" Grid.ColumnSpan="2" Content="_Drop Selected Stash" Margin="3,3,0,3"
-                MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Remove the selected stash from the list" />
         <Button x:Name="ApplyButton" Grid.Row="4" Grid.ColumnSpan="2" Content="_Apply Selected Stash" Margin="3,3,0,3"
-                MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                MinHeight="25" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                ToolTip.Tip="Apply the selected stash on top of the current working directory state" />
       </Grid>
     </Grid>
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />

@@ -90,6 +90,7 @@ public partial class MainWindow
         Resources["ShowGraphColumn"] = columns.Graph;
         Resources["ShowAuthorNameColumn"] = columns.AuthorName;
         Resources["ShowDateColumn"] = columns.Date;
+        RevisionGridColumns.SetWidths(this, _preferences.RelativeDate);
         Resources["ShowObjectIdColumn"] = columns.ObjectId;
         Resources["FillRefLabels"] = _preferences.FillRefLabels;
         CommitList.Classes.Set("alternate", _preferences.RevisionGraphDrawAlternateBackColor);

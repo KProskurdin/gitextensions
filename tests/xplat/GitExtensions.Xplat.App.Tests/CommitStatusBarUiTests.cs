@@ -61,6 +61,22 @@ internal sealed class CommitStatusBarUiTests
         commit.Close();
     }
 
+    [AvaloniaTest]
+    public void The_committer_link_opens_the_git_config_settings_page()
+    {
+        CommitWindow commit = OpenCommitWindow();
+        HyperlinkButton link = Find<HyperlinkButton>(commit, "CommitterLink");
+        ToolTip.GetTip(link).Should().Be("Click to change committer information.");
+
+        link.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        WaitUntil(() => commit.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = commit.OwnedWindows.OfType<SettingsWindow>().Single();
+        settings.SelectedPage!.Title.Should().Be("Config");
+        settings.Close();
+        commit.Close();
+    }
+
     private static string? Text(Window window, string name) => Find<TextBlock>(window, name).Text;
 
     private CommitWindow OpenCommitWindow()

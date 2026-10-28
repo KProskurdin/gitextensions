@@ -22,6 +22,7 @@ public partial class ResetChangesWindow : Window
     public ResetChangesWindow(bool hasExistingFiles, bool hasNewFiles)
     {
         InitializeComponent();
+        InitialFocus.Attach(this);
 
         // As upstream: only new files means they are deleted; no new files means there is nothing to delete.
         if (!hasExistingFiles || !hasNewFiles)

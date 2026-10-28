@@ -10,7 +10,8 @@
   <Grid Margin="12,12,12,12" RowDefinitions="Auto,*,Auto">
     <HeaderedContentControl Classes="groupBox" Header="Push to">
       <Grid ColumnDefinitions="114,*,6,150" RowDefinitions="Auto,6,Auto">
-        <RadioButton x:Name="PushToRemoteRadio" GroupName="PushTo" Content="_Remote" IsChecked="True" />
+        <RadioButton x:Name="PushToRemoteRadio" GroupName="PushTo" Content="_Remote" IsChecked="True"
+                     ToolTip.Tip="Remote repository to push to" />
         <ComboBox x:Name="RemotesBox" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
         <Button x:Name="AddRemoteButton" Grid.Column="3" HorizontalAlignment="Stretch">
           <StackPanel Orientation="Horizontal" Spacing="4">
@@ -18,7 +19,7 @@
             <AccessText Text="_Manage remotes" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <RadioButton x:Name="PushToUrlRadio" Grid.Row="2" GroupName="PushTo" Content="U_rl" />
+        <RadioButton x:Name="PushToUrlRadio" Grid.Row="2" GroupName="PushTo" Content="U_rl" ToolTip.Tip="Url to push to" />
         <ComboBox x:Name="DestinationBox" Grid.Row="2" Grid.Column="1" IsEditable="True" IsEnabled="False"
                   HorizontalAlignment="Stretch" VerticalAlignment="Center" />
         <Button x:Name="BrowseDestinationButton" Grid.Row="2" Grid.Column="3" IsEnabled="False" HorizontalAlignment="Stretch">

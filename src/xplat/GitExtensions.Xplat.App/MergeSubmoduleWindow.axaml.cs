@@ -37,6 +37,7 @@ public partial class MergeSubmoduleWindow : Window
         _checkoutBranch = checkoutBranch;
         _launcher = launcher ?? new SystemProcessLauncher();
         InitializeComponent();
+        InitialFocus.Attach(this);
         SubmoduleText.Text = fileName;
         CheckoutBranchButton.IsEnabled = false;
         RefreshButton.Click += (_, _) => Run(ShowCurrentAsync);

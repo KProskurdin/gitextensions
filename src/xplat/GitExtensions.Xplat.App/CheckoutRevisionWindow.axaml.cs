@@ -36,6 +36,7 @@ public partial class CheckoutRevisionWindow : Window
         _updateSubmodules = updateSubmodules;
         _module = GitModules.Open(repositoryPath);
         InitializeComponent();
+        InitialFocus.Attach(this);
         CommitPicker.Module = _module;
         CheckoutButton.Click += (_, _) => Run(CheckoutAsync);
         KeyDown += (_, e) =>

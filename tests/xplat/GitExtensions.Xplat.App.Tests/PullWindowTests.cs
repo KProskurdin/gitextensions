@@ -43,6 +43,19 @@ internal sealed class PullWindowTests
     }
 
     [AvaloniaTest]
+    public void The_window_opens_with_the_remotes_box_focused_as_upstreams_FormPullLoad()
+    {
+        PullWindow pull = NewWindow(new PullWindowGit(_ => Task.FromResult<string?>("origin"),
+            (_, _, _) => Task.FromResult(false)));
+
+        pull.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        pull.FocusManager.GetFocusedElement().Should().BeSameAs(Find<ComboBox>(pull, "RemotesBox"));
+        pull.Close();
+    }
+
+    [AvaloniaTest]
     public void Pull_closes_with_upstreams_request_and_keeps_auto_stash()
     {
         Window owner = new();
