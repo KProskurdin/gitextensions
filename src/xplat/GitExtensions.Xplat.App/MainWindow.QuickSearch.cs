@@ -2,6 +2,8 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Ui;
+using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
 
@@ -11,11 +13,16 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
+    // Upstream RevisionGridMenuCommands' _quickSearchQuickHelp, shown by Navigate > Quick search.
+    private const string QuickSearchHelpText = "Start typing in revision grid to start quick search.";
+
     private readonly QuickSearch _quickSearch = new();
     private DispatcherTimer? _quickSearchTimer;
 
     private void WireQuickSearch()
     {
+        QuickSearchMenuItem.Click += (_, _) => Run(() => new MessageBoxWindow(
+            UpstreamTranslation.ByText(QuickSearchHelpText), "Information", MessageBoxButtons.OK).ShowDialog(this));
         CommitList.AddHandler(TextInputEvent, (_, e) =>
         {
             if (e.Text is { Length: > 0 } text && !text.Any(char.IsControl))

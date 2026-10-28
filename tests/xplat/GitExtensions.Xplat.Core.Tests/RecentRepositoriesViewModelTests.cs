@@ -131,6 +131,8 @@ internal sealed class RecentRepositoriesViewModelTests
 
         public Task RemoveInvalidAsync(Func<string, bool> isValid) => Fail();
 
+        public Task SaveRecentAsync(IReadOnlyList<RepositoryEntry> recent) => Fail();
+
         private static Task<IReadOnlyList<string>> Fail()
             => Task.FromException<IReadOnlyList<string>>(new IOException("settings are read-only"));
     }

@@ -131,7 +131,7 @@ internal sealed class StashWindowTests
 
         Click(window, "ApplyButton");
 
-        WaitUntil(() => File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "stashed");
+        WaitUntil(() => _repo.ReadFile("a.txt") == "stashed");
         _repo.Run("stash", "list").Should().Contain("to apply");
         window.Close();
     }

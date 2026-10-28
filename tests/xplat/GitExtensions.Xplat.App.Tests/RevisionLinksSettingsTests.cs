@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
@@ -180,7 +181,9 @@ internal sealed class RevisionLinksSettingsTests
     }
 
     private static T Find<T>(Window window, string name) where T : Control
-        => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");
+        => window.FindControl<T>(name) ??
+           window.GetLogicalDescendants().OfType<T>().FirstOrDefault(control => control.Name == name) ??
+           throw new InvalidOperationException($"Control {name} not found");
 
     private static void WaitUntil(Func<bool> condition)
     {

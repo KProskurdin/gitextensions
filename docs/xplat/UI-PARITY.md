@@ -332,6 +332,25 @@ toolbar icons with upstream's `ToolTipText`.
   Found then: the dialogs opened with nothing focused, so the first Tab reached their buttons; they now open on
   upstream's control (`InitialFocus`). See the "FormBrowse menus" and "Initial focus" notes in `PORTING-MAP.md`. Left
   from U6: the grid's double-click (FormCommitDiff), the Navigate menu and the menus' unported items.
+- 2026-10-28, U6 leftover FormCommitDiff done: upstream's CommitInfo is a shared control (`CommitInfoView`), upstream's
+  CommitDiff (`CommitDiffView`) shows it with the commit's files and diff, and upstream's FormCommitDiff
+  (`CommitDiffWindow`) opens on a double-click on a commit of the browse window's or the file history's grid; the file
+  history's Commit tab is the same view. See the "FormCommitDiff and CommitDiff" note in `PORTING-MAP.md`. Checked by
+  screenshot (`XPLAT_SCREENSHOT_WINDOW=commitdiff`). Left: the Navigate menu and the menus' unported items.
+- 2026-10-28, U6 leftover Navigate menu done: upstream's Navigate menu with the grid's commands, the new ones (toggle
+  between artificial and HEAD, first and last parent, navigate backward and forward) as grid hotkeys with upstream's ids
+  and keys. See the "Navigate menu" note in `PORTING-MAP.md`. Left: the menus' unported items (their windows are not
+  ported) and the working directory drop-down's search box and settings.
+- 2026-10-28, U6 leftover working directory drop-down done: upstream's drop-down (search box, favourites, recent
+  repositories, Open, Close, "Configure this menu..."), its right click and tooltip, Ctrl+click for a new instance, and
+  FormRecentReposSettings as `RecentRepositoriesSettingsWindow`, with a screenshot
+  (`XPLAT_SCREENSHOT_WINDOW=recentrepos`). See the "Working directory drop-down and FormRecentReposSettings" note in
+  `PORTING-MAP.md`. Left: the menus' unported items, whose windows are not ported.
+- 2026-10-28, Navigate menu finished: Go to commit... (FormGoToCommit as `GoToCommitWindow`, screenshot
+  `XPLAT_SCREENSHOT_WINDOW=gotocommit`) and Go to common ancestor (merge base), with upstream's hotkeys. See the
+  "FormGoToCommit and Go to common ancestor" note in `PORTING-MAP.md`. Left: the other menus' unported items (Delete
+  branch/tag, Cherry pick, Archive, patches, Git maintenance, submodules, .gitattributes/.mailmap, Sparse, Repository
+  settings, Undo last commit, Clean, Git GUI/GitK/PuTTY, Changelog/Donate/telemetry/updates).
 
 ## Risks
 

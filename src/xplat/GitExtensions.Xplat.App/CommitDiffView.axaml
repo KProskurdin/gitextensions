@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+             xmlns:local="using:GitExtensions.Xplat.App"
+             x:Class="GitExtensions.Xplat.App.CommitDiffView">
+  <!-- Upstream's CommitDiff: the commit's information above (splitContainer1, its panel 200 pixels), its changed files
+       (260 pixels) beside the selected file's diff (splitContainer2). -->
+  <Grid RowDefinitions="200,5,*">
+    <local:CommitInfoView x:Name="CommitInfo" />
+    <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+    <Grid Grid.Row="2" ColumnDefinitions="260,5,*">
+      <ListBox x:Name="DiffFiles">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="core:CommitFile">
+            <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Text="{Binding Status}" Margin="0,0,4,0" />
+              <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                         TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+            </DockPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <local:DiffView x:Name="DiffText" Grid.Column="2" />
+    </Grid>
+  </Grid>
+</UserControl>

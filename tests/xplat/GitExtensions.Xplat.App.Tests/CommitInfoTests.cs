@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.Settings;
@@ -128,7 +129,11 @@ internal sealed class CommitInfoTests
         => Find<MenuItem>(window, name).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     private static T Find<T>(Window window, string name) where T : Control
-        => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");
+        => window.FindControl<T>(name) ??
+           window.GetLogicalDescendants().OfType<T>().FirstOrDefault(control => control.Name == name) ??
+           window.GetLogicalDescendants().OfType<UserControl>().Select(view => view.FindControl<T>(name))
+               .FirstOrDefault(control => control is not null) ??
+           throw new InvalidOperationException($"Control {name} not found");
 
     private static void WaitUntil(Func<bool> condition)
     {

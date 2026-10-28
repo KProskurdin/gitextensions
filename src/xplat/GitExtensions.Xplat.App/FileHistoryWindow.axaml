@@ -89,23 +89,7 @@
           </StackPanel>
         </TabItem.Header>
         <!-- Upstream's CommitDiff: the commit's information, its changed files and the selected one's diff. -->
-        <Grid RowDefinitions="Auto,*">
-          <SelectableTextBlock x:Name="CommitInfoText" Margin="4" TextWrapping="Wrap" MaxHeight="120" />
-          <Grid Grid.Row="1" ColumnDefinitions="220,5,*">
-            <ListBox x:Name="CommitFilesList">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="core:CommitFile">
-                  <DockPanel>
-                    <TextBlock DockPanel.Dock="Left" Text="{Binding Status}" Margin="0,0,4,0" />
-                    <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
-                  </DockPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-            <local:DiffView x:Name="CommitDiff" Grid.Column="2" />
-          </Grid>
-        </Grid>
+        <local:CommitDiffView x:Name="CommitDiffPanel" />
       </TabItem>
       <TabItem x:Name="DiffTab">
         <TabItem.Header>

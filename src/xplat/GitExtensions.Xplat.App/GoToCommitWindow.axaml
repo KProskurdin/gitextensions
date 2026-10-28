@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.GoToCommitWindow"
+        Title="Go to commit"
+        Width="604" Height="320" MinWidth="604" MinHeight="302" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormGoToCommit: a commit expression with Go beside it, the help about expressions, and the tags and
+       branches to go to. -->
+  <Grid ColumnDefinitions="143,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="12,10,8,10" RowSpacing="8">
+    <TextBlock x:Name="label1" Text="Commit expression:" VerticalAlignment="Center" />
+    <TextBox x:Name="textboxCommitExpression" Grid.Column="1" />
+    <Button x:Name="goButton" Grid.Column="2" Content="Go" MinWidth="75" Margin="6,0,0,0" IsDefault="True"
+            HorizontalContentAlignment="Center" />
+    <HeaderedContentControl x:Name="groupBox1" Grid.Row="1" Grid.ColumnSpan="2" Margin="33,0,0,0" Classes="groupBox"
+                            Header="Help">
+      <StackPanel Spacing="12" Margin="10,0,0,0">
+        <TextBlock x:Name="label2" TextWrapping="Wrap"
+                   Text="Commit expression examples:&#10;- complete commit hash: e. g.: 8eab51fcb9c4538eb74c4dcd4c31ffd693ad25c9&#10;- partial commit hash (if unique): e. g.: 8eab51fcb9c453&#10;- tag name&#10;- branch name" />
+        <HyperlinkButton x:Name="linkGitRevParse" Content="More see git-rev-parse" Padding="0" />
+      </StackPanel>
+    </HeaderedContentControl>
+    <TextBlock x:Name="label3" Grid.Row="2" Text="Go to tag:" VerticalAlignment="Center" Margin="0,24,0,0" />
+    <ComboBox x:Name="comboBoxTags" Grid.Row="2" Grid.Column="1" IsEditable="True" Width="287" HorizontalAlignment="Left"
+              Margin="0,24,0,0" />
+    <TextBlock x:Name="label4" Grid.Row="3" Text="Go to branch:" VerticalAlignment="Center" Margin="0,12,0,0" />
+    <ComboBox x:Name="comboBoxBranches" Grid.Row="3" Grid.Column="1" IsEditable="True" Width="287"
+              HorizontalAlignment="Left" Margin="0,12,0,0" />
+  </Grid>
+</Window>

@@ -1,0 +1,9 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.CommitDiffWindow"
+        Title="Diff" Width="717" Height="529" MinWidth="150" MinHeight="148"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormCommitDiff: its CommitDiff filling the window, the window titled as the control. -->
+  <local:CommitDiffView x:Name="CommitDiff" />
+</Window>

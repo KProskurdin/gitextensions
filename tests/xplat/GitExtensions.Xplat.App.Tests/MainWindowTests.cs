@@ -257,6 +257,124 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void The_working_directory_menu_searches_the_repositories_and_configures_the_menu()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        Button button = Find<Button>(window, "WorkingDirButton");
+        (ToolTip.GetTip(button) as string).Should().StartWith("Change working directory");
+        MenuFlyout flyout = (MenuFlyout)button.Flyout!;
+        flyout.ShowAt(button);
+        WaitUntil(() => flyout.Items.Count > 0);
+        List<MenuItem> items = [.. flyout.Items.OfType<MenuItem>()];
+        TextBox filter = (TextBox)items[0].Header!;
+        filter.PlaceholderText.Should().Be("Search repositories...");
+        items.Select(item => item.Header).OfType<string>().Should()
+            .EndWith(["_Open...", "_Close (go to Dashboard)", "Co_nfigure this menu..."]);
+        string name = Path.GetFileName(_repo.Path.TrimEnd('/', '\\'));
+        List<MenuItem> repositories = [.. items.Where(item => item.Tag is string)];
+        repositories.Should().Contain(item => ((string)item.Tag!).StartsWith("1: ", StringComparison.Ordinal)
+                                              && ((string)item.Tag!).Contains(name, StringComparison.Ordinal));
+
+        // Upstream's filter, as typing in the search box changes its text.
+        filter.Text = "zz-no-such-repository";
+        Dispatcher.UIThread.RunJobs();
+
+        repositories.Should().OnlyContain(item => !item.IsVisible);
+        filter.Text = name.ToUpperInvariant();
+        Dispatcher.UIThread.RunJobs();
+        repositories.Should().Contain(item => item.IsVisible, "the search ignores case");
+        flyout.Hide();
+
+        items.Single(item => item.Name == "ConfigureWorkingDirMenuItem")
+            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        WaitUntil(() => window.OwnedWindows.OfType<RecentRepositoriesSettingsWindow>().Any());
+        RecentRepositoriesSettingsWindow settings =
+            window.OwnedWindows.OfType<RecentRepositoriesSettingsWindow>().Single();
+        WaitUntil(() => settings.SettingsLoaded.IsCompleted);
+        settings.Close();
+    }
+
+    [AvaloniaTest]
+    public void Go_to_commit_and_go_to_common_ancestor_select_the_commit_git_names()
+    {
+        _repo.Run("branch", "side", "HEAD~1");
+        _repo.Run("checkout", "-q", "side");
+        File.WriteAllText(Path.Combine(_repo.Path, "b.txt"), "side");
+        _repo.Run("add", "b.txt");
+        _repo.Run("commit", "-q", "-m", "side commit");
+        _repo.Run("checkout", "-q", "-");
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        string Selected() => ((CommitListItem)commits.SelectedItem!).Row.Subject;
+        Find<MenuItem>(window, "GoToCommitMenuItem").InputGesture.Should()
+            .Be(Hotkeys.Grid.GestureFor(GridCommand.GoToCommit));
+        commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "side commit");
+
+        Click(window, "GoToMergeBaseMenuItem");
+
+        WaitUntil(() => Selected() == "first");
+
+        Click(window, "GoToCommitMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<GoToCommitWindow>().Any());
+        GoToCommitWindow goTo = window.OwnedWindows.OfType<GoToCommitWindow>().Single();
+        WaitUntil(() => goTo.RefsLoaded.IsCompleted);
+        Find<TextBox>(goTo, "textboxCommitExpression").Text = "side";
+        Click(goTo, "goButton");
+
+        WaitUntil(() => Selected() == "side commit");
+    }
+
+    [AvaloniaTest]
+    public void The_Navigate_menu_goes_to_the_parent_and_back_and_forward()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = 0;
+        string Selected() => ((CommitListItem)commits.SelectedItem!).Row.Subject;
+        Find<MenuItem>(window, "GoToFirstParentMenuItem").InputGesture.Should()
+            .Be(Hotkeys.Grid.GestureFor(GridCommand.GoToFirstParent));
+
+        Click(window, "GoToParentMenuItem");
+        Selected().Should().Be("first");
+        Click(window, "NavigateBackwardMenuItem");
+        Selected().Should().Be("second");
+        Click(window, "NavigateForwardMenuItem");
+        Selected().Should().Be("first");
+        Click(window, "ToggleArtificialAndHeadMenuItem");
+
+        Selected().Should().Be("second", "without artificial rows the circle ends on HEAD");
+    }
+
+    [AvaloniaTest]
+    public void Double_click_on_a_commit_opens_upstreams_commit_diff_window()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = 0;
+
+        commits.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => window.OwnedWindows.OfType<CommitDiffWindow>().Any());
+        CommitDiffWindow diff = window.OwnedWindows.OfType<CommitDiffWindow>().Single();
+        WaitUntil(() => diff.RevisionLoaded.IsCompleted);
+        diff.Title.Should().StartWith("Diff - ").And.Contain(" - Test - ");
+        CommitDiffView view = diff.FindControl<CommitDiffView>("CommitDiff")!;
+        view.Info.Details!.Message.Should().StartWith("second");
+        ListBox files = view.FindControl<ListBox>("DiffFiles")!;
+        files.ItemsSource!.OfType<CommitFile>().Select(file => file.Path).Should().Equal("a.txt");
+        files.SelectedItem.Should().NotBeNull("the first file's diff shows");
+        diff.Close();
+    }
+
+    [AvaloniaTest]
     public void Double_click_on_a_diff_tab_file_opens_its_history()
     {
         MainWindow window = NewWindow();
@@ -284,6 +402,7 @@ internal sealed class MainWindowTests
         Find<MenuItem>(window, "RepositoryMainMenu").IsVisible.Should().BeFalse();
         Find<MenuItem>(window, "CommandsMenu").IsVisible.Should().BeFalse();
         Find<MenuItem>(window, "ViewMenu").IsVisible.Should().BeFalse();
+        Find<MenuItem>(window, "NavigateMenu").IsVisible.Should().BeFalse();
 
         Open(window, _repo.Path);
 
@@ -323,7 +442,7 @@ internal sealed class MainWindowTests
 
         WaitUntil(() => window.OwnedWindows.OfType<ResetChangesWindow>().Any());
         Click(window.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
-        WaitUntil(() => File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "two");
+        WaitUntil(() => _repo.ReadFile("a.txt") == "two");
     }
 
     [AvaloniaTest]
@@ -462,7 +581,7 @@ internal sealed class MainWindowTests
     public void CommitInfoPosition_should_move_the_commit_info_beside_the_grid_and_back_into_the_first_tab()
     {
         MainWindow window = NewWindow();
-        ScrollViewer revisionInfo = Find<ScrollViewer>(window, "RevisionInfo");
+        CommitInfoView revisionInfo = Find<CommitInfoView>(window, "RevisionInfo");
         Border host = Find<Border>(window, "RevisionInfoHost");
 
         Click(window, "CommitInfoRightwardMenuItem");
@@ -711,7 +830,7 @@ internal sealed class MainWindowTests
         Click(dialog, "CheckoutButton");
 
         WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "other"
-                        && File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "local edit" && !window.IsBusy);
+                        && _repo.ReadFile("a.txt") == "local edit" && !window.IsBusy);
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("other").And.NotBe(baseBranch);
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("local edit");
         _repo.Run("stash", "list").Trim().Should().BeEmpty();

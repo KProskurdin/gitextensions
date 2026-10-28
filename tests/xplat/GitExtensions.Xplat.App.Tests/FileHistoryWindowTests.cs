@@ -112,7 +112,22 @@ internal sealed class FileHistoryWindowTests
         Find<TabControl>(history, "Tabs").SelectedItem.Should().Be(Find<TabItem>(history, "CommitTab"));
         Find<TextBlock>(history, "CommitTabText").Text.Should()
             .Be("Commit - Git could not identify the file \"c.txt\"");
-        WaitUntil(() => (Find<SelectableTextBlock>(history, "CommitInfoText").Text ?? "").Contains("remove c"));
+        WaitUntil(() => Find<CommitDiffView>(history, "CommitDiffPanel").Info.Details?.Message.Contains("remove c")
+                        == true);
+    }
+
+    [AvaloniaTest]
+    public void Double_click_on_a_commit_opens_it_in_upstreams_commit_diff_window()
+    {
+        FileHistoryWindow history = Open("a.txt");
+
+        Find<ListBox>(history, "HistoryList").RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => history.OwnedWindows.OfType<CommitDiffWindow>().Any());
+        CommitDiffWindow diff = history.OwnedWindows.OfType<CommitDiffWindow>().Single();
+        WaitUntil(() => diff.RevisionLoaded.IsCompleted);
+        diff.Title.Should().StartWith("Diff - ");
+        diff.Close();
     }
 
     private static void Reset() => TestAppBuilder.Preferences.FileHistory = new FileHistoryOptions();

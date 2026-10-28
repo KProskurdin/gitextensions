@@ -616,6 +616,42 @@ public sealed class CommitListViewModel : ObservableObject
     public int? IndexOfHead()
         => IndexOf(item => item.Row.Labels?.Any(label => label.Kind == RefKind.Head) == true);
 
+    /// <summary>
+    ///  The shown row of <paramref name="row"/>'s last parent (upstream's "go to last parent commit"), or null.
+    /// </summary>
+    public int? IndexOfLastParent(CommitRow row)
+        => row.ParentHashes is [.., { } parent] ? IndexOfHash(parent) : null;
+
+    /// <summary>
+    ///  The shown row of the commit <paramref name="hash"/>, or null when it is not loaded or filtered out.
+    /// </summary>
+    public int? IndexOfHash(string hash)
+        => IndexOf(item => string.Equals(item.Row.Hash, hash, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    ///  Upstream's <c>ToggleBetweenArtificialAndHeadCommits</c>: the shown row after <paramref name="selected"/> in the
+    ///  circle of the working directory, the index and HEAD, passing over an artificial row whose counts show no changes;
+    ///  HEAD when none of the three is shown.
+    /// </summary>
+    public int? IndexOfNextArtificialOrHead(CommitRow? selected)
+    {
+        const string head = "HEAD";
+        string? current = selected?.Hash;
+        for (int i = 0; i < 3; i++)
+        {
+            current = current == ArtificialCommits.WorkTreeHash ? ArtificialCommits.IndexHash
+                : current == ArtificialCommits.IndexHash ? head
+                : ArtificialCommits.WorkTreeHash;
+            int? index = current == head ? IndexOfHead() : IndexOfHash(current);
+            if (index is { } found && (current == head || _visibleRows[found].Changes?.HasChanges != false))
+            {
+                return found;
+            }
+        }
+
+        return IndexOfHead();
+    }
+
     private int? IndexOf(Func<CommitListItem, bool> match)
     {
         for (int i = 0; i < _visibleRows.Count; i++)

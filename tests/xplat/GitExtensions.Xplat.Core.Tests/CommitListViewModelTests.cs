@@ -312,6 +312,27 @@ internal sealed class CommitListViewModelTests
     }
 
     [Test]
+    public async Task Toggle_between_artificial_and_HEAD_should_circle_and_pass_over_a_clean_index()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+        [
+            .. ArtificialCommits.Rows("Ann", "head"),
+            new CommitRow("head", "head", "head", "a", "d", ["base"], Labels: [new RefLabel("HEAD", RefKind.Head)]),
+            new CommitRow("base", "base", "base", "a", "d"),
+        ], HasMore: false));
+        await open;
+        _viewModel.SetArtificialChangeCounts(new ArtificialChanges(1, 0, 0), new ArtificialChanges(0, 0, 0));
+        IReadOnlyList<CommitRow> rows = [.. _viewModel.VisibleRows.Select(item => item.Row)];
+
+        _viewModel.IndexOfNextArtificialOrHead(rows[3]).Should().Be(0, "another commit goes to the working directory");
+        _viewModel.IndexOfNextArtificialOrHead(rows[0]).Should().Be(2, "the clean index is passed over");
+        _viewModel.IndexOfNextArtificialOrHead(rows[2]).Should().Be(0, "HEAD goes round to the working directory");
+        _viewModel.IndexOfLastParent(rows[2]).Should().Be(3);
+        _viewModel.IndexOfHash("BASE").Should().Be(3, "hashes compare without case");
+    }
+
+    [Test]
     public async Task Parent_child_and_head_navigation_should_find_the_shown_rows()
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);

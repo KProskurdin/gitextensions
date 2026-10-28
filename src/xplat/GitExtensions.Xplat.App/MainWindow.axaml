@@ -46,6 +46,28 @@
         <Separator />
         <MenuItem x:Name="CloseRepositoryMenuItem" Header="_Close (go to Dashboard)" Icon="{local:UpstreamIcon DashboardFolderGit}" />
       </MenuItem>
+      <!-- Upstream's Navigate menu (RevisionGridMenuCommands.CreateNavigateMenuCommands). -->
+      <MenuItem x:Name="NavigateMenu" Header="_Navigate">
+        <MenuItem x:Name="ToggleArtificialAndHeadMenuItem" Header="_Toggle between artificial and HEAD commits"
+                  Icon="{local:UpstreamIcon WorkingDirChanges}" />
+        <MenuItem x:Name="GoToCurrentRevisionMenuItem" Header="Go to c_urrent revision" Icon="{local:UpstreamIcon GotoCurrentRevision}" />
+        <MenuItem x:Name="GoToCommitMenuItem" Header="Go to _commit..." Icon="{local:UpstreamIcon GotoCommit}" />
+        <Separator />
+        <MenuItem x:Name="GoToChildMenuItem" Header="Go to c_hild commit" Icon="{local:UpstreamIcon GoToChildCommit}" />
+        <MenuItem x:Name="GoToParentMenuItem" Header="Go to _parent commit" Icon="{local:UpstreamIcon GoToParentCommit}" />
+        <MenuItem x:Name="GoToFirstParentMenuItem" Header="Go to f_irst parent commit" Icon="{local:UpstreamIcon GoToFirstParentCommit}" />
+        <MenuItem x:Name="GoToLastParentMenuItem" Header="Go to _last parent commit" Icon="{local:UpstreamIcon GoToLastParentCommit}" />
+        <MenuItem x:Name="GoToMergeBaseMenuItem" Header="Go to common _ancestor (merge base)"
+                  Icon="{local:UpstreamIcon GoToMergeBaseCommit}"
+                  ToolTip.Tip="Selects the common ancestor commit (merge base), which is the most recent shared ancestor of the selected commits (or if only one commit is selected, between it and the checked out commit (HEAD))" />
+        <Separator />
+        <MenuItem x:Name="NavigateBackwardMenuItem" Header="Navigate _backward" Icon="{local:UpstreamIcon NavigateBackward}" />
+        <MenuItem x:Name="NavigateForwardMenuItem" Header="Navigate _forward" Icon="{local:UpstreamIcon NavigateForward}" />
+        <Separator />
+        <MenuItem x:Name="QuickSearchMenuItem" Header="_Quick search" ToolTip.Tip="Start typing in revision grid to start quick search." />
+        <MenuItem x:Name="PrevQuickSearchMenuItem" Header="Quick search p_revious" />
+        <MenuItem x:Name="NextQuickSearchMenuItem" Header="Quick search _next" />
+      </MenuItem>
       <!-- Upstream's View menu (RevisionGridMenuCommands.GetViewMenuCommands) in its order and groups, with the items the new
            shell has. -->
       <MenuItem x:Name="ViewMenu" Header="_View">
@@ -170,7 +192,7 @@
               <MenuFlyout />
             </local:ToolDropDownButton.Flyout>
           </local:ToolDropDownButton>
-          <!-- Upstream's working directory drop-down: the repository's name, the recent repositories to switch to. -->
+          <!-- Upstream's WorkingDirectoryToolStripSplitButton: the repository's caption; the drop-down is built on opening. -->
           <local:ToolDropDownButton x:Name="WorkingDirButton" Text="WorkingDir">
             <local:ToolDropDownButton.Flyout>
               <MenuFlyout />
@@ -600,40 +622,8 @@
                   <TextBlock Text="Commit" />
                 </StackPanel>
               </TabItem.Header>
-              <!-- Upstream's RevisionInfo (CommitInfo): in this tab, or beside the grid (RevisionInfoHost). On the window color:
-                   the header (CommitInfoHeader: the avatar and the author, date, hash, child and parent lines), the message on
-                   a slightly darker panel, then the annotated tags' messages, related links, branches and tags containing the
-                   commit, and the tag it derives from. Links select commits or open addresses. -->
-              <ScrollViewer x:Name="RevisionInfo" Background="{DynamicResource CommitInfoBackgroundBrush}"
-                            HorizontalScrollBarVisibility="Disabled">
-                <ScrollViewer.ContextMenu>
-                  <ContextMenu x:Name="CommitInfoContextMenu">
-                    <MenuItem x:Name="CopyCommitInfoLinkMenuItem" Header="Copy link" IsVisible="False" />
-                    <MenuItem x:Name="CopyCommitInfoMenuItem" Header="_Copy commit info" />
-                    <Separator />
-                    <MenuItem x:Name="ShowContainedInBranchesMenuItem" Header="Show local branches containing this commit" ToggleType="CheckBox" />
-                    <MenuItem x:Name="ShowContainedInBranchesRemoteMenuItem" Header="Show remote branches containing this commit" ToggleType="CheckBox" />
-                    <MenuItem x:Name="ShowContainedInBranchesRemoteIfNoLocalMenuItem" Header="Show remote branches only when no local branch contains this commit" ToggleType="CheckBox" />
-                    <MenuItem x:Name="ShowContainedInTagsMenuItem" Header="Show tags containing this commit" ToggleType="CheckBox" />
-                    <MenuItem x:Name="ShowAnnotatedTagsMessagesMenuItem" Header="Show messages of annotated tags" ToggleType="CheckBox" />
-                    <MenuItem x:Name="ShowDerivesFromTagMenuItem" Header="Show the most recent tag this commit derives from" ToggleType="CheckBox" />
-                  </ContextMenu>
-                </ScrollViewer.ContextMenu>
-                <StackPanel x:Name="RevisionInfoPanel">
-                  <DockPanel Margin="8,8,16,8">
-                    <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->
-                    <local:AvatarView x:Name="DetailAvatar" DockPanel.Dock="Left" Width="80" Height="80" ImageSize="80"
-                                      VerticalAlignment="Top" Margin="0,0,8,0" IsVisible="False" />
-                    <Grid x:Name="DetailHeader" ColumnDefinitions="Auto,*" />
-                  </DockPanel>
-                  <Border x:Name="DetailMessagePanel" Background="{DynamicResource CommitMessageBackgroundBrush}">
-                    <local:InfoTextBlock x:Name="DetailMessage" Margin="8" TextWrapping="Wrap"
-                                         FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}"
-                                         FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" />
-                  </Border>
-                  <local:InfoTextBlock x:Name="DetailRevisionInfo" Margin="8,8,16,8" TextWrapping="Wrap" />
-                </StackPanel>
-              </ScrollViewer>
+              <!-- Upstream's RevisionInfo (CommitInfo): in this tab, or beside the grid (RevisionInfoHost). -->
+              <local:CommitInfoView x:Name="RevisionInfo" />
             </TabItem>
             <TabItem x:Name="DiffTab">
               <TabItem.Header>

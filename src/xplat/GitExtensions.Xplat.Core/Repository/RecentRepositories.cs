@@ -39,6 +39,12 @@ public interface IRecentRepositoryStore
     ///  <paramref name="isValid"/> rejects.
     /// </summary>
     Task RemoveInvalidAsync(Func<string, bool> isValid);
+
+    /// <summary>
+    ///  Upstream's <c>SaveRecentHistoryAsync</c>: replaces the recent repositories, with their anchors, kept to the
+    ///  history size.
+    /// </summary>
+    Task SaveRecentAsync(IReadOnlyList<RepositoryEntry> recent);
 }
 
 /// <summary>
@@ -89,6 +95,10 @@ public sealed class SettingsRecentRepositoryStore : IRecentRepositoryStore
     public Task RemoveInvalidAsync(Func<string, bool> isValid)
         => RepositoryHistoryManager.Locals.RemoveInvalidRepositoriesAsync(isValid);
 
+    public Task SaveRecentAsync(IReadOnlyList<RepositoryEntry> recent)
+        => RepositoryHistoryManager.Locals.SaveRecentHistoryAsync(
+            recent.Select(entry => new HistoryEntry(entry.Path) { Category = entry.Category, Anchor = entry.Anchor }));
+
     private static IReadOnlyList<RepositoryEntry> ToEntries(IEnumerable<HistoryEntry> history)
         => [.. history.Select(repository => new RepositoryEntry(repository.Path, repository.Category, repository.Anchor))];
 
@@ -101,26 +111,28 @@ public sealed class SettingsRecentRepositoryStore : IRecentRepositoryStore
 /// </summary>
 public sealed class InMemoryRecentRepositoryStore : IRecentRepositoryStore
 {
-    private readonly List<string> _paths = [];
+    private readonly List<RepositoryEntry> _recent = [];
     private readonly List<RepositoryEntry> _favourites = [];
 
     public Task<IReadOnlyList<string>> LoadAsync() => Task.FromResult(Snapshot());
 
     public Task<IReadOnlyList<string>> AddAsync(string repositoryPath)
     {
-        _paths.RemoveAll(path => RecentRepositoryPaths.Same(path, repositoryPath));
-        _paths.Insert(0, repositoryPath);
+        // As upstream's AddAsMostRecentAsync, the entry moves with its anchor.
+        RepositoryEntry? entry = _recent.Find(recent => RecentRepositoryPaths.Same(recent.Path, repositoryPath));
+        _recent.RemoveAll(recent => RecentRepositoryPaths.Same(recent.Path, repositoryPath));
+        _recent.Insert(0, (entry ?? new RepositoryEntry(repositoryPath)) with { Path = repositoryPath });
         return Task.FromResult(Snapshot());
     }
 
     public Task<IReadOnlyList<string>> RemoveAsync(string repositoryPath)
     {
-        _paths.RemoveAll(path => RecentRepositoryPaths.Same(path, repositoryPath));
+        _recent.RemoveAll(recent => RecentRepositoryPaths.Same(recent.Path, repositoryPath));
         return Task.FromResult(Snapshot());
     }
 
     public Task<RepositoryHistory> LoadHistoryAsync()
-        => Task.FromResult(new RepositoryHistory([.. _paths.Select(path => new RepositoryEntry(path))], [.. _favourites]));
+        => Task.FromResult(new RepositoryHistory([.. _recent], [.. _favourites]));
 
     public Task AssignCategoryAsync(string repositoryPath, string? category)
     {
@@ -152,12 +164,19 @@ public sealed class InMemoryRecentRepositoryStore : IRecentRepositoryStore
 
     public Task RemoveInvalidAsync(Func<string, bool> isValid)
     {
-        _paths.RemoveAll(path => !isValid(path));
+        _recent.RemoveAll(recent => !isValid(recent.Path));
         _favourites.RemoveAll(favourite => !isValid(favourite.Path));
         return Task.CompletedTask;
     }
 
-    private IReadOnlyList<string> Snapshot() => [.. _paths];
+    public Task SaveRecentAsync(IReadOnlyList<RepositoryEntry> recent)
+    {
+        _recent.Clear();
+        _recent.AddRange(recent);
+        return Task.CompletedTask;
+    }
+
+    private IReadOnlyList<string> Snapshot() => [.. _recent.Select(recent => recent.Path)];
 }
 
 /// <summary>

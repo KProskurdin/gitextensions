@@ -74,7 +74,11 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitSettingsPage.cs`, `FormFixHome.cs`, `SshSettingsPage.cs`; `src/app/GitCommands/Settings/AppSettings.cs` (`LoadSettings` sets `GIT_SSH`) | `src/xplat/GitExtensions.Xplat.Core/Settings/HomeSettings.cs`, `SshClients.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Git and SSH tabs), `App.axaml.cs` (startup) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/SortingSettingsPage.cs`; `src/app/GitUI/LeftPanel/BaseRefTree.cs` (`OrderByPriority`), `LocalBranchTree.cs`, `RemoteBranchTree.cs` (order), `ContextMenu/GitRefsSortByContextMenuItem.cs`, `GitRefsSortOrderContextMenuItem.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/RefSorting.cs`, `BranchTree.cs`, `GitRepositoryService.cs`; `CommitHistory/RevisionSorting.cs`, `GitCommitHistory.cs`; `Settings/SortingTexts.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Sorting tab), `MainWindow.axaml(.cs)` (branch tree menu) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/RevisionLinksSettingsPage.cs`; `src/app/GitUI/CommitInfo/CommitInfo.cs` (related links) | `src/xplat/GitExtensions.Xplat.Core/Settings/RevisionLinks.cs`, `UpstreamImages.cs` (stand-in); `CommitHistory/GitCommitHistory.cs` (links in the details); `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Revision links tab), `MainWindow.axaml(.cs)` (Related links) | `52d08e996` | partial |
-| `src/app/GitUI/CommitInfo/CommitInfo.cs`, `CommitInfoHeader.cs`, `RefsFormatter.cs`; `src/app/GitUI/CommandsDialogs/RevisionGpgInfoControl.cs`; `FormBrowse.InitCommitDetails.cs` (tab images) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitInfo.cs` (`CommitInfoText`, `CommitInfoReader`, `BranchComparer`), `GitCommitHistory.cs` (commit data and message), `Settings/AppPreferences.cs` (`CommitInfoOptions`, `ShowGpgInformation`); `src/xplat/GitExtensions.Xplat.App/MainWindow.CommitInfo.cs`, `InfoTextBlock.cs`, `MainWindow.axaml` | `52d08e996` | partial |
+| `src/app/GitUI/CommitInfo/CommitInfo.cs`, `CommitInfoHeader.cs`, `RefsFormatter.cs`; `src/app/GitUI/CommandsDialogs/RevisionGpgInfoControl.cs`; `FormBrowse.InitCommitDetails.cs` (tab images) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitInfo.cs` (`CommitInfoText`, `CommitInfoReader`, `BranchComparer`), `GitCommitHistory.cs` (commit data and message), `Settings/AppPreferences.cs` (`CommitInfoOptions`, `ShowGpgInformation`); `src/xplat/GitExtensions.Xplat.App/CommitInfoView.axaml(.cs)`, `MainWindow.CommitInfo.cs`, `InfoTextBlock.cs`, `MainWindow.axaml` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridMenuCommands.cs` (`CreateNavigateMenuCommands`), `NavigationHistory.cs`, `RevisionGridControl.cs` (`ToggleBetweenArtificialAndHeadCommits`, `GoToFirstParent`, `GoToLastParent`, `NavigateBackward`, `NavigateForward`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/NavigationHistory.cs`, `CommitListViewModel.cs` (`IndexOfNextArtificialOrHead`, `IndexOfLastParent`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Navigate menu), `MainWindow.axaml.cs` (`RunGridHotkey`), `Hotkeys.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/BrowseDialog/FormRecentReposSettings.cs`; `Menus/WorkingDirectoryToolStripSplitButton.cs` (`FillDropDown`, the filter, `MouseUpHandler`, `RefreshContent`'s width); `src/app/GitUI/RepositoryHistoryUIService.cs` (`OpenRepo`) | `src/xplat/GitExtensions.Xplat.App/RecentRepositoriesSettingsWindow.axaml(.cs)`, `MainWindow.Toolbar.cs` (`ShowWorkingDirMenu`), `MainWindow.StartMenu.cs` (`RepositoryMenuItem`); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositoriesSettings.cs`, `RecentRepositories.cs` (`SaveRecentAsync`), `Settings/AppPreferences.cs` (`RecentRepositoryMenu`) | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/BrowseDialog/FormGoToCommit.cs`; `RevisionGridMenuCommands.cs` (`GotoCommitExecute`); `RevisionGridControl.cs` (`GoToMergeBase`) | `src/xplat/GitExtensions.Xplat.App/GoToCommitWindow.axaml(.cs)`, `MainWindow.Navigate.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GoToCommit.cs` | `52d08e996` | ported |
+| `src/app/GitUI/HelperDialogs/FormCommitDiff.cs`; `src/app/GitUI/UserControls/CommitDiff.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`ViewSelectedRevisions`); `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` (`FileChangesDoubleClick`, the Commit tab) | `src/xplat/GitExtensions.Xplat.App/CommitDiffWindow.axaml(.cs)`, `CommitDiffView.axaml(.cs)`, `MainWindow.GridView.cs` (`ViewSelectedRevision`), `FileHistoryWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceFontsSettingsPage.cs`; `src/app/GitExtensions.Extensibility/FontParser.cs` (format) | `src/xplat/GitExtensions.Xplat.Core/Settings/FontSetting.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/FontApplier.cs`, `SettingsWindow.axaml(.cs)` (Fonts tab), `App.axaml` and the views' font resources | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/FormBrowseRepoSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `AuthorNameColumnProvider.cs`, `DateColumnProvider.cs`, `CommitIdColumnProvider.cs` (`TryGetToolTip`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionTooltips.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (grid tooltips), `SettingsWindow.axaml(.cs)` (Browse repository window tab) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BlameViewerSettingsPage.cs`; `src/app/GitUI/UserControls/BlameControl.cs` (`BuildAuthorLine`, gutter); `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` (blame settings menu); `GitModule.Blame` (flags) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameOptions.cs`, `BlameParser.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/BlameWindow.axaml(.cs)`, `SettingsWindow.axaml(.cs)` (Blame viewer tab) | `52d08e996` | partial |
@@ -767,10 +771,11 @@ shortened by `RecentRepoSplitter`, numbered with the first ten as access keys, p
 as the tooltip when shortened, the checked out branch on the right, favourites per category, and the recent list's
 "Clear list" without a question. New: Commands > Reset changes... (upstream's `StartResetChangesDialog` with the work
 tree's files), Repository > Edit .git/info/exclude, Update all submodules and Synchronize all submodules, Help > User
-manual, Translate and Report an issue. Moved to upstream's places: Show reflog (Commands), Close (Repository, "Close
-(go to Dashboard)") and the terminal (Tools, "Git bash"). Removed, as upstream has them only on the toolbar or in the
-push window: Quick pull, Quick push, Quick fetch and Push tags (their hotkeys still work). "Browse files..." stays as
-the new shell's own. Not ported: the Navigate menu; Manage submodules, .gitattributes, .mailmap, Sparse Working Copy,
+manual, Translate and Report an issue; the Navigate menu came later the same day (see its note). Moved to
+upstream's places: Show reflog (Commands), Close (Repository, "Close (go to Dashboard)") and the terminal
+(Tools, "Git bash"). Removed, as upstream has them only on the toolbar or in the push window:
+Quick pull, Quick push, Quick fetch and Push tags (their hotkeys still work). "Browse files..." stays as
+the new shell's own. Not ported: Manage submodules, .gitattributes, .mailmap, Sparse Working Copy,
 Git maintenance and Repository settings; Undo last commit, Clean working directory, Delete branch, Delete tag, Cherry
 pick, Archive revision and the patch items; Git GUI, GitK and PuTTY; Changelog, Donate, the telemetry choice and
 Check for updates; Report an issue does not copy the environment information first.
@@ -782,6 +787,60 @@ and again once it is enabled after the window's loading: the remotes box of the 
 button (`FormPush`), the worktree list (`FormManageWorktree`), and the first content control of the stash, checkout
 revision, merge submodule, create worktree, reset changes, .gitignore, reflog and filter windows. The other ported
 dialogs already focused their control.
+
+**FormCommitDiff and CommitDiff** (`partial`). 2026-10-28 (UI-PARITY, after U6): upstream's CommitInfo became a
+control of its own (`CommitInfoView`, moved out of the browse window unchanged), so upstream's CommitDiff
+(`CommitDiffView`) can show it: the commit's information above (200 pixels), its changed files (260 pixels) beside the
+selected file's diff. As upstream's `SetRevision`, the view reads the commit as git has it, not as a filtered grid shows
+its parents, selects the given file or the first, and titles itself "Diff - <short hash> - <author date> - <author> -
+<working directory>". `CommitDiffWindow` is upstream's FormCommitDiff around it, titled as the view. A double-click on
+a real commit of the browse window's grid (`ViewSelectedRevisions`) or of the file history's
+(`FileChangesDoubleClick`) opens it; the artificial rows open nothing, as upstream's. The file history's Commit tab is
+now the same view (it was a plain text summary). Links to commits in the view do nothing, as upstream's without a
+`CommandClicked` handler. Not ported: the compare dialog upstream opens for a double-click with no selection, the
+diff's scroll past the end to the next or previous file, and the file list's status images (the list shows the
+status letter, as the browse window's Diff tab).
+
+**Navigate menu** (`partial`). 2026-10-28 (UI-PARITY, after U6): upstream's Navigate menu between Repository and View,
+hidden on the dashboard, with upstream's texts, keys, images and groups for the commands the grid has: Toggle between
+artificial and HEAD commits (the working directory, the index and HEAD in a circle, an artificial row without changes
+passed over), Go to current revision, child, parent, first parent and last parent, Navigate backward and forward
+(upstream's `NavigationHistory` of the selected commits, cleared for another repository, with upstream's message when
+the filters hide the commit), and Quick search (upstream's hint), previous and next. The new commands are grid hotkeys
+with upstream's ids and defaults (Ctrl+Left, Ctrl+Right, Ctrl+\, Alt+Left, Alt+Right) and show on the items. Not
+ported: the mouse's back and forward buttons. Go to commit... and Go to common ancestor followed later the same day
+(see the "FormGoToCommit and Go to common ancestor" note).
+
+**FormGoToCommit and Go to common ancestor** (`ported`). 2026-10-28 (UI-PARITY, after U6): Navigate > Go to commit...
+(Ctrl+Shift+G, upstream's hotkey id 20) opens `GoToCommitWindow`, upstream's FormGoToCommit: a commit expression
+(filled from the clipboard when its text names a commit), upstream's help with the git-rev-parse link, and the first
+1000 tags and branches in editable drop-downs. The control focused last supplies the revision, as upstream's
+`SetSelectedRevisionByFocusedControl`: the expression, or the hash of the tag or branch named exactly (none, so no
+revision, for another name). Go, Enter in a drop-down, or a ref picked in a drop-down (upstream's
+`SelectionChangeCommitted`, here a selection made while the list is open) closes the window with the commit git
+resolves; the browse window selects it, with upstream's "No revision found." when git knows none and its message
+when the filters hide it. Go to common ancestor (Ctrl+Shift+K, id 31) runs upstream's `merge-base` arguments
+(core `GoToCommit.MergeBaseArguments`: artificial rows as HEAD, filled with HEAD to two, `--octopus` for more) for the
+selected commit, which the grid has one of, and selects the result, or shows upstream's "There is no common
+ancestor for the selected commits." for exit code 1. The help text wraps in the window, as the font is wider than
+upstream's.
+
+**Working directory drop-down and FormRecentReposSettings** (`ported`). 2026-10-28 (UI-PARITY, after U6): the
+toolbar's working directory drop-down is upstream's `FillDropDown`: the "Search repositories..." box, the favourites
+submenu, the recent repositories as the Start menu numbers them, Open and Close with their hotkeys, and "Configure
+this menu...". Upstream's filter hides the repositories whose text lacks the search text (case ignored) and keeps the
+separators. A right click on the button starts "Open repository", the tooltip is upstream's, and the button is at
+least `RecentReposComboMinWidth` wide. As upstream's `OpenRepo`, a repository clicked with Ctrl held, in this menu or
+the Start menu, opens in a new instance. "Clone repository..." and "Create new repository..." left the drop-down, as
+upstream has them only in the Start menu. `RecentRepositoriesSettingsWindow` is upstream's FormRecentReposSettings
+(rules in core `RecentRepositoriesSettingsDialog`): the maximum number of top and recent repositories, hiding the top
+ones from the recent list, the two sort choices, the shortening strategy and the combobox width (upstream's skip
+below 30), stored under upstream's keys with OK (`IAppPreferences.RecentRepositoryMenu`); the top and recent lists
+follow the settings at once, anchored repositories bold and missing ones red, as wide as the combobox would be. A
+double-click anchors to the other list, the context menu offers the anchors the last selected repository lacks, and
+"Remove from recent repositories" removes at once, as upstream's, which reads the list back without the anchors not
+yet saved. Anchors are saved with OK (upstream's `SaveRecentHistoryAsync`, `IRecentRepositoryStore.SaveRecentAsync`).
+The menus now split with the preferences' settings (upstream's `RecentRepoSplitter` reads the same keys).
 
 **SplitterManager** (`ported`). Ported 2026-10-17 (UI-PARITY U6): the splitter positions are kept under upstream's keys
 in GitExtensions.settings (`<form>.<splitter>_Size`, `_Dpi`, `_Distance`, `_Panel1Collapsed`, `_Panel2Collapsed`), in

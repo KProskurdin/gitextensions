@@ -71,6 +71,13 @@ public enum GridCommand
     ToggleHighlightSelectedBranch,
     NextQuickSearch,
     PrevQuickSearch,
+    GoToFirstParent,
+    GoToLastParent,
+    ToggleBetweenArtificialAndHeadCommits,
+    NavigateBackward,
+    NavigateForward,
+    GoToCommit,
+    GoToMergeBase,
 }
 
 /// <summary>
@@ -356,6 +363,13 @@ public static class Hotkeys
             [GridCommand.ToggleHighlightSelectedBranch] = (16, "ToggleHighlightSelectedBranch"),
             [GridCommand.NextQuickSearch] = (17, "NextQuickSearch"),
             [GridCommand.PrevQuickSearch] = (18, "PrevQuickSearch"),
+            [GridCommand.GoToFirstParent] = (45, "GoToFirstParent"),
+            [GridCommand.GoToLastParent] = (46, "GoToLastParent"),
+            [GridCommand.ToggleBetweenArtificialAndHeadCommits] = (33, "ToggleBetweenArtificialAndHeadCommits"),
+            [GridCommand.NavigateBackward] = (21, "NavigateBackward"),
+            [GridCommand.NavigateForward] = (22, "NavigateForward"),
+            [GridCommand.GoToCommit] = (20, "GoToCommit"),
+            [GridCommand.GoToMergeBase] = (31, "GoToMergeBase"),
         },
         new Dictionary<GridCommand, WinFormsKeys>
         {
@@ -371,6 +385,13 @@ public static class Hotkeys
             [GridCommand.ToggleHighlightSelectedBranch] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.B,
             [GridCommand.NextQuickSearch] = WinFormsKeys.Alt | WinFormsKeys.Down,
             [GridCommand.PrevQuickSearch] = WinFormsKeys.Alt | WinFormsKeys.Up,
+            [GridCommand.GoToFirstParent] = WinFormsKeys.Control | WinFormsKeys.Left,
+            [GridCommand.GoToLastParent] = WinFormsKeys.Control | WinFormsKeys.Right,
+            [GridCommand.ToggleBetweenArtificialAndHeadCommits] = WinFormsKeys.Control | WinFormsKeys.OemBackslash,
+            [GridCommand.NavigateBackward] = WinFormsKeys.Alt | WinFormsKeys.Left,
+            [GridCommand.NavigateForward] = WinFormsKeys.Alt | WinFormsKeys.Right,
+            [GridCommand.GoToCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.G,
+            [GridCommand.GoToMergeBase] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.K,
         });
 
     /// <summary>

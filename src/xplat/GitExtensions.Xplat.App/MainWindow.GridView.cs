@@ -162,4 +162,14 @@ public partial class MainWindow
                                              && !string.IsNullOrWhiteSpace(item.Row.AuthorEmail)
                                              && string.Equals(item.Row.AuthorEmail, _highlightedAuthorEmail,
                                                  StringComparison.OrdinalIgnoreCase));
+
+    // Upstream's ViewSelectedRevisions, which a double-click on the grid runs: a real commit opens in upstream's
+    // FormCommitDiff; the artificial rows open nothing. Not ported: with no selection, upstream compares revisions.
+    private void ViewSelectedRevision()
+    {
+        if (RepositoryPath is { } path && _commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
+        {
+            new CommitDiffWindow(path, row.Hash).Show(this);
+        }
+    }
 }

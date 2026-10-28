@@ -23,5 +23,21 @@ internal sealed class TestRepository : IDisposable
 
     public string Run(params string[] arguments) => GitProcess.Run(Path, arguments);
 
+    /// <summary>
+    ///  The text of a file in the work tree, or null while it is missing. Git replaces a file it checks out by removing
+    ///  and writing it, so a test that waits for git's result must not fail on the moment between.
+    /// </summary>
+    public string? ReadFile(string name)
+    {
+        try
+        {
+            return File.ReadAllText(System.IO.Path.Combine(Path, name));
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
     public void Dispose() => GitProcess.DeleteFolder(Path);
 }

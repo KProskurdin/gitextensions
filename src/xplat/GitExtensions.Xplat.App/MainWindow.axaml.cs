@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private readonly GitDiscoveryResult? _git;
     private readonly GitCommitHistory _history;
     private readonly CommitListViewModel _commits;
+    private readonly NavigationHistory _navigationHistory = new();
     private readonly GitRepositoryService _repositoryService;
     private readonly RepositoryViewModel _repository;
 
@@ -198,6 +199,11 @@ public partial class MainWindow : Window
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
         SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
         WireStartMenu();
+        foreach ((MenuItem item, GridCommand command) in NavigateMenuCommands())
+        {
+            item.Click += (_, _) => RunGridHotkey(command);
+        }
+
         PluginSettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(pluginsPage: true));
 
         // Upstream's View menu toggles for the grid's date column.
@@ -235,9 +241,14 @@ public partial class MainWindow : Window
         CommitList.SelectionChanged += (_, _) =>
         {
             CommitDiff.Clear();
+            if (CommitList.SelectedItem is CommitListItem selected)
+            {
+                _navigationHistory.Push(selected.Row.Hash);
+            }
+
             Run(() => _commits.SelectAsync((CommitList.SelectedItem as CommitListItem)?.Row));
         };
-        CommitList.DoubleTapped += (_, _) => DetailTabs.SelectedItem = DiffTab;
+        CommitList.DoubleTapped += (_, _) => ViewSelectedRevision();
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
         CommitFilesContextMenu.Opening += (_, _) => ShowFileListScripts();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
@@ -337,6 +348,11 @@ public partial class MainWindow : Window
         RebaseMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Rebase);
         CreateTagMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CreateTag);
         SettingsMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Settings);
+        foreach ((MenuItem item, GridCommand command) in NavigateMenuCommands())
+        {
+            item.InputGesture = Hotkeys.Grid.GestureFor(command);
+        }
+
         HighlightSelectedBranchMenuItem.InputGesture =
             Hotkeys.Grid.GestureFor(GridCommand.ToggleHighlightSelectedBranch);
     }
@@ -578,6 +594,23 @@ public partial class MainWindow : Window
         }
     }
 
+    // Upstream's Navigate menu items and the grid commands they run.
+    private IEnumerable<(MenuItem Item, GridCommand Command)> NavigateMenuCommands() =>
+    [
+        (ToggleArtificialAndHeadMenuItem, GridCommand.ToggleBetweenArtificialAndHeadCommits),
+        (GoToCurrentRevisionMenuItem, GridCommand.SelectCurrentRevision),
+        (GoToCommitMenuItem, GridCommand.GoToCommit),
+        (GoToChildMenuItem, GridCommand.GoToChild),
+        (GoToParentMenuItem, GridCommand.GoToParent),
+        (GoToFirstParentMenuItem, GridCommand.GoToFirstParent),
+        (GoToLastParentMenuItem, GridCommand.GoToLastParent),
+        (GoToMergeBaseMenuItem, GridCommand.GoToMergeBase),
+        (NavigateBackwardMenuItem, GridCommand.NavigateBackward),
+        (NavigateForwardMenuItem, GridCommand.NavigateForward),
+        (PrevQuickSearchMenuItem, GridCommand.PrevQuickSearch),
+        (NextQuickSearchMenuItem, GridCommand.NextQuickSearch),
+    ];
+
     // The commands of upstream RevisionGridControl's hotkeys that the grid has; false when one cannot run now.
     private bool RunGridHotkey(GridCommand command)
     {
@@ -618,6 +651,22 @@ public partial class MainWindow : Window
                 return QuickSearchNext(down: true);
             case GridCommand.PrevQuickSearch:
                 return QuickSearchNext(down: false);
+            case GridCommand.GoToFirstParent:
+                return SelectGridRow(selected is null ? null : _commits.IndexOfParent(selected));
+            case GridCommand.GoToLastParent:
+                return SelectGridRow(selected is null ? null : _commits.IndexOfLastParent(selected));
+            case GridCommand.ToggleBetweenArtificialAndHeadCommits:
+                return SelectGridRow(_commits.IndexOfNextArtificialOrHead(selected));
+            case GridCommand.NavigateBackward:
+                return Navigate(_navigationHistory.NavigateBackward());
+            case GridCommand.NavigateForward:
+                return Navigate(_navigationHistory.NavigateForward());
+            case GridCommand.GoToCommit when RepositoryPath is not null:
+                Run(GoToCommitAsync);
+                return true;
+            case GridCommand.GoToMergeBase when selected is not null:
+                Run(GoToMergeBaseAsync);
+                return true;
             default:
                 return false;
         }
@@ -632,6 +681,23 @@ public partial class MainWindow : Window
 
         CommitList.SelectedIndex = row;
         CommitList.ScrollIntoView(row);
+        return true;
+    }
+
+    // Upstream's NavigateBackward and NavigateForward: the commit selected before or after, or upstream's message when the
+    // filters hide it.
+    private bool Navigate(string? hash)
+    {
+        if (hash is null)
+        {
+            return false;
+        }
+
+        if (!SelectGridRow(_commits.IndexOfHash(hash)))
+        {
+            ShowRevisionFiltered(hash);
+        }
+
         return true;
     }
 
@@ -660,8 +726,13 @@ public partial class MainWindow : Window
 
     private async Task OpenRepositoryAsync(string path)
     {
-        // A reload can move HEAD, so the tree is read again.
+        // A reload can move HEAD, so the tree is read again; another repository starts a new navigation history.
         _fileTreeHash = null;
+        if (!string.Equals(path, RepositoryPath, StringComparison.Ordinal))
+        {
+            _navigationHistory.Clear();
+        }
+
         await _commits.OpenAsync(path);
         if (RepositoryPath is { } repositoryPath)
         {
@@ -707,7 +778,8 @@ public partial class MainWindow : Window
 
         // Upstream's menus for the dashboard: its Dashboard menu instead of the repository's menus.
         DashboardMenu.IsVisible = !open;
-        RepositoryMainMenu.IsVisible = ViewMenu.IsVisible = CommandsMenu.IsVisible = PluginsMenu.IsVisible = open;
+        RepositoryMainMenu.IsVisible = NavigateMenu.IsVisible = ViewMenu.IsVisible = open;
+        CommandsMenu.IsVisible = PluginsMenu.IsVisible = open;
     }
 
     private void OnRecentChanged(string? propertyName)
@@ -864,32 +936,14 @@ public partial class MainWindow : Window
     private void ShowAvatarSettings()
     {
         Resources["ShowAuthorAvatarColumn"] = _preferences.ShowAuthorAvatarColumn;
-        ShowDetailAvatar();
-    }
-
-    // CommitDetails.Author is "name <email>".
-    private void ShowDetailAvatar()
-    {
-        string? author = _commits.Details?.Author;
-        DetailAvatar.IsVisible = author is not null && _preferences.ShowAuthorAvatarInCommitInfo;
-        if (author is null)
-        {
-            return;
-        }
-
-        int open = author.LastIndexOf('<');
-        int close = author.LastIndexOf('>');
-        DetailAvatar.AuthorName = open > 0 ? author[..open].Trim() : author;
-        DetailAvatar.Email = open >= 0 && close > open ? author[(open + 1)..close] : "";
+        RevisionInfo.ShowAvatar();
     }
 
     // Upstream's ShowRevisionGridTooltips; upstream needs a restart, here it applies when the settings are saved.
     private void ShowGridTooltips() => ToolTip.SetServiceEnabled(CommitList, _preferences.ShowRevisionGridTooltips);
 
     // Upstream's branch sort (RefsSortBy, RefsSortOrder, done by git) and priorities, read at each refresh.
-    private RefSorting RefSorting()
-        => new(_preferences.RefsSortBy, _preferences.RefsSortOrder, _preferences.PrioritizedBranchNames,
-            _preferences.PrioritizedRemoteNames);
+    private RefSorting RefSorting() => CommitInfoView.UserRefSorting(_preferences);
 
     // Upstream's left panel menus list every choice by its description and check the current one; a choice applies at once.
     private void ShowSortMenus()
@@ -1070,6 +1124,9 @@ public partial class MainWindow : Window
                 ManageWorktreeDialog.MainWorktreePath(_repository.Worktrees, path), _actions, _preferences),
             (Screenshot.FileHistoryWindow, { } path) => NewFileHistoryWindow(path,
                 Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? "", revision: null, showBlame: false),
+            (Screenshot.CommitDiffWindow, { } path) => new CommitDiffWindow(path, _commits.Selected?.Hash ?? "HEAD"),
+            (Screenshot.RecentRepositoriesSettingsWindow, _) => new RecentRepositoriesSettingsWindow(),
+            (Screenshot.GoToCommitWindow, { } path) => new GoToCommitWindow(path),
             (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
             (Screenshot.RebaseWindow, { } path) => NewRebaseWindow(path, "HEAD~1", interactive: false, immediately: false),
             _ => null,

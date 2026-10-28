@@ -26,12 +26,6 @@ public partial class FileHistoryWindow : Window
     public const string RevisionFiltered = "Revision \"{0}\" is not visible in the revision grid. Remove the revision filter.";
     public const string RevisionFilteredCaption = "Cannot find revision";
 
-    // Upstream's CommitDiff header labels (the RevisionInfo header's texts).
-    private const string AuthorLabel = "Author";
-    private const string DateLabel = "Date";
-    private const string CommitHashLabel = "Commit hash";
-    private const string ParentsLabel = "Parent(s)";
-
     private readonly string _repositoryPath;
     private readonly RepositoryOperationsViewModel _actions;
     private readonly IAppPreferences _preferences;
@@ -98,7 +92,15 @@ public partial class FileHistoryWindow : Window
                 Run(ShowSelectedAsync);
             }
         };
-        CommitFilesList.SelectionChanged += (_, _) => Run(ShowCommitFileAsync);
+
+        // Upstream's FileChangesDoubleClick: the commit in upstream's FormCommitDiff.
+        HistoryList.DoubleTapped += (_, _) =>
+        {
+            if (_commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
+            {
+                new CommitDiffWindow(_repositoryPath, row.Hash).Show(this);
+            }
+        };
         Blame.CommitRequested += (_, hash) => Run(() => GoToCommitAsync(hash));
         Blame.OptionsChanged += (_, _) => ShowOptionChecks();
         Blame.ErrorOccurred += (_, message) => ShowError(message);
@@ -247,40 +249,9 @@ public partial class FileHistoryWindow : Window
             case FileHistoryTab.Diff when tabs.Visible.Contains(FileHistoryTab.Diff):
                 await Diff.ShowAsync(_repositoryPath, hash, fileName, staged, fileName);
                 break;
-            case FileHistoryTab.Commit:
-                ShowCommitInfo(fileName);
+            case FileHistoryTab.Commit when hash is not null:
+                await CommitDiffPanel.SetRevisionAsync(_repositoryPath, hash, fileName);
                 break;
-        }
-    }
-
-    // Upstream's CommitDiff.SetRevision: the commit's information and its files, the history's file selected.
-    private void ShowCommitInfo(string fileName)
-    {
-        if (_commits.Details is not { } details)
-        {
-            CommitInfoText.Text = _commits.DetailsError;
-            CommitFilesList.ItemsSource = null;
-            return;
-        }
-
-        CommitInfoText.Text = string.Join(Environment.NewLine,
-            $"{UpstreamTranslation.ByText(AuthorLabel)}: {details.Author}",
-            $"{UpstreamTranslation.ByText(DateLabel)}: {details.AuthorDate}",
-            $"{UpstreamTranslation.ByText(CommitHashLabel)}: {details.Hash}",
-            $"{UpstreamTranslation.ByText(ParentsLabel)}: {details.Parents}",
-            "",
-            details.Message);
-        CommitFilesList.ItemsSource = _commits.CommitFiles;
-        CommitFilesList.SelectedItem = _commits.CommitFiles.FirstOrDefault(file => file.Path == fileName)
-                                       ?? _commits.CommitFiles.FirstOrDefault();
-    }
-
-    private async Task ShowCommitFileAsync()
-    {
-        if (_commits.Selected is { } row && CommitFilesList.SelectedItem is CommitFile file
-                                         && !ArtificialCommits.IsArtificial(row.Hash))
-        {
-            await CommitDiff.ShowAsync(_repositoryPath, row.Hash, file.Path, staged: false, file.Path);
         }
     }
 

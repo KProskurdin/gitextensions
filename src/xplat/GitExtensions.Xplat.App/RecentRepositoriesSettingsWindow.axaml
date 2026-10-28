@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.RecentRepositoriesSettingsWindow"
+        Title="Recent repositories settings"
+        Width="700" Height="400" MinWidth="700" MinHeight="400" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <!-- Upstream's lists show grid lines. -->
+    <Style Selector="ListBox.repositories ListBoxItem">
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+    </Style>
+  </Window.Styles>
+  <!-- Upstream's FormRecentReposSettings: the menus' settings on the left, the top and recent repositories as the menus
+       would show them on the right (anchored ones bold, missing ones red), OK and Cancel at the bottom right. -->
+  <DockPanel Margin="0,0,8,0">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3">
+      <Button x:Name="Ok" Content="OK" MinWidth="75" IsDefault="True" />
+      <Button x:Name="Abort" Content="Cancel" MinWidth="75" IsCancel="True" />
+    </StackPanel>
+    <Grid DockPanel.Dock="Left" Width="390" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*"
+          Margin="8" RowSpacing="4" ColumnSpacing="6">
+      <TextBlock x:Name="maxRecentRepositories" Text="Maximum number of top repositories" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <NumericUpDown x:Name="_NO_TRANSLATE_maxRecentRepositories" Grid.Column="1" Minimum="0" Maximum="1000000"
+                     Increment="1" FormatString="0" Width="112" />
+      <TextBlock x:Name="lblRecentRepositoriesHistorySize" Grid.Row="1" Text="Maximum number of recent repositories"
+                 VerticalAlignment="Center" TextWrapping="Wrap" />
+      <NumericUpDown x:Name="_NO_TRANSLATE_RecentRepositoriesHistorySize" Grid.Row="1" Grid.Column="1" Minimum="10"
+                     Maximum="999" Increment="1" FormatString="0" Width="112" />
+      <CheckBox x:Name="hideTopRepositoriesFromRecentList" Grid.Row="2" Grid.ColumnSpan="2"
+                Content="Hide top repositories from recent repositories list" />
+      <CheckBox x:Name="sortTopRepos" Grid.Row="3" Grid.ColumnSpan="2" Content="Sort top repositories alphabetically" />
+      <CheckBox x:Name="sortRecentRepos" Grid.Row="4" Grid.ColumnSpan="2" Content="Sort recent repositories alphabetically" />
+      <HeaderedContentControl x:Name="shorteningGB" Grid.Row="5" Grid.ColumnSpan="2" Header="Shortening strategy"
+                              Classes="groupBox">
+        <StackPanel Spacing="2">
+          <RadioButton x:Name="dontShortenRB" GroupName="Shortening" Content="Do not shorten" />
+          <RadioButton x:Name="middleDotRB" GroupName="Shortening" Content="Replace middle part with dots" />
+          <RadioButton x:Name="mostSigDirRB" GroupName="Shortening" Content="The most significant directory" />
+        </StackPanel>
+      </HeaderedContentControl>
+      <TextBlock x:Name="comboMinWidthLabel" Grid.Row="6" Text="Combobox minimum width (0 = Autosize)"
+                 VerticalAlignment="Center" TextWrapping="Wrap" />
+      <NumericUpDown x:Name="comboMinWidthEdit" Grid.Row="6" Grid.Column="1" Minimum="0" Maximum="800" Increment="1"
+                     FormatString="0" Width="112" />
+      <TextBlock x:Name="comboMinWidthNote" Grid.Row="7" Grid.ColumnSpan="2" Margin="12,0,0,0" TextWrapping="Wrap"
+                 Text="NB: The width of the columns helps to visualise how the repository name will be shown in the combobox." />
+    </Grid>
+    <DockPanel Margin="0,0,0,0">
+      <TextBlock x:Name="TopLabel" DockPanel.Dock="Top" Text="Top repositories" Margin="3,6,0,0" />
+      <ListBox x:Name="TopLB" DockPanel.Dock="Top" Classes="repositories" Height="121" SelectionMode="Multiple" />
+      <TextBlock x:Name="label1" DockPanel.Dock="Top" Text="Recent repositories" Margin="3,9,0,0" />
+      <ListBox x:Name="RecentLB" Classes="repositories" SelectionMode="Multiple" />
+    </DockPanel>
+  </DockPanel>
+</Window>

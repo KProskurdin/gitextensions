@@ -52,7 +52,7 @@ internal sealed class AdvancedSettingsTests
         Click(window, "TreeCheckoutMenuItem");
 
         WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "other"
-                        && File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "local edit" && !window.IsBusy);
+                        && _repo.ReadFile("a.txt") == "local edit" && !window.IsBusy);
         window.OwnedWindows.OfType<CheckoutBranchWindow>().Should().BeEmpty();
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("local edit");
         TestAppBuilder.Preferences.AutoPopStashAfterCheckoutBranch = null;

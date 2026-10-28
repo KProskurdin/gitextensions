@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GitExtensions.Xplat.App"
+             x:Class="GitExtensions.Xplat.App.CommitInfoView">
+  <!-- Upstream's CommitInfo. On the window color: the header (CommitInfoHeader: the avatar and the author, date, hash,
+       child and parent lines), the message on a slightly darker panel, then the annotated tags' messages, related links,
+       branches and tags containing the commit, and the tag it derives from. -->
+  <ScrollViewer x:Name="RevisionInfoScroll" Background="{DynamicResource CommitInfoBackgroundBrush}"
+                HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer.ContextMenu>
+      <ContextMenu x:Name="CommitInfoContextMenu">
+        <MenuItem x:Name="CopyCommitInfoLinkMenuItem" Header="Copy link" IsVisible="False" />
+        <MenuItem x:Name="CopyCommitInfoMenuItem" Header="_Copy commit info" />
+        <Separator />
+        <MenuItem x:Name="ShowContainedInBranchesMenuItem" Header="Show local branches containing this commit" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowContainedInBranchesRemoteMenuItem" Header="Show remote branches containing this commit" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowContainedInBranchesRemoteIfNoLocalMenuItem" Header="Show remote branches only when no local branch contains this commit" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowContainedInTagsMenuItem" Header="Show tags containing this commit" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowAnnotatedTagsMessagesMenuItem" Header="Show messages of annotated tags" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowDerivesFromTagMenuItem" Header="Show the most recent tag this commit derives from" ToggleType="CheckBox" />
+      </ContextMenu>
+    </ScrollViewer.ContextMenu>
+    <StackPanel x:Name="RevisionInfoPanel">
+      <DockPanel Margin="8,8,16,8">
+        <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->
+        <local:AvatarView x:Name="DetailAvatar" DockPanel.Dock="Left" Width="80" Height="80" ImageSize="80"
+                          VerticalAlignment="Top" Margin="0,0,8,0" IsVisible="False" />
+        <Grid x:Name="DetailHeader" ColumnDefinitions="Auto,*" />
+      </DockPanel>
+      <Border x:Name="DetailMessagePanel" Background="{DynamicResource CommitMessageBackgroundBrush}">
+        <local:InfoTextBlock x:Name="DetailMessage" Margin="8" TextWrapping="Wrap"
+                             FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}"
+                             FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" />
+      </Border>
+      <local:InfoTextBlock x:Name="DetailRevisionInfo" Margin="8,8,16,8" TextWrapping="Wrap" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
@@ -28,6 +30,14 @@ public partial class MainWindow
     private const string PullFetchAllText = "Fetch all";
     private const string PullFetchPruneAllText = "Fetch and prune all";
     private const string PullOpenDialogText = "Open pull dialog";
+
+    // WorkingDirectoryToolStripSplitButton's texts.
+    private const string ConfigureWorkingDirMenuText = "Co&nfigure this menu...";
+    private const string RepositorySearchPlaceholderText = "Search repositories...";
+    private const string WorkingDirToolTipText = "Change working directory\n"
+        + "Left click opens the drop-down menu.\n"
+        + "Then hold Ctrl in order to open the selected repository in a new instance.\n"
+        + "Right click starts the \"Open repository\" dialog.";
 
     // ToolStripPushButton's texts.
     private const string PushText = "Push";
@@ -83,6 +93,17 @@ public partial class MainWindow
         ((MenuFlyout)SubmodulesButton.Flyout!).Opening += (_, _) => ShowSubmodulesMenu();
         ((MenuFlyout)WorktreesButton.Flyout!).Opening += (_, _) => Run(ShowWorktreesMenuAsync);
         ((MenuFlyout)WorkingDirButton.Flyout!).Opening += (_, _) => ShowWorkingDirMenu();
+        ToolTip.SetTip(WorkingDirButton, UpstreamTranslation.ByText(WorkingDirToolTipText));
+
+        // Upstream's MouseUpHandler: a right click starts "Open repository".
+        WorkingDirButton.AddHandler(PointerReleasedEvent, (_, e) =>
+        {
+            if (e.InitialPressMouseButton == MouseButton.Right)
+            {
+                e.Handled = true;
+                Run(PickAndOpenRepositoryAsync);
+            }
+        }, RoutingStrategies.Tunnel);
         ((MenuFlyout)BranchSelectButton.Flyout!).Opening += (_, _) => ShowBranchSelectMenu();
 
         PullMergeMenuItem.Click += (_, _) => PullWith(GitPullAction.Merge);
@@ -121,9 +142,12 @@ public partial class MainWindow
         // Upstream's UpdateFetchAllVisibility: "Fetch all" only with more than one remote.
         PullFetchAllMenuItem.IsVisible = _repository.Remotes.Count > 1;
 
+        // Upstream's RefreshContent: the caption among the recent repositories, at least RecentReposComboMinWidth wide.
         WorkingDirButton.Text = RepositoryPath is { } path
-            ? RecentRepositoryPaths.Caption(path, [.. _recent.Items.Select(item => item.Path)])
+            ? RecentRepositoryPaths.Caption(path, [.. _recent.Items.Select(item => item.Path)],
+                _preferences.RecentRepositoryMenu.Splitter())
             : "";
+        WorkingDirButton.MinWidth = _preferences.RecentRepositoryMenu.ComboMinWidth;
         BranchSelectButton.Text = RepositoryPath is null ? "" : CurrentBranchName;
         ShowPushAheadBehind();
         UpdateTitle();
@@ -508,32 +532,69 @@ public partial class MainWindow
         await OpenRepositoryAsync(Path.GetFullPath(worktreePath));
     }
 
-    // Upstream's working directory drop-down: the recent repositories, then open, clone and create.
+    // Upstream's WorkingDirectoryToolStripSplitButton.FillDropDown: the search box, the favourites, the recent
+    // repositories, Open and Close as in the menus, and "Configure this menu...".
     private void ShowWorkingDirMenu()
     {
+        TextBox filter = new()
+        {
+            Name = "WorkingDirFilterBox", PlaceholderText = UpstreamTranslation.ByText(RepositorySearchPlaceholderText),
+        };
+        List<Control> recent = RecentRepositoryItems(_menuHistory.Recent);
+        List<Control> items = [new MenuItem { Header = filter, StaysOpenOnClick = true }, new Separator()];
+        List<MenuItem> favourites = FavouriteRepositoryItems(_menuHistory.Favourites);
+        if (favourites.Count > 0)
+        {
+            items.Add(new MenuItem
+            {
+                Header = FavouritesMenu.Header, Icon = UpstreamIcon("Star"), ItemsSource = favourites
+            });
+        }
+
+        items.AddRange(recent);
+        MenuItem open = new()
+        {
+            Header = OpenMenuItem.Header, Icon = UpstreamIcon("RepoOpen"), InputGesture = OpenMenuItem.InputGesture,
+        };
+        open.Click += (_, _) => Run(PickAndOpenRepositoryAsync);
+        MenuItem close = new()
+        {
+            Header = CloseRepositoryMenuItem.Header, Icon = UpstreamIcon("DashboardFolderGit"),
+            InputGesture = CloseRepositoryMenuItem.InputGesture, IsEnabled = CloseRepositoryMenuItem.IsEnabled,
+        };
+        close.Click += (_, _) => CloseRepository();
+        MenuItem configure = new()
+        {
+            Name = "ConfigureWorkingDirMenuItem",
+            Header = UpstreamTranslation.WithAccessKey(UpstreamTranslation.ByText(ConfigureWorkingDirMenuText)),
+        };
+        configure.Click += (_, _) => Run(ConfigureRecentRepositoriesAsync);
+        items.AddRange([new Separator(), open, close, new Separator(), configure]);
+
+        // Upstream's filter: the repositories whose text has the search text, case ignored; the separators stay.
+        filter.TextChanged += (_, _) =>
+        {
+            foreach (MenuItem item in recent.OfType<MenuItem>())
+            {
+                item.IsVisible = string.IsNullOrWhiteSpace(filter.Text)
+                                 || (item.Tag as string)?.Contains(filter.Text,
+                                     StringComparison.CurrentCultureIgnoreCase) is true;
+            }
+        };
         MenuFlyout flyout = (MenuFlyout)WorkingDirButton.Flyout!;
         flyout.Items.Clear();
-        foreach (RecentRepository recent in _recent.Items)
+        foreach (Control item in items)
         {
-            MenuItem item = new() { Header = new TextBlock { Text = recent.Display } };
-            item.Click += (_, _) => Run(() => OpenRepositoryAsync(recent.Path));
             flyout.Items.Add(item);
         }
+    }
 
-        if (flyout.Items.Count > 0)
-        {
-            flyout.Items.Add(new Separator());
-        }
-
-        MenuItem open = new() { Header = "_Open...", Icon = UpstreamIcon("RepoOpen") };
-        open.Click += (_, _) => Run(PickAndOpenRepositoryAsync);
-        MenuItem clone = new() { Header = "_Clone repository...", Icon = UpstreamIcon("CloneRepoGit") };
-        clone.Click += (_, _) => Run(CloneAsync);
-        MenuItem create = new() { Header = "Create _new repository...", Icon = UpstreamIcon("RepoCreate") };
-        create.Click += (_, _) => Run(PickAndInitRepositoryAsync);
-        flyout.Items.Add(open);
-        flyout.Items.Add(clone);
-        flyout.Items.Add(create);
+    // Upstream's _tsmiRecentReposSettings_Click: the settings window, then the menus and the button's caption again.
+    private async Task ConfigureRecentRepositoriesAsync()
+    {
+        await new RecentRepositoriesSettingsWindow(AppServices.RecentRepositories, _preferences).ShowDialog<bool>(this);
+        await _recent.LoadAsync();
+        UpdateBusyState();
     }
 
     // Upstream's branch drop-down: the local branches, the current one checked; another one is checked out.

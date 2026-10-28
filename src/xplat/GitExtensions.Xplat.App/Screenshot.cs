@@ -58,6 +58,12 @@ internal static class Screenshot
 
     public const string MergeSubmoduleWindow = "mergesubmodule";
 
+    public const string CommitDiffWindow = "commitdiff";
+
+    public const string RecentRepositoriesSettingsWindow = "recentrepos";
+
+    public const string GoToCommitWindow = "gotocommit";
+
     /// <summary>
     ///  The file a window about one file shows (the file history), for the screenshot aid.
     /// </summary>

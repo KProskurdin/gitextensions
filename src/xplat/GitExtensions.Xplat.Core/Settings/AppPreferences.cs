@@ -517,6 +517,13 @@ public interface IAppPreferences
     int RecentRepositoriesHistorySize { get; set; }
 
     /// <summary>
+    ///  Upstream's settings of the recent repositories menus (<c>FormRecentReposSettings</c>): <c>MaxMostRecentRepositories</c>,
+    ///  <c>HideTopRepositoriesFromRecentList</c>, <c>ShorteningRecentRepoPathStrategy</c>, <c>SortMostRecentRepos</c>,
+    ///  <c>SortLessRecentRepos</c> and <c>RecentReposComboMinWidth</c>.
+    /// </summary>
+    RecentRepositoryMenuSettings RecentRepositoryMenu { get; set; }
+
+    /// <summary>
     ///  Upstream <c>gitcommand</c>: the git executable, or empty to look it up on PATH.
     /// </summary>
     string GitCommand { get; set; }
@@ -1389,6 +1396,22 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RecentRepositoriesHistorySize = value;
     }
 
+    public RecentRepositoryMenuSettings RecentRepositoryMenu
+    {
+        get => new(AppSettings.MaxTopRepositories, AppSettings.HideTopRepositoriesFromRecentList.Value,
+            AppSettings.ShorteningRecentRepoPathStrategy, AppSettings.SortTopRepos, AppSettings.SortRecentRepos,
+            AppSettings.RecentReposComboMinWidth);
+        set
+        {
+            AppSettings.MaxTopRepositories = value.MaxTopRepositories;
+            AppSettings.HideTopRepositoriesFromRecentList.Value = value.HideTopRepositoriesFromRecentList;
+            AppSettings.ShorteningRecentRepoPathStrategy = value.Shortening;
+            AppSettings.SortTopRepos = value.SortTopRepos;
+            AppSettings.SortRecentRepos = value.SortRecentRepos;
+            AppSettings.RecentReposComboMinWidth = value.ComboMinWidth;
+        }
+    }
+
     public string GitCommand
     {
         get => AppSettings.GitCommandValue;
@@ -1777,6 +1800,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public IReadOnlyList<string> ThemeVariations { get; set; } = [];
 
     public int RecentRepositoriesHistorySize { get; set; } = 30;
+
+    public RecentRepositoryMenuSettings RecentRepositoryMenu { get; set; } = new();
 
     public string GitCommand { get; set; } = "";
 

@@ -90,7 +90,7 @@ internal sealed class CheckoutBranchWindowTests
             .Single(button => button.Content is AccessText { Text: "_Yes" })
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-        WaitUntil(() => File.ReadAllText(Path.Combine(_repo.Path, "a.txt")) == "local edit");
+        WaitUntil(() => _repo.ReadFile("a.txt") == "local edit");
         WaitUntil(() => !window.IsBusy);
         _repo.Run("stash", "list").Trim().Should().BeEmpty();
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("other");
