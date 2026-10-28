@@ -1,0 +1,72 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ApplyPatchWindow"
+        Title="Apply patch"
+        Width="711" Height="436" MinWidth="720" MinHeight="410" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormApplyPatch: the patch file or directory with Browse, Apply with its options, the patches of the
+       git am in progress, and the buttons to go on once it stopped. -->
+  <Grid ColumnDefinitions="*,150" RowDefinitions="Auto,*" Margin="6">
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+      <RadioButton x:Name="PatchFileMode" GroupName="Mode" Content="Patch _file" IsChecked="True" />
+      <TextBox x:Name="PatchFile" Grid.Column="1" />
+      <Button x:Name="BrowsePatch" Grid.Column="2" Content="B_rowse" MinWidth="100" HorizontalContentAlignment="Center" />
+      <RadioButton x:Name="PatchDirMode" Grid.Row="1" GroupName="Mode" Content="Patch _directory" />
+      <TextBox x:Name="PatchDir" Grid.Row="1" Grid.Column="1" />
+      <Button x:Name="BrowseDir" Grid.Row="1" Grid.Column="2" Content="Bro_wse" MinWidth="100"
+              HorizontalContentAlignment="Center" />
+    </Grid>
+    <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+      <Button x:Name="Apply" Content="Apply patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <CheckBox x:Name="IgnoreWhitespace" Content="_Ignore Wh.spc." />
+      <CheckBox x:Name="SignOff" Content="Sign-_Off" />
+    </StackPanel>
+    <DockPanel Grid.Row="1" Margin="0,6,0,0">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="70,120,*,140,110" Margin="4,0">
+        <TextBlock Text="Status" FontWeight="SemiBold" />
+        <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" />
+        <TextBlock Grid.Column="2" Text="Subject" FontWeight="SemiBold" />
+        <TextBlock Grid.Column="3" Text="Author" FontWeight="SemiBold" />
+        <TextBlock Grid.Column="4" Text="Date" FontWeight="SemiBold" />
+      </Grid>
+      <ListBox x:Name="PatchGrid">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:RebasePatchRow">
+            <Grid ColumnDefinitions="70,120,*,140,110" Background="Transparent" ToolTip.Tip="{Binding Patch.Subject}">
+              <TextBlock Text="{Binding Patch.Status}" Foreground="{Binding Foreground}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="1" Text="{Binding Patch.Name}" Foreground="{Binding Foreground}"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="2" Text="{Binding Subject}" Foreground="{Binding Foreground}"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="3" Text="{Binding Patch.Author}" Foreground="{Binding Foreground}"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="4" Text="{Binding Patch.Date}" Foreground="{Binding Foreground}"
+                         TextTrimming="CharacterEllipsis" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+    <StackPanel Grid.Row="1" Grid.Column="1" Spacing="2" Margin="6,6,0,0">
+      <Button x:Name="SolveMergeConflicts" IsVisible="False" MinHeight="78" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center">
+        <TextBlock x:Name="SolveMergeConflictsText" Text="There are unresolved merge conflicts" TextWrapping="Wrap"
+                   TextAlignment="Center" />
+      </Button>
+      <Button x:Name="Abort" Content="A_bort patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <Button x:Name="Skip" Content="S_kip patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <Border x:Name="ContinuePanel" Padding="1">
+        <Button x:Name="Resolved" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+          <AccessText x:Name="ResolvedText" Text="Conflicts resolved" />
+        </Button>
+      </Border>
+      <Button x:Name="AddFiles" Content="_Add files" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+              Margin="0,15,0,0" />
+      <Border x:Name="MergeToolPanel" Padding="1" Margin="0,15,0,0">
+        <Button x:Name="Mergetool" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+          <AccessText x:Name="MergetoolText" Text="_Solve conflicts" />
+        </Button>
+      </Border>
+    </StackPanel>
+  </Grid>
+</Window>

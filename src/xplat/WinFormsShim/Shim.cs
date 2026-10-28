@@ -454,6 +454,8 @@ public class TaskDialogPage
 
     public List<TaskDialogButton> Buttons { get; } = [];
 
+    public TaskDialogButton? DefaultButton { get; set; }
+
     public TaskDialogVerificationCheckBox? Verification { get; set; }
 }
 

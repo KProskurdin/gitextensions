@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.FormatPatchWindow"
+        Title="Format patch"
+        Width="1030" Height="665" MinWidth="558" MinHeight="395" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormFormatPatch: the output folder with Browse, the revision grid to select the commits in, the current
+       branch, and Create patch(es). -->
+  <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto" Margin="4">
+    <Grid Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" Margin="0,0,0,4">
+      <TextBlock x:Name="lblPatches" Text="Patch:" VerticalAlignment="Center" />
+      <TextBox x:Name="OutputPath" Grid.Column="1" />
+      <Button x:Name="Browse" Grid.Column="2" Content="Browse" MinWidth="80" HorizontalContentAlignment="Center" />
+    </Grid>
+    <ListBox x:Name="RevisionGrid" Grid.Row="1" Grid.ColumnSpan="2" Classes="revisionGrid" SelectionMode="Multiple"
+             ItemTemplate="{StaticResource RevisionRowTemplate}" />
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0" VerticalAlignment="Center">
+      <TextBlock x:Name="SelectedBranch" Text="Branch" />
+      <TextBlock x:Name="CurrentBranch" />
+    </StackPanel>
+    <Button x:Name="FormatPatch" Grid.Row="2" Grid.Column="1" Content="Create patch(es)" MinWidth="175"
+            HorizontalContentAlignment="Center" Margin="0,6,0,0" IsDefault="True" />
+  </Grid>
+</Window>

@@ -351,6 +351,35 @@ toolbar icons with upstream's `ToolTipText`.
   "FormGoToCommit and Go to common ancestor" note in `PORTING-MAP.md`. Left: the other menus' unported items (Delete
   branch/tag, Cherry pick, Archive, patches, Git maintenance, submodules, .gitattributes/.mailmap, Sparse, Repository
   settings, Undo last commit, Clean, Git GUI/GitK/PuTTY, Changelog/Donate/telemetry/updates).
+- 2026-10-28, Commands > Delete branch... and Delete tag... done: FormDeleteBranch (with BranchComboBox,
+  FormSelectMultipleBranches and the worktree handling) and FormDeleteTag, screenshots `deletebranch` and `deletetag`.
+  Fixed on the way: the documentation address was never set, so the user manual's links threw. See the "Delete branch
+  and Delete tag windows" note in `PORTING-MAP.md`. Left: Cherry pick, Archive, the patch items, Git maintenance,
+  submodules, .gitattributes/.mailmap, Sparse, Repository settings, Undo last commit, Clean, Git GUI/GitK/PuTTY,
+  Changelog/Donate/telemetry/updates; the left panel and grid opening the delete windows.
+- 2026-10-28, more menu items done: the left panel opens the delete windows (local branch, Delete All, tag), Commands >
+  Undo last commit... (with upstream's confirmation setting), Tools > Git GUI and GitK, Repository > Edit
+  .gitattributes and Edit .mailmap (`RepositoryTextFileWindow`, screenshot `mailmap`). See the "Undo last commit, Git
+  GUI, GitK, .gitattributes and .mailmap" note in `PORTING-MAP.md`. Left: Cherry pick, Archive, the patch items, Git
+  maintenance, Manage submodules, Sparse, Repository settings, Clean, Delete remote branch window, PuTTY (Windows),
+  Changelog/Donate/telemetry/updates.
+- 2026-10-28, Commands > Clean working directory... (FormCleanupRepository) and Archive revision... (FormArchive, with
+  FormChooseCommit) done, also from the grid's menu; screenshots `cleanup`, `archive`, `choosecommit`. See the "Clean
+  working directory, Archive and FormChooseCommit" note in `PORTING-MAP.md`. Left: Cherry pick (FormCherryPick), the
+  patch items, Git maintenance, Manage submodules, Sparse, Repository settings, the delete remote branch window, PuTTY
+  (Windows), Changelog/Donate/telemetry/updates.
+- 2026-10-28, Commands > Cherry pick... and the grid's "Cherry pick this commit..." open upstream's FormCherryPick
+  (`CherryPickWindow`, screenshot `cherrypick`) with the parent of a merge, the commit and reference options and the
+  conflict question. See the FormCherryPick note in `PORTING-MAP.md`. Left: the patch items, Git maintenance, Manage
+  submodules, Sparse, Repository settings, the delete remote branch window, PuTTY (Windows),
+  Changelog/Donate/telemetry/updates.
+- 2026-10-28, upstream's FormDeleteRemoteBranch done (`DeleteRemoteBranchWindow`), opened by the left panel's delete of
+  a remote branch. See its note in `PORTING-MAP.md`. Left: the patch items, Git maintenance, Manage submodules, Sparse,
+  Repository settings, PuTTY (Windows), Changelog/Donate/telemetry/updates.
+- 2026-10-28, the patch items done: Format patch (FormFormatPatch), Apply patch (FormApplyPatch, with FormAddFiles) and
+  View patch file (FormViewPatch); screenshots `formatpatch`, `applypatch`, `viewpatch`. See the "Patch windows" note
+  in `PORTING-MAP.md`. Left: Git maintenance, Manage submodules, Sparse, Repository settings, PuTTY (Windows),
+  Changelog/Donate/telemetry/updates.
 
 ## Risks
 

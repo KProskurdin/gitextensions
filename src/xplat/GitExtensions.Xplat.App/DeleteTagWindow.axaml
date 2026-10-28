@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.DeleteTagWindow"
+        Title="Delete tag"
+        Width="470" SizeToContent="Height" MinWidth="470" MaxWidth="1000" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormDeleteTag: the tag with Delete beside it, the note, the remote to delete it from as well, and the
+       user manual's link. -->
+  <StackPanel Margin="7,10,10,6" Spacing="8">
+    <Grid ColumnDefinitions="119,*,Auto" ColumnSpacing="6">
+      <TextBlock x:Name="label1" Text="Select tag" VerticalAlignment="Center" />
+      <ComboBox x:Name="Tags" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+      <Button x:Name="Ok" Grid.Column="2" Content="Delete" MinWidth="75" HorizontalContentAlignment="Center"
+              IsDefault="True" />
+    </Grid>
+    <TextBlock x:Name="label2" Text="This will delete the selected tag from the (local) repository." Margin="0,6,0,0" />
+    <CheckBox x:Name="deleteTag" Content="Delete tag also from the following remote(s):" Margin="3,0,0,0" />
+    <ComboBox x:Name="Remotes" Width="270" HorizontalAlignment="Left" Margin="3,0,0,0" IsEnabled="False" />
+    <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="4" Margin="0,6,0,0">
+      <Image Source="{local:UpstreamImage GotoManual}" Width="16" Height="16" VerticalAlignment="Top" />
+      <HyperlinkButton x:Name="HelpLink" Grid.Column="1" Content="Help" Padding="0" VerticalAlignment="Top" />
+      <TextBlock x:Name="label3" Grid.Column="2" TextWrapping="Wrap"
+                 Text="(includes information about deleting tags which are already pushed)" />
+    </Grid>
+  </StackPanel>
+</Window>

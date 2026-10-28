@@ -183,7 +183,8 @@ public partial class MainWindow
         }
     }
 
-    // The Delete key: upstream's OnDelete of a branch or tag node.
+    // The Delete key: upstream's OnDelete of a branch or tag node; a tag opens upstream's delete tag window
+    // (TagNode.Delete).
     private void DeleteSelectedRepoObject()
     {
         switch (SelectedRepoObject)
@@ -192,7 +193,7 @@ public partial class MainWindow
                 DeleteSelectedBranch();
                 break;
             case { Kind: RepoObjectKind.Tag, Item: string tag }:
-                RunOnRepository(path => _actions.DeleteTagAsync(path, tag));
+                RunOnRepository(path => ShowDeleteTagAsync(path, tag));
                 break;
         }
     }
@@ -463,7 +464,8 @@ public partial class MainWindow
                     .. folder.Descendants().Select(node => node.Branch)
                         .OfType<BranchInfo>().Where(branch => !branch.IsCurrent).Select(branch => branch.Name)
                 ];
-                RunOnRepository(path => DeleteLocalBranchesAsync(path, branches));
+                // Upstream's BranchPathNode.DeleteAll: upstream's delete branch window with the folder's branches.
+                RunOnRepository(path => ShowDeleteBranchAsync(path, branches));
             }
         };
 
@@ -633,7 +635,7 @@ public partial class MainWindow
 
     // Upstream's FormDeleteBranch: work not merged into HEAD (or a detached HEAD) is deleted only after upstream's
     // question, unless the user turned it off; the branches are then deleted with -D.
-    private async Task<bool> DeleteLocalBranchesAsync(string path, IReadOnlyList<string> branches)
+    private async Task<bool> DeleteLocalBranchesAsync(string path, IReadOnlyList<string> branches, Window? owner = null)
     {
         if (branches.Count == 0)
         {
@@ -646,8 +648,8 @@ public partial class MainWindow
             unmerged = unmerged || !await GitRepositoryService.IsMergedIntoHeadAsync(path, branch);
         }
 
-        if (unmerged && !await ConfirmAsync(Confirmation.DeleteUnmergedBranch, Confirmations.DeleteUnmergedBranchQuestion,
-                "Delete", "Delete Confirmation"))
+        if (unmerged && !await ConfirmWindow.AskAsync(owner ?? this, _preferences, Confirmation.DeleteUnmergedBranch,
+                Confirmations.DeleteUnmergedBranchQuestion, "Delete", "Delete Confirmation"))
         {
             return false;
         }

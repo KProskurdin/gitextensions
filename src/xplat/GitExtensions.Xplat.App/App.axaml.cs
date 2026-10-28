@@ -9,6 +9,9 @@ namespace GitExtensions.Xplat.App;
 
 public partial class App : Application
 {
+    // Upstream sets the documentation address once per process; the tests start the app again for each test.
+    private static bool _documentationBaseUrlSet;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -18,6 +21,13 @@ public partial class App : Application
     {
         // The shared core marshals work onto the thread that created this context, i.e. the UI thread.
         GitUI.ThreadHelper.JoinableTaskContext = new Microsoft.VisualStudio.Threading.JoinableTaskContext();
+        // As upstream at startup (Program.Main): the user manual's links need the version's documentation address.
+        if (!_documentationBaseUrlSet)
+        {
+            AppSettings.SetDocumentationBaseUrl(AppSettings.ProductVersion);
+            _documentationBaseUrlSet = true;
+        }
+
         ThemeApplier.Apply(AppServices.Preferences);
         FontApplier.Apply(AppServices.Preferences);
         FilePathTrimming.Apply(AppServices.Preferences);

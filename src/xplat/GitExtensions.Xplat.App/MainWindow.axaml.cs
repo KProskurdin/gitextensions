@@ -199,6 +199,8 @@ public partial class MainWindow : Window
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
         SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
         WireStartMenu();
+        WireDeleteRefs();
+        WireCommandsMenu();
         foreach ((MenuItem item, GridCommand command) in NavigateMenuCommands())
         {
             item.Click += (_, _) => RunGridHotkey(command);
@@ -266,8 +268,7 @@ public partial class MainWindow : Window
         BrowseFilesHereMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
         CheckoutCommitMenuItem.Click +=
             (_, _) => RunOnSelectedCommit((path, row) => ShowCheckoutRevisionAsync(path, row.Hash));
-        CherryPickMenuItem.Click +=
-            (_, _) => RunOnSelectedCommit((path, row) => _actions.CherryPickAsync(path, row.Hash));
+        CherryPickMenuItem.Click += (_, _) => CherryPickSelectedRevision();
         RevertMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => _actions.RevertAsync(path, row.Hash));
         ResetCurrentBranchMenuItem.Click += (_, _) =>
             RunOnSelectedCommit((path, row) => ShowResetCurrentBranchAsync(this, path, row.Hash, ResetMode.Soft));
@@ -1127,6 +1128,19 @@ public partial class MainWindow : Window
             (Screenshot.CommitDiffWindow, { } path) => new CommitDiffWindow(path, _commits.Selected?.Hash ?? "HEAD"),
             (Screenshot.RecentRepositoriesSettingsWindow, _) => new RecentRepositoriesSettingsWindow(),
             (Screenshot.GoToCommitWindow, { } path) => new GoToCommitWindow(path),
+            (Screenshot.DeleteBranchWindow, { } path) => new DeleteBranchWindow(
+                [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)],
+                _repository.CurrentBranch, [], (_, _) => Task.FromResult(false)),
+            (Screenshot.ArchiveWindow, { } path) => new ArchiveWindow(path, "HEAD", "HEAD~1", null, _preferences, null),
+            (Screenshot.FormatPatchWindow, { } path) => new FormatPatchWindow(path, _preferences),
+            (Screenshot.ApplyPatchWindow, { } path) => new ApplyPatchWindow(path, _preferences, null, null, null),
+            (Screenshot.ViewPatchWindow, { } path) => new ViewPatchWindow(path, null),
+            (Screenshot.CherryPickWindow, { } path) => new CherryPickWindow(path, "HEAD", _preferences, null),
+            (Screenshot.ChooseCommitWindow, { } path) => new ChooseCommitWindow(path, "HEAD~1", _preferences),
+            (Screenshot.CleanupRepositoryWindow, { } path) => new CleanupRepositoryWindow(path, null),
+            (Screenshot.MailMapWindow, { } path) => new RepositoryTextFileWindow(path, RepositoryTextFiles.MailMap),
+            (Screenshot.DeleteTagWindow, { } path) => new DeleteTagWindow(null, _repository.Tags, _repository.Remotes,
+                _repository.TrackingRemote ?? "", (_, _) => Task.CompletedTask),
             (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
             (Screenshot.RebaseWindow, { } path) => NewRebaseWindow(path, "HEAD~1", interactive: false, immediately: false),
             _ => null,
@@ -1544,29 +1558,16 @@ public partial class MainWindow : Window
         }
     }
 
-    // A remote branch is deleted on its own remote; origin/HEAD is a symbolic ref and is never deleted.
-    // Deleting a remote branch removes it for everyone who fetches, so it is confirmed first.
+    // Upstream's LocalBranchNode.Delete and RemoteBranchNode.Delete: upstream's delete branch or delete remote branch
+    // window with the branch.
     private async Task<bool> DeleteSelectedBranchAsync(string path, BranchInfo branch)
     {
         if (!branch.IsRemote)
         {
-            return await DeleteLocalBranchesAsync(path, [branch.Name]);
+            return await ShowDeleteBranchAsync(path, [branch.Name]);
         }
 
-        int separator = branch.Name.IndexOf('/');
-        if (separator < 0 || branch.Name.EndsWith("/HEAD", StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        string message =
-            $"Delete the branch {branch.Name} on the remote? Everyone who fetches it will lose it. This cannot be undone.";
-        if (!await new ConfirmWindow(message, "Delete").ShowDialog<bool>(this))
-        {
-            return false;
-        }
-
-        return await _actions.DeleteRemoteBranchAsync(path, branch.Name[..separator], branch.Name[(separator + 1)..]);
+        return await ShowDeleteRemoteBranchAsync(path, branch.Name);
     }
 
     private void OnActionsChanged(string? propertyName)
@@ -1828,6 +1829,8 @@ public partial class MainWindow : Window
         FileExplorerMenuItem.IsEnabled = open;
         TerminalButton.IsEnabled = open;
         TerminalMenuItem.IsEnabled = open;
+        GitGuiMenuItem.IsEnabled = GitKMenuItem.IsEnabled = UndoLastCommitMenuItem.IsEnabled = open;
+        GitAttributesMenuItem.IsEnabled = MailMapMenuItem.IsEnabled = CleanupMenuItem.IsEnabled = open;
         FilesMenuItem.IsEnabled = open;
         UpdateAllSubmodulesMenuItem.IsEnabled = SyncAllSubmodulesMenuItem.IsEnabled = open;
         GitInfoExcludeMenuItem.IsEnabled = ResetChangesMenuItem.IsEnabled = open;
@@ -1858,6 +1861,9 @@ public partial class MainWindow : Window
 
         CherryPickMenuItem.IsEnabled = commitSelected;
         RevertMenuItem.IsEnabled = commitSelected;
+        ArchiveMenuItem.IsEnabled = ArchiveCommitMenuItem.IsEnabled = commitSelected;
+        CherryPickCommandMenuItem.IsEnabled = commitSelected;
+        FormatPatchMenuItem.IsEnabled = ApplyPatchMenuItem.IsEnabled = ViewPatchMenuItem.IsEnabled = open;
         ResetCurrentBranchMenuItem.IsEnabled = commitSelected;
         RebaseOnCommitMenuItem.IsEnabled = commitSelected;
         RebaseInteractiveMenuItem.IsEnabled = commitSelected && _actions.EditorCommand is not null;

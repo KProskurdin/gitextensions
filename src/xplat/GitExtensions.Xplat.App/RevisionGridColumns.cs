@@ -1,6 +1,8 @@
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Media;
+using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.App;
 
@@ -30,6 +32,28 @@ internal static class RevisionGridColumns
                 FontApplier.ApplicationSizeKey, weightKey: null, styleKey: null);
         window.Resources["ObjectIdColumnWidth"] = Measure(window, ObjectIdSample, "MonospaceFontFamily",
             "MonospaceFontSize", "MonospaceFontWeight", "MonospaceFontStyle");
+    }
+
+    /// <summary>
+    ///  A grid in another window than the browse window (file history, choose commit) as the browse window's View menu
+    ///  and upstream's appearance settings say; build statuses are not shown there.
+    /// </summary>
+    public static void ShowAsSettingsSay(Control window, ListBox grid, IAppPreferences preferences,
+        CommitListViewModel commits)
+    {
+        GridColumns columns = preferences.GridColumns;
+        window.Resources["ShowGraphColumn"] = columns.Graph;
+        window.Resources["ShowAuthorNameColumn"] = columns.AuthorName;
+        window.Resources["ShowDateColumn"] = columns.Date;
+        SetWidths(window, preferences.RelativeDate);
+        window.Resources["ShowObjectIdColumn"] = columns.ObjectId;
+        window.Resources["ShowAuthorAvatarColumn"] = preferences.ShowAuthorAvatarColumn;
+        window.Resources["FillRefLabels"] = preferences.FillRefLabels;
+        window.Resources["BuildStatusShowIcon"] = false;
+        window.Resources["BuildStatusShowText"] = false;
+        window.Resources["BuildStatusColumnWidth"] = 0.0;
+        grid.Classes.Set("alternate", preferences.RevisionGraphDrawAlternateBackColor);
+        commits.ViewOptions = preferences.GridViewOptions;
     }
 
     private static double Measure(Control window, string text, string familyKey, string sizeKey, string? weightKey,

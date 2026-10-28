@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.ChooseCommitWindow"
+        Title="Choose commit"
+        Width="1105" Height="515" MinWidth="400" MinHeight="250" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormChooseCommit: the revision grid, "Go to commit..." and the selected commit's parents below it, and
+       OK. -->
+  <Grid RowDefinitions="*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="4">
+    <ListBox x:Name="revisionGrid" Grid.ColumnSpan="3" Classes="revisionGrid" ItemTemplate="{StaticResource RevisionRowTemplate}" />
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+      <TextBlock x:Name="label1" Text="Find specific commit:" VerticalAlignment="Center" />
+      <Button x:Name="buttonGotoCommit" Content="Go to commit..." MinWidth="162" HorizontalContentAlignment="Center" />
+    </StackPanel>
+    <StackPanel x:Name="flowLayoutPanelParents" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                Margin="12,6,0,0">
+      <TextBlock x:Name="labelParents" Text="Parent(s):" VerticalAlignment="Center" />
+      <HyperlinkButton x:Name="linkLabelParent" Padding="0" VerticalAlignment="Center" />
+      <HyperlinkButton x:Name="linkLabelParent2" Padding="0" VerticalAlignment="Center" />
+    </StackPanel>
+    <Button x:Name="btnOK" Grid.Row="1" Grid.Column="2" Content="OK" MinWidth="138" HorizontalContentAlignment="Center"
+            Margin="0,6,0,0" IsDefault="True" />
+  </Grid>
+</Window>

@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ViewPatchWindow"
+        Title="View patch"
+        Width="689" Height="501" MinWidth="300" MinHeight="250" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormViewPatch: the patch file with Browse, its file patches (file name, change, type; sortable), and the
+       selected one's diff below. -->
+  <Grid RowDefinitions="Auto,270,5,*" Margin="3">
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" Margin="0,0,0,4">
+      <TextBlock x:Name="labelPatch" Text="Patch" VerticalAlignment="Center" />
+      <TextBox x:Name="PatchFileNameEdit" Grid.Column="1" />
+      <Button x:Name="BrowsePatch" Grid.Column="2" Content="Browse" MinWidth="100" HorizontalContentAlignment="Center" />
+    </Grid>
+    <DockPanel Grid.Row="1">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,70,50">
+        <Button x:Name="FileNameA" Content="Filename" Classes="tool" HorizontalAlignment="Stretch" />
+        <Button x:Name="typeDataGridViewTextBoxColumn" Grid.Column="1" Content="Change" Classes="tool"
+                HorizontalAlignment="Stretch" />
+        <Button x:Name="File" Grid.Column="2" Content="Type" Classes="tool" HorizontalAlignment="Stretch" />
+      </Grid>
+      <ListBox x:Name="GridChangedFiles" />
+    </DockPanel>
+    <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+    <local:DiffView x:Name="ChangesList" Grid.Row="3" />
+  </Grid>
+</Window>

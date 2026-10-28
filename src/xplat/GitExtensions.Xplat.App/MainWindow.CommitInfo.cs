@@ -10,9 +10,6 @@ namespace GitExtensions.Xplat.App;
 // tab).
 public partial class MainWindow
 {
-    // Upstream's MessageBoxes text.
-    private const string CannotFindRevisionText = "Revision \"{0}\" is not visible in the revision grid. Remove the revision filter.";
-
     private string? _gpgHash;
 
     private void WireCommitInfo()
@@ -58,7 +55,7 @@ public partial class MainWindow
 
     // Upstream's MessageBoxes.RevisionFilteredInGrid.
     private void ShowRevisionFiltered(string hash)
-        => ShowError(string.Format(UpstreamTranslation.ByText(CannotFindRevisionText), hash[..Math.Min(hash.Length, 8)]));
+        => ShowError(string.Format(UpstreamTranslation.ByText(GoToCommit.RevisionNotVisible), hash[..Math.Min(hash.Length, 8)]));
 
     // Upstream's FillGpgInfoAsync: the tab is there for real commits while ShowGpgInformation is on, and reads the
     // signatures when it is shown.

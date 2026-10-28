@@ -118,9 +118,13 @@ internal sealed class LeftPanelTests
         tree.SelectedItem = BranchNode(tree, "unmerged");
 
         Click(window, "TreeDeleteMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<DeleteBranchWindow>().Any());
+        DeleteBranchWindow delete = window.OwnedWindows.OfType<DeleteBranchWindow>().Single();
+        Find<ComboBox>(delete, "Branches").Text.Should().Be("unmerged", "upstream's window opens with the branch");
+        Click(delete, "Delete");
 
-        WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
-        ConfirmWindow question = window.OwnedWindows.OfType<ConfirmWindow>().Single();
+        WaitUntil(() => delete.OwnedWindows.OfType<ConfirmWindow>().Any());
+        ConfirmWindow question = delete.OwnedWindows.OfType<ConfirmWindow>().Single();
         question.Title.Should().Be("Delete Confirmation");
         Click(question, "ConfirmButton");
         WaitUntil(() => BranchNode(tree, "unmerged") is null);

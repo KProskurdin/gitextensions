@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.DeleteBranchWindow"
+        Title="Delete branch"
+        Width="420" SizeToContent="Height" MinWidth="420" MaxWidth="950" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormDeleteBranch: its BranchComboBox (the branches' names with spaces between, and a button for
+       upstream's FormSelectMultipleBranches), and Delete at the bottom right. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            Padding="9,8">
+      <Button x:Name="Delete" Content="_Delete" MinWidth="75" HorizontalAlignment="Right" HorizontalContentAlignment="Center" />
+    </Border>
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="9" ColumnSpacing="4">
+      <Label x:Name="labelSelectBranches" Content="Select _branches" Target="Branches" VerticalAlignment="Center" Padding="0" />
+      <ComboBox x:Name="Branches" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+      <Button x:Name="selectMultipleBranchesButton" Grid.Column="2" Padding="3" VerticalAlignment="Center">
+        <Image Source="{local:UpstreamImage SelectBranch}" Width="16" Height="16" />
+      </Button>
+    </Grid>
+  </DockPanel>
+</Window>

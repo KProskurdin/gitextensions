@@ -433,22 +433,7 @@ public partial class FileHistoryWindow : Window
         };
 
     // The grid as the browse window's View menu and upstream's appearance settings say.
-    private void ShowGridColumns()
-    {
-        GridColumns columns = _preferences.GridColumns;
-        Resources["ShowGraphColumn"] = columns.Graph;
-        Resources["ShowAuthorNameColumn"] = columns.AuthorName;
-        Resources["ShowDateColumn"] = columns.Date;
-        RevisionGridColumns.SetWidths(this, _preferences.RelativeDate);
-        Resources["ShowObjectIdColumn"] = columns.ObjectId;
-        Resources["ShowAuthorAvatarColumn"] = _preferences.ShowAuthorAvatarColumn;
-        Resources["FillRefLabels"] = _preferences.FillRefLabels;
-        Resources["BuildStatusShowIcon"] = false;
-        Resources["BuildStatusShowText"] = false;
-        Resources["BuildStatusColumnWidth"] = 0.0;
-        HistoryList.Classes.Set("alternate", _preferences.RevisionGraphDrawAlternateBackColor);
-        _commits.ViewOptions = _preferences.GridViewOptions;
-    }
+    private void ShowGridColumns() => RevisionGridColumns.ShowAsSettingsSay(this, HistoryList, _preferences, _commits);
 
     private void ShowError(string message) => _ = new ErrorWindow(message).ShowDialog(this);
 

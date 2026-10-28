@@ -212,6 +212,29 @@ public interface IAppPreferences
     bool DontCommitMerge { get; set; }
 
     /// <summary>
+    ///  Upstream's <c>LastFormatPatchDir</c>: the format patch window's output folder.
+    /// </summary>
+    string LastFormatPatchDir { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>ApplyPatchIgnoreWhitespace</c> and <c>ApplyPatchSignOff</c>: the apply patch window's two options.
+    /// </summary>
+    bool ApplyPatchIgnoreWhitespace { get; set; }
+
+    bool ApplyPatchSignOff { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>CommitAutomaticallyAfterCherryPick</c>: the cherry pick window's "Automatically create a commit".
+    /// </summary>
+    bool CommitAutomaticallyAfterCherryPick { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>AddCommitReferenceToCherryPick</c>: the cherry pick window's "Add commit reference to commit
+    ///  message" (<c>-x</c>).
+    /// </summary>
+    bool AddCommitReferenceToCherryPick { get; set; }
+
+    /// <summary>
     ///  Upstream's <c>RebaseAutoStash</c>: the rebase dialog's "Auto stash", kept between rebases.
     /// </summary>
     bool RebaseAutoStash { get; set; }
@@ -863,6 +886,36 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.DontCommitMerge = value;
     }
 
+    public string LastFormatPatchDir
+    {
+        get => AppSettings.LastFormatPatchDir;
+        set => AppSettings.LastFormatPatchDir = value;
+    }
+
+    public bool ApplyPatchIgnoreWhitespace
+    {
+        get => AppSettings.ApplyPatchIgnoreWhitespace;
+        set => AppSettings.ApplyPatchIgnoreWhitespace = value;
+    }
+
+    public bool ApplyPatchSignOff
+    {
+        get => AppSettings.ApplyPatchSignOff;
+        set => AppSettings.ApplyPatchSignOff = value;
+    }
+
+    public bool CommitAutomaticallyAfterCherryPick
+    {
+        get => AppSettings.CommitAutomaticallyAfterCherryPick;
+        set => AppSettings.CommitAutomaticallyAfterCherryPick = value;
+    }
+
+    public bool AddCommitReferenceToCherryPick
+    {
+        get => AppSettings.AddCommitReferenceToCherryPick;
+        set => AppSettings.AddCommitReferenceToCherryPick = value;
+    }
+
     public bool RebaseAutoStash
     {
         get => AppSettings.RebaseAutoStash;
@@ -1303,6 +1356,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
     public bool Asks(Confirmation confirmation) => confirmation switch
     {
         Confirmation.Amend => !AppSettings.DontConfirmAmend.Value,
+        Confirmation.UndoLastCommit => !AppSettings.DontConfirmUndoLastCommit.Value,
         Confirmation.CommitWithoutBranch => !AppSettings.DontConfirmCommitIfNoBranch,
         Confirmation.Rebase => !AppSettings.DontConfirmRebase.Value,
         Confirmation.FetchAndPrune => !AppSettings.DontConfirmFetchAndPruneAll.Value,
@@ -1324,6 +1378,9 @@ public sealed class SettingsAppPreferences : IAppPreferences
         {
             case Confirmation.Amend:
                 AppSettings.DontConfirmAmend.Value = !ask;
+                break;
+            case Confirmation.UndoLastCommit:
+                AppSettings.DontConfirmUndoLastCommit.Value = !ask;
                 break;
             case Confirmation.CommitWithoutBranch:
                 AppSettings.DontConfirmCommitIfNoBranch = !ask;
@@ -1592,6 +1649,16 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool CreateLocalBranchForRemote { get; set; }
 
     public bool DontCommitMerge { get; set; }
+
+    public string LastFormatPatchDir { get; set; } = "";
+
+    public bool ApplyPatchIgnoreWhitespace { get; set; }
+
+    public bool ApplyPatchSignOff { get; set; }
+
+    public bool CommitAutomaticallyAfterCherryPick { get; set; }
+
+    public bool AddCommitReferenceToCherryPick { get; set; }
 
     public bool RebaseAutoStash { get; set; }
 

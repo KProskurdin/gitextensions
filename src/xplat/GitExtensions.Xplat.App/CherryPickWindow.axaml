@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.CherryPickWindow"
+        Title="Cherry pick commit"
+        Width="614" SizeToContent="Height" MinWidth="614" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormCherryPick: the commit's summary with a button to choose another, the parent of a merge, the commit
+       and reference options, and Cherry pick and Abort at the bottom right. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            Padding="12,8">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+        <Button x:Name="btnPick" Content="_Cherry pick" MinWidth="109" HorizontalContentAlignment="Center" IsDefault="True" />
+        <Button x:Name="btnAbort" Content="A_bort" MinWidth="75" HorizontalContentAlignment="Center" IsCancel="True" />
+      </StackPanel>
+    </Border>
+    <StackPanel Margin="15,12" Spacing="4">
+      <TextBlock x:Name="lblBranchInfo" Text="Cherry pick this commit:" />
+      <local:CommitSummaryView x:Name="commitSummaryUserControl1" Margin="13,0,0,0" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+        <Label x:Name="lblAnotherRev" Content="C_hoose another revision:" Target="btnChooseRevision" Padding="0"
+               VerticalAlignment="Center" />
+        <Button x:Name="btnChooseRevision" Padding="3">
+          <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
+        </Button>
+      </StackPanel>
+      <Label x:Name="lblParents" Content="This commit is a merge, select _parent:" Target="lvParentsList" Padding="0"
+             IsVisible="False" />
+      <ListBox x:Name="lvParentsList" IsVisible="False" Margin="3,0,0,0" />
+      <CheckBox x:Name="cbxAutoCommit" Content="_Automatically create a commit" />
+      <CheckBox x:Name="cbxAddReference" Content="A_dd commit reference to commit message" />
+    </StackPanel>
+  </DockPanel>
+</Window>

@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.DeleteRemoteBranchWindow"
+        Title="Delete branch"
+        Width="403" SizeToContent="Height" MinWidth="403" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormDeleteRemoteBranch: the remote branches (its BranchComboBox), deleting them on the remote (to be
+       checked first) and their local tracking branches, and Delete at the bottom right. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            Padding="9,8">
+      <Button x:Name="Delete" Content="_Delete" MinWidth="75" HorizontalAlignment="Right" HorizontalContentAlignment="Center"
+              IsEnabled="False" />
+    </Border>
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="9" ColumnSpacing="4" RowSpacing="4">
+      <Label x:Name="labelSelectBranches" Content="Select _branches" Target="Branches" VerticalAlignment="Center" Padding="0" />
+      <ComboBox x:Name="Branches" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+      <Button x:Name="selectMultipleBranchesButton" Grid.Column="2" Padding="3" VerticalAlignment="Center">
+        <Image Source="{local:UpstreamImage SelectBranch}" Width="16" Height="16" />
+      </Button>
+      <CheckBox x:Name="DeleteRemote" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                Content="Delete branch(es) from _remote repository" />
+      <CheckBox x:Name="DeleteLocalTrackingBranch" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                Content="Delete _local tracking branch (if available)" />
+      <TextBlock x:Name="_NO_TRANSLATE_labelLocalTrackingBranches" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2"
+                 TextWrapping="Wrap" />
+    </Grid>
+  </DockPanel>
+</Window>

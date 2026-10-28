@@ -23,6 +23,8 @@ public static class GoToCommit
     public const string NoMergeBaseCommit = "There is no common ancestor for the selected commits.";
     public const string NoRevisionFound = "No revision found.";
     public const string CannotFindRevisionCaption = "Cannot find revision";
+    public const string RevisionNotVisible =
+        "Revision \"{0}\" is not visible in the revision grid. Remove the revision filter.";
     public const string GitRevParseUrl = "https://git-scm.com/docs/git-rev-parse#_specifying_revisions";
 
     /// <summary>

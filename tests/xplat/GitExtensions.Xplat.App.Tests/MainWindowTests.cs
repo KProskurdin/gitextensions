@@ -329,6 +329,25 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Undo_last_commit_asks_and_keeps_the_changes_staged()
+    {
+        string first = _repo.Run("rev-parse", "HEAD~1").Trim();
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+
+        Click(window, "UndoLastCommitMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
+        ConfirmWindow question = window.OwnedWindows.OfType<ConfirmWindow>().Single();
+        question.Title.Should().Be("Undo last commit");
+        Click(question, "ConfirmButton");
+
+        WaitUntil(() => _repo.Run("rev-parse", "HEAD").Trim() == first);
+        _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("a.txt");
+        TestAppBuilder.Preferences.Asks(Confirmation.UndoLastCommit).Should().BeTrue();
+    }
+
+    [AvaloniaTest]
     public void The_Navigate_menu_goes_to_the_parent_and_back_and_forward()
     {
         MainWindow window = NewWindow();
@@ -966,6 +985,10 @@ internal sealed class MainWindowTests
 
         tree.SelectedItem = Root(tree, RepoObjectKind.TagsRoot)!.Children[0];
         Click(window, "TreeDeleteMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<DeleteTagWindow>().Any());
+        DeleteTagWindow delete = window.OwnedWindows.OfType<DeleteTagWindow>().Single();
+        Find<ComboBox>(delete, "Tags").Text.Should().Be("v1.0", "upstream's window opens with the tag");
+        Click(delete, "Ok");
         WaitUntil(() => Root(tree, RepoObjectKind.TagsRoot)?.Children.Count == 0);
         _repo.Run("tag", "--list").Trim().Should().BeEmpty();
     }

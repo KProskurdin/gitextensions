@@ -33,7 +33,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs`, `CommitSummaryUserControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CreateBranchDialog.cs`, `GitOperations.cs` (create, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CreateBranchWindow.axaml(.cs)`, `MainWindow.axaml.cs`, `MainWindow.LeftPanel.cs`, `CommitWindow.Bottom.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutBranchDialog.cs`, `GitOperations.cs` (checkout, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutBranchWindow.axaml(.cs)`, `CheckoutBranchFlow.cs`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCheckoutRevision.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutRevisionDialog.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutRevisionWindow.axaml(.cs)`, `CommitPickerView.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs`; `src/app/GitUI/UserControls/BranchComboBox.cs`; `src/app/GitUI/HelperDialogs/FormSelectMultipleBranches.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`, `DeleteBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteBranchWindow.axaml(.cs)`, `SelectMultipleBranchesWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
 | `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`, `DiffCopy.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`, `DiffView.Toolbar.cs`, `DiffWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`BuildPathFilter`, `FilePathByObjectId`), `FilterInfo.cs` (full history) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileHistoryDialog.cs`, `FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`, `PathFilter`), `CommitListViewModel.FilePaths`, `RevisionFilter.cs` (`FullHistory`, `SimplifyMerges`); `src/xplat/GitExtensions.Xplat.App/FileHistoryWindow.axaml(.cs)`, `RevisionGrid.axaml`, `FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
@@ -41,8 +41,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (create), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (tag list, Create) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Delete) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormCherryPick.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (cherry-pick), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Cherry-pick on the selected commit) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteTagWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormCherryPick.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (cherry-pick), `RepositoryOperationsViewModel.cs`, `CherryPickDialog.cs`, `Settings/AppPreferences.cs` (`CommitAutomaticallyAfterCherryPick`, `AddCommitReferenceToCherryPick`); `src/xplat/GitExtensions.Xplat.App/CherryPickWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`, `MainWindow.axaml` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormResetChanges.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (reset), `RepositoryOperationsViewModel.cs`; `MainWindow.axaml` (Reset soft here, Reset mixed here) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormRebase.cs`; `src/app/GitUI/UserControls/PatchGrid.cs`, `PatchFile.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/RebaseDialog.cs`, `RebasePatches.cs`, `GitOperations.cs` (rebase, `RunRebaseAsync`, interactive rebase, abort, continue, skip, edit todo), `GitEditorCommand.cs`, `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsRebasing`; `src/xplat/GitExtensions.Xplat.App/RebaseWindow.axaml(.cs)`, `MainWindow.axaml` (Commands > Rebase..., grid menu "Rebase current branch on", warning bar buttons) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormEditor.cs` (and the `fileeditor` verb of `GitUICommands.RunCommand`) | `src/xplat/GitExtensions.Xplat.App/EditorWindow.axaml(.cs)`, `Program.cs`, `App.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Editing/EditorFile.cs` | `52d08e996` | partial |
@@ -78,6 +78,11 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/RevisionGridMenuCommands.cs` (`CreateNavigateMenuCommands`), `NavigationHistory.cs`, `RevisionGridControl.cs` (`ToggleBetweenArtificialAndHeadCommits`, `GoToFirstParent`, `GoToLastParent`, `NavigateBackward`, `NavigateForward`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/NavigationHistory.cs`, `CommitListViewModel.cs` (`IndexOfNextArtificialOrHead`, `IndexOfLastParent`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Navigate menu), `MainWindow.axaml.cs` (`RunGridHotkey`), `Hotkeys.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/FormRecentReposSettings.cs`; `Menus/WorkingDirectoryToolStripSplitButton.cs` (`FillDropDown`, the filter, `MouseUpHandler`, `RefreshContent`'s width); `src/app/GitUI/RepositoryHistoryUIService.cs` (`OpenRepo`) | `src/xplat/GitExtensions.Xplat.App/RecentRepositoriesSettingsWindow.axaml(.cs)`, `MainWindow.Toolbar.cs` (`ShowWorkingDirMenu`), `MainWindow.StartMenu.cs` (`RepositoryMenuItem`); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositoriesSettings.cs`, `RecentRepositories.cs` (`SaveRecentAsync`), `Settings/AppPreferences.cs` (`RecentRepositoryMenu`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/FormGoToCommit.cs`; `RevisionGridMenuCommands.cs` (`GotoCommitExecute`); `RevisionGridControl.cs` (`GoToMergeBase`) | `src/xplat/GitExtensions.Xplat.App/GoToCommitWindow.axaml(.cs)`, `MainWindow.Navigate.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GoToCommit.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormGitAttributes.cs`, `FormMailMap.cs`; `FormBrowse.cs` (`undoLastCommitToolStripMenuItem_Click`); `Menus/ToolsToolStripMenuItem.cs` (Git GUI, GitK) | `src/xplat/GitExtensions.Xplat.App/RepositoryTextFileWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepositoryTextFiles.cs`, `Settings/Confirmations.cs` (`UndoLastCommit`) | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormCleanupRepository.cs` | `src/xplat/GitExtensions.Xplat.App/CleanupRepositoryWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/CleanupDialog.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormArchive.cs`; `src/app/GitUI/HelperDialogs/FormChooseCommit.cs` | `src/xplat/GitExtensions.Xplat.App/ArchiveWindow.axaml(.cs)`, `ChooseCommitWindow.axaml(.cs)`, `RevisionGridColumns.cs` (`ShowAsSettingsSay`), `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/ArchiveDialog.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormDeleteRemoteBranch.cs`; `LeftPanel/RemoteBranchNode.cs` (`Delete`) | `src/xplat/GitExtensions.Xplat.App/DeleteRemoteBranchWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs`, `MainWindow.axaml.cs` (`DeleteSelectedBranchAsync`); `src/xplat/GitExtensions.Xplat.Core/Operations/DeleteRemoteBranchDialog.cs`, `RepositoryOperationsViewModel.cs` (`DeleteRemoteBranchesAsync`) | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormFormatPatch.cs`, `FormApplyPatch.cs`, `FormViewPatch.cs`, `FormAddFiles.cs` | `src/xplat/GitExtensions.Xplat.App/FormatPatchWindow.axaml(.cs)`, `ApplyPatchWindow.axaml(.cs)`, `ViewPatchWindow.axaml(.cs)`, `AddFilesWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/PatchDialogs.cs`, `ApplyPatchDialog.cs`, `Settings/AppPreferences.cs` (`LastFormatPatchDir`, `ApplyPatchIgnoreWhitespace`, `ApplyPatchSignOff`) | `52d08e996` | ported |
 | `src/app/GitUI/HelperDialogs/FormCommitDiff.cs`; `src/app/GitUI/UserControls/CommitDiff.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`ViewSelectedRevisions`); `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` (`FileChangesDoubleClick`, the Commit tab) | `src/xplat/GitExtensions.Xplat.App/CommitDiffWindow.axaml(.cs)`, `CommitDiffView.axaml(.cs)`, `MainWindow.GridView.cs` (`ViewSelectedRevision`), `FileHistoryWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceFontsSettingsPage.cs`; `src/app/GitExtensions.Extensibility/FontParser.cs` (format) | `src/xplat/GitExtensions.Xplat.Core/Settings/FontSetting.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/FontApplier.cs`, `SettingsWindow.axaml(.cs)` (Fonts tab), `App.axaml` and the views' font resources | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/FormBrowseRepoSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `AuthorNameColumnProvider.cs`, `DateColumnProvider.cs`, `CommitIdColumnProvider.cs` (`TryGetToolTip`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionTooltips.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (grid tooltips), `SettingsWindow.axaml(.cs)` (Browse repository window tab) | `52d08e996` | partial |
@@ -203,8 +208,14 @@ neighbouring file at the top or bottom of a diff.
 branch tracks after a confirmation, with upstream's `push <remote> :refs/tags/<tag>`; the local tag is kept. Not ported: the
 remote choice in the dialog and deleting both at once.
 
-**FormCherryPick** (`partial`). Ported: cherry-pick the selected commit onto the current branch. Not ported: the
-multi-commit selection, the no-commit option, the append-to-message option, and the commit-message edit step.
+**FormCherryPick** (`ported`). 2026-10-28 (UI-PARITY, after U6): Commands > Cherry pick... and the grid's "Cherry pick
+this commit..." open `CherryPickWindow`, upstream's FormCherryPick (core `CherryPickDialog`): the commit's summary,
+another commit chosen in upstream's FormChooseCommit, for a merge its parents (number, message, author, date; the
+first selected, upstream's error when none is), "Automatically create a commit" (else `--no-commit`) and "Add commit
+reference to commit message" (`-x`), kept under upstream's keys after a pick. The pick runs upstream's
+`Commands.CherryPick` and, when it stops on conflicts, asks upstream's resolve question (MergeConflictHandler) and
+opens the conflicts window. The grid selects one commit, so upstream's one window per selected commit does not
+arise. Before, the grid's item cherry-picked at once without options.
 
 **FormResetChanges** (`partial`). Ported: reset the current branch to the selected commit with the soft and mixed
 modes. Also ported: deleting selected untracked files after a confirmation (Delete untracked), the hard mode, behind a confirmation (Reset hard here), and
@@ -503,9 +514,9 @@ events, and updates the submodules when HEAD moved. The commit picker is `Commit
 this commit..." (was a checkout at once), and the left panel's checkout of a tag. Not ported: the commit picker's button
 (FormChooseCommit).
 
-**FormDeleteBranch** (`partial`). Ported: delete a local branch that is not checked out, with a force delete after a confirmation, and
-delete a remote branch on its own remote after a confirmation (`git push --delete`); origin/HEAD is never deleted. Not ported: force delete
-from the window, the merged-branches list, and the confirmation dialog.
+**FormDeleteBranch** (`ported`). The earlier partial state (a local branch deleted after a confirmation, a remote
+branch with `git push --delete`) was replaced on 2026-10-28 by upstream's windows: see the "Delete branch and Delete
+tag windows" and "FormDeleteRemoteBranch" notes.
 
 ## Review against upstream 52d08e996 (2026-10-03)
 
@@ -775,10 +786,11 @@ manual, Translate and Report an issue; the Navigate menu came later the same day
 upstream's places: Show reflog (Commands), Close (Repository, "Close (go to Dashboard)") and the terminal
 (Tools, "Git bash"). Removed, as upstream has them only on the toolbar or in the push window:
 Quick pull, Quick push, Quick fetch and Push tags (their hotkeys still work). "Browse files..." stays as
-the new shell's own. Not ported: Manage submodules, .gitattributes, .mailmap, Sparse Working Copy,
-Git maintenance and Repository settings; Undo last commit, Clean working directory, Delete branch, Delete tag, Cherry
-pick, Archive revision and the patch items; Git GUI, GitK and PuTTY; Changelog, Donate, the telemetry choice and
-Check for updates; Report an issue does not copy the environment information first.
+the new shell's own. Not ported: Manage submodules, Sparse Working Copy, Git maintenance and Repository
+settings; PuTTY (Windows only in upstream); Changelog, Donate, the telemetry choice and Check for updates; Report an
+issue does not copy the environment information first. Undo last commit, Git GUI, GitK, .gitattributes, .mailmap,
+Delete branch, Delete tag, Clean working directory, Archive revision, Cherry pick and the patch items came later the
+same day (see their notes).
 
 **Initial focus** (`ported`). 2026-10-28 (UI-PARITY U6): a WinForms form opens with a control focused (the one it
 selects on load, else the first in its tab order); an Avalonia window opens with none, and the first Tab would reach
@@ -841,6 +853,77 @@ double-click anchors to the other list, the context menu offers the anchors the 
 "Remove from recent repositories" removes at once, as upstream's, which reads the list back without the anchors not
 yet saved. Anchors are saved with OK (upstream's `SaveRecentHistoryAsync`, `IRecentRepositoryStore.SaveRecentAsync`).
 The menus now split with the preferences' settings (upstream's `RecentRepoSplitter` reads the same keys).
+
+**Delete branch and Delete tag windows** (`ported`). 2026-10-28 (UI-PARITY, after U6): Commands > "Delete branch..."
+and "Delete tag..." in upstream's places. `DeleteBranchWindow` is upstream's FormDeleteBranch with its
+BranchComboBox: the local branches' names in an editable box, spaces between, and a button for upstream's
+FormSelectMultipleBranches (`SelectMultipleBranchesWindow`, the branches with check boxes, the checked ones counting
+however it closes). On Delete each name that is no branch gets upstream's error and is left out, the current branch
+is refused with upstream's message, and the rest goes through upstream's `HandleWorktreeBranches` (core
+`DeleteBranchDialog.ClassifyWorktreeBranches`): stale worktrees are pruned, a branch of the main worktree is refused,
+and the branches of linked worktrees are deleted with their folders after upstream's question (default No), then the
+left panel's unmerged question and `branch -D`. The window closes once the delete succeeded. `DeleteTagWindow` is
+upstream's FormDeleteTag: the tag in an editable box, "Delete tag also from the following remote(s):" with the
+remotes (the branch's remote first, enabled with the box), and the user manual's link; the local tag is deleted, then
+the remote's between the push scripts, and the window closes either way, as upstream's. The WinForms shim's
+`TaskDialogPage` gained upstream's `DefaultButton`, which `MessageBoxWindow` honours. The app now sets upstream's
+documentation address at startup (`AppSettings.SetDocumentationBaseUrl`, as upstream's Program), which Help > User
+manual and every help link needed. The left panel opens these windows too (see the next note).
+
+**Undo last commit, Git GUI, GitK, .gitattributes and .mailmap** (`ported`). 2026-10-28 (UI-PARITY, after U6):
+Commands > Undo last commit... asks upstream's question (suppressible, upstream's `DontConfirmUndoLastCommit`, now
+on the Confirmations page under Commits) and resets softly to HEAD~1, so the commit's changes stay staged. Tools >
+Git GUI and GitK run upstream's `GitModule.RunGui` and `RunGitK` (their hotkeys have no default upstream and are not
+offered). Repository > Edit .gitattributes and Edit .mailmap open `RepositoryTextFileWindow`, upstream's
+FormGitAttributes and FormMailMap in one window (core `RepositoryTextFiles`): the file's text beside upstream's help
+and Save; Save writes the text ending with a line break in git's encoding, even to a read-only file, and closing
+with changes asks upstream's Yes/No/Cancel question. A saved .mailmap reads the repository again, as upstream's
+`RepoChangedNotifier`. The left panel and the grid now open the delete windows for a local branch, a folder's
+branches (Delete All) and a tag, as upstream's `LocalBranchNode`, `BranchPathNode` and `TagNode` do; a remote branch
+opens upstream's FormDeleteRemoteBranch (see its note).
+
+**Clean working directory, Archive and FormChooseCommit** (`ported`). 2026-10-28 (UI-PARITY, after U6): Commands >
+Clean working directory... opens `CleanupRepositoryWindow`, upstream's FormCleanupRepository: all, non-ignored or
+ignored untracked files, directories, submodules recursively, the paths to clean (folders of the work tree) and to
+keep (files, relative), Preview (a dry run) and Cleanup after upstream's question, with upstream's `Commands.Clean`
+and `CleanSubmodules` arguments (core `CleanupDialog`). Git's output goes to the window's log; upstream also shows
+each run in its process window. Commands > Archive revision... and the grid's "Archive this commit..." open
+`ArchiveWindow`, upstream's FormArchive (core `ArchiveDialog`): the commit's summary, another revision chosen in
+upstream's FormChooseCommit, the path filter or the files changed since a second revision (exclusive, as upstream's),
+zip or tar, and Save as, which asks for the file with upstream's suggested name and filter and runs upstream's
+`git archive` command with its output shown. Both items are enabled for a real commit, as upstream's
+`singleNormalCommit`; the grid selects one commit, so no second revision comes from it. `ChooseCommitWindow` is
+upstream's FormChooseCommit: a revision grid with the browse window's columns (`RevisionGridColumns.ShowAsSettingsSay`,
+now shared with the file history), the preselected commit, Go to commit..., the selected commit's parents as links
+(upstream's message when the grid does not show one), and OK or a double-click. The "not visible in the revision
+grid" message moved to core `GoToCommit.RevisionNotVisible`, which the browse window uses too.
+
+**FormDeleteRemoteBranch** (`ported`). 2026-10-28 (UI-PARITY, after U6): the left panel's delete of a remote branch
+(upstream's `RemoteBranchNode.Delete`) opens `DeleteRemoteBranchWindow`, upstream's FormDeleteRemoteBranch (core
+`DeleteRemoteBranchDialog`): the remote branches in upstream's BranchComboBox (the delete branch window's box and its
+multiple branches window), "Delete branch(es) from remote repository", which must be checked before Delete is
+enabled, and "Delete local tracking branch (if available)" with upstream's list of the tracking branches (eight, then
+"and N more..."). Delete asks upstream's question (default No) when a branch is not among `git branch -r --merged`,
+pushes upstream's `Commands.DeleteRemoteBranches` once per remote between the push scripts, and then opens the delete
+branch window with the tracking branches when asked (upstream opens it after each remote's push; here once). The
+window reads the refs and the merged branches in one background pass, as upstream's module is not safe for two
+threads at once. Before, the shell asked its own question and ran `git push --delete`.
+
+**Patch windows** (`ported`). 2026-10-28 (UI-PARITY, after U6): Commands > Format patch..., Apply patch... and View
+patch file... in upstream's group after Show reflog. `FormatPatchWindow` is upstream's FormFormatPatch (core
+`FormatPatchDialog`): the output folder (kept as upstream's `LastFormatPatchDir` when it exists), a revision grid with
+several commits selectable, the current branch, and Create patch(es), which runs upstream's `GitModule.FormatPatch` as
+upstream: one commit from its parent, two as a range, more one by one numbered from the oldest; git's output is shown,
+or upstream's errors. `ApplyPatchWindow` is upstream's FormApplyPatch (core `ApplyPatchDialog`): a patch file
+(`git apply` for a raw diff, `git am --3way` for a mail, upstream's `IsDiffFile`) or a directory streamed to `git am`
+(`GitModule.ApplyPatch`), Ignore whitespace and Sign-off kept under upstream's keys, and while `git am` stopped its
+patches (the shared `RebasePatches` reading of rebase-apply) with Conflicts resolved, Skip, Abort, Add files and Solve
+conflicts, the default one marked ">...<" and framed as upstream's; the window refreshes when it is activated again
+(upstream refreshes after its modal conflicts dialog). Add files opens `AddFilesWindow`, upstream's FormAddFiles
+(filter, Force, Show files as a dry run). `ViewPatchWindow` is upstream's FormViewPatch (core `ViewPatchDialog`): a
+patch file's file patches (upstream's `PatchProcessor`), sortable by name, change and type with the header buttons,
+and the selected one's diff (`DiffView.ShowPatch`, upstream's `ViewFixedPatch`). Git runs with its output shown in the
+browse window's output panel (`RunGitWithOutputAsync`), as upstream's FormProcess.
 
 **SplitterManager** (`ported`). Ported 2026-10-17 (UI-PARITY U6): the splitter positions are kept under upstream's keys
 in GitExtensions.settings (`<form>.<splitter>_Size`, `_Dpi`, `_Distance`, `_Panel1Collapsed`, `_Panel2Collapsed`), in

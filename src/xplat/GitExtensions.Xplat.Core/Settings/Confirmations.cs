@@ -9,6 +9,9 @@ public enum Confirmation
     /// <summary>Upstream <c>DontConfirmAmend</c>: committing with Amend.</summary>
     Amend,
 
+    /// <summary>Upstream <c>DontConfirmUndoLastCommit</c>: Commands > Undo last commit.</summary>
+    UndoLastCommit,
+
     /// <summary>Upstream <c>DontConfirmCommitIfNoBranch</c>: committing while no branch is checked out.</summary>
     CommitWithoutBranch,
 
@@ -67,6 +70,7 @@ public static class Confirmations
     public static IReadOnlyList<ConfirmationOption> Options { get; } =
     [
         new("Commits", Confirmation.Amend, "Amend last commit"),
+        new("Commits", Confirmation.UndoLastCommit, "Undo last commit"),
         new("Commits", Confirmation.CommitWithoutBranch,
             "Commit when no branch is currently checked out (headless state)"),
         new("Commits", Confirmation.Rebase, "Rebase on top of selected commit"),
@@ -107,6 +111,14 @@ public static class Confirmations
         "You are not working on a branch" + Environment.NewLine + Environment.NewLine
         + "This commit will be unreferenced when switching to another branch and can be lost."
         + Environment.NewLine + Environment.NewLine + "Do you want to continue?";
+
+    /// <summary>
+    ///  Upstream FormBrowse's undo last commit question and caption.
+    /// </summary>
+    public const string UndoLastCommitQuestion =
+        "You will still be able to find all the commit's changes in the staging area\n\nDo you want to continue?";
+
+    public const string UndoLastCommitCaption = "Undo last commit";
 
     public const string RebaseQuestion = "Are you sure you want to rebase? This action will rewrite commit history.";
 

@@ -205,6 +205,15 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         => RunAsync($"Deleted {remote}/{branch}", repositoryPath,
             () => _operations.DeleteRemoteBranchAsync(repositoryPath, remote, branch));
 
+    /// <summary>
+    ///  Upstream FormDeleteRemoteBranch's push: the branches deleted on <paramref name="remote"/> at once
+    ///  (<c>Commands.DeleteRemoteBranches</c>).
+    /// </summary>
+    public Task<bool> DeleteRemoteBranchesAsync(string repositoryPath, string remote, IReadOnlyList<string> branches)
+        => RunAsync($"Deleted {branches.Count} branch(es) on {remote}", repositoryPath,
+            () => _operations.RunCommandsAsync(repositoryPath,
+                [Commands.DeleteRemoteBranches(remote, branches).Arguments]));
+
     public Task<bool> RenameBranchAsync(string repositoryPath, string branch, string newName)
     {
         if (string.IsNullOrWhiteSpace(newName))
@@ -349,6 +358,13 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> CherryPickAsync(string repositoryPath, string commit)
         => RunAsync($"Cherry-picked {ShortHash(commit)}", repositoryPath,
             () => _operations.CherryPickAsync(repositoryPath, commit));
+
+    /// <summary>
+    ///  Upstream FormCherryPick's command (<c>Commands.CherryPick</c> with the window's options).
+    /// </summary>
+    public Task<bool> CherryPickAsync(string repositoryPath, string commit, ArgumentString arguments)
+        => RunAsync($"Cherry-picked {ShortHash(commit)}", repositoryPath,
+            () => _operations.RunCommandsAsync(repositoryPath, [arguments]));
 
     public Task<bool> ResetAsync(string repositoryPath, string commit, ResetMode mode)
         => RunAsync($"Reset to {ShortHash(commit)}", repositoryPath,

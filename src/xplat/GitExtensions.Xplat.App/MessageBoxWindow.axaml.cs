@@ -89,7 +89,7 @@ public partial class MessageBoxWindow : Window
             {
                 Content = isCommandLink ? CommandLinkContent(label) : label,
                 MinWidth = 80,
-                IsDefault = index == 0,
+                IsDefault = page.DefaultButton is { } defaultButton ? choice == defaultButton : index == 0,
                 IsCancel = choice == TaskDialogButton.Cancel,
                 HorizontalAlignment = isCommandLink ? HorizontalAlignment.Stretch : HorizontalAlignment.Right,
                 HorizontalContentAlignment = isCommandLink ? HorizontalAlignment.Left : HorizontalAlignment.Center,

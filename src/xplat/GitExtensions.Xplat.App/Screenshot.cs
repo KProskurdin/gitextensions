@@ -64,6 +64,26 @@ internal static class Screenshot
 
     public const string GoToCommitWindow = "gotocommit";
 
+    public const string DeleteBranchWindow = "deletebranch";
+
+    public const string DeleteTagWindow = "deletetag";
+
+    public const string MailMapWindow = "mailmap";
+
+    public const string CleanupRepositoryWindow = "cleanup";
+
+    public const string ArchiveWindow = "archive";
+
+    public const string ChooseCommitWindow = "choosecommit";
+
+    public const string CherryPickWindow = "cherrypick";
+
+    public const string FormatPatchWindow = "formatpatch";
+
+    public const string ApplyPatchWindow = "applypatch";
+
+    public const string ViewPatchWindow = "viewpatch";
+
     /// <summary>
     ///  The file a window about one file shows (the file history), for the screenshot aid.
     /// </summary>

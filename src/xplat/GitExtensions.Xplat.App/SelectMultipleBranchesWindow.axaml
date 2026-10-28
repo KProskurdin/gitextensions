@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.SelectMultipleBranchesWindow"
+        Title="Select multiple branches"
+        Width="263" Height="252" MinWidth="200" MinHeight="200" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormSelectMultipleBranches: the branches with check boxes, checked with one click, and OK. -->
+  <DockPanel Margin="12,9,12,6">
+    <TextBlock x:Name="selectBranchesLabel" DockPanel.Dock="Top" Text="Select branches" Margin="0,0,0,8" />
+    <Button x:Name="okButton" DockPanel.Dock="Bottom" Content="OK" MinWidth="75" HorizontalAlignment="Right"
+            HorizontalContentAlignment="Center" Margin="0,8,0,0" IsDefault="True" />
+    <ListBox x:Name="Branches" />
+  </DockPanel>
+</Window>
