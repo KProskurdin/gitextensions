@@ -70,6 +70,8 @@ internal static class Screenshot
 
     public const string MailMapWindow = "mailmap";
 
+    public const string VerifyDatabaseWindow = "verifydatabase";
+
     public const string CleanupRepositoryWindow = "cleanup";
 
     public const string ArchiveWindow = "archive";

@@ -1,14 +1,24 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.EditorWindow"
         Title="Editor"
         Width="800" Height="560" WindowStartupLocation="CenterScreen">
-  <!-- Mirrors upstream FormEditor: a toolbar with Save, the file's text, and a question about unsaved changes on close. -->
+  <!-- Mirrors upstream FormEditor: a toolbar with Save, its warning for files that are risky to edit (panelMessage), the
+       file's text, and a question about unsaved changes on close. -->
   <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8,6">
       <Button x:Name="SaveButton" Content="Save" ToolTip.Tip="Save the file (Ctrl+S)" />
       <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" />
     </StackPanel>
+    <Border x:Name="panelMessage" DockPanel.Dock="Top" IsVisible="False" Padding="5"
+            Background="{DynamicResource WarningPanelBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="9">
+        <Image Source="{local:UpstreamImage Warning}" Width="16" Height="16" VerticalAlignment="Center" />
+        <TextBlock x:Name="labelWarning" Foreground="{DynamicResource WarningPanelTextBrush}" VerticalAlignment="Center"
+                   Text="Here be dragons!&#10;Changing this file by hand can be harmful and might break something.&#10;If you are not sure just close this window." />
+      </StackPanel>
+    </Border>
     <Border x:Name="SaveChangesBar" DockPanel.Dock="Bottom" IsVisible="False" Padding="8,6"
             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">

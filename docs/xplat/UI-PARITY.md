@@ -380,6 +380,11 @@ toolbar icons with upstream's `ToolTipText`.
   View patch file (FormViewPatch); screenshots `formatpatch`, `applypatch`, `viewpatch`. See the "Patch windows" note
   in `PORTING-MAP.md`. Left: Git maintenance, Manage submodules, Sparse, Repository settings, PuTTY (Windows),
   Changelog/Donate/telemetry/updates.
+- 2026-10-31, Repository > Git maintenance done: Compress git database (`git gc` with its output), Recover lost
+  objects... (FormVerify as `VerifyDatabaseWindow`, with FormEdit as `ViewTextWindow`; screenshot
+  `XPLAT_SCREENSHOT_WINDOW=verifydatabase`), Delete index.lock and Edit .git/config (the editor window with upstream's
+  warning panel). See the "Git maintenance menu and FormVerify" note in `PORTING-MAP.md`. Left: Manage submodules,
+  Sparse, Repository settings, PuTTY (Windows), Changelog/Donate/telemetry/updates.
 
 ## Risks
 

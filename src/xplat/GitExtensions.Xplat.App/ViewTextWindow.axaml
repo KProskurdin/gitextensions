@@ -1,0 +1,9 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ViewTextWindow"
+        Title="View"
+        Width="733" Height="571" MinWidth="300" MinHeight="200" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormEdit as the lost objects window opens it: read-only text in the file viewer. -->
+  <local:DiffView x:Name="Viewer" />
+</Window>

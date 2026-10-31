@@ -17,10 +17,16 @@ public partial class EditorWindow : Window
     private string _savedText = "";
     private bool _closeDecided;
 
-    public EditorWindow(string path)
+    /// <param name="path">The file to edit.</param>
+    /// <param name="showWarning">
+    ///  Shows upstream's warning that changing the file by hand can break something (its <c>showWarning</c>, for
+    ///  .git/config).
+    /// </param>
+    public EditorWindow(string path, bool showWarning = false)
     {
         _path = Path.GetFullPath(path);
         InitializeComponent();
+        panelMessage.IsVisible = showWarning;
         Title = _path;
         ContentBox.NewLine = "\n";
         ContentBox.IsReadOnly = true;

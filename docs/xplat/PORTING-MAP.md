@@ -83,6 +83,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormArchive.cs`; `src/app/GitUI/HelperDialogs/FormChooseCommit.cs` | `src/xplat/GitExtensions.Xplat.App/ArchiveWindow.axaml(.cs)`, `ChooseCommitWindow.axaml(.cs)`, `RevisionGridColumns.cs` (`ShowAsSettingsSay`), `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/ArchiveDialog.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormDeleteRemoteBranch.cs`; `LeftPanel/RemoteBranchNode.cs` (`Delete`) | `src/xplat/GitExtensions.Xplat.App/DeleteRemoteBranchWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs`, `MainWindow.axaml.cs` (`DeleteSelectedBranchAsync`); `src/xplat/GitExtensions.Xplat.Core/Operations/DeleteRemoteBranchDialog.cs`, `RepositoryOperationsViewModel.cs` (`DeleteRemoteBranchesAsync`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormFormatPatch.cs`, `FormApplyPatch.cs`, `FormViewPatch.cs`, `FormAddFiles.cs` | `src/xplat/GitExtensions.Xplat.App/FormatPatchWindow.axaml(.cs)`, `ApplyPatchWindow.axaml(.cs)`, `ViewPatchWindow.axaml(.cs)`, `AddFilesWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/PatchDialogs.cs`, `ApplyPatchDialog.cs`, `Settings/AppPreferences.cs` (`LastFormatPatchDir`, `ApplyPatchIgnoreWhitespace`, `ApplyPatchSignOff`) | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormVerify.cs`, `FormVerify.LostObject.cs`, `FormVerify.SortableLostObjectsList.cs`; `src/app/GitUI/HelperDialogs/FormEdit.cs`; `FormBrowse.cs` (Git maintenance menu) | `src/xplat/GitExtensions.Xplat.App/VerifyDatabaseWindow.axaml(.cs)`, `ViewTextWindow.axaml(.cs)`, `MainWindow.Maintenance.cs`, `EditorWindow.axaml(.cs)` (`showWarning`), `ThemeApplier.cs` (`WarningPanelBrush`); `src/xplat/GitExtensions.Xplat.Core/Repository/LostObjects.cs` | `52d08e996` | ported |
 | `src/app/GitUI/HelperDialogs/FormCommitDiff.cs`; `src/app/GitUI/UserControls/CommitDiff.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`ViewSelectedRevisions`); `src/app/GitUI/CommandsDialogs/FormFileHistory.cs` (`FileChangesDoubleClick`, the Commit tab) | `src/xplat/GitExtensions.Xplat.App/CommitDiffWindow.axaml(.cs)`, `CommitDiffView.axaml(.cs)`, `MainWindow.GridView.cs` (`ViewSelectedRevision`), `FileHistoryWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceFontsSettingsPage.cs`; `src/app/GitExtensions.Extensibility/FontParser.cs` (format) | `src/xplat/GitExtensions.Xplat.Core/Settings/FontSetting.cs`, `AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/FontApplier.cs`, `SettingsWindow.axaml(.cs)` (Fonts tab), `App.axaml` and the views' font resources | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/FormBrowseRepoSettingsPage.cs`; `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `AuthorNameColumnProvider.cs`, `DateColumnProvider.cs`, `CommitIdColumnProvider.cs` (`TryGetToolTip`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionTooltips.cs`, `GitCommitHistory.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (grid tooltips), `SettingsWindow.axaml(.cs)` (Browse repository window tab) | `52d08e996` | partial |
@@ -261,7 +262,8 @@ file, saves with the toolbar button or Ctrl+S (Cmd+S on macOS), and on close wit
 Cancel. The exit code is upstream's: 0 when the file was saved or left unchanged, -1 when changes were discarded, so git
 aborts the rebase. The file keeps its line ending and byte order mark (`EditorFile`). Not ported: the rebase todo syntax
 highlighting and line numbers (no editor control for Avalonia 12, see PLAN.md M3), the read-only and line-number options,
-and `i18n.filesEncoding` (files are read as UTF-8).
+and `i18n.filesEncoding` (files are read as UTF-8). Since 2026-10-31 it shows upstream's warning panel (`showWarning`) when
+Repository > Git maintenance > Edit .git/config opens it.
 
 **FormRevertCommit** (`partial`). Ported: revert the selected commit with git's default message. Not ported: the
 no-commit option, the mainline choice for merge commits, and the message edit step.
@@ -924,6 +926,30 @@ conflicts, the default one marked ">...<" and framed as upstream's; the window r
 patch file's file patches (upstream's `PatchProcessor`), sortable by name, change and type with the header buttons,
 and the selected one's diff (`DiffView.ShowPatch`, upstream's `ViewFixedPatch`). Git runs with its output shown in the
 browse window's output panel (`RunGitWithOutputAsync`), as upstream's FormProcess.
+
+**Git maintenance menu and FormVerify** (`ported`). 2026-10-31 (UI-PARITY, after U6): Repository > Git maintenance with
+upstream's four items. Compress git database runs `git gc` with its output shown (`RunGitWithOutputAsync`, upstream's
+FormProcess). Delete index.lock is upstream's `GitModule.UnlockIndex(includeSubmodules: true)`, with upstream's "Failed to
+delete index.lock" and the file when one will not go. Edit .git/config opens the editor window on
+`ResolveGitInternalPath("config")` with upstream's FormEditor warning panel ("Here be dragons!", `showWarning`, on
+upstream's `PanelMessageWarningColor` adapted to the theme). Recover lost objects... opens `VerifyDatabaseWindow`,
+upstream's FormVerify (core `LostObjects.cs`: `LostObject` is upstream's parser of fsck's lines, `VerifyDatabase` its
+options, file type guess and LOST_FOUND_ tags): the explanation, the fsck options (each change runs `git
+fsck-objects` again, the window disabled meanwhile, where upstream shows its process dialog), "Show commits and annotated
+tags" and "Show blobs and trees" (one stays checked; blobs get " (seemingly: type)" in the background the first time),
+the list with a check box per row and one in the header for all, Date, Type, Subject, Author, Hash and Parent (the
+commit columns hidden with the commits; sortable by the header buttons, newest first at the start), and the selected
+object's content beside it (a commit or tag as a patch, a blob by its guessed file name). Its menu (View, Create tag
+Ctrl+T, Create branch Ctrl+B, Copy object hash, Copy parent hash, Save as... Ctrl+S) is enabled per type as upstream's
+`mnuLostObjects_Opening`; View, a double click (not on the check box) and Enter open the content read-only in
+`ViewTextWindow` (upstream's FormEdit). Recover selected objects deletes the old LOST_FOUND_ tags and tags each checked
+object (an annotated tag under its own name, the rest numbered), and closes the window when every listed object was
+recovered; the browse window is read again afterwards, as upstream's `StartVerifyDatabaseDialog`. Remove all dangling
+objects asks upstream's question and runs `git prune`; Save objects to .git/lost-found runs `git fsck-objects
+--lost-found` with the options; Delete all LOST_AND_FOUND tags deletes them. Differences: the tags are created quietly
+(upstream shows a process dialog per tag); create tag opens the shell's tag prompt (FormCreateTag is not ported); a zero
+parent shows empty instead of zeros; the check marks survive a filter change (upstream's are lost). Screenshot
+`XPLAT_SCREENSHOT_WINDOW=verifydatabase`, which waits for fsck.
 
 **SplitterManager** (`ported`). Ported 2026-10-17 (UI-PARITY U6): the splitter positions are kept under upstream's keys
 in GitExtensions.settings (`<form>.<splitter>_Size`, `_Dpi`, `_Distance`, `_Panel1Collapsed`, `_Panel2Collapsed`), in

@@ -26,7 +26,7 @@
       <MenuItem x:Name="DashboardMenu" Header="_Dashboard">
         <MenuItem x:Name="DashboardRefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
       </MenuItem>
-      <!-- Not ported: Manage submodules, Sparse Working Copy, Git maintenance and Repository settings. "Browse files..." is
+      <!-- Not ported: Manage submodules, Sparse Working Copy and Repository settings. "Browse files..." is
            the new shell's own. -->
       <MenuItem x:Name="RepositoryMainMenu" Header="_Repository">
         <MenuItem x:Name="RefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
@@ -43,6 +43,13 @@
         <MenuItem x:Name="GitInfoExcludeMenuItem" Header="Edit .git/info/_exclude" />
         <MenuItem x:Name="GitAttributesMenuItem" Header="Edit .git_attributes" />
         <MenuItem x:Name="MailMapMenuItem" Header="Edit ._mailmap" />
+        <Separator />
+        <MenuItem x:Name="GitMaintenanceMenuItem" Header="_Git maintenance" Icon="{local:UpstreamIcon Maintenance}">
+          <MenuItem x:Name="CompressGitDatabaseMenuItem" Header="_Compress git database" Icon="{local:UpstreamIcon CompressGitDatabase}" />
+          <MenuItem x:Name="RecoverLostObjectsMenuItem" Header="_Recover lost objects..." Icon="{local:UpstreamIcon RecoverLostObjects}" />
+          <MenuItem x:Name="DeleteIndexLockMenuItem" Header="_Delete index.lock" Icon="{local:UpstreamIcon DeleteIndexLock}" />
+          <MenuItem x:Name="EditLocalGitConfigMenuItem" Header="_Edit .git/config" Icon="{local:UpstreamIcon EditGitConfig}" />
+        </MenuItem>
         <Separator />
         <MenuItem x:Name="FilesMenuItem" Header="Browse _files..." />
         <Separator />

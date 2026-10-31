@@ -39,6 +39,7 @@ public partial class MainWindow
             RunOnRepository(path => EditRepositoryFileAsync(path, RepositoryTextFiles.GitAttributes));
         MailMapMenuItem.Click += (_, _) =>
             RunOnRepository(path => EditRepositoryFileAsync(path, RepositoryTextFiles.MailMap));
+        WireMaintenanceMenu();
     }
 
     // Upstream's undoLastCommitToolStripMenuItem_Click: after its suppressible question, a soft reset to HEAD~1 keeps

@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.VerifyDatabaseWindow"
+        Title="Verify database"
+        Width="859" Height="575" MinWidth="500" MinHeight="300" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormVerify: its explanation and fsck options at the top, the lost objects (check box, date, type, subject,
+       author, hash and parent; sortable by the header buttons) beside the selected one's content, and its buttons below:
+       Remove all dangling objects and Delete all LOST_AND_FOUND tags on the left, Recover selected objects in the middle,
+       Save objects to .git/lost-found and Cancel on the right. -->
+  <DockPanel>
+    <Grid x:Name="panel2" DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+      <StackPanel x:Name="flowLayoutPanel1" Margin="8,5,8,0" Spacing="6">
+        <TextBlock x:Name="label2" TextWrapping="Wrap"
+                   Text="By default only unreferenced objects that are older than 2 weeks are removed when cleaning up the database. All other object are only deleted when you run &quot;Remove all dangling objects&quot;&#10;&#10;Check commits you want to recover and press Recover button&#10;Context menu for additional operations" />
+        <TextBlock x:Name="label1" Text="Double-click on a row for quick view" />
+      </StackPanel>
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,Auto" Margin="8,6,8,0">
+        <CheckBox x:Name="ShowCommitsAndTags" Content="Show commits and annotated tags" IsChecked="True"
+                  ToolTip.Tip="To recover unreachable commits or annotated tags" />
+        <CheckBox x:Name="ShowOtherObjects" Grid.Column="1" Margin="20,0,0,0" Content="Show blobs and trees"
+                  ToolTip.Tip="To recover contents of files once staged but mistakenly deleted" />
+        <CheckBox x:Name="NoReflogs" Grid.Row="1" Grid.ColumnSpan="2" IsChecked="True"
+                  Content="Do not consider commits that are referenced only by an entry in a &#10;reflog to be reachable." />
+        <CheckBox x:Name="Unreachable" Grid.Row="2" Grid.ColumnSpan="2"
+                  Content="Print out objects that exist but that aren't readable from any of the reference &#10;nodes." />
+        <CheckBox x:Name="FullCheck" Grid.Row="3" Grid.ColumnSpan="2"
+                  Content="Check not just objects in GIT__OBJECT__DIRECTORY ($GIT__DIR/objects), &#10;but also the ones found in alternate object pools." />
+      </Grid>
+    </Grid>
+    <Grid x:Name="panel1" DockPanel.Dock="Bottom" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto" Margin="3,4,4,3"
+          RowSpacing="2">
+      <Button x:Name="Remove" Content="Remove all dangling objects" MinWidth="252" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" TabIndex="6" />
+      <Button x:Name="DeleteAllLostAndFoundTags" Grid.Row="1" Content="Delete all LOST__AND__FOUND tags"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" TabIndex="7" />
+      <Button x:Name="btnRestoreSelectedObjects" Grid.Column="1" Grid.RowSpan="2" Margin="43,0,32,0"
+              Content="Recover selected objects" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+              HorizontalContentAlignment="Center" TabIndex="5" />
+      <Button x:Name="SaveObjects" Grid.Column="2" Content="Save objects to .git/lost-found" MinWidth="208"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" TabIndex="8" />
+      <Button x:Name="btnCloseDialog" Grid.Row="1" Grid.Column="2" Content="Cancel" IsCancel="True"
+              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" TabIndex="9" />
+    </Grid>
+    <Grid x:Name="splitContainer1" ColumnDefinitions="700,5,*">
+      <DockPanel Grid.IsSharedSizeScope="True">
+        <Grid x:Name="WarningsHeader" DockPanel.Dock="Top">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="24" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Date" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Type" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="60" />
+            <ColumnDefinition Width="60" />
+          </Grid.ColumnDefinitions>
+          <CheckBox x:Name="columnIsLostObjectSelected" Margin="4,0,0,0" MinWidth="0" Padding="0" />
+          <Button x:Name="columnDate" Grid.Column="1" Content="Date" Classes="tool" HorizontalAlignment="Stretch" />
+          <Button x:Name="columnType" Grid.Column="2" Content="Type" Classes="tool" HorizontalAlignment="Stretch" />
+          <Button x:Name="columnSubject" Grid.Column="3" Content="Subject" Classes="tool" HorizontalAlignment="Stretch" />
+          <Button x:Name="columnAuthor" Grid.Column="4" Content="Author" Classes="tool" HorizontalAlignment="Stretch" />
+          <Button x:Name="columnHash" Grid.Column="5" Content="Hash" Classes="tool" HorizontalAlignment="Stretch" />
+          <Button x:Name="columnParent" Grid.Column="6" Classes="tool" Padding="2,0" HorizontalAlignment="Stretch">
+            <TextBlock Text="Parent(s) hashs" TextWrapping="Wrap" />
+          </Button>
+        </Grid>
+        <ListBox x:Name="Warnings" TabIndex="4">
+          <ListBox.ContextMenu>
+            <ContextMenu x:Name="mnuLostObjects">
+              <MenuItem x:Name="mnuLostObjectView" Header="View" Icon="{local:UpstreamIcon ViewFile}" />
+              <MenuItem x:Name="mnuLostObjectsCreateTag" Header="Create tag" Icon="{local:UpstreamIcon TagCreate}"
+                        InputGesture="Ctrl+T" />
+              <MenuItem x:Name="mnuLostObjectsCreateBranch" Header="Create branch" Icon="{local:UpstreamIcon BranchCreate}"
+                        InputGesture="Ctrl+B" />
+              <MenuItem x:Name="copyHashToolStripMenuItem" Header="Copy object hash"
+                        Icon="{local:UpstreamIcon CopyToClipboard}" />
+              <MenuItem x:Name="copyParentHashToolStripMenuItem" Header="Copy parent hash"
+                        Icon="{local:UpstreamIcon CopyToClipboard}" />
+              <MenuItem x:Name="saveAsToolStripMenuItem" Header="Save as..." Icon="{local:UpstreamIcon SaveAs}"
+                        InputGesture="Ctrl+S" />
+            </ContextMenu>
+          </ListBox.ContextMenu>
+        </ListBox>
+      </DockPanel>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <local:DiffView x:Name="fileViewer" Grid.Column="2" />
+    </Grid>
+  </DockPanel>
+</Window>

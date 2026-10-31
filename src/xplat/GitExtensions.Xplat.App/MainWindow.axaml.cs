@@ -417,6 +417,16 @@ public partial class MainWindow : Window
             {
                 screenshotDialog.Show(this);
                 await Task.Delay(TimeSpan.FromMilliseconds(1500));
+
+                // git fsck takes longer than the delay in a large repository.
+                if (screenshotDialog is VerifyDatabaseWindow verify)
+                {
+                    while (!verify.ObjectsLoaded.IsCompleted)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(100));
+                    }
+                }
+
                 await Screenshot.SaveAsync(screenshotDialog, screenshot);
                 screenshotDialog.Close();
                 Close();
@@ -1139,6 +1149,7 @@ public partial class MainWindow : Window
             (Screenshot.ChooseCommitWindow, { } path) => new ChooseCommitWindow(path, "HEAD~1", _preferences),
             (Screenshot.CleanupRepositoryWindow, { } path) => new CleanupRepositoryWindow(path, null),
             (Screenshot.MailMapWindow, { } path) => new RepositoryTextFileWindow(path, RepositoryTextFiles.MailMap),
+            (Screenshot.VerifyDatabaseWindow, { } path) => NewVerifyDatabaseWindow(path),
             (Screenshot.DeleteTagWindow, { } path) => new DeleteTagWindow(null, _repository.Tags, _repository.Remotes,
                 _repository.TrackingRemote ?? "", (_, _) => Task.CompletedTask),
             (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
@@ -1450,21 +1461,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task PromptCreateTagAsync(string commit)
+    private async Task<bool> PromptCreateTagAsync(string commit, Window? owner = null)
     {
         if (RepositoryPath is not { } path)
         {
-            return;
+            return false;
         }
 
         PromptResult? result = await new PromptWindow("Create tag",
                 $"Name of the new tag at {commit[..Math.Min(8, commit.Length)]}.", "Create",
                 secondPlaceholder: "Message (optional: makes an annotated tag)")
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null)
-        {
-            await _actions.CreateTagAsync(path, result.Value, commit, result.SecondValue);
-        }
+            .ShowDialog<PromptResult?>(owner ?? this);
+        return result is not null && await _actions.CreateTagAsync(path, result.Value, commit, result.SecondValue);
     }
 
     // Deleting a tag on the remote removes it for everyone who fetches, so it is confirmed first; the local tag stays.
@@ -1831,6 +1839,7 @@ public partial class MainWindow : Window
         TerminalMenuItem.IsEnabled = open;
         GitGuiMenuItem.IsEnabled = GitKMenuItem.IsEnabled = UndoLastCommitMenuItem.IsEnabled = open;
         GitAttributesMenuItem.IsEnabled = MailMapMenuItem.IsEnabled = CleanupMenuItem.IsEnabled = open;
+        GitMaintenanceMenuItem.IsEnabled = open;
         FilesMenuItem.IsEnabled = open;
         UpdateAllSubmodulesMenuItem.IsEnabled = SyncAllSubmodulesMenuItem.IsEnabled = open;
         GitInfoExcludeMenuItem.IsEnabled = ResetChangesMenuItem.IsEnabled = open;
