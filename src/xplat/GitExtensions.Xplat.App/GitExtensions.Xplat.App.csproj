@@ -31,6 +31,8 @@
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\GitExtensionsLogoWide.png" Link="Assets\Upstream\Logo\GitExtensionsLogoWide.png" />
     <!-- The small logo of the settings tree's Git Extensions group (GitExtensionsLogo16). -->
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-16px.png" Link="Assets\Upstream\Logo\git-extensions-logo-16px.png" />
+    <!-- Upstream's change log, which its Help > Changelog shows (GitUI.Properties.Resources.ChangeLog). -->
+    <AvaloniaResource Include="..\..\app\GitUI\Resources\ChangeLog.md" Link="Assets\Upstream\ChangeLog.md" />
   </ItemGroup>
 
   <ItemGroup>

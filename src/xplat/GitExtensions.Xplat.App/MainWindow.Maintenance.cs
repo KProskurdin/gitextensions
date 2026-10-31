@@ -39,7 +39,7 @@ public partial class MainWindow
     // FormVerify's create tag and create branch windows on a lost commit.
     private VerifyDatabaseWindow NewVerifyDatabaseWindow(string path)
         => new(path, arguments => RunGitWithOutputAsync(path, arguments),
-            (owner, id) => PromptCreateTagAsync(id.ToString(), owner),
+            (owner, id) => ShowCreateTagAsync(id.ToString(), owner),
             (owner, id) => new CreateBranchWindow(path, _actions, _preferences, id.ToString()).ShowDialog<bool>(owner));
 
     // Upstream deletes the index.lock files of the repository and its submodules, and shows the file that would not go.

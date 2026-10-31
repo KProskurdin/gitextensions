@@ -26,14 +26,14 @@
       <MenuItem x:Name="DashboardMenu" Header="_Dashboard">
         <MenuItem x:Name="DashboardRefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
       </MenuItem>
-      <!-- Not ported: Manage submodules, Sparse Working Copy and Repository settings. "Browse files..." is
-           the new shell's own. -->
+      <!-- "Browse files..." is the new shell's own. -->
       <MenuItem x:Name="RepositoryMainMenu" Header="_Repository">
         <MenuItem x:Name="RefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
         <MenuItem x:Name="FileExplorerMenuItem" Header="File E_xplorer" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
         <Separator />
         <MenuItem x:Name="RemoteRepositoriesMenuItem" Header="Remo_te repositories..." Icon="{local:UpstreamIcon Remotes}" />
         <Separator />
+        <MenuItem x:Name="ManageSubmodulesMenuItem" Header="Manage _submodules..." Icon="{local:UpstreamIcon SubmodulesManage}" />
         <MenuItem x:Name="UpdateAllSubmodulesMenuItem" Header="_Update all submodules" Icon="{local:UpstreamIcon SubmodulesUpdate}" />
         <MenuItem x:Name="SyncAllSubmodulesMenuItem" Header="Synchronize all su_bmodules" Icon="{local:UpstreamIcon SubmodulesSync}" />
         <Separator />
@@ -43,6 +43,7 @@
         <MenuItem x:Name="GitInfoExcludeMenuItem" Header="Edit .git/info/_exclude" />
         <MenuItem x:Name="GitAttributesMenuItem" Header="Edit .git_attributes" />
         <MenuItem x:Name="MailMapMenuItem" Header="Edit ._mailmap" />
+        <MenuItem x:Name="SparseWorkingCopyMenuItem" Header="Sparse Wor_king Copy" />
         <Separator />
         <MenuItem x:Name="GitMaintenanceMenuItem" Header="_Git maintenance" Icon="{local:UpstreamIcon Maintenance}">
           <MenuItem x:Name="CompressGitDatabaseMenuItem" Header="_Compress git database" Icon="{local:UpstreamIcon CompressGitDatabase}" />
@@ -50,6 +51,7 @@
           <MenuItem x:Name="DeleteIndexLockMenuItem" Header="_Delete index.lock" Icon="{local:UpstreamIcon DeleteIndexLock}" />
           <MenuItem x:Name="EditLocalGitConfigMenuItem" Header="_Edit .git/config" Icon="{local:UpstreamIcon EditGitConfig}" />
         </MenuItem>
+        <MenuItem x:Name="RepositorySettingsMenuItem" Header="Rep_ository settings..." Icon="{local:UpstreamIcon Settings}" />
         <Separator />
         <MenuItem x:Name="FilesMenuItem" Header="Browse _files..." />
         <Separator />
@@ -160,22 +162,30 @@
         <Separator />
         <MenuItem x:Name="PluginSettingsMenuItem" Header="Plugins _settings..." Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
-      <!-- Not ported: PuTTY (upstream shows it only on Windows). -->
       <MenuItem Header="_Tools">
         <MenuItem x:Name="TerminalMenuItem" Header="Git _bash" Icon="{local:UpstreamIcon GitForWindows}" />
         <MenuItem x:Name="GitGuiMenuItem" Header="Git _GUI" Icon="{local:UpstreamIcon GitGui}" />
         <MenuItem x:Name="GitKMenuItem" Header="Git_K" Icon="{local:UpstreamIcon Gitk}" />
+        <!-- Upstream shows PuTTY only on Windows (ToolsToolStripMenuItem). -->
+        <Separator x:Name="PuttySeparator" />
+        <MenuItem x:Name="PuttyMenuItem" Header="_PuTTY" Icon="{local:UpstreamIcon Putty}">
+          <MenuItem x:Name="StartAuthenticationAgentMenuItem" Header="Start authentication agent" Icon="{local:UpstreamIcon Pageant16}" />
+          <MenuItem x:Name="GenerateOrImportKeyMenuItem" Header="Generate or import key" Icon="{local:UpstreamIcon PuttyGen}" />
+        </MenuItem>
         <Separator />
         <MenuItem x:Name="CommandLogMenuItem" Header="Git _command log" Icon="{local:UpstreamIcon GitCommandLog}" />
         <Separator />
         <MenuItem x:Name="SettingsMenuItem" Header="_Settings..." Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
-      <!-- Not ported: Changelog, Donate, the telemetry choice and Check for updates. -->
+      <!-- Left out on purpose (decided 2026-10-31): the telemetry choice, as the fork sends no telemetry, and Check for
+           updates, as upstream's releases and Windows installer are not the fork's builds. -->
       <MenuItem Header="_Help">
         <MenuItem x:Name="UserManualMenuItem" Header="User _manual" Icon="{local:UpstreamIcon GotoManual}" />
+        <MenuItem x:Name="ChangelogMenuItem" Header="_Changelog" Icon="{local:UpstreamIcon Changelog}" />
         <Separator />
         <MenuItem x:Name="TranslateMenuItem" Header="_Translate" Icon="{local:UpstreamIcon Translate}" />
         <Separator />
+        <MenuItem x:Name="DonateMenuItem" Header="_Donate" Icon="{local:UpstreamIcon DollarSign}" />
         <MenuItem x:Name="ReportIssueMenuItem" Header="_Report an issue" Icon="{local:UpstreamIcon BugReport}" />
         <MenuItem x:Name="AboutMenuItem" Header="_About" Icon="{local:UpstreamIcon Information}" />
       </MenuItem>
@@ -592,35 +602,54 @@
               <ListBox x:Name="CommitList" Grid.Row="1" Classes="revisionGrid" ItemTemplate="{StaticResource RevisionRowTemplate}">
                 <ListBox.ContextMenu>
                   <ContextMenu x:Name="CommitContextMenu">
-                    <!-- Upstream's bisect items, at the top and shown only while a bisect runs. -->
-                    <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" IsVisible="False" />
-                    <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" IsVisible="False" />
-                    <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" IsVisible="False" />
-                    <MenuItem x:Name="StopBisectMenuItem" Header="Stop bisect" IsVisible="False" />
+                    <!-- Upstream's grid menu (RevisionGridControl.Designer mainContextMenu) in its order; the branch and tag
+                         submenus are filled when it opens (MainWindow.GridMenu.cs), and items that do not apply are
+                         hidden, as upstream's. Not here yet: the stash items (the grid shows no stashes), Reset another
+                         branch, Compare, Advanced and View. "Browse files at this commit..." is the new shell's own. -->
+                    <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" Icon="{local:UpstreamIcon BisectBad}" IsVisible="False" />
+                    <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" Icon="{local:UpstreamIcon BisectGood}" IsVisible="False" />
+                    <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" Icon="{local:UpstreamIcon BisectSkip}" IsVisible="False" />
+                    <MenuItem x:Name="StopBisectMenuItem" Header="Stop bisect" Icon="{local:UpstreamIcon BisectStop}" IsVisible="False" />
                     <Separator x:Name="BisectSeparator" IsVisible="False" />
-                    <MenuItem x:Name="CopyHashMenuItem" Header="Copy commit hash" />
-                    <MenuItem x:Name="CopyMessageMenuItem" Header="Copy commit message" />
+                    <MenuItem x:Name="CopyToClipboardMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
+                      <MenuItem Header="-" />
+                    </MenuItem>
                     <Separator />
-                    <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create branch here..." />
-                    <MenuItem x:Name="CreateTagHereMenuItem" Header="Create tag here..." />
-                    <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
-                    <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout _this commit..." Icon="{local:UpstreamIcon Checkout}" />
-                    <Separator />
-                    <MenuItem x:Name="CherryPickMenuItem" Header="Cherr_y pick this commit..."
-                              Icon="{local:UpstreamIcon CherryPick}" />
-                    <MenuItem x:Name="RevertMenuItem" Header="Revert this commit" />
-                    <MenuItem x:Name="ArchiveCommitMenuItem" Header="Arch_ive this commit..."
-                              Icon="{local:UpstreamIcon ArchiveRevision}" />
-                    <MenuItem x:Name="RunScriptMenuItem" Header="Run script" />
-                    <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" />
-                    <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" />
-                    <MenuItem Header="_Rebase current branch on">
+                    <MenuItem x:Name="GridCheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" />
+                    <MenuItem x:Name="GridPushBranchMenuItem" Header="Pus_h branch..." Icon="{local:UpstreamIcon Push}" />
+                    <MenuItem x:Name="GridMergeBranchMenuItem" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" />
+                    <MenuItem x:Name="GridRebaseOnMenuItem" Header="_Rebase current branch on" Icon="{local:UpstreamIcon Rebase}">
                       <MenuItem x:Name="RebaseOnCommitMenuItem" Header="_Selected commit" />
                       <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit _interactively..." />
                       <MenuItem x:Name="RebaseAdvancedMenuItem" Header="Selected commit with _advanced options..." />
                     </MenuItem>
                     <MenuItem x:Name="ResetCurrentBranchMenuItem" Header="Reset c_urrent branch to here..."
                               Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" />
+                    <Separator />
+                    <MenuItem x:Name="GridResetChangesMenuItem" Header="_Reset changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
+                    <MenuItem x:Name="GridCommitMenuItem" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirty}" />
+                    <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create new branch here (_x)..." Icon="{local:UpstreamIcon BranchCreate}" />
+                    <MenuItem x:Name="GridRenameBranchMenuItem" Header="R_ename branch..." Icon="{local:UpstreamIcon Renamed}" />
+                    <MenuItem x:Name="GridDeleteBranchMenuItem" Header="_Delete branch..." Icon="{local:UpstreamIcon BranchDelete}" />
+                    <Separator />
+                    <MenuItem x:Name="CreateTagHereMenuItem" Header="Create new ta_g here..." Icon="{local:UpstreamIcon TagCreate}" />
+                    <MenuItem x:Name="GridDeleteTagMenuItem" Header="_Delete tag..." Icon="{local:UpstreamIcon TagDelete}" />
+                    <Separator />
+                    <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout _this commit..." Icon="{local:UpstreamIcon Checkout}" />
+                    <MenuItem x:Name="RevertMenuItem" Header="Re_vert this commit..." Icon="{local:UpstreamIcon RevertCommit}" />
+                    <MenuItem x:Name="CherryPickMenuItem" Header="Cherr_y pick this commit..."
+                              Icon="{local:UpstreamIcon CherryPick}" />
+                    <MenuItem x:Name="ArchiveCommitMenuItem" Header="Arch_ive this commit..."
+                              Icon="{local:UpstreamIcon ArchiveRevision}" />
+                    <Separator />
+                    <MenuItem x:Name="GridNavigateMenuItem" Header="_Navigate" Icon="{local:UpstreamIcon GotoCommit}">
+                      <MenuItem Header="-" />
+                    </MenuItem>
+                    <MenuItem x:Name="GridSelectInLeftPanelMenuItem" Header="Se_lect in left panel" Icon="{local:UpstreamIcon FileTree}" />
+                    <MenuItem x:Name="RunScriptMenuItem" Header="Run _script" Icon="{local:UpstreamIcon Console}" />
+                    <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" Icon="{local:UpstreamIcon Integration}" />
+                    <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" Icon="{local:UpstreamIcon PullRequest}" />
+                    <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
                   </ContextMenu>
                 </ListBox.ContextMenu>
               </ListBox>

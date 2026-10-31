@@ -72,6 +72,20 @@ internal static class Screenshot
 
     public const string VerifyDatabaseWindow = "verifydatabase";
 
+    public const string SubmodulesWindow = "submodules";
+
+    public const string AddSubmoduleWindow = "addsubmodule";
+
+    public const string SparseWorkingCopyWindow = "sparse";
+
+    public const string ChangeLogWindow = "changelog";
+
+    public const string DonateWindow = "donate";
+
+    public const string CreateTagWindow = "createtag";
+
+    public const string RevertCommitWindow = "revertcommit";
+
     public const string CleanupRepositoryWindow = "cleanup";
 
     public const string ArchiveWindow = "archive";

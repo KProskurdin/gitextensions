@@ -81,7 +81,9 @@ public sealed record CommitRow(
     RevisionTooltip? Tooltip = null,
     string? Body = null,
     bool HasMultiLineMessage = false,
-    string? AuthorEmail = null);
+    string? AuthorEmail = null,
+    DateTime? AuthorDateValue = null,
+    DateTime? CommitDateValue = null);
 
 public enum RefKind
 {

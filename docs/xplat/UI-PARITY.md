@@ -385,6 +385,34 @@ toolbar icons with upstream's `ToolTipText`.
   `XPLAT_SCREENSHOT_WINDOW=verifydatabase`), Delete index.lock and Edit .git/config (the editor window with upstream's
   warning panel). See the "Git maintenance menu and FormVerify" note in `PORTING-MAP.md`. Left: Manage submodules,
   Sparse, Repository settings, PuTTY (Windows), Changelog/Donate/telemetry/updates.
+- 2026-10-31, Repository > Manage submodules... done: FormSubmodules (`SubmodulesWindow`) and FormAddSubmodule
+  (`AddSubmoduleWindow`), with the submodule's pull; screenshots `submodules` and `addsubmodule`. See the
+  "FormSubmodules and FormAddSubmodule" note in `PORTING-MAP.md`. Left: Sparse, Repository settings, PuTTY (Windows),
+  Changelog/Donate/telemetry/updates.
+- 2026-10-31, Repository > Sparse Working Copy done (FormSparseWorkingCopy as `SparseWorkingCopyWindow`, screenshot
+  `sparse`). See its note in `PORTING-MAP.md`. Left: Repository settings, PuTTY (Windows),
+  Changelog/Donate/telemetry/updates.
+- 2026-10-31, Repository > Repository settings... done: the settings on the Git Config page, as upstream. The
+  Repository menu now has every upstream item. Left: PuTTY (Windows), Changelog/Donate/telemetry/updates.
+- 2026-10-31, Help > Changelog (FormChangeLog) and Donate (FormDonate) done; screenshots `changelog` and `donate`. See
+  their note in `PORTING-MAP.md`. Left: PuTTY (Windows), the telemetry choice and Check for updates.
+- 2026-10-31, Tools > PuTTY done (Windows only, as upstream). See its note in `PORTING-MAP.md`. Left: the telemetry
+  choice and Check for updates.
+- 2026-10-31, the telemetry choice and Check for updates left out on purpose (the fork sends no telemetry and has no
+  releases of its own); see their note in `PORTING-MAP.md`. Every upstream browse menu item is now ported or decided.
+- 2026-10-31, the dialogs that were prompts are next: FormCreateTag done (`CreateTagWindow`, screenshot `createtag`;
+  see its note in `PORTING-MAP.md`). Left: FormRenameBranch, FormRevertCommit and the other partial rows of
+  `PORTING-MAP.md`.
+- 2026-10-31, FormRenameBranch done (`RenameBranchWindow`, from the left panel). Found on the way: the grid's context
+  menu lacks upstream's branch submenus (checkout, merge, rebase, rename, delete branch and tag). Left: FormRevertCommit,
+  the grid's branch menus and the other partial rows of `PORTING-MAP.md`.
+- 2026-10-31, FormRevertCommit done (`RevertCommitWindow` from the grid, screenshot `revertcommit`). Left: the grid's
+  context menu as upstream's (branch, stash, compare, navigate and view submenus) and the other partial rows of
+  `PORTING-MAP.md`.
+- 2026-10-31, the grid's context menu rebuilt as upstream's, part 1: order, texts and icons from its designer (checked
+  by `GridMenuTests`), the copy submenu and the branch and tag submenus. See the "Revision grid context menu" note in
+  `PORTING-MAP.md`. Left for part 2: Reset another branch, Compare, Advanced, View and the right-clicked label's
+  focused menu.
 
 ## Risks
 

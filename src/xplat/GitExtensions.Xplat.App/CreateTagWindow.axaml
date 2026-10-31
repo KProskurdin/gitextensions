@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.CreateTagWindow"
+        Title="Create tag"
+        Width="464" Height="245" MinWidth="455" MinHeight="260" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormCreateTag: name, revision, "Push tag to '...'", the kind of tag, the key id (specific GPG key only),
+       the message (every kind but lightweight), and Create tag. Upstream's Force check box is never added to the form, so
+       it is not here either. -->
+  <Grid x:Name="tableLayoutPanel2" Margin="8" ColumnDefinitions="Auto,*" RowDefinitions="28,28,28,28,28,*,32">
+    <TextBlock x:Name="label1" Text="Tag name" VerticalAlignment="Center" Margin="3,0,9,0" />
+    <TextBox x:Name="textBoxTagName" Grid.Column="1" VerticalAlignment="Center" TabIndex="1" />
+    <TextBlock x:Name="label3" Grid.Row="1" Text="Create tag at this revision" VerticalAlignment="Center"
+               Margin="3,0,9,0" />
+    <local:CommitPickerView x:Name="commitPickerSmallControl1" Grid.Row="1" Grid.Column="1" TabIndex="3" />
+    <CheckBox x:Name="pushTag" Grid.Row="2" Grid.Column="1" TabIndex="4" />
+    <ComboBox x:Name="annotate" Grid.Row="3" Grid.Column="1" Width="150" VerticalAlignment="Center" TabIndex="5" />
+    <TextBlock x:Name="keyIdLbl" Grid.Row="4" Text="Specific Key Id" VerticalAlignment="Center" Margin="3,0,9,0" />
+    <TextBox x:Name="textBoxGpgKey" Grid.Row="4" Grid.Column="1" Width="60" HorizontalAlignment="Left"
+             VerticalAlignment="Center" TabIndex="7" />
+    <TextBlock x:Name="label2" Grid.Row="5" Text="Message" Margin="3,3,9,0" />
+    <TextBox x:Name="tagMessage" Grid.Row="5" Grid.Column="1" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,2"
+             TabIndex="9" />
+    <Button x:Name="Ok" Grid.Row="6" Grid.Column="1" Content="Create tag" Width="128" IsDefault="True"
+            HorizontalAlignment="Right" HorizontalContentAlignment="Center" VerticalAlignment="Center" TabIndex="10" />
+  </Grid>
+</Window>

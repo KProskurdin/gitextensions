@@ -13,11 +13,18 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  Upstream's smaller menu commands: Commands > Undo last commit... (FormBrowse's
 ///  <c>undoLastCommitToolStripMenuItem_Click</c>) and Clean working directory... (<c>FormCleanupRepository</c>), Tools >
-///  Git GUI and GitK (<c>ToolsToolStripMenuItem</c>), and
-///  Repository > Edit .gitattributes and Edit .mailmap (<c>FormGitAttributes</c>, <c>FormMailMap</c>).
+///  Git GUI, GitK and PuTTY (<c>ToolsToolStripMenuItem</c>), and
+///  Repository > Edit .gitattributes and Edit .mailmap (<c>FormGitAttributes</c>, <c>FormMailMap</c>), Sparse Working Copy
+///  (<c>FormSparseWorkingCopy</c>) and Repository settings... (<c>StartRepoSettingsDialog</c>).
 /// </summary>
 public partial class MainWindow
 {
+    // Upstream's StartRepoSettingsDialog opens the settings on this page.
+    private const string GitConfigSettingsPage = "GitConfigSettingsPage";
+
+    // Upstream's text.
+    private const string PuttyNotInstalled = "Is PuTTY installed?";
+
     private void WireCommandsMenu()
     {
         UndoLastCommitMenuItem.Click += (_, _) => RunOnRepository(UndoLastCommitAsync);
@@ -35,11 +42,18 @@ public partial class MainWindow
             Run(() => new CleanupRepositoryWindow(path, RefreshRepository).ShowDialog(this)));
         GitGuiMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => GitModules.Open(path).RunGui());
         GitKMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => GitModules.Open(path).RunGitK());
+        PuttySeparator.IsVisible = PuttyMenuItem.IsVisible = OperatingSystem.IsWindows();
+        StartAuthenticationAgentMenuItem.Click += (_, _) => StartPuttyProgram(_preferences.Pageant);
+        GenerateOrImportKeyMenuItem.Click += (_, _) => StartPuttyProgram(_preferences.Puttygen);
         GitAttributesMenuItem.Click += (_, _) =>
             RunOnRepository(path => EditRepositoryFileAsync(path, RepositoryTextFiles.GitAttributes));
         MailMapMenuItem.Click += (_, _) =>
             RunOnRepository(path => EditRepositoryFileAsync(path, RepositoryTextFiles.MailMap));
         WireMaintenanceMenu();
+        WireSubmodulesMenu();
+        SparseWorkingCopyMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => Run(() =>
+            new SparseWorkingCopyWindow(path, arguments => RunGitWithOutputAsync(path, arguments)).ShowDialog(this)));
+        RepositorySettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(page: GitConfigSettingsPage));
     }
 
     // Upstream's undoLastCommitToolStripMenuItem_Click: after its suppressible question, a soft reset to HEAD~1 keeps
@@ -80,13 +94,35 @@ public partial class MainWindow
     // conflicts window when the pick stopped on conflicts.
     private async Task CherryPickAsync(Window owner, string path, string commit, ArgumentString arguments)
     {
-        if (await _actions.CherryPickAsync(path, commit, arguments)
-            || !await Task.Run(() => GitModules.Open(path).InTheMiddleOfConflictedMerge()))
+        if (!await _actions.CherryPickAsync(path, commit, arguments))
+        {
+            await OfferToResolveConflictsAsync(owner, path);
+        }
+    }
+
+    // Upstream's StartRevertCommitDialog for the selected commit (the grid selects one).
+    private void RevertSelectedRevision()
+    {
+        if (RepositoryPath is not { } path || _commits.Selected is not { } row || ArtificialCommits.IsArtificial(row.Hash))
         {
             return;
         }
 
-        if (await ConfirmWindow.AskAsync(owner, _preferences, Confirmation.ResolveConflicts,
+        Run(() => new RevertCommitWindow(path, row.Hash, async (owner, arguments, _) =>
+            {
+                // As upstream's Revert_Click: the result is not checked, a failure is most likely a conflict.
+                await RunGitWithOutputAsync(path, arguments.ToString());
+                await OfferToResolveConflictsAsync(owner, path);
+            })
+            .ShowDialog(this));
+    }
+
+    // Upstream's MergeConflictHandler.HandleMergeConflicts: when the command stopped on conflicts, the question, then the
+    // conflicts window.
+    private async Task OfferToResolveConflictsAsync(Window owner, string path)
+    {
+        if (await Task.Run(() => GitModules.Open(path).InTheMiddleOfConflictedMerge())
+            && await ConfirmWindow.AskAsync(owner, _preferences, Confirmation.ResolveConflicts,
                 UpstreamTranslation.ByText(Confirmations.ResolveConflictsQuestion), "Yes",
                 UpstreamTranslation.ByText(Confirmations.ResolveConflictsCaption)))
         {
@@ -97,6 +133,21 @@ public partial class MainWindow
     // Upstream's FormProcess for a command of a dialog: git with its output shown; the repository is read again after.
     private Task<bool> RunGitWithOutputAsync(string path, string arguments)
         => _actions.RunProgramAsync("git " + arguments.Split(' ')[0], AppSettings.GitCommand, arguments, path);
+
+    // Upstream's PuttyHelpers.StartPageant and StartPuttygen: the program in the repository, or upstream's error when it
+    // is not where the settings say.
+    private void StartPuttyProgram(string program) => RunOnRepositoryFolder(path =>
+    {
+        if (!File.Exists(program))
+        {
+            string installed =
+                UpstreamTranslation.Text("TranslatedStrings", "_errorSshPuTTYInstalled", PuttyNotInstalled);
+            _ = new ErrorWindow($"'{program}'\n\n{installed}").ShowDialog(this);
+            return;
+        }
+
+        new Executable(program, path).Start().Dispose();
+    });
 
     // Upstream's StartGitAttributesDialog and StartMailMapDialog; a saved .mailmap changes the authors the grid shows,
     // so the repository is read again, as upstream's RepoChangedNotifier does.

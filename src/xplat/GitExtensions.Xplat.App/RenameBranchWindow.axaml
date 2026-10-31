@@ -1,0 +1,13 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.RenameBranchWindow"
+        Title="Rename branch"
+        Width="484" SizeToContent="Height" MinWidth="400" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormRenameBranch: "New name", the name box, and Rename, in one row. -->
+  <Grid x:Name="tableLayoutPanel1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" Margin="8">
+    <TextBlock x:Name="label1" Text="New name" VerticalAlignment="Center" />
+    <TextBox x:Name="BranchNameTextBox" Grid.Column="1" VerticalAlignment="Center" TabIndex="4" />
+    <Button x:Name="Ok" Grid.Column="2" Content="Rename" IsDefault="True" MinWidth="59" HorizontalContentAlignment="Center"
+            VerticalAlignment="Center" TabIndex="5" />
+  </Grid>
+</Window>

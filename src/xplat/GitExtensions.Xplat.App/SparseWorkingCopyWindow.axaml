@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.SparseWorkingCopyWindow"
+        Title="Sparse Working Copy"
+        Width="800" Height="600" MinWidth="800" MinHeight="600" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormSparseWorkingCopy, which builds its layout in code: a header, the on/off state (an info strip with
+       Enable while off, a link to disable while on), the rules editor with its explanation (while on), and a footer
+       with "Refresh working copy...", Save and Cancel. Separators are upstream's 2 pixel lines. -->
+  <Grid RowDefinitions="Auto,2,Auto,*,2,Auto">
+    <StackPanel x:Name="HeaderPanel" Background="{DynamicResource DialogFooterBrush}">
+      <TextBlock x:Name="TitleLabel" FontWeight="Bold" Margin="10,10,10,0" />
+      <TextBlock x:Name="HeaderDetailsLabel" Margin="25,6,10,10" />
+    </StackPanel>
+    <Border Grid.Row="1" Background="{DynamicResource DialogFooterLineBrush}" />
+    <StackPanel Grid.Row="2">
+      <Grid x:Name="DisabledPanel" ColumnDefinitions="*,Auto" Background="{DynamicResource InfoBackgroundBrush}"
+            Margin="0" >
+        <TextBlock x:Name="DisabledLabel" Foreground="{DynamicResource InfoTextBrush}" VerticalAlignment="Center"
+                   Margin="10,5" />
+        <Button x:Name="EnableButton" Grid.Column="1" MinWidth="75" Margin="10,5" HorizontalContentAlignment="Center" />
+      </Grid>
+      <Border x:Name="DisabledSeparator" Height="2" Background="{DynamicResource DialogFooterLineBrush}" />
+      <StackPanel x:Name="EnabledPanel" Orientation="Horizontal" Margin="10,10,10,5">
+        <TextBlock x:Name="EnabledLabel" VerticalAlignment="Center" />
+        <HyperlinkButton x:Name="DisableLink" Padding="0" VerticalAlignment="Center" />
+      </StackPanel>
+    </StackPanel>
+    <DockPanel x:Name="RulesPanel" Grid.Row="3">
+      <TextBlock x:Name="RulesLabel1" DockPanel.Dock="Top" Margin="10,5,10,0" TextWrapping="Wrap" />
+      <TextBlock x:Name="RulesLabel2" DockPanel.Dock="Top" Margin="25,3,10,3" TextWrapping="Wrap"
+                 Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+      <Border DockPanel.Dock="Top" Height="2" Background="{DynamicResource DialogFooterLineBrush}" />
+      <TextBox x:Name="RulesEditor" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" BorderThickness="0"
+               FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" />
+    </DockPanel>
+    <Border Grid.Row="4" Background="{DynamicResource DialogFooterLineBrush}" />
+    <Grid Grid.Row="5" ColumnDefinitions="*,75,10,75,10" Background="{DynamicResource DialogFooterBrush}" Margin="0">
+      <CheckBox x:Name="RefreshCheck" Margin="10,15,0,15" VerticalAlignment="Center" />
+      <Button x:Name="SaveButton" Grid.Column="1" IsDefault="True" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+      <Button x:Name="CancelButton" Grid.Column="3" IsCancel="True" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+    </Grid>
+  </Grid>
+</Window>

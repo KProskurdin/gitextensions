@@ -663,6 +663,7 @@ public partial class MainWindow
         return deleted;
     }
 
+    // Upstream's StartRenameDialog: FormRenameBranch on the branch.
     private async Task RenameBranchAsync(string branch)
     {
         if (RepositoryPath is not { } path)
@@ -670,12 +671,7 @@ public partial class MainWindow
             return;
         }
 
-        PromptResult? result = await new PromptWindow("Rename branch", $"New name of the branch {branch}.", "Rename",
-                initialValue: branch)
-            .ShowDialog<PromptResult?>(this);
-        if (result is not null && NormaliseBranchName(result.Value) is var name && name != branch)
-        {
-            await _actions.RenameBranchAsync(path, branch, name);
-        }
+        await new RenameBranchWindow(branch, _preferences, arguments => RunGitWithOutputAsync(path, arguments))
+            .ShowDialog<bool>(this);
     }
 }

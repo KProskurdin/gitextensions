@@ -1,0 +1,70 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.SubmodulesWindow"
+        Title="Submodules"
+        Width="782" Height="372" MinWidth="710" MinHeight="350" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormSubmodules: the submodules (name and status) with Add submodule below them, beside the selected one's
+       details (name, remote path, local path, commit, branch with Pull, status) and Synchronize, Update and Remove,
+       which upstream lays out from right to left. -->
+  <Grid x:Name="splitContainer1" ColumnDefinitions="222,5,*">
+    <Grid x:Name="tableLayoutPanel2" RowDefinitions="*,Auto" Margin="4">
+      <DockPanel Grid.IsSharedSizeScope="True">
+        <Grid DockPanel.Dock="Top">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="Status" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="nameDataGridViewTextBoxColumn" Text="Name" FontWeight="SemiBold" Margin="4,0" />
+          <TextBlock x:Name="Status" Grid.Column="1" Text="Status" FontWeight="SemiBold" Margin="4,0" />
+        </Grid>
+        <ListBox x:Name="Submodules" TabIndex="0" />
+      </DockPanel>
+      <Button x:Name="AddSubmodule" Grid.Row="1" Content="Add submodule" Margin="0,4,12,0" HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center" TabIndex="1" />
+    </Grid>
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+    <Grid x:Name="tableLayoutPanel3" Grid.Column="2" RowDefinitions="*,Auto" Margin="4">
+      <HeaderedContentControl x:Name="groupBox1" Classes="groupBox" Header="Details">
+        <Grid x:Name="tableLayoutPanel1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+              RowSpacing="6" ColumnSpacing="8">
+          <TextBlock x:Name="label1" Text="Name" VerticalAlignment="Center" />
+          <TextBox x:Name="SubModuleName" Grid.Column="1" IsReadOnly="True" HorizontalAlignment="Left" Width="214" />
+          <TextBlock x:Name="label2" Grid.Row="1" Text="Remote path" VerticalAlignment="Center" />
+          <TextBox x:Name="SubModuleRemotePath" Grid.Row="1" Grid.Column="1" IsReadOnly="True" />
+          <TextBlock x:Name="label3" Grid.Row="2" Text="Local path" VerticalAlignment="Center" />
+          <TextBox x:Name="SubModuleLocalPath" Grid.Row="2" Grid.Column="1" IsReadOnly="True" />
+          <TextBlock x:Name="label4" Grid.Row="3" Text="Commit" VerticalAlignment="Center" />
+          <TextBox x:Name="SubModuleCommit" Grid.Row="3" Grid.Column="1" IsReadOnly="True" />
+          <TextBlock x:Name="label5" Grid.Row="4" Text="Branch" VerticalAlignment="Center" />
+          <Grid x:Name="tableLayoutPanel4" Grid.Row="4" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+            <TextBox x:Name="SubModuleBranch" IsReadOnly="True" />
+            <Button x:Name="Pull" Grid.Column="1" Width="24" Height="24" MinWidth="0" Padding="2"
+                    VerticalAlignment="Center">
+              <Image Source="{local:UpstreamImage Pull}" Stretch="Uniform" />
+            </Button>
+          </Grid>
+          <TextBlock x:Name="label6" Grid.Row="5" Text="Status" VerticalAlignment="Center" />
+          <TextBox x:Name="SubModuleStatus" Grid.Row="5" Grid.Column="1" IsReadOnly="True" HorizontalAlignment="Left"
+                   Width="214" />
+        </Grid>
+      </HeaderedContentControl>
+      <StackPanel x:Name="flowLayoutPanel1" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8"
+                  Margin="0,4,0,0">
+        <Button x:Name="SynchronizeSubmodule" MinWidth="144" HorizontalContentAlignment="Center" TabIndex="5">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Image Source="{local:UpstreamImage SubmodulesSync}" Width="16" Height="16" />
+            <TextBlock Text="Synchronize" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button x:Name="UpdateSubmodule" MinWidth="144" HorizontalContentAlignment="Center" TabIndex="3">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Image Source="{local:UpstreamImage SubmodulesUpdate}" Width="16" Height="16" />
+            <TextBlock Text="Update" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button x:Name="RemoveSubmodule" Content="Remove" MinWidth="144" HorizontalContentAlignment="Center" TabIndex="6" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

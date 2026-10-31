@@ -647,6 +647,18 @@ internal sealed class MainWindowTests
         TestAppBuilder.Preferences.ShowSplitViewLayout.Should().BeTrue();
     }
 
+    // Upstream's "Copy to clipboard" submenu is filled when the grid menu opens; the item whose text starts so is clicked.
+    private static void ClickCopyItem(Window window, string caption)
+    {
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        commits.ContextMenu!.Close();
+        Find<MenuItem>(window, "CopyToClipboardMenuItem").Items.OfType<MenuItem>()
+            .First(item => (item.Header as string)?.StartsWith(caption, StringComparison.Ordinal) == true)
+            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    }
+
     [AvaloniaTest]
     public void Copy_message_puts_the_full_commit_message_on_the_clipboard()
     {
@@ -656,7 +668,7 @@ internal sealed class MainWindowTests
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
         WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
 
-        Click(window, "CopyMessageMenuItem");
+        ClickCopyItem(window, "_Message");
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
@@ -672,7 +684,7 @@ internal sealed class MainWindowTests
         Find<ListBox>(window, "CommitList").SelectedIndex = 0;
         WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
 
-        Click(window, "CopyHashMenuItem");
+        ClickCopyItem(window, "_Commit hash");
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
@@ -976,10 +988,10 @@ internal sealed class MainWindowTests
         TreeView tree = Find<TreeView>(window, "BranchTreeView");
 
         Click(window, "CreateTagMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
-        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
-        Find<TextBox>(prompt, "ValueBox").Text = "v1.0";
-        Click(prompt, "OkButton");
+        WaitUntil(() => window.OwnedWindows.OfType<CreateTagWindow>().SingleOrDefault()?.TagLoaded.IsCompleted == true);
+        CreateTagWindow create = window.OwnedWindows.OfType<CreateTagWindow>().Single();
+        Find<TextBox>(create, "textBoxTagName").Text = "v1.0";
+        Click(create, "Ok");
         WaitUntil(() => Root(tree, RepoObjectKind.TagsRoot)?.Children.Count == 1);
         _repo.Run("tag", "--list").Trim().Should().Be("v1.0");
 

@@ -25,6 +25,8 @@ public partial class MainWindow
         UserManualMenuItem.Click += (_, _) => OpenUrl(AppSettings.DocumentationBaseUrl);
         TranslateMenuItem.Click += (_, _) => OpenUrl(TranslateUrl);
         ReportIssueMenuItem.Click += (_, _) => OpenUrl(IssuesUrl);
+        ChangelogMenuItem.Click += (_, _) => _ = new ChangeLogWindow().ShowDialog(this);
+        DonateMenuItem.Click += (_, _) => _ = new DonateWindow(OpenUrl).ShowDialog(this);
         DashboardRefreshMenuItem.Click += (_, _) => Run(Dashboard.LoadAsync);
     }
 

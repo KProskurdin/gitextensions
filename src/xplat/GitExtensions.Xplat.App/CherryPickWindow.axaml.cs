@@ -151,8 +151,8 @@ public partial class CherryPickWindow : Window
         Close(true);
     }
 
-    // Upstream's list columns: No., Message, Author, Date.
-    private static Control ParentRow(CherryPickParent? parent)
+    // Upstream's list columns: No., Message, Author, Date (shared with the revert window).
+    internal static Control ParentRow(CherryPickParent? parent)
     {
         Grid row = new() { ColumnDefinitions = new ColumnDefinitions("40,*,120,90") };
         if (parent is null)

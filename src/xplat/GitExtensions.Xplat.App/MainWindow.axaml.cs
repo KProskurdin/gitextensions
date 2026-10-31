@@ -185,7 +185,7 @@ public partial class MainWindow : Window
         WorktreesMenuItem.Click += (_, _) => Run(ShowWorktreesAsync);
         CommitMenuItem.Click += (_, _) => ShowCommitWindow();
         PullDialogMenuItem.Click += (_, _) => Run(ShowPullDialogAsync);
-        PushDialogMenuItem.Click += (_, _) => Run(ShowPushDialogAsync);
+        PushDialogMenuItem.Click += (_, _) => Run(() => ShowPushDialogAsync());
         ManageStashesCommandMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
         ResetChangesMenuItem.Click += (_, _) => RunOnRepository(ResetChangesAsync);
         CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
@@ -193,7 +193,7 @@ public partial class MainWindow : Window
         CheckoutRevisionMenuItem.Click += (_, _) => RunOnRepository(path => ShowCheckoutRevisionAsync(path, revision: null));
         MergeMenuItem.Click += (_, _) => RunOnRepository(path => ShowMergeAsync(path, branch: null));
         RebaseMenuItem.Click += (_, _) => ShowRebaseOnSelectedCommit();
-        CreateTagMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
+        CreateTagMenuItem.Click += (_, _) => Run(() => ShowCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
         BisectMenuItem.Click += (_, _) => Run(ShowBisectAsync);
         ResolveConflictsMenuItem.Click += (_, _) => ShowConflicts();
         CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
@@ -252,24 +252,23 @@ public partial class MainWindow : Window
         };
         CommitList.DoubleTapped += (_, _) => ViewSelectedRevision();
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
+        WireGridMenu();
         CommitFilesContextMenu.Opening += (_, _) => ShowFileListScripts();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
 
         // Upstream's DiffFiles_DoubleClick: the file's history at the selected commit.
         CommitFilesList.DoubleTapped += (_, _) => RunBrowseDiffHotkey(BrowseDiffCommand.ShowHistory);
-        CopyHashMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Hash));
-        CopyMessageMenuItem.Click += (_, _) => Run(() => CopyDetailAsync(details => details.Message));
         ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
         CommitDiffToolButton.Click += (_, _) => Run(OpenCommitFileInDiffToolAsync);
         DiffToolChoices.Attach(CommitDiffToolChoiceButton, tool => OpenCommitFileInDiffToolAsync(tool),
             message => ShowError(message));
         CreateBranchHereMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
-        CreateTagHereMenuItem.Click += (_, _) => Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
+        CreateTagHereMenuItem.Click += (_, _) => Run(() => ShowCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
         BrowseFilesHereMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
         CheckoutCommitMenuItem.Click +=
             (_, _) => RunOnSelectedCommit((path, row) => ShowCheckoutRevisionAsync(path, row.Hash));
         CherryPickMenuItem.Click += (_, _) => CherryPickSelectedRevision();
-        RevertMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => _actions.RevertAsync(path, row.Hash));
+        RevertMenuItem.Click += (_, _) => RevertSelectedRevision();
         ResetCurrentBranchMenuItem.Click += (_, _) =>
             RunOnSelectedCommit((path, row) => ShowResetCurrentBranchAsync(this, path, row.Hash, ResetMode.Soft));
         RebaseOnCommitMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: false));
@@ -546,7 +545,7 @@ public partial class MainWindow : Window
                 Run(ShowPullDialogAsync);
                 break;
             case BrowseCommand.Push:
-                Run(ShowPushDialogAsync);
+                Run(() => ShowPushDialogAsync());
                 break;
             case BrowseCommand.QuickPull:
                 Pull();
@@ -588,7 +587,7 @@ public partial class MainWindow : Window
                 RunOnRepository(path => StartCheckoutBranchAsync(path));
                 break;
             case BrowseCommand.CreateTag:
-                Run(() => PromptCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
+                Run(() => ShowCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
                 break;
             case BrowseCommand.Merge:
                 RunOnRepository(path => ShowMergeAsync(path, branch: null));
@@ -1062,14 +1061,15 @@ public partial class MainWindow : Window
     }
 
     // Upstream's Ctrl+Up opens the push dialog; the toolbar's Push and Ctrl+Shift+Up push at once.
-    private async Task ShowPushDialogAsync()
+    // The grid's "Push branch..." opens it on that local branch (upstream's StartPushDialog with a branch).
+    private async Task ShowPushDialogAsync(string? branch = null)
     {
         if (RepositoryPath is not { } path || !PushButton.IsEnabled)
         {
             return;
         }
 
-        PushWindow window = await NewPushWindowAsync(path);
+        PushWindow window = await NewPushWindowAsync(path, branch);
         PushRequest? request = await window.ShowDialog<PushRequest?>(this);
         if (request is not null
             && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
@@ -1084,8 +1084,8 @@ public partial class MainWindow : Window
     }
 
     // Upstream's StartPushDialog: the dialog on the open repository; its Pull button opens the pull dialog over it.
-    private async Task<PushWindow> NewPushWindowAsync(string path)
-        => new(new PushDialog(await PushRepository.LoadAsync(path)), _preferences, path.EnsureTrailingPathSeparator(),
+    private async Task<PushWindow> NewPushWindowAsync(string path, string? branch = null)
+        => new(new PushDialog(await PushRepository.LoadAsync(path), branch), _preferences, path.EnsureTrailingPathSeparator(),
             _plugins.HasRepositoryHost, owner => ShowPullDialogAsync(owner),
             async (owner, remote) =>
             {
@@ -1150,6 +1150,16 @@ public partial class MainWindow : Window
             (Screenshot.CleanupRepositoryWindow, { } path) => new CleanupRepositoryWindow(path, null),
             (Screenshot.MailMapWindow, { } path) => new RepositoryTextFileWindow(path, RepositoryTextFiles.MailMap),
             (Screenshot.VerifyDatabaseWindow, { } path) => NewVerifyDatabaseWindow(path),
+            (Screenshot.SubmodulesWindow, { } path) => NewSubmodulesWindow(path),
+            (Screenshot.AddSubmoduleWindow, { } path) => new AddSubmoduleWindow(path, _ => Task.FromResult(false)),
+            (Screenshot.SparseWorkingCopyWindow, { } path) =>
+                new SparseWorkingCopyWindow(path, _ => Task.FromResult(false)),
+            (Screenshot.ChangeLogWindow, _) => new ChangeLogWindow(),
+            (Screenshot.DonateWindow, _) => new DonateWindow(OpenUrl),
+            (Screenshot.RevertCommitWindow, { } path) =>
+                new RevertCommitWindow(path, "HEAD", (_, _, _) => Task.CompletedTask),
+            (Screenshot.CreateTagWindow, { } path) => new CreateTagWindow(path, "HEAD", _ => Task.FromResult(false),
+                (_, _) => Task.FromResult(false)),
             (Screenshot.DeleteTagWindow, { } path) => new DeleteTagWindow(null, _repository.Tags, _repository.Remotes,
                 _repository.TrackingRemote ?? "", (_, _) => Task.CompletedTask),
             (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
@@ -1370,11 +1380,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // Upstream's branch dialogs fix up the name (AutoNormaliseBranchName); done again where the name is used, as a button
-    // can be pressed while the name box still has the focus.
-    private string NormaliseBranchName(string name)
-        => BranchNames.Normalise(name, _preferences.AutoNormaliseBranchName, _preferences.AutoNormaliseSymbol);
-
     // Upstream's ConfirmSuppressible: asks unless the user turned the question off (Settings > Confirmations).
     private Task<bool> ConfirmAsync(Confirmation confirmation, string message, string confirmText, string caption)
         => ConfirmWindow.AskAsync(this, _preferences, confirmation, message, confirmText, caption);
@@ -1461,18 +1466,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<bool> PromptCreateTagAsync(string commit, Window? owner = null)
+    // Upstream's StartCreateTagDialog: FormCreateTag on the commit; its push runs between the push scripts, as upstream's
+    // PushTag.
+    private async Task<bool> ShowCreateTagAsync(string commit, Window? owner = null)
     {
         if (RepositoryPath is not { } path)
         {
             return false;
         }
 
-        PromptResult? result = await new PromptWindow("Create tag",
-                $"Name of the new tag at {commit[..Math.Min(8, commit.Length)]}.", "Create",
-                secondPlaceholder: "Message (optional: makes an annotated tag)")
-            .ShowDialog<PromptResult?>(owner ?? this);
-        return result is not null && await _actions.CreateTagAsync(path, result.Value, commit, result.SecondValue);
+        return await new CreateTagWindow(path, commit, arguments => RunGitWithOutputAsync(path, arguments),
+                (remote, tag) => WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
+                    () => _actions.PushAsync(path,
+                        new PushRequest(remote, "", "", ForcePushOptions.DoNotForce, Track: false, PushKind.Tag, tag))))
+            .ShowDialog<bool>(owner ?? this);
     }
 
     // Deleting a tag on the remote removes it for everyone who fetches, so it is confirmed first; the local tag stays.
@@ -1839,7 +1846,8 @@ public partial class MainWindow : Window
         TerminalMenuItem.IsEnabled = open;
         GitGuiMenuItem.IsEnabled = GitKMenuItem.IsEnabled = UndoLastCommitMenuItem.IsEnabled = open;
         GitAttributesMenuItem.IsEnabled = MailMapMenuItem.IsEnabled = CleanupMenuItem.IsEnabled = open;
-        GitMaintenanceMenuItem.IsEnabled = open;
+        GitMaintenanceMenuItem.IsEnabled = ManageSubmodulesMenuItem.IsEnabled = SparseWorkingCopyMenuItem.IsEnabled = open;
+        RepositorySettingsMenuItem.IsEnabled = open;
         FilesMenuItem.IsEnabled = open;
         UpdateAllSubmodulesMenuItem.IsEnabled = SyncAllSubmodulesMenuItem.IsEnabled = open;
         GitInfoExcludeMenuItem.IsEnabled = ResetChangesMenuItem.IsEnabled = open;
@@ -1880,8 +1888,6 @@ public partial class MainWindow : Window
         CreateTagHereMenuItem.IsEnabled = commitSelected;
         BrowseFilesHereMenuItem.IsEnabled = commitSelected;
         CheckoutCommitMenuItem.IsEnabled = commitSelected;
-        CopyHashMenuItem.IsEnabled = commitSelected;
-        CopyMessageMenuItem.IsEnabled = commitSelected;
     }
 
     // Upstream's StashSave from the toolbar, menu and left panel: no message, untracked files as upstream's
@@ -1910,14 +1916,6 @@ public partial class MainWindow : Window
         }
 
         await ShowRebaseAsync(path, row.Hash, interactive, immediately: true);
-    }
-
-    private async Task CopyDetailAsync(Func<CommitDetails, string> select)
-    {
-        if (_commits.Details is { } details && GetTopLevel(this)?.Clipboard is { } clipboard)
-        {
-            await clipboard.SetTextAsync(select(details));
-        }
     }
 
     // Like upstream, coming back to the window picks up files edited in other programs: the status is read again (the
