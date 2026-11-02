@@ -35,6 +35,15 @@ public partial class MainWindow
             ShowArtificialCommitsMenuItem.IsChecked = _preferences.RevisionGraphShowArtificialCommits;
             RefreshRepository();
         };
+
+        // Upstream's "Show stashes" (ToggleShowStashes): the stash rows in the grid.
+        ShowStashesMenuItem.IsChecked = _preferences.ShowStashes;
+        ShowStashesMenuItem.Click += (_, _) =>
+        {
+            _preferences.ShowStashes = !_preferences.ShowStashes;
+            ShowStashesMenuItem.IsChecked = _preferences.ShowStashes;
+            RefreshRepository();
+        };
         _commits.GraphAppearanceChanged += (_, _) => RedrawGraph();
 
         // Upstream: Alt+click on a commit highlights its branch.

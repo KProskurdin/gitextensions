@@ -4,9 +4,11 @@ using GitCommands.Git;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
+using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
 
@@ -63,8 +65,8 @@ public partial class MainWindow
                UpstreamTranslation.ByText(Confirmations.UndoLastCommitCaption), Confirmations.UndoLastCommitCaption)
            && await _actions.ResetAsync(path, "HEAD~1", ResetMode.Soft);
 
-    // Upstream's archiveToolStripMenuItem_Click and the grid's ArchiveRevision: the selected commit (the grid selects
-    // one, so no second revision), archived by git with its output shown, as upstream's FormProcess.
+    // Upstream's archiveToolStripMenuItem_Click and the grid's ArchiveRevision: the selected commit, archived by git with
+    // its output shown, as upstream's FormProcess.
     private void ArchiveSelectedRevision()
     {
         if (RepositoryPath is not { } path || _commits.Selected is not { } row || ArtificialCommits.IsArtificial(row.Hash))
@@ -72,22 +74,54 @@ public partial class MainWindow
             return;
         }
 
-        Run(() => new ArchiveWindow(path, row.Hash, diffRevision: null, path: null, _preferences,
+        // Upstream's ArchiveRevisionToolStripMenuItemClick: the latest selected commit, and the other one of two selected
+        // for an archive of the files changed between them.
+        IReadOnlyList<CommitRow> selected = SelectedRevisions;
+        if (selected.Count > 2)
+        {
+            _ = new MessageBoxWindow(UpstreamTranslation.ByText(ArchiveDialog.SelectOneOrTwo),
+                UpstreamTranslation.ByText(ArchiveDialog.ArchiveRevisionCaption), MessageBoxButtons.OK).ShowDialog(this);
+            return;
+        }
+
+        string? diffRevision = selected.Count == 2 ? selected[1].Hash : null;
+        Run(() => new ArchiveWindow(path, row.Hash, diffRevision, path: null, _preferences,
                 arguments => _actions.RunProgramAsync("git archive", AppSettings.GitCommand, arguments, path))
             .ShowDialog(this));
     }
 
-    // Upstream's StartCherryPickDialog for the selected commit (the grid selects one).
+    // Upstream's CherryPickCommitToolStripMenuItemClick and StartCherryPickDialog(revisions): a cherry pick window for each
+    // selected commit, the lowest in the grid first; the options carry over (they are saved on each pick), and the first
+    // window closed without a pick ends the run.
     private void CherryPickSelectedRevision()
     {
-        if (RepositoryPath is not { } path || _commits.Selected is not { } row || ArtificialCommits.IsArtificial(row.Hash))
+        if (RepositoryPath is not { } path)
         {
             return;
         }
 
-        Run(() => new CherryPickWindow(path, row.Hash, _preferences,
-                (owner, commit, arguments) => CherryPickAsync(owner, path, commit, arguments))
-            .ShowDialog(this));
+        List<CommitRow> rows =
+        [
+            .. SelectedRevisionsInGridOrder(descending: true).Where(row => !ArtificialCommits.IsArtificial(row.Hash))
+        ];
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        Run(async () =>
+        {
+            foreach (CommitRow row in rows)
+            {
+                bool picked = await new CherryPickWindow(path, row.Hash, _preferences,
+                        (owner, commit, arguments) => CherryPickAsync(owner, path, commit, arguments))
+                    .ShowDialog<bool>(this);
+                if (!picked)
+                {
+                    return;
+                }
+            }
+        });
     }
 
     // Upstream's btnPick_Click: the command, then MergeConflictHandler.HandleMergeConflicts, which offers the

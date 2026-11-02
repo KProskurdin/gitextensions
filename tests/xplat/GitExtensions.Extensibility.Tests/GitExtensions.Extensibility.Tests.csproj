@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'UnitTests', 'GitExtensions.Extensibility.Tests'))</UpstreamDir>
+    <!-- Upstream's UnitTests props derive it from the project name. -->
+    <RootNamespace>GitExtensions.ExtensibilityTests</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\xplat\GitExtensions.Extensibility\GitExtensions.Extensibility.csproj" />
+    <ProjectReference Include="..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

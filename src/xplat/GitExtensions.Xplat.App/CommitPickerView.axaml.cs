@@ -8,9 +8,9 @@ using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>CommitPickerSmallControl</c> without its button (upstream's FormChooseCommit is not in the new shell): the
-///  chosen commit's short hash, which can be typed (a hash or ref, resolved when the box is left and refused with upstream's
-///  message when git does not know it), and <c>GetCommitCountString</c> from HEAD to it.
+///  Upstream's <c>CommitPickerSmallControl</c>: the chosen commit's short hash, which can be typed (a hash or ref, resolved
+///  when the box is left and refused with upstream's message when git does not know it) or picked with the button in the
+///  choose commit window (upstream's <c>buttonPickCommit_Click</c>), and <c>GetCommitCountString</c> from HEAD to it.
 /// </summary>
 public partial class CommitPickerView : UserControl
 {
@@ -24,6 +24,22 @@ public partial class CommitPickerView : UserControl
     {
         InitializeComponent();
         CommitHashBox.LostFocus += (_, _) => UiActions.Run(() => SetCommitAsync(CommitHashBox.Text?.Trim() ?? ""), _ => { });
+        buttonPickCommit.Click += (_, _) => UiActions.Run(PickCommitAsync, _ => { });
+    }
+
+    // Upstream's buttonPickCommit_Click: the choose commit window on the chosen commit.
+    private async Task PickCommitAsync()
+    {
+        if (Module is not { } module || TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            return;
+        }
+
+        if (await new ChooseCommitWindow(module.WorkingDir, Selected?.ToString(), AppServices.Preferences)
+                .ShowDialog<Core.CommitHistory.CommitRow?>(owner) is { } row)
+        {
+            await SetCommitAsync(row.Hash);
+        }
     }
 
     /// <summary>

@@ -7,6 +7,17 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class DiffWindow : Window
 {
+    /// <summary>
+    ///  Shows a diff that <paramref name="show"/> loads into the window's view (a file between two revisions).
+    /// </summary>
+    public DiffWindow(string title, Func<DiffView, Task> show)
+    {
+        InitializeComponent();
+        WindowPlacementTracker.Attach(this, "Xplat.DiffWindow");
+        Title = title;
+        Opened += (_, _) => UiActions.Run(() => show(Diff), ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+    }
+
     public DiffWindow(string repositoryPath, string? commitHash, string? filePath, bool staged)
     {
         InitializeComponent();

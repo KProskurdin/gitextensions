@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ResetAnotherBranchWindow"
+        Title="Reset branch"
+        Width="535" SizeToContent="Height" MinWidth="535" CanMaximize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormResetAnotherBranch: the warning, the local branch, the commit's summary, "Checkout branch after
+       reset", the force check box, and OK and Cancel at the bottom right. -->
+  <StackPanel x:Name="tableLayoutPanel1" Margin="8" Spacing="3">
+    <Grid x:Name="tlpnlWarning" ColumnDefinitions="Auto,*" Margin="3">
+      <Image x:Name="pictureBox1" Source="{local:UpstreamImage Warning}" Width="16" Height="16" VerticalAlignment="Top"
+             Margin="0,2,6,0" />
+      <TextBlock x:Name="lblResetBranchWarning" Grid.Column="1" TextWrapping="Wrap" />
+    </Grid>
+    <Label x:Name="BranchInfo" Content="Reset local _branch:" Target="Branches" Padding="3,6,3,0" />
+    <ComboBox x:Name="Branches" IsEditable="True" HorizontalAlignment="Stretch" Margin="3" TabIndex="2" />
+    <local:CommitSummaryView x:Name="commitSummaryUserControl" MinHeight="150" Margin="3" TabIndex="3" />
+    <CheckBox x:Name="cbxCheckoutBranch" Content="Chec_kout branch after reset" Margin="3" TabIndex="4" />
+    <CheckBox x:Name="ForceReset" Content="_Force reset for a non-fast-forward reset" Margin="3" TabIndex="5" />
+    <StackPanel x:Name="flowLayoutPanel1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3"
+                TabIndex="6">
+      <Button x:Name="Ok" Content="OK" MinWidth="91" HorizontalContentAlignment="Center" IsDefault="True" IsEnabled="False" />
+      <Button x:Name="Cancel" Content="Cancel" MinWidth="91" HorizontalContentAlignment="Center" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

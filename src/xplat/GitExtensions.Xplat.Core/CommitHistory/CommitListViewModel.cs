@@ -415,10 +415,13 @@ public sealed class CommitListViewModel : ObservableObject
                     Build = BuildStatusOf(row.Hash),
                     Changes = _artificialChanges.GetValueOrDefault(row.Hash),
 
-                    // Upstream draws an artificial row's subject as a label of its own (OtherTag's color).
+                    // Upstream draws an artificial row's subject as a label of its own, and a stash's selector after the
+                    // refs (both in OtherTag's color).
                     GridLabels = ArtificialCommits.IsArtificial(row.Hash)
                         ? [new GridLabel(row.Subject, RefKind.Head)]
-                        : GridLabels.Layout(row.Labels ?? [], _viewOptions),
+                        : row.StashLabel is { } stash
+                            ? [.. GridLabels.Layout(row.Labels ?? [], _viewOptions), new GridLabel(stash, RefKind.Head)]
+                            : GridLabels.Layout(row.Labels ?? [], _viewOptions),
                     BodyText = _viewOptions.ShowCommitBody ? BodyOf(row) : "",
                 });
             }

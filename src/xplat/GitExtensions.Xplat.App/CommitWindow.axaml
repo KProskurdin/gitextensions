@@ -280,6 +280,9 @@
             </Popup>
             <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
                      FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Enter commit message" />
+            <!-- Upstream's modifyCommitMessageButton, over the read-only message of a fixup or squash commit. -->
+            <Button x:Name="modifyCommitMessageButton" Content="Modify the commit m_essage" MinWidth="149" MinHeight="25"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
           </Panel>
         </Grid>
       </Grid>

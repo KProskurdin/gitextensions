@@ -76,6 +76,25 @@ public sealed class RefLabelView : Control
         return new Size(Parts(cellHeight).Select(part => part.End).DefaultIfEmpty(0).Max(), cellHeight);
     }
 
+    /// <summary>
+    ///  The label at <paramref name="point"/>, as upstream's grid finds the ref under a right-click: the label nestled
+    ///  against this one when it stands for a ref, otherwise this label (also for upstream's virtual ahead and behind
+    ///  label); null outside both and for a bisect mark.
+    /// </summary>
+    public GridLabel? LabelAt(Point point)
+    {
+        GridLabel? hit = null;
+        foreach (Part part in Parts(Bounds.Height))
+        {
+            if (part is LabelPart labelPart && labelPart.Rect.Contains(point))
+            {
+                hit = labelPart.Label.Ref is null ? Label : labelPart.Label;
+            }
+        }
+
+        return hit;
+    }
+
     public override void Render(DrawingContext context)
     {
         foreach (Part part in Parts(Bounds.Height))
@@ -203,6 +222,8 @@ public sealed class RefLabelView : Control
         bool fill,
         bool rowSelected) : Part
     {
+        public GridLabel Label { get; } = label;
+
         public Rect Rect { get; } = rect;
 
         public double PointWidth { get; } = pointWidth;

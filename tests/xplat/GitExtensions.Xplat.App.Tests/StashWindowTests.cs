@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitExtensions.Xplat.Core.Operations;
@@ -135,6 +136,68 @@ internal sealed class StashWindowTests
         _repo.Run("stash", "list").Should().Contain("to apply");
         window.Close();
     }
+
+    [AvaloniaTest]
+    public void The_working_directorys_files_get_upstreams_file_menu_for_their_group()
+    {
+        Write("a.txt", "staged");
+        _repo.Run("add", "a.txt");
+        Write("b.txt", "changed");
+        StashWindow window = Open(manageStashes: false);
+        WaitUntil(() => Rows(window).Count(row => row.IsFile) == 2);
+        ListBox files = Find<ListBox>(window, "FilesList");
+        files.SelectedItems!.Clear();
+        files.SelectedItems.Add(Rows(window).Single(row => row.Text == "a.txt"));
+        files.SelectedItems.Add(Rows(window).Single(row => row.Text == "b.txt"));
+        OpenMenu(files);
+
+        Item(files, "tsmiStageFile").IsVisible.Should().BeTrue("b.txt is a working directory change");
+        Item(files, "tsmiUnstageFile").IsVisible.Should().BeTrue("a.txt is staged");
+        Item(files, "tsmiShowInFileTree").IsVisible.Should().BeFalse("upstream's FormStash binds no file tree");
+        Item(files, "tsmiFilterFileInGrid").IsVisible.Should().BeFalse();
+        Item(files, "tsmiResetFileToParent").Header.Should().Be("First: A " + _repo.Run("rev-parse", "--short=8", "HEAD").Trim(),
+            "the first selected file, a.txt, is shown between HEAD and the index");
+
+        files.SelectedItems.Clear();
+        files.SelectedItems.Add(Rows(window).Single(row => row.Text == "a.txt"));
+        OpenMenu(files);
+        Item(files, "tsmiUnstageFile").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => _repo.Run("diff", "--cached", "--name-only").Trim().Length == 0);
+        WaitUntil(() => !window.IsLoadingFiles && Rows(window).Count(row => row.IsHeader) == 1);
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_stashs_file_can_be_reset_to_the_stash_from_the_file_menu()
+    {
+        Write("a.txt", "stashed");
+        _repo.Run("stash", "push", "-q", "-m", "to reset");
+        StashWindow window = Open(manageStashes: true);
+        ListBox files = Find<ListBox>(window, "FilesList");
+        OpenMenu(files);
+
+        Item(files, "tsmiStageFile").IsVisible.Should().BeFalse();
+        Item(files, "tsmiResetFileToSelected").Header.Should()
+            .Be("Second: B " + _repo.Run("rev-parse", "--short=8", "stash@{0}").Trim());
+        Item(files, "tsmiResetFileToSelected").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        WaitUntil(() => window.OwnedWindows.OfType<ResetChangesWindow>().Any());
+        Click(window.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
+
+        WaitUntil(() => _repo.ReadFile("a.txt") == "stashed");
+        window.Close();
+    }
+
+    // The menu updates itself for the selection when it opens, as upstream's ItemContextMenu_Opening.
+    private static void OpenMenu(ListBox list)
+    {
+        list.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        list.ContextMenu!.Close();
+    }
+
+    private static MenuItem Item(ListBox list, string name)
+        => list.ContextMenu!.FindControl<MenuItem>(name) ?? throw new InvalidOperationException($"No item {name}");
 
     private static void Reset()
     {

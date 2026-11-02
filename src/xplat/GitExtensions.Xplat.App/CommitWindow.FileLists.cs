@@ -14,7 +14,7 @@ namespace GitExtensions.Xplat.App;
 // toolbarStaged between them.
 public partial class CommitWindow
 {
-    // Upstream FileStatusList and CopyPathsToolStripMenuItem texts.
+    // Upstream FileStatusList texts.
     private const string ResetSelectedChangesText = "Are you sure you want to reset all selected files to {0}?";
     private const string FirstRevisionText = "First: A ";
     private const string DeleteSelectedFilesText = "Are you sure you want to delete the selected file(s)?";
@@ -98,33 +98,8 @@ public partial class CommitWindow
             parts.AddToGitIgnore?.Click += (_, _) => Run(() => IgnoreSelectedAsync(localExclude: false));
             parts.AddToGitInfoExclude?.Click += (_, _) => Run(() => IgnoreSelectedAsync(localExclude: true));
             parts.StopTracking.Click += (_, _) => Run(() => StopTrackingSelectedAsync(parts));
-            parts.CopyPaths.ItemsSource = CopyPathItems(parts);
-        }
-    }
-
-    // Upstream's CopyPathsToolStripMenuItem: relative paths (POSIX, native), then full paths (native, WSL, Cygwin).
-    private List<MenuItem> CopyPathItems(FileListParts parts)
-    {
-        return
-        [
-            Item("Copy relative path(s) - _POSIX", path => path.ToPosixPath(), full: false),
-            Item("Copy relative path(s) - _native", path => path.ToNativePath(), full: false),
-            Item("Copy _full path(s) - native", path => path.ToNativePath(), full: true, bold: true),
-            Item("Copy full path(s) - _WSL", path => path.ToWslPath() ?? path, full: true),
-            Item("Copy full path(s) - _Cygwin", path => path.ToCygwinPath() ?? path, full: true),
-        ];
-
-        MenuItem Item(string header, Func<string, string> convert, bool full, bool bold = false)
-        {
-            MenuItem item = new()
-            {
-                Header = UpstreamTranslation.ByText(header),
-                FontWeight = bold ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal
-            };
-            item.Click += (_, _) => Run(() => CopyTextAsync(string.Join(Environment.NewLine,
-                Selected(parts).Select(file => file.Path).Distinct()
-                    .Select(path => convert(full ? Path.Combine(_repositoryPath, path) : path)))));
-            return item;
+            parts.CopyPaths.ItemsSource = CopyPathsMenu.Items(() => Selected(parts).Select(file => file.Path),
+                () => _repositoryPath, CopyTextAsync);
         }
     }
 

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'UnitTests', 'GitExtUtils.Tests'))</UpstreamDir>
+    <!-- Upstream's UnitTests props derive it from the project name. -->
+    <RootNamespace>GitExtUtilsTests</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <!-- Tests of the WinForms-only helpers that the shadow GitExtUtils does not compile, and of ICSharpCode.TextEditor
+       (a WinForms control, not part of the cross-platform build). -->
+  <ItemGroup>
+    <Compile Remove="$(UpstreamDir)ComboBoxExtensionsTests.cs" />
+    <Compile Remove="$(UpstreamDir)ControlTagExtensionTests.cs" />
+    <Compile Remove="$(UpstreamDir)TableLayoutPanelExtensionsTests.cs" />
+    <Compile Remove="$(UpstreamDir)Win32ApiTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\xplat\GitExtUtils\GitExtUtils.csproj" />
+    <ProjectReference Include="..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

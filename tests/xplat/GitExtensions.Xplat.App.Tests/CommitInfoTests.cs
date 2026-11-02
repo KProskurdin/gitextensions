@@ -37,7 +37,8 @@ internal sealed class CommitInfoTests
         _repo.Run("tag", "-a", "v1", "-m", "release one");
         MainWindow window = OpenWindow(selectedIndex: 1);
 
-        WaitUntil(() => RevisionInfo(window).Contains("Derives from"));
+        // The grid opens on HEAD, whose info (it derives from v1) shows until the selected commit's is read.
+        WaitUntil(() => RevisionInfo(window).Contains("Derives from no tag"));
 
         RevisionInfo(window).Split('\n').Should().Equal(
             "Contained in branches:",

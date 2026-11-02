@@ -216,10 +216,12 @@ public interface IGitOperations
     /// <summary>
     ///  Upstream's <c>FormRebase</c> rebase: runs <paramref name="arguments"/> (a <c>Commands.Rebase</c>). Git opens
     ///  <paramref name="editorCommand"/> for an interactive rebase's todo list and the messages; without one git keeps each
-    ///  message.
+    ///  message. <paramref name="sequenceEditor"/>, when given, changes the todo list instead of the editor (upstream's
+    ///  <c>GIT_SEQUENCE_EDITOR</c> for the grid's edit and reword commit).
     /// </summary>
     Task RunRebaseAsync(string repositoryPath, ArgumentString arguments, string? editorCommand,
-        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default);
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default,
+        string? sequenceEditor = null);
 
     Task AbortRebaseAsync(string repositoryPath);
 

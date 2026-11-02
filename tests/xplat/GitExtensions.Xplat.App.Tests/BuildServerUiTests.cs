@@ -84,10 +84,9 @@ internal sealed class BuildServerUiTests
         api.Requests.Should().Contain(request =>
             request.Contains("/repos/owner/repo/actions/runs", StringComparison.Ordinal));
 
-        // Upstream's build report tab, for the selected commit whose build has a report.
+        // Upstream's build report tab, for the selected commit whose build has a report: the grid opens on HEAD.
         TabItem report = window.FindControl<TabItem>("BuildReportTab")!;
-        report.IsVisible.Should().BeFalse();
-        window.FindControl<ListBox>("CommitList")!.SelectedIndex = 0;
+        window.FindControl<ListBox>("CommitList")!.SelectedIndex.Should().Be(0);
         report.IsVisible.Should().BeTrue();
         ToolTip.GetTip(window.FindControl<HyperlinkButton>("OpenBuildReportLink")!).Should()
             .Be("https://github.com/owner/repo/actions/runs/7");

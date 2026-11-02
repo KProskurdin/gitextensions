@@ -45,7 +45,10 @@ internal static class ScriptMenus
         return added;
     }
 
-    private static void Remove(ContextMenu menu, MenuItem host)
+    /// <summary>
+    ///  Takes the scripts out of <paramref name="menu"/> again (upstream's <c>RemoveUserScripts</c>).
+    /// </summary>
+    public static void Remove(ContextMenu menu, MenuItem host)
     {
         host.ItemsSource = null;
         host.Items.Clear();

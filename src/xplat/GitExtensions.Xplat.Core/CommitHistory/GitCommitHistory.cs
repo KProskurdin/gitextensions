@@ -29,18 +29,21 @@ public sealed class GitCommitHistory : ICommitHistory
     private readonly IRevisionLinkStore? _links;
     private readonly Func<FileHistoryOptions> _fileHistory;
     private readonly Func<bool> _showArtificialCommits;
+    private readonly Func<bool> _showStashes;
 
     /// <summary>
     ///  Reads commits; the grid's dates follow <paramref name="dateStyle"/> and the order <paramref name="sortOrder"/>
     ///  (upstream's <c>RevisionSortOrder</c>), asked at each read so a changed setting applies to the next reload
     ///  (upstream's defaults when none is given). The details list the revision links defined in <paramref name="links"/>.
-    ///  With <paramref name="showArtificialCommits"/> the first page has upstream's working directory and index rows.
+    ///  With <paramref name="showArtificialCommits"/> the first page has upstream's working directory and index rows, and
+    ///  with <paramref name="showStashes"/> the stashes are rows of their own (upstream's <c>ShowStashes</c>).
     /// </summary>
     public GitCommitHistory(Func<CommitDateStyle>? dateStyle = null, Func<RevisionSortOrder>? sortOrder = null,
         IRevisionLinkStore? links = null, Func<FileHistoryOptions>? fileHistory = null,
-        Func<bool>? showArtificialCommits = null)
+        Func<bool>? showArtificialCommits = null, Func<bool>? showStashes = null)
     {
         _showArtificialCommits = showArtificialCommits ?? (() => false);
+        _showStashes = showStashes ?? (() => false);
         _links = links;
         _fileHistory = fileHistory ?? (() => new FileHistoryOptions());
         _dateStyle = dateStyle ?? (() => new CommitDateStyle());
@@ -52,7 +55,8 @@ public sealed class GitCommitHistory : ICommitHistory
         CommitDateStyle style = _dateStyle();
 
         // git applies --skip after the order and the filters, so the next page continues where the loaded ones end.
-        string revision = Sorted(filter?.ToRevisionArguments() ?? "HEAD");
+        bool showStashes = _showStashes();
+        string revision = Sorted(filter?.ToRevisionArguments(showStashes) ?? "HEAD");
         if (skip > 0)
         {
             revision = $"--skip={skip.ToString(System.Globalization.CultureInfo.InvariantCulture)} {revision}";
@@ -66,7 +70,8 @@ public sealed class GitCommitHistory : ICommitHistory
         {
             (string pathFilter, IReadOnlyDictionary<string, string>? paths) =
                 PathFilter(repositoryPath, filter?.PathFilter ?? "", options);
-            return ReadPage(repositoryPath, revision, pathFilter, limit, markHead: true, style, artificial) with
+            return ReadPage(repositoryPath, revision, pathFilter, limit, markHead: true, style, artificial, showStashes,
+                filter?.ShowReflog == true) with
             {
                 FilePaths = paths
             };
@@ -296,11 +301,12 @@ public sealed class GitCommitHistory : ICommitHistory
     private static IReadOnlyList<CommitFile> LoadFiles(string path, string hash)
     {
         // The working directory's files are its unstaged changes and untracked files; the index's are the staged changes.
+        // A merge (a stash too) lists its changes against the first parent, as the diff shows them.
         GitArgumentBuilder arguments = hash == ArtificialCommits.WorkTreeHash
             ? new GitArgumentBuilder("diff") { "--name-status", "--no-color" }
             : hash == ArtificialCommits.IndexHash
                 ? new GitArgumentBuilder("diff") { "--cached", "--name-status", "--no-color" }
-                : new GitArgumentBuilder("show") { "--format=", "--name-status", "--no-color", hash };
+                : new GitArgumentBuilder("show") { "--format=", "--first-parent", "--name-status", "--no-color", hash };
         GitModule module = CreateModule(path);
         ExecutionResult result = module.GitExecutable.Execute(arguments, throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
@@ -347,7 +353,7 @@ public sealed class GitCommitHistory : ICommitHistory
     ///  history is not loaded in full.
     /// </summary>
     private static CommitPage ReadPage(string path, string revision, string pathFilter, int limit, bool markHead,
-        CommitDateStyle style, bool artificial = false)
+        CommitDateStyle style, bool artificial = false, bool stashes = false, bool reflog = false)
     {
         GitModule module = CreateModule(path);
         if (!module.IsValidGitWorkingDir())
@@ -380,26 +386,34 @@ public sealed class GitCommitHistory : ICommitHistory
         Dictionary<string, List<RefLabel>> labels = LoadRefLabels(module);
         string? head = markHead ? HeadHash(module) : null;
         DateTime now = DateTime.Now;
-        IReadOnlyList<CommitRow> rows = revisions
-            .Take(limit)
-            .Select(r =>
-            {
-                List<RefLabel> refs = labels.TryGetValue(r.ObjectId.ToString(), out List<RefLabel>? found)
-                    ? [.. found]
-                    : [];
-                if (r.ObjectId.ToString() == head)
-                {
-                    refs.Insert(0, new RefLabel("HEAD", RefKind.Head));
-                }
+        IReadOnlyList<CommitRow> rows = [.. revisions.Take(limit).Select(ToRow)];
 
-                return new CommitRow(r.ObjectId.ToString(), r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
-                    style.Format(r.AuthorDate, r.CommitDate, now),
-                    r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
-                    [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs,
-                    RevisionTooltips.For(r, refs), r.Body, r.HasMultiLineMessage, r.AuthorEmail, r.AuthorDate,
-                    r.CommitDate);
-            })
-            .ToList();
+        // Upstream's ShowStashes: the stashes before the commits they were made on (the latest one the log lists, as
+        // --all includes refs/stash then), with the "untracked files" commits unless the reflog shows them already.
+        if (stashes && !module.IsBareRepository())
+        {
+            RevisionReader reader = new(module);
+            IReadOnlyList<CommitRow> stashRows =
+            [
+                .. reader.GetStashes(CancellationToken.None)
+                    .Select(stash => ToRow(stash) with { ReflogSelector = stash.ReflogSelector })
+            ];
+            IReadOnlyDictionary<string, CommitRow> untrackedByStash = new Dictionary<string, CommitRow>();
+            if (!reflog)
+            {
+                IReadOnlyDictionary<string, string> untrackedIds =
+                    StashRows.UntrackedCommits(stashRows, AppSettings.MaxStashesWithUntrackedFiles);
+                Dictionary<string, CommitRow> untrackedRows = reader
+                    .GetRevisionsFromList([.. untrackedIds.Values.Distinct().Select(ObjectId.Parse)], CancellationToken.None)
+                    .Select(ToRow)
+                    .ToDictionary(row => row.Hash);
+                untrackedByStash = untrackedIds
+                    .Where(pair => untrackedRows.ContainsKey(pair.Value))
+                    .ToDictionary(pair => pair.Key, pair => untrackedRows[pair.Value]);
+            }
+
+            rows = StashRows.Insert(rows, stashRows, untrackedByStash);
+        }
 
         if (artificial && !module.IsBareRepository())
         {
@@ -407,6 +421,24 @@ public sealed class GitCommitHistory : ICommitHistory
         }
 
         return new CommitPage(rows, HasMore: revisions.Count > limit);
+
+        CommitRow ToRow(GitRevision r)
+        {
+            List<RefLabel> refs = labels.TryGetValue(r.ObjectId.ToString(), out List<RefLabel>? found)
+                ? [.. found]
+                : [];
+            if (r.ObjectId.ToString() == head)
+            {
+                refs.Insert(0, new RefLabel("HEAD", RefKind.Head));
+            }
+
+            return new CommitRow(r.ObjectId.ToString(), r.ObjectId.ToShortString(), r.Subject, r.Author ?? "",
+                style.Format(r.AuthorDate, r.CommitDate, now),
+                r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
+                [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs,
+                RevisionTooltips.For(r, refs), r.Body, r.HasMultiLineMessage, r.AuthorEmail, r.AuthorDate,
+                r.CommitDate);
+        }
     }
 
     // The commit HEAD points at, which gets the HEAD label wherever it is in the list; null before the first commit.

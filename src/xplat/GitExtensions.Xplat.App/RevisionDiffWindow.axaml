@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:GitExtensions.Xplat.Core.Diff"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.RevisionDiffWindow"
+        Title="Diff"
+        Width="1042" Height="685" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormDiff: BASE and Compare with their pickers and the swap button between them, "Compare to merge base"
+       and the directory diff tool below, then the changed files (345 pixels) beside the selected file's diff. -->
+  <Grid x:Name="mainLayoutPanel" RowDefinitions="Auto,*" Margin="4">
+    <Grid x:Name="settingsLayoutPanel" ColumnDefinitions="*,Auto,*" RowDefinitions="Auto,Auto">
+      <HeaderedContentControl x:Name="firstCommitGroup" Classes="groupBox" Header="BASE" Margin="3">
+        <DockPanel x:Name="firstCommitPanel" Margin="3">
+          <Button x:Name="btnAnotherFirstCommit" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+                  ToolTip.Tip="Select another commit">
+            <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
+          </Button>
+          <Button x:Name="btnAnotherFirstBranch" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+                  ToolTip.Tip="Select another branch">
+            <Image Source="{local:UpstreamImage BranchCheckout}" Width="16" Height="16" />
+          </Button>
+          <Border x:Name="lblFirstCommitBack" Padding="4,2" VerticalAlignment="Center">
+            <TextBlock x:Name="lblFirstCommit" TextTrimming="CharacterEllipsis" />
+          </Border>
+        </DockPanel>
+      </HeaderedContentControl>
+      <Button x:Name="btnSwap" Grid.Column="1" VerticalAlignment="Center" Margin="3" Padding="4,2"
+              ToolTip.Tip="Swap BASE and Compare commits">
+        <Image Source="{local:UpstreamImage Renamed}" Width="16" Height="16" />
+      </Button>
+      <HeaderedContentControl x:Name="secondCommitGroup" Grid.Column="2" Classes="groupBox" Header="Compare" Margin="3">
+        <DockPanel x:Name="secondCommitPanel" Margin="3">
+          <Button x:Name="btnAnotherSecondCommit" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+                  ToolTip.Tip="Select another commit">
+            <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
+          </Button>
+          <Button x:Name="btnAnotherSecondBranch" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+                  ToolTip.Tip="Select another branch">
+            <Image Source="{local:UpstreamImage BranchCheckout}" Width="16" Height="16" />
+          </Button>
+          <Border x:Name="lblSecondCommitBack" Padding="4,2" VerticalAlignment="Center">
+            <TextBlock x:Name="lblSecondCommit" TextTrimming="CharacterEllipsis" />
+          </Border>
+        </DockPanel>
+      </HeaderedContentControl>
+      <StackPanel x:Name="diffOptionsPanel" Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="6"
+                  Margin="3">
+        <CheckBox x:Name="ckCompareToMergeBase" Content="Compare to merge _base" />
+        <Button x:Name="btnCompareDirectoriesWithDiffTool" Content="Open diff using _directory diff tool" />
+      </StackPanel>
+    </Grid>
+    <Grid x:Name="splitContainer1" Grid.Row="1" ColumnDefinitions="345,5,*">
+      <!-- Upstream's FileStatusList: the group-by buttons, the filter box, the files with their status images and the
+           NoFiles text (RevisionFileList). -->
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+          <local:ToolToggleButton x:Name="DiffFilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
+          <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
+          <local:ToolToggleButton x:Name="DiffFilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+        </StackPanel>
+        <TextBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..."
+                 Margin="0,0,0,2" />
+        <Panel>
+          <ListBox x:Name="DiffFiles" SelectionMode="Multiple">
+            <!-- Upstream FileStatusList's item menu as FormDiff has it: without BindContextMenu, so without "Show in File
+                 tree" and "Filter file in grid". -->
+            <ListBox.ContextMenu>
+              <local:FileStatusListMenu x:Name="DiffFilesMenu" />
+            </ListBox.ContextMenu>
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="core:RevisionDiffFile">
+                <!-- Upstream's status image, then the path, which follows "Truncate long filenames" (FilePathTrimming). -->
+                <DockPanel>
+                  <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                         Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                  <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                             TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Display}" />
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBlock x:Name="DiffFilesNoFilesText" Margin="4,2" IsHitTestVisible="False" IsVisible="False"
+                     Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+        </Panel>
+      </DockPanel>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <local:DiffView x:Name="DiffText" Grid.Column="2" />
+    </Grid>
+  </Grid>
+</Window>

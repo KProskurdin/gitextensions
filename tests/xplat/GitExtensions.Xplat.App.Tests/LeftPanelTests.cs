@@ -4,7 +4,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using NUnit.Framework;
 
@@ -210,8 +212,89 @@ internal sealed class LeftPanelTests
         stash.Close();
     }
 
+    [AvaloniaTest]
+    public void Selecting_a_branch_or_a_tag_selects_its_commit_in_the_grid()
+    {
+        _repo.Run("branch", "older", "HEAD~1");
+        _repo.Run("tag", "v1", "HEAD~1");
+        string current = _repo.Run("branch", "--show-current").Trim();
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        ListBox commits = Find<ListBox>(window, "CommitList");
+
+        tree.SelectedItem = BranchNode(tree, "older");
+        WaitUntil(() => SelectedSubject(commits) == "first");
+
+        tree.SelectedItem = BranchNode(tree, current);
+        WaitUntil(() => SelectedSubject(commits) == "second");
+
+        tree.SelectedItem = TagNode(tree, "v1");
+        WaitUntil(() => SelectedSubject(commits) == "first");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_refresh_does_not_go_to_the_commit_of_the_node_the_tree_selects_again()
+    {
+        _repo.Run("branch", "older", "HEAD~1");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        tree.SelectedItem = BranchNode(tree, "older");
+        WaitUntil(() => SelectedSubject(commits) == "first");
+        commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "second");
+
+        Click(window, "RefreshButton");
+        WaitUntil(() => !window.IsBusy);
+
+        // Long enough for a navigation from the tree, which reads git, to have come through.
+        DateTime settled = DateTime.UtcNow + TimeSpan.FromMilliseconds(500);
+        WaitUntil(() => DateTime.UtcNow > settled);
+
+        (tree.SelectedItem as RepoObjectNode)?.Branch?.Name.Should().Be("older");
+        SelectedSubject(commits).Should().Be("second", "upstream ignores the tree's selection while it is filled again");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_branch_has_the_copy_submenu_and_a_local_branch_the_grids_scripts()
+    {
+        TestAppBuilder.Scripts.Save(
+        [
+            new ScriptDefinition { Name = "Grid script", Command = "git", AddToRevisionGridContextMenu = true },
+        ]);
+        _repo.Run("tag", "v1");
+        string current = _repo.Run("branch", "--show-current").Trim();
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        ContextMenu menu = Find<ContextMenu>(window, "BranchTreeContextMenu");
+        tree.SelectedItem = BranchNode(tree, current);
+        WaitUntil(() => SelectedSubject(Find<ListBox>(window, "CommitList")) == "second");
+
+        OpenMenu(window);
+
+        MenuItem copy = Find<MenuItem>(window, "TreeCopyMenuItem");
+        copy.IsVisible.Should().BeTrue();
+        copy.Items.OfType<MenuItem>().Should().NotBeEmpty("it lists the selected commit's values, as the grid's");
+        menu.Items.OfType<MenuItem>().Select(item => (item.Header as TextBlock)?.Text).Should().Contain("Grid script");
+
+        tree.SelectedItem = TagNode(tree, "v1");
+        OpenMenu(window);
+
+        copy.IsVisible.Should().BeFalse("upstream copies for branches and stashes only");
+        menu.Items.OfType<MenuItem>().Select(item => (item.Header as TextBlock)?.Text).Should().NotContain("Grid script");
+        window.Close();
+    }
+
+    private static string? SelectedSubject(ListBox commits) => (commits.SelectedItem as CommitListItem)?.Row.Subject;
+
+    private static RepoObjectNode? TagNode(TreeView tree, string name)
+        => Roots(tree).SelectMany(root => root.Descendants())
+            .FirstOrDefault(node => node.Kind == RepoObjectKind.Tag && node.Item as string == name);
+
     private static void Reset()
     {
+        TestAppBuilder.Scripts.Save([]);
         foreach (RepoObjectKind root in RepoObjectsTree.Roots)
         {
             TestAppBuilder.Preferences.ShowRepoObjectsTree(root, true);

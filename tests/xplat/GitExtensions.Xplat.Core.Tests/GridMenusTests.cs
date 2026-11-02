@@ -41,6 +41,34 @@ internal sealed class GridMenusTests
     }
 
     [Test]
+    public void For_should_offer_only_the_clicked_ref_but_list_the_refs_as_for_the_whole_commit()
+    {
+        RefLabel remote = new("origin/main", RefKind.RemoteBranch);
+        CommitRow row = Row(
+            new RefLabel("main", RefKind.Branch) { Upstream = "origin/main" },
+            remote,
+            new RefLabel("v1", RefKind.Tag));
+
+        GridRefMenus menus = GridMenus.For(row, "other", new HashSet<string>(), GridMenus.Only(remote));
+
+        Names(menus.Checkout).Should().Equal("origin/main");
+        Names(menus.Delete).Should().Equal("origin/main");
+        Names(menus.Merge).Should().Equal([Hash], "a tracked remote branch is not merged, so the commit is");
+        menus.DeleteTags.Should().BeEmpty();
+        GridMenus.CopyItems(row, "Branches", "Tags", GridMenus.Only(remote)).Select(item => item?.Value)
+            .Should().Contain("origin/main").And.NotContain(["main", "v1"]);
+    }
+
+    [TestCase(false, false, false, false, false)]
+    [TestCase(true, false, false, false, true)]
+    [TestCase(true, false, true, false, false)]
+    [TestCase(true, false, false, true, false)]
+    [TestCase(true, true, true, true, true)]
+    public void IsFocused_should_follow_upstreams_keys_and_setting(bool labelClicked, bool control, bool shift,
+        bool alwaysShowAdvancedOptions, bool focused)
+        => GridMenus.IsFocused(labelClicked, control, shift, alwaysShowAdvancedOptions).Should().Be(focused);
+
+    [Test]
     public void For_should_merge_the_commit_itself_when_no_ref_points_at_it()
     {
         GridRefMenus menus = GridMenus.For(Row(), "main", new HashSet<string>());

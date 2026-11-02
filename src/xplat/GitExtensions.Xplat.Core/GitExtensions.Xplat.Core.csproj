@@ -88,6 +88,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The rules of upstream's file list item menu (which items a selection shows) and the revisions a difftool compares,
+         unchanged (Diff/DiffFileMenu.cs). -->
+    <Compile Include="..\..\app\GitUI\CommandsDialogs\RevisionDiffController.cs" Link="Upstream\RevisionDiff\RevisionDiffController.cs" />
+    <Compile Include="..\..\app\GitUI\CommandsDialogs\RevisionDiffContoller.ContextMenuSelectionInfo.cs" Link="Upstream\RevisionDiff\RevisionDiffContoller.ContextMenuSelectionInfo.cs" />
+    <Compile Include="..\..\app\GitUI\CommandsDialogs\FileStatusListContextMenuController.cs" Link="Upstream\RevisionDiff\FileStatusListContextMenuController.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\FileStatusItem.cs" Link="Upstream\RevisionDiff\FileStatusItem.cs" />
+    <Compile Include="..\..\app\GitUI\UserControls\FileStatusItemExtensions.cs" Link="Upstream\RevisionDiff\FileStatusItemExtensions.cs" />
+    <Compile Include="..\..\app\GitUI\RevisionDiffInfoProvider.cs" Link="Upstream\RevisionDiff\RevisionDiffInfoProvider.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ExCSS" />
     <!-- Upstream's encrypted build server credentials on Windows (BuildServer/BuildServerCredentialStore.cs). -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', 'app', 'UnitTests', 'ResourceManager.Tests'))</UpstreamDir>
+    <!-- Upstream's UnitTests props derive it from the project name. -->
+    <RootNamespace>ResourceManagerTests</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\xplat\GitCommands\GitCommands.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+    <ProjectReference Include="..\..\..\src\xplat\ResourceManager\ResourceManager.csproj" />
+    <ProjectReference Include="..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', '..', 'plugins', 'UnitTests', 'BuildServerIntegration', 'GitlabIntegration.Tests'))</UpstreamDir>
+    <!-- Upstream's UnitTests props derive it from the project name; embedded resource names are derived from this. -->
+    <RootNamespace>GitlabIntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <!-- The shadow plugins leave the shared assemblies to the app (Private="false"), so the test project brings them. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\src\xplat\plugins\BuildServerIntegration\GitlabIntegration\GitExtensions.Plugins.GitlabIntegration.csproj" />
+    <ProjectReference Include="..\..\..\..\..\src\xplat\GitCommands\GitCommands.csproj" />
+    <ProjectReference Include="..\..\..\..\..\src\xplat\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+    <ProjectReference Include="..\..\..\..\..\src\xplat\ResourceManager\ResourceManager.csproj" />
+    <ProjectReference Include="..\..\..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -28,8 +28,11 @@ public partial class MainWindow
         ShowGpgTab();
     }
 
-    // Upstream's FormBrowse.RevisionInfo_CommandClicked: the commit, branch or tag is selected in the grid.
-    private async Task GoToRevisionAsync(string revision)
+    // Upstream's FormBrowse.RevisionInfo_CommandClicked and RevisionGridControl.GoToRef: the commit, branch or tag is
+    // selected in the grid, or with toggleSelection added to or taken from its selection (SetSelectedRevision). A name git
+    // does not know gets upstream's "No revision found." when showNoRevisionMessage asks for it.
+    private async Task GoToRevisionAsync(string revision, bool showNoRevisionMessage = false,
+        bool toggleSelection = false)
     {
         if (RepositoryPath is not { } path)
         {
@@ -41,11 +44,32 @@ public partial class MainWindow
             : await RepositoryScriptContext.ResolveCommitAsync(path, revision);
         if (hash is null)
         {
+            if (showNoRevisionMessage)
+            {
+                ShowError(UpstreamTranslation.ByText(GoToCommit.NoRevisionFound));
+            }
+
             return;
         }
 
         int index = _commits.VisibleRows.ToList()
             .FindIndex(item => string.Equals(item.Row.Hash, hash, StringComparison.OrdinalIgnoreCase));
+        if (toggleSelection && index >= 0 && CommitList.SelectedItems is { } selected)
+        {
+            object item = CommitList.Items[index]!;
+            if (!selected.Contains(item))
+            {
+                selected.Add(item);
+                CommitList.ScrollIntoView(index);
+            }
+            else
+            {
+                selected.Remove(item);
+            }
+
+            return;
+        }
+
         if (!SelectGridRow(index >= 0 ? index : null))
         {
             // As upstream, a commit the filters hide, such as a second parent with "first parent only".

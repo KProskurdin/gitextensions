@@ -97,6 +97,7 @@
         <Separator />
         <MenuItem Classes="groupHeader" Header="Commits" IsEnabled="False" />
         <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
         <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />
@@ -393,6 +394,7 @@
           <TreeView.ContextMenu>
             <!-- Upstream's menuMain in its order; MainWindow.LeftPanel shows the items that apply to the node. -->
             <ContextMenu x:Name="BranchTreeContextMenu">
+              <MenuItem x:Name="TreeCopyMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}" />
               <MenuItem x:Name="TreeFilterMenuItem" Header="_Filter for selected" Icon="{local:UpstreamIcon ShowThisBranchOnly}"
                         ToolTip.Tip="Filter the revision grid to show the selected ref only." />
               <Separator />
@@ -478,6 +480,8 @@
               <!-- Upstream's left panel sort menus (GitRefsSortByContextMenuItem, GitRefsSortOrderContextMenuItem). -->
               <MenuItem x:Name="SortByMenuItem" Header="_Sort by" />
               <MenuItem x:Name="SortOrderMenuItem" Header="Sort _order" />
+              <Separator />
+              <MenuItem x:Name="TreeRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
             </ContextMenu>
           </TreeView.ContextMenu>
           <TreeView.Styles>
@@ -599,13 +603,16 @@
                left or right of the grid (LayoutRevisionInfo sets the columns). -->
           <Grid x:Name="RevisionsSplitGrid" Grid.Row="0" ColumnDefinitions="*,0,0">
             <Grid x:Name="RevisionGridContainer" Grid.Column="0" RowDefinitions="Auto,*">
-              <ListBox x:Name="CommitList" Grid.Row="1" Classes="revisionGrid" ItemTemplate="{StaticResource RevisionRowTemplate}">
+              <ListBox x:Name="CommitList" Grid.Row="1" Classes="revisionGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource RevisionRowTemplate}">
                 <ListBox.ContextMenu>
                   <ContextMenu x:Name="CommitContextMenu">
-                    <!-- Upstream's grid menu (RevisionGridControl.Designer mainContextMenu) in its order; the branch and tag
-                         submenus are filled when it opens (MainWindow.GridMenu.cs), and items that do not apply are
-                         hidden, as upstream's. Not here yet: the stash items (the grid shows no stashes), Reset another
-                         branch, Compare, Advanced and View. "Browse files at this commit..." is the new shell's own. -->
+                    <!-- Upstream's grid menu in the order RevisionGridControl's _contextMenuItems puts it in at run time
+                         (not its designer's); the branch and tag submenus are filled when it opens
+                         (MainWindow.GridMenu.cs), and items that do not apply are hidden, as upstream's. For a
+                         right-clicked label, the "advanced" items move under "Other actions". "Browse files at this
+                         commit..." is the new shell's own. -->
+                    <MenuItem x:Name="GridResetChangesMenuItem" Header="_Reset changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
+                    <MenuItem x:Name="GridCommitMenuItem" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirty}" />
                     <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" Icon="{local:UpstreamIcon BisectBad}" IsVisible="False" />
                     <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" Icon="{local:UpstreamIcon BisectGood}" IsVisible="False" />
                     <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" Icon="{local:UpstreamIcon BisectSkip}" IsVisible="False" />
@@ -614,7 +621,11 @@
                     <MenuItem x:Name="CopyToClipboardMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
                       <MenuItem Header="-" />
                     </MenuItem>
-                    <Separator />
+                    <Separator x:Name="CopySeparator" />
+                    <MenuItem x:Name="ApplyStashMenuItem" Header="Appl_y stash" Icon="{local:UpstreamIcon Stash}" />
+                    <MenuItem x:Name="PopStashMenuItem" Header="Pop _stash" Icon="{local:UpstreamIcon Stash}" />
+                    <MenuItem x:Name="GridDropStashMenuItem" Header="_Drop stash..." Icon="{local:UpstreamIcon Stash}" />
+                    <Separator x:Name="StashSeparator" />
                     <MenuItem x:Name="GridCheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" />
                     <MenuItem x:Name="GridPushBranchMenuItem" Header="Pus_h branch..." Icon="{local:UpstreamIcon Push}" />
                     <MenuItem x:Name="GridMergeBranchMenuItem" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" />
@@ -625,31 +636,54 @@
                     </MenuItem>
                     <MenuItem x:Name="ResetCurrentBranchMenuItem" Header="Reset c_urrent branch to here..."
                               Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" />
-                    <Separator />
-                    <MenuItem x:Name="GridResetChangesMenuItem" Header="_Reset changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
-                    <MenuItem x:Name="GridCommitMenuItem" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirty}" />
+                    <Separator x:Name="BranchSeparator" />
+                    <MenuItem x:Name="GridSelectInLeftPanelMenuItem" Header="Se_lect in left panel" Icon="{local:UpstreamIcon FileTree}" />
                     <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create new branch here (_x)..." Icon="{local:UpstreamIcon BranchCreate}" />
+                    <MenuItem x:Name="ResetAnotherBranchMenuItem" Header="Reset an_other branch to here..."
+                              Icon="{local:UpstreamIcon ResetAnotherBranchToHere}" />
                     <MenuItem x:Name="GridRenameBranchMenuItem" Header="R_ename branch..." Icon="{local:UpstreamIcon Renamed}" />
                     <MenuItem x:Name="GridDeleteBranchMenuItem" Header="_Delete branch..." Icon="{local:UpstreamIcon BranchDelete}" />
-                    <Separator />
+                    <Separator x:Name="BranchModificationSeparator" />
                     <MenuItem x:Name="CreateTagHereMenuItem" Header="Create new ta_g here..." Icon="{local:UpstreamIcon TagCreate}" />
                     <MenuItem x:Name="GridDeleteTagMenuItem" Header="_Delete tag..." Icon="{local:UpstreamIcon TagDelete}" />
-                    <Separator />
+                    <Separator x:Name="CommitSeparator" />
                     <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout _this commit..." Icon="{local:UpstreamIcon Checkout}" />
                     <MenuItem x:Name="RevertMenuItem" Header="Re_vert this commit..." Icon="{local:UpstreamIcon RevertCommit}" />
                     <MenuItem x:Name="CherryPickMenuItem" Header="Cherr_y pick this commit..."
                               Icon="{local:UpstreamIcon CherryPick}" />
                     <MenuItem x:Name="ArchiveCommitMenuItem" Header="Arch_ive this commit..."
                               Icon="{local:UpstreamIcon ArchiveRevision}" />
-                    <Separator />
+                    <MenuItem x:Name="GridAdvancedMenuItem" Header="_Advanced" Icon="{local:UpstreamIcon Advanced}">
+                      <MenuItem x:Name="EditCommitMenuItem" Header="_Edit commit" />
+                      <MenuItem x:Name="RewordCommitMenuItem" Header="_Reword commit" />
+                      <MenuItem x:Name="FixupCommitMenuItem" Header="Create a _fixup commit..." />
+                      <MenuItem x:Name="SquashCommitMenuItem" Header="Create a _squash commit..." />
+                      <MenuItem x:Name="AmendCommitMenuItem" Header="Create an _amend commit..." />
+                      <MenuItem x:Name="AdvancedHelpMenuItem" Header="Get _help on how to use these features" />
+                    </MenuItem>
+                    <Separator x:Name="CompareSeparator" />
+                    <MenuItem x:Name="GridCompareMenuItem" Header="Com_pare" Icon="{local:UpstreamIcon Diff}">
+                      <MenuItem x:Name="OpenCommitsWithDiffToolMenuItem" Header="Open selected commits with _difftool" />
+                      <Separator />
+                      <MenuItem x:Name="CompareToBranchMenuItem" Header="Compare _to branch..." />
+                      <MenuItem x:Name="CompareWithCurrentBranchMenuItem" Header="Compare with _current branch" />
+                      <MenuItem x:Name="SelectAsBaseMenuItem" Header="Select _as BASE to compare" />
+                      <MenuItem x:Name="CompareToBaseMenuItem" Header="Compare to _BASE" IsEnabled="False" />
+                      <MenuItem x:Name="CompareToWorkingDirectoryMenuItem" Header="Compare to _working directory" />
+                      <MenuItem x:Name="CompareSelectedCommitsMenuItem" Header="Compare _selected commits" />
+                    </MenuItem>
+                    <Separator x:Name="NavigateSeparator" />
                     <MenuItem x:Name="GridNavigateMenuItem" Header="_Navigate" Icon="{local:UpstreamIcon GotoCommit}">
                       <MenuItem Header="-" />
                     </MenuItem>
-                    <MenuItem x:Name="GridSelectInLeftPanelMenuItem" Header="Se_lect in left panel" Icon="{local:UpstreamIcon FileTree}" />
+                    <MenuItem x:Name="GridViewMenuItem" Header="View" Icon="{local:UpstreamIcon AdvancedSettings}">
+                      <MenuItem Header="-" />
+                    </MenuItem>
                     <MenuItem x:Name="RunScriptMenuItem" Header="Run _script" Icon="{local:UpstreamIcon Console}" />
                     <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" Icon="{local:UpstreamIcon Integration}" />
                     <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" Icon="{local:UpstreamIcon PullRequest}" />
                     <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." />
+                    <MenuItem x:Name="OtherActionsMenuItem" Header="_Other actions" IsVisible="False" />
                   </ContextMenu>
                 </ListBox.ContextMenu>
               </ListBox>
@@ -694,24 +728,39 @@
                   </DockPanel>
                   <Button x:Name="ShowCommitDiffButton" DockPanel.Dock="Bottom" Content="Open in window" Margin="0,4,0,0"
                           ToolTip.Tip="Show the selected file's diff in its own window" />
-                  <ListBox x:Name="CommitFilesList">
-                    <!-- Upstream's file list menu: the user scripts, those shown in file lists directly. -->
+                  <!-- Upstream's FileStatusList (RevisionDiffControl's DiffFiles): the group-by buttons, the filter box, the
+                       files with their status images, and the NoFiles text (RevisionFileList). -->
+                  <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+                    <local:ToolToggleButton x:Name="DiffFilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
+                    <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
+                    <local:ToolToggleButton x:Name="DiffFilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+                  </StackPanel>
+                  <TextBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..."
+                           Margin="0,0,0,2" />
+                  <Panel>
+                  <ListBox x:Name="CommitFilesList" SelectionMode="Multiple">
+                    <!-- Upstream FileStatusList's item menu (ItemContextMenu, "DiffContextMenu") in its designer's order, with
+                         upstream's names (FileStatusListMenu), bound in MainWindow.DiffFileMenu.cs. Not ported items
+                         are listed in PORTING-MAP.md (RevisionDiffControl). -->
                     <ListBox.ContextMenu>
-                      <ContextMenu x:Name="CommitFilesContextMenu">
-                        <MenuItem x:Name="CommitFilesRunScriptMenuItem" Header="Run script" />
-                      </ContextMenu>
+                      <local:FileStatusListMenu x:Name="CommitFilesContextMenu" />
                     </ListBox.ContextMenu>
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="core:CommitFile">
-                        <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
+                        <!-- Upstream's status image, then the path, which follows "Truncate long filenames"
+                             (FilePathTrimming). -->
                         <DockPanel>
-                          <TextBlock DockPanel.Dock="Left" Text="{Binding Status}" Margin="0,0,4,0" />
+                          <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                                 Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
                           <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
                                      TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
                         </DockPanel>
                       </DataTemplate>
                     </ListBox.ItemTemplate>
                   </ListBox>
+                    <TextBlock x:Name="DiffFilesNoFilesText" Margin="4,2" IsHitTestVisible="False" IsVisible="False"
+                               Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+                  </Panel>
                 </DockPanel>
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
                 <local:DiffView x:Name="CommitDiff" Grid.Column="2" />

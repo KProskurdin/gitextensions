@@ -19,9 +19,15 @@ public partial class ResetChangesWindow : Window
 
     /// <param name="hasExistingFiles">Whether changed tracked files are among those reset.</param>
     /// <param name="hasNewFiles">Whether new (untracked) files are among those reset.</param>
-    public ResetChangesWindow(bool hasExistingFiles, bool hasNewFiles)
+    /// <param name="confirmationMessage">Upstream's question in place of the default one, as the file lists ask it.</param>
+    public ResetChangesWindow(bool hasExistingFiles, bool hasNewFiles, string? confirmationMessage = null)
     {
         InitializeComponent();
+        if (confirmationMessage is not null)
+        {
+            MessageText.Text = confirmationMessage;
+        }
+
         InitialFocus.Attach(this);
 
         // As upstream: only new files means they are deleted; no new files means there is nothing to delete.
@@ -39,7 +45,8 @@ public partial class ResetChangesWindow : Window
     /// <summary>
     ///  Upstream's <c>FormResetChanges.ShowResetDialog</c>.
     /// </summary>
-    public static async Task<ResetAction> ShowResetDialogAsync(Window owner, bool hasExistingFiles, bool hasNewFiles)
-        => await new ResetChangesWindow(hasExistingFiles, hasNewFiles).ShowDialog<ResetAction?>(owner)
+    public static async Task<ResetAction> ShowResetDialogAsync(Window owner, bool hasExistingFiles, bool hasNewFiles,
+        string? confirmationMessage = null)
+        => await new ResetChangesWindow(hasExistingFiles, hasNewFiles, confirmationMessage).ShowDialog<ResetAction?>(owner)
            ?? ResetAction.Cancel;
 }

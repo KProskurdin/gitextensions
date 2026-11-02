@@ -50,11 +50,24 @@ public partial class MainWindow
 
     private IReadOnlyList<RepoObjectNode> _repoObjects = [];
 
+    // True while a refresh puts the selection back (upstream's IgnoreSelectionChangedEvent).
+    private bool _restoringRepoObjectSelection;
+
+    // Whether the click that selects a node held Ctrl (Cmd on macOS), which upstream's GoToRevision reads.
+    private bool _toggleGridSelection;
+
     private RepoObjectNode? SelectedRepoObject => BranchTreeView.SelectedItem as RepoObjectNode;
 
     private void WireRepoObjectsTree()
     {
-        BranchTreeView.SelectionChanged += (_, _) => UpdateBusyState();
+        BranchTreeView.SelectionChanged += (_, _) =>
+        {
+            UpdateBusyState();
+            GoToSelectedRepoObject();
+        };
+        BranchTreeView.AddHandler(PointerPressedEvent,
+            (_, e) => _toggleGridSelection = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier),
+            RoutingStrategies.Tunnel);
         BranchTreeView.DoubleTapped += (_, e) =>
         {
             if (e.Source is Visual visual && visual.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is RepoObjectNode node
@@ -132,8 +145,31 @@ public partial class MainWindow
         if (selectedKey is not null
             && roots.SelectMany(root => root.Descendants()).FirstOrDefault(node => node.Key == selectedKey) is { } selected)
         {
-            BranchTreeView.SelectedItem = selected;
+            _restoringRepoObjectSelection = true;
+            try
+            {
+                BranchTreeView.SelectedItem = selected;
+            }
+            finally
+            {
+                _restoringRepoObjectSelection = false;
+            }
         }
+    }
+
+    // Upstream's OnSelected of the branch, tag, stash and worktree nodes (GoToRevision): their commit is selected in the
+    // grid, or added to or taken from its selection with Ctrl, with upstream's messages when the grid cannot show it.
+    private void GoToSelectedRepoObject()
+    {
+        bool toggle = _toggleGridSelection;
+        _toggleGridSelection = false;
+        if (_restoringRepoObjectSelection || SelectedRepoObject is not { } node
+                                          || RepoObjectsTree.RevisionOf(node) is not { } revision)
+        {
+            return;
+        }
+
+        Run(() => GoToRevisionAsync(revision, showNoRevisionMessage: true, toggleSelection: toggle));
     }
 
     // Upstream's DoSearch: the next node whose text matches, shown and selected.
@@ -214,6 +250,15 @@ public partial class MainWindow
         {
             item.IsVisible = false;
             item.IsEnabled = true;
+        }
+
+        // Upstream's copyContextMenuItem: the grid's selected commits, for a branch or a stash.
+        bool copy = kind is RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch or RepoObjectKind.Stash
+                    && SelectedRevisions.Count > 0;
+        Show(TreeCopyMenuItem, copy);
+        if (copy)
+        {
+            FillCopyMenu(TreeCopyMenuItem, SelectedRevisions, keep: null);
         }
 
         Show(TreeFilterMenuItem, isRef);
@@ -305,6 +350,19 @@ public partial class MainWindow
         // Upstream's EnableSortContextMenu: the order only matters when the refs are not in git's order.
         Show(SortByMenuItem, isRef);
         Show(SortOrderMenuItem, isRef, enabled: _preferences.RefsSortBy != GitRefsSortBy.Default);
+
+        // Upstream's AddUserScripts for a local branch: the scripts of the grid's menu, run on the grid's selection.
+        if (kind == RepoObjectKind.LocalBranch)
+        {
+            TreeRunScriptMenuItem.IsVisible = true;
+            ScriptMenus.Fill(BranchTreeContextMenu, TreeRunScriptMenuItem, script => script.AddToRevisionGridContextMenu,
+                script => RunOnSelectedCommit((path, _) =>
+                    Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
+        }
+        else
+        {
+            ScriptMenus.Remove(BranchTreeContextMenu, TreeRunScriptMenuItem);
+        }
 
         ToggleSeparators();
         return BranchTreeContextMenu.Items.OfType<MenuItem>().Any(item => item.IsVisible && item.IsEnabled);

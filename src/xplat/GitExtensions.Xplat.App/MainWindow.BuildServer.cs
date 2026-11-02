@@ -187,7 +187,7 @@ public partial class MainWindow
             .Credentials;
 
     private BuildStatusCell? SelectedBuildStatus()
-        => (CommitList.SelectedItem as CommitListItem)?.Build;
+        => LatestSelectedItem?.Build;
 
     private void OpenBuildLink(string? url)
     {

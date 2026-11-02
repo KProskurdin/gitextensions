@@ -174,6 +174,12 @@ public interface IAppPreferences
     bool RevisionGraphShowArtificialCommits { get; set; }
 
     /// <summary>
+    ///  Upstream's <c>showStashes</c> (on by default): the grid shows the stashes as rows before the commits they were made
+    ///  on.
+    /// </summary>
+    bool ShowStashes { get; set; }
+
+    /// <summary>
     ///  Upstream's General page: <c>usepatiencediffalgorithm</c> (the histogram algorithm, despite the key's name),
     ///  <c>includeUntrackedFilesInAutoStash</c>, <c>updateSubmodulesOnCheckout</c> (null: ask), <c>showstashcount</c>,
     ///  <c>showaheadbehinddata</c>, <c>showgitstatusforartificialcommits</c>, <c>maxrevisiongraphcommits</c> (0: no limit),
@@ -227,6 +233,11 @@ public interface IAppPreferences
     ///  Upstream's <c>CommitAutomaticallyAfterCherryPick</c>: the cherry pick window's "Automatically create a commit".
     /// </summary>
     bool CommitAutomaticallyAfterCherryPick { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>CheckoutOtherBranchAfterReset</c>: the reset another branch window's "Checkout branch after reset".
+    /// </summary>
+    bool CheckoutOtherBranchAfterReset { get; set; }
 
     /// <summary>
     ///  Upstream's <c>AddCommitReferenceToCherryPick</c>: the cherry pick window's "Add commit reference to commit
@@ -844,6 +855,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RevisionGraphShowArtificialCommits = value;
     }
 
+    public bool ShowStashes
+    {
+        get => AppSettings.ShowStashes;
+        set => AppSettings.ShowStashes = value;
+    }
+
     public bool UseHistogramDiffAlgorithm
     {
         get => AppSettings.UseHistogramDiffAlgorithm;
@@ -902,6 +919,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ApplyPatchSignOff;
         set => AppSettings.ApplyPatchSignOff = value;
+    }
+
+    public bool CheckoutOtherBranchAfterReset
+    {
+        get => AppSettings.CheckoutOtherBranchAfterReset.Value;
+        set => AppSettings.CheckoutOtherBranchAfterReset.Value = value;
     }
 
     public bool CommitAutomaticallyAfterCherryPick
@@ -1635,6 +1658,9 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     // Off, unlike upstream: the tests count the commits git lists; the ones about the artificial rows turn it on.
     public bool RevisionGraphShowArtificialCommits { get; set; }
 
+    // Off, unlike upstream, for the same reason; the tests about the stash rows turn it on.
+    public bool ShowStashes { get; set; }
+
     // Upstream's defaults of the General page.
     public bool UseHistogramDiffAlgorithm { get; set; }
 
@@ -1657,6 +1683,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool ApplyPatchSignOff { get; set; }
 
     public bool CommitAutomaticallyAfterCherryPick { get; set; }
+
+    public bool CheckoutOtherBranchAfterReset { get; set; } = true;
 
     public bool AddCommitReferenceToCherryPick { get; set; }
 

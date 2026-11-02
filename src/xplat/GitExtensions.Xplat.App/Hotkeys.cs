@@ -78,6 +78,16 @@ public enum GridCommand
     NavigateForward,
     GoToCommit,
     GoToMergeBase,
+    CreateFixupCommit,
+    CreateSquashCommit,
+    CreateAmendCommit,
+    SelectAsBaseToCompare,
+    CompareToBase,
+    CompareToWorkingDirectory,
+    CompareToCurrentBranch,
+    CompareToBranch,
+    CompareSelectedCommits,
+    OpenCommitsWithDifftool,
 }
 
 /// <summary>
@@ -370,6 +380,16 @@ public static class Hotkeys
             [GridCommand.NavigateForward] = (22, "NavigateForward"),
             [GridCommand.GoToCommit] = (20, "GoToCommit"),
             [GridCommand.GoToMergeBase] = (31, "GoToMergeBase"),
+            [GridCommand.CreateFixupCommit] = (25, "CreateFixupCommit"),
+            [GridCommand.CreateSquashCommit] = (43, "CreateSquashCommit"),
+            [GridCommand.CreateAmendCommit] = (44, "CreateAmendCommit"),
+            [GridCommand.SelectAsBaseToCompare] = (23, "SelectAsBaseToCompare"),
+            [GridCommand.CompareToBase] = (24, "CompareToBase"),
+            [GridCommand.CompareToWorkingDirectory] = (27, "CompareToWorkingDirectory"),
+            [GridCommand.CompareToCurrentBranch] = (28, "CompareToCurrentBranch"),
+            [GridCommand.CompareToBranch] = (29, "CompareToBranch"),
+            [GridCommand.CompareSelectedCommits] = (30, "CompareSelectedCommits"),
+            [GridCommand.OpenCommitsWithDifftool] = (32, "OpenCommitsWithDifftool"),
         },
         new Dictionary<GridCommand, WinFormsKeys>
         {
@@ -392,6 +412,11 @@ public static class Hotkeys
             [GridCommand.NavigateForward] = WinFormsKeys.Alt | WinFormsKeys.Right,
             [GridCommand.GoToCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.G,
             [GridCommand.GoToMergeBase] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.K,
+            [GridCommand.CreateFixupCommit] = WinFormsKeys.Control | WinFormsKeys.X,
+            [GridCommand.CreateSquashCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.X,
+            [GridCommand.SelectAsBaseToCompare] = WinFormsKeys.Control | WinFormsKeys.L,
+            [GridCommand.CompareToBase] = WinFormsKeys.Control | WinFormsKeys.R,
+            [GridCommand.CompareToWorkingDirectory] = WinFormsKeys.Control | WinFormsKeys.D,
         });
 
     /// <summary>

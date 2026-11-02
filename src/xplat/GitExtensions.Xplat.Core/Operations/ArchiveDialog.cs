@@ -14,6 +14,10 @@ public static class ArchiveDialog
     public const string SaveFileDialogCaption = "Save archive as";
     public const string NoRevisionSelected = "You need to choose a target revision.";
 
+    // Upstream's ArchiveRevisionToolStripMenuItemClick texts, for more than two selected commits.
+    public const string SelectOneOrTwo = "Select only one or two revisions. Abort.";
+    public const string ArchiveRevisionCaption = "Archive revision";
+
     /// <summary>
     ///  Upstream's <c>filenameSuggestion</c>: the work tree's folder and the commit, and the one path when exactly one is
     ///  given (its dots as underscores).

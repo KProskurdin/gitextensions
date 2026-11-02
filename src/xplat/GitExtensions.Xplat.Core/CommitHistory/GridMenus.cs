@@ -53,12 +53,28 @@ public static class GridMenus
     private const int NumberedRefs = 10;
 
     /// <summary>
+    ///  Upstream's <c>ContextMenuOpening</c> choice of the focused menu: for a right-clicked label, unless Shift is held or
+    ///  "always show advanced options" is on, in which case Ctrl still asks for it.
+    /// </summary>
+    public static bool IsFocused(bool labelClicked, bool control, bool shift, bool alwaysShowAdvancedOptions)
+        => labelClicked && (control || !(shift || alwaysShowAdvancedOptions));
+
+    /// <summary>
+    ///  Upstream's <c>filterRefs</c> for the right-clicked <paramref name="clicked"/> ref: that ref only.
+    /// </summary>
+    public static Func<RefLabel, bool> Only(RefLabel clicked)
+        => label => label.Name == clicked.Name && label.Kind == clicked.Kind;
+
+    /// <summary>
     ///  The submenus for <paramref name="row"/>; <paramref name="currentBranch"/> is the checked-out branch ("" when
     ///  detached) and <paramref name="ambiguousNames"/> the names that are both a branch and a tag, which upstream merges
-    ///  by their full name.
+    ///  by their full name. <paramref name="keep"/> is upstream's <c>filterRefs</c> for a right-clicked label: the refs
+    ///  are listed as for the whole commit, then only those it keeps are offered.
     /// </summary>
-    public static GridRefMenus For(CommitRow row, string currentBranch, IReadOnlySet<string> ambiguousNames)
+    public static GridRefMenus For(CommitRow row, string currentBranch, IReadOnlySet<string> ambiguousNames,
+        Func<RefLabel, bool>? keep = null)
     {
+        keep ??= _ => true;
         bool isArtificial = ArtificialCommits.IsArtificial(row.Hash);
         IReadOnlyList<RefLabel> labels = row.Labels ?? [];
         RefLabel[] allBranches = [.. labels.Where(label => label.Kind is RefKind.Branch or RefKind.RemoteBranch)];
@@ -75,7 +91,7 @@ public static class GridMenus
         List<GridMenuRef> deleteTags = [];
         List<GridMenuRef> selectInLeftPanel = [];
         List<GridMenuRef> merge = [];
-        foreach (RefLabel tag in tags)
+        foreach (RefLabel tag in tags.Where(keep))
         {
             deleteTags.Add(new GridMenuRef(tag.Name, IsRemote: false));
             selectInLeftPanel.Add(new GridMenuRef(tag.Name, IsRemote: false));
@@ -83,7 +99,7 @@ public static class GridMenus
         }
 
         bool currentBranchPointsToRevision = false;
-        foreach (RefLabel branch in withNoIdenticalRemotes)
+        foreach (RefLabel branch in withNoIdenticalRemotes.Where(keep))
         {
             if (IsCurrent(branch))
             {
@@ -109,6 +125,7 @@ public static class GridMenus
         List<GridMenuRef?> delete = [];
         bool isHeadOfCurrentBranch = false;
         bool firstRemoteBranchForCheckout = false;
+        allBranches = [.. allBranches.Where(keep)];
         foreach (RefLabel branch in allBranches)
         {
             bool isRemote = branch.Kind == RefKind.RemoteBranch;
@@ -180,33 +197,50 @@ public static class GridMenus
     }
 
     /// <summary>
-    ///  Upstream's <c>CopyContextMenuItem</c> for one commit: the branches and the tags under captions (with the access
-    ///  keys 1 to 0), then the hash, the message, the author and the date (or the author and commit dates when they
-    ///  differ), each with the start of its value.
+    ///  Upstream's <c>CopyContextMenuItem</c> for one commit.
+    /// </summary>
+    public static IReadOnlyList<GridCopyItem?> CopyItems(CommitRow row, string branchesCaption, string tagsCaption,
+        Func<RefLabel, bool>? keep = null)
+        => CopyItems([row], branchesCaption, tagsCaption, keep);
+
+    /// <summary>
+    ///  Upstream's <c>CopyContextMenuItem</c> for the selected commits (the latest selected first): their branches and tags
+    ///  under captions (with the access keys 1 to 0), then the hashes, messages, authors and the date (or the author and
+    ///  commit dates when there are several commits or they differ), each with the start of its distinct values; several
+    ///  values are copied one per line.
     /// </summary>
     /// <param name="branchesCaption">Upstream's "Branches" caption.</param>
     /// <param name="tagsCaption">Upstream's "Tags" caption.</param>
-    public static IReadOnlyList<GridCopyItem?> CopyItems(CommitRow row, string branchesCaption, string tagsCaption)
+    /// <param name="keep">Upstream's <c>SetFilterRefsFunc</c> for a right-clicked label: the refs offered.</param>
+    public static IReadOnlyList<GridCopyItem?> CopyItems(IReadOnlyList<CommitRow> rows, string branchesCaption,
+        string tagsCaption, Func<RefLabel, bool>? keep = null)
     {
         List<GridCopyItem?> items = [];
+        if (rows.Count == 0)
+        {
+            return items;
+        }
+
         int number = 0;
-        IReadOnlyList<RefLabel> labels = row.Labels ?? [];
+        IReadOnlyList<RefLabel> labels = [.. rows.SelectMany(row => row.Labels ?? []).Where(keep ?? (_ => true))];
         AddRefs(branchesCaption, labels.Where(label => label.Kind is RefKind.Branch or RefKind.RemoteBranch), "Branch");
         AddRefs(tagsCaption, labels.Where(label => label.Kind == RefKind.Tag), "Tag");
 
-        AddValue(ResourceManager.TranslatedStrings.GetCommitHash(1), row.Hash, "CommitId", 'C');
-        AddValue(ResourceManager.TranslatedStrings.GetMessage(1), row.Body ?? row.Subject, "Message", 'M');
-        AddValue(ResourceManager.TranslatedStrings.GetAuthor(1), $"{row.Author} <{row.AuthorEmail}>", "Author", 'A');
-        if (row.AuthorDateValue == row.CommitDateValue)
+        int count = rows.Count;
+        AddValue(ResourceManager.TranslatedStrings.GetCommitHash(count), row => row.Hash, "CommitId", 'C');
+        AddValue(ResourceManager.TranslatedStrings.GetMessage(count), row => row.Body ?? row.Subject, "Message", 'M');
+        AddValue(ResourceManager.TranslatedStrings.GetAuthor(count), row => $"{row.Author} <{row.AuthorEmail}>", "Author",
+            'A');
+        if (count == 1 && rows[0].AuthorDateValue == rows[0].CommitDateValue)
         {
-            AddValue(ResourceManager.TranslatedStrings.Date, row.AuthorDateValue?.ToString() ?? "", "Date", 'D');
+            AddValue(ResourceManager.TranslatedStrings.Date, row => row.AuthorDateValue?.ToString() ?? "", "Date", 'D');
         }
         else
         {
-            AddValue(ResourceManager.TranslatedStrings.GetAuthorDate(1), row.AuthorDateValue?.ToString() ?? "", "Date",
-                'T');
-            AddValue(ResourceManager.TranslatedStrings.GetCommitDate(1), row.CommitDateValue?.ToString() ?? "", "Date",
-                'D');
+            AddValue(ResourceManager.TranslatedStrings.GetAuthorDate(count), row => row.AuthorDateValue?.ToString() ?? "",
+                "Date", 'T');
+            AddValue(ResourceManager.TranslatedStrings.GetCommitDate(count), row => row.CommitDateValue?.ToString() ?? "",
+                "Date", 'D');
         }
 
         return items;
@@ -230,12 +264,15 @@ public static class GridMenus
             items.Add(null);
         }
 
-        void AddValue(string caption, string value, string image, char hotkey)
+        // Upstream's AddItem with ExtractRevisionTexts: the distinct values, shown joined by commas, copied by lines.
+        void AddValue(string caption, Func<CommitRow, string> extract, string image, char hotkey)
         {
+            string[] values = [.. rows.Select(extract).Distinct()];
             int position = caption.IndexOf(hotkey.ToString(), StringComparison.InvariantCultureIgnoreCase);
             string text = position >= 0 ? caption.Insert(position, "_") : caption;
-            text += ":   " + Escaped(value.SubstringUntil('\n').ShortenTo(CopyValueLength));
-            items.Add(new GridCopyItem(text.TrimEnd('\n', '\r'), value, image));
+            text += ":   " + Escaped(string.Join(", ", values.Select(value => value.SubstringUntil('\n')))
+                .ShortenTo(CopyValueLength));
+            items.Add(new GridCopyItem(text.TrimEnd('\n', '\r'), string.Join("\n", values), image));
         }
 
         // An underscore in a name or value is shown, not taken as an access key.

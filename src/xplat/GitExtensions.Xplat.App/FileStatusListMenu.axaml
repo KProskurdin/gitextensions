@@ -1,0 +1,40 @@
+<ContextMenu xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GitExtensions.Xplat.App"
+             x:Class="GitExtensions.Xplat.App.FileStatusListMenu">
+  <!-- Upstream FileStatusList's ItemContextMenu, in its order and with its names, for the items the new shell has. -->
+  <MenuItem x:Name="tsmiStageFile" Header="_Stage selected" Icon="{local:UpstreamIcon Stage}" />
+  <MenuItem x:Name="tsmiUnstageFile" Header="_Unstage selected" Icon="{local:UpstreamIcon Unstage}" />
+  <MenuItem x:Name="tsmiResetFileTo" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
+    <MenuItem x:Name="tsmiResetFileToSelected" />
+    <MenuItem x:Name="tsmiResetFileToParent" />
+  </MenuItem>
+  <Separator x:Name="sepGit" />
+  <MenuItem x:Name="tsmiOpenWithDifftool" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}">
+    <MenuItem x:Name="tsmiSecondDiffCaption" IsEnabled="False" />
+    <MenuItem x:Name="tsmiFirstDiffCaption" IsEnabled="False" />
+    <Separator />
+    <MenuItem x:Name="tsmiDiffFirstToSelected" Header="_First -&gt; Second" />
+    <MenuItem x:Name="tsmiDiffSelectedToLocal" Header="_Second -&gt; Working directory" />
+    <MenuItem x:Name="tsmiDiffFirstToLocal" Header="First -&gt; _Working directory" />
+  </MenuItem>
+  <MenuItem x:Name="tsmiOpenWorkingDirectoryFile" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
+  <MenuItem x:Name="tsmiOpenRevisionFile" Header="Ope_n this revision (temp file)" Icon="{local:UpstreamIcon ViewFile}" />
+  <MenuItem x:Name="tsmiEditWorkingDirectoryFile" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
+  <MenuItem x:Name="tsmiSaveAs" Header="S_ave selected as..." Icon="{local:UpstreamIcon SaveAs}" />
+  <MenuItem x:Name="tsmiDeleteFile" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
+  <Separator x:Name="sepFile" />
+  <MenuItem x:Name="tsmiCopyPaths" Header="Copy _path(s)" Icon="{local:UpstreamIcon CopyToClipboard}" />
+  <MenuItem x:Name="tsmiShowInFolder" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
+  <Separator x:Name="sepBrowse" />
+  <MenuItem x:Name="tsmiShowInFileTree" Header="Show in File _tree" Icon="{local:UpstreamIcon FileTree}" />
+  <MenuItem x:Name="tsmiFilterFileInGrid" Header="Filter file in _grid" Icon="{local:UpstreamIcon FunnelPencil}" />
+  <MenuItem x:Name="tsmiFileHistory" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
+  <MenuItem x:Name="tsmiBlame" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
+  <Separator x:Name="sepIgnore" />
+  <MenuItem x:Name="tsmiAddFileToGitIgnore" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
+  <MenuItem x:Name="tsmiAddFileToGitInfoExclude" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
+  <MenuItem x:Name="tsmiStopTracking" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
+  <Separator x:Name="sepScripts" />
+  <MenuItem x:Name="tsmiRunScript" Header="Run script" Icon="{local:UpstreamIcon Console}" />
+</ContextMenu>

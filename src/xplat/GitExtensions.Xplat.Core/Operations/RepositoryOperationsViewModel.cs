@@ -393,6 +393,21 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             (output, cancellation) => _operations.RunRebaseAsync(repositoryPath, arguments, editor, output, cancellation));
     }
 
+    /// <summary>
+    ///  Upstream's grid <c>LaunchRebase</c>: <paramref name="arguments"/> (a <see cref="RewriteCommit.Arguments"/>) with the
+    ///  todo list's first pick turned into <paramref name="command"/> (<see cref="RewriteCommit.Edit"/> or
+    ///  <see cref="RewriteCommit.Reword"/>), showing git's output. A reword opens <see cref="EditorCommand"/> for the
+    ///  message; without one git keeps it.
+    /// </summary>
+    public Task<bool> RewriteCommitAsync(string repositoryPath, ArgumentString arguments, string command)
+    {
+        string? editor = EditorCommand;
+        string sequenceEditor = RewriteCommit.SequenceEditor(command, OperatingSystem.IsMacOS());
+        return RunRemoteAsync("git rebase", "Rebased", repositoryPath,
+            (output, cancellation) =>
+                _operations.RunRebaseAsync(repositoryPath, arguments, editor, output, cancellation, sequenceEditor));
+    }
+
     public Task<bool> AbortRebaseAsync(string repositoryPath)
         => RunAsync("Rebase aborted", repositoryPath, () => _operations.AbortRebaseAsync(repositoryPath));
 

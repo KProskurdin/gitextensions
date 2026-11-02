@@ -476,14 +476,21 @@ public sealed class GitOperations : IGitOperations
         => RunAsync(repositoryPath, _ => new GitArgumentBuilder("rebase") { branch.Quote() });
 
     public Task RunRebaseAsync(string repositoryPath, ArgumentString arguments, string? editorCommand,
-        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default)
+        IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default,
+        string? sequenceEditor = null)
         => Task.Run(async () =>
         {
             GitModule module = CreateModule(repositoryPath);
+            Dictionary<string, string> environment =
+                new(editorCommand is null ? [] : GitEditorCommand.Environment(editorCommand));
+            if (sequenceEditor is not null)
+            {
+                environment["GIT_SEQUENCE_EDITOR"] = sequenceEditor;
+            }
+
             await GitOutputRunner.RunAsync(module.WorkingDir,
                 editorCommand is null ? (ArgumentString)$"-c core.editor=true {arguments}" : arguments,
-                output ?? NullOutput.Instance, cancellationToken,
-                editorCommand is null ? null : GitEditorCommand.Environment(editorCommand));
+                output ?? NullOutput.Instance, cancellationToken, environment);
         }, cancellationToken);
 
     public Task AbortRebaseAsync(string repositoryPath)

@@ -70,8 +70,10 @@ public sealed record RevisionFilter(
 
     /// <summary>
     ///  The revision arguments for <c>git log</c>, in upstream's order: commit filters, limiting filters, branch filters.
+    ///  With <paramref name="showStashes"/> (upstream's <c>ShowStashes</c>) the latest stash is listed too: all refs then
+    ///  include refs/stash, and a branch choice gets upstream's <c>AddFirstStashRef</c>.
     /// </summary>
-    public string ToRevisionArguments()
+    public string ToRevisionArguments(bool showStashes = false)
     {
         List<string> arguments = [];
         if (Since is { } since)
@@ -139,10 +141,13 @@ public sealed record RevisionFilter(
 
         if (CurrentBranchOnly)
         {
+            AddFirstStashRef();
             arguments.Add("HEAD");
         }
         else if (ShowsFilteredBranches)
         {
+            AddFirstStashRef();
+
             // Upstream's GetBranchRevisionFilter: a word with wildcards is a --branches= pattern (a plain name would get
             // an implicit /* from git); options and ranges are passed as they are.
             foreach (string word in BranchFilter.Split((char[]?)null,
@@ -156,7 +161,11 @@ public sealed record RevisionFilter(
             // As upstream with its default settings: every ref except notes, the stash and the refs coding agents keep
             // (upstream c16194306; literal prefixes, as GitRefName.RefsAgentsPrefix is newer than the fork base).
             arguments.Add("--exclude=refs/notes/");
-            arguments.Add("--exclude=refs/stash");
+            if (!showStashes)
+            {
+                arguments.Add("--exclude=refs/stash");
+            }
+
             arguments.Add("--exclude=refs/agents/**");
             arguments.Add("--exclude=refs/sessions/**");
             arguments.Add("--exclude=refs/copilot/checkpoints/**");
@@ -164,6 +173,15 @@ public sealed record RevisionFilter(
         }
 
         return string.Join(' ', arguments);
+
+        // Upstream's AddFirstStashRef: --glob=refs/stash would be read as refs/stash/*, hence its pattern.
+        void AddFirstStashRef()
+        {
+            if (showStashes)
+            {
+                arguments.Add("--glob=refs/stas[h]");
+            }
+        }
     }
 
     /// <summary>

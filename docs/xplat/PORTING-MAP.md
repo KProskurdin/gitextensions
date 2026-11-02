@@ -23,10 +23,10 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | Upstream file | New file | Based on | Status |
 |---|---|---|---|
 | `src/app/GitUI/CommandsDialogs/FormBrowse.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.axaml.cs` (view: menu, toolbar, left panel, grid, Commit and Diff tabs); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (state) | `52d08e996` | partial |
-| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitList`); `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (reads); `CommitListViewModel.cs` | `52d08e996` | partial |
-| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.Designer.cs` (mainContextMenu), `RevisionGridControl.cs` (`ContextMenuOpening`, `GetRefUnambiguousName`), `GitRefListsForRevision.cs`, `CopyContextMenuItem.cs`; `CommandsDialogs/FormBrowse.InitRevisionGrid.cs` (`SelectInLeftPanel`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitContextMenu`), `MainWindow.GridMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridMenus.cs`, `ICommitHistory.cs` (`CommitRow` dates) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitList`), `MainWindow.GridSelection.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (reads); `CommitListViewModel.cs`, `GridSelection.cs`, `StashRows.cs`, `RevisionFilter.cs` (`ShowStashes`) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.Designer.cs` (mainContextMenu), `RevisionGridControl.cs` (`_contextMenuItems`, `ContextMenuOpening`, `GetRefUnambiguousName`, the compare items), `RevisionGridMenuCommands.cs` (View), `GitRefListsForRevision.cs`, `CopyContextMenuItem.cs`; `CommandsDialogs/FormBrowse.InitRevisionGrid.cs` (`SelectInLeftPanel`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitContextMenu`), `MainWindow.GridMenu.cs`, `MainWindow.Compare.cs`, `RefLabelView.cs` (`LabelAt`), `Hotkeys.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridMenus.cs`, `ICommitHistory.cs` (`CommitRow` dates) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` | `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (commit), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
-| `src/app/GitUI/UserControls/FileStatusList*.cs` (toolbar, filter, NoFiles, item menu, `GetItemImageKey`); `src/app/GitUI/CommandsDialogs/RevisionDiffController.cs` (menu rules); `CommandsDialogs/Menus/CopyPathsToolStripMenuItem.cs`; `FormCommit.Designer.cs` (`toolbarStaged`, `SolveMergeconflicts`); `GitIgnoreDialog/GitLocalExcludeModel.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`FileStatusList`, `FileMenuState`), `GitIgnoreFile.cs`, `Operations/GitOperations.cs` (reset files to, stop tracking); `src/xplat/GitExtensions.Xplat.App/CommitWindow.FileLists.cs`, `CommitWindow.axaml`, `GitIgnoreWindow.axaml.cs` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/FileStatusList*.cs` (toolbar, filter, NoFiles, item menu, `GetItemImageKey`); `src/app/GitUI/CommandsDialogs/RevisionDiffController.cs` (menu rules); `CommandsDialogs/Menus/CopyPathsToolStripMenuItem.cs`; `FormCommit.Designer.cs` (`toolbarStaged`, `SolveMergeconflicts`); `GitIgnoreDialog/GitLocalExcludeModel.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`FileStatusList`, `FileMenuState`), `GitIgnoreFile.cs`, `Operations/GitOperations.cs` (reset files to, stop tracking); `src/xplat/GitExtensions.Xplat.App/CommitWindow.FileLists.cs`, `CommitWindow.axaml`, `GitIgnoreWindow.axaml.cs`, `FileStatusListMenu.axaml(.cs)` (the item menu of a list of the files between two revisions) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PushDialog.cs`, `PushRejection.cs`, `GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PushWindow.axaml(.cs)`, `PushRejectedFlow.cs`, `MainWindow.axaml(.cs)` (Push), `CommitWindow.axaml.cs` (Commit & push) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | partial |
@@ -36,11 +36,11 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormCheckoutRevision.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutRevisionDialog.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutRevisionWindow.axaml(.cs)`, `CommitPickerView.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs`; `src/app/GitUI/UserControls/BranchComboBox.cs`; `src/app/GitUI/HelperDialogs/FormSelectMultipleBranches.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`, `DeleteBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteBranchWindow.axaml(.cs)`, `SelectMultipleBranchesWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
 | `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`, `DiffCopy.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`, `DiffView.Toolbar.cs`, `DiffWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff), `MainWindow.DiffRange.cs` (several selected commits), `RevisionFileList.cs`, `MainWindow.DiffFileMenu.cs` (binds the item menu), `FileStatusListMenu.axaml(.cs)` (item menu, shared with FormDiff), `CopyPathsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Diff/DiffFileMenu.cs` (item menu rules through the linked upstream `RevisionDiffController`, `ContextMenuSelectionInfo`, `FileStatusListContextMenuController`, `FileStatusItem` and `RevisionDiffInfoProvider`); `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`ImageForStatus`, `KindOf`, `Sort<T>`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`BuildPathFilter`, `FilePathByObjectId`), `FilterInfo.cs` (full history) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileHistoryDialog.cs`, `FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`, `PathFilter`), `CommitListViewModel.FilePaths`, `RevisionFilter.cs` (`FullHistory`, `SimplifyMerges`); `src/xplat/GitExtensions.Xplat.App/FileHistoryWindow.axaml(.cs)`, `RevisionGrid.axaml`, `FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBlame.cs`; `src/app/GitUI/UserControls/BlameControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameView.axaml(.cs)`, `BlameWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateTag.cs`; `src/app/GitCommands/Git/Tag/GitTagController.cs` (`CreateTag`) | `src/xplat/GitExtensions.Xplat.App/CreateTagWindow.axaml(.cs)`, `MainWindow.axaml.cs` (`ShowCreateTagAsync`); `src/xplat/GitExtensions.Xplat.Core/Operations/CreateTagDialog.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteTagWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCherryPick.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (cherry-pick), `RepositoryOperationsViewModel.cs`, `CherryPickDialog.cs`, `Settings/AppPreferences.cs` (`CommitAutomaticallyAfterCherryPick`, `AddCommitReferenceToCherryPick`); `src/xplat/GitExtensions.Xplat.App/CherryPickWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`, `MainWindow.axaml` | `52d08e996` | ported |
@@ -51,6 +51,10 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormRemotes.cs`; `src/app/GitUI/LeftPanel/RemoteBranchTree.cs`, `RemoteRepoNode.cs`, `RemoteRepoFolderNode.cs` (inactive remotes) | `src/xplat/GitExtensions.Xplat.Core/Operations/RemotesDialog.cs`, `Repository/RemoteUrlHistory.cs`, `Repository/GitRepositoryService.cs` (remote list, inactive remotes), `Repository/RepoObjectsTree.cs`; `src/xplat/GitExtensions.Xplat.App/RemotesWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs`, `MainWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormReflog.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/Reflog.cs` (references, a reference's reflog); `src/xplat/GitExtensions.Xplat.App/ReflogWindow.axaml(.cs)`; `MainWindow.axaml(.cs)` (Reflog...) | `52d08e996` | ported |
 | `src/app/GitUI/HelperDialogs/FormResetCurrentBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/ResetCurrentBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/ResetCurrentBranchWindow.axaml(.cs)`, `CommitSummaryView.axaml(.cs)`; `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` (its callers) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormDiff.cs` | `src/xplat/GitExtensions.Xplat.App/RevisionDiffWindow.axaml(.cs)`, `MainWindow.Compare.cs`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `DiffView.axaml.cs` (`ShowDiffAsync`); `src/xplat/GitExtensions.Xplat.Core/Diff/RevisionDiff.cs`, `DiffViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCompareToBranch.cs`; `UserControls/BranchSelector.cs` | `src/xplat/GitExtensions.Xplat.App/CompareToBranchWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`LaunchRebase`, fixup, squash and amend items); `src/app/GitUI/CommandsDialogs/FormCommit.cs` (`CommitKind`, `modifyCommitMessageButton`) | `src/xplat/GitExtensions.Xplat.Core/Operations/RewriteCommit.cs`, `Repository/CommitKinds.cs`, `GitOperations.cs` (`RunRebaseAsync` sequence editor); `src/xplat/GitExtensions.Xplat.App/MainWindow.GridMenu.cs`, `CommitWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/HelperDialogs/FormResetAnotherBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/ResetAnotherBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/ResetAnotherBranchWindow.axaml(.cs)`, `MainWindow.GridMenu.cs` (`ShowResetAnotherBranchAsync`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormRevertCommit.cs`; `MergeConflictHandler.cs` (`HandleMergeConflicts`) | `src/xplat/GitExtensions.Xplat.App/RevertCommitWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs` (`RevertSelectedRevision`, `OfferToResolveConflictsAsync`); `src/xplat/GitExtensions.Xplat.Core/Operations/RevertCommitDialog.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormRenameBranch.cs`; `src/app/GitUI/GitUICommands.cs` (`StartRenameDialog`) | `src/xplat/GitExtensions.Xplat.App/RenameBranchWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` (`RenameBranchAsync`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormResolveConflicts.cs` | `src/xplat/GitExtensions.Xplat.App/ConflictsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/ConflictsDialog.cs`, `GitOperations.cs` (`RunMergeToolAsync`), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
@@ -156,7 +160,9 @@ changes, Pull, Push, Fetch, Clone, folder, terminal, filter, search); the left p
 (details, copy hash and message) and a Diff tab (changed files with the selected file's diff inline); a status bar; a
 warning bar while a merge or rebase is stopped or conflicts exist; the dashboard of recent repositories while none is open;
 Close repository; the repository refresh after every operation; and, as upstream, a status refresh when the window is
-activated again (at most every 2 seconds), so files edited in other programs show up. Not ported: the GPG and Console
+activated again (at most every 2 seconds), so files edited in other programs show up. Since 2026-11-02 the status is read with
+`--no-optional-locks`, as upstream's `GitStatusMonitor` reads it, so a refresh never holds git's index lock while an action
+the user started needs it (`GitRepositoryService`). Not ported: the GPG and Console
 tabs, the branch and repository dropdowns of the toolbar, and the Navigate and View menus (Plugins: see the PluginRegistry row; user
 scripts: see the ScriptsManager row). Window size, position and maximized state are kept (upstream's `WindowPositions.xml` format, under the new shell's own
 window names, `WindowPlacementTracker`). The File tree tab is ported (the folder tree at the selected commit, and the selected
@@ -175,7 +181,12 @@ with short hash, subject, author and date, using the shared `RevisionReader.GetL
 loads its details through `RevisionReader.GetRevision`. Also ported: search of the whole history by message, ignoring case (since 2026-10-13 the filter toolstrip's "Filter:" box, see **FilterToolBar**; git log --grep); a lane graph beside each commit (since 2026-10-07 upstream's `RevisionGraph` with the ported renderer, see
 GraphRenderer below). Added 2026-10-10: "Load more" reads only the next page (`--skip`), up to upstream's commit limit
 (`maxrevisiongraphcommits`); typing in the grid searches it as upstream's quick search (QuickSearchProvider row); the
-working directory and index rows; the selected row is kept when the rows are read again. Added 2026-10-11: the author's
+working directory and index rows; the selected row is kept when the rows are read again (until 2026-11-02 only for a
+new page and the quick filter: a refresh cleared it; since then upstream's `GetToBeSelectedRevisions` and
+`SetToBeSelectedFromParents` for every replacement of the rows, core `GridSelection.ToBeSelectedAsync`: the selected
+commits stay selected, the latest selected staying the latest; with none, or in another repository, the row labeled HEAD
+is selected, also on opening; a selected commit no longer shown hands over to the first shown of its first 50 ancestors
+from `rev-list`, and a working directory or index row no longer shown to nothing). Added 2026-10-11: the author's
 avatar at the start of the author cell (`showrevisiongridauthoravatarcolumn`; upstream has a column of its own). Not
 ported: column layout and sorting, and the upstream filter bar (the box in the window filters only the loaded commits, by
 hash, subject or author).
@@ -185,11 +196,27 @@ upstream's `BuildPathFilter` reads it (a path without spaces or quotes is quoted
 that is not a folder follows its renames as `FollowRenamesInFileHistory` says, with the names it had kept per commit
 (`CommitListViewModel.FilePaths`, upstream's `FilePathByObjectId`). `RevisionFilter` has upstream's `--full-history` and
 `--simplify-merges` for a narrowed history (`FullHistoryInFileHistory`, `SimplifyMergesInFileHistory`); only the file
-history sets them so far.
+history sets them so far. Added 2026-11-02 (UI-PARITY, after U6): upstream's multi-selection (`MultiSelect`, core
+`GridSelection`, `MainWindow.GridSelection.cs`). Ctrl and Shift select several commits; the commit selected last is
+upstream's `LatestSelectedRevision`, which the commit info, the menu, the hotkeys, the quick search and the build report
+follow; the selection in upstream's `GetSelectedRevisions` order (the latest selected first) feeds the copy submenu (the
+distinct values of all selected commits, copied one per line), Compare selected commits and Open selected commits with
+difftool (upstream's `GetFirstAndSelected`: one commit against its first parent, else the earliest selected against the
+latest), the Diff tab (see RevisionDiffControl), cherry pick (one window per commit, from the bottom of the grid, until
+one is aborted, as upstream's `StartCherryPickDialog(revisions)`), archive (two commits archive the files changed between
+them; more get upstream's error) and the bisect start (see FormBisect). The navigation history follows a single selected
+commit, as upstream's. After a refresh only the latest selected commit stays selected. Not ported: highlighting the
+authors of several selected commits. Added 2026-11-02: upstream's stash rows (`ShowStashes`, on by default, View > "Show
+stashes"; core `StashRows`, `GitCommitHistory`, `RevisionFilter.ToRevisionArguments(showStashes)`): all refs then
+include refs/stash (and a branch choice gets upstream's `--glob=refs/stas[h]`), so the latest stash comes from the log
+with its index and untracked commits, as upstream's; the other stashes from `git stash list` go just before the commit
+they were made on, with their "untracked files" commit when it has changes (at most upstream's
+`MaxStashesWithUntrackedFiles`, none while the reflog is shown), and a stash whose commit is not listed is left out.
+A stash row has its selector ("stash@{1}") as a label in OtherTag's color after its refs. Only the browse window's grid
+shows them; upstream's file history and choose commit grids would too. Not ported: the autostash row's label.
 
 **FormStash** (`partial`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
-stash by its name. Also ported: including untracked files. Also ported: stashing only the selected files (Stash selected). Also ported: keeping the index (Keep index). Not ported: branching from a
-stash. Also ported: the whole stash as a diff (Show diff, first parent only). Changed 2026-10-13: the left panel's stash
+stash by its name. Also ported: including untracked files. Also ported: stashing only the selected files (Stash selected). Also ported: keeping the index (Keep index). Also ported: the whole stash as a diff (Show diff, first parent only). Changed 2026-10-13: the left panel's stash
 boxes went with the left panel rebuild (see RepoObjectsTree); stashing from the toolbar, menu and left panel is upstream's
 `StashSave` (no message, untracked files as `includeUntrackedFilesInManualStash` says), and the stash message and keep
 index choices wait for the FormStash window, which is not ported.
@@ -205,9 +232,17 @@ first load when managing stashes, the next one after a drop, the one asked for b
 directory; the Stash hotkeys (next, previous, refresh) and Escape work as upstream's. The left panel is fitted to the
 options as upstream's splitter (`Math.Max(280, preferred width)`). Opened as upstream's `StartStashDialog`: the toolbar's
 stash button and "Manage stashes...", "Create a stash..." (the working directory first), Commands > Manage stashes...,
-the left panel's "Manage stashes...", "Open stash" and double-click on a stash, and the pull window's Stash changes. Not
-ported: the file list's menu (upstream's cherry-pick of changes), the loading animation, and the diff viewer's move to the
-neighbouring file at the top or bottom of a diff.
+the left panel's "Manage stashes...", "Open stash" and double-click on a stash, and the pull window's Stash changes.
+Since 2026-11-02 the file list has upstream FileStatusList's item menu (`FileStatusListMenu`, as in the Diff tab and
+FormDiff) as FormStash binds it: no "Show in File tree" or "Filter file in grid", revisions by short hash, and each file
+between the revisions upstream's `LoadGitItemStatuses` gives it (a staged file between HEAD and the index, another
+working directory file between the index and the working directory, a stash's file between the commit it was made on
+and the stash; core `DiffMenuRevisions`). With files of both groups selected, the reset and difftool texts name the first
+selected file's revisions (or "<multiple>"), and a reset runs once per revision, as upstream's `ResetSelectedItemsTo`.
+After a change the files are read again (upstream's `RefreshAll`). Scripts run with the shown stash and the selected
+files. Not ported: the menu's "Cherry pick changes" (line patching, as in the Diff tab), the loading animation, and the
+diff viewer's move to the neighbouring file at the top or bottom of a diff. Upstream has no branching from a stash; an
+earlier note here listed it as not ported.
 
 **FormCreateTag** (`ported`). First a prompt for a name and an optional message. Since 2026-10-31 (UI-PARITY, after
 U6) upstream's form as `CreateTagWindow` (core `CreateTagDialog`), opened by Commands > Create tag..., the grid's
@@ -220,9 +255,10 @@ push is upstream's `Commands.PushTag` between the push scripts. Upstream's error
 argument checks) are shown and the window stays. Upstream's Force check box is never added to its form, so it is not
 here either. Screenshot `XPLAT_SCREENSHOT_WINDOW=createtag`.
 
-**FormDeleteTag** (`partial`). Ported: delete a local tag selected in the list, and (2026-10-06) delete it on the remote the
-branch tracks after a confirmation, with upstream's `push <remote> :refs/tags/<tag>`; the local tag is kept. Not ported: the
-remote choice in the dialog and deleting both at once.
+**FormDeleteTag** (`ported`). Ported: delete a local tag selected in the list, and (2026-10-06) delete it on the remote the
+branch tracks after a confirmation, with upstream's `push <remote> :refs/tags/<tag>`; the local tag is kept. The remote
+choice and deleting both at once came with `DeleteTagWindow` (see the "Delete branch and Delete tag windows" note); this
+heading said `partial` until 2026-11-02, though the row was `ported`.
 
 **FormCherryPick** (`ported`). 2026-10-28 (UI-PARITY, after U6): Commands > Cherry pick... and the grid's "Cherry pick
 this commit..." open `CherryPickWindow`, upstream's FormCherryPick (core `CherryPickDialog`): the commit's summary,
@@ -230,8 +266,9 @@ another commit chosen in upstream's FormChooseCommit, for a merge its parents (n
 first selected, upstream's error when none is), "Automatically create a commit" (else `--no-commit`) and "Add commit
 reference to commit message" (`-x`), kept under upstream's keys after a pick. The pick runs upstream's
 `Commands.CherryPick` and, when it stops on conflicts, asks upstream's resolve question (MergeConflictHandler) and
-opens the conflicts window. The grid selects one commit, so upstream's one window per selected commit does not
-arise. Before, the grid's item cherry-picked at once without options.
+opens the conflicts window. Since 2026-11-02 several selected commits get one window each, from the bottom of the grid,
+until one is aborted (upstream's `StartCherryPickDialog(revisions)`; the options carry over through their saved
+settings, as upstream's `CopyOptions`). Before, the grid's item cherry-picked at once without options.
 
 **FormResetChanges** (`partial`). Ported: reset the current branch to the selected commit with the soft and mixed
 modes. Also ported: deleting selected untracked files after a confirmation (Delete untracked), the hard mode, behind a confirmation (Reset hard here), and
@@ -289,6 +326,37 @@ git's revert message (upstream's `CommitMessageManager` step), and then asks ups
 when the revert stopped on conflicts (`OfferToResolveConflictsAsync`, now shared with the cherry pick). Not ported:
 the conflicts window's offer to commit after the conflicts (upstream's `offerCommit`), and the file history's revert,
 which still reverts at once. Screenshot `XPLAT_SCREENSHOT_WINDOW=revertcommit`.
+
+**FormResetAnotherBranch** (`ported`). 2026-11-02 (UI-PARITY, after U6): the grid's "Reset an_other branch to
+here..." (upstream's text and icon, hidden for the artificial commits) opens upstream's form as
+`ResetAnotherBranchWindow` (core `ResetAnotherBranchDialog`): upstream's warning, the local branches but the current
+one and those already at the commit, the branches tracking the commit's remote branch first, the only such branch
+proposed when one remote branch points at the commit (else the list opens), the commit's summary, "Checkout branch
+after reset" (upstream's `CheckoutOtherBranchAfterReset`, saved when changed) and the force check box. OK is enabled
+for a listed branch when forced or when `git merge-base --is-ancestor` says the move is a fast-forward (else it turns
+coral), runs upstream's `Commands.UpdateRef` with its output, then opens the checkout window on the branch when asked.
+Screenshot `XPLAT_SCREENSHOT_WINDOW=resetanotherbranch`.
+
+**FormDiff** (`partial`). 2026-11-02 (UI-PARITY, after U6), for the grid's Compare submenu: `RevisionDiffWindow` (core
+`Diff/RevisionDiff.cs`) with upstream's control names. BASE (red) and Compare (green) with their pickers (another
+branch through the compare to branch window, another commit through the choose commit window), the swap button,
+"Compare to merge base (hash)" (the merge base found once, an artificial side counting as HEAD; off without one), "Open
+diff using directory diff tool" (upstream's `OpenWithDifftoolDirDiff`; off from the work tree, as upstream's), and the
+files changed (upstream's `GetDiffFilesWithUntracked`, the work tree's untracked files included, as added or, from the
+work tree, deleted) beside the selected file's diff (upstream's `GetSingleDiffAsync`, in the shared `DiffView`, which
+got a source for any diff). Not modal, as upstream's `ShowFormDiff`. Since 2026-11-02 the file list is upstream's
+FileStatusList as in the Diff tab (see RevisionDiffControl: status images, group by, filter, NoFiles). Since 2026-11-02 the file list has upstream FileStatusList's item menu (`FileStatusListMenu`, as in the Diff tab) as FormDiff
+has it, without `BindContextMenu`: no "Show in File tree" or "Filter file in grid", File history not the default item,
+Blame opening the file history window on its Blame tab, and the revisions named by short hash only (upstream's
+`GetDescriptionForRevision` without a `DescribeRevision`). The list selects several files, as upstream's. Two differences:
+after a change from the menu (reset, delete, ignore) the list is read again, where upstream's FormDiff list has no refresh
+bound; and user scripts run with the compared revision and the selected files, where upstream's FormDiff gives them no
+options. Not ported: moving to the next file at the end of a diff, and the choose commit window's artificial commits. Screenshot `XPLAT_SCREENSHOT_WINDOW=revisiondiff`.
+
+**FormCompareToBranch** (`ported`). 2026-11-02: `CompareToBranchWindow` with upstream's `BranchSelector` in it
+(remote branches first, as upstream's `Initialize(remote: true)`, or local ones; the count of commits between the
+compared commit and the branch, upstream's `GetCommitCountString`); Compare closes with the branch, or keeps the focus
+on the list without one. Screenshot `XPLAT_SCREENSHOT_WINDOW=comparetobranch`.
 
 **FormRenameBranch** (`ported`). First a prompt. Since 2026-10-31 (UI-PARITY, after U6) upstream's form as
 `RenameBranchWindow`, opened by the left panel's "Rename branch...": "New name" with the branch's name, normalised when
@@ -416,7 +484,13 @@ type, as `StartSettingsDialog` with a page reference); the remote link opens the
 and Unstage all act on the files a filtered list shows and clear its filter, with upstream's "Stage filtered" and
 "Unstage filtered" tooltips and images (`StageAllAccordingToFilter`, `UnstageAllFiles`, `*_FilterChanged`). A
 double-click in a list stages or unstages the file (`Unstaged_DoubleClick`, `Staged_DoubleClick`); upstream then
-moves the focus to the message when the unstaged list is empty, which the new shell does not.
+moves the focus to the message when the unstaged list is empty, which the new shell does not. Added 2026-11-02 for the
+grid's Advanced submenu: upstream's `CommitKind` (core `Repository/CommitKinds.cs`, `CommitWindow.StartSpecialCommit`):
+a fixup, squash or amend commit starts from upstream's message ("fixup! subject", "squash! subject", or "amend!
+subject" and the whole message), a fixup or squash message is read only with "Modify the commit message" over it
+(upstream's `modifyCommitMessageButton`, which makes the commit a normal one), Amend's state is not restored for it, its
+message is not kept as the draft, and the window is a normal commit again after the commit. Upstream's commit window is
+modal; the new shell's is not, so an open window takes the special commit, its typed message replaced.
 
 **FormPush** (`partial`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
@@ -503,8 +577,8 @@ name `git check-ref-format` accepts, each with upstream's message) and runs upst
 `Commands.CreateOrphan` and `Commands.Remove`; the submodules are updated when the branch was checked out at another
 commit. Opened as upstream's `StartCreateBranchDialog`: Commands > Create branch and its hotkey (at the selected commit, as
 upstream; it was HEAD), the grid's create branch item, the left panel's branch, remote branch, tag and folder items, a
-tag's double-click, and the commit window's Create branch (at HEAD). Not ported: the commit picker's button (upstream's
-FormChooseCommit is not in the new shell).
+tag's double-click, and the commit window's Create branch (at HEAD). Since 2026-11-02 the commit picker has upstream's
+button, which picks the commit in the choose commit window (`buttonPickCommit_Click`).
 
 **FormCheckoutBranch** (`partial`). Ported: check out a local branch, and a remote branch as a tracking branch.
 Since 2026-10-06 also the local-change handling: when tracked files have changes, a dialog (`CheckoutWindow`) offers keep,
@@ -539,8 +613,8 @@ upstream's `Commands.Checkout` (with `--force` when forced) between the checkout
 events, and updates the submodules when HEAD moved. The commit picker is `CommitPickerView`, upstream's
 `CommitPickerSmallControl` without its button, shared with the create branch window. Opened as upstream's
 `StartCheckoutRevisionDialog`: Commands > Checkout revision... (new; no commit proposed, as upstream), the grid's "Checkout
-this commit..." (was a checkout at once), and the left panel's checkout of a tag. Not ported: the commit picker's button
-(FormChooseCommit).
+this commit..." (was a checkout at once), and the left panel's checkout of a tag. Since 2026-11-02 the commit picker has
+upstream's button (the choose commit window, see FormCreateBranch).
 
 **FormDeleteBranch** (`ported`). The earlier partial state (a local branch deleted after a confirmation, a remote
 branch with `git push --delete`) was replaced on 2026-10-28 by upstream's windows: see the "Delete branch and Delete
@@ -589,8 +663,36 @@ file's diff beside the list (the Diff tab), and an action that opens it in its o
 working directory's and the index's files for the artificial rows (unstaged changes with the untracked files, staged
 changes), upstream's BrowseDiff hotkeys for the commands the shell has (parents, difftool, history, blame, file tree, edit,
 open, stage, unstage, reset, delete) and the user scripts in the list's menu. Added 2026-10-11: the paths follow "Truncate
-long filenames" (PathFormatter row). Not ported: the per-file tree, filtering, the file history view, and the diff of merge
-commits against each parent ("Show file differences for all parents") with the combined diff.
+long filenames" (PathFormatter row). Added 2026-11-02: with several commits selected the list shows the files changed from
+the earliest selected to the latest (upstream's `GetFirstAndSelected`, through FormDiff's `RevisionDiff`), each file's
+diff between them, its diff tool (upstream's `OpenWithDifftool` with both revisions) and "Open in window"; one commit
+shows its own changes again. Upstream groups three or more selected commits by each one against the latest; here they
+are the earliest against the latest. Since 2026-11-02 a merge (and a stash) lists its files against the first parent,
+as its diff already showed them (before, the list was git's combined diff, mostly empty). Also since 2026-11-02 the list
+is upstream's FileStatusList (`RevisionFileList`, shared with FormDiff's window): upstream's status image before each
+path (`GetItemImageKey` by git's status letter), the group-by buttons (path, extension or status, upstream's
+`DiffListSortType` shared with the commit window's lists), the regular expression filter box (an invalid expression
+shows its error as a tooltip and filters nothing) and the "No changes" text; the selection survives regrouping and
+filtering. Added 2026-11-02: the item menu, upstream FileStatusList's `ItemContextMenu` in its designer's order with
+upstream's names (`FileStatusListMenu`, bound in `MainWindow.DiffFileMenu.cs` as `RevisionDiffControl` binds it). Which items show, and which are enabled, comes from upstream's own
+`RevisionDiffController` and `FileStatusListContextMenuController`, linked into the core unchanged (core
+`DiffFileMenu`, which builds upstream's `ContextMenuSelectionInfo` as `GetSelectionInfo` does). Ported items: stage,
+unstage, reset file(s) to the second (B) or first (A) revision (upstream's question in `ResetChangesWindow`, then
+`GitModule.ResetChanges`), open with difftool (First -> Second, Second -> Working directory, First -> Working directory,
+with the A and B captions; upstream's `RevisionDiffInfoProvider`), open working directory file, open this revision (temp
+file), edit working directory file, save selected as (a file, or a folder for several), delete file, copy paths, show in
+folder, show in file tree, filter file in grid, file history, blame, add to .gitignore or .git/info/exclude, stop
+tracking and the scripts. Revisions are named as upstream's `DescribeRevision` does (short hash and first branch or tag,
+or the subject). The BrowseDiff hotkeys for reset and delete now run the same flows (before: discard or delete of
+working directory files only). Not ported from the menu: the submodule items (the list does not know submodules),
+reset chunk of file and interactive add (git's interactive console), cherry pick changes (line patching), open with...
+(an OS dialog, Windows only), open in Visual Studio, rename / move, the remember-for-diff and two-file diff items, the
+custom difftool list, find file, the git-grep items, skip worktree and assume unchanged (the list has no index flags).
+Upstream's Blame opens in the File tree tab; here it opens the file history window on its Blame tab, as the hotkey did.
+Since 2026-11-02 the list selects several files (Ctrl and Shift), as upstream's, for the menu's items that take several;
+the diff shows the selected file. The menu is `FileStatusListMenu`, which FormDiff's window shares (see FormDiff).
+Not ported: the per-file tree and the toolbar's tree and settings items, the file history view, and the diff of merge commits against each
+parent ("Show file differences for all parents", upstream's default) with the combined diff.
 
 **FormFileHistory** (`partial`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
 and a diff of that file in a chosen commit. Added 2026-10-10: the history follows renames as upstream's
@@ -640,8 +742,8 @@ the tests), and a merge that stops on conflicts asks upstream's "There are unres
 now?" (`DontConfirmResolveConflicts`, a new row "Resolve conflicts" on the Confirmations page) and opens the conflicts
 window, as `MergeConflictHandler`. Opened as upstream's `StartMergeBranchDialog`: Commands > Merge branches... (was "Merge
 selected branch", which merged at once) with upstream's Ctrl+M, and the left panel's merge of a branch, remote branch or
-tag (was a merge at once). Changed: the log message settings are kept when merging, not on each change as upstream. Not
-ported: the grid's "Merge into current branch" submenu.
+tag (was a merge at once). Changed: the log message settings are kept when merging, not on each change as upstream. The
+grid's "Merge into current branch" submenu opens it too (since 2026-10-31, see "Revision grid context menu").
 
 **FormResolveConflicts** (`partial`). Ported: the list of unresolved files, choose ours or theirs for the selected files,
 open the configured merge tool on one file (`merge.guitool`, then `merge.tool`; without one the app asks for a tool to be
@@ -784,9 +886,17 @@ remotes, and double-click on a remote opens the remotes window. Since 2026-10-16
 stashes...", and "Open stash" and double-click open the stash window on that stash. Differences: "Reset current branch to
 here..." opens the reset current branch window (FormResetCurrentBranch, since 2026-10-16; before, a choice window); "Create worktree..." opens the worktree window; a tag also has
 "Delete on remote...", which upstream offers in its push dialog; the remote branch fetch items fetch the whole remote.
-Not ported: multi-selection, "Copy to clipboard" (upstream's revision copy submenu), the merged-branch images, hidden
+Not ported: multi-selection, the merged-branch images, hidden
 commits (EyeClosed), the submodule tree of super- and subprojects with its detailed status images and
-reset, stash and commit items, the user scripts submenu, and the search's highlighting of all matches.
+reset, stash and commit items, and the search's highlighting of all matches.
+Added 2026-11-02: selecting a local or remote branch, a tag, a stash or a worktree selects its commit in the grid, as
+upstream's `OnSelected` (`GoToRevision`, `RevisionGridControl.GoToRef`; core `RepoObjectsTree.RevisionOf`): with Ctrl
+(Cmd on macOS) the commit is added to or taken from the grid's selection, a commit the grid does not show gets upstream's
+`RevisionFilteredInGrid` message and an unknown name "No revision found.". The tree's own selection put back after a
+refresh does not move the grid (upstream's `IgnoreSelectionChangedEvent`). Upstream's Alt+click, which goes to the
+branch's tracking branch, is not ported. The menu got upstream's "Copy to clipboard" at the top (the grid's copy
+submenu for the grid's selected commits, on a branch or a stash) and "Run script" at the bottom (the scripts of the
+grid's menu, on a local branch, run with the grid's selection).
 
 **HotkeySettingsManager** (`partial`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a
@@ -921,7 +1031,8 @@ each run in its process window. Commands > Archive revision... and the grid's "A
 upstream's FormChooseCommit, the path filter or the files changed since a second revision (exclusive, as upstream's),
 zip or tar, and Save as, which asks for the file with upstream's suggested name and filter and runs upstream's
 `git archive` command with its output shown. Both items are enabled for a real commit, as upstream's
-`singleNormalCommit`; the grid selects one commit, so no second revision comes from it. `ChooseCommitWindow` is
+`singleNormalCommit`; since 2026-11-02 two selected commits in the grid make the other one the second revision (the
+files changed between them), and more get upstream's "Select only one or two revisions" error. `ChooseCommitWindow` is
 upstream's FormChooseCommit: a revision grid with the browse window's columns (`RevisionGridColumns.ShowAsSettingsSay`,
 now shared with the file history), the preselected commit, Go to commit..., the selected commit's parents as links
 (upstream's message when the grid does not show one), and OK or a double-click. The "not visible in the revision
@@ -1287,17 +1398,34 @@ into current branch (submenus of the commit's refs, as upstream's `ContextMenuOp
 fill them: the current branch left out, remote branches after a separator, a tracked remote branch not merged, an
 ambiguous name merged by its full name, the commit itself merged when no ref points at it), Rebase current branch
 on (onto the commit unless the current branch points at it, as upstream's code ends up), Reset current branch, Reset
-changes and Commit (for the artificial commits), Create new branch here, Rename branch, Delete branch (local, then
+changes and Commit (for the artificial commits), Create new branch here, Reset another branch to here (since
+2026-11-02, see FormResetAnotherBranch), Rename branch, Delete branch (local, then
 remote), Create new tag here, Delete tag, Checkout this commit, Revert, Cherry pick, Archive, Navigate (the Navigate
 menu's commands), Select in left panel (the left panel shown, the ref's node selected; one ref at once, several as a
 submenu), Run script and the build report and pull request links. Items that do not apply are hidden, and separators
 with nothing above them too, as upstream's `SetEnabled` and `UpdateSeparators`. The submenus open the ported windows
 (checkout flow, push window on the branch, merge, rename, delete branch, delete remote branch, delete tag). The old
 "Copy commit hash" and "Copy commit message" items are now in the copy submenu. "Browse files at this commit..."
-stays as the new shell's own. Not ported yet: the stash items (the grid shows no stashes, as upstream's default),
-Reset another branch to here (FormResetAnotherBranch), Compare (FormCompareToBranch and the diff selections),
-Advanced (edit, reword, fixup, squash, amend commits), View, and the focused menu for a right-clicked label with
-"Other actions".
+stays as the new shell's own. Part 2, 2026-11-02: the menu takes the order upstream's constructor gives it at run time
+(`_contextMenuItems`: Reset changes and Commit first, Select in left panel after the branch items; `GridMenuTests` now
+reads that list, as upstream's designer order is not what users see); Reset another branch to here (see
+FormResetAnotherBranch); View (the View menu's commands, as upstream's `FillMenuFromMenuCommands`, forwarded to the main
+View menu with its checks); Advanced: Edit commit and Reword commit (upstream's `LaunchRebase`: `git rebase -i
+--autostash` onto the first parent with `GIT_SEQUENCE_EDITOR` turning the first pick into `e` or `r`, upstream's GNU
+sed command; macOS's sed lacks the `0,/re/` address, so there perl does the same, which macOS ships; not checked on
+macOS), Create a fixup, squash or amend commit (the commit window, see FormCommit; hotkeys Ctrl+X and Ctrl+Shift+X as
+upstream; amend hidden before git 2.32) and the help link; Compare (see FormDiff and FormCompareToBranch: compare to
+branch, with the current branch, select as BASE and compare to BASE, compare to the working directory, with upstream's
+errors and hotkeys Ctrl+L, Ctrl+R, Ctrl+D); and upstream's focused menu: a right-clicked ref label (found by position
+in the row, as the labels draw only outlines; a click on the virtual ahead and behind label counts as its branch's,
+where upstream offers its tracked branch) gets "Other actions" holding upstream's advanced items, unless Shift or
+"Always show advanced options" asks for the whole menu (Ctrl overrides both), and either way the ref submenus and the
+copy items offer that ref only. Since 2026-11-02 with the grid's multi-selection: "Compare selected commits" and "Open
+selected commits with difftool" (with upstream's submenu of the configured tools when there are several), enabled as
+upstream's for one commit with a parent or several commits; the copy submenu for all selected commits. Also since
+2026-11-02: Apply stash (by the stash's commit), Pop stash and Drop stash... (by its selector, the drop after upstream's
+suppressible question) for a stash row (see the RevisionGridControl note on stash rows). An earlier version of this note
+said upstream's grid shows no stashes by default; that was wrong, upstream's `showStashes` is on by default.
 
 **FormSubmodules** (`partial`). Ported: the submodules in a left-panel section (shown only when the repository has any) with
 their state (not initialized, changed), open one as a repository, update the selected one or all (upstream's
@@ -1341,8 +1469,9 @@ bisect it opens the bisect window, and for a rebase the rebase window (upstream'
 upstream's five buttons and their enabled rules; Start runs while the window stays open, the marks and Stop close it, as
 upstream. Each step runs with git's output in the process window (upstream's process dialog); a mark's window stays open
 whatever the close setting says, because its output names the next commit to test or the first bad one (upstream passes
-`useDialogSettings: false`). Not ported: starting with a range from two selected commits (the grid selects one commit),
-and the toolbar's bisect icons.
+`useDialogSettings: false`). Since 2026-11-02 Start with several commits selected asks upstream's "Mark selected revisions
+as start bisect range?" and marks the latest selected good and the earliest bad (upstream's `BisectRange`), then closes
+the window. Not ported: the toolbar's bisect icons.
 
 **Plugin forms (general)**. Since 2026-10-09 upstream plugins with WinForms forms are built for the new shell by shadow
 projects in `src/xplat/plugins` that set `XplatPluginUi`: the plugin class and the files without WinForms are compiled
@@ -1585,8 +1714,8 @@ date and topo order), the group captions in italics as `MenuUtil.SetAsCaptionMen
 author, date and SHA-1 columns start at upstream's providers' widths (`RevisionGridColumns`): the author 130 px, the date
 130 px for relative dates, else the width of the current time in the general format; the SHA-1 the width of the eight
 characters upstream's 60 px hold in its default font. Upstream keeps no column widths, as its grid has no header row to
-resize them. Not ported: stashes, git notes and
-session refs in the grid, the superproject labels and refs, the notes column, per-remote label colors, the label hover
+resize them. Not ported: git notes and
+session refs in the grid (the stashes came on 2026-11-02, see RevisionGridControl), the superproject labels and refs, the notes column, per-remote label colors, the label hover
 frame and tooltip per label, the multi-line indicator, non-relatives drawn in gray text (their lanes are gray), the
 "unknown" artificial state and submodule counts, the merge source arrow, and "Save current view settings as default".
 

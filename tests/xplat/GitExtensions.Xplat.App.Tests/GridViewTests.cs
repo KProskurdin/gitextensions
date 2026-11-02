@@ -91,7 +91,9 @@ internal sealed class GridViewTests
         MainWindow window = OpenWindow();
         ListBox commits = Find<ListBox>(window, "CommitList");
 
-        // Without a selection, the user's own commits.
+        // Without a selection (the grid opens on HEAD, so it is cleared), the user's own commits.
+        WaitUntil(() => commits.SelectedItem is not null);
+        commits.SelectedItems!.Clear();
         WaitUntil(() => Tinted(commits).SequenceEqual(["second", "first"]));
 
         commits.SelectedItem = Rows(commits).First(item => item.Row.Subject == "other's work");

@@ -25,7 +25,8 @@ internal sealed class TestRepository : IDisposable
 
     /// <summary>
     ///  The text of a file in the work tree, or null while it is missing. Git replaces a file it checks out by removing
-    ///  and writing it, so a test that waits for git's result must not fail on the moment between.
+    ///  and writing it, so a test that waits for git's result must not fail on the moment between; on Windows that moment
+    ///  can also deny access to the file.
     /// </summary>
     public string? ReadFile(string name)
     {
@@ -33,7 +34,7 @@ internal sealed class TestRepository : IDisposable
         {
             return File.ReadAllText(System.IO.Path.Combine(Path, name));
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return null;
         }

@@ -69,10 +69,10 @@ public partial class MainWindow
         }
 
         CommitList.ContainerPrepared += (_, e) => ShowAuthoredHighlight(e.Container);
-        CommitList.SelectionChanged += (_, _) => HighlightAuthor((CommitList.SelectedItem as CommitListItem)?.Row.AuthorEmail);
+        CommitList.SelectionChanged += (_, _) => HighlightAuthor(LatestSelectedItem?.Row.AuthorEmail);
         _repository.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(_repository.UserEmail) && CommitList.SelectedItem is null)
+            if (e.PropertyName == nameof(_repository.UserEmail) && LatestSelectedItem is null)
             {
                 HighlightAuthor(null);
             }

@@ -147,9 +147,11 @@ internal sealed class FakeGitOperations : IGitOperations
     public Task RebaseAsync(string repositoryPath, string branch) => Record("Rebase", $"{repositoryPath} {branch}");
 
     public Task RunRebaseAsync(string repositoryPath, GitExtensions.Extensibility.ArgumentString arguments,
-        string? editorCommand, IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default) =>
-        RecordRemote("RunRebase", $"{repositoryPath} {arguments} editor={editorCommand is not null}", output,
-            cancellationToken);
+        string? editorCommand, IProgress<GitOutputLine>? output = null, CancellationToken cancellationToken = default,
+        string? sequenceEditor = null) =>
+        RecordRemote("RunRebase",
+            $"{repositoryPath} {arguments} editor={editorCommand is not null}"
+            + (sequenceEditor is null ? "" : $" sequence={sequenceEditor}"), output, cancellationToken);
 
     public Task AbortRebaseAsync(string repositoryPath) => Record("AbortRebase", repositoryPath);
 

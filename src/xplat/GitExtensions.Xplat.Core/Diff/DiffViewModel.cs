@@ -39,14 +39,21 @@ public sealed class DiffViewModel : ObservableObject
 
     public void ClearError() => ErrorMessage = null;
 
-    public async Task LoadAsync(string repositoryPath, string? commitHash, string? filePath, bool staged,
+    public Task LoadAsync(string repositoryPath, string? commitHash, string? filePath, bool staged,
         DiffOptions? options = null)
+        => LoadAsync(() => _diff.GetDiffAsync(repositoryPath, commitHash, filePath, staged, options));
+
+    /// <summary>
+    ///  Loads the lines <paramref name="read"/> returns (a diff between two revisions, upstream's <c>FormDiff</c>); a newer
+    ///  load wins, and an error is kept in <see cref="ErrorMessage"/>.
+    /// </summary>
+    public async Task LoadAsync(Func<Task<IReadOnlyList<DiffLine>>> read)
     {
         int version = ++_loadVersion;
         IsLoading = true;
         try
         {
-            IReadOnlyList<DiffLine> lines = await _diff.GetDiffAsync(repositoryPath, commitHash, filePath, staged, options);
+            IReadOnlyList<DiffLine> lines = await read();
             if (version == _loadVersion)
             {
                 Lines = lines;

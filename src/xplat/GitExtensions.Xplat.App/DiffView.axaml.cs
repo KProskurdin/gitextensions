@@ -93,6 +93,23 @@ public partial class DiffView : UserControl
     }
 
     /// <summary>
+    ///  Shows the diff <paramref name="read"/> returns for the view's options (upstream's <c>FormDiff</c>, a file between
+    ///  two revisions); it is read again when the options change.
+    /// </summary>
+    public Task ShowDiffAsync(string repositoryPath, string? filePath, string title,
+        Func<DiffOptions, Task<IReadOnlyList<DiffLine>>> read)
+    {
+        _request = new DiffRequest(repositoryPath, CommitHash: null, filePath, Staged: false, read);
+        _text = null;
+        _syntaxPath = filePath;
+        _textIsDiff = true;
+        _hasOptions = true;
+        ShowToolbar();
+        TitleText.Text = title;
+        return LoadAsync(_request);
+    }
+
+    /// <summary>
     ///  Shows a file's content with line numbers instead of a diff, as upstream's file viewer does for the File tree tab. A
     ///  null <paramref name="content"/> is a binary file, which is not shown.
     /// </summary>
@@ -193,8 +210,10 @@ public partial class DiffView : UserControl
     private Task LoadAsync(DiffRequest request)
     {
         ShowError(null);
-        return _viewModel.LoadAsync(request.RepositoryPath, request.CommitHash, request.FilePath, request.Staged,
-            _options with { Histogram = AppServices.Preferences.UseHistogramDiffAlgorithm });
+        DiffOptions options = _options with { Histogram = AppServices.Preferences.UseHistogramDiffAlgorithm };
+        return request.Read is { } read
+            ? _viewModel.LoadAsync(() => read(options))
+            : _viewModel.LoadAsync(request.RepositoryPath, request.CommitHash, request.FilePath, request.Staged, options);
     }
 
     private void OnDiffChanged(string? propertyName)
@@ -378,7 +397,8 @@ public partial class DiffView : UserControl
         ErrorText.IsVisible = message is not null;
     }
 
-    private sealed record DiffRequest(string RepositoryPath, string? CommitHash, string? FilePath, bool Staged);
+    private sealed record DiffRequest(string RepositoryPath, string? CommitHash, string? FilePath, bool Staged,
+        Func<DiffOptions, Task<IReadOnlyList<DiffLine>>>? Read = null);
 }
 
 /// <summary>

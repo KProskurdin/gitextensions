@@ -145,6 +145,24 @@ public sealed class GitRepositoryService : IRepositoryService
         return new FileChange(status.Name, kind, Staged: status.Staged == StagedStatus.Index);
     }
 
+    // Upstream's GitStatusMonitor reads the status with --no-optional-locks: a refresh, such as when the window is activated
+    // again, then never holds the index lock while a command the user started needs it ("index.lock: File exists"). A
+    // failed read is read again as GitModule reads it, which lists the error as a file.
+    private static IReadOnlyList<GitItemStatus> ChangedFiles(GitModule module)
+    {
+        ExecutionResult result = module.GitExecutable.Execute(
+            Commands.GetAllChangedFiles(excludeIgnoredFiles: true, UntrackedFilesMode.Default, noLocks: true),
+            throwOnErrorExit: false);
+        if (!result.ExitedSuccessfully)
+        {
+            return module.GetAllChangedFilesWithSubmodulesStatus();
+        }
+
+        IReadOnlyList<GitItemStatus> status = new GetAllChangedFilesOutputParser(() => module).Parse(result.StandardOutput);
+        module.GetSubmoduleCurrentStatus(status);
+        return status;
+    }
+
     private static RepositorySnapshot GetSnapshot(string path, RefSorting sorting)
     {
         GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), path);
@@ -162,7 +180,7 @@ public sealed class GitRepositoryService : IRepositoryService
                     IsCurrent: branch.IsHead && branch.Name == currentBranch)),
         ];
 
-        List<FileChange> changes = [.. module.GetAllChangedFilesWithSubmodulesStatus().Select(ToFileChange)];
+        List<FileChange> changes = [.. ChangedFiles(module).Select(ToFileChange)];
 
         // Upstream's InteractiveGitActionControl order: a rebase is checked before a patch, because both checks match a
         // rebase-merge folder.

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'UnitTests', 'ReleaseNotesGenerator.Tests'))</UpstreamDir>
+    <!-- Upstream's UnitTests props derive it from the project name. -->
+    <RootNamespace>ReleaseNotesGeneratorTests</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <!-- Tests upstream's HtmlFragment, a WinForms clipboard DataObject builder that the shadow plugin replaces with
+       HtmlClipboard. -->
+  <ItemGroup>
+    <Compile Remove="$(UpstreamDir)MainFixture.cs" />
+  </ItemGroup>
+
+  <!-- The shadow plugins leave the shared assemblies to the app (Private="false"), so the test project brings them. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\xplat\plugins\ReleaseNotesGenerator\GitExtensions.Plugins.ReleaseNotesGenerator.csproj" />
+    <ProjectReference Include="..\..\..\..\src\xplat\GitCommands\GitCommands.csproj" />
+    <ProjectReference Include="..\..\..\..\src\xplat\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+    <ProjectReference Include="..\..\..\..\src\xplat\ResourceManager\ResourceManager.csproj" />
+    <ProjectReference Include="..\..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+</Project>

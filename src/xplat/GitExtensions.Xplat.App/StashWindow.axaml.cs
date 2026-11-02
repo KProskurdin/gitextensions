@@ -1,7 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using GitCommands;
+using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 using GitUIPluginInterfaces;
@@ -42,6 +46,7 @@ public partial class StashWindow : Window
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _showing;
     private int _filesVersion;
+    private StashRevisions? _revisions;
 
     /// <param name="manageStashes">Upstream's <c>ManageStashes</c>: show the newest stash first.</param>
     /// <param name="initialStash">The stash to show first ("stash@{n}").</param>
@@ -71,6 +76,16 @@ public partial class StashWindow : Window
         StashSelectedButton.Click += (_, _) => Run(() => StashAsync(selectedOnly: true));
         DropButton.Click += (_, _) => Run(DropAsync);
         ApplyButton.Click += (_, _) => Run(ApplyAsync);
+        FilesMenu.Bind(new FileStatusListMenuBinding
+        {
+            Owner = this,
+            RepositoryPath = () => _repositoryPath,
+            Selection = MenuSelection,
+            DescribeRevision = FileStatusListMenu.DescribeByHash,
+            Services = () => MenuServices ?? new FileListMenuServices(_actions),
+            Refresh = () => Run(LoadAsync),
+            RunScript = RunScript,
+        });
         KeyDown += OnKeyDown;
         Opened += (_, _) =>
         {
@@ -99,6 +114,12 @@ public partial class StashWindow : Window
     ///  True while the selected stash's files are read, for tests.
     /// </summary>
     public bool IsLoadingFiles { get; private set; }
+
+    /// <summary>
+    ///  The browse window's git actions and windows for the file list's menu; without them the menu uses the window's
+    ///  own actions and leaves out the file history.
+    /// </summary>
+    internal FileListMenuServices? MenuServices { get; init; }
 
     private IReadOnlyList<StashFile> SelectedFiles
         => [.. FilesList.SelectedItems?.OfType<StashFileRow>().Select(row => row.File).OfType<StashFile>() ?? []];
@@ -145,12 +166,18 @@ public partial class StashWindow : Window
         StashesBox.IsEnabled = false;
         try
         {
-            IReadOnlyList<StashFile> files =
-                await Task.Run(() => _dialog.Files(GitModules.Open(_repositoryPath), stash));
+            bool workingDirectory = _dialog.IsWorkingDirectorySelected;
+            (IReadOnlyList<StashFile> files, StashRevisions revisions) = await Task.Run(() =>
+            {
+                GitModule module = GitModules.Open(_repositoryPath);
+                return (_dialog.Files(module, stash), StashRevisions.Read(module, stash, workingDirectory));
+            });
             if (version != _filesVersion)
             {
                 return;
             }
+
+            _revisions = revisions;
 
             List<StashFileRow> rows = [];
             foreach (IGrouping<string, StashFile> group in files.GroupBy(file => file.Group))
@@ -268,6 +295,72 @@ public partial class StashWindow : Window
         }
     }
 
+    // Upstream's LoadGitItemStatuses as the file list's menu sees it: the working directory's staged files between HEAD
+    // and the index and its other files between the index and the working directory; a stash's files between the commit
+    // it was made on and the stash.
+    private DiffMenuSelection? MenuSelection()
+    {
+        if (_revisions is not { } revisions || SelectedFiles is not [_, ..] files)
+        {
+            return null;
+        }
+
+        List<DiffMenuFile> menuFiles =
+        [
+            .. files.Select(file => new DiffMenuFile(StatusLetter(file.Change.Kind), file.Change.Path, OldPath: null,
+                IsTracked: file.Change.Kind != ChangeKind.Untracked, revisions.Of(file.Change)))
+        ];
+        DiffMenuRevisions first = menuFiles[0].Revisions!;
+        return new DiffMenuSelection(first.First, first.Second, first.SecondParents, menuFiles);
+    }
+
+    // Git's status letter for a change, as the menu's rules read it.
+    private static string StatusLetter(ChangeKind kind)
+        => kind switch
+        {
+            ChangeKind.Added => "A",
+            ChangeKind.Untracked => "?",
+            ChangeKind.Deleted => "D",
+            ChangeKind.Renamed => "R",
+            ChangeKind.Conflict => "U",
+            _ => "M"
+        };
+
+    // Upstream's file list scripts: with the shown stash and the selected files.
+    private void RunScript(ScriptDefinition script)
+    {
+        IReadOnlyList<string> hashes = _revisions is { IsWorkingDirectory: false } revisions
+            ? [revisions.Stash.ToString()]
+            : [];
+        IReadOnlyDictionary<string, IReadOnlyList<string>> options = ScriptFileOptions.For(
+            SelectedFiles.Select(file => file.Change.Path), Diff.CurrentFileLine);
+        Run(() => new ScriptHost(this, _actions).RunAsync(script, _repositoryPath, hashes, options));
+    }
+
     private void Run(Func<Task> action)
         => UiActions.Run(action, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+
+    // The revisions upstream's LoadGitItemStatuses gives the shown files: HEAD for the working directory, the stash and
+    // the commit it was made on for a stash.
+    private sealed record StashRevisions(bool IsWorkingDirectory, ObjectId Head, ObjectId StashParent, ObjectId Stash)
+    {
+        public static StashRevisions Read(GitModule module, GitStash stash, bool workingDirectory)
+            => workingDirectory
+                ? new StashRevisions(true, module.RevParse("HEAD"), default, default)
+                : new StashRevisions(false, default, module.RevParse(stash.Name + "^"), module.RevParse(stash.Name));
+
+        public DiffMenuRevisions Of(FileChange change)
+        {
+            if (!IsWorkingDirectory)
+            {
+                return new DiffMenuRevisions(StashParent.IsZero ? null : StashParent, Stash,
+                    StashParent.IsZero ? [] : [StashParent]);
+            }
+
+            // Without HEAD (an unborn branch) upstream lists every file against the working directory.
+            return change.Staged && !Head.IsZero
+                ? new DiffMenuRevisions(Head, ObjectId.IndexId, [Head])
+                : new DiffMenuRevisions(Head.IsZero ? null : ObjectId.IndexId, ObjectId.WorkTreeId, [ObjectId.IndexId]);
+        }
+    }
 }

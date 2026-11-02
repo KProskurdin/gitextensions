@@ -1,9 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GitExtensions.Xplat.App"
              x:Class="GitExtensions.Xplat.App.CommitPickerView">
-  <!-- Upstream's CommitPickerSmallControl: the commit's short hash, editable, and how far it is from HEAD. -->
+  <!-- Upstream's CommitPickerSmallControl: the commit's short hash, editable, the button that picks it in the choose
+       commit window, and how far it is from HEAD. -->
   <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
     <TextBox x:Name="CommitHashBox" Width="104" VerticalContentAlignment="Center" />
+    <Button x:Name="buttonPickCommit" Padding="3" Margin="3,0,0,0" VerticalAlignment="Center">
+      <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
+    </Button>
     <TextBlock x:Name="CommitCountText" VerticalAlignment="Center" Margin="6,0,0,0" />
   </StackPanel>
 </UserControl>

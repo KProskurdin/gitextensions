@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <UpstreamDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..', '..', 'plugins', 'UnitTests', 'GitUIPluginInterfaces.Tests'))</UpstreamDir>
+    <!-- Upstream's UnitTests props derive it from the project name. -->
+    <RootNamespace>GitUIPluginInterfacesTests</RootNamespace>
+  </PropertyGroup>
+
+  <Import Project="..\..\..\..\src\xplat\eng\SharedSources.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\xplat\GitUIPluginInterfaces\GitUIPluginInterfaces.csproj" />
+    <ProjectReference Include="..\..\CommonTestUtils\CommonTestUtils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(UpstreamDir)PathScanningData\**" CopyToOutputDirectory="PreserveNewest" Link="PathScanningData\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

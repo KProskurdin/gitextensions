@@ -217,7 +217,9 @@ internal sealed class MainWindowTests
 
             commits.SelectedIndex = 0;
             ListBox files = Find<ListBox>(window, "CommitFilesList");
-            WaitUntil(() => files.ItemCount == 1);
+
+            // The grid opened on HEAD, whose one file shows until the working directory's are read.
+            WaitUntil(() => files.ItemCount == 1 && ((CommitFile)files.Items[0]!).Path != "a.txt");
             ((CommitFile)files.Items[0]!).Path.Should().Be("untracked.txt");
             Find<MenuItem>(window, "CherryPickMenuItem").IsEnabled.Should().BeFalse();
 

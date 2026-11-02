@@ -22,7 +22,7 @@ criterion, and the milestones beyond M4 are estimates only.
 | Area | State | Evidence |
 |---|---|---|
 | Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) compiles as `net10.0` | Done | `src/xplat/*` shadow projects, 0 errors on Windows and Linux |
-| Shared core tests | Done with a gap | Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03) |
+| Shared core tests | Done with a gap | Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03). Since 2026-11-02 every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8), and `run-tests.sh` runs them all; the analyzer project is in the solution as it is (netstandard2.0) |
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS by CI only | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
@@ -79,15 +79,22 @@ src/
 tests/
   app/                      upstream, untouched
   xplat/
-    CommonTestUtils/        shadow of upstream test helpers, plus TestAppSettingsAttribute replacement
+    CommonTestUtils/        shadow of upstream test helpers, plus TestAppSettingsAttribute replacement and
+                            XplatSkipOnNonWindowsAttributeBase (the skip list base of every other shadow test project)
     GitCommands.Tests/      shadow of upstream tests, XplatPlatformSkips.cs, XplatLinux*.cs
+    GitExtensions.Extensibility.Tests/, GitExtUtils.Tests/, ResourceManager.Tests/
+                            shadows of the other non-UI upstream unit tests, each with its XplatPlatformSkips.cs
+    plugins/                shadows of the non-UI plugin unit tests (DeleteUnusedBranches, GitUIPluginInterfaces,
+                            ReleaseNotesGenerator, BuildServerIntegration/*). Not shadowed, because they test WinForms
+                            forms: FindLargeFiles.Tests, BugReporter.Tests, GitUI.Tests and the integration tests
     GitExtensions.Xplat.App.Tests/  NEW in M1: Avalonia headless tests
 tests/xplat/
-  run-tests.sh             builds and tests the shadow projects (Windows via cmd.exe; Linux/macOS directly)
+  run-tests.sh             builds and tests every shadow test project (Windows via cmd.exe; Linux/macOS directly)
   verify-upstream.sh       runs the same against upstream/master in a temporary worktree
   port-drift.sh            NEW in M1: lists upstream commits that touched ported files since the recorded commit
   xplat-drift.sh           NEW in M1: flags mirrored upstream test classes (from each XplatLinux* file's
-                           "// Mirrors:" line and the XplatPlatformSkips.cs entries) that changed or disappeared
+                           "// Mirrors:" line and the XplatPlatformSkips.cs entries) that changed or disappeared,
+                           in every shadow test project
 docs/xplat/
   PLAN.md                  this file
   SYNC-LOG.md              one entry per upstream check or merge
@@ -804,6 +811,7 @@ order users would notice them, are listed in section 12.4.
 | Layer | Tool | Runs on | Notes |
 |---|---|---|---|
 | Shared core unit tests | NUnit, the shadow `GitCommands.Tests` | Windows, Linux | Upstream tests, plus `XplatLinux*.cs` counterparts. 144 ignored on Linux, each with a reason |
+| Other non-UI upstream unit tests | NUnit, 11 shadow test projects (Extensibility, GitExtUtils, ResourceManager, plugin and build server tests), added 2026-11-02 | Windows, Linux | Windows 487 pass. Linux 440 pass, 51 ignored with reasons (GDI+/user32, a Windows relative path, an inherited `DISPLAY`), including 2 `XplatLinux*.cs` counterparts. One upstream Gitlab test is skipped on both, as upstream |
 | Upstream merge check | `tests/xplat/verify-upstream.sh` | Linux (CI nightly) | Builds and tests shadow projects against `upstream/master` in a temporary worktree |
 | App unit tests (view models) | NUnit | Windows, Linux, macOS | Start in M2 |
 | App UI tests | Avalonia.Headless | Windows, Linux, macOS | Start in M1 |

@@ -413,6 +413,66 @@ toolbar icons with upstream's `ToolTipText`.
   by `GridMenuTests`), the copy submenu and the branch and tag submenus. See the "Revision grid context menu" note in
   `PORTING-MAP.md`. Left for part 2: Reset another branch, Compare, Advanced, View and the right-clicked label's
   focused menu.
+- 2026-11-02, the grid's Reset another branch to here done (FormResetAnotherBranch as `ResetAnotherBranchWindow`,
+  screenshot `resetanotherbranch`; see its note in `PORTING-MAP.md`). Left: Compare, Advanced, View and the
+  right-clicked label's focused menu.
+- 2026-11-02, the grid's context menu part 2 done: View, Advanced (edit and reword through an interactive rebase;
+  fixup, squash and amend commits in the commit window, upstream's `CommitKind`), Compare (FormDiff as
+  `RevisionDiffWindow` and FormCompareToBranch as `CompareToBranchWindow`, screenshots `revisiondiff` and
+  `comparetobranch`), and the focused menu of a right-clicked ref label with "Other actions". Found on the way: the menu's
+  order at run time is upstream's `_contextMenuItems`, not its designer's; the menu and `GridMenuTests` now follow it.
+  See the "Revision grid context menu", FormDiff, FormCompareToBranch and FormCommit notes in `PORTING-MAP.md`. Left:
+  the stash items (the grid shows no stashes) and the two items that need several selected commits (the grid selects
+  one), then the other partial rows of `PORTING-MAP.md`.
+- 2026-11-02, the grid's multi-selection done (upstream's `MultiSelect`): the latest selected commit drives the commit
+  info and the menu; the Diff tab shows the files between the earliest and the latest selected; Compare selected
+  commits and Open selected commits with difftool work (also for one commit against its parent, as upstream's, which
+  had wrongly been disabled); the copy submenu, cherry pick (a window per commit), archive (the files between two
+  commits) and the bisect start range use the selection. See the RevisionGridControl, RevisionDiffControl, FormCherryPick,
+  FormArchive and FormBisect notes in `PORTING-MAP.md`. Left: the stash items in the grid, then the other partial rows.
+- 2026-11-02, stash rows in the grid done (upstream's `ShowStashes`, which is on by default; earlier entries here said the
+  grid shows no stashes as upstream's default, which was wrong): View > Show stashes, the stashes before the commits they
+  were made on with their selector labels and "untracked files" commits, and the grid menu's Apply, Pop and Drop stash.
+  A merge's (and a stash's) Diff tab list now uses the first parent, as its diff does. See the RevisionGridControl,
+  RevisionDiffControl and "Revision grid context menu" notes in `PORTING-MAP.md`. Left: the other partial rows of
+  `PORTING-MAP.md`.
+- 2026-11-02, the Diff tab's and FormDiff's file lists are upstream's FileStatusList (status images, group by, filter,
+  "No changes"; `RevisionFileList`), and the commit picker got upstream's choose commit button (create branch, checkout
+  revision). Stale "Not ported" notes fixed (the commit picker, the merge window's grid submenu). Left: the Diff tab's
+  item menu (upstream's RevisionDiffController), then the other partial rows of `PORTING-MAP.md`.
+- 2026-11-02, the Diff tab's item menu done: upstream FileStatusList's item menu in its order, with the items a selection
+  allows decided by upstream's own `RevisionDiffController` (linked into the core unchanged, core `DiffFileMenu`): stage,
+  unstage, reset to the second or first revision with upstream's question, the difftool submenu (A to B, B or A to the
+  working directory), the working directory file, this revision as a temporary file, save as, delete, copy paths, show in
+  folder, file tree, filter in grid, history, blame, ignore and stop tracking. The copy paths submenu is now shared with the
+  commit window (`CopyPathsMenu`). See the RevisionDiffControl note in `PORTING-MAP.md`, which lists the items not
+  ported. Left: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-02, FormDiff's file list menu done: the Diff tab's item menu is now one control (`FileStatusListMenu`, upstream
+  FileStatusList's `ItemContextMenu`) that each window binds as upstream's `BindContextMenu`; FormDiff's window has it as
+  upstream's does (no file tree or grid filter items, revisions by short hash). Both lists now select several files.
+  Found on the way: the browse window's status refresh on activation held git's index lock, so a reset started from a
+  dialog could fail with "index.lock: File exists"; the status is now read with `--no-optional-locks`, as upstream's
+  `GitStatusMonitor` does. See the RevisionDiffControl, FormDiff and FormBrowse notes in `PORTING-MAP.md`. Left: the other
+  partial rows of `PORTING-MAP.md`.
+- 2026-11-02, FormStash's file list menu done: the stash window's files have `FileStatusListMenu` as FormStash binds it,
+  each file between its own revisions as upstream's `LoadGitItemStatuses` gives them (staged files against HEAD, other
+  working directory files against the index, a stash's files against its commit; core `DiffMenuRevisions`, with
+  upstream's "<multiple>" captions and a reset per revision). FormStash's "branching from a stash" was a stale note:
+  upstream has no such feature. See the FormStash note in `PORTING-MAP.md`. Left: the other partial rows of
+  `PORTING-MAP.md`.
+- 2026-11-02, the left panel's node selection and two menu items done: selecting a branch, tag, stash or worktree
+  selects its commit in the grid (upstream's `OnSelected`/`GoToRef`, Ctrl adds to the selection), and the menu has
+  upstream's "Copy to clipboard" and "Run script". The FormDeleteTag note's heading said `partial` though its row and a
+  later note had it ported; fixed. Found on the way: a refresh (after every action) clears the grid's selection, where
+  upstream keeps the selected commits, else selects HEAD, else the nearest loaded parent (`GetToBeSelectedRevisions`,
+  `SetToBeSelectedFromParents`). Left: that, the left panel's merged-branch images, then the other partial rows of
+  `PORTING-MAP.md`.
+- 2026-11-02, the grid's selection after its rows are read again done (upstream's `GetToBeSelectedRevisions` and
+  `SetToBeSelectedFromParents`, core `GridSelection.ToBeSelectedAsync`): a refresh keeps the selected commits, the grid
+  opens on HEAD, and a commit no longer shown hands over to its nearest shown ancestor. See the RevisionGridControl note in
+  `PORTING-MAP.md`. Also fixed: the app tests' `TestRepository.ReadFile` now treats a file git is replacing on Windows
+  (access denied) as not there yet, which made a stash test flaky. Left: the left panel's merged-branch images, then the
+  other partial rows of `PORTING-MAP.md`.
 
 ## Risks
 

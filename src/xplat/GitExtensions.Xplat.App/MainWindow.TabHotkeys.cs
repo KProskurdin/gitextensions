@@ -73,34 +73,25 @@ public partial class MainWindow
                 Run(() => Launcher.LaunchFileInfoAsync(new FileInfo(Path.Combine(path, file))));
                 return true;
 
-            // Upstream's stage, unstage, reset and delete act on the working directory's and index's files.
+            // Upstream's stage and unstage act on the working directory's and index's files.
             case BrowseDiffCommand.StageSelectedFile when workTree && files.Count > 0:
                 Run(() => _actions.StageAsync(path, files));
                 return true;
             case BrowseDiffCommand.UnStageSelectedFile when index && files.Count > 0:
                 Run(() => _actions.UnstageAsync(path, files));
                 return true;
-            case BrowseDiffCommand.ResetSelectedFiles when workTree && files.Count > 0:
-                Run(async () =>
+
+            // Upstream's ResetSelectedFilesWithConfirmation: to the first revision, when the menu offers it.
+            case BrowseDiffCommand.ResetSelectedFiles when files.Count > 0:
+                if (CommitFilesContextMenu.State() is not { ResetFile: true, ResetToFirst: not null })
                 {
-                    if (await new ConfirmWindow(
-                                $"Discard the changes to {files.Count} file(s)? This cannot be undone.", "Discard")
-                            .ShowDialog<bool>(this))
-                    {
-                        await _actions.DiscardChangesAsync(path, files);
-                    }
-                });
+                    return false;
+                }
+
+                Run(() => CommitFilesContextMenu.ResetAsync(toFirst: true));
                 return true;
-            case BrowseDiffCommand.DeleteSelectedFiles when workTree && files.Count > 0:
-                Run(async () =>
-                {
-                    if (await new ConfirmWindow($"Delete {files.Count} untracked file(s)? This cannot be undone.",
-                                "Delete")
-                            .ShowDialog<bool>(this))
-                    {
-                        await _actions.DeleteUntrackedAsync(path, files);
-                    }
-                });
+            case BrowseDiffCommand.DeleteSelectedFiles when (workTree || index) && files.Count > 0:
+                Run(CommitFilesContextMenu.DeleteAsync);
                 return true;
             default:
                 return false;

@@ -58,6 +58,9 @@ public partial class CommitWindow : Window
     // Upstream's UseFormCommitMessage, read once per window as upstream does: off, git asks for the message in its editor.
     private readonly bool _useFormCommitMessage;
 
+    // Upstream's CommitKind: a fixup, squash or amend commit started from the grid, until it is made.
+    private CommitKind _commitKind;
+
     public CommitWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IRepositoryService repositoryService, IAppPreferences preferences, Func<Task> refresh,
         ICommitMessageStore messages, Func<string, bool>? runPlugin = null,
@@ -85,7 +88,14 @@ public partial class CommitWindow : Window
         Title = CommitStatusBar.Title(repository.CurrentBranch, repositoryPath);
         _messages = messages;
         Opened += (_, _) => Run(LoadMessageAsync);
-        Closing += (_, _) => SavedDraft = SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true);
+        Closing += (_, _) => SavedDraft = CommitKinds.KeepsDraft(_commitKind)
+            ? SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true)
+            : Task.CompletedTask;
+        modifyCommitMessageButton.Click += (_, _) =>
+        {
+            SetCommitKind(CommitKind.Normal);
+            CommitMessageBox.Focus();
+        };
         _useFormCommitMessage = preferences.UseFormCommitMessage;
         if (!_useFormCommitMessage)
         {
@@ -165,13 +175,39 @@ public partial class CommitWindow : Window
         }
 
         // As upstream: Amend comes back checked, not while a merge is stopped, and the draft stays as it was left.
-        if (_preferences.RememberAmendCommitState && !_repository.IsMerging &&
+        if (_commitKind == CommitKind.Normal && _preferences.RememberAmendCommitState && !_repository.IsMerging &&
             await _messages.LoadAmendAsync(_repositoryPath))
         {
             _restoringAmend = true;
             AmendCheck.IsChecked = true;
             _restoringAmend = false;
         }
+    }
+
+    /// <summary>
+    ///  Upstream's <c>StartFixupCommitDialog</c>, <c>StartSquashCommitDialog</c> and <c>StartAmendCommitDialog</c>: the
+    ///  window makes a <paramref name="kind"/> commit for the commit whose <paramref name="subject"/> and
+    ///  <paramref name="fullMessage"/> are given, starting from upstream's message for it instead of the draft.
+    /// </summary>
+    public void StartSpecialCommit(CommitKind kind, string subject, string fullMessage)
+    {
+        SetCommitKind(kind);
+        if (_useFormCommitMessage && CommitKinds.Message(kind, subject, fullMessage) is { Length: > 0 } message)
+        {
+            CommitMessageBox.Text = message;
+        }
+    }
+
+    // Upstream's CommitKind setter: a fixup or squash message is read only, with the button that makes the commit a
+    // normal one.
+    private void SetCommitKind(CommitKind kind)
+    {
+        _commitKind = kind;
+        modifyCommitMessageButton.IsVisible = _useFormCommitMessage && !CommitKinds.MessageCanBeChanged(kind);
+        bool messageCanBeChanged = _useFormCommitMessage && CommitKinds.MessageCanBeChanged(kind);
+        CommitMessageBox.IsEnabled = messageCanBeChanged;
+        CommitTemplatesButton.IsEnabled = messageCanBeChanged;
+        CommitMessageMenuButton.IsEnabled = messageCanBeChanged;
     }
 
     // On close, as upstream's FormCommit: the draft and whether Amend was checked.
@@ -496,6 +532,7 @@ public partial class CommitWindow : Window
             CommitMessageBox.Text = "";
             AmendCheck.IsChecked = false;
             NoVerifyMenuItem.IsChecked = false;
+            SetCommitKind(CommitKind.Normal);
             await _messages.ResetAsync(_repositoryPath);
             await scripts.RunEventAsync(ScriptEvent.AfterCommit, _repositoryPath, []);
         }

@@ -277,6 +277,21 @@ public static class RepoObjectsTree
     }
 
     /// <summary>
+    ///  The revision upstream's <c>OnSelected</c> goes to in the grid when <paramref name="node"/> is selected
+    ///  (<c>GoToRevision</c>): a branch's name (local or remote), a tag's, a stash's commit and a worktree's checked-out commit;
+    ///  <see langword="null"/> for the other nodes.
+    /// </summary>
+    public static string? RevisionOf(RepoObjectNode node)
+        => node switch
+        {
+            { Kind: RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch, Branch: { } branch } => branch.Name,
+            { Kind: RepoObjectKind.Tag, Item: string tag } => tag,
+            { Kind: RepoObjectKind.Stash, Item: StashInfo stash } => stash.Name,
+            { Kind: RepoObjectKind.Worktree, Item: WorktreeInfo { Sha1: { Length: > 0 } sha1 } } => sha1,
+            _ => null,
+        };
+
+    /// <summary>
     ///  The nodes from a root down to <paramref name="node"/>, so a view can expand them.
     /// </summary>
     public static IReadOnlyList<RepoObjectNode> PathTo(IReadOnlyList<RepoObjectNode> roots, RepoObjectNode node)

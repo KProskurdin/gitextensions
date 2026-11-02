@@ -1,6 +1,10 @@
 <Solution>
   <!-- Cross-platform shadow projects: the shared core compiled unchanged as net10.0, plus its tests.
        Kept separate from GitExtensions.slnx so upstream edits to that file do not conflict with this one. -->
+  <Folder Name="/analyzers/">
+    <!-- Upstream's project as it is: it targets netstandard2.0, so it needs no shadow. -->
+    <Project Path="src/app/GitExtensions.Analyzers.CSharp/GitExtensions.Analyzers.CSharp.csproj" />
+  </Folder>
   <Folder Name="/src/xplat/">
     <Project Path="src/xplat/WinFormsShim/GitExtensions.Xplat.WinFormsShim.csproj" />
     <Project Path="src/xplat/GitExtensions.Extensibility/GitExtensions.Extensibility.csproj" />
@@ -37,8 +41,21 @@
   <Folder Name="/tests/xplat/">
     <Project Path="tests/xplat/CommonTestUtils/CommonTestUtils.csproj" />
     <Project Path="tests/xplat/GitCommands.Tests/GitCommands.Tests.csproj" />
+    <Project Path="tests/xplat/GitExtensions.Extensibility.Tests/GitExtensions.Extensibility.Tests.csproj" />
+    <Project Path="tests/xplat/GitExtUtils.Tests/GitExtUtils.Tests.csproj" />
+    <Project Path="tests/xplat/ResourceManager.Tests/ResourceManager.Tests.csproj" />
     <Project Path="tests/xplat/GitExtensions.Xplat.Core.Tests/GitExtensions.Xplat.Core.Tests.csproj" />
     <Project Path="tests/xplat/GitExtensions.Xplat.App.Tests/GitExtensions.Xplat.App.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/xplat/plugins/">
+    <Project Path="tests/xplat/plugins/DeleteUnusedBranches.Tests/DeleteUnusedBranches.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/GitUIPluginInterfaces.Tests/GitUIPluginInterfaces.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/ReleaseNotesGenerator.Tests/ReleaseNotesGenerator.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/BuildServerIntegration/AppVeyorIntegration.Tests/AppVeyorIntegration.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/BuildServerIntegration/AzureDevOpsIntegration.Tests/AzureDevOpsIntegration.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/BuildServerIntegration/GitHubActionsIntegration.Tests/GitHubActionsIntegration.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/BuildServerIntegration/GitlabIntegration.Tests/GitlabIntegration.Tests.csproj" />
+    <Project Path="tests/xplat/plugins/BuildServerIntegration/JenkinsIntegration.Tests/JenkinsIntegration.Tests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />

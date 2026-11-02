@@ -23,21 +23,56 @@ public static class FileStatusList
     };
 
     /// <summary>
+    ///  Upstream's <c>GetItemImageKey</c> for a file of a commit or of a diff between two revisions, by git's status letter:
+    ///  deleted, new (or untracked), unmerged, changed, renamed, copied, else unknown.
+    /// </summary>
+    public static string ImageForStatus(string status) => status switch
+    {
+        "D" => "FileStatusRemoved",
+        "A" or "?" => "FileStatusAdded",
+        "U" => "Unmerged",
+        "M" or "T" => "FileStatusModified",
+        "R" => "FileStatusRenamed",
+        "C" => "FileStatusCopied",
+        _ => "FileStatusUnknown",
+    };
+
+    /// <summary>
+    ///  The kind of change git's status letter stands for, for the group-by order.
+    /// </summary>
+    public static ChangeKind KindOf(string status) => status switch
+    {
+        "D" => ChangeKind.Deleted,
+        "A" => ChangeKind.Added,
+        "?" => ChangeKind.Untracked,
+        "U" => ChangeKind.Conflict,
+        "R" or "C" => ChangeKind.Renamed,
+        _ => ChangeKind.Modified,
+    };
+
+    /// <summary>
     ///  The files in the order of upstream's group-by choice (<c>DiffListSorting</c>): by path, by extension and then path, or
     ///  by status (in the order of upstream's status images: unmerged, modified, renamed, added, removed) and then path. The
     ///  list is flat, so the tree and flat variants of a choice give the same order.
     /// </summary>
     public static IReadOnlyList<FileChange> Sort(IEnumerable<FileChange> files, DiffListSortType sorting)
+        => Sort(files, sorting, file => file.Path, file => file.Kind);
+
+    /// <summary>
+    ///  <see cref="Sort(IEnumerable{FileChange}, DiffListSortType)"/> for any file, by its path and kind of change.
+    /// </summary>
+    public static IReadOnlyList<T> Sort<T>(IEnumerable<T> files, DiffListSortType sorting, Func<T, string> path,
+        Func<T, ChangeKind> kind)
     {
-        IOrderedEnumerable<FileChange> ordered = sorting switch
+        IOrderedEnumerable<T> ordered = sorting switch
         {
             DiffListSortType.FileExtension or DiffListSortType.FileExtensionFlat
-                => files.OrderBy(file => Path.GetExtension(file.Path), StringComparer.OrdinalIgnoreCase),
+                => files.OrderBy(file => Path.GetExtension(path(file)), StringComparer.OrdinalIgnoreCase),
             DiffListSortType.FileStatus or DiffListSortType.FileStatusFlat
-                => files.OrderBy(file => StatusRank(file.Kind)),
+                => files.OrderBy(file => StatusRank(kind(file))),
             _ => files.OrderBy(_ => 0),
         };
-        return [.. ordered.ThenBy(file => file.Path, StringComparer.Ordinal)];
+        return [.. ordered.ThenBy(path, StringComparer.Ordinal)];
 
         static int StatusRank(ChangeKind kind) => kind switch
         {

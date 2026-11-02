@@ -23,6 +23,8 @@ using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitUI.ScriptsEngine;
 using GitUIPluginInterfaces;
+using DialogResult = System.Windows.Forms.DialogResult;
+using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
 
@@ -37,6 +39,9 @@ public partial class MainWindow : Window
     private const string BenchmarkCommitsEnvironmentVariable = "XPLAT_BENCHMARK_COMMITS";
     private const int DefaultBenchmarkCommits = 5000;
     private const string RemoteName = "origin";
+
+    // Upstream's FormBisect._bisectStart.
+    private const string BisectStartRange = "Mark selected revisions as start bisect range?";
 
     // Activation refreshes the working-tree status at most this often, so switching windows back and forth stays cheap.
     private static readonly TimeSpan _activationRefreshInterval = TimeSpan.FromSeconds(2);
@@ -83,7 +88,8 @@ public partial class MainWindow : Window
         _history = new GitCommitHistory(
             () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
             () => _preferences.RevisionSortOrder, AppServices.RevisionLinks,
-            showArtificialCommits: () => _preferences.RevisionGraphShowArtificialCommits);
+            showArtificialCommits: () => _preferences.RevisionGraphShowArtificialCommits,
+            showStashes: () => _preferences.ShowStashes);
         _repositoryService = new GitRepositoryService(RefSorting);
         _commits = new CommitListViewModel(_history);
         _repository = new RepositoryViewModel(_repositoryService);
@@ -237,23 +243,28 @@ public partial class MainWindow : Window
 
     private void WireCommitList()
     {
+        WireDiffFileList();
         DetailTabs.SelectionChanged += (_, _) => ShowFileTreeIfVisible();
         WireCommitInfo();
         FileTreeView.SelectionChanged += (_, _) => Run(ShowSelectedTreeFileAsync);
-        CommitList.SelectionChanged += (_, _) =>
+        CommitList.SelectionChanged += (_, e) =>
         {
+            TrackGridSelection(e);
             CommitDiff.Clear();
-            if (CommitList.SelectedItem is CommitListItem selected)
+
+            // As upstream's OnGridViewSelectionChanged: the history follows a single selected commit.
+            if (LatestSelectedItem is { } selected && SelectedRevisions.Count == 1)
             {
                 _navigationHistory.Push(selected.Row.Hash);
             }
 
-            Run(() => _commits.SelectAsync((CommitList.SelectedItem as CommitListItem)?.Row));
+            Run(() => _commits.SelectAsync(LatestSelectedItem?.Row));
+            ShowSelectionDiff();
         };
         CommitList.DoubleTapped += (_, _) => ViewSelectedRevision();
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
         WireGridMenu();
-        CommitFilesContextMenu.Opening += (_, _) => ShowFileListScripts();
+        WireDiffFileMenu();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
 
         // Upstream's DiffFiles_DoubleClick: the file's history at the selected commit.
@@ -355,6 +366,14 @@ public partial class MainWindow : Window
 
         HighlightSelectedBranchMenuItem.InputGesture =
             Hotkeys.Grid.GestureFor(GridCommand.ToggleHighlightSelectedBranch);
+        FixupCommitMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CreateFixupCommit);
+        SquashCommitMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CreateSquashCommit);
+        AmendCommitMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CreateAmendCommit);
+        SelectAsBaseMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.SelectAsBaseToCompare);
+        OpenCommitsWithDiffToolMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.OpenCommitsWithDifftool);
+        CompareToBaseMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CompareToBase);
+        CompareToWorkingDirectoryMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CompareToWorkingDirectory);
+        CompareSelectedCommitsMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CompareSelectedCommits);
     }
 
     // Event handlers start their async work through this, so an exception that escapes it is shown, not fatal.
@@ -677,6 +696,26 @@ public partial class MainWindow : Window
             case GridCommand.GoToMergeBase when selected is not null:
                 Run(GoToMergeBaseAsync);
                 return true;
+            case GridCommand.CreateFixupCommit:
+                return StartSpecialCommit(CommitKind.Fixup);
+            case GridCommand.CreateSquashCommit:
+                return StartSpecialCommit(CommitKind.Squash);
+            case GridCommand.CreateAmendCommit:
+                return StartSpecialCommit(CommitKind.Amend);
+            case GridCommand.SelectAsBaseToCompare:
+                return SelectAsBaseToCompare();
+            case GridCommand.CompareToBase:
+                return CompareToBase();
+            case GridCommand.CompareToWorkingDirectory:
+                return CompareToWorkingDirectory();
+            case GridCommand.CompareToCurrentBranch:
+                return CompareWithCurrentBranch();
+            case GridCommand.CompareToBranch:
+                return CompareToBranch();
+            case GridCommand.CompareSelectedCommits:
+                return CompareSelectedCommits();
+            case GridCommand.OpenCommitsWithDifftool:
+                return DiffSelectedCommitsWithDifftool(tool: null);
             default:
                 return false;
         }
@@ -1013,13 +1052,6 @@ public partial class MainWindow : Window
         UserScriptsPanel.IsVisible = UserScriptsPanel.Children.Count > 0;
     }
 
-    // Upstream's file list menu (FileStatusList): scripts shown in file lists are items of the menu, the others under "Run
-    // script"; they run with the selected files.
-    private void ShowFileListScripts()
-        => ScriptMenus.Fill(CommitFilesContextMenu, CommitFilesRunScriptMenuItem,
-            script => script.OnEvent == ScriptEvent.ShowInFileList,
-            script => RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
-
     // As upstream's FormBrowse.GetScriptOptionsProvider: the files of the tab on show, the File tree's or the Diff tab's, and
     // the line selected in its viewer; none on the other tabs.
     private IReadOnlyDictionary<string, IReadOnlyList<string>>? FileScriptOptions()
@@ -1156,6 +1188,12 @@ public partial class MainWindow : Window
                 new SparseWorkingCopyWindow(path, _ => Task.FromResult(false)),
             (Screenshot.ChangeLogWindow, _) => new ChangeLogWindow(),
             (Screenshot.DonateWindow, _) => new DonateWindow(OpenUrl),
+            (Screenshot.RevisionDiffWindow, { } path) => new RevisionDiffWindow(path,
+                GitModules.Open(path).RevParse("HEAD~1"), GitModules.Open(path).RevParse("HEAD"), "HEAD~1", "HEAD",
+                _preferences),
+            (Screenshot.CompareToBranchWindow, { } path) => new CompareToBranchWindow(path, default),
+            (Screenshot.ResetAnotherBranchWindow, { } path) => new ResetAnotherBranchWindow(path, "HEAD", _preferences,
+                (_, _) => Task.FromResult(false), (_, _) => Task.CompletedTask),
             (Screenshot.RevertCommitWindow, { } path) =>
                 new RevertCommitWindow(path, "HEAD", (_, _, _) => Task.CompletedTask),
             (Screenshot.CreateTagWindow, { } path) => new CreateTagWindow(path, "HEAD", _ => Task.FromResult(false),
@@ -1192,23 +1230,26 @@ public partial class MainWindow : Window
     }
 
     // One commit window at a time, as upstream; asking again brings the open one forward.
-    private void ShowCommitWindow()
+    private void ShowCommitWindow() => OpenCommitWindow();
+
+    // The commit window, brought to the front when it is open; null when none can be opened.
+    private CommitWindow? OpenCommitWindow()
     {
         if (RepositoryPath is not { } path || !CommitDialogButton.IsEnabled)
         {
-            return;
+            return null;
         }
 
         if (_commitWindow is not null)
         {
             _commitWindow.Activate();
-            return;
+            return _commitWindow;
         }
 
         // As upstream's StartCommitDialog, the plugin events wrap the window, not each commit made in it.
         if (!_plugins.RaisePre(PluginEvent.Commit))
         {
-            return;
+            return null;
         }
 
         CommitWindow window = new(path, _repository, _actions, _repositoryService, _preferences,
@@ -1230,6 +1271,7 @@ public partial class MainWindow : Window
             await previousSave;
             window.Show(this);
         });
+        return window;
     }
 
     // Upstream's handling of a rejected push, with its questions over the process window that shows git's output.
@@ -1616,18 +1658,15 @@ public partial class MainWindow : Window
                 UpdateBusyState();
                 break;
             case nameof(CommitListViewModel.CommitFiles):
-                CommitFilesList.ItemsSource = _commits.CommitFiles;
-                break;
-            case nameof(CommitListViewModel.VisibleRows):
-                // A new page or the quick filter replaces the items; the selected commit stays selected when it is still shown.
-                string? selectedHash = _commits.Selected?.Hash;
-                CommitList.ItemsSource = _commits.VisibleRows;
-                if (selectedHash is not null
-                    && _commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == selectedHash) is { } selectedItem)
+                // While several commits are selected, the Diff tab lists the files between them instead.
+                if (_diffRange is null)
                 {
-                    CommitList.SelectedItem = selectedItem;
+                    _diffFiles?.Files = _commits.Selected is null ? null : _commits.CommitFiles;
                 }
 
+                break;
+            case nameof(CommitListViewModel.VisibleRows):
+                ShowGridRows();
                 break;
             case nameof(CommitListViewModel.Status):
                 StatusText.Text = _commits.Status;
@@ -1790,7 +1829,31 @@ public partial class MainWindow : Window
             return;
         }
 
-        BisectWindow window = new(_repository.IsBisecting, () => _actions.StartBisectAsync(path));
+        BisectWindow? window = null;
+        window = new BisectWindow(_repository.IsBisecting, async () =>
+        {
+            // Upstream's Start_Click: with several commits selected, after a question the latest selected is marked good
+            // and the earliest bad, and the window closes.
+            IReadOnlyList<CommitRow> revisions = SelectedRevisions;
+            bool started = await _actions.StartBisectAsync(path);
+            if (started && revisions.Count > 1 && window is not null)
+            {
+                MessageBoxWindow question = new(Ui.UpstreamTranslation.ByText(BisectStartRange),
+                    Ui.UpstreamTranslation.ByText(window.Title ?? ""), MessageBoxButtons.YesNo);
+                await question.ShowDialog(window);
+                if (question.Result == DialogResult.Yes)
+                {
+                    if (await _actions.MarkBisectAsync(path, GitBisectOption.Good, revisions[0].Hash))
+                    {
+                        await _actions.MarkBisectAsync(path, GitBisectOption.Bad, revisions[^1].Hash);
+                    }
+
+                    window.Close(null);
+                }
+            }
+
+            return started;
+        });
         BisectStep? step = await window.ShowDialog<BisectStep?>(this);
         if (step == BisectStep.Stop)
         {
@@ -1955,7 +2018,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        await new StashWindow(path, _actions, _preferences, manageStashes, initialStash).ShowDialog(owner);
+        await new StashWindow(path, _actions, _preferences, manageStashes, initialStash)
+        {
+            MenuServices = FileListMenuServices,
+        }.ShowDialog(owner);
         RefreshRepository();
     }
 
@@ -2062,11 +2128,18 @@ public partial class MainWindow : Window
 
     private async Task OpenCommitFileInDiffToolAsync(string? tool)
     {
-        if (RepositoryPath is { } path && _commits.Selected is { } row &&
+        if (RepositoryPath is { } path && CommitFilesList.SelectedItem is CommitFile rangeItem
+            && RangeFile(rangeItem) is { } range)
+        {
+            await OpenRangeFileInDiffToolAsync(path, range.Range, range.File, tool);
+            return;
+        }
+
+        if (RepositoryPath is { } repositoryPath && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {
             (string? hash, bool staged) = DiffSource(row);
-            await _actions.RunDiffToolAsync(path, file.Path, hash, staged, tool);
+            await _actions.RunDiffToolAsync(repositoryPath, file.Path, hash, staged, tool);
         }
     }
 
@@ -2078,6 +2151,14 @@ public partial class MainWindow : Window
 
     private void ShowCommitDiff()
     {
+        if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile rangeItem
+            && RangeFile(rangeItem) is { } range)
+        {
+            new DiffWindow(range.File.Path, view => ShowRangeFileDiffAsync(view, repositoryPath, range.Range, range.File))
+                .Show(this);
+            return;
+        }
+
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {
@@ -2090,6 +2171,13 @@ public partial class MainWindow : Window
     {
         ShowCommitDiffButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
         CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
+        if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile rangeItem
+            && RangeFile(rangeItem) is { } range)
+        {
+            Run(() => ShowRangeFileDiffAsync(CommitDiff, repositoryPath, range.Range, range.File));
+            return;
+        }
+
         if (RepositoryPath is { } path && _commits.Selected is { } row &&
             CommitFilesList.SelectedItem is CommitFile file)
         {

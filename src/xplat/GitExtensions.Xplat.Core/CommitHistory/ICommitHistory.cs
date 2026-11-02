@@ -83,7 +83,23 @@ public sealed record CommitRow(
     bool HasMultiLineMessage = false,
     string? AuthorEmail = null,
     DateTime? AuthorDateValue = null,
-    DateTime? CommitDateValue = null);
+    DateTime? CommitDateValue = null)
+{
+    /// <summary>
+    ///  Upstream's <c>GitRevision.ReflogSelector</c> of a stash row ("refs/stash@{0}"); null for any other commit.
+    /// </summary>
+    public string? ReflogSelector { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>IsStash</c>: the row is a stash's main commit.
+    /// </summary>
+    public bool IsStash => ReflogSelector is not null;
+
+    /// <summary>
+    ///  Upstream's stash label text: the selector without "refs/" ("stash@{0}").
+    /// </summary>
+    public string? StashLabel => ReflogSelector is { Length: > 5 } selector ? selector[5..] : null;
+}
 
 public enum RefKind
 {
@@ -191,4 +207,9 @@ public sealed record RevisionLink(string Caption, string Uri);
 public sealed record CommitFile(string Status, string Path)
 {
     public string Display => $"{Status} {Path}";
+
+    /// <summary>
+    ///  Upstream's status image for the file.
+    /// </summary>
+    public string Image => Repository.FileStatusList.ImageForStatus(Status);
 }

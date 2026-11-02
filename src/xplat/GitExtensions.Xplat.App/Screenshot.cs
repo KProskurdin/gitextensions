@@ -86,6 +86,12 @@ internal static class Screenshot
 
     public const string RevertCommitWindow = "revertcommit";
 
+    public const string ResetAnotherBranchWindow = "resetanotherbranch";
+
+    public const string RevisionDiffWindow = "revisiondiff";
+
+    public const string CompareToBranchWindow = "comparetobranch";
+
     public const string CleanupRepositoryWindow = "cleanup";
 
     public const string ArchiveWindow = "archive";
