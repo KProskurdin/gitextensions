@@ -222,5 +222,5 @@ public sealed record CommitFile(string Status, string Path)
     /// <summary>
     ///  Upstream's status image for the file.
     /// </summary>
-    public string Image => Repository.FileStatusList.ImageForStatus(Status);
+    public string Image => DiffFile?.Image ?? Repository.FileStatusList.ImageForStatus(Status);
 }

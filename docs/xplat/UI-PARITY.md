@@ -519,6 +519,13 @@ toolbar icons with upstream's `ToolTipText`.
   focus, all parents), and upstream's toolbar enable rules (collapse only with diff groups, dense tree, group nodes).
   See the FormCommit and RevisionDiffControl notes in `PORTING-MAP.md`. Next: the A/B diff status filter buttons and
   images of the BASE groups, then the other partial rows.
+- 2026-11-03, the BASE groups' diff status done: upstream's A/B/same/unequal images and the "!", "B", "A", "=" filter.
+  See the RevisionDiffControl note in `PORTING-MAP.md`. Next: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, FormRevisionFilter rebuilt as upstream's (each filter's check box, ignore case, limit, branches, reflog,
+  simplify by decoration, full history, simplify merges, upstream's enable rules and stored settings); the
+  FilterInfo / FormRevisionFilter row is `ported`. FormMergeBranch is `ported` too (checked against its designer; its
+  old "Not ported" line was stale). Stale "Not ported" lines found in FormCommit and FormClone are marked. Next: the
+  other partial rows of `PORTING-MAP.md`.
 
 ## Risks
 

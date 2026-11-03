@@ -39,7 +39,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff), `MainWindow.DiffRange.cs` (diff groups of a merge or several selected commits), `RevisionFileList.cs` (group nodes), `FileTreeRows.cs` (the file tree, shared with the commit and stash windows), `MainWindow.DiffFileMenu.cs` (binds the item menu), `FileStatusListMenu.axaml(.cs)` (item menu, shared with FormDiff), `CopyPathsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Diff/DiffFileMenu.cs` (item menu rules through the linked upstream `RevisionDiffController`, `ContextMenuSelectionInfo`, `FileStatusListContextMenuController`, `FileStatusItem` and `RevisionDiffInfoProvider`), `Diff/DiffGroups.cs` (the linked upstream `FileStatusDiffCalculator` and `FileStatusWithDescription`; `Diff/UpstreamDiffTexts.cs` stands in for its texts), `Diff/DiffParser.cs` (`ParseCombined`); `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`ImageForStatus`, `KindOf`, `Sort<T>`), `Repository/FileStatusTree.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`BuildPathFilter`, `FilePathByObjectId`), `FilterInfo.cs` (full history) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileHistoryDialog.cs`, `FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`, `PathFilter`), `CommitListViewModel.FilePaths`, `RevisionFilter.cs` (`FullHistory`, `SimplifyMerges`); `src/xplat/GitExtensions.Xplat.App/FileHistoryWindow.axaml(.cs)`, `RevisionGrid.axaml`, `FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBlame.cs`; `src/app/GitUI/UserControls/BlameControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameView.axaml(.cs)`, `BlameWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateTag.cs`; `src/app/GitCommands/Git/Tag/GitTagController.cs` (`CreateTag`) | `src/xplat/GitExtensions.Xplat.App/CreateTagWindow.axaml(.cs)`, `MainWindow.axaml.cs` (`ShowCreateTagAsync`); `src/xplat/GitExtensions.Xplat.Core/Operations/CreateTagDialog.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteTagWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
@@ -69,7 +69,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/Hotkey/HotkeySettingsManager.cs` (FormBrowse and FormCommit defaults) | `src/xplat/GitExtensions.Xplat.App/Hotkeys.cs`, `HotkeyEditor.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/UpstreamHotkeys.cs` | `52d08e996` | partial |
 | `src/app/GitUI/SplitterManager.cs`, `NestedSplitterManager.cs`; `FormBrowse.cs` (`SetSplitterPositions`), `FormCommit.cs` (`RestoreSplitters`), `RevisionDiffControl.cs` (`InitSplitterManager`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Splitters.cs`; `src/xplat/GitExtensions.Xplat.App/SplitterTracker.cs`, `MainWindow.Toolbar.cs` (`TrackSplitters`), `CommitWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormGitIgnore.cs`, `FormAddToGitIgnore.cs` | `src/xplat/GitExtensions.Xplat.App/GitIgnoreWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitIgnoreFile.cs` | `52d08e996` | partial |
-| `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs`, `FormRevisionFilter.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`; `src/xplat/GitExtensions.Xplat.App/FilterWindow.axaml(.cs)`; `MainWindow.axaml` (branch choice, Filter...) | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs`, `FormRevisionFilter.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`; `src/xplat/GitExtensions.Xplat.App/FilterWindow.axaml(.cs)`; `MainWindow.axaml` (branch choice, Filter...) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/WorktreeDialog/FormManageWorktree.cs`, `FormCreateWorktree.cs`; `src/app/GitUI/GitUICommands.cs` (`WorktreeSwitch`, `WorktreeCreate`, `WorktreeDelete`); `FormBrowse.cs` (worktree drop-down) | `src/xplat/GitExtensions.Xplat.App/WorktreesWindow.axaml(.cs)`, `CreateWorktreeWindow.axaml(.cs)`, `WorktreeFlow.cs`, `MainWindow.Toolbar.cs` (drop-down); `src/xplat/GitExtensions.Xplat.Core/Operations/ManageWorktreeDialog.cs`, `CreateWorktreeDialog.cs`, `Repository/GitRepositoryService.cs` (`GetWorktreesAsync`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormSubmodules.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Submodules section); `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (`GetSubmodules`), `Operations/GitOperations.cs` (update, sync) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormSparseWorkingCopy.cs`, `FormSparseWorkingCopyViewModel.cs`; `FormBrowse.cs` (`menuitemSparseWorkingCopy_Click`) | `src/xplat/GitExtensions.Xplat.App/SparseWorkingCopyWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/SparseWorkingCopy.cs` | `52d08e996` | ported |
@@ -447,9 +447,9 @@ leaves out a submodule added or removed in the commit where upstream throws), "R
 changes" (upstream's `FormResetChanges` question, then `GitModule.ResetAllChanges`'s steps with their errors reported),
 staging without git's line ending check when "Show errors when staging files" is off (`-c core.safecrlf=false`), the
 message box's auto-completion (see the EditNetSpell row) and, with "Compose commit messages in Commit dialog" off, a
-commit whose message git asks for in the editor (`GitEditorCommand`). Not ported: GPG signing, skipping hooks, the
+commit whose message git asks for in the editor (`GitEditorCommand`). Not ported then: GPG signing, skipping hooks, the
 spelling checker, and the commit kinds other than normal and amend (fixup, squash) with their "modify commit message"
-button.
+button; all but the spelling checker (PLAN.md M8) were ported later (U3.2 and the commit kinds, below).
 Changed 2026-10-13 (UI parity U3.1): each list is upstream's FileStatusList without its tree view: the toolbar (refresh
 on the working directory list; group by path, extension or status, kept in upstream's `DiffListSortType` and shared by
 both lists; the settings menu with "Show untracked files", "Edit ignored files" and "Edit locally ignored files"), the
@@ -564,7 +564,8 @@ Stash changes opens the stash window (2026-10-16). Not ported: "Checkout branch"
 adaptation, the submodule update after a pull and the prune offer when a pull is rejected for a removed branch.
 
 **FormClone** (`partial`). Ported: clone from a URL or local path into a new folder, then open it, with a folder picker
-and git's progress shown while it runs (see FormRemoteProcess). Not ported: branch choice, depth, and recursive submodules.
+and git's progress shown while it runs (see FormRemoteProcess). Not ported then, all ported by the rebuild below: branch
+choice, depth, and recursive submodules.
 Rebuilt 2026-10-16 (UI-PARITY U5): the clone window (`CloneWindow`, rules in core `CloneDialog`) is upstream's FormClone:
 the repository to clone (upstream's remote history, `RepositoryHistoryManager.Remotes`, offered and added to after a
 clone), the destination (the parent folders of the recent repositories offered), the subdirectory named after the
@@ -732,7 +733,12 @@ monitor does) and "Show file differences for all parents" (with upstream's toolt
 Not ported from it: "Show skip-worktree files" (the working directory row's files are the repository's changes, read
 without git's skip-worktree flag) and the toolbar submenu. The toolbar's rules since the same day: the collapse button
 shows only while the list has diff group nodes, "Dense tree" is enabled only for a tree and "Show group nodes in flat
-list" only for a flat list grouped by extension or status (upstream's `UpdateToolbar`).
+list" only for a flat list grouped by extension or status (upstream's `UpdateToolbar`). Also added: the files of the
+BASE groups carry upstream's `DiffStatus` (changed in A only, B only, the same in both, or differently; set by the linked
+calculator) with upstream's image for it (`GetItemImageKey`: "FileStatusAddedOnlyB" and the like; core
+`FileStatusList.ImageForStatus(status, diffStatus)`), and the toolbar has upstream's diff status filter, shown while
+the list has a BASE group: the "!", "B", "A" and "=" buttons in upstream's colors, all checked at first, each showing
+the files changed on its side (`IsDiffStatusMatch`, applied before the regular expression).
 Added 2026-11-03: upstream's file tree (`StatusSorter.CreateTreeSortedByPath` and `GetNodes`' grouping, ported to core
 `FileStatusTree`; shared with FormDiff's window): grouped by path the files are in their folders, the folders before the
 files at each level (`PathFirstComparer`), a folder holding only one folder shown as one ("docs/x/y"), each name without
@@ -780,11 +786,12 @@ blame window and the file history's Blame tab show; in the file history a line s
 lists (the commit window's, the browse window's diff hotkey) opens the file history on its Blame tab, as upstream's
 `StartFileHistoryDialog(showBlame: true)` does; the blame window stays for the browse files window.
 
-**FormMergeBranch** (`partial`). Ported: merge the selected branch into the current one with git's fast-forward
+**FormMergeBranch** (`ported`). Ported: merge the selected branch into the current one with git's fast-forward
 default, abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. Conflicting files appear in the
-Changes list with the Conflict kind. Not ported: the strategy and strategy options, squash, no-commit, the
-allow-unrelated-histories option, and the merge message editor. Conflicts are resolved in the conflicts window (see
-FormResolveConflicts).
+Changes list with the Conflict kind. (Not ported then, all ported by the rebuild below: the strategy and strategy
+options, squash, no-commit, the allow-unrelated-histories option, and the merge message editor.) Conflicts are resolved
+in the conflicts window (see FormResolveConflicts). Checked 2026-11-03 against upstream's designer: every control of
+FormMergeBranch is in the window, so the row is `ported`.
 Rebuilt 2026-10-16 (UI-PARITY U5): the merge window (`MergeBranchWindow`, rules in core `MergeBranchDialog`) is upstream's
 FormMergeBranch: upstream's help pictures (`HelpCommandMerge`, the fast-forward one on hover, kept expanded or not as
 `HelpIsExpandedMergeBranches`), the branch (local and remote branches and tags; proposed from the caller, else the branch
@@ -1475,16 +1482,34 @@ Edit .gitignore...), and add the selected untracked files from the commit window
 on a line of its own, skipping patterns already there and keeping the file's line ending. Not ported: the default ignore
 templates, the preview of matched files, the "info/exclude" choice, and patterns for whole folders or extensions.
 
-**FilterInfo / FormRevisionFilter** (`partial`). Ported: all branches (the upstream default) or the current branch only, kept
+**FilterInfo / FormRevisionFilter** (`ported`). Ported: all branches (the upstream default) or the current branch only, kept
 in upstream's `ShowCurrentBranchOnly` setting; the advanced filter for author, committer, message (ignoring case), since,
 until, path, hide merges and first parent only, built in upstream's argument order; the all-branches view leaves out notes,
 the stash and agent session refs as upstream does with its default settings (including `c16194306`). The status line says
 when the list is filtered. 2026-10-13, with the filter toolstrip: the branch filter ("Filtered branches": revisions, ranges
 and options as they are, words with wildcards as `--branches=`), `--reflog`, the diff content search (`-G`), a message
 filter starting with `--` passed as git log options, `HasFilter`, `ResetAllFilters` (keeps the current branch and reflog
-choices) and `GetSummary`. Not ported: simplify-by-decoration, full history and simplify merges, the commit count limit,
-`--boundary` for a message and diff filter together, and the dialog's own fields for the branch filter, diff content and
-reflog (`FilterWindow` keeps what the toolstrip set).
+choices) and `GetSummary`. (Not ported then, all ported 2026-11-03 below: simplify-by-decoration, full history and
+simplify merges, the commit count limit, `--boundary` for a message and diff filter together, and the dialog's own
+fields for the branch filter, diff content and reflog.)
+Rebuilt 2026-11-03: `FilterWindow` is upstream's FormRevisionFilter ("Filter", OK only, Escape cancels): each filter a
+label, the check box that turns it on and its value (since, until, author, committer, message, "Diff contains" with
+upstream's "SLOW" tooltip, "Ignore case", "Limit", path filter, branches), then "Show current branch only", "Show
+reflog", "Show only first parent", "Hide merge commits", "Simplify by decoration", "Full history" and "Simplify merges",
+with upstream's `UpdateFilters` rules (a value enabled with its check box, ignore case only with a text filter, the
+current branch choice not with the reflog, the branch filter with neither) and an unchecked limit showing upstream's
+default (`MaxRevisionGraphCommits`). Core `RevisionFilter` got `IgnoreCase` (`--regexp-ignore-case` only while it is on),
+`SimplifyByDecoration` (`--simplify-by-decoration`, a revision filter as upstream's `HasRevisionFilter`, so the full
+history applies with it), `CommitsLimit` and upstream's `--boundary`, in upstream's argument order (the full history
+before `--first-parent`). As upstream's settings: "Hide merge commits", "Show only first parent" and "Simplify by
+decoration" are stored on each change (`HideMergeCommits`, `ShowOnlyFirstParent`, `showsimplifybydecoration`) and read
+when the window opens; "Full history" and "Simplify merges" are the settings the file history shares
+(`FullHistoryInFileHistory`, `SimplifyMergesInFileHistory`), now also used by the grid; the current branch choice is
+stored as the toolbar stores it. Differences: the limit stops the list's reading (it replaces "Limit number of commits
+to be loaded" while it is set) instead of git's `--max-count`, which would also limit each page the list reads; an
+unchecked filter's text is not kept for the next time the window opens, as upstream keeps it in its `FilterInfo`; the
+dates are days (Until the whole day), where upstream's pickers start at midnight. Upstream's `--parents` with a revision
+filter is not added, as the new shell's log format always reads the parents.
 
 **FormManageWorktree / FormCreateWorktree** (`ported`). Ported: the worktrees as git lists them (upstream's
 `GitModule.GetWorktrees`, used as is), open one in the browse window, add one at a folder starting at the current commit

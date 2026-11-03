@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using GitCommands;
+using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Repository;
 
@@ -36,6 +37,27 @@ public static class FileStatusList
         "C" => "FileStatusCopied",
         _ => "FileStatusUnknown",
     };
+
+    /// <summary>
+    ///  <see cref="ImageForStatus(string)"/> with upstream's image of the change's side in a BASE group
+    ///  (<c>DiffBranchStatus</c>): A only, B only, the same in both, or different, as "FileStatusAddedOnlyA".
+    /// </summary>
+    public static string ImageForStatus(string status, DiffBranchStatus diffStatus)
+    {
+        string image = ImageForStatus(status);
+        string? suffix = diffStatus switch
+        {
+            DiffBranchStatus.OnlyAChange => "OnlyA",
+            DiffBranchStatus.OnlyBChange => "OnlyB",
+            DiffBranchStatus.SameChange => "Same",
+            DiffBranchStatus.UnequalChange => "Unequal",
+            _ => null,
+        };
+        return suffix is not null && image is "FileStatusRemoved" or "FileStatusAdded" or "FileStatusModified"
+                   or "FileStatusRenamed" or "FileStatusCopied"
+            ? image + suffix
+            : image;
+    }
 
     /// <summary>
     ///  The kind of change git's status letter stands for, for the group-by order.

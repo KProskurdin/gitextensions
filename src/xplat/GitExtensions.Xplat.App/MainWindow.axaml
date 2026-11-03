@@ -793,6 +793,17 @@
                     <local:ToolToggleButton x:Name="DiffFilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
                     <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
                     <local:ToolToggleButton x:Name="DiffFilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+                    <!-- Upstream's diff status filter, shown while the list has a BASE group: its text buttons in their
+                         colors. -->
+                    <Rectangle x:Name="DiffFilesStatusFilterSeparator" Classes="toolSeparator" IsVisible="False" />
+                    <local:ToolToggleButton x:Name="DiffFilesUnequalChangeButton" Text="!" Foreground="#FF0000" IsChecked="True"
+                                            IsVisible="False" ToolTip.Tip="Show files with different changes" />
+                    <local:ToolToggleButton x:Name="DiffFilesOnlyBButton" Text="B" Foreground="#BD7CFF" IsChecked="True"
+                                            IsVisible="False" ToolTip.Tip="Show files changed in B only" />
+                    <local:ToolToggleButton x:Name="DiffFilesOnlyAButton" Text="A" Foreground="#A8A800" IsChecked="True"
+                                            IsVisible="False" ToolTip.Tip="Show files changed in A only" />
+                    <local:ToolToggleButton x:Name="DiffFilesSameChangeButton" Text="=" Foreground="#00A800" IsChecked="True"
+                                            IsVisible="False" ToolTip.Tip="Show files changed equally" />
                     <Rectangle Classes="toolSeparator" />
                     <!-- Upstream FileStatusList's settings menu as RevisionDiffControl binds it (canAutoRefresh). -->
                     <local:ToolDropDownButton x:Name="DiffFilesSettingsButton" Image="Settings" ToolTip.Tip="Settings">

@@ -50,6 +50,10 @@ internal sealed class MainWindowTests
     [TearDown]
     public void TearDown()
     {
+        // The grid's filter options are stored as upstream's settings.
+        TestAppBuilder.Preferences.HideMergeCommits = false;
+        TestAppBuilder.Preferences.ShowOnlyFirstParent = false;
+        TestAppBuilder.Preferences.ShowSimplifyByDecoration = false;
         _repo.Dispose();
     }
 
@@ -166,6 +170,52 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void The_filter_windows_limit_hides_older_commits_and_its_options_follow_upstreams_rules()
+    {
+        int maxCommits = TestAppBuilder.Preferences.MaxRevisionGraphCommits;
+        try
+        {
+            MainWindow window = NewWindow();
+            window.Show();
+            Open(window, _repo.Path);
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            WaitUntil(() => commits.ItemCount == 2);
+
+            Click(window, "AdvancedFilterButton");
+            WaitUntil(() => window.OwnedWindows.OfType<FilterWindow>().Any());
+            FilterWindow filter = window.OwnedWindows.OfType<FilterWindow>().Single();
+            Find<CheckBox>(filter, "IgnoreCaseCheck").IsEnabled.Should().BeFalse("no text filter is on");
+            Find<CheckBox>(filter, "ReflogCheck").IsChecked = true;
+            Find<CheckBox>(filter, "CurrentBranchOnlyCheck").IsEnabled.Should().BeFalse("upstream: not with the reflog");
+            Find<CheckBox>(filter, "BranchFilterCheck").IsEnabled.Should().BeFalse();
+            Find<CheckBox>(filter, "ReflogCheck").IsChecked = false;
+            Find<CheckBox>(filter, "CommitsLimitCheck").IsChecked = true;
+            Find<NumericUpDown>(filter, "CommitsLimitBox").Value = 1;
+            Find<CheckBox>(filter, "NoMergesCheck").IsChecked = true;
+            Click(filter, "ApplyButton");
+
+            WaitUntil(() => commits.ItemCount == 1);
+            TestAppBuilder.Preferences.HideMergeCommits.Should().BeTrue("upstream keeps it as a setting");
+
+            // With a filter on the toolbar button offers the resets; the View menu opens the window.
+            Click(window, "AdvancedFilterViewMenuItem");
+            WaitUntil(() => window.OwnedWindows.OfType<FilterWindow>().Any());
+            filter = window.OwnedWindows.OfType<FilterWindow>().Single();
+            (Find<CheckBox>(filter, "CommitsLimitCheck").IsChecked, Find<NumericUpDown>(filter, "CommitsLimitBox").Value)
+                .Should().Be((true, 1m));
+            Find<CheckBox>(filter, "CommitsLimitCheck").IsChecked = false;
+            Find<NumericUpDown>(filter, "CommitsLimitBox").Value.Should().Be(maxCommits,
+                "an unchecked limit shows upstream's default again");
+            Click(filter, "ApplyButton");
+            WaitUntil(() => commits.ItemCount == 2);
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.MaxRevisionGraphCommits = maxCommits;
+        }
+    }
+
+    [AvaloniaTest]
     public void The_grid_shows_every_branch_until_current_branch_is_chosen_and_the_filter_narrows_it()
     {
         TestAppBuilder.Preferences.ShowCurrentBranchOnly = false;
@@ -188,7 +238,10 @@ internal sealed class MainWindowTests
         Click(window, "AdvancedFilterButton");
         WaitUntil(() => window.OwnedWindows.OfType<FilterWindow>().Any());
         FilterWindow filter = window.OwnedWindows.OfType<FilterWindow>().Single();
+        Find<TextBox>(filter, "MessageBox").IsEnabled.Should().BeFalse("upstream's check box turns a filter on");
+        Find<CheckBox>(filter, "MessageCheck").IsChecked = true;
         Find<TextBox>(filter, "MessageBox").Text = "FIRST";
+        Find<CheckBox>(filter, "CurrentBranchOnlyCheck").IsChecked.Should().BeTrue();
         Click(filter, "ApplyButton");
 
         WaitUntil(() => commits.ItemCount == 1);

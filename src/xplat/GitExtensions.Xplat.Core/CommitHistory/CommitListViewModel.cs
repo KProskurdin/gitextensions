@@ -839,7 +839,12 @@ public sealed class CommitListViewModel : ObservableObject
     /// </summary>
     public int MaxCommits { get; set; }
 
-    private int Remaining(int loaded) => MaxCommits > 0 ? MaxCommits - loaded : int.MaxValue;
+    // Upstream's FilterInfo.CommitsLimit: the filter's limit while it has one, else MaxRevisionGraphCommits.
+    private int Remaining(int loaded)
+    {
+        int limit = Filter.CommitsLimit > 0 ? Filter.CommitsLimit : MaxCommits;
+        return limit > 0 ? limit - loaded : int.MaxValue;
+    }
 
     // The commits git listed, without the artificial working directory and index rows.
     private static int CommitCount(IReadOnlyList<CommitRow> rows) =>

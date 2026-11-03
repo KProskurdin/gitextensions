@@ -443,6 +443,22 @@ public interface IAppPreferences
     bool ShowCurrentBranchOnly { get; set; }
 
     /// <summary>
+    ///  Upstream <c>HideMergeCommits</c>: the grid hides merge commits (<c>--no-merges</c>), kept across sessions.
+    /// </summary>
+    bool HideMergeCommits { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>ShowOnlyFirstParent</c>: the grid follows only the first parents (<c>--first-parent</c>).
+    /// </summary>
+    bool ShowOnlyFirstParent { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showsimplifybydecoration</c>: the grid shows only the commits refs point at
+    ///  (<c>--simplify-by-decoration</c>).
+    /// </summary>
+    bool ShowSimplifyByDecoration { get; set; }
+
+    /// <summary>
     ///  Upstream's <c>CommitInfoPosition</c>: the commit info as the first tab below the grid, or beside the grid.
     /// </summary>
     CommitInfoPosition CommitInfoPosition { get; set; }
@@ -1243,6 +1259,24 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.ShowCurrentBranchOnly.Value = value;
     }
 
+    public bool HideMergeCommits
+    {
+        get => AppSettings.HideMergeCommits;
+        set => AppSettings.HideMergeCommits = value;
+    }
+
+    public bool ShowOnlyFirstParent
+    {
+        get => AppSettings.ShowOnlyFirstParent;
+        set => AppSettings.ShowOnlyFirstParent = value;
+    }
+
+    public bool ShowSimplifyByDecoration
+    {
+        get => AppSettings.ShowSimplifyByDecoration;
+        set => AppSettings.ShowSimplifyByDecoration = value;
+    }
+
     public CommitInfoPosition CommitInfoPosition
     {
         get => AppSettings.CommitInfoPosition;
@@ -1879,6 +1913,12 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     }
 
     public bool ShowCurrentBranchOnly { get; set; }
+
+    public bool HideMergeCommits { get; set; }
+
+    public bool ShowOnlyFirstParent { get; set; }
+
+    public bool ShowSimplifyByDecoration { get; set; }
 
     public CommitInfoPosition CommitInfoPosition { get; set; }
 

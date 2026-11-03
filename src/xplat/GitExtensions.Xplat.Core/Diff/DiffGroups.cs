@@ -99,5 +99,8 @@ public static class DiffGroups
                 : item.IsCopied ? "C"
                 : "M",
             item.Name, item.IsRenamed || item.IsCopied ? item.OldName : null,
-            item.IsTracked || (!item.TreeId.IsZero && !group.SecondRev.ObjectId.IsZero));
+            item.IsTracked || (!item.TreeId.IsZero && !group.SecondRev.ObjectId.IsZero))
+        {
+            DiffStatus = item.DiffStatus,
+        };
 }

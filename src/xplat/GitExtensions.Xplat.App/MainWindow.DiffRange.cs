@@ -34,7 +34,10 @@ public partial class MainWindow
                     (DiffFilesStatusTreeMenuItem, DiffListSortType.FileStatus),
                     (DiffFilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
                 ],
-                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem));
+                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem),
+            file => file.DiffFile?.DiffStatus ?? DiffBranchStatus.Unknown,
+            new DiffStatusButtons(DiffFilesUnequalChangeButton, DiffFilesOnlyBButton, DiffFilesOnlyAButton,
+                DiffFilesSameChangeButton, DiffFilesStatusFilterSeparator));
 
     // Called on each selection change, after the selection is tracked.
     private void ShowSelectionDiff()

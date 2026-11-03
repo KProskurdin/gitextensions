@@ -1,31 +1,67 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="GitExtensions.Xplat.App.FilterWindow"
-        Title="Filter revisions"
-        Width="500" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream FormRevisionFilter: empty fields do not filter. -->
-  <StackPanel Margin="16" Spacing="8">
-    <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
-      <TextBlock Grid.Row="0" Text="Author" VerticalAlignment="Center" />
-      <TextBox x:Name="AuthorBox" Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="1" Text="Committer" VerticalAlignment="Center" />
-      <TextBox x:Name="CommitterBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="2" Text="Message" VerticalAlignment="Center" />
-      <TextBox x:Name="MessageBox" Grid.Row="2" Grid.Column="2" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="3" Text="Since" VerticalAlignment="Center" />
-      <CalendarDatePicker x:Name="SinceBox" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="4" Text="Until" VerticalAlignment="Center" />
-      <CalendarDatePicker x:Name="UntilBox" Grid.Row="4" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
-      <TextBlock Grid.Row="5" Text="Path" VerticalAlignment="Center" />
-      <TextBox x:Name="PathBox" Grid.Row="5" Grid.Column="2" PlaceholderText="File or folder, relative to the repository" />
+        Title="Filter"
+        Width="408" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormRevisionFilter (a GitExtensionsDialog): each filter a label, the check box that turns it on and its
+       value; then the branch and history options; OK at the bottom (Escape cancels). -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <Button x:Name="ApplyButton" Content="OK" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
+        <Button x:Name="CancelButton" IsCancel="True" IsVisible="False" />
+      </StackPanel>
+    </Border>
+    <Grid Margin="9" ColumnDefinitions="Auto,Auto,*"
+          RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+      <Grid.Styles>
+        <Style Selector="AccessText.label">
+          <Setter Property="VerticalAlignment" Value="Center" />
+          <Setter Property="Margin" Value="3,3,6,3" />
+        </Style>
+        <Style Selector="CheckBox">
+          <Setter Property="Margin" Value="3,0" />
+        </Style>
+        <Style Selector="TextBox, CalendarDatePicker, NumericUpDown">
+          <Setter Property="Margin" Value="3" />
+        </Style>
+      </Grid.Styles>
+      <AccessText Grid.Row="0" Classes="label" Text="_Since" />
+      <CheckBox x:Name="SinceCheck" Grid.Row="0" Grid.Column="1" />
+      <CalendarDatePicker x:Name="SinceBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" />
+      <AccessText Grid.Row="1" Classes="label" Text="_Until" />
+      <CheckBox x:Name="UntilCheck" Grid.Row="1" Grid.Column="1" />
+      <CalendarDatePicker x:Name="UntilBox" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" />
+      <AccessText Grid.Row="2" Classes="label" Text="_Author" />
+      <CheckBox x:Name="AuthorCheck" Grid.Row="2" Grid.Column="1" />
+      <TextBox x:Name="AuthorBox" Grid.Row="2" Grid.Column="2" />
+      <AccessText Grid.Row="3" Classes="label" Text="_Committer" />
+      <CheckBox x:Name="CommitterCheck" Grid.Row="3" Grid.Column="1" />
+      <TextBox x:Name="CommitterBox" Grid.Row="3" Grid.Column="2" />
+      <AccessText Grid.Row="4" Classes="label" Text="_Message" />
+      <CheckBox x:Name="MessageCheck" Grid.Row="4" Grid.Column="1" />
+      <TextBox x:Name="MessageBox" Grid.Row="4" Grid.Column="2" />
+      <AccessText Grid.Row="5" Classes="label" Text="_Diff contains" />
+      <CheckBox x:Name="DiffContentCheck" Grid.Row="5" Grid.Column="1" ToolTip.Tip="SLOW" />
+      <TextBox x:Name="DiffContentBox" Grid.Row="5" Grid.Column="2" ToolTip.Tip="SLOW" />
+      <CheckBox x:Name="IgnoreCaseCheck" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Content="_Ignore case" />
+      <AccessText Grid.Row="7" Classes="label" Text="_Limit" />
+      <CheckBox x:Name="CommitsLimitCheck" Grid.Row="7" Grid.Column="1" />
+      <NumericUpDown x:Name="CommitsLimitBox" Grid.Row="7" Grid.Column="2" Minimum="0" Maximum="1000000" Increment="1"
+                     FormatString="0" Width="116" HorizontalAlignment="Left" />
+      <AccessText Grid.Row="8" Classes="label" Text="_Path filter" />
+      <CheckBox x:Name="PathFilterCheck" Grid.Row="8" Grid.Column="1" />
+      <TextBox x:Name="PathBox" Grid.Row="8" Grid.Column="2" />
+      <AccessText Grid.Row="9" Classes="label" Text="_Branches" />
+      <CheckBox x:Name="BranchFilterCheck" Grid.Row="9" Grid.Column="1" />
+      <TextBox x:Name="BranchFilterBox" Grid.Row="9" Grid.Column="2" />
+      <CheckBox x:Name="CurrentBranchOnlyCheck" Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Content="Show current branch _only" />
+      <CheckBox x:Name="ReflogCheck" Grid.Row="11" Grid.Column="1" Grid.ColumnSpan="2" Content="Show _reflog" />
+      <CheckBox x:Name="FirstParentCheck" Grid.Row="12" Grid.Column="1" Grid.ColumnSpan="2" Content="Show only _first parent" />
+      <CheckBox x:Name="NoMergesCheck" Grid.Row="13" Grid.Column="1" Grid.ColumnSpan="2" Content="Hide merge commi_ts" />
+      <CheckBox x:Name="SimplifyByDecorationCheck" Grid.Row="14" Grid.Column="1" Grid.ColumnSpan="2" Content="Simplify b_y decoration" />
+      <CheckBox x:Name="FullHistoryCheck" Grid.Row="15" Grid.Column="1" Grid.ColumnSpan="2" Content="Full _history" />
+      <CheckBox x:Name="SimplifyMergesCheck" Grid.Row="16" Grid.Column="1" Grid.ColumnSpan="2" Content="Simplify mer_ges" />
     </Grid>
-    <CheckBox x:Name="NoMergesCheck" Content="Hide merge commits" />
-    <CheckBox x:Name="FirstParentCheck" Content="Show first parents only" />
-    <TextBlock Text="Text matches ignore case; author, committer and message are git regular expressions." Opacity="0.7" TextWrapping="Wrap" />
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="ClearButton" Content="Clear" />
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
-      <Button x:Name="ApplyButton" Content="Apply" IsDefault="True" />
-    </StackPanel>
-  </StackPanel>
+  </DockPanel>
 </Window>

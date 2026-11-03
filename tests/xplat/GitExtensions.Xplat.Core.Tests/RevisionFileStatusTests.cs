@@ -1,6 +1,8 @@
 using AwesomeAssertions;
 using GitCommands;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
@@ -20,6 +22,18 @@ internal sealed class RevisionFileStatusTests
     {
         FileStatusList.ImageForStatus(status).Should().Be(image);
         new CommitFile(status, "a.txt").Image.Should().Be(image);
+    }
+
+    [TestCase("A", DiffBranchStatus.OnlyBChange, "FileStatusAddedOnlyB")]
+    [TestCase("D", DiffBranchStatus.OnlyAChange, "FileStatusRemovedOnlyA")]
+    [TestCase("M", DiffBranchStatus.UnequalChange, "FileStatusModifiedUnequal")]
+    [TestCase("R", DiffBranchStatus.SameChange, "FileStatusRenamedSame")]
+    [TestCase("M", DiffBranchStatus.Unknown, "FileStatusModified")]
+    [TestCase("U", DiffBranchStatus.OnlyAChange, "Unmerged")]
+    public void ImageForStatus_should_add_the_side_of_a_BASE_groups_file(string status, DiffBranchStatus side, string image)
+    {
+        FileStatusList.ImageForStatus(status, side).Should().Be(image);
+        new RevisionDiffFile(status, "a.txt", null, IsTracked: true) { DiffStatus = side }.Image.Should().Be(image);
     }
 
     [Test]

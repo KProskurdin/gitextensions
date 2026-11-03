@@ -104,7 +104,9 @@ public partial class MainWindow : Window
         ShowSortMenus();
         ShowGridTooltips();
         ShowAvatarSettings();
-        _ = _commits.ApplyFilterAsync(new RevisionFilter(CurrentBranchOnly: _preferences.ShowCurrentBranchOnly));
+        _ = _commits.ApplyFilterAsync(WithStoredOptions(new RevisionFilter(CurrentBranchOnly: _preferences.ShowCurrentBranchOnly,
+            NoMerges: _preferences.HideMergeCommits, FirstParent: _preferences.ShowOnlyFirstParent,
+            SimplifyByDecoration: _preferences.ShowSimplifyByDecoration)));
         WireToolbar();
         WireMenus();
         WireLeftPanel();
@@ -772,13 +774,39 @@ public partial class MainWindow : Window
 
     private async Task EditRevisionFilterAsync()
     {
-        if (await new FilterWindow(_commits.Filter).ShowDialog<RevisionFilter?>(this) is { } filter)
+        if (await new FilterWindow(_commits.Filter, _preferences.MaxRevisionGraphCommits).ShowDialog<RevisionFilter?>(this)
+            is { } filter)
         {
+            // Upstream's OkClick sets its settings: the current branch choice, and the full history and merge
+            // simplification the file history shares.
+            _preferences.ShowCurrentBranchOnly = filter.CurrentBranchOnly;
+            _preferences.FileHistory = _preferences.FileHistory with
+            {
+                FullHistory = filter.FullHistory,
+                SimplifyMerges = filter.SimplifyMerges,
+            };
             await ApplyRevisionFilterAsync(filter);
         }
     }
 
-    private Task ApplyRevisionFilterAsync(RevisionFilter filter) => _commits.ApplyFilterAsync(filter);
+    // Upstream's FilterInfo keeps its options in settings: hide merge commits, first parent and simplify by decoration are
+    // stored on each change; the full history and merge simplification are the settings the file history shares, which
+    // only the filter window changes from here.
+    private Task ApplyRevisionFilterAsync(RevisionFilter filter)
+    {
+        _preferences.HideMergeCommits = filter.NoMerges;
+        _preferences.ShowOnlyFirstParent = filter.FirstParent;
+        _preferences.ShowSimplifyByDecoration = filter.SimplifyByDecoration;
+        _preferences.Save();
+        return _commits.ApplyFilterAsync(WithStoredOptions(filter));
+    }
+
+    private RevisionFilter WithStoredOptions(RevisionFilter filter)
+        => filter with
+        {
+            FullHistory = _preferences.FileHistory.FullHistory,
+            SimplifyMerges = _preferences.FileHistory.SimplifyMerges,
+        };
 
     private async Task OpenRepositoryAsync(string path)
     {

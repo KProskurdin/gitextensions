@@ -135,6 +135,20 @@ internal sealed class GridMultiSelectionTests
                     second => second.Should().MatchRegex($@" Diff BASE with B [0-9a-f]{{7,}}: {main}$",
                         "upstream names a commit by its first branch"),
                     third => third.Should().MatchRegex(@" Diff BASE with A [0-9a-f]{7,}: side$"));
+
+            // Upstream marks each file with the side it changed on, and its diff status filter shows.
+            files.Items.OfType<CommitFile>().Where(file => file.Group?.Icon == "Diff")
+                .Select(file => (file.Path, file.Image)).Should().BeEquivalentTo(
+                    [("b.txt", "FileStatusAddedOnlyB"), ("c.txt", "FileStatusRemovedOnlyA")]);
+            ToolToggleButton onlyA = Find<ToolToggleButton>(window, "DiffFilesOnlyAButton");
+            onlyA.IsVisible.Should().BeTrue();
+            onlyA.IsChecked = false;
+            onlyA.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+
+            files.Items.OfType<CommitFile>().Should().NotContain(file => file.Path == "c.txt",
+                "the files changed in A only are filtered out");
+            files.Items.OfType<CommitFile>().Should().Contain(file => file.Path == "b.txt");
             window.Close();
         }
         finally

@@ -11,12 +11,17 @@ namespace GitExtensions.Xplat.Core.Diff;
 /// </summary>
 public sealed record RevisionDiffFile(string Status, string Path, string? OldPath, bool IsTracked)
 {
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.DiffStatus</c> in a BASE group of the diff groups: on which side the file changed.
+    /// </summary>
+    public DiffBranchStatus DiffStatus { get; init; }
+
     public string Display => OldPath is null ? $"{Status} {Path}" : $"{Status} {OldPath} -> {Path}";
 
     /// <summary>
-    ///  Upstream's status image for the file.
+    ///  Upstream's status image for the file, its side's variant in a BASE group.
     /// </summary>
-    public string Image => Repository.FileStatusList.ImageForStatus(Status);
+    public string Image => Repository.FileStatusList.ImageForStatus(Status, DiffStatus);
 }
 
 /// <summary>

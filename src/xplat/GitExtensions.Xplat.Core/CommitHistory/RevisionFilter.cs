@@ -15,6 +15,12 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 /// <c>--full-history</c>.</param>
 /// <param name="SimplifyMerges">Upstream's <c>SimplifyMergesInFileHistory</c>: with the full history, also
 /// <c>--simplify-merges</c>.</param>
+/// <param name="IgnoreCase">Upstream's "Ignore case": the author, committer, message and diff content filters ignore case
+/// (<c>--regexp-ignore-case</c>), as they do by default.</param>
+/// <param name="SimplifyByDecoration">Upstream's <c>ShowSimplifyByDecoration</c>: only the commits a ref points at, and
+/// those needed to keep the graph (<c>--simplify-by-decoration</c>).</param>
+/// <param name="CommitsLimit">Upstream's "Limit" (<c>ByCommitsLimit</c>): the most commits read; 0 leaves upstream's
+/// <c>MaxRevisionGraphCommits</c> as the limit.</param>
 public sealed record RevisionFilter(
     bool CurrentBranchOnly = false,
     string Author = "",
@@ -30,7 +36,10 @@ public sealed record RevisionFilter(
     string BranchFilter = "",
     bool ShowReflog = false,
     bool FullHistory = false,
-    bool SimplifyMerges = false)
+    bool SimplifyMerges = false,
+    bool IgnoreCase = true,
+    bool SimplifyByDecoration = false,
+    int CommitsLimit = 0)
 {
     // Upstream's Delimiters.WildcardBranchSearchValues: a branch filter word with these is a pattern for --branches=.
     private static readonly char[] _wildcards = ['?', '*', '['];
@@ -48,9 +57,14 @@ public sealed record RevisionFilter(
     /// <summary>
     ///  True when the filter hides commits beyond the branch choice, so the view can say the list is filtered.
     /// </summary>
-    public bool IsNarrowed => Author.Length > 0 || Committer.Length > 0 || Message.Length > 0 || DiffContent.Length > 0
-                              || Since is not null || Until is not null || PathFilter.Length > 0 || NoMerges ||
-                              FirstParent;
+    public bool IsNarrowed => HasRevisionFilter || Since is not null || Until is not null || FirstParent;
+
+    /// <summary>
+    ///  Upstream's <c>HasRevisionFilter</c>: a filter that may hide parents, not just branches; git then rewrites the
+    ///  parents, and the full history and merge simplification apply.
+    /// </summary>
+    public bool HasRevisionFilter => Author.Length > 0 || Committer.Length > 0 || Message.Length > 0
+                                     || DiffContent.Length > 0 || PathFilter.Length > 0 || NoMerges || SimplifyByDecoration;
 
     /// <summary>
     ///  Upstream's <c>IsShowFilteredBranchesChecked</c> with a filter to apply: the grid shows the branch filter's branches.
@@ -64,18 +78,24 @@ public sealed record RevisionFilter(
     public bool HasFilter => IsNarrowed || ShowsFilteredBranches;
 
     /// <summary>
-    ///  Upstream's <c>ResetAllFilters</c>: every filter off; the current branch and reflog choices stay.
+    ///  Upstream's <c>ResetAllFilters</c>: every filter off; the current branch and reflog choices stay, and so do the full
+    ///  history, merge simplification, ignore case and the commit limit, which upstream keeps as settings.
     /// </summary>
-    public RevisionFilter ResetAll() => new(CurrentBranchOnly: CurrentBranchOnly, ShowReflog: ShowReflog);
+    public RevisionFilter ResetAll() => new(CurrentBranchOnly: CurrentBranchOnly, ShowReflog: ShowReflog,
+        FullHistory: FullHistory, SimplifyMerges: SimplifyMerges, IgnoreCase: IgnoreCase, CommitsLimit: CommitsLimit);
 
     /// <summary>
-    ///  The revision arguments for <c>git log</c>, in upstream's order: commit filters, limiting filters, branch filters.
+    ///  The revision arguments for <c>git log</c>, in upstream's order (<c>GetRevisionFilter</c>): commit filters, limiting
+    ///  filters, branch filters. The commit limit is not one of them: the list stops reading at it (see
+    ///  <see cref="CommitListViewModel.MaxCommits"/>), as git's <c>--max-count</c> would also limit each page.
     ///  With <paramref name="showStashes"/> (upstream's <c>ShowStashes</c>) the latest stash is listed too: all refs then
     ///  include refs/stash, and a branch choice gets upstream's <c>AddFirstStashRef</c>.
     /// </summary>
     public string ToRevisionArguments(bool showStashes = false)
     {
         List<string> arguments = [];
+
+        // Upstream's GetCommitRevisionFilter.
         if (Since is { } since)
         {
             arguments.Add($"--since=\"{since.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}\"");
@@ -86,9 +106,15 @@ public sealed record RevisionFilter(
             arguments.Add($"--until=\"{until.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}\"");
         }
 
+        // Upstream's GetLimitingRevisionFilter.
         if (NoMerges)
         {
             arguments.Add("--no-merges");
+        }
+
+        if (SimplifyByDecoration)
+        {
+            arguments.Add("--simplify-by-decoration");
         }
 
         if (Author.Length > 0)
@@ -101,7 +127,7 @@ public sealed record RevisionFilter(
             arguments.Add($"--committer=\"{Clean(Committer)}\"");
         }
 
-        if (Author.Length > 0 || Committer.Length > 0 || Message.Length > 0 || DiffContent.Length > 0)
+        if (IgnoreCase && (Author.Length > 0 || Committer.Length > 0 || Message.Length > 0 || DiffContent.Length > 0))
         {
             arguments.Add("--regexp-ignore-case");
         }
@@ -117,21 +143,21 @@ public sealed record RevisionFilter(
             arguments.Add(IsGitLogOptions(Message) ? Message.Trim() : $"--grep=\"{Clean(Message)}\"");
         }
 
-        if (FirstParent)
-        {
-            arguments.Add("--first-parent");
-        }
-
-        // Upstream's FilterInfo: the full history (and merge simplification) apply to a history its revision filter narrows
-        // (author, committer, message, diff content, path or no merges).
-        if (FullHistory && (Author.Length > 0 || Committer.Length > 0 || Message.Length > 0 || DiffContent.Length > 0
-                            || PathFilter.Length > 0 || NoMerges))
+        // The full history (and merge simplification) apply to a history the revision filter narrows. Upstream adds
+        // --parents with them, which the new shell's log format always reads.
+        if (FullHistory && HasRevisionFilter)
         {
             arguments.Add("--full-history");
             if (SimplifyMerges)
             {
                 arguments.Add("--simplify-merges");
             }
+        }
+
+        // Upstream's GetBranchRevisionFilter.
+        if (FirstParent)
+        {
+            arguments.Add("--first-parent");
         }
 
         if (ShowReflog)
@@ -170,6 +196,12 @@ public sealed record RevisionFilter(
             arguments.Add("--exclude=refs/sessions/**");
             arguments.Add("--exclude=refs/copilot/checkpoints/**");
             arguments.Add("--all");
+
+            // Upstream: "the inclusion of boundary parents to matches is historical".
+            if (Message.Trim().Length > 0 && DiffContent.Trim().Length > 0)
+            {
+                arguments.Add("--boundary");
+            }
         }
 
         return string.Join(' ', arguments);
@@ -204,6 +236,11 @@ public sealed record RevisionFilter(
         Add("Path filter", PathFilter);
         Add("Author", Author);
         Add("Committer", Committer);
+        if (SimplifyByDecoration)
+        {
+            lines.Add(translate("Simplify by decoration"));
+        }
+
         if (IsGitLogOptions(Message))
         {
             lines.Add(Message.Trim());

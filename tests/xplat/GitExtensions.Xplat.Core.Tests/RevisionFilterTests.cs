@@ -95,4 +95,35 @@ internal sealed class RevisionFilterTests
             "[Author]: ann", "[Diff contains]: x", "[Show only first parent]", "[Branches]: main"));
         RevisionFilter.AllBranches.Summary(label => label).Should().BeEmpty();
     }
+
+    [Test]
+    public void ToRevisionArguments_should_follow_upstreams_FormRevisionFilter_options_and_order()
+    {
+        RevisionFilter filter = new(CurrentBranchOnly: true, Author: "ann", NoMerges: true, FirstParent: true,
+            SimplifyByDecoration: true, IgnoreCase: false, FullHistory: true, SimplifyMerges: true);
+
+        filter.ToRevisionArguments().Should().Be(
+            "--no-merges --simplify-by-decoration --author=\"ann\" --full-history --simplify-merges --first-parent HEAD",
+            "ignore case off drops --regexp-ignore-case; simplify by decoration is a revision filter for the full history");
+        new RevisionFilter(SimplifyByDecoration: true, FullHistory: true).ToRevisionArguments().Should()
+            .StartWith("--simplify-by-decoration --full-history ");
+        new RevisionFilter(Message: "fix", DiffContent: "x").ToRevisionArguments().Should()
+            .EndWith("--all --boundary", "upstream adds the boundary for a message and a diff filter together");
+        new RevisionFilter(CommitsLimit: 5).ToRevisionArguments().Should().NotContain("--max-count",
+            "the list stops reading at the limit, as each page would be limited too");
+    }
+
+    [Test]
+    public void SimplifyByDecoration_should_narrow_the_list_and_be_summarized()
+    {
+        RevisionFilter filter = new(SimplifyByDecoration: true);
+
+        (filter.IsNarrowed, filter.HasRevisionFilter, filter.HasFilter).Should().Be((true, true, true));
+        filter.Summary(label => label).Should().Be("Simplify by decoration");
+        new RevisionFilter(CommitsLimit: 5, IgnoreCase: false).HasFilter.Should().BeFalse(
+            "upstream counts neither the limit nor ignore case as a filter");
+        filter.ResetAll().SimplifyByDecoration.Should().BeFalse();
+        new RevisionFilter(CommitsLimit: 5, FullHistory: true).ResetAll()
+            .Should().Be(new RevisionFilter(CommitsLimit: 5, FullHistory: true), "upstream keeps them as settings");
+    }
 }
