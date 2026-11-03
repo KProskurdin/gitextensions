@@ -47,6 +47,16 @@ public sealed class GitRepositoryService : IRepositoryService
         Task.Run(() => new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
             .GetMergedBranches().Any(merged => merged.Trim().TrimStart('*', '+').Trim() == branch));
 
+    /// <summary>
+    ///  The full names of the local and remote branches that <paramref name="commit"/> contains: upstream's
+    ///  <c>GitModule.GetMergedBranchesAsync(includeRemote: true, fullRefname: true, commit)</c>, which its left panel reads
+    ///  for the grid's selected commit.
+    /// </summary>
+    public static Task<string[]> GetMergedBranchesAsync(string repositoryPath, string commit,
+        CancellationToken cancellationToken) =>
+        Task.Run(() => new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
+            .GetMergedBranchesAsync(includeRemote: true, fullRefname: true, commit, cancellationToken), cancellationToken);
+
     private static IReadOnlyList<WorktreeInfo> GetWorktrees(GitModule module)
         =>
         [

@@ -473,6 +473,18 @@ toolbar icons with upstream's `ToolTipText`.
   `PORTING-MAP.md`. Also fixed: the app tests' `TestRepository.ReadFile` now treats a file git is replacing on Windows
   (access denied) as not there yet, which made a stash test flaky. Left: the left panel's merged-branch images, then the
   other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the left panel's merged-branch images done (upstream's `RepoObjectsTree.SelectionChanged`): the branches
+  that the grid's selected commit contains have upstream's merged image and "contained in the currently selected commit"
+  tooltip. See the RepoObjectsTree note in `PORTING-MAP.md`. Left: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the left panel's hidden commits done (upstream's `UpdateVisibility`): branches, tags and stashes whose commit
+  the grid does not show have the closed eye and gray text, a branch upstream's "not currently visible" tooltip, and no
+  copy or script items. See the RepoObjectsTree note in `PORTING-MAP.md`. Left in the left panel: multi-selection, the
+  submodule tree's super- and subprojects, the search's highlighting; then the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the left panel's search as upstream's done: every match highlighted, refs matched by their full path, each
+  search on to the next match of its list, upstream's drop-down candidates; plus upstream's LeftPanel hotkeys F2 (rename)
+  and F3 (search). See the RepoObjectsTree and HotkeySettingsManager notes in `PORTING-MAP.md`. Left in the left panel:
+  multi-selection (with its Ctrl+Space hotkeys) and the submodule tree's super- and subprojects; then the other partial
+  rows of `PORTING-MAP.md`.
 
 ## Risks
 

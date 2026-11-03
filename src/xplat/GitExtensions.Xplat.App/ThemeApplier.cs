@@ -101,6 +101,9 @@ internal static class ThemeApplier
         SetBrush(app, InfoTextKey, SystemColor(colors, System.Drawing.KnownColor.ControlText));
         SetBrush(app, InfoErrorTextKey, System.Drawing.Color.Red.AdaptForeColor(info));
 
+        // Upstream's left panel search matches: on the Info color in the InfoText color.
+        SetBrush(app, InfoSystemTextKey, SystemColor(colors, System.Drawing.KnownColor.InfoText));
+
         // Upstream's FormEditor warning panel (OtherColors.PanelMessageWarningColor, read again for the current theme), in
         // the control text color made readable on it (SetForeColorForBackColor).
         System.Drawing.Color warning = System.Drawing.Color.FromArgb(230, 99, 99).AdaptBackColor();
@@ -132,6 +135,7 @@ internal static class ThemeApplier
     public const string InfoBackgroundKey = "InfoBackgroundBrush";
     public const string InfoTextKey = "InfoTextBrush";
     public const string InfoErrorTextKey = "InfoErrorTextBrush";
+    public const string InfoSystemTextKey = "InfoSystemTextBrush";
     public const string WarningPanelKey = "WarningPanelBrush";
     public const string WarningPanelTextKey = "WarningPanelTextBrush";
 

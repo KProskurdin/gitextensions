@@ -260,6 +260,7 @@ public partial class MainWindow : Window
 
             Run(() => _commits.SelectAsync(LatestSelectedItem?.Row));
             ShowSelectionDiff();
+            ShowMergedBranchesOfSelection();
         };
         CommitList.DoubleTapped += (_, _) => ViewSelectedRevision();
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
@@ -520,9 +521,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (IsWithin(e.Source, BranchTreeView) && Hotkeys.LeftPanel.Match(e) is LeftPanelCommand.Delete)
+        // Upstream's RepoObjectsTree.ProcessHotkey: anywhere in the left panel, in its search box except on the keys that
+        // edit the text.
+        if (IsWithin(e.Source, LeftPanel) && Hotkeys.LeftPanel.Match(e) is { } leftPanelCommand
+                                          && !(IsWithin(e.Source, LeftPanelSearchBox)
+                                               && Hotkeys.LeftPanel.GestureFor(leftPanelCommand) is { } gesture
+                                               && Hotkeys.IsTextEditKey(Hotkeys.ToWinFormsKeys(gesture))))
         {
-            DeleteSelectedRepoObject();
+            RunLeftPanelHotkey(leftPanelCommand);
             e.Handled = true;
             return;
         }
@@ -1682,6 +1688,10 @@ public partial class MainWindow : Window
                 break;
             case nameof(CommitListViewModel.IsLoading):
                 UpdateBusyState();
+                ShowHiddenRepoObjects();
+                break;
+            case nameof(CommitListViewModel.Rows):
+                ShowHiddenRepoObjects();
                 break;
             case nameof(CommitListViewModel.Details):
             case nameof(CommitListViewModel.DetailsError):

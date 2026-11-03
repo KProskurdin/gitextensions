@@ -489,13 +489,30 @@
               <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
               <Setter Property="MinHeight" Value="20" />
             </Style>
+            <!-- Upstream's BaseRevisionNode: a node whose commit the grid does not show has gray text. -->
+            <Style Selector="TextBlock.hiddenRef">
+              <Setter Property="Foreground" Value="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+            </Style>
+            <!-- Transparent, not null, so that the whole row takes the pointer for its tooltip; a local value would beat the
+                 search match's style. -->
+            <Style Selector="StackPanel.repoObject">
+              <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <!-- Upstream's AddTreeNodeToSearchResult: a search match on the Info color in the InfoText color. -->
+            <Style Selector="StackPanel.repoObject.searchMatch">
+              <Setter Property="Background" Value="{DynamicResource InfoBackgroundBrush}" />
+            </Style>
+            <Style Selector="StackPanel.repoObject.searchMatch > TextBlock">
+              <Setter Property="Foreground" Value="{DynamicResource InfoSystemTextBrush}" />
+            </Style>
           </TreeView.Styles>
           <TreeView.ItemTemplate>
             <TreeDataTemplate x:DataType="repo:RepoObjectNode" ItemsSource="{Binding Children}">
-              <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" ToolTip.Tip="{Binding ToolTip}">
+              <StackPanel Orientation="Horizontal" Spacing="4" Classes="repoObject" ToolTip.Tip="{Binding ToolTip}"
+                          Classes.searchMatch="{Binding IsSearchMatch}">
                 <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="16" Height="16"
                        VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Text}" VerticalAlignment="Center"
+                <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Classes.hiddenRef="{Binding IsHidden}"
                            FontWeight="{Binding IsBold, Converter={x:Static local:BoldConverter.Instance}}" />
               </StackPanel>
             </TreeDataTemplate>

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -162,6 +163,41 @@ internal sealed class LeftPanelTests
 
         WaitUntil(() => tree.SelectedItem is RepoObjectNode { Branch.Name: "team/found" });
         folder.IsExpanded.Should().BeTrue();
+        BranchNode(tree, "team/found")!.IsSearchMatch.Should().BeTrue("upstream highlights every match");
+
+        Click(window, "RefreshButton");
+        WaitUntil(() => !window.IsBusy && BranchNode(tree, "team/found") is { IsSearchMatch: true });
+        Find<AutoCompleteBox>(window, "LeftPanelSearchBox").Text = "";
+        Click(window, "LeftPanelSearchButton");
+
+        WaitUntil(() => BranchNode(tree, "team/found") is { IsSearchMatch: false });
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void F3_searches_from_the_search_box_where_Delete_edits_the_text_and_F2_renames_the_branch()
+    {
+        _repo.Run("branch", "team/found");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        AutoCompleteBox box = Find<AutoCompleteBox>(window, "LeftPanelSearchBox");
+        box.Text = "found";
+        box.Focus();
+
+        window.KeyPress(Key.F3, RawInputModifiers.None, PhysicalKey.F3, keySymbol: null);
+
+        WaitUntil(() => tree.SelectedItem is RepoObjectNode { Branch.Name: "team/found" });
+        box.Focus();
+        window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, keySymbol: null);
+        Dispatcher.UIThread.RunJobs();
+        window.OwnedWindows.Should().BeEmpty("Delete edits the search text, as upstream's IsTextEditKey keeps it from the tree");
+
+        tree.Focus();
+        window.KeyPress(Key.F2, RawInputModifiers.None, PhysicalKey.F2, keySymbol: null);
+
+        WaitUntil(() => window.OwnedWindows.OfType<RenameBranchWindow>().Any());
+        window.OwnedWindows.OfType<RenameBranchWindow>().Single().Close();
+        window.Close();
     }
 
     [AvaloniaTest]
@@ -283,6 +319,55 @@ internal sealed class LeftPanelTests
 
         copy.IsVisible.Should().BeFalse("upstream copies for branches and stashes only");
         menu.Items.OfType<MenuItem>().Select(item => (item.Header as TextBlock)?.Text).Should().NotContain("Grid script");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_branch_that_the_selected_commit_contains_has_the_merged_image_and_tooltip()
+    {
+        _repo.Run("branch", "older", "HEAD~1");
+        string current = _repo.Run("branch", "--show-current").Trim();
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        WaitUntil(() => SelectedSubject(commits) == "second" && BranchNode(tree, "older")?.IsMerged is true);
+
+        BranchNode(tree, "older")!.Image.Should().Be("BranchLocalMerged");
+        BranchNode(tree, "older")!.ToolTip.Should().Be("'older' is contained in the currently selected commit");
+        BranchNode(tree, current)!.IsMerged.Should().BeFalse("upstream leaves out the branches at the selected commit");
+
+        commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "first");
+        WaitUntil(() => BranchNode(tree, "older")?.IsMerged is false);
+
+        BranchNode(tree, current)!.IsMerged.Should().BeFalse();
+
+        Click(window, "RefreshButton");
+        WaitUntil(() => !window.IsBusy);
+        commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "second");
+        WaitUntil(() => BranchNode(tree, "older")?.IsMerged is true);
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_branch_whose_commit_the_grid_does_not_show_is_hidden_until_the_grid_shows_it()
+    {
+        string current = _repo.Run("branch", "--show-current").Trim();
+        _repo.Run("checkout", "-q", "-b", "side");
+        _repo.Run("commit", "-q", "--allow-empty", "-m", "side work");
+        _repo.Run("checkout", "-q", current);
+        TestAppBuilder.Preferences.ShowCurrentBranchOnly = true;
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => BranchNode(tree, "side")?.IsHidden is true);
+
+        BranchNode(tree, "side")!.Image.Should().Be("EyeClosed");
+        BranchNode(tree, "side")!.ToolTip.Should().Be("'side' is not currently visible");
+        BranchNode(tree, current)!.IsHidden.Should().BeFalse();
+
+        Click(window, "ShowBranchesAllMenuItem");
+
+        WaitUntil(() => BranchNode(tree, "side")?.IsHidden is false);
+        BranchNode(tree, "side")!.Image.Should().Be("BranchLocal");
         window.Close();
     }
 

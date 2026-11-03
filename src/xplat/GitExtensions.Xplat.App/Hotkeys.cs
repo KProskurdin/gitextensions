@@ -111,6 +111,8 @@ public enum DiffCommand
 public enum LeftPanelCommand
 {
     Delete,
+    Rename,
+    Search,
 }
 
 /// <summary>
@@ -450,8 +452,18 @@ public static class Hotkeys
     ///  The left panel (upstream RepoObjectsTree, section "LeftPanel").
     /// </summary>
     public static HotkeyTable<LeftPanelCommand> LeftPanel { get; } = new(UpstreamHotkeys.LeftPanelName,
-        new Dictionary<LeftPanelCommand, (int, string)> { [LeftPanelCommand.Delete] = (0, "Delete") },
-        new Dictionary<LeftPanelCommand, WinFormsKeys> { [LeftPanelCommand.Delete] = WinFormsKeys.Delete });
+        new Dictionary<LeftPanelCommand, (int, string)>
+        {
+            [LeftPanelCommand.Delete] = (0, "Delete"),
+            [LeftPanelCommand.Rename] = (1, "Rename"),
+            [LeftPanelCommand.Search] = (2, "Search"),
+        },
+        new Dictionary<LeftPanelCommand, WinFormsKeys>
+        {
+            [LeftPanelCommand.Delete] = WinFormsKeys.Delete,
+            [LeftPanelCommand.Rename] = WinFormsKeys.F2,
+            [LeftPanelCommand.Search] = WinFormsKeys.F3,
+        });
 
     /// <summary>
     ///  The Diff tab's file list (upstream RevisionDiffControl, section "BrowseDiff"): upstream's codes and defaults of the
@@ -619,6 +631,51 @@ public static class Hotkeys
         }
 
         return new KeyGesture(key, modifiers);
+    }
+
+    /// <summary>
+    ///  Upstream's <c>GitExtensionsControl.IsTextEditKey</c>: whether <paramref name="keys"/> types or edits text by default,
+    ///  so that a hotkey on it must not act while a text box has the focus; with <paramref name="multiLine"/> the vertical
+    ///  movement keys too.
+    /// </summary>
+    public static bool IsTextEditKey(WinFormsKeys keys, bool multiLine = false)
+    {
+        keys &= ~WinFormsKeys.Shift;
+        switch (keys)
+        {
+            case WinFormsKeys key when key is
+                (>= WinFormsKeys.A and <= WinFormsKeys.Z)
+                or (>= WinFormsKeys.D0 and <= WinFormsKeys.D9)
+                or (>= WinFormsKeys.Oem1 and <= WinFormsKeys.Oem102):
+            case WinFormsKeys.Space:
+            case WinFormsKeys.Insert:
+                return true;
+        }
+
+        keys &= ~WinFormsKeys.Control;
+        switch (keys)
+        {
+            case WinFormsKeys.A:
+            case WinFormsKeys.C:
+            case WinFormsKeys.V:
+            case WinFormsKeys.X:
+            case WinFormsKeys.Y:
+            case WinFormsKeys.Z:
+            case WinFormsKeys.Back:
+            case WinFormsKeys.Delete:
+            case WinFormsKeys.Left:
+            case WinFormsKeys.Right:
+            case WinFormsKeys.Home:
+            case WinFormsKeys.End:
+                return true;
+            case WinFormsKeys.Up:
+            case WinFormsKeys.Down:
+            case WinFormsKeys.PageUp:
+            case WinFormsKeys.PageDown:
+                return multiLine;
+        }
+
+        return false;
     }
 
     /// <summary>

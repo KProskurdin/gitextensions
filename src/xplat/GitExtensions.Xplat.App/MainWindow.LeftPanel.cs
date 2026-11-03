@@ -48,6 +48,7 @@ public partial class MainWindow
     private const string DeleteRemoteBranchTooltip = "Delete the branch from the remote";
     private const string DeleteTagTooltip = "Delete this tag";
 
+    private readonly RepoObjectSearch _repoObjectSearch = new();
     private IReadOnlyList<RepoObjectNode> _repoObjects = [];
 
     // True while a refresh puts the selection back (upstream's IgnoreSelectionChangedEvent).
@@ -106,8 +107,8 @@ public partial class MainWindow
             };
         }
 
-        LeftPanelSearchBox.GotFocus += (_, _) => LeftPanelSearchBox.ItemsSource = _repoObjects
-            .SelectMany(root => root.Descendants()).Where(node => !node.IsRoot).Select(node => node.Text).Distinct().ToList();
+        LeftPanelSearchBox.GotFocus += (_, _) => LeftPanelSearchBox.ItemsSource = RepoObjectSearch.Candidates(_repoObjects);
+        LeftPanelSearchBox.TextChanged += (_, _) => _repoObjectSearch.CriteriaChanged();
         LeftPanelSearchBox.AddHandler(KeyUpEvent, (_, e) =>
         {
             if (e.Key == Key.Enter)
@@ -141,6 +142,9 @@ public partial class MainWindow
                 RefSorting());
         RepoObjectsTree.KeepExpansion(_repoObjects, roots);
         _repoObjects = roots;
+        _repoObjectSearch.Remap(roots);
+        ShowHiddenRepoObjects();
+        ShowMergedBranches();
         BranchTreeView.ItemsSource = roots;
         if (selectedKey is not null
             && roots.SelectMany(root => root.Descendants()).FirstOrDefault(node => node.Key == selectedKey) is { } selected)
@@ -172,10 +176,17 @@ public partial class MainWindow
         Run(() => GoToRevisionAsync(revision, showNoRevisionMessage: true, toggleSelection: toggle));
     }
 
-    // Upstream's DoSearch: the next node whose text matches, shown and selected.
+    // Upstream's DoSearch: the next match (RepoObjectSearch), shown and selected.
     private void SearchRepoObjects()
     {
-        if (RepoObjectsTree.FindNext(_repoObjects, LeftPanelSearchBox.Text ?? "", SelectedRepoObject) is not { } node)
+        LeftPanelSearchBox.IsDropDownOpen = false;
+        RepoObjectNode? node = _repoObjectSearch.Next(_repoObjects, LeftPanelSearchBox.Text ?? "", out bool focusSearchBox);
+        if (focusSearchBox)
+        {
+            LeftPanelSearchBox.Focus();
+        }
+
+        if (node is null)
         {
             return;
         }
@@ -219,6 +230,28 @@ public partial class MainWindow
         }
     }
 
+    // Upstream's RepoObjectsTree.ExecuteCommand: Delete and Rename act on the selected node (OnDelete, OnRename, which only
+    // a local branch has), Search searches as the search button does.
+    private void RunLeftPanelHotkey(LeftPanelCommand command)
+    {
+        switch (command)
+        {
+            case LeftPanelCommand.Delete:
+                DeleteSelectedRepoObject();
+                break;
+            case LeftPanelCommand.Rename:
+                if (SelectedRepoObject is { Kind: RepoObjectKind.LocalBranch, Branch: { } branch })
+                {
+                    Run(() => RenameBranchAsync(branch.Name));
+                }
+
+                break;
+            case LeftPanelCommand.Search:
+                SearchRepoObjects();
+                break;
+        }
+    }
+
     // The Delete key: upstream's OnDelete of a branch or tag node; a tag opens upstream's delete tag window
     // (TagNode.Delete).
     private void DeleteSelectedRepoObject()
@@ -252,9 +285,9 @@ public partial class MainWindow
             item.IsEnabled = true;
         }
 
-        // Upstream's copyContextMenuItem: the grid's selected commits, for a branch or a stash.
+        // Upstream's copyContextMenuItem: the grid's selected commits, for a branch or a stash the grid shows.
         bool copy = kind is RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch or RepoObjectKind.Stash
-                    && SelectedRevisions.Count > 0;
+                    && node?.IsHidden is false && SelectedRevisions.Count > 0;
         Show(TreeCopyMenuItem, copy);
         if (copy)
         {
@@ -351,8 +384,9 @@ public partial class MainWindow
         Show(SortByMenuItem, isRef);
         Show(SortOrderMenuItem, isRef, enabled: _preferences.RefsSortBy != GitRefsSortBy.Default);
 
-        // Upstream's AddUserScripts for a local branch: the scripts of the grid's menu, run on the grid's selection.
-        if (kind == RepoObjectKind.LocalBranch)
+        // Upstream's AddUserScripts for a local branch the grid shows: the scripts of the grid's menu, run on the grid's
+        // selection.
+        if (kind == RepoObjectKind.LocalBranch && node?.IsHidden is false)
         {
             TreeRunScriptMenuItem.IsVisible = true;
             ScriptMenus.Fill(BranchTreeContextMenu, TreeRunScriptMenuItem, script => script.AddToRevisionGridContextMenu,

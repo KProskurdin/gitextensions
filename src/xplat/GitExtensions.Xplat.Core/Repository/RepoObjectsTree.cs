@@ -1,3 +1,6 @@
+using GitCommands;
+using GitExtensions.Xplat.Core.CommitHistory;
+
 namespace GitExtensions.Xplat.Core.Repository;
 
 /// <summary>
@@ -32,13 +35,19 @@ public enum RepoObjectKind
 /// </summary>
 public sealed class RepoObjectNode : ObservableObject
 {
+    private readonly string _image;
+    private readonly string? _toolTip;
     private bool _isExpanded;
+    private string? _mergedToolTip;
+    private bool _isHidden;
+    private string? _hiddenToolTip;
+    private bool _isSearchMatch;
 
     public RepoObjectNode(RepoObjectKind kind, string name, string image, object? item = null, bool isExpanded = false)
     {
         Kind = kind;
         Name = name;
-        Image = image;
+        _image = image;
         Item = item;
         _isExpanded = isExpanded;
     }
@@ -48,9 +57,29 @@ public sealed class RepoObjectNode : ObservableObject
     public string Name { get; }
 
     /// <summary>
-    ///  Upstream's image name (<c>GitUI.Properties.Images</c>).
+    ///  Upstream's image name (<c>GitUI.Properties.Images</c>); a hidden node has <c>EyeClosed</c>, else a merged branch
+    ///  upstream's merged image (<c>BranchLocalMerged</c>, <c>BranchRemoteMerged</c>).
     /// </summary>
-    public string Image { get; }
+    public string Image => IsHidden ? HiddenImage : IsMerged ? $"{_image}{MergedImageSuffix}" : _image;
+
+    /// <summary>
+    ///  Upstream's <c>BaseBranchLeafNode.IsMerged</c>: the branch is contained in the commit selected in the grid, as
+    ///  <see cref="RepoObjectsTree.ShowMerged"/> sets it.
+    /// </summary>
+    public bool IsMerged => _mergedToolTip is not null;
+
+    /// <summary>
+    ///  Upstream's <c>BaseRevisionNode.Visible</c> false: the grid has not loaded the commit of this branch, tag or stash
+    ///  (upstream's <c>UpdateVisibility</c>), so the node has upstream's <c>EyeClosed</c> image and gray text, as
+    ///  <see cref="RepoObjectsTree.ShowHidden"/> sets it.
+    /// </summary>
+    public bool IsHidden => _isHidden;
+
+    /// <summary>
+    ///  The node matches the left panel's search (<see cref="RepoObjectSearch"/>), which upstream highlights in the Info
+    ///  colors.
+    /// </summary>
+    public bool IsSearchMatch => _isSearchMatch;
 
     /// <summary>
     ///  What the node stands for: a <see cref="BranchInfo"/>, the tag or remote name, a <see cref="StashInfo"/>,
@@ -72,7 +101,15 @@ public sealed class RepoObjectNode : ObservableObject
     /// </summary>
     public string? AheadBehind { get; init; }
 
-    public string? ToolTip { get; init; }
+    /// <summary>
+    ///  The node's tooltip; for a branch upstream's "not currently visible" text while it is hidden, else its "contained in
+    ///  the currently selected commit" text while it is merged.
+    /// </summary>
+    public string? ToolTip
+    {
+        get => _hiddenToolTip ?? _mergedToolTip ?? _toolTip;
+        init => _toolTip = value;
+    }
 
     /// <summary>
     ///  An inactive remote (upstream's <c>RemoteRepoNode.Enabled</c> false), which can be activated but not fetched.
@@ -95,6 +132,52 @@ public sealed class RepoObjectNode : ObservableObject
     {
         get => _isExpanded;
         set => SetProperty(ref _isExpanded, value);
+    }
+
+    // Upstream's merged images are the branch images' names with this suffix.
+    private const string MergedImageSuffix = "Merged";
+
+    // Upstream's image of a node whose commit the grid does not show.
+    private const string HiddenImage = "EyeClosed";
+
+    // A hidden branch has upstream's InvisibleCommit tooltip; tags and stashes have none.
+    internal void SetHidden(bool isHidden, string? hiddenToolTip)
+    {
+        string? toolTip = isHidden ? hiddenToolTip : null;
+        if (_isHidden != isHidden)
+        {
+            _isHidden = isHidden;
+            RaisePropertyChanged(nameof(IsHidden));
+            RaisePropertyChanged(nameof(Image));
+        }
+
+        if (_hiddenToolTip != toolTip)
+        {
+            _hiddenToolTip = toolTip;
+            RaisePropertyChanged(nameof(ToolTip));
+        }
+    }
+
+    internal void SetSearchMatch(bool isSearchMatch)
+        => SetProperty(ref _isSearchMatch, isSearchMatch, nameof(IsSearchMatch));
+
+    // A null tooltip clears the merged state.
+    internal void SetMerged(string? mergedToolTip)
+    {
+        if (_mergedToolTip == mergedToolTip)
+        {
+            return;
+        }
+
+        bool wasMerged = IsMerged;
+        _mergedToolTip = mergedToolTip;
+        if (wasMerged != IsMerged)
+        {
+            RaisePropertyChanged(nameof(IsMerged));
+            RaisePropertyChanged(nameof(Image));
+        }
+
+        RaisePropertyChanged(nameof(ToolTip));
     }
 
     /// <summary>
@@ -139,6 +222,11 @@ public static class RepoObjectsTree
     public const string SubmodulesText = "Submodules";
     public const string StashesText = "Stashes";
     public const string InactiveText = "[ Inactive ]";
+    public const string ContainedInCurrentCommitText = "'{0}' is contained in the currently selected commit";
+    public const string InvisibleCommitText = "'{0}' is not currently visible";
+
+    // What upstream asks about for an artificial commit.
+    private const string HeadRevision = "HEAD";
 
     /// <summary>
     ///  The six trees in upstream's default order (its <c>RepoObjectsTree.*Index</c> defaults).
@@ -252,31 +340,6 @@ public static class RepoObjectsTree
     }
 
     /// <summary>
-    ///  Upstream's left panel search: the next node after <paramref name="current"/> whose text contains
-    ///  <paramref name="text"/>, ignoring case, wrapping around; null when none does.
-    /// </summary>
-    public static RepoObjectNode? FindNext(IReadOnlyList<RepoObjectNode> roots, string text, RepoObjectNode? current)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
-
-        List<RepoObjectNode> nodes = [.. roots.SelectMany(root => root.Descendants()).Where(node => !node.IsRoot)];
-        int start = current is null ? 0 : nodes.IndexOf(current) + 1;
-        for (int i = 0; i < nodes.Count; i++)
-        {
-            RepoObjectNode node = nodes[(start + i) % nodes.Count];
-            if (node.Text.Contains(text.Trim(), StringComparison.CurrentCultureIgnoreCase))
-            {
-                return node;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
     ///  The revision upstream's <c>OnSelected</c> goes to in the grid when <paramref name="node"/> is selected
     ///  (<c>GoToRevision</c>): a branch's name (local or remote), a tag's, a stash's commit and a worktree's checked-out commit;
     ///  <see langword="null"/> for the other nodes.
@@ -290,6 +353,102 @@ public static class RepoObjectsTree
             { Kind: RepoObjectKind.Worktree, Item: WorktreeInfo { Sha1: { Length: > 0 } sha1 } } => sha1,
             _ => null,
         };
+
+    /// <summary>
+    ///  Upstream's <c>SelectionChanged</c> returns at once when nothing is selected in the grid or in the tree, or when the
+    ///  grid's one selected commit is the one of the branch or tag selected in the tree (the grid followed the tree); the
+    ///  merged branches stay as they were.
+    /// </summary>
+    /// <param name="selected">The grid's selected commits, the latest selected first.</param>
+    /// <param name="node">The node selected in the tree.</param>
+    public static bool KeepsMerged(IReadOnlyList<CommitRow> selected, RepoObjectNode? node)
+        => (selected.Count == 0 && node is null)
+           || (selected.Count == 1 && node is not null && CompleteNameOf(node) is { } name
+               && (selected[0].Labels ?? []).Any(label => CompleteNameOf(label) == name));
+
+    /// <summary>
+    ///  The commit upstream's <c>SelectionChanged</c> asks <c>git branch -a --merged</c> about: the latest selected one, HEAD
+    ///  for an artificial commit; <see langword="null"/> when none is selected, which clears every branch's merged state.
+    /// </summary>
+    /// <param name="selected">The grid's selected commits, the latest selected first.</param>
+    public static string? MergedBranchesCommit(IReadOnlyList<CommitRow> selected)
+        => selected.Count == 0 ? null
+            : ArtificialCommits.IsArtificial(selected[0].Hash) ? HeadRevision
+            : selected[0].Hash;
+
+    /// <summary>
+    ///  Upstream's end of <c>SelectionChanged</c>: the local and remote branches in <paramref name="merged"/> (full ref
+    ///  names, as <c>git branch -a --merged --format=%(refname)</c> lists them) get upstream's merged image and tooltip,
+    ///  except the ones at the <paramref name="selected"/> commit itself; the other branches lose them.
+    /// </summary>
+    public static void ShowMerged(IEnumerable<RepoObjectNode> roots, IEnumerable<string> merged, CommitRow? selected,
+        Func<string, string> translate)
+    {
+        HashSet<string> names = new(merged, StringComparer.Ordinal);
+        foreach (RefLabel label in selected?.Labels ?? [])
+        {
+            if (CompleteNameOf(label) is { } name)
+            {
+                names.Remove(name);
+            }
+        }
+
+        string text = translate(ContainedInCurrentCommitText);
+        foreach (RepoObjectNode node in roots.SelectMany(root => root.Descendants()))
+        {
+            if (node.Kind is RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch)
+            {
+                node.SetMerged(CompleteNameOf(node) is { } name && names.Contains(name) ? string.Format(text, node.Name) : null);
+            }
+        }
+    }
+
+    /// <summary>
+    ///  Upstream's <c>BaseRevisionTree.UpdateVisibility</c> after the grid has loaded: a local or remote branch, a tag or a
+    ///  stash whose commit is not among <paramref name="loaded"/> (the grid's rows) is hidden; the others are shown. The
+    ///  rows' labels name every ref at their commit, and a stash row its stash, which stands in for upstream's check of
+    ///  the node's object id (<c>ICheckRefs.Contains</c>). A hidden branch gets upstream's <c>InvisibleCommit</c> tooltip
+    ///  with its full name.
+    /// </summary>
+    public static void ShowHidden(IEnumerable<RepoObjectNode> roots, IEnumerable<CommitRow> loaded,
+        Func<string, string> translate)
+    {
+        HashSet<string> refs = new(StringComparer.Ordinal);
+        HashSet<string> stashes = new(StringComparer.Ordinal);
+        foreach (CommitRow row in loaded)
+        {
+            foreach (RefLabel label in row.Labels ?? [])
+            {
+                if (CompleteNameOf(label) is { } name)
+                {
+                    refs.Add(name);
+                }
+            }
+
+            if (row.StashLabel is { } stash)
+            {
+                stashes.Add(stash);
+            }
+        }
+
+        string text = translate(InvisibleCommitText);
+        foreach (RepoObjectNode node in roots.SelectMany(root => root.Descendants()))
+        {
+            bool refHidden = CompleteNameOf(node) is not { } refName || !refs.Contains(refName);
+            switch (node)
+            {
+                case { Kind: RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch, Branch: { } branch }:
+                    node.SetHidden(refHidden, string.Format(text, branch.Name));
+                    break;
+                case { Kind: RepoObjectKind.Tag }:
+                    node.SetHidden(refHidden, hiddenToolTip: null);
+                    break;
+                case { Kind: RepoObjectKind.Stash, Item: StashInfo stash }:
+                    node.SetHidden(!stashes.Contains(stash.Name), hiddenToolTip: null);
+                    break;
+            }
+        }
+    }
 
     /// <summary>
     ///  The nodes from a root down to <paramref name="node"/>, so a view can expand them.
@@ -328,6 +487,25 @@ public static class RepoObjectsTree
             : url.Contains("visualstudio.com", StringComparison.Ordinal) || url.Contains("dev.azure.com", StringComparison.Ordinal)
                 ? "VisualStudioTeamServices"
                 : "Remote";
+
+    // A branch's or tag's full ref name (upstream's IGitRef.CompleteName).
+    private static string? CompleteNameOf(RepoObjectNode node)
+        => node switch
+        {
+            { Kind: RepoObjectKind.LocalBranch, Branch: { } branch } => GitRefName.RefsHeadsPrefix + branch.Name,
+            { Kind: RepoObjectKind.RemoteBranch, Branch: { } branch } => GitRefName.RefsRemotesPrefix + branch.Name,
+            { Kind: RepoObjectKind.Tag, Item: string tag } => GitRefName.RefsTagsPrefix + tag,
+            _ => null,
+        };
+
+    private static string? CompleteNameOf(RefLabel label)
+        => label.Kind switch
+        {
+            RefKind.Branch => GitRefName.RefsHeadsPrefix + label.Name,
+            RefKind.RemoteBranch => GitRefName.RefsRemotesPrefix + label.Name,
+            RefKind.Tag => GitRefName.RefsTagsPrefix + label.Name,
+            _ => null,
+        };
 
     // Upstream's GetSubmoduleItemImage with the status the new shell reads: changed or not.
     private static string SubmoduleImage(SubmoduleInfo submodule)

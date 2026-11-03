@@ -65,7 +65,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormAbout.cs` | `src/xplat/GitExtensions.Xplat.App/AboutWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs`, `DashboardTheme.cs`, `UserRepositoriesList.cs`, `UserRepositoriesListController.cs`, `FormDashboardCategoryTitle.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories), `MainWindow.Dashboard.cs`, `ThemeApplier.cs` (dashboard colors); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs`, `Dashboard.cs` | `52d08e996` | partial |
-| `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.axaml` (`LeftPanel`) | `afc512395` | partial |
+| `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.MergedBranches.cs`, `MainWindow.HiddenRefs.cs`, `MainWindow.axaml` (`LeftPanel`); core `Repository/RepoObjectSearch.cs` | `afc512395` | partial |
 | `src/app/GitUI/Hotkey/HotkeySettingsManager.cs` (FormBrowse and FormCommit defaults) | `src/xplat/GitExtensions.Xplat.App/Hotkeys.cs`, `HotkeyEditor.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/UpstreamHotkeys.cs` | `52d08e996` | partial |
 | `src/app/GitUI/SplitterManager.cs`, `NestedSplitterManager.cs`; `FormBrowse.cs` (`SetSplitterPositions`), `FormCommit.cs` (`RestoreSplitters`), `RevisionDiffControl.cs` (`InitSplitterManager`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Splitters.cs`; `src/xplat/GitExtensions.Xplat.App/SplitterTracker.cs`, `MainWindow.Toolbar.cs` (`TrackSplitters`), `CommitWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormGitIgnore.cs`, `FormAddToGitIgnore.cs` | `src/xplat/GitExtensions.Xplat.App/GitIgnoreWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitIgnoreFile.cs` | `52d08e996` | partial |
@@ -886,9 +886,8 @@ remotes, and double-click on a remote opens the remotes window. Since 2026-10-16
 stashes...", and "Open stash" and double-click open the stash window on that stash. Differences: "Reset current branch to
 here..." opens the reset current branch window (FormResetCurrentBranch, since 2026-10-16; before, a choice window); "Create worktree..." opens the worktree window; a tag also has
 "Delete on remote...", which upstream offers in its push dialog; the remote branch fetch items fetch the whole remote.
-Not ported: multi-selection, the merged-branch images, hidden
-commits (EyeClosed), the submodule tree of super- and subprojects with its detailed status images and
-reset, stash and commit items, and the search's highlighting of all matches.
+Not ported: multi-selection, the submodule tree of super- and subprojects with its detailed status images and
+reset, stash and commit items.
 Added 2026-11-02: selecting a local or remote branch, a tag, a stash or a worktree selects its commit in the grid, as
 upstream's `OnSelected` (`GoToRevision`, `RevisionGridControl.GoToRef`; core `RepoObjectsTree.RevisionOf`): with Ctrl
 (Cmd on macOS) the commit is added to or taken from the grid's selection, a commit the grid does not show gets upstream's
@@ -897,6 +896,37 @@ refresh does not move the grid (upstream's `IgnoreSelectionChangedEvent`). Upstr
 branch's tracking branch, is not ported. The menu got upstream's "Copy to clipboard" at the top (the grid's copy
 submenu for the grid's selected commits, on a branch or a stash) and "Run script" at the bottom (the scripts of the
 grid's menu, on a local branch, run with the grid's selection).
+Added 2026-11-03: the merged-branch images of upstream's `SelectionChanged` (`BaseBranchLeafNode.IsMerged`): when the
+grid's selection changes, the local and remote branches that its latest selected commit contains (HEAD for the working
+directory and index rows; `git branch -a --merged` with full ref names, `GitRepositoryService.GetMergedBranchesAsync`),
+except the ones at that commit, get upstream's `BranchLocalMerged` and `BranchRemoteMerged` images and the
+`ContainedInCurrentCommit` tooltip; a newer selection cancels the read for the older one, and with nothing selected every
+branch loses them. As upstream's, nothing changes when the grid's one selected commit is the one of the branch or tag
+just selected in the tree (core `RepoObjectsTree.KeepsMerged`, `MergedBranchesCommit`, `ShowMerged`; app
+`MainWindow.MergedBranches.cs`). The tree keeps the last answer when it is filled again.
+Added 2026-11-03: hidden commits, upstream's `RefreshRevisionsLoaded` (`BaseRevisionTree.UpdateVisibility`): once the
+grid has loaded, a local or remote branch, a tag or a stash whose commit the grid does not show has upstream's
+`EyeClosed` image and gray text, a branch also the `InvisibleCommit` tooltip with its full name (over the merged one, as
+upstream's `ApplyStyle`); "Copy to clipboard" and "Run script" are offered on shown nodes only, as upstream's menu.
+Upstream checks the node's object id against the grid's revisions (`ICheckRefs.Contains`); the new shell checks the
+grid's loaded rows for the node's ref label, or for a stash its stash row, which comes to the same, since the rows'
+labels name every ref at their commit (core `RepoObjectsTree.ShowHidden`, app `MainWindow.HiddenRefs.cs`). Difference:
+the grid loads 500 commits a page where upstream loads the whole history, so a ref below the last loaded page shows
+hidden until a further page loads it; with "Show stashes" off every stash is hidden, as upstream's.
+Added 2026-11-03: the search as upstream's `DoSearch` (core `RepoObjectSearch`, which replaced the new shell's own
+next-match search): breadth first from the tree roots, branches, tags, stashes, remotes and folders matched by their full
+path (`BaseRevisionNode.FullPath`: a remote branch's folder with its remote's name, a stash by "stash@{0}" and not its
+message), the roots, worktrees and submodules by their text, case ignored; every match highlighted in the Info colors
+(`AddTreeNodeToSearchResult`, theme brush `InfoSystemTextBrush` for upstream's InfoText) until the text changes and
+the next search runs; each search selects the next match of the list, wrapping around, whatever node is selected; an
+emptied search clears the highlighting and focuses the box. The drop-down offers upstream's `CollectFilterCandidates`
+(the full path of each childless ref node, the text of the others). The highlighting is carried over to a refilled
+tree by the nodes' keys. Difference, an upstream accident not copied: upstream keeps its "changed" flag after the first
+search with new text, so its second search starts over and selects the first match again; the new shell goes on to the
+second. Added the same day: the LeftPanel hotkeys Rename (F2, a local branch's rename window) and Search (F3), which act
+anywhere in the left panel, in its search box except on the keys that edit text (upstream's `IsTextEditKey`, ported
+as `Hotkeys.IsTextEditKey`); Delete now follows the same rule. MultiSelect and MultiSelectWithChildren wait for the
+tree's multi-selection.
 
 **HotkeySettingsManager** (`partial`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a
@@ -904,7 +934,7 @@ branch or tag, merge, rebase, stash and stash pop, with Cmd in place of Ctrl on 
 (stage all), Ctrl+Enter and F5. Since 2026-10-06 the FormBrowse hotkeys are read from and written to upstream's
 `SerializedHotkeys` setting (the `HotkeySettings[]` XML, by upstream command code and name; other forms' entries are kept
 as they are), and can be changed in Settings > Hotkeys, so a hotkey changed in either app applies in both. Not ported:
-the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name. Added 2026-10-10: the BrowseDiff section (the Diff tab's
+the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete; Rename and Search since 2026-11-03) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name. Added 2026-10-10: the BrowseDiff section (the Diff tab's
 file list, see RevisionDiffControl) and the Stash section (on the left panel's stashes: next, previous, refresh), the
 commit window's Conventional Commits keys, and the grid's ToggleHighlightSelectedBranch and quick search next and previous
 keys. Still not ported: the commands of every section that the new shell has no feature for, and the reset-to-defaults

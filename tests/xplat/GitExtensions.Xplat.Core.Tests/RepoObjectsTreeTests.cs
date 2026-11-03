@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
@@ -95,18 +96,143 @@ internal sealed class RepoObjectsTreeTests
     }
 
     [Test]
-    public void FindNext_should_find_the_next_matching_node_ignoring_case_and_wrap_around()
+    public void PathTo_should_list_the_nodes_from_the_root_down_to_the_node()
     {
         IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects(), RepoObjectsTree.Roots, text => text);
 
-        RepoObjectNode first = RepoObjectsTree.FindNext(roots, "MAIN", current: null)!;
-        first.Branch!.Name.Should().Be("main");
-        RepoObjectNode second = RepoObjectsTree.FindNext(roots, "main", first)!;
-        second.Branch!.Name.Should().Be("origin/main");
-        RepoObjectsTree.FindNext(roots, "main", RepoObjectsTree.FindNext(roots, "main", second)).Should().Be(first);
-        RepoObjectsTree.FindNext(roots, "nothing", current: null).Should().BeNull();
-        RepoObjectsTree.PathTo(roots, second).Select(node => node.Name).Should().Equal("Remotes", "origin", "main");
+        RepoObjectsTree.PathTo(roots, BranchNode(roots, "origin/main")).Select(node => node.Name).Should()
+            .Equal("Remotes", "origin", "main");
+        RepoObjectsTree.PathTo(roots, new RepoObjectNode(RepoObjectKind.Tag, "gone", "TagHorizontal")).Should().BeEmpty();
     }
+
+    [Test]
+    public void ShowMerged_should_mark_contained_branches_except_those_at_the_selected_commit()
+    {
+        IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects(), RepoObjectsTree.Roots, text => text);
+        CommitRow selected = Row("abc", new RefLabel("main", RefKind.Branch));
+
+        RepoObjectsTree.ShowMerged(roots, ["refs/heads/main", "refs/heads/feature/x", "refs/remotes/origin/main"], selected,
+            text => $"<{text}>");
+
+        RepoObjectNode main = BranchNode(roots, "main");
+        RepoObjectNode feature = BranchNode(roots, "feature/x");
+        RepoObjectNode remote = BranchNode(roots, "origin/main");
+        main.IsMerged.Should().BeFalse("upstream leaves out the refs of the selected commit itself");
+        main.Image.Should().Be("BranchLocal");
+        main.ToolTip.Should().BeNull();
+        (feature.IsMerged, feature.Image).Should().Be((true, "BranchLocalMerged"));
+        feature.ToolTip.Should().Be("<'{0}' is contained in the currently selected commit>".Replace("{0}", "x"),
+            "upstream's text names the node, not the full branch name");
+        (remote.IsMerged, remote.Image).Should().Be((true, "BranchRemoteMerged"));
+
+        RepoObjectsTree.ShowMerged(roots, [], selected: null, text => text);
+
+        roots.SelectMany(root => root.Descendants()).Should().OnlyContain(node => !node.IsMerged);
+        feature.Image.Should().Be("BranchLocal");
+        feature.ToolTip.Should().BeNull();
+    }
+
+    [Test]
+    public void ShowMerged_should_keep_a_nodes_own_tooltip_once_it_is_no_longer_merged()
+    {
+        RepoObjectNode node = new(RepoObjectKind.LocalBranch, "x", "BranchLocal", new BranchInfo("x", IsRemote: false, IsCurrent: false))
+        {
+            ToolTip = "own",
+        };
+        List<string?> changed = [];
+        node.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        RepoObjectsTree.ShowMerged([node], ["refs/heads/x"], selected: null, text => text);
+        node.ToolTip.Should().Be("'x' is contained in the currently selected commit");
+        RepoObjectsTree.ShowMerged([node], [], selected: null, text => text);
+
+        node.ToolTip.Should().Be("own");
+        changed.Should().Contain([nameof(RepoObjectNode.IsMerged), nameof(RepoObjectNode.Image), nameof(RepoObjectNode.ToolTip)]);
+    }
+
+    [Test]
+    public void ShowHidden_should_hide_the_branches_tags_and_stashes_the_grid_has_not_loaded()
+    {
+        IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects(), RepoObjectsTree.Roots, text => text);
+        CommitRow[] loaded =
+        [
+            Row("abc", new RefLabel("main", RefKind.Branch), new RefLabel("v1", RefKind.Tag)),
+            Row("def", new RefLabel("origin/main", RefKind.RemoteBranch)),
+            Row("stash") with { ReflogSelector = "refs/stash@{0}" },
+        ];
+
+        RepoObjectsTree.ShowHidden(roots, loaded, text => $"<{text}>");
+
+        List<RepoObjectNode> nodes = [.. roots.SelectMany(root => root.Descendants())];
+        RepoObjectNode feature = BranchNode(roots, "feature/x");
+        RepoObjectNode release = nodes.Single(node => node.Item as string == "release/2.0");
+        (feature.IsHidden, feature.Image).Should().Be((true, "EyeClosed"));
+        feature.ToolTip.Should().Be("<'{0}' is not currently visible>".Replace("{0}", "feature/x"),
+            "upstream's text names the branch's full path");
+        (release.IsHidden, release.Image, release.ToolTip).Should().Be((true, "EyeClosed", null));
+        BranchNode(roots, "main").IsHidden.Should().BeFalse();
+        BranchNode(roots, "origin/main").IsHidden.Should().BeFalse();
+        nodes.Single(node => node.Item as string == "v1").Image.Should().Be("TagHorizontal");
+        nodes.Single(node => node.Kind == RepoObjectKind.Stash).IsHidden.Should().BeFalse();
+        nodes.Where(node => node.Kind is RepoObjectKind.Folder or RepoObjectKind.Worktree or RepoObjectKind.Submodule
+                or RepoObjectKind.Remote || node.IsRoot)
+            .Should().OnlyContain(node => !node.IsHidden, "upstream checks the nodes with a revision only");
+
+        RepoObjectsTree.ShowHidden(roots, [], text => text);
+
+        nodes.Single(node => node.Kind == RepoObjectKind.Stash).Image.Should().Be("EyeClosed");
+        RepoObjectsTree.ShowHidden(roots, [Row("x", new RefLabel("feature/x", RefKind.Branch))], text => text);
+        (feature.IsHidden, feature.Image, feature.ToolTip).Should().Be((false, "BranchLocal", null));
+    }
+
+    [Test]
+    public void ShowHidden_should_win_over_the_merged_image_and_tooltip()
+    {
+        IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects(), RepoObjectsTree.Roots, text => text);
+        RepoObjectNode feature = BranchNode(roots, "feature/x");
+        RepoObjectsTree.ShowMerged(roots, ["refs/heads/feature/x"], selected: null, text => text);
+
+        RepoObjectsTree.ShowHidden(roots, [], text => text);
+
+        (feature.IsMerged, feature.Image, feature.ToolTip).Should()
+            .Be((true, "EyeClosed", "'feature/x' is not currently visible"), "as upstream's BaseBranchLeafNode.ApplyStyle");
+    }
+
+    [Test]
+    public void MergedBranchesCommit_should_ask_about_the_latest_selected_commit_and_head_for_an_artificial_one()
+    {
+        RepoObjectsTree.MergedBranchesCommit([]).Should().BeNull();
+        RepoObjectsTree.MergedBranchesCommit([Row("abc"), Row("def")]).Should().Be("abc");
+        RepoObjectsTree.MergedBranchesCommit([Row(ArtificialCommits.WorkTreeHash)]).Should().Be("HEAD");
+        RepoObjectsTree.MergedBranchesCommit([Row(ArtificialCommits.IndexHash)]).Should().Be("HEAD");
+    }
+
+    [Test]
+    public void KeepsMerged_should_be_true_only_when_the_grid_followed_the_trees_branch_or_tag()
+    {
+        IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects(), RepoObjectsTree.Roots, text => text);
+        RepoObjectNode main = BranchNode(roots, "main");
+        RepoObjectNode tag = roots.SelectMany(root => root.Descendants()).Single(node => node.Item as string == "v1");
+        CommitRow atMain = Row("abc", new RefLabel("main", RefKind.Branch), new RefLabel("v1", RefKind.Tag));
+
+        RepoObjectsTree.KeepsMerged([], node: null).Should().BeTrue();
+        RepoObjectsTree.KeepsMerged([atMain], main).Should().BeTrue();
+        RepoObjectsTree.KeepsMerged([atMain], tag).Should().BeTrue();
+
+        RepoObjectsTree.KeepsMerged([], main).Should().BeFalse("upstream clears the merged branches then");
+        RepoObjectsTree.KeepsMerged([atMain], node: null).Should().BeFalse();
+        RepoObjectsTree.KeepsMerged([atMain, Row("def")], main).Should().BeFalse();
+        RepoObjectsTree.KeepsMerged([Row("def")], main).Should().BeFalse();
+        RepoObjectsTree.KeepsMerged([Row("abc", new RefLabel("main", RefKind.RemoteBranch))], main).Should()
+            .BeFalse("a remote branch of the same name is another ref");
+        RepoObjectsTree.KeepsMerged([atMain], roots[0]).Should().BeFalse("upstream compares the commits of branches and tags only");
+    }
+
+    private static CommitRow Row(string hash, params RefLabel[] labels)
+        => new(hash, hash, "subject", "author", "date", Labels: labels);
+
+    private static RepoObjectNode BranchNode(IReadOnlyList<RepoObjectNode> roots, string name)
+        => roots.SelectMany(root => root.Descendants()).Single(node => node.Branch?.Name == name);
 
     private static RepoObjects Objects() => new(
         [
