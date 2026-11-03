@@ -147,6 +147,7 @@
           <TextBlock Text="Performance" FontWeight="SemiBold" Margin="0,8,0,0" />
           <CheckBox x:Name="ShowCommitCountCheck" Content="Show number of changed files on commit button" />
           <CheckBox x:Name="ShowArtificialCountCheck" Content="Show number of changed files for artificial commits" />
+          <CheckBox x:Name="ShowSubmoduleStatusCheck" Content="Show submodule status in browse menu" />
           <CheckBox x:Name="ShowAheadBehindCheck" Content="Show ahead and behind information on status bar in browse window" />
           <CheckBox x:Name="ShowStashCountCheck" Content="Show stash count on status bar in browse window" />
           <StackPanel Orientation="Horizontal" Spacing="8">
@@ -287,6 +288,7 @@
           <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
           <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
           <CheckBox x:Name="RememberSyntaxHighlightingCheck" Content="Remember the 'Show syntax highlighting' preference" />
+          <CheckBox x:Name="ShowDiffForAllParentsCheck" Content="Show file differences for all parents in browse dialog" />
           <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools"
                     ToolTip.Tip="Show all configured difftools in a dropdown.&#10;The primary difftool can still be selected by clicking the main menu entry." />
           <StackPanel Orientation="Horizontal" Spacing="8">

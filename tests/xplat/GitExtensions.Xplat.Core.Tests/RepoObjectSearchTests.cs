@@ -84,7 +84,7 @@ internal sealed class RepoObjectSearchTests
             "origin/main", "origin/feat/y", "upstream",
             "repo", "other",
             "v1",
-            "lib",
+            "repo", "lib",
             "stash@{0}");
     }
 
@@ -129,7 +129,9 @@ internal sealed class RepoObjectSearchTests
             ["origin", "upstream"],
             ["v1"],
             [new StashInfo("stash@{0}", "WIP on main")],
-            [new SubmoduleInfo("lib", IsInitialized: true, IsUpToDate: true)],
+            new SubmoduleStructure(new SubmoduleProject("repo", "/work/repo/", IsCurrent: true, "", "/work/repo/"),
+                [new SubmoduleProject("lib", "/work/repo/lib/", IsCurrent: false, "lib", "/work/repo/")],
+                IsBareRepository: false),
             [
                 new WorktreeInfo("/work/repo", "repo", IsMain: true, IsDeleted: false),
                 new WorktreeInfo("/work/other", "other", IsMain: false, IsDeleted: false),

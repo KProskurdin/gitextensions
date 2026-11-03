@@ -485,6 +485,40 @@ toolbar icons with upstream's `ToolTipText`.
   and F3 (search). See the RepoObjectsTree and HotkeySettingsManager notes in `PORTING-MAP.md`. Left in the left panel:
   multi-selection (with its Ctrl+Space hotkeys) and the submodule tree's super- and subprojects; then the other partial
   rows of `PORTING-MAP.md`.
+- 2026-11-03, the left panel's multi-selection done: click, Ctrl+click and Shift as upstream's, Ctrl+Space and
+  Ctrl+Shift+Space, underlined marked nodes kept across a refresh, and with several marked nodes the menu's "Filter for
+  selected" for all their refs and Expand and Collapse. See the RepoObjectsTree note in `PORTING-MAP.md`. Left in the
+  left panel: the submodule tree's super- and subprojects; then the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the left panel's submodule tree done: upstream's `SubmoduleStatusProvider` structure from the top project
+  down (also from inside a submodule), folders compacted as upstream's, the status images, counts and tooltips with
+  Settings > General's "Show submodule status in browse menu", and the menu's Open, Open in a new instance, Manage,
+  Update, Synchronize, Reset, Stash and Commit with upstream's rules. See the RepoObjectsTree note in `PORTING-MAP.md`.
+  Left in the left panel: Alt+click to a branch's tracking branch; next the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the toolbar's submodules button done: upstream's split button and `PopulateToolbar` drop-down from the same
+  structure (superproject, top project, status images, "Update current submodule"; the button goes up to the
+  superproject). See the FormBrowse toolstrip note in `PORTING-MAP.md`. Next: Alt+click in the left panel, then the
+  other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the left panel's Alt+click to a branch's related branch done (upstream's `RelatedBranch`); the RepoObjectsTree
+  row of `PORTING-MAP.md` is now `ported`. Next: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the Diff tab's diff groups done: upstream's `FileStatusDiffCalculator` linked unchanged; a merge against
+  each parent and its combined diff, two to four commits in upstream's groups (BASE for separate branches), upstream's
+  group nodes in the file list, and Settings > Diff viewer's "Show file differences for all parents". See the
+  RevisionDiffControl note in `PORTING-MAP.md`. Next: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, upstream's file tree in the Diff tab and FormDiff done: folders (folders first, single-folder chains as
+  one), extension and status group nodes with a tree below each, the flat variants, collapsible rows, and the toolbar's
+  collapse and tree buttons with dense tree and group nodes in flat list. See the RevisionDiffControl note in
+  `PORTING-MAP.md`. Next: the same tree in the commit window's and the stash window's lists, then the other partial rows.
+- 2026-11-03, the file tree in the commit window's two lists (with the toolbar's collapse and tree buttons) and in the
+  stash window's list done; the tree's rows are shared code (`FileTreeRows`). See the FormCommit and FormStash notes in
+  `PORTING-MAP.md`. Left: the stash window list's toolbar and filter box; then the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the stash window list's toolbar and filter box done (collapse, tree and group-by buttons, the regex filter).
+  See the FormStash note in `PORTING-MAP.md`. Next: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-03, the file lists' settings menus done: the commit window's working directory list (show ignored,
+  skip-worktree and assumed-unchanged files read with git's flags, untracked as git's setting, the ignore editors,
+  refresh on form focus), the Diff tab's (untracked for the working directory, the ignore editors, refresh on form
+  focus, all parents), and upstream's toolbar enable rules (collapse only with diff groups, dense tree, group nodes).
+  See the FormCommit and RevisionDiffControl notes in `PORTING-MAP.md`. Next: the A/B diff status filter buttons and
+  images of the BASE groups, then the other partial rows.
 
 ## Risks
 

@@ -48,6 +48,22 @@ public sealed class GitRepositoryService : IRepositoryService
             .GetMergedBranches().Any(merged => merged.Trim().TrimStart('*', '+').Trim() == branch));
 
     /// <summary>
+    ///  Upstream FormCommit's <c>ComputeUnstagedFiles</c> with its list's settings: the working directory's and the
+    ///  index's changes, with the ignored, assumed-unchanged and skip-worktree files when asked for.
+    /// </summary>
+    public static Task<IReadOnlyList<FileChange>> GetWorkTreeChangesAsync(string repositoryPath, bool showIgnored,
+        bool showAssumeUnchanged, bool showSkipWorktree) =>
+        Task.Run<IReadOnlyList<FileChange>>(() =>
+        [
+            .. new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
+                .GetAllChangedFilesWithSubmodulesStatus(excludeIgnoredFiles: !showIgnored,
+                    excludeAssumeUnchangedFiles: !showAssumeUnchanged, excludeSkipWorktreeFiles: !showSkipWorktree,
+                    UntrackedFilesMode.Default, CancellationToken.None)
+                .Where(status => !status.IsStatusOnly)
+                .Select(ToFileChange)
+        ]);
+
+    /// <summary>
     ///  The full names of the local and remote branches that <paramref name="commit"/> contains: upstream's
     ///  <c>GitModule.GetMergedBranchesAsync(includeRemote: true, fullRefname: true, commit)</c>, which its left panel reads
     ///  for the grid's selected commit.
@@ -66,25 +82,33 @@ public sealed class GitRepositoryService : IRepositoryService
         ];
 
     // Upstream's LocalBranchTree and RemoteBranchTree: a local branch shows its counts against its upstream, the remote
-    // branch the counts reversed (the first local branch tracking it). Off when ShowAheadBehindData is off.
-    private static IReadOnlyDictionary<string, string> GetAheadBehind(GitModule module)
+    // branch the counts reversed (the first local branch tracking it). Off when ShowAheadBehindData is off. With them
+    // upstream's RelatedBranch (UpdateAheadBehind): the local branch's upstream, the remote branch's local branch.
+    private static (IReadOnlyDictionary<string, string> Texts, IReadOnlyDictionary<string, string> Related) GetAheadBehind(
+        GitModule module)
     {
         Dictionary<string, string> texts = new(StringComparer.Ordinal);
+        Dictionary<string, string> related = new(StringComparer.Ordinal);
         if (new AheadBehindDataProvider(() => module.GitExecutable).GetData() is not { } data)
         {
-            return texts;
+            return (texts, related);
         }
 
         foreach (AheadBehindData item in data.Values)
         {
             texts[item.Branch] = item.ToDisplay();
+            related[item.Branch] = item.RemoteRef;
             if (item.RemoteRef.StartsWith(GitRefName.RefsRemotesPrefix, StringComparison.Ordinal))
             {
-                texts.TryAdd(item.RemoteRef[GitRefName.RefsRemotesPrefix.Length..], item.ToDisplay(reverse: true));
+                string remoteBranch = item.RemoteRef[GitRefName.RefsRemotesPrefix.Length..];
+                if (texts.TryAdd(remoteBranch, item.ToDisplay(reverse: true)))
+                {
+                    related[remoteBranch] = GitRefName.RefsHeadsPrefix + item.Branch;
+                }
             }
         }
 
-        return texts;
+        return (texts, related);
     }
 
     // Upstream's GitModule.GetRefs, with the sort given instead of read from upstream's settings.
@@ -158,7 +182,7 @@ public sealed class GitRepositoryService : IRepositoryService
     // Upstream's GitStatusMonitor reads the status with --no-optional-locks: a refresh, such as when the window is activated
     // again, then never holds the index lock while a command the user started needs it ("index.lock: File exists"). A
     // failed read is read again as GitModule reads it, which lists the error as a file.
-    private static IReadOnlyList<GitItemStatus> ChangedFiles(GitModule module)
+    internal static IReadOnlyList<GitItemStatus> ChangedFiles(GitModule module)
     {
         ExecutionResult result = module.GitExecutable.Execute(
             Commands.GetAllChangedFiles(excludeIgnoredFiles: true, UntrackedFilesMode.Default, noLocks: true),
@@ -213,11 +237,13 @@ public sealed class GitRepositoryService : IRepositoryService
             remoteUrls.TryAdd(inactive.Name, inactive.FetchUrl);
         }
 
+        (IReadOnlyDictionary<string, string> aheadBehind, IReadOnlyDictionary<string, string> related) =
+            GetAheadBehind(module);
         return new RepositorySnapshot(currentBranch.Length == 0 ? null : currentBranch, branches, changes, isMerging,
             stashes, tags, isRebasing, remotes, GetSync(module),
             GetTrackingRemote(module, currentBranch), GetSubmodules(module),
-            isApplyingPatch, module.InTheMiddleOfBisect(), GetAheadBehind(module), GetWorktrees(module),
+            isApplyingPatch, module.InTheMiddleOfBisect(), aheadBehind, GetWorktrees(module),
             remoteUrls, module.GetEffectiveSetting(SettingKeyString.UserEmail),
-            [.. inactiveRemotes.Select(inactive => inactive.Name)], module.GetRemoteColors());
+            [.. inactiveRemotes.Select(inactive => inactive.Name)], module.GetRemoteColors(), related);
     }
 }

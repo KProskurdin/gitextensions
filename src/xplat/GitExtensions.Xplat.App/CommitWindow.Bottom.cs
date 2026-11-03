@@ -174,9 +174,9 @@ public partial class CommitWindow
     private void SelectStagedOnEnterMessage()
     {
         if (_preferences.CommitDialogSelectStagedOnEnterMessage && StagedList.SelectedItems is { Count: 0 }
-            && StagedList.ItemCount > 0)
+            && StagedList.Items.OfType<FileChange>().FirstOrDefault() is { } first)
         {
-            StagedList.SelectedIndex = 0;
+            StagedList.SelectedItem = first;
         }
     }
 }

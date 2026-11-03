@@ -1,79 +1,110 @@
+using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
+using GitUIPluginInterfaces;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's Diff tab (<c>RevisionDiffControl</c>) for several selected commits: the files changed from the earliest
-///  selected commit to the latest (<c>GetFirstAndSelected</c>), each file's diff between them, its diff tool and its own
-///  diff window. One selected commit shows its own changes, as before.
+///  Upstream's Diff tab (<c>RevisionDiffControl</c>) as upstream's <c>FileStatusDiffCalculator</c> fills it (core
+///  <see cref="DiffGroups"/>): for several selected commits, and for a merge, the files in groups (each parent, the
+///  combined diff, A/B/BASE), each file's diff, diff tool and window between its group's revisions. A commit with one parent
+///  and the artificial rows show their own changes, as before.
 /// </summary>
 public partial class MainWindow
 {
-    // The first and the selected commit while several are selected; null while the Diff tab shows one commit.
-    private (ObjectId First, ObjectId Selected)? _diffRange;
-    private IReadOnlyDictionary<string, RevisionDiffFile> _rangeFiles = new Dictionary<string, RevisionDiffFile>();
-    private int _rangeVersion;
+    // The groups the Diff tab shows; null while it shows the selected commit's own files.
+    private IReadOnlyList<DiffGroup>? _diffGroups;
+    private int _diffGroupsVersion;
     private RevisionFileList<CommitFile>? _diffFiles;
 
     // Upstream's FileStatusList over the Diff tab's files.
     private void WireDiffFileList()
         => _diffFiles = new RevisionFileList<CommitFile>(CommitFilesList, DiffFilesFilterBox, DiffFilesByPathButton,
             DiffFilesByExtensionButton, DiffFilesByStatusButton, DiffFilesNoFilesText, _preferences, file => file.Path,
-            file => file.Status);
+            file => file.Status, file => file.Group, new FileListTreeButtons(DiffFilesCollapseGroupsButton,
+                DiffFilesAsTreeButton,
+                [
+                    (DiffFilesPathTreeMenuItem, DiffListSortType.FilePath),
+                    (DiffFilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
+                    (DiffFilesExtensionTreeMenuItem, DiffListSortType.FileExtension),
+                    (DiffFilesExtensionFlatMenuItem, DiffListSortType.FileExtensionFlat),
+                    (DiffFilesStatusTreeMenuItem, DiffListSortType.FileStatus),
+                    (DiffFilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
+                ],
+                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem));
 
     // Called on each selection change, after the selection is tracked.
     private void ShowSelectionDiff()
     {
-        int version = ++_rangeVersion;
-        (string? first, CommitRow? selected) = GridSelection.FirstAndSelected(SelectedRevisions);
-        if (SelectedRevisions.Count < 2 || RepositoryPath is not { } path || first is null || selected is null
-            || !ObjectId.TryParse(first, out ObjectId firstId) ||
-            !ObjectId.TryParse(selected.Hash, out ObjectId selectedId))
+        int version = ++_diffGroupsVersion;
+        IReadOnlyList<CommitRow> selected = SelectedRevisions;
+        if (RepositoryPath is not { } path || !UsesDiffGroups(selected))
         {
-            if (_diffRange is not null)
+            if (_diffGroups is not null)
             {
-                _diffRange = null;
-                _rangeFiles = new Dictionary<string, RevisionDiffFile>();
-                _diffFiles?.Files = _commits.CommitFiles;
+                _diffGroups = null;
+                _diffFiles?.Files = SelectedCommitFiles();
             }
 
             return;
         }
 
-        _diffRange = (firstId, selectedId);
-        _rangeFiles = new Dictionary<string, RevisionDiffFile>();
+        IReadOnlyList<GitRevision> revisions = [.. selected.Select(Revision)];
+        Func<ObjectId, string> describe = RevisionDescriber();
+        _diffGroups = [];
         _diffFiles?.Files = null;
         Run(async () =>
         {
-            IReadOnlyList<RevisionDiffFile> files =
-                await Task.Run(() => RevisionDiff.Files(GitModules.Open(path), firstId, selectedId));
-            if (version != _rangeVersion)
+            IReadOnlyList<DiffGroup> groups = await Task.Run(() =>
+            {
+                GitModule module = GitModules.Open(path);
+                return DiffGroups.Calculate(module, revisions, module.GetCurrentCheckout(), describe);
+            });
+            if (version != _diffGroupsVersion)
             {
                 return;
             }
 
-            _rangeFiles = files.GroupBy(file => file.Path).ToDictionary(group => group.Key, group => group.First());
-            _diffFiles?.Files = [.. files.Select(file => new CommitFile(file.Status, file.Path))];
+            _diffGroups = groups;
+            _diffFiles?.Files =
+            [
+                .. groups.SelectMany(group => group.Files.Select(file =>
+                    new CommitFile(file.Status, file.Path) { Group = group, DiffFile = file }))
+            ];
         });
     }
 
-    // The range and the file's diff details, when the Diff tab shows several commits.
-    private ((ObjectId First, ObjectId Selected) Range, RevisionDiffFile File)? RangeFile(CommitFile file)
-        => _diffRange is { } range && _rangeFiles.TryGetValue(file.Path, out RevisionDiffFile? found)
-            ? (range, found)
-            : null;
+    // Upstream's calculator decides the groups for several commits and for a merge (a stash included); one commit with a
+    // single parent, and an artificial row alone, keep their own list, which is the calculator's one group.
+    private static bool UsesDiffGroups(IReadOnlyList<CommitRow> selected)
+        => selected.Count > 1
+           || (selected is [{ } row] && !ArtificialCommits.IsArtificial(row.Hash) && row.ParentHashes?.Count > 1);
 
-    private static Task ShowRangeFileDiffAsync(DiffView view, string path, (ObjectId First, ObjectId Selected) range,
-        RevisionDiffFile file)
+    // Upstream's GitRevision of a grid row: its id and its parents.
+    private static GitRevision Revision(CommitRow row)
+        => new(ObjectId.Parse(row.Hash))
+        {
+            ParentIds =
+            [
+                .. (row.ParentHashes ?? []).Select(hash => ObjectId.TryParse(hash, out ObjectId id) ? id : default)
+                .Where(id => !id.IsZero)
+            ],
+        };
+
+    // A file of a group, with the group it is shown in.
+    private static (DiffGroup Group, RevisionDiffFile File)? GroupFile(CommitFile file)
+        => file is { Group: { } group, DiffFile: { } diffFile } ? (group, diffFile) : null;
+
+    private static Task ShowGroupFileDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
         => view.ShowDiffAsync(path, file.Path, file.Path,
-            options => RevisionDiff.DiffAsync(GitModules.Open(path), range.First, range.Selected, file, options));
+            options => DiffGroups.DiffAsync(GitModules.Open(path), group, file, options));
 
-    // Upstream's difftool for a file of the selection: from the first to the selected commit.
-    private static Task OpenRangeFileInDiffToolAsync(string path, (ObjectId First, ObjectId Selected) range,
-        RevisionDiffFile file, string? tool)
-        => Task.Run(() => GitModules.Open(path).OpenWithDifftool(file.Path, file.OldPath ?? "", range.First.ToString(),
-            range.Selected.ToString(), extraDiffArguments: null, file.IsTracked, customTool: tool));
+    // Upstream's difftool for a file of a group: between its group's revisions (none for the combined diff).
+    private static Task OpenGroupFileInDiffToolAsync(string path, DiffGroup group, RevisionDiffFile file, string? tool)
+        => Task.Run(() => GitModules.Open(path).OpenWithDifftool(file.Path, file.OldPath ?? "",
+            group.First?.ToString() ?? "", group.Second.ToString(), extraDiffArguments: null, file.IsTracked,
+            customTool: tool));
 }

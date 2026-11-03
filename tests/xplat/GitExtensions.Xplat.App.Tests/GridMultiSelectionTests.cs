@@ -1,8 +1,12 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
 using NUnit.Framework;
@@ -53,6 +57,90 @@ internal sealed class GridMultiSelectionTests
         WaitUntil(() => files.ItemCount == 1);
         files.Items.Cast<CommitFile>().Single().Path.Should().Be("b.txt", "one commit shows its own changes again");
         window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_merge_lists_its_files_against_each_parent_and_its_combined_diff_as_upstreams_groups()
+    {
+        string main = _repo.Run("branch", "--show-current").Trim();
+        _repo.Run("checkout", "-q", "-b", "side", "HEAD~1");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "side");
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "c");
+        _repo.Run("add", ".");
+        _repo.Run("commit", "-q", "-m", "side");
+        _repo.Run("checkout", "-q", main);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "main");
+        _repo.Run("commit", "-q", "-am", "main change");
+        GitProcess.RunAllowingFailure(_repo.Path, "merge", "-q", "side", "-m", "merge side").Should().NotBe(0, "a.txt conflicts");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "merged");
+        _repo.Run("commit", "-q", "-am", "merge side");
+        bool allParents = AppSettings.ShowDiffForAllParents;
+        AppSettings.ShowDiffForAllParents = true;
+        try
+        {
+            MainWindow window = OpenWindow();
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            Select(commits, "merge side");
+            WaitUntil(() => files.Items.OfType<DiffGroupHeader>().Count() == 3);
+
+            List<DiffGroupHeader> headers = [.. files.Items.OfType<DiffGroupHeader>()];
+            headers[0].Text.Should().MatchRegex(@"^\(\d\) Diff with A [0-9a-f]{7,}: main change$");
+            headers[1].Text.Should().MatchRegex(@"^\(\d\) Diff with A [0-9a-f]{7,}: side$");
+            (headers[2].Text, headers[2].Group.Icon, headers[2].IsExpanded).Should().Be(("(1) Combined diff", "DiffC", false),
+                "upstream collapses the third group unless it is a plain diff of few files");
+            files.Items.OfType<CommitFile>().Should().NotContain(file => file.Group == headers[2].Group);
+
+            ClickItem(window, files, headers[2]);
+            WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Group is { IsCombinedDiff: true }));
+            files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Group is { IsCombinedDiff: true });
+            DiffView diff = Find<DiffView>(window, "CommitDiff");
+            WaitUntil(() => diff.Lines.Any(line => line.Text.StartsWith("@@@", StringComparison.Ordinal)));
+            diff.Lines.Should().Contain(line => line.Text == "++merged" && line.Background != null && line.NewNumber.Length > 0,
+                "a line both parents lacked is added, as upstream colors it");
+            Find<Button>(window, "CommitDiffToolButton").IsEnabled.Should().BeFalse("upstream has no difftool for it");
+            window.Close();
+        }
+        finally
+        {
+            AppSettings.ShowDiffForAllParents = allParents;
+        }
+    }
+
+    [AvaloniaTest]
+    public void Two_commits_on_separate_branches_add_upstreams_groups_from_their_merge_base()
+    {
+        string main = _repo.Run("branch", "--show-current").Trim();
+        _repo.Run("checkout", "-q", "-b", "side", "HEAD~1");
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "c");
+        _repo.Run("add", "c.txt");
+        _repo.Run("commit", "-q", "-m", "side");
+        bool allParents = AppSettings.ShowDiffForAllParents;
+        AppSettings.ShowDiffForAllParents = true;
+        try
+        {
+            MainWindow window = OpenWindow();
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            Select(commits, "side");
+            commits.SelectedItems!.Add(Item(commits, "third"));
+
+            WaitUntil(() => files.Items.OfType<DiffGroupHeader>().Count() == 3);
+            files.Items.OfType<DiffGroupHeader>().Select(header => (header.Text[..header.Text.IndexOf(' ')], header.Group.Icon))
+                .Should().Equal(("(2)", "Diff"), ("(1)", "DiffB"), ("(1)", "DiffA"));
+            files.Items.OfType<DiffGroupHeader>().Select(header => header.Text).Should()
+                .SatisfyRespectively(
+                    first => first.Should().MatchRegex(@" Diff with A [0-9a-f]{7,}: side$"),
+                    second => second.Should().MatchRegex($@" Diff BASE with B [0-9a-f]{{7,}}: {main}$",
+                        "upstream names a commit by its first branch"),
+                    third => third.Should().MatchRegex(@" Diff BASE with A [0-9a-f]{7,}: side$"));
+            window.Close();
+        }
+        finally
+        {
+            AppSettings.ShowDiffForAllParents = allParents;
+        }
     }
 
     [AvaloniaTest]
@@ -207,6 +295,20 @@ internal sealed class GridMultiSelectionTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         return window;
+    }
+
+    private static void ClickItem(Window window, ListBox list, object item)
+    {
+        list.ScrollIntoView(item);
+        Dispatcher.UIThread.RunJobs();
+        List<ListBoxItem> containers = [.. list.GetVisualDescendants().OfType<ListBoxItem>()];
+        ListBoxItem container = containers.SingleOrDefault(candidate => Equals(candidate.DataContext, item))
+                                ?? throw new InvalidOperationException(
+                                    $"No container for {item} among {string.Join(", ", containers.Select(candidate => candidate.DataContext))}");
+        Point point = container.TranslatePoint(new Point(20, container.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(point, MouseButton.Left);
+        window.MouseUp(point, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
     }
 
     private static CommitListItem Item(ListBox commits, string subject)

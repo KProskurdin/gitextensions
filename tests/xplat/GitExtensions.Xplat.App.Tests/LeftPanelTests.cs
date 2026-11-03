@@ -1,9 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
@@ -201,6 +203,174 @@ internal sealed class LeftPanelTests
     }
 
     [AvaloniaTest]
+    public void Ctrl_Space_marks_several_branches_whose_menu_filters_the_grid_for_all_of_them()
+    {
+        _repo.Run("branch", "older", "HEAD~1");
+        _repo.Run("tag", "v1", "HEAD~1");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        tree.SelectedItem = BranchNode(tree, "older");
+        FocusItem(tree, BranchNode(tree, "older")!);
+        window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, keySymbol: null);
+        tree.SelectedItem = TagNode(tree, "v1");
+        FocusItem(tree, TagNode(tree, "v1")!);
+        window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, keySymbol: null);
+
+        BranchNode(tree, "older")!.IsMultiSelected.Should().BeTrue();
+        TagNode(tree, "v1")!.IsMultiSelected.Should().BeTrue();
+        OpenMenu(window);
+
+        Find<MenuItem>(window, "TreeFilterMenuItem").IsVisible.Should().BeTrue();
+        Find<MenuItem>(window, "TreeCheckoutMenuItem").IsVisible.Should().BeFalse("upstream offers it for a single node only");
+        Find<MenuItem>(window, "TreeDeleteMenuItem").IsVisible.Should().BeFalse();
+        Click(window, "TreeFilterMenuItem");
+
+        WaitUntil(() => Find<AutoCompleteBox>(window, "BranchFilterBox").Text == "older v1");
+        Click(window, "RefreshButton");
+        WaitUntil(() => !window.IsBusy);
+        BranchNode(tree, "older")!.IsMultiSelected.Should().BeTrue("upstream keeps the marks across a refresh");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_click_marks_the_node_alone_and_a_ctrl_click_adds_one()
+    {
+        _repo.Run("branch", "older", "HEAD~1");
+        string current = _repo.Run("branch", "--show-current").Trim();
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+
+        ClickItem(window, tree, BranchNode(tree, "older")!, RawInputModifiers.None);
+        ClickItem(window, tree, BranchNode(tree, current)!, RawInputModifiers.Control);
+
+        RepoObjectSelection.Selected(Roots(tree)).Select(node => node.Branch?.Name).Should().BeEquivalentTo("older", current);
+
+        ClickItem(window, tree, BranchNode(tree, "older")!, RawInputModifiers.None);
+
+        RepoObjectSelection.Selected(Roots(tree)).Select(node => node.Branch?.Name).Should().Equal("older");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_submodule_tree_shows_the_top_project_its_folders_and_submodules_with_upstreams_menu()
+    {
+        using TestRepository library = new();
+        AddSubmodule(library, "ext/lib");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => SubmoduleTop(tree)?.Children.Count > 0);
+
+        RepoObjectNode top = SubmoduleTop(tree)!;
+        (top.Text.StartsWith(Path.GetFileName(_repo.Path), StringComparison.Ordinal), top.IsBold).Should().Be((true, true));
+        RepoObjectNode folder = top.Children.Single();
+        (folder.Kind, folder.Text, folder.IsItalic).Should().Be((RepoObjectKind.SubmoduleFolder, "ext", true));
+        RepoObjectNode lib = folder.Children.Single();
+        (lib.Kind, lib.Image, lib.IsBold).Should().Be((RepoObjectKind.Submodule, "FolderSubmodule", false));
+        lib.Text.Should().StartWith("lib", "upstream shows the submodule's folder name, not its path");
+
+        tree.SelectedItem = lib;
+        OpenMenu(window);
+        string[] items =
+        [
+            "TreeOpenSubmoduleMenuItem", "TreeOpenSubmoduleNewInstanceMenuItem", "TreeManageSubmodulesMenuItem",
+            "TreeUpdateSubmoduleMenuItem", "TreeSynchronizeSubmoduleMenuItem", "TreeResetSubmoduleMenuItem",
+            "TreeStashSubmoduleMenuItem", "TreeCommitSubmoduleMenuItem",
+        ];
+        items.Where(name => Find<MenuItem>(window, name).IsVisible).Should().Equal(
+            "TreeOpenSubmoduleMenuItem", "TreeOpenSubmoduleNewInstanceMenuItem", "TreeUpdateSubmoduleMenuItem",
+            "TreeResetSubmoduleMenuItem", "TreeStashSubmoduleMenuItem", "TreeCommitSubmoduleMenuItem");
+
+        tree.SelectedItem = top;
+        OpenMenu(window);
+        items.Where(name => Find<MenuItem>(window, name).IsVisible).Should().Equal(
+            ["TreeOpenSubmoduleNewInstanceMenuItem", "TreeManageSubmodulesMenuItem", "TreeUpdateSubmoduleMenuItem",
+                "TreeSynchronizeSubmoduleMenuItem", "TreeResetSubmoduleMenuItem", "TreeStashSubmoduleMenuItem",
+                "TreeCommitSubmoduleMenuItem"],
+            "the shown project is not opened again, and only it is managed and synchronized");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Stash_on_a_submodule_stashes_its_changes_and_the_window_stays_on_its_repository()
+    {
+        using TestRepository library = new();
+        AddSubmodule(library, "lib");
+        string libPath = Path.Combine(_repo.Path, "lib");
+        File.WriteAllText(Path.Combine(libPath, "a.txt"), "changed");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => SubmoduleTop(tree)?.Children.Count > 0);
+        tree.SelectedItem = SubmoduleTop(tree)!.Children.Single();
+        OpenMenu(window);
+
+        Click(window, "TreeStashSubmoduleMenuItem");
+
+        WaitUntil(() => GitProcess.Run(libPath, "stash", "list").Length > 0);
+        WaitUntil(() => !window.IsBusy);
+        File.ReadAllText(Path.Combine(libPath, "a.txt")).Should().Be("two");
+        _repo.Run("stash", "list").Should().BeEmpty("the superproject's changes are not stashed");
+        Roots(tree).Single(root => root.Kind == RepoObjectKind.WorktreesRoot).Children.Single().Item
+            .Should().BeOfType<WorktreeInfo>().Which.Path.Should().Match(path =>
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)) == _repo.Path, "the window did not open the submodule");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void With_upstreams_submodule_status_a_submodule_ahead_of_its_recorded_commit_shows_it()
+    {
+        TestAppBuilder.Preferences.ShowSubmoduleStatus = true;
+        using TestRepository library = new();
+        AddSubmodule(library, "lib");
+        GitProcess.Run(Path.Combine(_repo.Path, "lib"), "-c", "user.name=Test", "-c", "user.email=test@example.com",
+            "commit", "-q", "--allow-empty", "-m", "ahead");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => SubmoduleTop(tree)?.Children.FirstOrDefault()?.Image == "SubmoduleRevisionUp");
+
+        RepoObjectNode top = SubmoduleTop(tree)!;
+        RepoObjectNode lib = top.Children.Single();
+        lib.Text.Should().EndWith(" (+1-0)", "upstream shows the commits added and removed");
+        lib.ToolTip.Should().StartWith("Submodule lib").And.Contain("Fast Forward");
+        top.Image.Should().Be("SubmoduleDirty", "upstream marks the projects above a changed submodule dirty");
+        top.ToolTip.Should().Contain("1 changed submodule");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void In_a_submodule_the_toolbar_lists_the_superproject_and_its_button_goes_up_to_it()
+    {
+        using TestRepository library = new();
+        AddSubmodule(library, "lib");
+        string libPath = Path.Combine(_repo.Path, "lib");
+        MainWindow window = NewWindow();
+        window.Show();
+        window.OpenRepository(libPath);
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        WaitUntil(() => !window.IsBusy && SubmoduleTop(tree)?.Children.Count > 0);
+        ToolSplitButton button = Find<ToolSplitButton>(window, "SubmodulesButton");
+        WaitUntil(() => button.Image == "NavigateUp");
+        ToolTip.GetTip(button).Should().Be("Go to superproject");
+        SubmoduleTop(tree)!.IsBold.Should().BeFalse("the tree starts at the top project");
+        SubmoduleTop(tree)!.Children.Single().IsBold.Should().BeTrue();
+
+        MenuFlyout flyout = (MenuFlyout)button.Flyout!;
+        flyout.ShowAt(button);
+        WaitUntil(() => flyout.Items.Count > 1);
+        List<string?> texts = [.. flyout.Items.OfType<MenuItem>().Select(item => (item.Header as TextBlock)?.Text ?? item.Header as string)];
+        flyout.Hide();
+        texts.Should().HaveCount(5);
+        texts[0].Should().Be("No submodules");
+        texts[1].Should().StartWith("Superproject: " + Path.GetFileName(_repo.Path), "the superproject is the top project here");
+        texts[2].Should().StartWith("lib");
+        texts[3..].Should().Equal("_Update all submodules", "Update current submodule");
+
+        button.RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+
+        WaitUntil(() => !window.IsBusy && button.Image == "SubmodulesManage" && SubmoduleTop(tree)?.IsBold == true);
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void Deactivate_moves_a_remote_to_the_inactive_folder_and_activate_brings_it_back()
     {
         _repo.Run("remote", "add", "origin", "/srv/origin.git");
@@ -371,6 +541,29 @@ internal sealed class LeftPanelTests
         window.Close();
     }
 
+    private static void ClickItem(Window window, TreeView tree, RepoObjectNode node, RawInputModifiers modifiers)
+    {
+        FocusItem(tree, node);
+        TreeViewItem item = tree.GetVisualDescendants().OfType<TreeViewItem>().Single(candidate => candidate.DataContext == node);
+        TextBlock text = item.GetVisualDescendants().OfType<TextBlock>().First(block => block.Text == node.Text);
+        Point point = text.TranslatePoint(new Point(2, text.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(point, MouseButton.Left, modifiers);
+        window.MouseUp(point, MouseButton.Left, modifiers);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    // The tree itself takes no focus; its item does, as a click gives it.
+    private static void FocusItem(TreeView tree, RepoObjectNode node)
+    {
+        foreach (RepoObjectNode parent in RepoObjectsTree.PathTo(Roots(tree), node).SkipLast(1))
+        {
+            parent.IsExpanded = true;
+        }
+
+        Dispatcher.UIThread.RunJobs();
+        tree.GetVisualDescendants().OfType<TreeViewItem>().Single(item => item.DataContext == node).Focus();
+    }
+
     private static string? SelectedSubject(ListBox commits) => (commits.SelectedItem as CommitListItem)?.Row.Subject;
 
     private static RepoObjectNode? TagNode(TreeView tree, string name)
@@ -387,8 +580,19 @@ internal sealed class LeftPanelTests
 
         TestAppBuilder.Preferences.RepoObjectsTreeOrder = RepoObjectsTree.Roots;
         TestAppBuilder.Preferences.ShowCurrentBranchOnly = false;
+        TestAppBuilder.Preferences.ShowSubmoduleStatus = false;
         TestAppBuilder.Preferences.ResetConfirmations();
     }
+
+    // git refuses a submodule from a local path unless the file protocol is allowed.
+    private void AddSubmodule(TestRepository library, string path)
+    {
+        _repo.Run("-c", "protocol.file.allow=always", "submodule", "add", "-q", library.Path, path);
+        _repo.Run("commit", "-q", "-m", "add submodule");
+    }
+
+    private static RepoObjectNode? SubmoduleTop(TreeView tree)
+        => Roots(tree).Single(root => root.Kind == RepoObjectKind.SubmodulesRoot).Children.FirstOrDefault();
 
     private static IReadOnlyList<RepoObjectNode> Roots(TreeView tree)
         => tree.ItemsSource as IReadOnlyList<RepoObjectNode> ?? [];
@@ -416,7 +620,10 @@ internal sealed class LeftPanelTests
         MainWindow window = NewWindow();
         window.Show();
         window.OpenRepository(_repo.Path);
-        WaitUntil(() => !window.IsBusy && Roots(window.FindControl<TreeView>("BranchTreeView")!).Count > 0);
+
+        // Until the submodule tree is read (in the background) the tree is filled once more.
+        WaitUntil(() => !window.IsBusy && Roots(window.FindControl<TreeView>("BranchTreeView")!) is { Count: > 0 } roots
+                        && roots.All(root => root.Kind != RepoObjectKind.SubmodulesRoot || root.Children.Count > 0));
         return window;
     }
 

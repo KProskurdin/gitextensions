@@ -33,6 +33,8 @@ public interface IRepositoryService
 /// git), which upstream's left panel lists apart.</param>
 /// <param name="RemoteColors">The colors set on remotes in upstream's remotes window, by remote name, which the grid's
 /// labels of their branches take (upstream's <c>GitModule.GetRemoteColors</c>).</param>
+/// <param name="RelatedBranches">Upstream's <c>BaseBranchLeafNode.RelatedBranch</c>, by the branch names of
+/// <paramref name="AheadBehind"/>: a local branch's upstream, a remote branch's local branch, as full ref names.</param>
 public sealed record RepositorySnapshot(
     string? CurrentBranch,
     IReadOnlyList<BranchInfo> Branches,
@@ -52,7 +54,8 @@ public sealed record RepositorySnapshot(
     IReadOnlyDictionary<string, string>? RemoteUrls = null,
     string? UserEmail = null,
     IReadOnlyList<string>? InactiveRemotes = null,
-    IReadOnlyDictionary<string, System.Drawing.Color>? RemoteColors = null);
+    IReadOnlyDictionary<string, System.Drawing.Color>? RemoteColors = null,
+    IReadOnlyDictionary<string, string>? RelatedBranches = null);
 
 /// <summary>
 ///  Commits the current branch has that its upstream lacks (<see cref="Ahead"/>) and the reverse (<see cref="Behind"/>).

@@ -206,6 +206,17 @@ public sealed record RevisionLink(string Caption, string Uri);
 
 public sealed record CommitFile(string Status, string Path)
 {
+    /// <summary>
+    ///  The Diff tab's group the file is listed in (upstream's <c>FileStatusItem</c> revisions), when the tab shows
+    ///  <see cref="Diff.DiffGroups"/>; null for the selected commit's own files.
+    /// </summary>
+    public Diff.DiffGroup? Group { get; init; }
+
+    /// <summary>
+    ///  The file as <see cref="Group"/> lists it (its old path and whether git tracks it).
+    /// </summary>
+    public Diff.RevisionDiffFile? DiffFile { get; init; }
+
     public string Display => $"{Status} {Path}";
 
     /// <summary>

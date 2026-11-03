@@ -343,6 +343,13 @@ public interface IAppPreferences
     bool ShowGitStatusInBrowseToolbar { get; set; }
 
     /// <summary>
+    ///  Upstream <c>showsubmodulestatus</c> ("Show submodule status in browse menu"): the left panel's submodule tree shows
+    ///  each submodule's status, read with the git status. Upstream offers it only when the git status is shown on the
+    ///  commit button or the artificial commits.
+    /// </summary>
+    bool ShowSubmoduleStatus { get; set; }
+
+    /// <summary>
     ///  Upstream <c>ShowRevisionGridTooltips</c>: the grid shows a tooltip on each column of a commit.
     /// </summary>
     bool ShowRevisionGridTooltips { get; set; }
@@ -407,6 +414,12 @@ public interface IAppPreferences
     ///  Upstream <c>difftools.showavailable</c>: "Open in diff tool" offers every diff tool git knows besides the default.
     /// </summary>
     bool ShowAvailableDiffTools { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>showdiffforallparents</c> ("Show file differences for all parents in browse dialog"): the Diff tab
+    ///  shows a merge's files against each parent and its combined diff, and several commits' files in upstream's groups.
+    /// </summary>
+    bool ShowDiffForAllParents { get; set; }
 
     /// <summary>
     ///  The options a new diff view starts with, by upstream's rules (FileViewer's constructor).
@@ -499,6 +512,18 @@ public interface IAppPreferences
     ///  Upstream's <c>DiffListSortType</c>: how its file lists group their files (path, extension or status).
     /// </summary>
     DiffListSortType DiffListSorting { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>FileStatusMergeSingleItemWithFolder</c> ("Dense tree"): a folder of a file list's tree that holds one
+    ///  file shows the file in its place.
+    /// </summary>
+    bool FileStatusMergeSingleItemWithFolder { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>FileStatusShowGroupNodesInFlatList</c>: a flat file list grouped by extension or status keeps its group
+    ///  nodes.
+    /// </summary>
+    bool FileStatusShowGroupNodesInFlatList { get; set; }
 
     /// <summary>
     ///  Upstream's <c>closecommitdialogafterlastcommit</c>: the commit window closes after a commit that leaves no unstaged
@@ -1083,6 +1108,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.ShowGitStatusInBrowseToolbar = value;
     }
 
+    public bool ShowSubmoduleStatus
+    {
+        get => AppSettings.ShowSubmoduleStatus;
+        set => AppSettings.ShowSubmoduleStatus = value;
+    }
+
     public bool ShowRevisionGridTooltips
     {
         get => AppSettings.ShowRevisionGridTooltips.Value;
@@ -1168,6 +1199,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ShowAvailableDiffTools;
         set => AppSettings.ShowAvailableDiffTools = value;
+    }
+
+    public bool ShowDiffForAllParents
+    {
+        get => AppSettings.ShowDiffForAllParents;
+        set => AppSettings.ShowDiffForAllParents = value;
     }
 
     // Upstream's runtime settings: the value of this run, read back from the saved default unless remembered.
@@ -1356,6 +1393,18 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.DiffListSorting;
         set => AppSettings.DiffListSorting = value;
+    }
+
+    public bool FileStatusMergeSingleItemWithFolder
+    {
+        get => AppSettings.FileStatusMergeSingleItemWithFolder.Value;
+        set => AppSettings.FileStatusMergeSingleItemWithFolder.Value = value;
+    }
+
+    public bool FileStatusShowGroupNodesInFlatList
+    {
+        get => AppSettings.FileStatusShowGroupNodesInFlatList.Value;
+        set => AppSettings.FileStatusShowGroupNodesInFlatList.Value = value;
     }
 
     public bool CloseCommitDialogAfterLastCommit
@@ -1740,6 +1789,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool ShowGitStatusInBrowseToolbar { get; set; } = true;
 
+    public bool ShowSubmoduleStatus { get; set; }
+
     public bool ShowRevisionGridTooltips { get; set; } = true;
 
     public bool MergeGraphLanesHavingCommonParent { get; set; } = true;
@@ -1763,6 +1814,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public int DiffVerticalRulerPosition { get; set; }
 
     public bool ShowAvailableDiffTools { get; set; } = true;
+
+    public bool ShowDiffForAllParents { get; set; } = true;
 
     // The values of this run and the saved defaults, as upstream's runtime settings keep them.
     private DiffOptions _diffOptions = new();
@@ -1866,6 +1919,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool ShowGpgInformation { get; set; } = true;
 
     public DiffListSortType DiffListSorting { get; set; } = DiffListSortType.FilePath;
+
+    public bool FileStatusMergeSingleItemWithFolder { get; set; }
+
+    public bool FileStatusShowGroupNodesInFlatList { get; set; }
 
     public bool CloseCommitDialogAfterLastCommit { get; set; } = true;
 

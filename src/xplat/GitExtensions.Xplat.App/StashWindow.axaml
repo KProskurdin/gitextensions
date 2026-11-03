@@ -19,33 +19,79 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
       </DockPanel>
-      <!-- Upstream's Stashed file list: grouped by commit index and working directory for the working directory's changes. -->
-      <Panel Grid.Row="1">
+      <!-- Upstream's Stashed file list: grouped by commit index and working directory for the working directory's changes;
+           above it upstream FileStatusList's toolbar (collapse, tree and group-by buttons) and filter box. -->
+      <DockPanel Grid.Row="1">
+        <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+          <local:ToolButton x:Name="FilesCollapseGroupsButton" Image="CollapseAll"
+                            ToolTip.Tip="Collapse all groups, otherwise expand the selected group" />
+          <Rectangle Classes="toolSeparator" IsVisible="{Binding #FilesCollapseGroupsButton.IsVisible}" />
+          <local:ToolSplitButton x:Name="FilesAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="FilesPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon FolderClosed}" />
+                <MenuItem x:Name="FilesPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="FilesExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon File}" />
+                <MenuItem x:Name="FilesExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="FilesStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon FileStatusModified}" />
+                <MenuItem x:Name="FilesStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                <Separator />
+                <MenuItem x:Name="FilesDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                          ToggleType="CheckBox" />
+                <MenuItem x:Name="FilesGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                          ToggleType="CheckBox" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <Rectangle Classes="toolSeparator" />
+          <local:ToolToggleButton x:Name="FilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
+          <local:ToolToggleButton x:Name="FilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
+          <local:ToolToggleButton x:Name="FilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+        </StackPanel>
+        <TextBox x:Name="FilesFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..."
+                 Margin="0,0,0,2" />
+      <Panel>
         <ListBox x:Name="FilesList" SelectionMode="Multiple">
           <!-- Upstream FileStatusList's item menu as FormStash binds it (no file tree or grid filter items). -->
           <ListBox.ContextMenu>
             <local:FileStatusListMenu x:Name="FilesMenu" />
           </ListBox.ContextMenu>
           <ListBox.Styles>
-            <!-- A group's header is not a file: it cannot be selected. -->
-            <Style Selector="ListBoxItem" x:DataType="local:StashFileRow">
-              <Setter Property="IsHitTestVisible" Value="{Binding IsFile}" />
+            <!-- A group's header is not a file: it cannot be selected (a folder row toggles on a click). -->
+            <Style Selector="ListBoxItem">
+              <Setter Property="IsHitTestVisible" Value="{ReflectionBinding IsSelectable, FallbackValue=True}" />
               <Setter Property="Padding" Value="4,1" />
               <Setter Property="MinHeight" Value="0" />
             </Style>
           </ListBox.Styles>
-          <ListBox.ItemTemplate>
+          <ListBox.DataTemplates>
+            <!-- Upstream's folder node, or an extension or status group node. -->
+            <DataTemplate x:DataType="local:FileTreeRow">
+              <DockPanel Background="Transparent" Margin="{Binding Indent}">
+                <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                       Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </DataTemplate>
             <DataTemplate x:DataType="local:StashFileRow">
-              <DockPanel>
+              <!-- A file's name below its folder (FileRows), a group's header as it is. -->
+              <DockPanel Margin="{Binding $parent[ListBoxItem].(local:FileRows.Indent)}">
                 <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0" IsVisible="{Binding IsFile}"
                        Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
-                <TextBlock Text="{Binding Text}" FontWeight="{Binding IsHeader, Converter={x:Static local:BoldConverter.Instance}}"
+                <TextBlock Text="{Binding Text}" FontWeight="Bold" IsVisible="{Binding IsHeader}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Text}" />
+                <TextBlock Text="{Binding $parent[ListBoxItem].(local:FileRows.Text)}" IsVisible="{Binding IsFile}"
                            TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Text}" />
               </DockPanel>
             </DataTemplate>
-          </ListBox.ItemTemplate>
+          </ListBox.DataTemplates>
         </ListBox>
       </Panel>
+      </DockPanel>
       <AccessText Grid.Row="2" Text="_Message:" Margin="0,6,0,3" />
       <TextBox x:Name="MessageBox" Grid.Row="3" AcceptsReturn="True" TextWrapping="Wrap" />
       <!-- Upstream's tableLayoutPanel1: the two options, then a button per row. -->

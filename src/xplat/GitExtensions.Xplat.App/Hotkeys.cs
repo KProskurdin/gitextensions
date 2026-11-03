@@ -113,6 +113,8 @@ public enum LeftPanelCommand
     Delete,
     Rename,
     Search,
+    MultiSelect,
+    MultiSelectWithChildren,
 }
 
 /// <summary>
@@ -457,12 +459,16 @@ public static class Hotkeys
             [LeftPanelCommand.Delete] = (0, "Delete"),
             [LeftPanelCommand.Rename] = (1, "Rename"),
             [LeftPanelCommand.Search] = (2, "Search"),
+            [LeftPanelCommand.MultiSelect] = (3, "MultiSelect"),
+            [LeftPanelCommand.MultiSelectWithChildren] = (4, "MultiSelectWithChildren"),
         },
         new Dictionary<LeftPanelCommand, WinFormsKeys>
         {
             [LeftPanelCommand.Delete] = WinFormsKeys.Delete,
             [LeftPanelCommand.Rename] = WinFormsKeys.F2,
             [LeftPanelCommand.Search] = WinFormsKeys.F3,
+            [LeftPanelCommand.MultiSelect] = WinFormsKeys.Control | WinFormsKeys.Space,
+            [LeftPanelCommand.MultiSelectWithChildren] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Space,
         });
 
     /// <summary>

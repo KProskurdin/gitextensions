@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
@@ -91,6 +92,7 @@ public partial class MainWindow
         TerminalButton.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         EditSettingsButton.Click += (_, _) => Run(() => ShowSettingsAsync());
         ((MenuFlyout)SubmodulesButton.Flyout!).Opening += (_, _) => ShowSubmodulesMenu();
+        SubmodulesButton.Click += (_, _) => OnSubmodulesButtonClick();
         ((MenuFlyout)WorktreesButton.Flyout!).Opening += (_, _) => Run(ShowWorktreesMenuAsync);
         ((MenuFlyout)WorkingDirButton.Flyout!).Opening += (_, _) => ShowWorkingDirMenu();
         ToolTip.SetTip(WorkingDirButton, UpstreamTranslation.ByText(WorkingDirToolTipText));
@@ -130,7 +132,7 @@ public partial class MainWindow
         bool hasBranch = _repository.CurrentBranch.Length > 0;
         ToggleLeftPanelButton.IsEnabled = open;
         ToggleSplitViewButton.IsEnabled = open;
-        SubmodulesButton.IsEnabled = open;
+        ShowSubmodulesButton();
         WorktreesButton.IsEnabled = open;
         WorkingDirButton.IsEnabled = !busy && _git?.Status != GitDiscoveryStatus.NotFound;
         BranchSelectButton.IsEnabled = open;
@@ -444,7 +446,8 @@ public partial class MainWindow
         }
     }
 
-    // Upstream's submodule drop-down: the submodules to open, then updating or synchronizing all of them.
+    // Upstream's submodule drop-down (PopulateToolbar, from the structure the left panel's submodule tree reads), with
+    // "Loading..." until it is read.
     private void ShowSubmodulesMenu()
     {
         MenuFlyout flyout = (MenuFlyout)SubmodulesButton.Flyout!;
@@ -454,26 +457,49 @@ public partial class MainWindow
             return;
         }
 
-        foreach (SubmoduleInfo submodule in _repository.Submodules)
+        if (ShownSubmoduleStructure(path) is not { } structure)
         {
-            MenuItem item = new() { Header = new TextBlock { Text = submodule.Display } };
-            string submodulePath = Path.Combine(path, submodule.Path);
-            item.Click += (_, _) => Run(() => OpenRepositoryAsync(submodulePath));
-            flyout.Items.Add(item);
+            flyout.Items.Add(new MenuItem { Header = new TextBlock { Text = UpstreamTranslation.ByText(SubmoduleStructure.LoadingText) } });
+            return;
         }
 
-        if (flyout.Items.Count > 0)
+        foreach (SubmoduleMenuItem entry in structure.MenuItems(UpstreamTranslation.ByText))
         {
-            flyout.Items.Add(new Separator());
+            flyout.Items.Add(SubmoduleMenuItem(entry, structure));
+        }
+    }
+
+    private Control SubmoduleMenuItem(SubmoduleMenuItem entry, SubmoduleStructure structure)
+    {
+        if (entry.Kind == SubmoduleMenuItemKind.Separator)
+        {
+            return new Separator();
         }
 
-        MenuItem update = new() { Header = "_Update all submodules", Icon = UpstreamIcon("SubmodulesUpdate") };
-        update.Click += (_, _) => RunOnRepository(repository => UpdateSubmodulesAsync(repository, null));
-        MenuItem sync = new() { Header = "_Synchronize all submodules", Icon = UpstreamIcon("SubmodulesSync") };
-        sync.Click += (_, _) => RunOnRepository(repository => _actions.SyncSubmodulesAsync(repository, path: null));
-        update.IsEnabled = sync.IsEnabled = _repository.Submodules.Count > 0;
-        flyout.Items.Add(update);
-        flyout.Items.Add(sync);
+        MenuItem item = new();
+        switch (entry)
+        {
+            case { Kind: SubmoduleMenuItemKind.Project, Project: { } project }:
+                item.Header = new TextBlock { Text = entry.Text, FontWeight = project.IsCurrent ? FontWeight.Bold : FontWeight.Normal };
+                item.Icon = UpstreamIcon(project.Image);
+                item.Click += (_, _) => Run(() => OpenSubmoduleProjectAsync(project));
+                break;
+            case { Kind: SubmoduleMenuItemKind.UpdateAll }:
+                item.Header = UpstreamTranslation.WithAccessKey(entry.Text);
+                item.Icon = UpstreamIcon("SubmodulesUpdate");
+                item.Click += (_, _) => RunOnRepository(repository => UpdateSubmodulesAsync(repository, null));
+                break;
+            case { Kind: SubmoduleMenuItemKind.UpdateCurrent }:
+                item.Header = new TextBlock { Text = entry.Text };
+                item.Icon = UpstreamIcon("FolderSubmodule");
+                item.Click += (_, _) => Run(() => UpdateCurrentSubmoduleAsync(structure));
+                break;
+            default:
+                item.Header = new TextBlock { Text = entry.Text };
+                break;
+        }
+
+        return item;
     }
 
     // Upstream's toolStripWorktrees_DropDownOpening: every worktree by its folder's name (the open one checked, those

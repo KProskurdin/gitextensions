@@ -15,6 +15,7 @@ using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
+using GitExtensions.Xplat.Ui;
 using GitExtUtils.GitUI.Theming;
 using GitUI.CommandsDialogs.SettingsDialog.RevisionLinks;
 using GitUI.ScriptsEngine;
@@ -104,6 +105,13 @@ public partial class SettingsWindow : Window
         CommitsLimitBox.IsEnabled = preferences.MaxRevisionGraphCommits != 0;
         CommitsLimitCheck.IsCheckedChanged += (_, _) => CommitsLimitBox.IsEnabled = CommitsLimitCheck.IsChecked == true;
         ShowCommitCountCheck.IsChecked = preferences.ShowGitStatusInBrowseToolbar;
+
+        // Upstream's SetSubmoduleStatus: the submodule status is read with the git status, so it is offered only while the
+        // git status is shown on the commit button or the artificial commits.
+        ShowSubmoduleStatusCheck.IsChecked = preferences.ShowSubmoduleStatus;
+        SetSubmoduleStatus();
+        ShowCommitCountCheck.IsCheckedChanged += (_, _) => SetSubmoduleStatus();
+        ShowArtificialCountCheck.IsCheckedChanged += (_, _) => SetSubmoduleStatus();
         ShowRevisionTooltipsCheck.IsChecked = preferences.ShowRevisionGridTooltips;
         MergeGraphLanesCheck.IsChecked = preferences.MergeGraphLanesHavingCommonParent;
         GraphDiagonalsCheck.IsChecked = preferences.RenderGraphWithDiagonals;
@@ -131,6 +139,10 @@ public partial class SettingsWindow : Window
         RememberNonPrintingCheck.IsChecked = preferences.RememberShowNonPrintingCharsPreference;
         RememberSyntaxHighlightingCheck.IsChecked = preferences.RememberShowSyntaxHighlightingInDiff;
         ShowAllDiffToolsCheck.IsChecked = preferences.ShowAvailableDiffTools;
+
+        // Upstream's DiffViewerSettingsPage sets its runtime tooltip.
+        ShowDiffForAllParentsCheck.IsChecked = preferences.ShowDiffForAllParents;
+        ToolTip.SetTip(ShowDiffForAllParentsCheck, UpstreamTranslation.ByText(ShowDiffForAllParentsTooltip));
         VerticalRulerBox.Value = preferences.DiffVerticalRulerPosition;
 
         // As upstream, the button saves at once, not with OK.
@@ -209,7 +221,26 @@ public partial class SettingsWindow : Window
     public IReadOnlyDictionary<AppFont, (CheckBox Bold, CheckBox Italic)> FontStyleBoxes => _fontStyleBoxes;
 
     // Upstream's default sizes (its code font is 10 points, the others 9), for a family chosen where none was stored.
+    // Upstream's TranslatedStrings.ShowDiffForAllParentsTooltip.
+    internal const string ShowDiffForAllParentsTooltip =
+        "Show all differences between the selected commits, not limiting to only one difference.\n\n"
+        + "- For a single selected commit, show the difference with its parent commit.\n"
+        + "- For a single selected merge commit, show the difference with all parents.\n"
+        + "- For two selected commits with a common ancestor (BASE), show the difference\n"
+        + "between the commits as well as the difference from BASE to the selected commits.\n"
+        + "See documentation for more details about icons and range diffs.\n"
+        + "- For multiple selected commits (up to four), show the difference for\n"
+        + "all the first selected with the last selected commit.\n"
+        + "- For more than four selected commits, show the difference from the first to\n"
+        + "the last selected commit.";
+
     private static float DefaultFontSize(AppFont font) => font == AppFont.Code ? 10 : 9;
+
+    private void SetSubmoduleStatus()
+    {
+        ShowSubmoduleStatusCheck.IsEnabled = ShowCommitCountCheck.IsChecked == true || ShowArtificialCountCheck.IsChecked == true;
+        ShowSubmoduleStatusCheck.IsChecked = ShowSubmoduleStatusCheck.IsEnabled && ShowSubmoduleStatusCheck.IsChecked == true;
+    }
 
     private void ShowFonts()
     {
@@ -1089,6 +1120,7 @@ public partial class SettingsWindow : Window
         _preferences.MaxRevisionGraphCommits =
             CommitsLimitCheck.IsChecked == true ? (int)(CommitsLimitBox.Value ?? 0) : 0;
         _preferences.ShowGitStatusInBrowseToolbar = ShowCommitCountCheck.IsChecked == true;
+        _preferences.ShowSubmoduleStatus = ShowSubmoduleStatusCheck.IsChecked == true;
         _preferences.ShowRevisionGridTooltips = ShowRevisionTooltipsCheck.IsChecked == true;
         _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
         _preferences.RenderGraphWithDiagonals = GraphDiagonalsCheck.IsChecked == true;
@@ -1125,6 +1157,7 @@ public partial class SettingsWindow : Window
         _preferences.RememberShowNonPrintingCharsPreference = RememberNonPrintingCheck.IsChecked == true;
         _preferences.RememberShowSyntaxHighlightingInDiff = RememberSyntaxHighlightingCheck.IsChecked == true;
         _preferences.ShowAvailableDiffTools = ShowAllDiffToolsCheck.IsChecked == true;
+        _preferences.ShowDiffForAllParents = ShowDiffForAllParentsCheck.IsChecked == true;
         _preferences.DiffVerticalRulerPosition = (int)(VerticalRulerBox.Value ?? 0);
         _preferences.RecentRepositoriesHistorySize =
             (int)(RecentSizeBox.Value ?? _preferences.RecentRepositoriesHistorySize);

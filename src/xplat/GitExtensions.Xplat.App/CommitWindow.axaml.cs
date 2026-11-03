@@ -318,7 +318,7 @@ public partial class CommitWindow : Window
         switch (e.PropertyName)
         {
             case nameof(RepositoryViewModel.Changes):
-                ShowChanges();
+                ReadChanges();
                 RefreshAutoCompleteWords();
                 UpdateState();
                 ShowCommitAndPushText();
@@ -454,7 +454,7 @@ public partial class CommitWindow : Window
     {
         FileListParts parts = staged ? _staged : _unstaged;
         IEnumerable<FileChange> changes = IsFiltered(parts)
-            ? parts.List.ItemsSource as IEnumerable<FileChange> ?? []
+            ? parts.Shown
             : _repository.Changes.Where(change => change.Staged == staged);
         List<string> paths =
         [

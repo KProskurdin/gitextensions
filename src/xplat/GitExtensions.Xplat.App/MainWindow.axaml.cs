@@ -114,7 +114,7 @@ public partial class MainWindow : Window
         _commits.PropertyChanged += (_, e) => OnCommitsChanged(e.PropertyName);
         _repository.PropertyChanged += (_, e) => OnRepositoryChanged(e.PropertyName);
         _actions.PropertyChanged += (_, e) => OnActionsChanged(e.PropertyName);
-        _actions.RepositoryChanged += (_, e) => Run(() => OpenRepositoryAsync(e.RepositoryPath));
+        _actions.RepositoryChanged += (_, e) => OnActionChangedRepository(e.RepositoryPath);
         _actions.RemoteOperationStarted += (_, _) => ShowProcessWindow();
         _recent.PropertyChanged += (_, e) => OnRecentChanged(e.PropertyName);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
@@ -244,6 +244,7 @@ public partial class MainWindow : Window
     private void WireCommitList()
     {
         WireDiffFileList();
+        WireDiffFileSettings();
         DetailTabs.SelectionChanged += (_, _) => ShowFileTreeIfVisible();
         WireCommitInfo();
         FileTreeView.SelectionChanged += (_, _) => Run(ShowSelectedTreeFileAsync);
@@ -528,7 +529,7 @@ public partial class MainWindow : Window
                                                && Hotkeys.LeftPanel.GestureFor(leftPanelCommand) is { } gesture
                                                && Hotkeys.IsTextEditKey(Hotkeys.ToWinFormsKeys(gesture))))
         {
-            RunLeftPanelHotkey(leftPanelCommand);
+            RunLeftPanelHotkey(leftPanelCommand, e.KeyModifiers);
             e.Handled = true;
             return;
         }
@@ -794,6 +795,11 @@ public partial class MainWindow : Window
             ShowRepositoryPanels();
             await _repository.RefreshAsync(repositoryPath);
             await _recent.AddAsync(repositoryPath);
+            if (_showUntrackedReadFor != repositoryPath)
+            {
+                _showUntrackedReadFor = repositoryPath;
+                await ReadShowUntrackedFilesAsync(repositoryPath);
+            }
 
             // Upstream's RecentWorkingDir, which the next start can open.
             _preferences.RecentWorkingDir = repositoryPath;
@@ -1337,6 +1343,9 @@ public partial class MainWindow : Window
             ShowAvatarSettings();
             AppServices.Avatars.Reload();
             DiffToolChoices.Show(CommitDiffToolChoiceButton);
+
+            // Upstream's FileStatusDiffCalculator reloads its groups after "Show file differences for all parents".
+            ShowSelectionDiff();
             ShowHotkeys();
             ShowUserScripts();
             ShowGridScripts();
@@ -1664,10 +1673,10 @@ public partial class MainWindow : Window
                 UpdateBusyState();
                 break;
             case nameof(CommitListViewModel.CommitFiles):
-                // While several commits are selected, the Diff tab lists the files between them instead.
-                if (_diffRange is null)
+                // While the Diff tab shows upstream's diff groups (several commits, a merge), it lists their files instead.
+                if (_diffGroups is null)
                 {
-                    _diffFiles?.Files = _commits.Selected is null ? null : _commits.CommitFiles;
+                    _diffFiles?.Files = SelectedCommitFiles();
                 }
 
                 break;
@@ -1744,6 +1753,7 @@ public partial class MainWindow : Window
                 if (!_repository.IsLoading)
                 {
                     ShowRepoObjects();
+                    LoadSubmoduleStructure();
                 }
 
                 UpdateBusyState();
@@ -2138,10 +2148,14 @@ public partial class MainWindow : Window
 
     private async Task OpenCommitFileInDiffToolAsync(string? tool)
     {
-        if (RepositoryPath is { } path && CommitFilesList.SelectedItem is CommitFile rangeItem
-            && RangeFile(rangeItem) is { } range)
+        if (RepositoryPath is { } path && CommitFilesList.SelectedItem is CommitFile groupItem
+            && GroupFile(groupItem) is { } grouped)
         {
-            await OpenRangeFileInDiffToolAsync(path, range.Range, range.File, tool);
+            if (!grouped.Group.IsCombinedDiff)
+            {
+                await OpenGroupFileInDiffToolAsync(path, grouped.Group, grouped.File, tool);
+            }
+
             return;
         }
 
@@ -2161,11 +2175,11 @@ public partial class MainWindow : Window
 
     private void ShowCommitDiff()
     {
-        if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile rangeItem
-            && RangeFile(rangeItem) is { } range)
+        if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile groupItem
+            && GroupFile(groupItem) is { } grouped)
         {
-            new DiffWindow(range.File.Path, view => ShowRangeFileDiffAsync(view, repositoryPath, range.Range, range.File))
-                .Show(this);
+            new DiffWindow(grouped.File.Path,
+                view => ShowGroupFileDiffAsync(view, repositoryPath, grouped.Group, grouped.File)).Show(this);
             return;
         }
 
@@ -2180,11 +2194,12 @@ public partial class MainWindow : Window
     private void ShowSelectedCommitFileDiff()
     {
         ShowCommitDiffButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
-        CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
-        if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile rangeItem
-            && RangeFile(rangeItem) is { } range)
+        // Upstream has no difftool for the combined diff of a merge.
+        CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile { Group.IsCombinedDiff: not true };
+        if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile groupItem
+            && GroupFile(groupItem) is { } grouped)
         {
-            Run(() => ShowRangeFileDiffAsync(CommitDiff, repositoryPath, range.Range, range.File));
+            Run(() => ShowGroupFileDiffAsync(CommitDiff, repositoryPath, grouped.Group, grouped.File));
             return;
         }
 

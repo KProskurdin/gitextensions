@@ -141,4 +141,31 @@ internal sealed class DiffTests
         DiffNavigation.FindChange(lines, from: 2, forward: false).Should().BeNull();
         DiffNavigation.FindChange(lines, from: -1, forward: false).Should().Be(5);
     }
+
+    [Test]
+    public void ParseCombined_should_read_a_column_per_parent_and_number_the_merges_lines()
+    {
+        IReadOnlyList<DiffLine> lines = DiffParser.ParseCombined(
+            "diff --cc a.txt\nindex 1,2..3\n--- a/a.txt\n+++ b/a.txt\n@@@ -1,1 -1,1 +1,2 @@@\n- main\n -side\n++merged\n  same\n");
+
+        lines.Select(line => (line.Kind, line.NewNumber)).Should().Equal(
+            (DiffLineKind.Header, null), (DiffLineKind.Header, null), (DiffLineKind.Header, null),
+            (DiffLineKind.Header, null), (DiffLineKind.Hunk, null),
+            (DiffLineKind.Removed, null), (DiffLineKind.Removed, null), (DiffLineKind.Added, 1),
+            (DiffLineKind.Context, 2));
+    }
+
+    [Test]
+    public void DiffGroup_should_name_its_counts_and_expand_as_upstreams_file_list()
+    {
+        RevisionDiffFile file = new("M", "a.txt", null, IsTracked: true);
+        DiffGroup plain = new(default(GitExtensions.Extensibility.Git.ObjectId), default, "Diff with A x", "Diff", [file, file]);
+        DiffGroup combined = plain with { Icon = "DiffC" };
+
+        (plain.Header(2), plain.Header(1)).Should().Be(("(2) Diff with A x", "(1/2) Diff with A x"));
+        combined.ExpandedAt(2, 3).Should().BeFalse("only a plain diff of few files expands after the first two");
+        combined.ExpandedAt(1, 2).Should().BeTrue("with fewer than three groups all expand");
+        plain.ExpandedAt(2, 3).Should().BeTrue();
+        (plain with { Files = [] }).ExpandedAt(0, 1).Should().BeFalse("an empty group stays collapsed");
+    }
 }

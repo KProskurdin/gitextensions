@@ -35,6 +35,14 @@ public partial class CommitWindow
     private FileListParts _unstaged = null!;
     private FileListParts _staged = null!;
 
+    // The changes read with the working directory list's settings, while they ask for more than the repository's.
+    private IReadOnlyList<FileChange>? _flaggedChanges;
+    private int _flaggedChangesVersion;
+
+    // Git's setting of upstream's initial "Show untracked files", and its value that turns them off.
+    private const string ShowUntrackedFilesSetting = "status.showuntrackedfiles";
+    private const string NoUntrackedFiles = "no";
+
     private void WireFileLists()
     {
         _unstaged = new FileListParts(Staged: false, UnstagedList, UnstagedFilterBox, UnstagedNoFilesText,
@@ -54,6 +62,13 @@ public partial class CommitWindow
             StagedShowInFolderMenuItem,
             StagedFileHistoryMenuItem, StagedBlameMenuItem, AddToGitIgnore: null, AddToGitInfoExclude: null,
             StagedStopTrackingMenuItem, StagedRunScriptMenuItem);
+        _unstaged.TreeButtons = TreeButtons(UnstagedAsTreeButton, UnstagedPathTreeMenuItem,
+            UnstagedPathFlatMenuItem, UnstagedExtensionTreeMenuItem, UnstagedExtensionFlatMenuItem,
+            UnstagedStatusTreeMenuItem, UnstagedStatusFlatMenuItem, UnstagedDenseTreeMenuItem,
+            UnstagedGroupNodesInFlatListMenuItem);
+        _staged.TreeButtons = TreeButtons(StagedAsTreeButton, StagedPathTreeMenuItem,
+            StagedPathFlatMenuItem, StagedExtensionTreeMenuItem, StagedExtensionFlatMenuItem, StagedStatusTreeMenuItem,
+            StagedStatusFlatMenuItem, StagedDenseTreeMenuItem, StagedGroupNodesInFlatListMenuItem);
 
         UnstagedRefreshButton.Click += (_, _) => Run(_refresh);
 
@@ -68,10 +83,19 @@ public partial class CommitWindow
         }
 
         ShowGroupBy();
+        WireListSettings();
         return;
 
         void Wire(FileListParts parts)
         {
+            // Upstream's tree (FileTreeRows), its tree button and its collapse button.
+            parts.Tree = new FileTreeRows<FileChange>(parts.List, _preferences, change => change.Path,
+                change => change.Image, change => change.Kind, ShowChanges);
+            parts.TreeButtons?.Wire(_preferences, () =>
+            {
+                ShowGroupBy();
+                ShowChanges();
+            });
             parts.Filter.TextChanged += (_, _) => ShowChanges();
             parts.ByPath.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
             parts.ByExtension.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
@@ -103,12 +127,67 @@ public partial class CommitWindow
         }
     }
 
+    // Upstream's settings menu of the working directory's list (BindContextMenu with canAutoRefresh): the ignored,
+    // skip-worktree and assumed-unchanged files are read with git's flags while one is checked; "Show untracked files"
+    // starts as git's status.showuntrackedfiles says; "Refresh artificial commits on form focus" is upstream's
+    // RefreshArtificialCommitOnApplicationActivated.
+    private void WireListSettings()
+    {
+        foreach (MenuItem item in new[] { UnstagedShowIgnoredMenuItem, UnstagedShowSkipWorktreeMenuItem,
+                     UnstagedShowAssumeUnchangedMenuItem })
+        {
+            item.Click += (_, _) => ReadChanges();
+        }
+
+        ((MenuFlyout)UnstagedSettingsButton.Flyout!).Opening += (_, _) =>
+            UnstagedRefreshOnFormFocusMenuItem.IsChecked = _preferences.RefreshCommitDialogOnFocus;
+        UnstagedRefreshOnFormFocusMenuItem.Click += (_, _) =>
+        {
+            _preferences.RefreshCommitDialogOnFocus = UnstagedRefreshOnFormFocusMenuItem.IsChecked;
+            _preferences.Save();
+        };
+        Opened += (_, _) => Run(async () =>
+        {
+            string showUntracked = await Task.Run(() =>
+                GitModules.Open(_repositoryPath).GetEffectiveSetting(ShowUntrackedFilesSetting));
+            UnstagedShowUntrackedMenuItem.IsChecked = showUntracked != NoUntrackedFiles;
+            ShowChanges();
+        });
+    }
+
+    // The repository's changes, or the working directory read again with the list's settings while they ask for more.
+    private void ReadChanges()
+    {
+        int version = ++_flaggedChangesVersion;
+        bool ignored = UnstagedShowIgnoredMenuItem.IsChecked;
+        bool skipWorktree = UnstagedShowSkipWorktreeMenuItem.IsChecked;
+        bool assumeUnchanged = UnstagedShowAssumeUnchangedMenuItem.IsChecked;
+        if (!ignored && !skipWorktree && !assumeUnchanged)
+        {
+            _flaggedChanges = null;
+            ShowChanges();
+            return;
+        }
+
+        Run(async () =>
+        {
+            IReadOnlyList<FileChange> changes = await GitRepositoryService.GetWorkTreeChangesAsync(_repositoryPath,
+                ignored, assumeUnchanged, skipWorktree);
+            if (version == _flaggedChangesVersion)
+            {
+                _flaggedChanges = changes;
+                ShowChanges();
+            }
+        });
+    }
+
     // Upstream's lists: the files of the list in the group-by order, without untracked files when "Show untracked files" is
     // off, and only those the filter matches; NoFiles shows while a list is empty.
     private void ShowChanges()
     {
-        Show(_unstaged, _repository.Changes.Where(change => !change.Staged));
-        Show(_staged, _repository.Changes.Where(change => change.Staged));
+        IReadOnlyList<FileChange> changes = _flaggedChanges ?? _repository.Changes;
+        Show(_unstaged, changes.Where(change => !change.Staged));
+        Show(_staged, changes.Where(change => change.Staged));
 
         // Upstream's Unstaged_FilterChanged and Staged_FilterChanged: while a list is filtered, its button stages or
         // unstages the files shown.
@@ -126,14 +205,31 @@ public partial class CommitWindow
             Regex? filter = FileStatusList.Filter(parts.Filter.Text, out string? error);
             ToolTip.SetTip(parts.Filter, error is null ? null : $"{RegexErrorTitle}: {error}");
             bool showUntracked = parts.ShowUntracked.IsChecked;
-            IReadOnlyList<FileChange> shown = FileStatusList.Sort(
-                changes.Where(change => showUntracked || change.Kind != ChangeKind.Untracked)
-                    .Where(change => filter?.IsMatch(change.Path) ?? true),
-                _preferences.DiffListSorting);
-            parts.List.ItemsSource = shown;
+            IReadOnlyList<FileChange> shown =
+            [
+                .. changes.Where(change => showUntracked || change.Kind != ChangeKind.Untracked)
+                    .Where(change => filter?.IsMatch(change.Path) ?? true)
+            ];
+            parts.Shown = shown;
+            List<object> items = [];
+            parts.Tree?.BeginFill();
+            parts.Tree?.Add(items, shown, depth: 0, keyPrefix: "");
+            parts.List.ItemsSource = items;
             parts.NoFiles.IsVisible = shown.Count == 0;
         }
     }
+
+    // The lists' trees: without upstream's collapse button, which it shows only for diff groups.
+    private static FileListTreeButtons TreeButtons(ToolSplitButton asTree, MenuItem pathTree,
+        MenuItem pathFlat, MenuItem extensionTree, MenuItem extensionFlat, MenuItem statusTree, MenuItem statusFlat,
+        MenuItem denseTree, MenuItem groupNodesInFlatList)
+        => new(CollapseGroups: null, asTree,
+            [
+                (pathTree, DiffListSortType.FilePath), (pathFlat, DiffListSortType.FilePathFlat),
+                (extensionTree, DiffListSortType.FileExtension), (extensionFlat, DiffListSortType.FileExtensionFlat),
+                (statusTree, DiffListSortType.FileStatus), (statusFlat, DiffListSortType.FileStatusFlat),
+            ],
+            denseTree, groupNodesInFlatList);
 
     // Upstream's FileStatusList.IsFilterActive.
     private static bool IsFiltered(FileListParts parts) => !string.IsNullOrEmpty(parts.Filter.Text);
@@ -141,8 +237,7 @@ public partial class CommitWindow
     // Upstream's group-by buttons choose the grouping and keep the tree or flat variant.
     private void SetGroupBy(DiffListSortType sorting)
     {
-        bool flat = _preferences.DiffListSorting.ToString().EndsWith("Flat", StringComparison.Ordinal);
-        _preferences.DiffListSorting = flat ? Enum.Parse<DiffListSortType>($"{sorting}Flat") : sorting;
+        _preferences.DiffListSorting = FileListTreeButtons.GroupBy(_preferences.DiffListSorting, sorting);
         _preferences.Save();
         ShowGroupBy();
         ShowChanges();
@@ -157,6 +252,7 @@ public partial class CommitWindow
             parts.ByExtension.IsChecked =
                 sorting is DiffListSortType.FileExtension or DiffListSortType.FileExtensionFlat;
             parts.ByStatus.IsChecked = sorting is DiffListSortType.FileStatus or DiffListSortType.FileStatusFlat;
+            parts.TreeButtons?.Show(_preferences);
         }
     }
 
@@ -334,7 +430,23 @@ public partial class CommitWindow
         MenuItem? AddToGitIgnore,
         MenuItem? AddToGitInfoExclude,
         MenuItem StopTracking,
-        MenuItem RunScript);
+        MenuItem RunScript)
+    {
+        /// <summary>
+        ///  Upstream's collapse and tree buttons of the list's toolbar.
+        /// </summary>
+        public FileListTreeButtons? TreeButtons { get; set; }
+
+        /// <summary>
+        ///  The list's tree rows.
+        /// </summary>
+        public FileTreeRows<FileChange>? Tree { get; set; }
+
+        /// <summary>
+        ///  The files the list shows (the filter's and "Show untracked files"' choice), also those in collapsed folders.
+        /// </summary>
+        public IReadOnlyList<FileChange> Shown { get; set; } = [];
+    }
     private void ShowFileHistory(string file, bool showBlame)
         => new FileHistoryWindow(_repositoryPath, _actions, _preferences, file, revision: null, showBlame,
             (repository, hash) => _actions.CherryPickAsync(repository, hash),

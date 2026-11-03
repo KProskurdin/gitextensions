@@ -1481,7 +1481,7 @@ internal sealed class MainWindowTests
         Click(ignore, "SaveButton");
 
         WaitUntil(() =>
-            unstaged.ItemCount == 1 && ((IReadOnlyList<FileChange>)unstaged.ItemsSource!)[0].Path == ".gitignore");
+            unstaged.ItemCount == 1 && unstaged.Items.OfType<FileChange>().Single().Path == ".gitignore");
         File.ReadAllText(Path.Combine(_repo.Path, ".gitignore")).Should().Be("/notes.txt\n");
         commit.Close();
     }

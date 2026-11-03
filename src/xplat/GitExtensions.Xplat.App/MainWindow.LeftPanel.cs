@@ -57,6 +57,9 @@ public partial class MainWindow
     // Whether the click that selects a node held Ctrl (Cmd on macOS), which upstream's GoToRevision reads.
     private bool _toggleGridSelection;
 
+    // Whether that click held Alt, which upstream's BaseBranchLeafNode.SelectRevision reads to go to the related branch.
+    private bool _goToRelatedBranch;
+
     private RepoObjectNode? SelectedRepoObject => BranchTreeView.SelectedItem as RepoObjectNode;
 
     private void WireRepoObjectsTree()
@@ -66,9 +69,25 @@ public partial class MainWindow
             UpdateBusyState();
             GoToSelectedRepoObject();
         };
-        BranchTreeView.AddHandler(PointerPressedEvent,
-            (_, e) => _toggleGridSelection = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier),
-            RoutingStrategies.Tunnel);
+        BranchTreeView.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            _toggleGridSelection = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier);
+            _goToRelatedBranch = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        }, RoutingStrategies.Tunnel);
+
+        // Upstream's OnNodeClick: a click marks the node for the multi-selection, Ctrl (Cmd on macOS) toggles it, Shift
+        // takes its descendants along.
+        BranchTreeView.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.Source is Visual visual && visual.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is
+                    RepoObjectNode node)
+            {
+                RepoObjectSelection.Click(_repoObjects, node,
+                    rightButton: e.GetCurrentPoint(BranchTreeView).Properties.IsRightButtonPressed,
+                    multiple: e.KeyModifiers.HasFlag(Hotkeys.CommandModifier),
+                    includingDescendants: e.KeyModifiers.HasFlag(KeyModifiers.Shift));
+            }
+        }, RoutingStrategies.Tunnel);
         BranchTreeView.DoubleTapped += (_, e) =>
         {
             if (e.Source is Visual visual && visual.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext is RepoObjectNode node
@@ -136,11 +155,12 @@ public partial class MainWindow
             ? []
             : RepoObjectsTree.Build(
                 new RepoObjects(_repository.Branches, _repository.Remotes, _repository.Tags, _repository.Stashes,
-                    _repository.Submodules, _repository.Worktrees, _repository.AheadBehind, _repository.RemoteUrls, path,
-                    _repository.InactiveRemotes),
+                    ShownSubmoduleStructure(path), _repository.Worktrees, _repository.AheadBehind, _repository.RemoteUrls, path,
+                    _repository.InactiveRemotes, _repository.RelatedBranches),
                 [.. _preferences.RepoObjectsTreeOrder.Where(_preferences.ShowsRepoObjectsTree)], UpstreamTranslation.ByText,
                 RefSorting());
         RepoObjectsTree.KeepExpansion(_repoObjects, roots);
+        RepoObjectSelection.Keep(_repoObjects, roots);
         _repoObjects = roots;
         _repoObjectSearch.Remap(roots);
         ShowHiddenRepoObjects();
@@ -166,9 +186,11 @@ public partial class MainWindow
     private void GoToSelectedRepoObject()
     {
         bool toggle = _toggleGridSelection;
+        bool related = _goToRelatedBranch;
         _toggleGridSelection = false;
+        _goToRelatedBranch = false;
         if (_restoringRepoObjectSelection || SelectedRepoObject is not { } node
-                                          || RepoObjectsTree.RevisionOf(node) is not { } revision)
+                                          || RepoObjectsTree.RevisionOf(node, related) is not { } revision)
         {
             return;
         }
@@ -221,8 +243,8 @@ public partial class MainWindow
             case RepoObjectKind.Worktree when !node.IsBold:
                 OpenWorktree((WorktreeInfo)node.Item!);
                 break;
-            case RepoObjectKind.Submodule:
-                OpenSubmodule((SubmoduleInfo)node.Item!);
+            case RepoObjectKind.Submodule when node.Item is SubmoduleProject project:
+                OpenSubmoduleOnDoubleClick(project);
                 break;
             case RepoObjectKind.Remote:
                 Run(() => ShowRemotesAsync(this, (string)node.Item!));
@@ -232,10 +254,21 @@ public partial class MainWindow
 
     // Upstream's RepoObjectsTree.ExecuteCommand: Delete and Rename act on the selected node (OnDelete, OnRename, which only
     // a local branch has), Search searches as the search button does.
-    private void RunLeftPanelHotkey(LeftPanelCommand command)
+    private void RunLeftPanelHotkey(LeftPanelCommand command, KeyModifiers modifiers)
     {
         switch (command)
         {
+            // Upstream's MultiSelect and MultiSelectWithChildren click the selected node with the keys held.
+            case LeftPanelCommand.MultiSelect:
+            case LeftPanelCommand.MultiSelectWithChildren:
+                if (SelectedRepoObject is { } selected)
+                {
+                    RepoObjectSelection.Click(_repoObjects, selected, rightButton: false,
+                        multiple: modifiers.HasFlag(Hotkeys.CommandModifier),
+                        includingDescendants: modifiers.HasFlag(KeyModifiers.Shift));
+                }
+
+                break;
             case LeftPanelCommand.Delete:
                 DeleteSelectedRepoObject();
                 break;
@@ -273,7 +306,10 @@ public partial class MainWindow
     {
         RepoObjectNode? node = SelectedRepoObject;
         bool open = RepositoryPath is not null && !IsBusy && node is not null;
-        RepoObjectKind? kind = open ? node!.Kind : null;
+
+        // Upstream's hasSingleSelection: with several marked nodes only the items for all of them are offered.
+        bool multiple = open && RepoObjectSelection.Selected(_repoObjects).Count > 1;
+        RepoObjectKind? kind = open && !multiple ? node!.Kind : null;
         bool isRef = kind is RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch or RepoObjectKind.Tag;
         bool isCurrent = node?.Branch is { IsCurrent: true };
         bool isTag = kind == RepoObjectKind.Tag;
@@ -294,7 +330,7 @@ public partial class MainWindow
             FillCopyMenu(TreeCopyMenuItem, SelectedRevisions, keep: null);
         }
 
-        Show(TreeFilterMenuItem, isRef);
+        Show(TreeFilterMenuItem, open && RepoObjectSelection.RefsFilter(RepoObjectMenuTargets()) is not null);
 
         // Upstream's MenuItemsGenerator: the ref items with the texts of the ref's kind; the checked-out branch can only be
         // branched from and renamed.
@@ -334,12 +370,7 @@ public partial class MainWindow
         Show(TreePruneRemoteMenuItem, activeRemote);
         Show(TreeOpenRemoteUrlMenuItem, remote, enabled: RemoteWebUrl(node) is not null);
 
-        bool submodule = kind == RepoObjectKind.Submodule;
-        bool initialized = node?.Item is SubmoduleInfo { IsInitialized: true };
-        Show(TreeOpenSubmoduleMenuItem, submodule, enabled: initialized);
-        Show(TreeOpenSubmoduleNewInstanceMenuItem, submodule, enabled: initialized);
-        Show(TreeUpdateSubmoduleMenuItem, submodule);
-        Show(TreeSynchronizeSubmoduleMenuItem, submodule);
+        ShowSubmoduleTreeMenu(kind, node);
 
         Show(TreeFetchAndCheckoutMenuItem, isRemoteBranch);
         Show(TreeFetchAndMergeMenuItem, isRemoteBranch);
@@ -371,11 +402,12 @@ public partial class MainWindow
         Show(TreeShowWorktreeInFolderMenuItem, worktree,
             enabled: node?.Item is WorktreeInfo { Path: var worktreePath } && Directory.Exists(worktreePath));
 
-        // Upstream's EnableExpandCollapseContextMenu and EnableMoveTreeUpDownContexMenu.
-        bool parent = open && node!.Children.Count > 0;
-        Show(TreeCollapseMenuItem, parent, enabled: node?.IsExpanded == true);
-        Show(TreeExpandMenuItem, parent, enabled: node?.Descendants().Any(child => child.Children.Count > 0 && !child.IsExpanded) == true);
-        bool root = open && node!.IsRoot;
+        // Upstream's EnableExpandCollapseContextMenu (the menu's nodes with children: Expand for a collapsed one, Collapse
+        // for an expanded one) and EnableMoveTreeUpDownContexMenu.
+        RepoObjectNode[] parents = open ? [.. RepoObjectMenuTargets().Where(target => target.Children.Count > 0)] : [];
+        Show(TreeCollapseMenuItem, parents.Length > 0, enabled: parents.Any(target => target.IsExpanded));
+        Show(TreeExpandMenuItem, parents.Length > 0, enabled: parents.Any(target => !target.IsExpanded));
+        bool root = open && !multiple && node!.IsRoot;
         int index = root ? _repoObjects.ToList().IndexOf(node!) : -1;
         Show(TreeMoveUpMenuItem, root, enabled: index > 0);
         Show(TreeMoveDownMenuItem, root, enabled: index >= 0 && index < _repoObjects.Count - 1);
@@ -446,7 +478,7 @@ public partial class MainWindow
     {
         TreeFilterMenuItem.Click += (_, _) =>
         {
-            if (RefName(SelectedRepoObject) is { } name)
+            if (RepoObjectSelection.RefsFilter(RepoObjectMenuTargets()) is { } name)
             {
                 _preferences.ShowCurrentBranchOnly = false;
                 ApplyFilter(_commits.Filter with { CurrentBranchOnly = false, ShowFilteredBranches = true, BranchFilter = name });
@@ -512,17 +544,7 @@ public partial class MainWindow
             }
         };
 
-        TreeOpenSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleInfo>(OpenSubmodule);
-        TreeOpenSubmoduleNewInstanceMenuItem.Click += (_, _) => OnSelected<SubmoduleInfo>(submodule =>
-            RunOnRepositoryFolder(path =>
-            {
-                string submodulePath = Path.GetFullPath(Path.Combine(path, submodule.Path));
-                _launcher.Start(Environment.ProcessPath!, [submodulePath], submodulePath);
-            }));
-        TreeUpdateSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleInfo>(submodule =>
-            RunOnRepository(path => UpdateSubmodulesAsync(path, submodule.Path)));
-        TreeSynchronizeSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleInfo>(submodule =>
-            RunOnRepository(path => _actions.SyncSubmodulesAsync(path, submodule.Path)));
+        WireSubmoduleTreeMenu();
 
         // Upstream's RemoteBranchNode actions; the new shell fetches the whole remote.
         TreeFetchAndCheckoutMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, branch) =>
@@ -591,10 +613,19 @@ public partial class MainWindow
         TreeShowWorktreeInFolderMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(worktree =>
             RunOnRepositoryFolder(_ => _fileManager.OpenFolder(worktree.Path)));
 
-        TreeCollapseMenuItem.Click += (_, _) => SelectedRepoObject?.IsExpanded = false;
+        TreeCollapseMenuItem.Click += (_, _) =>
+        {
+            foreach (RepoObjectNode target in RepoObjectMenuTargets().Where(target => target.IsExpanded))
+            {
+                target.IsExpanded = false;
+            }
+        };
+
+        // Upstream's ExpandAll of each collapsed one.
         TreeExpandMenuItem.Click += (_, _) =>
         {
-            foreach (RepoObjectNode node in SelectedRepoObject?.Descendants() ?? [])
+            foreach (RepoObjectNode node in RepoObjectMenuTargets().Where(target => target.Children.Count > 0 && !target.IsExpanded)
+                         .SelectMany(target => target.Descendants()).ToList())
             {
                 node.IsExpanded = true;
             }
@@ -691,6 +722,13 @@ public partial class MainWindow
         => await _actions.FetchAsync(path, remote, prune: false) && await then();
 
     // Upstream's "Filter for selected" path of a ref: the branch name with its remote, or the tag name.
+    // The nodes "Filter for selected", Expand and Collapse act on: the marked ones while there are several, else the
+    // selected one. Upstream takes the marked ones always, so its menu opened from the keyboard acts on the node clicked
+    // last, or offers nothing when none was; the new shell does not copy that.
+    private IReadOnlyList<RepoObjectNode> RepoObjectMenuTargets()
+        => RepoObjectSelection.Selected(_repoObjects) is { Count: > 1 } marked ? marked
+            : SelectedRepoObject is { } node ? [node] : [];
+
     private static string? RefName(RepoObjectNode? node)
         => node switch
         {
@@ -712,15 +750,6 @@ public partial class MainWindow
 
     private RepoObjectNode? RootOf(RepoObjectNode node) => RootOf(node, _repoObjects);
 
-    // As upstream's left panel, a submodule opens as a repository of its own in the browse window.
-    private void OpenSubmodule(SubmoduleInfo submodule)
-    {
-        if (RepositoryPath is { } path && submodule.IsInitialized)
-        {
-            string submodulePath = Path.GetFullPath(Path.Combine(path, submodule.Path));
-            Run(() => OpenRepositoryAsync(submodulePath));
-        }
-    }
 
     // Upstream's WorktreeNode.OpenWorktree: upstream's WorktreeSwitch, with its question.
     private void OpenWorktree(WorktreeInfo worktree) => Run(() => WorktreeFlow().SwitchAsync(this, worktree.Path));

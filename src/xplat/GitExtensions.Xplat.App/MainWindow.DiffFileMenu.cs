@@ -36,24 +36,32 @@ public partial class MainWindow
             },
 
             // The File tree tab shows a commit's files, not the working directory's or the index's.
-            CanShowInFileTree = selection => !selection.Second.IsArtificial && _diffRange is null,
+            CanShowInFileTree = selection => !selection.Second.IsArtificial && SelectedRevisions.Count == 1,
             FilterFileInGrid = file => ApplyFilter(_commits.Filter with { PathFilter = file }),
             RunScript = script =>
                 RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())),
         });
 
-    // The Diff tab's selected files with the revisions they are shown between: the selected range while several commits
-    // are selected, otherwise the selected row against its first parent (the index for the working directory).
+    // The Diff tab's selected files with the revisions they are shown between: each file's diff group (upstream's
+    // FileStatusItem) while the tab shows groups, otherwise the selected row against its first parent (the index for the
+    // working directory).
     private DiffMenuSelection? DiffMenuSelection()
     {
         List<CommitFile> files = [.. CommitFilesList.SelectedItems?.OfType<CommitFile>() ?? []];
-        if (_diffRange is { } range)
+        if (_diffGroups is not null)
         {
-            return new DiffMenuSelection(range.First, range.Selected, [],
+            if (files is not [{ Group: { } firstGroup }, ..])
+            {
+                return null;
+            }
+
+            return new DiffMenuSelection(firstGroup.First, firstGroup.Second, ParentsOf(firstGroup.Second),
             [
-                .. files.Select(file => _rangeFiles.TryGetValue(file.Path, out RevisionDiffFile? found)
-                    ? new DiffMenuFile(found.Status, found.Path, found.OldPath, found.IsTracked)
-                    : new DiffMenuFile(file.Status, file.Path, null, IsTracked: file.Status != "?"))
+                .. files.Select(file => file.Group is { } group
+                        ? new DiffMenuFile(file.Status, file.Path, file.DiffFile?.OldPath, file.DiffFile?.IsTracked ?? true,
+                            new DiffMenuRevisions(group.First, group.Second, ParentsOf(group.Second)))
+                        : null)
+                    .OfType<DiffMenuFile>()
             ]);
         }
 
@@ -74,17 +82,42 @@ public partial class MainWindow
             [.. files.Select(file => new DiffMenuFile(file.Status, file.Path, null, IsTracked: file.Status != "?"))]);
     }
 
+    // The parents of a grid row, as upstream's GitRevision has them.
+    private IReadOnlyList<ObjectId> ParentsOf(ObjectId id)
+    {
+        string hash = id.ToString();
+        return
+        [
+            .. (_commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == hash)?.Row.ParentHashes ?? [])
+                .Select(parent => ObjectId.TryParse(parent, out ObjectId parentId) ? parentId : default)
+                .Where(parentId => !parentId.IsZero)
+        ];
+    }
+
     // Upstream RevisionDiffControl's DescribeRevision: the working directory for none; the artificial rows by their
     // subject; a commit by its short hash and its first branch or tag, or its subject.
-    private string DescribeRevision(ObjectId id)
+    private string DescribeRevision(ObjectId id) => RevisionDescriber()(id);
+
+    // DescribeRevision over the grid's rows as they are now, for a calculation off the UI thread.
+    private Func<ObjectId, string> RevisionDescriber()
+    {
+        Dictionary<string, CommitRow> rows = [];
+        foreach (CommitListItem item in _commits.VisibleRows)
+        {
+            rows.TryAdd(item.Row.Hash, item.Row);
+        }
+
+        return id => Describe(id, rows);
+    }
+
+    private static string Describe(ObjectId id, IReadOnlyDictionary<string, CommitRow> rows)
     {
         if (id.IsZero)
         {
             return ResourceManager.TranslatedStrings.Workspace;
         }
 
-        string hash = id.ToString();
-        if (_commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == hash)?.Row is not { } row)
+        if (!rows.TryGetValue(id.ToString(), out CommitRow? row))
         {
             return id.ToShortString();
         }

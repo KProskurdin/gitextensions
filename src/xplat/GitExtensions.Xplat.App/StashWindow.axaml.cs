@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Avalonia.Controls;
 using Avalonia.Input;
 using GitCommands;
@@ -26,6 +27,11 @@ public sealed record StashFileRow(string Text, StashFile? File)
 
     public bool IsHeader => File is null;
 
+    /// <summary>
+    ///  A group's header cannot be selected.
+    /// </summary>
+    public bool IsSelectable => IsFile;
+
     public string? Image => File is null ? null : FileStatusList.ImageFor(File.Change.Kind);
 }
 
@@ -47,6 +53,11 @@ public partial class StashWindow : Window
     private bool _showing;
     private int _filesVersion;
     private StashRevisions? _revisions;
+    // Upstream FileStatusList's title of an invalid filter's error.
+    private const string RegexErrorTitle = "Regex error";
+
+    private FileTreeRows<StashFileRow> _tree = null!;
+    private IReadOnlyList<(string Group, IReadOnlyList<StashFileRow> Files)> _fileGroups = [];
 
     /// <param name="manageStashes">Upstream's <c>ManageStashes</c>: show the newest stash first.</param>
     /// <param name="initialStash">The stash to show first ("stash@{n}").</param>
@@ -60,6 +71,9 @@ public partial class StashWindow : Window
         InitializeComponent();
         InitialFocus.Attach(this);
         WindowPlacementTracker.Attach(this, "Xplat.StashWindow");
+        _tree = new FileTreeRows<StashFileRow>(FilesList, preferences, row => row.Text,
+            row => row.Image ?? "", row => row.File?.Change.Kind ?? ChangeKind.Modified, ShowFileRows);
+        WireFileListToolbar();
 
         KeepIndexCheck.IsChecked = preferences.StashKeepIndex;
         IncludeUntrackedCheck.IsChecked = preferences.IncludeUntrackedFilesInManualStash;
@@ -179,19 +193,14 @@ public partial class StashWindow : Window
 
             _revisions = revisions;
 
-            List<StashFileRow> rows = [];
-            foreach (IGrouping<string, StashFile> group in files.GroupBy(file => file.Group))
-            {
-                if (group.Key.Length > 0)
-                {
-                    rows.Add(new StashFileRow(UpstreamTranslation.ByText(group.Key), null));
-                }
-
-                rows.AddRange(group.Select(file => new StashFileRow(file.Change.Path, file)));
-            }
-
-            FilesList.ItemsSource = rows;
-            if (rows.FirstOrDefault(row => row.IsFile) is { } first)
+            _fileGroups =
+            [
+                .. files.GroupBy(file => file.Group).Select(group =>
+                    (group.Key, (IReadOnlyList<StashFileRow>)[.. group.Select(file => new StashFileRow(file.Change.Path, file))]))
+            ];
+            _tree.Reset();
+            ShowFileRows();
+            if (FilesList.Items.OfType<StashFileRow>().FirstOrDefault(row => row.IsFile) is { } first)
             {
                 FilesList.SelectedItem = first;
             }
@@ -204,6 +213,83 @@ public partial class StashWindow : Window
                 StashesBox.IsEnabled = true;
                 UpdateStashSelectedButton();
             }
+        }
+    }
+
+    // Upstream's Stashed list: each group's header (the commit index and the working directory for the working
+    // directory's changes), then its files in upstream's tree (FileTreeRows).
+    private void ShowFileRows()
+    {
+        HashSet<StashFileRow> selected = [.. FilesList.SelectedItems?.OfType<StashFileRow>() ?? []];
+        Regex? filter = FileStatusList.Filter(FilesFilterBox.Text, out string? error);
+        ToolTip.SetTip(FilesFilterBox, error is null ? null : $"{RegexErrorTitle}: {error}");
+        List<object> rows = [];
+        _tree.BeginFill();
+        foreach ((string group, IReadOnlyList<StashFileRow> files) in _fileGroups)
+        {
+            if (group.Length > 0)
+            {
+                rows.Add(new StashFileRow(UpstreamTranslation.ByText(group), null));
+            }
+
+            _tree.Add(rows, [.. files.Where(file => filter?.IsMatch(file.Text) ?? true)],
+                depth: group.Length > 0 ? 1 : 0, keyPrefix: $"{group}\n");
+        }
+
+        FilesList.ItemsSource = rows;
+        foreach (StashFileRow row in rows.OfType<StashFileRow>().Where(selected.Contains))
+        {
+            FilesList.SelectedItems?.Add(row);
+        }
+    }
+
+    // Upstream FileStatusList's toolbar over the Stashed list: the filter box, the group-by buttons, the tree button and
+    // its menu, and the collapse button (for the extension and status groups; the commit index and working directory
+    // headers stay).
+    private void WireFileListToolbar()
+    {
+        FileListTreeButtons buttons = new(FilesCollapseGroupsButton, FilesAsTreeButton,
+            [
+                (FilesPathTreeMenuItem, DiffListSortType.FilePath), (FilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
+                (FilesExtensionTreeMenuItem, DiffListSortType.FileExtension),
+                (FilesExtensionFlatMenuItem, DiffListSortType.FileExtensionFlat),
+                (FilesStatusTreeMenuItem, DiffListSortType.FileStatus),
+                (FilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
+            ],
+            FilesDenseTreeMenuItem, FilesGroupNodesInFlatListMenuItem);
+        buttons.Wire(_preferences, ShowGrouping);
+        buttons.CollapseGroups?.Click += (_, _) =>
+        {
+            _tree.CollapseGroups([.. FilesList.ItemsSource?.Cast<object>() ?? []]);
+            ShowFileRows();
+        };
+        FilesFilterBox.TextChanged += (_, _) => ShowFileRows();
+        FilesByPathButton.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
+        FilesByExtensionButton.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
+        FilesByStatusButton.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
+        ShowGroupByButtons();
+        return;
+
+        void SetGroupBy(DiffListSortType grouping)
+        {
+            _preferences.DiffListSorting = FileListTreeButtons.GroupBy(_preferences.DiffListSorting, grouping);
+            _preferences.Save();
+            ShowGrouping();
+        }
+
+        void ShowGrouping()
+        {
+            ShowGroupByButtons();
+            ShowFileRows();
+        }
+
+        void ShowGroupByButtons()
+        {
+            DiffListSortType sorting = _preferences.DiffListSorting;
+            FilesByPathButton.IsChecked = sorting is DiffListSortType.FilePath or DiffListSortType.FilePathFlat;
+            FilesByExtensionButton.IsChecked = sorting is DiffListSortType.FileExtension or DiffListSortType.FileExtensionFlat;
+            FilesByStatusButton.IsChecked = sorting is DiffListSortType.FileStatus or DiffListSortType.FileStatusFlat;
+            buttons.Show(_preferences);
         }
     }
 

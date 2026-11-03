@@ -3,6 +3,8 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using GitCommands;
+using Avalonia.VisualTree;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 
@@ -82,6 +84,62 @@ internal sealed class StashWindowTests
         File.Exists(Path.Combine(_repo.Path, "c.txt")).Should().BeFalse();
         window.Close();
         TestAppBuilder.Preferences.IncludeUntrackedFilesInManualStash.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void The_files_are_upstreams_folder_tree_below_their_group()
+    {
+        Directory.CreateDirectory(Path.Combine(_repo.Path, "docs"));
+        Write("docs/n.txt", "n");
+        _repo.Run("add", "docs/n.txt");
+        _repo.Run("commit", "-q", "-m", "add notes");
+        Write("docs/n.txt", "changed");
+        StashWindow window = Open(manageStashes: false);
+        WaitUntil(() => Rows(window).Count(row => row.IsFile) == 1);
+        ListBox files = Find<ListBox>(window, "FilesList");
+
+        files.Items.OfType<FileTreeRow>().Select(row => row.Text).Should().Equal("docs");
+        Dispatcher.UIThread.RunJobs();
+        ListBoxItem file = files.GetVisualDescendants().OfType<ListBoxItem>()
+            .Single(item => item.DataContext is StashFileRow { IsFile: true });
+        FileRows.GetText(file).Should().Be("n.txt", "a file is named below its folder");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_lists_toolbar_filters_the_files_and_its_tree_button_lists_them_flat()
+    {
+        DiffListSortType sorting = TestAppBuilder.Preferences.DiffListSorting;
+        TestAppBuilder.Preferences.DiffListSorting = DiffListSortType.FilePath;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(_repo.Path, "docs"));
+            Write("docs/n.txt", "n");
+            _repo.Run("add", "docs/n.txt");
+            _repo.Run("commit", "-q", "-m", "add notes");
+            Write("docs/n.txt", "changed");
+            Write("a.txt", "changed");
+            StashWindow window = Open(manageStashes: false);
+            WaitUntil(() => Rows(window).Count(row => row.IsFile) == 2);
+            ListBox files = Find<ListBox>(window, "FilesList");
+
+            Find<TextBox>(window, "FilesFilterBox").Text = @"^docs/";
+            Dispatcher.UIThread.RunJobs();
+            Rows(window).Where(row => row.IsFile).Select(row => row.Text).Should().Equal("docs/n.txt");
+
+            Find<TextBox>(window, "FilesFilterBox").Text = "";
+            Find<ToolSplitButton>(window, "FilesAsTreeButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+
+            TestAppBuilder.Preferences.DiffListSorting.Should().Be(DiffListSortType.FilePathFlat);
+            files.Items.OfType<FileTreeRow>().Should().BeEmpty("the flat list has no folders");
+            Rows(window).Count(row => row.IsFile).Should().Be(2);
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.DiffListSorting = sorting;
+        }
     }
 
     [AvaloniaTest]
@@ -219,7 +277,7 @@ internal sealed class StashWindowTests
     }
 
     private static IReadOnlyList<StashFileRow> Rows(StashWindow window)
-        => Find<ListBox>(window, "FilesList").ItemsSource as IReadOnlyList<StashFileRow> ?? [];
+        => [.. Find<ListBox>(window, "FilesList").ItemsSource?.OfType<StashFileRow>() ?? []];
 
     private static void Click(Window window, string name)
         => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

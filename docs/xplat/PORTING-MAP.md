@@ -36,7 +36,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormCheckoutRevision.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutRevisionDialog.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutRevisionWindow.axaml(.cs)`, `CommitPickerView.axaml(.cs)`, `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormDeleteBranch.cs`; `src/app/GitUI/UserControls/BranchComboBox.cs`; `src/app/GitUI/HelperDialogs/FormSelectMultipleBranches.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`, `DeleteBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteBranchWindow.axaml(.cs)`, `SelectMultipleBranchesWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
 | `src/app/GitUI/Editor/FileViewer.cs` | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffParser.cs`, `DiffService.cs`, `DiffViewModel.cs`, `DiffCopy.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`, `DiffView.Toolbar.cs`, `DiffWindow.axaml(.cs)` | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff), `MainWindow.DiffRange.cs` (several selected commits), `RevisionFileList.cs`, `MainWindow.DiffFileMenu.cs` (binds the item menu), `FileStatusListMenu.axaml(.cs)` (item menu, shared with FormDiff), `CopyPathsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Diff/DiffFileMenu.cs` (item menu rules through the linked upstream `RevisionDiffController`, `ContextMenuSelectionInfo`, `FileStatusListContextMenuController`, `FileStatusItem` and `RevisionDiffInfoProvider`); `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`ImageForStatus`, `KindOf`, `Sort<T>`) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/RevisionDiffControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GitCommitHistory.cs` (`LoadFilesAsync`), `CommitListViewModel.cs` (`CommitFiles`); `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (changed files list, Show diff), `MainWindow.DiffRange.cs` (diff groups of a merge or several selected commits), `RevisionFileList.cs` (group nodes), `FileTreeRows.cs` (the file tree, shared with the commit and stash windows), `MainWindow.DiffFileMenu.cs` (binds the item menu), `FileStatusListMenu.axaml(.cs)` (item menu, shared with FormDiff), `CopyPathsMenu.cs`; `src/xplat/GitExtensions.Xplat.Core/Diff/DiffFileMenu.cs` (item menu rules through the linked upstream `RevisionDiffController`, `ContextMenuSelectionInfo`, `FileStatusListContextMenuController`, `FileStatusItem` and `RevisionDiffInfoProvider`), `Diff/DiffGroups.cs` (the linked upstream `FileStatusDiffCalculator` and `FileStatusWithDescription`; `Diff/UpstreamDiffTexts.cs` stands in for its texts), `Diff/DiffParser.cs` (`ParseCombined`); `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`ImageForStatus`, `KindOf`, `Sort<T>`), `Repository/FileStatusTree.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`BuildPathFilter`, `FilePathByObjectId`), `FilterInfo.cs` (full history) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileHistoryDialog.cs`, `FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`, `PathFilter`), `CommitListViewModel.FilePaths`, `RevisionFilter.cs` (`FullHistory`, `SimplifyMerges`); `src/xplat/GitExtensions.Xplat.App/FileHistoryWindow.axaml(.cs)`, `RevisionGrid.axaml`, `FileBrowserWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBlame.cs`; `src/app/GitUI/UserControls/BlameControl.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameView.axaml(.cs)`, `BlameWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | partial |
@@ -65,7 +65,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormAbout.cs` | `src/xplat/GitExtensions.Xplat.App/AboutWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs`, `DashboardTheme.cs`, `UserRepositoriesList.cs`, `UserRepositoriesListController.cs`, `FormDashboardCategoryTitle.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories), `MainWindow.Dashboard.cs`, `ThemeApplier.cs` (dashboard colors); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs`, `Dashboard.cs` | `52d08e996` | partial |
-| `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.MergedBranches.cs`, `MainWindow.HiddenRefs.cs`, `MainWindow.axaml` (`LeftPanel`); core `Repository/RepoObjectSearch.cs` | `afc512395` | partial |
+| `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.MergedBranches.cs`, `MainWindow.HiddenRefs.cs`, `MainWindow.SubmoduleTree.cs`, `MainWindow.axaml` (`LeftPanel`); core `Repository/RepoObjectSearch.cs`, `Repository/RepoObjectSelection.cs`, `Repository/SubmoduleStructure.cs` | `afc512395` | ported |
 | `src/app/GitUI/Hotkey/HotkeySettingsManager.cs` (FormBrowse and FormCommit defaults) | `src/xplat/GitExtensions.Xplat.App/Hotkeys.cs`, `HotkeyEditor.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/UpstreamHotkeys.cs` | `52d08e996` | partial |
 | `src/app/GitUI/SplitterManager.cs`, `NestedSplitterManager.cs`; `FormBrowse.cs` (`SetSplitterPositions`), `FormCommit.cs` (`RestoreSplitters`), `RevisionDiffControl.cs` (`InitSplitterManager`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Splitters.cs`; `src/xplat/GitExtensions.Xplat.App/SplitterTracker.cs`, `MainWindow.Toolbar.cs` (`TrackSplitters`), `CommitWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormGitIgnore.cs`, `FormAddToGitIgnore.cs` | `src/xplat/GitExtensions.Xplat.App/GitIgnoreWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitIgnoreFile.cs` | `52d08e996` | partial |
@@ -242,7 +242,13 @@ selected file's revisions (or "<multiple>"), and a reset runs once per revision,
 After a change the files are read again (upstream's `RefreshAll`). Scripts run with the shown stash and the selected
 files. Not ported: the menu's "Cherry pick changes" (line patching, as in the Diff tab), the loading animation, and the
 diff viewer's move to the neighbouring file at the top or bottom of a diff. Upstream has no branching from a stash; an
-earlier note here listed it as not ported.
+earlier note here listed it as not ported. Added 2026-11-03: the files are upstream's file tree below their group headers
+(`FileTreeRows`, see RevisionDiffControl), in upstream's shared grouping, with upstream FileStatusList's toolbar and
+filter box over the list as the Diff tab's: the collapse, tree and group-by buttons (one setting for every list) and the
+regular expression filter (an invalid one shows its error as a tooltip); the selection stays when the list is grouped or
+filtered again. Difference: the "Commit index" and "Working directory" headers are not collapsible nodes, so the collapse
+button collapses the extension and status groups only. Not ported from the toolbar: the git-grep search and the
+settings menu (see RevisionDiffControl).
 
 **FormCreateTag** (`ported`). First a prompt for a name and an optional message. Since 2026-10-31 (UI-PARITY, after
 U6) upstream's form as `CreateTagWindow` (core `CreateTagDialog`), opened by Commands > Create tag..., the grid's
@@ -345,7 +351,8 @@ diff using directory diff tool" (upstream's `OpenWithDifftoolDirDiff`; off from 
 files changed (upstream's `GetDiffFilesWithUntracked`, the work tree's untracked files included, as added or, from the
 work tree, deleted) beside the selected file's diff (upstream's `GetSingleDiffAsync`, in the shared `DiffView`, which
 got a source for any diff). Not modal, as upstream's `ShowFormDiff`. Since 2026-11-02 the file list is upstream's
-FileStatusList as in the Diff tab (see RevisionDiffControl: status images, group by, filter, NoFiles). Since 2026-11-02 the file list has upstream FileStatusList's item menu (`FileStatusListMenu`, as in the Diff tab) as FormDiff
+FileStatusList as in the Diff tab (see RevisionDiffControl: status images, group by, filter, NoFiles; since 2026-11-03 the
+folder tree with its collapse and tree buttons). Since 2026-11-02 the file list has upstream FileStatusList's item menu (`FileStatusListMenu`, as in the Diff tab) as FormDiff
 has it, without `BindContextMenu`: no "Show in File tree" or "Filter file in grid", File history not the default item,
 Blame opening the file history window on its Blame tab, and the revisions named by short hash only (upstream's
 `GetDescriptionForRevision` without a `DescribeRevision`). The list selects several files, as upstream's. Two differences:
@@ -455,10 +462,22 @@ directory file, delete file(s) (after upstream's question; staged files are unst
 and native, full native, WSL and Cygwin), show in folder, file history, blame, add to .gitignore or .git/info/exclude,
 stop tracking, and the scripts. "Stash selected" left the working directory list's menu on 2026-10-16, as upstream has it
 only in its stash window (see FormStash). Upstream's "There are unresolved merge conflicts" button over the diff
-opens the conflicts window, replacing the "Use ours" and "Use theirs" buttons. Not ported: the tree views and their
-options (dense tree, group nodes), collapsing groups, show ignored, skip-worktree and assumed-unchanged files, the
-submodule items, "Reset chunk of file" and "Interactive add", "Open ... with", rename or move, find file, skip worktree
-and assume unchanged, the git-grep search, and refresh on form focus.
+opens the conflicts window, replacing the "Use ours" and "Use theirs" buttons. Added 2026-11-03: both lists are
+upstream's file tree as the Diff tab's (`FileTreeRows`, see RevisionDiffControl: folders, extension and status groups,
+the flat variants, collapsible rows), with the toolbar's collapse and tree buttons and its menu's groupings, dense tree and
+group nodes in flat list, one setting for both lists; "Stage filtered" stages the filtered files, also those in collapsed
+folders, and "select staged on Enter message" selects the first staged file, not a folder. As upstream's (which shows
+it only for diff groups) the lists have no collapse button. Also since 2026-11-03 the working directory list's settings
+menu is upstream's as FormCommit binds it (`canAutoRefresh`): "Show ignored files", "Show skip-worktree files" and
+"Show assumed-unchanged files" (while one is checked both lists are read with git's flags, core
+`GitRepositoryService.GetWorkTreeChangesAsync`, upstream's `ComputeUnstagedFiles`), "Show untracked files" (at first
+as git's `status.showuntrackedfiles` says), the two ignore editors and "Refresh artificial commits on form focus"
+(upstream's `RefreshArtificialCommitOnApplicationActivated`, the same as the options menu's); the staged list's
+skip-worktree and untracked items are disabled, as upstream enables them for the working directory only. Difference: an
+assumed-unchanged or skip-worktree file without a change shows the modified image, where upstream has its unknown
+status image. Not ported: the settings menu's toolbar submenu, the submodule items, "Reset chunk of file" and
+"Interactive add", "Open ... with", rename or move, find file, skip worktree and assume unchanged (the menu items), and
+the git-grep search.
 Changed 2026-10-13 (UI parity U3.2): the bottom panel is upstream's: the column of commit buttons (Commit with upstream's
 image, a key while the commit is signed; Commit & push, which reads "Commit & force push" after an amend with
 `CommitAndPushForcedWhenAmend` and "Push", only pushing, when there is nothing to commit; Amend commit with upstream's
@@ -667,7 +686,8 @@ long filenames" (PathFormatter row). Added 2026-11-02: with several commits sele
 the earliest selected to the latest (upstream's `GetFirstAndSelected`, through FormDiff's `RevisionDiff`), each file's
 diff between them, its diff tool (upstream's `OpenWithDifftool` with both revisions) and "Open in window"; one commit
 shows its own changes again. Upstream groups three or more selected commits by each one against the latest; here they
-are the earliest against the latest. Since 2026-11-02 a merge (and a stash) lists its files against the first parent,
+were the earliest against the latest until the diff groups (2026-11-03, below). Since 2026-11-02 a merge (and a stash)
+lists its files against the first parent (since 2026-11-03 only without "Show file differences for all parents"),
 as its diff already showed them (before, the list was git's combined diff, mostly empty). Also since 2026-11-02 the list
 is upstream's FileStatusList (`RevisionFileList`, shared with FormDiff's window): upstream's status image before each
 path (`GetItemImageKey` by git's status letter), the group-by buttons (path, extension or status, upstream's
@@ -691,8 +711,44 @@ custom difftool list, find file, the git-grep items, skip worktree and assume un
 Upstream's Blame opens in the File tree tab; here it opens the file history window on its Blame tab, as the hotkey did.
 Since 2026-11-02 the list selects several files (Ctrl and Shift), as upstream's, for the menu's items that take several;
 the diff shows the selected file. The menu is `FileStatusListMenu`, which FormDiff's window shares (see FormDiff).
-Not ported: the per-file tree and the toolbar's tree and settings items, the file history view, and the diff of merge commits against each
-parent ("Show file differences for all parents", upstream's default) with the combined diff.
+Added 2026-11-03: upstream's diff groups (`FileStatusDiffCalculator`, linked unchanged into core `DiffGroups` with a
+stand-in for its four `TranslatedStrings` texts; the grid row's parents, upstream's `GetActualRevision` read from git). A
+merge (a stash too) lists its files against each parent ("Diff with A <parent>") and, when files differ from every
+parent, the "Combined diff" group (`GetCombinedDiffFileList`, its diff `GetCombinedDiffContent`, classified by core
+`DiffParser.ParseCombined` as upstream's `DiffLineNumAnalyzer`: a column per parent); two to four selected commits list the
+earliest against the latest and then, as upstream's, the others against the latest or, for commits on separate branches,
+BASE against each ("Diff BASE with B ...", "Diff BASE with A ..."). Both follow upstream's `ShowDiffForAllParents`
+(Settings > Diff viewer, with upstream's tooltip). With more than one group the list shows upstream's group nodes (the
+expander, the group's icon, upstream's `GetGroupName` count and summary), expanded as upstream's `GetNodes` expands them, a
+click expanding or collapsing one; each file's diff, diff tool, window and item menu use its group's revisions (the
+combined diff has no diff tool, as upstream's). This replaces the new shell's earliest-against-latest diff of several
+commits. Differences: the group nodes are rows of the flat list with an expander glyph, not tree nodes, so the files are
+not indented below them; the expander toggles on a click, not on double-click or the arrow keys. Not ported: upstream's
+range diff item (`git range-diff`, which the shell has no view for) and the file history view. Added 2026-11-03: the
+toolbar's settings menu as RevisionDiffControl binds it: "Show untracked files" (enabled for the working directory's
+row, at first as git's `status.showuntrackedfiles` says), the two ignore editors, "Refresh artificial commits on form
+focus" (upstream's setting; the browse window reads the status on every activation anyway, as upstream's status
+monitor does) and "Show file differences for all parents" (with upstream's tooltip; the groups are calculated again).
+Not ported from it: "Show skip-worktree files" (the working directory row's files are the repository's changes, read
+without git's skip-worktree flag) and the toolbar submenu. The toolbar's rules since the same day: the collapse button
+shows only while the list has diff group nodes, "Dense tree" is enabled only for a tree and "Show group nodes in flat
+list" only for a flat list grouped by extension or status (upstream's `UpdateToolbar`).
+Added 2026-11-03: upstream's file tree (`StatusSorter.CreateTreeSortedByPath` and `GetNodes`' grouping, ported to core
+`FileStatusTree`; shared with FormDiff's window): grouped by path the files are in their folders, the folders before the
+files at each level (`PathFirstComparer`), a folder holding only one folder shown as one ("docs/x/y"), each name without
+its folder's path; grouped by extension or status a node per group (the extension, or the status's image) with the
+group's folder tree below it, a group of one file showing the file alone and a single group being the list itself; the
+flat variants list the paths without folders (and without the group nodes, unless "Show group nodes in flat list").
+Folder and group nodes are rows with an expander, all expanded at first as upstream's `ExpandAll`, a click collapsing or
+expanding one; the rows below them are indented. The toolbar got upstream's "Collapse all groups, otherwise expand the
+selected group" button and its tree split button ("Toggle flat list / tree", its image upstream's FileTree or
+DocumentTree) whose menu has the six groupings, "Dense tree (merge single item with its folder node)" (upstream's
+`FileStatusMergeSingleItemWithFolder`) and "Show group nodes in flat list (if multiple)"
+(`FileStatusShowGroupNodesInFlatList`). Differences: the nodes are rows of a flat list with an expander glyph, not tree
+nodes, toggled by a click (not double-click or the arrow keys); the status groups are ordered by the new shell's status
+order (conflicts, modified, renamed, added, deleted), where upstream orders them by its image list; an extension group has
+upstream's generic file image, as the new shell has no per-extension system icons. Since the same day the commit
+window's and the stash window's lists are the same tree (`FileTreeRows`, FormCommit and FormStash rows).
 
 **FormFileHistory** (`partial`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
 and a diff of that file in a chosen commit. Added 2026-10-10: the history follows renames as upstream's
@@ -865,7 +921,7 @@ upstream's questions. Colors as `DashboardTheme`, light or dark. The left column
 font needs it. Not ported: dropping a folder on the dashboard, "Recent repositories settings" (the shortening and sorting
 settings are read as upstream stores them), and copying the environment information before "Issues" opens.
 
-**RepoObjectsTree** (`partial`). Rebuilt 2026-10-13 as upstream's single tree (`RepoObjectsTree` in core, with `BranchTree`
+**RepoObjectsTree** (`ported`). Rebuilt 2026-10-13 as upstream's single tree (`RepoObjectsTree` in core, with `BranchTree`
 for the branch grouping): the six trees (Branches, Remotes, Worktrees, Tags, Submodules, Stashes) in upstream's order and
 with its root images, shown and ordered by upstream's `RepoObjectsTreeShow*` and `RepoObjectsTree*Index` settings; branch
 and tag folders at '/'; upstream's node images (local and remote branch, the host's logo on a remote, tag, stash,
@@ -886,14 +942,14 @@ remotes, and double-click on a remote opens the remotes window. Since 2026-10-16
 stashes...", and "Open stash" and double-click open the stash window on that stash. Differences: "Reset current branch to
 here..." opens the reset current branch window (FormResetCurrentBranch, since 2026-10-16; before, a choice window); "Create worktree..." opens the worktree window; a tag also has
 "Delete on remote...", which upstream offers in its push dialog; the remote branch fetch items fetch the whole remote.
-Not ported: multi-selection, the submodule tree of super- and subprojects with its detailed status images and
-reset, stash and commit items.
 Added 2026-11-02: selecting a local or remote branch, a tag, a stash or a worktree selects its commit in the grid, as
 upstream's `OnSelected` (`GoToRevision`, `RevisionGridControl.GoToRef`; core `RepoObjectsTree.RevisionOf`): with Ctrl
 (Cmd on macOS) the commit is added to or taken from the grid's selection, a commit the grid does not show gets upstream's
 `RevisionFilteredInGrid` message and an unknown name "No revision found.". The tree's own selection put back after a
-refresh does not move the grid (upstream's `IgnoreSelectionChangedEvent`). Upstream's Alt+click, which goes to the
-branch's tracking branch, is not ported. The menu got upstream's "Copy to clipboard" at the top (the grid's copy
+refresh does not move the grid (upstream's `IgnoreSelectionChangedEvent`). Since 2026-11-03 Alt+click goes to the
+branch's related branch (upstream's `BaseBranchLeafNode.SelectRevision` and `RelatedBranch`, read with the ahead and
+behind data: a local branch's upstream, a remote branch's local branch; core `RepoObjectsTree.RevisionOf`); difference:
+upstream reads Alt whenever the selection changes, the new shell on the click, as it reads Ctrl. The menu got upstream's "Copy to clipboard" at the top (the grid's copy
 submenu for the grid's selected commits, on a branch or a stash) and "Run script" at the bottom (the scripts of the
 grid's menu, on a local branch, run with the grid's selection).
 Added 2026-11-03: the merged-branch images of upstream's `SelectionChanged` (`BaseBranchLeafNode.IsMerged`): when the
@@ -925,8 +981,40 @@ tree by the nodes' keys. Difference, an upstream accident not copied: upstream k
 search with new text, so its second search starts over and selects the first match again; the new shell goes on to the
 second. Added the same day: the LeftPanel hotkeys Rename (F2, a local branch's rename window) and Search (F3), which act
 anywhere in the left panel, in its search box except on the keys that edit text (upstream's `IsTextEditKey`, ported
-as `Hotkeys.IsTextEditKey`); Delete now follows the same rule. MultiSelect and MultiSelectWithChildren wait for the
-tree's multi-selection.
+as `Hotkeys.IsTextEditKey`); Delete now follows the same rule.
+Added 2026-11-03: the multi-selection (upstream's `NodeBase.IsSelected`, `OnNodeClick`, `SelectNode`; core
+`RepoObjectSelection`): beside the tree's own selection, a click marks the clicked node alone, Ctrl+click (Cmd on macOS)
+adds it to the marked nodes or takes it away, with Shift its descendants too, and a right click on a marked node keeps
+the marks; the hotkeys MultiSelect (Ctrl+Space) and MultiSelectWithChildren (Ctrl+Shift+Space) do the same for the
+selected node. Marked nodes are underlined and stay marked across a refresh (by their keys). With several marked
+nodes the menu offers only "Filter for selected", which filters the grid for all their branches and tags (space
+separated, upstream's runtime tooltip), and Expand and Collapse, for each of them with children (upstream's
+`EnableExpandCollapseContextMenu`: Expand for a collapsed one, expanding all below it, Collapse for an expanded one; the
+new shell had enabled Expand when any folder below was collapsed). Difference, an upstream accident not copied: upstream
+counts only the marked nodes, so its menu opened from the keyboard on a node that was not clicked acts on the node
+clicked last, or offers nothing when none is marked; with fewer than two marked nodes the new shell's menu acts on the
+selected node.
+Added 2026-11-03: upstream's submodule tree (`SubmoduleTree`, `SubmoduleNode`, `SubmoduleFolderNode`) in place of the
+flat list of the repository's own submodules. Core `SubmoduleStructure` reads it with upstream's `SubmoduleStatusProvider`
+(linked GitCommands code, reached as a friend assembly) after each refresh: its `UpdateSubmodulesStructureAsync`, then,
+when Settings > General's "Show submodule status in browse menu" is on (upstream's `ShowSubmoduleStatus`, offered as
+upstream's only while the git status is shown on the commit button or the artificial commits), its
+`UpdateSubmodulesStatusAsync` with the repository's git status, as upstream's browse window calls them; the tree is filled
+again only when the structure changed. The tree (`RepoObjectsTree`, upstream's `CreateSubmoduleNodes` and
+`AddTopAndNodesToTree`) starts at the top project, also when the repository is itself a submodule, with every submodule
+below it recursively, each below the nearest project that holds it, in folders (italic, chains of single folders
+compacted as upstream's `CompactSingleChildFolders`), all expanded; the shown project in bold. A node shows upstream's
+name, branch and added and removed commits (`DisplayText`), the status image of `GetSubmoduleItemImage` (fast forward,
+rewind, newer or older commit time, each dirty or not, dirty, changed) and the tooltip of `SetStatusToolTipAsync` (the
+submodule status text, the shown project's changes as `ArtificialCommitChangeCount.GetSummary`, else the project's
+commit). The menu is upstream's `EnableSubmoduleContextMenu`: Open (not for the shown project), Open in a new instance,
+Manage... and Synchronize (the shown project only), Update (the submodule, from the project holding it), Reset (upstream's
+reset dialog, then all its changes), Stash and Commit (a commit window on the submodule's own state), the last three not in
+a bare repository; double-click opens a project, the shown one in a new instance. The actions in another repository leave
+the browse window on its own, which it reads again. Differences: a submodule whose holder is missing is left out, where
+upstream also shows a message box while filling the tree; Open does not select the work tree and the recorded commit
+(upstream's `SetWorkingDir` with those revisions), and a new instance does not get the grid's selection, as the new shell
+takes no revisions on its command line. With Alt+click (above) the row is ported.
 
 **HotkeySettingsManager** (`partial`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a
@@ -934,7 +1022,7 @@ branch or tag, merge, rebase, stash and stash pop, with Cmd in place of Ctrl on 
 (stage all), Ctrl+Enter and F5. Since 2026-10-06 the FormBrowse hotkeys are read from and written to upstream's
 `SerializedHotkeys` setting (the `HotkeySettings[]` XML, by upstream command code and name; other forms' entries are kept
 as they are), and can be changed in Settings > Hotkeys, so a hotkey changed in either app applies in both. Not ported:
-the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete; Rename and Search since 2026-11-03) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name. Added 2026-10-10: the BrowseDiff section (the Diff tab's
+the commands of the RevisionGrid, FileViewer, LeftPanel and FormMergeConflicts sections that the new shell has no feature for, the Stash and BrowseDiff sections, the alternative next and previous keys of FormCommit, and the reset-to-defaults button. Added 2026-10-06 (later): the FormCommit section (focus panes, stage all, diff tool, refresh, next and previous file), editable in Settings. Fixed then: the sections are stored under upstream's names ("Browse", "Commit"); the fork had used "FormBrowse", so hotkeys were not actually shared before. Added after that: the RevisionGrid (parent, child, HEAD, filter, branch scope, merges, first parent), FileViewer (next and previous change, ignore whitespace, stage and unstage lines), LeftPanel (Delete; Rename, Search, MultiSelect and MultiSelectWithChildren since 2026-11-03) and FormMergeConflicts (merge tool, ours, theirs, rescan) commands the new shell has. Added 2026-10-07: the Scripts section (see ScriptsManager). Changed then: stored hotkeys are matched by section and command code, as upstream's `MergeIntoDefaultSettings` does, and written in place of the entry with the same code, so a renamed script keeps its hotkey; the fork had matched by name. Added 2026-10-10: the BrowseDiff section (the Diff tab's
 file list, see RevisionDiffControl) and the Stash section (on the left panel's stashes: next, previous, refresh), the
 commit window's Conventional Commits keys, and the grid's ToggleHighlightSelectedBranch and quick search next and previous
 keys. Still not ported: the commands of every section that the new shell has no feature for, and the reset-to-defaults
@@ -1303,7 +1391,9 @@ button and the rebase check box follow it), autostash with untracked files, subm
 question while undecided), histogram diff, the commit limit, the quick search timeout, the uncommitted changes check of
 checkout, and the status bar's ahead and behind counts and stash count. Added 2026-10-11 from the Appearance page: the
 author images group (Avatars row), the branch names of the recent repositories (Dashboard row) and "Truncate long
-filenames" (PathFormatter row). Not ported: the console window and telemetry settings (General), the spelling
+filenames" (PathFormatter row). Added 2026-11-03 from the General page: "Show submodule status in browse menu"
+(`showsubmodulestatus`, enabled as upstream's `SetSubmoduleStatus` only while one of the two git status counts is on), for
+the left panel's submodule tree (RepoObjectsTree row). Not ported: the console window and telemetry settings (General), the spelling
 dictionary (no spelling checker, PLAN.md M8), and the Windows-only "Show current branch in Visual Studio" and "Auto scale
 user interface" (Avalonia scales by the system's setting).
 
@@ -1312,9 +1402,10 @@ of upstream's three toggle buttons, same states), fewer and more lines of contex
 entire file is shown) and the entire file, with upstream's diff arguments and hotkeys (IgnoreAllWhitespace, Increase and
 DecreaseNumberOfVisibleLines, ShowEntireFile), kept for the next view in this run as upstream's runtime settings; the three
 "Remember" settings and "Save current view settings as default". Added 2026-10-11: remember non-printing characters and
-syntax highlighting, the vertical ruler position and "Show all available difftools" (FileViewer row). Not ported: diff
-appearance, combined diff, continuous scroll, submodule diff, all parents and Git coloring, whose FileViewer features the
-shell does not have (PLAN.md M8).
+syntax highlighting, the vertical ruler position and "Show all available difftools" (FileViewer row). Added 2026-11-03:
+"Show file differences for all parents in browse dialog" (`showdiffforallparents`, with upstream's runtime tooltip; the
+Diff tab's groups, RevisionDiffControl row). Not ported: diff appearance, combined diff, continuous scroll, submodule
+diff and Git coloring, whose FileViewer features the shell does not have (PLAN.md M8).
 
 **CommitDialogSettingsPage** (`partial`). Ported 2026-10-07: the second-line setting, the remembered Amend check box and
 the Commit & Push button, under upstream's keys and labels. In the commit window (FormCommit row): the message goes through
@@ -1683,7 +1774,8 @@ it leads to, the branch upstream's `BranchFinder` finds, the message summary), o
 **ArtificialCommitChangeCount / artificial rows** (`partial`). 2026-10-10: the "Working directory" and "Commit index" rows
 before HEAD (on the first page without a filter), their files and diffs, and the change count beside them
 (`showgitstatusforartificialcommits`). Not ported: upstream's summary of the changes by kind (changed, new, deleted,
-submodules).
+submodules) on the artificial rows. Added 2026-11-03: that summary's text (`GetSummary`, core
+`SubmoduleStructure.ChangeSummary`) is the left panel's tooltip of the shown project (see RepoObjectsTree).
 
 **BuildReportTabPageExtension** (`partial`). 2026-10-10: a "Build Report" tab while `ShowBuildResultPage` is on and the
 selected commit's build has a report, following the selected build. Difference: the report is a link that opens in the
@@ -1703,7 +1795,16 @@ shell's "Stash changes" and "Stash pop" (both stay in the stash button's menu, w
 is kept in upstream's `ShowSplitViewLayout`; the commit info position split button (`CommitInfoPosition`: below the grid
 as the first tab, or left or right of it at upstream's width, the button cycling through them and showing the chosen
 image and text, as `LayoutRevisionInfo` and `RefreshLayoutToggleButtonStates`); the terminal split button (see
-**Terminals**).
+**Terminals**). 2026-11-03: the submodules button is upstream's split button `toolStripButtonLevelUp`, its drop-down
+upstream's `PopulateToolbar` from the structure the left panel's submodule tree reads (core
+`SubmoduleStructure.MenuItems`, see RepoObjectsTree): "Loading..." until it is read, the submodules below the shown
+repository with their status images and added and removed commits (the shown one bold), else "No submodules"; in a
+submodule then the top project (unless it is the superproject), the superproject and all submodules; then "Update all
+submodules" and, in a submodule, "Update current submodule". In a submodule the button has upstream's NavigateUp image and
+"Go to superproject" tooltip and opens the superproject, else it opens the drop-down; it is disabled in a bare repository.
+The new shell's "Synchronize all submodules" item, which upstream's drop-down does not have, is gone (it stays in the
+Repository menu). Difference: "Update current submodule" names the submodule by its path in the superproject, where
+upstream passes its full path.
 
 **FilterToolBar** (`partial`). 2026-10-13: upstream's filter toolstrip in its order and with its images: the advanced
 filter split button (opens the dialog, or with a filter on offers "Reset path filter", "Reset revision filters" and

@@ -113,6 +113,40 @@ internal sealed class GeneralSettingsTests
     }
 
     [AvaloniaTest]
+    public void Submodule_status_is_offered_only_while_a_git_status_count_is_shown_as_upstreams()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Click(window, "SettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        WaitUntil(() => settings.IsGitConfigLoaded);
+        try
+        {
+            CheckBox status = Find<CheckBox>(settings, "ShowSubmoduleStatusCheck");
+            (status.IsEnabled, status.IsChecked).Should().Be((true, false), "upstream's default is off");
+            status.IsChecked = true;
+            Find<CheckBox>(settings, "ShowCommitCountCheck").IsChecked = false;
+            Find<CheckBox>(settings, "ShowArtificialCountCheck").IsChecked = false;
+            (status.IsEnabled, status.IsChecked).Should().Be((false, false));
+            Find<CheckBox>(settings, "ShowArtificialCountCheck").IsChecked = true;
+            status.IsEnabled.Should().BeTrue();
+            status.IsChecked = true;
+            Click(settings, "SaveButton");
+            WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+            TestAppBuilder.Preferences.ShowSubmoduleStatus.Should().BeTrue();
+            TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar.Should().BeFalse();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.ShowSubmoduleStatus = false;
+            TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar = true;
+            TestAppBuilder.Preferences.ShowGitStatusForArtificialCommits = true;
+        }
+    }
+
+    [AvaloniaTest]
     public void The_general_page_saves_upstreams_behaviour_and_performance_settings()
     {
         MainWindow window = NewWindow();

@@ -58,7 +58,16 @@ public partial class RevisionDiffWindow : Window
         UpstreamTranslation.Apply(this, "FormDiff");
         _files = new RevisionFileList<RevisionDiffFile>(DiffFiles, DiffFilesFilterBox, DiffFilesByPathButton,
             DiffFilesByExtensionButton, DiffFilesByStatusButton, DiffFilesNoFilesText, preferences, file => file.Path,
-            file => file.Status);
+            file => file.Status, treeButtons: new FileListTreeButtons(DiffFilesCollapseGroupsButton, DiffFilesAsTreeButton,
+                [
+                    (DiffFilesPathTreeMenuItem, DiffListSortType.FilePath),
+                    (DiffFilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
+                    (DiffFilesExtensionTreeMenuItem, DiffListSortType.FileExtension),
+                    (DiffFilesExtensionFlatMenuItem, DiffListSortType.FileExtensionFlat),
+                    (DiffFilesStatusTreeMenuItem, DiffListSortType.FileStatus),
+                    (DiffFilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
+                ],
+                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem));
         lblFirstCommitBack.Background = Brush(AppColor.AnsiTerminalRedBackNormal);
         lblSecondCommitBack.Background = Brush(AppColor.AnsiTerminalGreenBackNormal);
         ckCompareToMergeBase.IsEnabled = false;

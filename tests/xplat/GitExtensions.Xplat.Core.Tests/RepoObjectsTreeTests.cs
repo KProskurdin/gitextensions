@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
@@ -75,9 +76,77 @@ internal sealed class RepoObjectsTreeTests
         roots[3].Children.Select(node => (node.Kind, node.Text)).Should().Equal(
             (RepoObjectKind.Tag, "v1"), (RepoObjectKind.Folder, "release"));
         roots[3].Children[1].Children.Single().Item.Should().Be("release/2.0");
-        roots[4].Children.Select(node => (node.Text, node.Image)).Should().Equal(
-            ("lib", "FolderSubmodule"), ("ext (changed)", "FileStatusModified"));
+        roots[4].Children.Single().Text.Should().Be("repo (main)", "upstream's submodule tree starts at the top project");
         roots[5].Children.Single().Text.Should().Be("stash@{0}: WIP on main");
+    }
+
+    [Test]
+    public void Build_should_put_the_submodules_below_the_top_project_in_folders_compacting_single_folder_chains()
+    {
+        SubmoduleStructure structure = new(new SubmoduleProject("repo (main)", "/work/repo/", IsCurrent: true, "", "/work/repo/"),
+            [
+                Submodule("deep/a/b/c (main)", "/work/repo/deep/a/b/c/", "deep/a/b/c", "/work/repo/"),
+                Submodule("docs (no branch)", "/work/repo/docs/", "docs", "/work/repo/") with
+                {
+                    Status = SubmoduleStatus.FastForward, AddedAndRemoved = " (+2)",
+                    ToolTip = "Submodule docs",
+                },
+                Submodule("ext/lib (main)", "/work/repo/ext/lib/", "ext/lib", "/work/repo/"),
+                Submodule("ext/lib/inner (main)", "/work/repo/ext/lib/inner/", "inner", "/work/repo/ext/lib/"),
+            ],
+            IsBareRepository: false);
+
+        RepoObjectNode top = RepoObjectsTree.Build(Objects() with { Submodules = structure }, [RepoObjectKind.SubmodulesRoot],
+            text => text)[0].Children.Single();
+
+        (top.Kind, top.Text, top.IsBold, top.Image).Should().Be((RepoObjectKind.Submodule, "repo (main)", true, "FolderSubmodule"));
+        top.Children.Select(node => (node.Kind, node.Text, node.IsItalic)).Should().Equal(
+            (RepoObjectKind.SubmoduleFolder, "deep/a/b", true),
+            (RepoObjectKind.Submodule, "docs (no branch) (+2)", false),
+            (RepoObjectKind.SubmoduleFolder, "ext", true));
+        top.Children[0].Children.Single().Text.Should().Be("c (main)");
+        (top.Children[1].Image, top.Children[1].ToolTip).Should().Be(("SubmoduleRevisionUp", "Submodule docs"));
+        RepoObjectNode lib = top.Children[2].Children.Single();
+        lib.Text.Should().Be("lib (main)", "a folder whose only child is a submodule is not compacted");
+        lib.Children.Single().Text.Should().Be("inner (main)", "a submodule's own submodules are below it");
+        top.Descendants().Should().OnlyContain(node => node.IsExpanded, "upstream expands the whole tree on its first fill");
+        top.Descendants().Select(node => node.Key).Should().OnlyHaveUniqueItems();
+    }
+
+    [Test]
+    public void RevisionOf_should_go_to_the_related_branch_with_upstreams_Alt()
+    {
+        IReadOnlyList<RepoObjectNode> roots = RepoObjectsTree.Build(Objects() with
+        {
+            RelatedBranches = new Dictionary<string, string>
+            {
+                ["main"] = "refs/remotes/origin/main", ["origin/main"] = "refs/heads/main",
+            },
+        }, RepoObjectsTree.Roots, text => text);
+        RepoObjectNode main = BranchNode(roots, "main");
+        RepoObjectNode remote = BranchNode(roots, "origin/main");
+
+        (RepoObjectsTree.RevisionOf(main), RepoObjectsTree.RevisionOf(main, relatedBranch: true))
+            .Should().Be(("main", "refs/remotes/origin/main"));
+        RepoObjectsTree.RevisionOf(remote, relatedBranch: true).Should().Be("refs/heads/main");
+        RepoObjectsTree.RevisionOf(BranchNode(roots, "feature/x"), relatedBranch: true)
+            .Should().Be("feature/x", "a branch without upstream's ahead and behind data has no related branch");
+    }
+
+    [Test]
+    public void SubmoduleProject_should_show_upstreams_name_branch_counts_and_status_image()
+    {
+        SubmoduleProject project = Submodule("Externals/conemu-inside (no branch)", "/r/Externals/conemu-inside/",
+            "Externals/conemu-inside", "/r/");
+
+        (project.Name, project.DisplayText, project.Image).Should().Be(("conemu-inside", "conemu-inside (no branch)", "FolderSubmodule"));
+        (project with { Status = SubmoduleStatus.Rewind, IsDirty = true }).Image
+            .Should().Be("SubmoduleRevisionDownDirty");
+        (project with { Status = SubmoduleStatus.Unknown, IsDirty = true }).Image
+            .Should().Be("SubmoduleDirty");
+        (project with { Status = SubmoduleStatus.Modified }).Image
+            .Should().Be("FileStatusModified");
+        Submodule("lib", "/r/lib/", "lib", "/r/").DisplayText.Should().Be("lib", "without upstream's ShowRepoCurrentBranch there is no branch");
     }
 
     [Test]
@@ -234,6 +303,9 @@ internal sealed class RepoObjectsTreeTests
     private static RepoObjectNode BranchNode(IReadOnlyList<RepoObjectNode> roots, string name)
         => roots.SelectMany(root => root.Descendants()).Single(node => node.Branch?.Name == name);
 
+    private static SubmoduleProject Submodule(string text, string path, string localPath, string superPath)
+        => new(text, path, IsCurrent: false, localPath, superPath);
+
     private static RepoObjects Objects() => new(
         [
             new BranchInfo("main", IsRemote: false, IsCurrent: true),
@@ -243,7 +315,8 @@ internal sealed class RepoObjectsTreeTests
         ["origin", "upstream"],
         ["v1", "release/2.0"],
         [new StashInfo("stash@{0}", "WIP on main")],
-        [new SubmoduleInfo("lib", IsInitialized: true, IsUpToDate: true), new SubmoduleInfo("ext", IsInitialized: true, IsUpToDate: false)],
+        new SubmoduleStructure(new SubmoduleProject("repo (main)", "/work/repo/", IsCurrent: true, "", "/work/repo/"), [],
+            IsBareRepository: false),
         [
             new WorktreeInfo(RepositoryPath, "repo", IsMain: true, IsDeleted: false),
             new WorktreeInfo("/work/other", "other", IsMain: false, IsDeleted: false),

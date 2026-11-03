@@ -212,11 +212,12 @@
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <Rectangle Classes="toolSeparator" />
-          <local:ToolDropDownButton x:Name="SubmodulesButton" Image="SubmodulesManage" ToolTip.Tip="Submodules">
-            <local:ToolDropDownButton.Flyout>
+          <!-- Upstream's toolStripButtonLevelUp: in a submodule the button opens the superproject, else the drop-down. -->
+          <local:ToolSplitButton x:Name="SubmodulesButton" Image="SubmodulesManage" ToolTip.Tip="Submodules">
+            <local:ToolSplitButton.Flyout>
               <MenuFlyout />
-            </local:ToolDropDownButton.Flyout>
-          </local:ToolDropDownButton>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
           <local:ToolDropDownButton x:Name="WorktreesButton" Image="WorkTree" ToolTip.Tip="Worktrees">
             <local:ToolDropDownButton.Flyout>
               <MenuFlyout />
@@ -396,7 +397,7 @@
             <ContextMenu x:Name="BranchTreeContextMenu">
               <MenuItem x:Name="TreeCopyMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}" />
               <MenuItem x:Name="TreeFilterMenuItem" Header="_Filter for selected" Icon="{local:UpstreamIcon ShowThisBranchOnly}"
-                        ToolTip.Tip="Filter the revision grid to show the selected ref only." />
+                        ToolTip.Tip="Filter the revision grid to show selected (underlined) refs (branches and tags) only.&#10;Hold CTRL while clicking to de/select multiple and include descendant tree nodes by additionally holding SHIFT.&#10;Reset the filter via View &gt; Show all branches." />
               <Separator />
               <MenuItem x:Name="TreeCheckoutMenuItem" Icon="{local:UpstreamIcon BranchCheckout}" />
               <MenuItem x:Name="TreeMergeMenuItem" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" />
@@ -428,10 +429,18 @@
                         ToolTip.Tip="Open selected submodule" />
               <MenuItem x:Name="TreeOpenSubmoduleNewInstanceMenuItem" Header="O_pen" Icon="{local:UpstreamIcon GitExtensionsLogo16}"
                         ToolTip.Tip="Open selected submodule in a new instance" />
+              <MenuItem x:Name="TreeManageSubmodulesMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon SubmodulesManage}"
+                        ToolTip.Tip="Manage submodules" />
               <MenuItem x:Name="TreeUpdateSubmoduleMenuItem" Header="_Update" Icon="{local:UpstreamIcon SubmodulesUpdate}"
                         ToolTip.Tip="Update selected submodule recursively" />
               <MenuItem x:Name="TreeSynchronizeSubmoduleMenuItem" Header="Synchronize" Icon="{local:UpstreamIcon SubmodulesSync}"
                         ToolTip.Tip="Synchronize selected submodule recursively" />
+              <MenuItem x:Name="TreeResetSubmoduleMenuItem" Header="_Reset" Icon="{local:UpstreamIcon ResetWorkingDirChanges}"
+                        ToolTip.Tip="Reset selected submodule" />
+              <MenuItem x:Name="TreeStashSubmoduleMenuItem" Header="_Stash" Icon="{local:UpstreamIcon Stash}"
+                        ToolTip.Tip="Stash changes in selected submodule" />
+              <MenuItem x:Name="TreeCommitSubmoduleMenuItem" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}"
+                        ToolTip.Tip="Commit changes in selected submodule" />
               <Separator />
               <MenuItem x:Name="TreeFetchAndCheckoutMenuItem" Header="_Fetch &amp; Checkout" Icon="{local:UpstreamIcon BranchCheckout}"
                         ToolTip.Tip="Fetch then checkout this remote branch" />
@@ -490,6 +499,14 @@
               <Setter Property="MinHeight" Value="20" />
             </Style>
             <!-- Upstream's BaseRevisionNode: a node whose commit the grid does not show has gray text. -->
+            <!-- Upstream's NodeBase.GetFontStyle: the nodes marked for the multi-selection are underlined. -->
+            <Style Selector="TextBlock.multiSelected">
+              <Setter Property="TextDecorations" Value="Underline" />
+            </Style>
+            <!-- Upstream's SubmoduleFolderNode.GetFontStyle: the submodule tree's folders are in italics. -->
+            <Style Selector="TextBlock.italic">
+              <Setter Property="FontStyle" Value="Italic" />
+            </Style>
             <Style Selector="TextBlock.hiddenRef">
               <Setter Property="Foreground" Value="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
             </Style>
@@ -513,6 +530,7 @@
                 <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="16" Height="16"
                        VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Classes.hiddenRef="{Binding IsHidden}"
+                           Classes.multiSelected="{Binding IsMultiSelected}" Classes.italic="{Binding IsItalic}"
                            FontWeight="{Binding IsBold, Converter={x:Static local:BoldConverter.Instance}}" />
               </StackPanel>
             </TreeDataTemplate>
@@ -748,9 +766,53 @@
                   <!-- Upstream's FileStatusList (RevisionDiffControl's DiffFiles): the group-by buttons, the filter box, the
                        files with their status images, and the NoFiles text (RevisionFileList). -->
                   <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+                    <local:ToolButton x:Name="DiffFilesCollapseGroupsButton" Image="CollapseAll"
+                                      ToolTip.Tip="Collapse all groups, otherwise expand the selected group" />
+                    <Rectangle Classes="toolSeparator" IsVisible="{Binding #DiffFilesCollapseGroupsButton.IsVisible}" />
+                    <local:ToolSplitButton x:Name="DiffFilesAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+                      <local:ToolSplitButton.Flyout>
+                        <MenuFlyout>
+                          <MenuItem x:Name="DiffFilesPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                                    Icon="{local:UpstreamIcon FolderClosed}" />
+                          <MenuItem x:Name="DiffFilesPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                                    Icon="{local:UpstreamIcon File}" />
+                          <MenuItem x:Name="DiffFilesExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                                    Icon="{local:UpstreamIcon FileStatusModified}" />
+                          <MenuItem x:Name="DiffFilesStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                          <Separator />
+                          <MenuItem x:Name="DiffFilesDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                                    ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                                    ToggleType="CheckBox" />
+                        </MenuFlyout>
+                      </local:ToolSplitButton.Flyout>
+                    </local:ToolSplitButton>
+                    <Rectangle Classes="toolSeparator" />
                     <local:ToolToggleButton x:Name="DiffFilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
                     <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
                     <local:ToolToggleButton x:Name="DiffFilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+                    <Rectangle Classes="toolSeparator" />
+                    <!-- Upstream FileStatusList's settings menu as RevisionDiffControl binds it (canAutoRefresh). -->
+                    <local:ToolDropDownButton x:Name="DiffFilesSettingsButton" Image="Settings" ToolTip.Tip="Settings">
+                      <local:ToolDropDownButton.Flyout>
+                        <MenuFlyout>
+                          <MenuItem x:Name="DiffFilesShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox"
+                                    IsChecked="True" />
+                          <Separator />
+                          <MenuItem x:Name="DiffFilesEditGitIgnoreMenuItem" Header="_Edit ignored files"
+                                    Icon="{local:UpstreamIcon EditGitIgnore}" />
+                          <MenuItem x:Name="DiffFilesEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files"
+                                    Icon="{local:UpstreamIcon EditGitIgnore}" />
+                          <Separator />
+                          <MenuItem x:Name="DiffFilesRefreshOnFormFocusMenuItem" Header="_Refresh artificial commits on form focus"
+                                    ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesShowDiffForAllParentsMenuItem" Header="_Show file differences for all parents"
+                                    ToggleType="CheckBox" />
+                        </MenuFlyout>
+                      </local:ToolDropDownButton.Flyout>
+                    </local:ToolDropDownButton>
                   </StackPanel>
                   <TextBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..."
                            Margin="0,0,0,2" />
@@ -762,18 +824,38 @@
                     <ListBox.ContextMenu>
                       <local:FileStatusListMenu x:Name="CommitFilesContextMenu" />
                     </ListBox.ContextMenu>
-                    <ListBox.ItemTemplate>
+                    <ListBox.DataTemplates>
                       <DataTemplate x:DataType="core:CommitFile">
                         <!-- Upstream's status image, then the path, which follows "Truncate long filenames"
                              (FilePathTrimming). -->
-                        <DockPanel>
+                        <DockPanel Margin="{Binding $parent[ListBoxItem].(local:FileRows.Indent)}">
                           <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                                  Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
-                          <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                          <TextBlock Text="{Binding $parent[ListBoxItem].(local:FileRows.Text), Converter={x:Static local:FilePathTrimming.Text}}"
                                      TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
                         </DockPanel>
                       </DataTemplate>
-                    </ListBox.ItemTemplate>
+                      <!-- Upstream's folder node, or an extension or status group node: the expander, the image and the text;
+                           a click expands or collapses it. -->
+                      <DataTemplate x:DataType="local:FileTreeRow">
+                        <DockPanel Background="Transparent" Margin="{Binding Indent}">
+                          <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                          <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                                 Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                          <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                      </DataTemplate>
+                      <!-- Upstream's group node (several diff groups): the expander, the group's icon, its count and
+                           summary; a click expands or collapses it. -->
+                      <DataTemplate x:DataType="local:DiffGroupHeader">
+                        <DockPanel Background="Transparent" ToolTip.Tip="{Binding Text}">
+                          <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                          <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                                 Source="{Binding Group.Icon, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                          <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                      </DataTemplate>
+                    </ListBox.DataTemplates>
                   </ListBox>
                     <TextBlock x:Name="DiffFilesNoFilesText" Margin="4,2" IsHitTestVisible="False" IsVisible="False"
                                Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />

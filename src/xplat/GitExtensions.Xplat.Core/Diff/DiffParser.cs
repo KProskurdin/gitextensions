@@ -33,6 +33,13 @@ public static partial class DiffParser
         RegexOptions.ExplicitCapture)]
     private static partial Regex HunkHeaderRegex { get; }
 
+    // Git's "\ No newline at end of file" line.
+    private const char NoNewlineMarker = '\\';
+
+    // The merge's range of a combined diff's "@@@ -1,2 -1,3 +1,4 @@@".
+    [GeneratedRegex(@"^@@@+ (-\d+(,\d+)? )+\+(?<start>\d+)", RegexOptions.ExplicitCapture)]
+    private static partial Regex CombinedRangeRegex { get; }
+
     public static IReadOnlyList<DiffLine> Parse(string diff)
     {
         List<DiffLine> lines = [];
@@ -94,6 +101,59 @@ public static partial class DiffParser
         return lines;
 
         static int Count(Group group) => group.Success ? int.Parse(group.Value, CultureInfo.InvariantCulture) : 1;
+    }
+
+    /// <summary>
+    ///  Classifies the lines of git's combined diff of a merge (<c>diff-tree --cc</c>): after the header, each line starts
+    ///  with one column per parent, as upstream's <c>DiffLineNumAnalyzer</c> reads them (any '+' adds, else any '-'
+    ///  removes); the merge's lines are numbered from each "@@@" hunk header's last range.
+    /// </summary>
+    public static IReadOnlyList<DiffLine> ParseCombined(string diff)
+    {
+        List<DiffLine> lines = [];
+        int columns = 0;
+        int newNumber = 0;
+        foreach (string text in diff.Split('\n'))
+        {
+            string line = text.TrimEnd('\r');
+            if (line.StartsWith("@@@", StringComparison.Ordinal))
+            {
+                // "@@@ -a,b -c,d +e,f @@@": as many '@' as parents and one, the merge's range last.
+                int ats = line.TakeWhile(c => c == '@').Count();
+                columns = ats - 1;
+                Match range = CombinedRangeRegex.Match(line);
+                newNumber = range.Success ? int.Parse(range.Groups["start"].Value, CultureInfo.InvariantCulture) : 1;
+                lines.Add(new DiffLine(line, DiffLineKind.Hunk));
+                continue;
+            }
+
+            if (columns == 0 || line.Length < columns || line.StartsWith(NoNewlineMarker))
+            {
+                lines.Add(new DiffLine(line, columns == 0 ? DiffLineKind.Header : DiffLineKind.Context));
+                continue;
+            }
+
+            ReadOnlySpan<char> markers = line.AsSpan(0, columns);
+            if (markers.Contains('+'))
+            {
+                lines.Add(new DiffLine(line, DiffLineKind.Added, NewNumber: newNumber++));
+            }
+            else if (markers.Contains('-'))
+            {
+                lines.Add(new DiffLine(line, DiffLineKind.Removed));
+            }
+            else
+            {
+                lines.Add(new DiffLine(line, DiffLineKind.Context, NewNumber: newNumber++));
+            }
+        }
+
+        if (lines.Count > 0 && lines[^1].Text.Length == 0)
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+
+        return lines;
     }
 
     /// <summary>

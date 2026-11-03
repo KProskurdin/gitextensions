@@ -23,6 +23,7 @@ public sealed class RepositoryViewModel : ObservableObject
     private IReadOnlyList<string> _tags = [];
     private IReadOnlyList<SubmoduleInfo> _submodules = [];
     private IReadOnlyDictionary<string, string> _aheadBehind = new Dictionary<string, string>();
+    private IReadOnlyDictionary<string, string> _relatedBranches = new Dictionary<string, string>();
     private IReadOnlyList<WorktreeInfo> _worktrees = [];
     private IReadOnlyDictionary<string, string> _remoteUrls = new Dictionary<string, string>();
     private IReadOnlyDictionary<string, System.Drawing.Color> _remoteColors = new Dictionary<string, System.Drawing.Color>();
@@ -123,6 +124,16 @@ public sealed class RepositoryViewModel : ObservableObject
     {
         get => _aheadBehind;
         private set => SetProperty(ref _aheadBehind, value);
+    }
+
+    /// <summary>
+    ///  Upstream's related branch of the left panel's branches, by branch name (see
+    ///  <see cref="RepositorySnapshot.RelatedBranches"/>).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> RelatedBranches
+    {
+        get => _relatedBranches;
+        private set => SetProperty(ref _relatedBranches, value);
     }
 
     public IReadOnlyList<WorktreeInfo> Worktrees
@@ -230,6 +241,7 @@ public sealed class RepositoryViewModel : ObservableObject
         TrackingRemote = null;
         Submodules = [];
         AheadBehind = new Dictionary<string, string>();
+        RelatedBranches = new Dictionary<string, string>();
         Worktrees = [];
         RemoteUrls = new Dictionary<string, string>();
         RemoteColors = new Dictionary<string, System.Drawing.Color>();
@@ -263,6 +275,7 @@ public sealed class RepositoryViewModel : ObservableObject
             TrackingRemote = snapshot.TrackingRemote;
             Submodules = snapshot.Submodules ?? [];
             AheadBehind = snapshot.AheadBehind ?? new Dictionary<string, string>();
+            RelatedBranches = snapshot.RelatedBranches ?? new Dictionary<string, string>();
             Worktrees = snapshot.Worktrees ?? [];
             RemoteUrls = snapshot.RemoteUrls ?? new Dictionary<string, string>();
             RemoteColors = snapshot.RemoteColors ?? new Dictionary<string, System.Drawing.Color>();

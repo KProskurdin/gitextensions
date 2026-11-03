@@ -42,6 +42,27 @@
           <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
             <local:ToolButton x:Name="UnstagedRefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh artificial commit" />
             <Rectangle Classes="toolSeparator" />
+            <local:ToolSplitButton x:Name="UnstagedAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+              <local:ToolSplitButton.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="UnstagedPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                            Icon="{local:UpstreamIcon FolderClosed}" />
+                  <MenuItem x:Name="UnstagedPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                            Icon="{local:UpstreamIcon File}" />
+                  <MenuItem x:Name="UnstagedExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                            Icon="{local:UpstreamIcon FileStatusModified}" />
+                  <MenuItem x:Name="UnstagedStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                  <Separator />
+                  <MenuItem x:Name="UnstagedDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                            ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                            ToggleType="CheckBox" />
+                </MenuFlyout>
+              </local:ToolSplitButton.Flyout>
+            </local:ToolSplitButton>
+            <Rectangle Classes="toolSeparator" />
             <local:ToolToggleButton x:Name="UnstagedByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
             <local:ToolToggleButton x:Name="UnstagedByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
             <local:ToolToggleButton x:Name="UnstagedByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
@@ -49,10 +70,16 @@
             <local:ToolDropDownButton x:Name="UnstagedSettingsButton" Image="Settings" ToolTip.Tip="Settings">
               <local:ToolDropDownButton.Flyout>
                 <MenuFlyout>
+                  <MenuItem x:Name="UnstagedShowIgnoredMenuItem" Header="Show _ignored files" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedShowSkipWorktreeMenuItem" Header="Show s_kip-worktree files" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedShowAssumeUnchangedMenuItem" Header="Show _assumed-unchanged files" ToggleType="CheckBox" />
                   <MenuItem x:Name="UnstagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True" />
                   <Separator />
                   <MenuItem x:Name="UnstagedEditGitIgnoreMenuItem" Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
                   <MenuItem x:Name="UnstagedEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <Separator />
+                  <MenuItem x:Name="UnstagedRefreshOnFormFocusMenuItem" Header="_Refresh artificial commits on form focus"
+                            ToggleType="CheckBox" />
                 </MenuFlyout>
               </local:ToolDropDownButton.Flyout>
             </local:ToolDropDownButton>
@@ -85,17 +112,27 @@
                 <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
               </ContextMenu>
               </ListBox.ContextMenu>
-              <ListBox.ItemTemplate>
+              <ListBox.DataTemplates>
                 <DataTemplate x:DataType="repo:FileChange">
-                  <!-- Upstream's status image, then the path, which follows "Truncate long filenames" (FilePathTrimming). -->
-                  <DockPanel>
+                  <!-- Upstream's status image, then the path below its folder, which follows "Truncate long filenames"
+                       (FilePathTrimming). -->
+                  <DockPanel Margin="{Binding $parent[ListBoxItem].(local:FileRows.Indent)}">
                     <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                            Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
-                    <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                    <TextBlock Text="{Binding $parent[ListBoxItem].(local:FileRows.Text), Converter={x:Static local:FilePathTrimming.Text}}"
                                TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
                   </DockPanel>
                 </DataTemplate>
-              </ListBox.ItemTemplate>
+                <!-- Upstream's folder node, or an extension or status group node. -->
+                <DataTemplate x:DataType="local:FileTreeRow">
+                  <DockPanel Background="Transparent" Margin="{Binding Indent}">
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                    <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                           Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                    <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.DataTemplates>
             </ListBox>
             <!-- Upstream's NoFiles label: gray text at the top of the list while it is empty. -->
             <TextBlock x:Name="UnstagedNoFilesText" Text="There are no unstaged changes" Margin="4,2" IsHitTestVisible="False"
@@ -118,6 +155,27 @@
           <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
                settings; then the filter box. -->
           <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+            <local:ToolSplitButton x:Name="StagedAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+              <local:ToolSplitButton.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="StagedPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                            Icon="{local:UpstreamIcon FolderClosed}" />
+                  <MenuItem x:Name="StagedPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="StagedExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                            Icon="{local:UpstreamIcon File}" />
+                  <MenuItem x:Name="StagedExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="StagedStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                            Icon="{local:UpstreamIcon FileStatusModified}" />
+                  <MenuItem x:Name="StagedStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                  <Separator />
+                  <MenuItem x:Name="StagedDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                            ToggleType="CheckBox" />
+                  <MenuItem x:Name="StagedGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                            ToggleType="CheckBox" />
+                </MenuFlyout>
+              </local:ToolSplitButton.Flyout>
+            </local:ToolSplitButton>
+            <Rectangle Classes="toolSeparator" />
             <local:ToolToggleButton x:Name="StagedByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
             <local:ToolToggleButton x:Name="StagedByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
             <local:ToolToggleButton x:Name="StagedByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
@@ -125,7 +183,11 @@
             <local:ToolDropDownButton x:Name="StagedSettingsButton" Image="Settings" ToolTip.Tip="Settings">
               <local:ToolDropDownButton.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="StagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True" />
+                  <!-- Upstream enables these only for the working directory's list. -->
+                  <MenuItem x:Name="StagedShowSkipWorktreeMenuItem" Header="Show s_kip-worktree files" ToggleType="CheckBox"
+                            IsEnabled="False" />
+                  <MenuItem x:Name="StagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True"
+                            IsEnabled="False" />
                   <Separator />
                   <MenuItem x:Name="StagedEditGitIgnoreMenuItem" Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
                   <MenuItem x:Name="StagedEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
@@ -159,17 +221,27 @@
                 <MenuItem x:Name="StagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
               </ContextMenu>
               </ListBox.ContextMenu>
-              <ListBox.ItemTemplate>
+              <ListBox.DataTemplates>
                 <DataTemplate x:DataType="repo:FileChange">
-                  <!-- Upstream's status image, then the path, which follows "Truncate long filenames" (FilePathTrimming). -->
-                  <DockPanel>
+                  <!-- Upstream's status image, then the path below its folder, which follows "Truncate long filenames"
+                       (FilePathTrimming). -->
+                  <DockPanel Margin="{Binding $parent[ListBoxItem].(local:FileRows.Indent)}">
                     <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                            Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
-                    <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                    <TextBlock Text="{Binding $parent[ListBoxItem].(local:FileRows.Text), Converter={x:Static local:FilePathTrimming.Text}}"
                                TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
                   </DockPanel>
                 </DataTemplate>
-              </ListBox.ItemTemplate>
+                <!-- Upstream's folder node, or an extension or status group node. -->
+                <DataTemplate x:DataType="local:FileTreeRow">
+                  <DockPanel Background="Transparent" Margin="{Binding Indent}">
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                    <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                           Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                    <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                  </DockPanel>
+                </DataTemplate>
+              </ListBox.DataTemplates>
             </ListBox>
             <!-- Upstream's NoFiles label: gray text at the top of the list while it is empty. -->
             <TextBlock x:Name="StagedNoFilesText" Text="There are no staged changes" Margin="4,2" IsHitTestVisible="False"

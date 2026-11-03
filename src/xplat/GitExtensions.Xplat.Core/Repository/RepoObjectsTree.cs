@@ -27,6 +27,11 @@ public enum RepoObjectKind
     ///  Upstream's <c>RemoteRepoFolderNode</c>: the folder of the inactive remotes below the remotes.
     /// </summary>
     InactiveRemotes,
+
+    /// <summary>
+    ///  Upstream's <c>SubmoduleFolderNode</c>: a folder of the submodule paths that is not a submodule itself.
+    /// </summary>
+    SubmoduleFolder,
 }
 
 /// <summary>
@@ -42,6 +47,7 @@ public sealed class RepoObjectNode : ObservableObject
     private bool _isHidden;
     private string? _hiddenToolTip;
     private bool _isSearchMatch;
+    private bool _isMultiSelected;
 
     public RepoObjectNode(RepoObjectKind kind, string name, string image, object? item = null, bool isExpanded = false)
     {
@@ -82,8 +88,14 @@ public sealed class RepoObjectNode : ObservableObject
     public bool IsSearchMatch => _isSearchMatch;
 
     /// <summary>
+    ///  Upstream's <c>NodeBase.IsSelected</c>: the node is marked for the left panel's multi-selection
+    ///  (<see cref="RepoObjectSelection"/>), which upstream underlines.
+    /// </summary>
+    public bool IsMultiSelected => _isMultiSelected;
+
+    /// <summary>
     ///  What the node stands for: a <see cref="BranchInfo"/>, the tag or remote name, a <see cref="StashInfo"/>,
-    ///  <see cref="SubmoduleInfo"/> or <see cref="WorktreeInfo"/>, or a folder's path below its tree.
+    ///  <see cref="SubmoduleProject"/> or <see cref="WorktreeInfo"/>, or a folder's path below its tree.
     /// </summary>
     public object? Item { get; }
 
@@ -97,9 +109,20 @@ public sealed class RepoObjectNode : ObservableObject
     public bool IsBold { get; init; }
 
     /// <summary>
+    ///  Upstream shows the folders of the submodule tree in italics.
+    /// </summary>
+    public bool IsItalic { get; init; }
+
+    /// <summary>
     ///  Upstream's <c>AheadBehindData.ToDisplay</c> text after a branch's name.
     /// </summary>
     public string? AheadBehind { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>BaseBranchLeafNode.RelatedBranch</c>: for a local branch its upstream, for a remote branch the local
+    ///  branch tracking it, as a full ref name; set with the ahead and behind counts.
+    /// </summary>
+    public string? RelatedBranch { get; init; }
 
     /// <summary>
     ///  The node's tooltip; for a branch upstream's "not currently visible" text while it is hidden, else its "contained in
@@ -161,6 +184,9 @@ public sealed class RepoObjectNode : ObservableObject
     internal void SetSearchMatch(bool isSearchMatch)
         => SetProperty(ref _isSearchMatch, isSearchMatch, nameof(IsSearchMatch));
 
+    internal void SetMultiSelected(bool isMultiSelected)
+        => SetProperty(ref _isMultiSelected, isMultiSelected, nameof(IsMultiSelected));
+
     // A null tooltip clears the merged state.
     internal void SetMerged(string? mergedToolTip)
     {
@@ -201,12 +227,13 @@ public sealed record RepoObjects(
     IReadOnlyList<string> Remotes,
     IReadOnlyList<string> Tags,
     IReadOnlyList<StashInfo> Stashes,
-    IReadOnlyList<SubmoduleInfo> Submodules,
+    SubmoduleStructure? Submodules,
     IReadOnlyList<WorktreeInfo> Worktrees,
     IReadOnlyDictionary<string, string> AheadBehind,
     IReadOnlyDictionary<string, string> RemoteUrls,
     string RepositoryPath,
-    IReadOnlyList<string>? InactiveRemotes = null);
+    IReadOnlyList<string>? InactiveRemotes = null,
+    IReadOnlyDictionary<string, string>? RelatedBranches = null);
 
 /// <summary>
 ///  Builds upstream's left panel (<c>RepoObjectsTree</c> and its trees): the shown trees in their order, each with
@@ -291,16 +318,8 @@ public static class RepoObjectsTree
                     }
 
                     break;
-                case RepoObjectKind.SubmodulesRoot:
-                    foreach (SubmoduleInfo submodule in objects.Submodules)
-                    {
-                        root.Children.Add(new RepoObjectNode(RepoObjectKind.Submodule, submodule.Display, SubmoduleImage(submodule), submodule)
-                        {
-                            Key = $"{root.Key}/{submodule.Path}",
-                            ToolTip = submodule.Display,
-                        });
-                    }
-
+                case RepoObjectKind.SubmodulesRoot when objects.Submodules is { } structure:
+                    AddSubmodules(root, structure);
                     break;
                 case RepoObjectKind.StashesRoot:
                     foreach (StashInfo stash in objects.Stashes)
@@ -342,11 +361,14 @@ public static class RepoObjectsTree
     /// <summary>
     ///  The revision upstream's <c>OnSelected</c> goes to in the grid when <paramref name="node"/> is selected
     ///  (<c>GoToRevision</c>): a branch's name (local or remote), a tag's, a stash's commit and a worktree's checked-out commit;
-    ///  <see langword="null"/> for the other nodes.
+    ///  <see langword="null"/> for the other nodes. With <paramref name="relatedBranch"/> (upstream's Alt) a branch with a
+    ///  <see cref="RepoObjectNode.RelatedBranch"/> goes to that one (<c>BaseBranchLeafNode.SelectRevision</c>).
     /// </summary>
-    public static string? RevisionOf(RepoObjectNode node)
+    public static string? RevisionOf(RepoObjectNode node, bool relatedBranch = false)
         => node switch
         {
+            { Kind: RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch, RelatedBranch: { } related }
+                when relatedBranch => related,
             { Kind: RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch, Branch: { } branch } => branch.Name,
             { Kind: RepoObjectKind.Tag, Item: string tag } => tag,
             { Kind: RepoObjectKind.Stash, Item: StashInfo stash } => stash.Name,
@@ -507,9 +529,92 @@ public static class RepoObjectsTree
             _ => null,
         };
 
-    // Upstream's GetSubmoduleItemImage with the status the new shell reads: changed or not.
-    private static string SubmoduleImage(SubmoduleInfo submodule)
-        => submodule.IsInitialized && !submodule.IsUpToDate ? "FileStatusModified" : "FolderSubmodule";
+    // Upstream's SubmoduleTree.AddTopAndNodesToTree: the top project, below it a folder for each folder of the submodules'
+    // paths below the top project that is not a submodule, the submodules as leaves of their folders and projects, and
+    // chains of single folders compacted into one ("extension/src/test"). Everything starts expanded, as upstream's
+    // ExpandAll on the first fill.
+    private static void AddSubmodules(RepoObjectNode root, SubmoduleStructure structure)
+    {
+        SubmodulePathNode top = new(structure.Top.Text, structure.Top, "");
+        Dictionary<string, SubmodulePathNode> pathToNodes = [];
+        List<(SubmodulePathNode Node, string[] Parts)> submodules = [];
+        foreach (SubmoduleProject submodule in structure.Submodules)
+        {
+            string path = submodule.SuperPath.SubstringAfter(structure.Top.Path).ToPosixPath() + submodule.LocalPath;
+            SubmodulePathNode node = new(submodule.Name, submodule, path);
+            pathToNodes[path] = node;
+            submodules.Add((node, path.Split('/')));
+        }
+
+        foreach ((_, string[] parts) in submodules)
+        {
+            for (int i = 0; i < parts.Length - 1; ++i)
+            {
+                string path = string.Join("/", parts.Take(i + 1));
+                pathToNodes.TryAdd(path, new SubmodulePathNode(parts[i], project: null, path));
+            }
+        }
+
+        HashSet<SubmodulePathNode> inTree = [];
+        foreach ((_, string[] parts) in submodules)
+        {
+            SubmodulePathNode parent = top;
+            for (int i = 0; i < parts.Length; ++i)
+            {
+                SubmodulePathNode node = pathToNodes[string.Join("/", parts.Take(i + 1))];
+                if (inTree.Add(node))
+                {
+                    parent.Children.Add(node);
+                }
+
+                parent = node;
+            }
+        }
+
+        root.Children.Add(ToRepoObjectNode(top, root.Key));
+        return;
+
+        static RepoObjectNode ToRepoObjectNode(SubmodulePathNode node, string rootKey)
+        {
+            // Upstream's SubmoduleFolderNode.CompactSingleChildFolders.
+            string name = node.Name;
+            List<SubmodulePathNode> children = node.Children;
+            string path = node.Path;
+            while (node.Project is null && children is [{ Project: null } folder])
+            {
+                name += "/" + folder.Name;
+                children = folder.Children;
+                path = folder.Path;
+            }
+
+            RepoObjectNode result = node.Project is { } project
+                ? new RepoObjectNode(RepoObjectKind.Submodule, project.DisplayText, project.Image, project, isExpanded: true)
+                {
+                    Key = $"{rootKey}/{(path.Length == 0 ? project.Path : path)}",
+                    IsBold = project.IsCurrent,
+                    ToolTip = project.ToolTip,
+                }
+                : new RepoObjectNode(RepoObjectKind.SubmoduleFolder, name, "FolderClosed", path, isExpanded: true)
+                {
+                    Key = $"{rootKey}/{path}/",
+                    IsItalic = true,
+                };
+            result.Children.AddRange(children.Select(child => ToRepoObjectNode(child, rootKey)));
+            return result;
+        }
+    }
+
+    // A submodule, or a folder of the submodules' paths (Project null), while upstream's tree of them is built.
+    private sealed class SubmodulePathNode(string name, SubmoduleProject? project, string path)
+    {
+        public string Name { get; } = name;
+
+        public SubmoduleProject? Project { get; } = project;
+
+        public string Path { get; } = path;
+
+        public List<SubmodulePathNode> Children { get; } = [];
+    }
 
     // The branch trees as BranchTree groups them (upstream's prioritized branches and remotes first), with upstream's
     // images, the current branch in bold and the ahead and behind counts; remotes without branches are listed too.
@@ -584,6 +689,7 @@ public static class RepoObjectsTree
                 Key = key,
                 IsBold = branch.IsCurrent,
                 AheadBehind = aheadBehind,
+                RelatedBranch = objects.RelatedBranches?.GetValueOrDefault(branch.Name),
             };
         }
 

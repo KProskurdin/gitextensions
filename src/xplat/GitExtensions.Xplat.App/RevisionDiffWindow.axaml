@@ -54,6 +54,30 @@
            NoFiles text (RevisionFileList). -->
       <DockPanel>
         <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
+          <local:ToolButton x:Name="DiffFilesCollapseGroupsButton" Image="CollapseAll"
+                            ToolTip.Tip="Collapse all groups, otherwise expand the selected group" />
+          <Rectangle Classes="toolSeparator" IsVisible="{Binding #DiffFilesCollapseGroupsButton.IsVisible}" />
+          <local:ToolSplitButton x:Name="DiffFilesAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="DiffFilesPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon FolderClosed}" />
+                <MenuItem x:Name="DiffFilesPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffFilesExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon File}" />
+                <MenuItem x:Name="DiffFilesExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffFilesStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon FileStatusModified}" />
+                <MenuItem x:Name="DiffFilesStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                <Separator />
+                <MenuItem x:Name="DiffFilesDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                          ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffFilesGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                          ToggleType="CheckBox" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <Rectangle Classes="toolSeparator" />
           <local:ToolToggleButton x:Name="DiffFilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
           <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
           <local:ToolToggleButton x:Name="DiffFilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
@@ -67,17 +91,27 @@
             <ListBox.ContextMenu>
               <local:FileStatusListMenu x:Name="DiffFilesMenu" />
             </ListBox.ContextMenu>
-            <ListBox.ItemTemplate>
+            <ListBox.DataTemplates>
               <DataTemplate x:DataType="core:RevisionDiffFile">
-                <!-- Upstream's status image, then the path, which follows "Truncate long filenames" (FilePathTrimming). -->
-                <DockPanel>
+                <!-- Upstream's status image, then the path below its folder, which follows "Truncate long filenames"
+                     (FilePathTrimming). -->
+                <DockPanel Margin="{Binding $parent[ListBoxItem].(local:FileRows.Indent)}">
                   <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                          Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
-                  <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
+                  <TextBlock Text="{Binding $parent[ListBoxItem].(local:FileRows.Text), Converter={x:Static local:FilePathTrimming.Text}}"
                              TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Display}" />
                 </DockPanel>
               </DataTemplate>
-            </ListBox.ItemTemplate>
+              <!-- Upstream's folder node, or an extension or status group node. -->
+              <DataTemplate x:DataType="local:FileTreeRow">
+                <DockPanel Background="Transparent" Margin="{Binding Indent}">
+                  <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                  <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                         Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                  <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+              </DataTemplate>
+            </ListBox.DataTemplates>
           </ListBox>
           <TextBlock x:Name="DiffFilesNoFilesText" Margin="4,2" IsHitTestVisible="False" IsVisible="False"
                      Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
