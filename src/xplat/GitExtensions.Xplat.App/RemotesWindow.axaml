@@ -104,6 +104,21 @@
                     </StackPanel>
                   </Button>
                 </Grid>
+                <!-- Upstream's flowLayoutPanelSsh, right to left: Test connection, then Load SSH key. -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="0,0,110,0">
+                  <Button x:Name="LoadSSHKey" MinWidth="160">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
+                      <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button x:Name="TestConnection" MinWidth="160">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
+                      <AccessText Text="_Test connection" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
               </StackPanel>
               <Button x:Name="SaveButton" HorizontalAlignment="Right" MinWidth="130" Margin="0,0,20,0" IsEnabled="False">
                 <StackPanel Orientation="Horizontal" Spacing="4">

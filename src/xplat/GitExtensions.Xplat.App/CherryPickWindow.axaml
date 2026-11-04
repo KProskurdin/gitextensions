@@ -10,10 +10,13 @@
   <DockPanel>
     <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             Padding="12,8">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-        <Button x:Name="btnPick" Content="_Cherry pick" MinWidth="109" HorizontalContentAlignment="Center" IsDefault="True" />
-        <Button x:Name="btnAbort" Content="A_bort" MinWidth="75" HorizontalContentAlignment="Center" IsCancel="True" />
-      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+          <Button x:Name="btnPick" Content="_Cherry pick" MinWidth="109" HorizontalContentAlignment="Center" IsDefault="True" />
+          <Button x:Name="btnAbort" Content="A_bort" MinWidth="75" HorizontalContentAlignment="Center" IsCancel="True" />
+        </StackPanel>
+      </Grid>
     </Border>
     <StackPanel Margin="15,12" Spacing="4">
       <TextBlock x:Name="lblBranchInfo" Text="Cherry pick this commit:" />

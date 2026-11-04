@@ -21,6 +21,13 @@ internal sealed class RevisionFilterTests
     }
 
     [Test]
+    public void ToRevisionArguments_should_stop_at_the_last_revision_to_display()
+    {
+        new RevisionFilter(CurrentBranchOnly: true, LastRevisionToDisplayHash: "abc123").ToRevisionArguments()
+            .Should().Be("HEAD ...abc123");
+    }
+
+    [Test]
     public void Filters_should_come_in_upstream_order_and_ignore_case()
     {
         RevisionFilter filter = new(CurrentBranchOnly: true, Author: "ann", Message: "fix \"x\"",
@@ -28,7 +35,7 @@ internal sealed class RevisionFilterTests
             NoMerges: true, FirstParent: true);
 
         filter.ToRevisionArguments().Should().Be(
-            "--since=\"2026-01-02 00:00:00\" --no-merges --author=\"ann\" --regexp-ignore-case --grep=\"fix x\" --first-parent HEAD");
+            "--since=\"2026-01-02 00:00:00\" --no-merges --author=\"ann\" --regexp-ignore-case --grep=\"fix x\" --parents --first-parent HEAD");
         filter.IsNarrowed.Should().BeTrue();
     }
 
@@ -36,6 +43,15 @@ internal sealed class RevisionFilterTests
     public void A_path_alone_narrows_the_list()
     {
         new RevisionFilter(PathFilter: "src").IsNarrowed.Should().BeTrue();
+    }
+
+    [Test]
+    public void A_filter_that_may_hide_parents_should_have_git_rewrite_them_as_upstream()
+    {
+        new RevisionFilter(PathFilter: "src").ToRevisionArguments().Should().StartWith("--parents ",
+            "the commits of a file's history connect in the graph");
+        new RevisionFilter(FirstParent: true).ToRevisionArguments().Should().NotContain("--parents",
+            "first parent only follows branches, it hides no parent");
     }
 
     [Test]
@@ -51,7 +67,7 @@ internal sealed class RevisionFilterTests
     public void A_message_starting_with_dashes_should_be_passed_as_git_log_options()
     {
         new RevisionFilter(CurrentBranchOnly: true, Message: " --invert-grep --grep=\"wip\"").ToRevisionArguments()
-            .Should().Be("--regexp-ignore-case --invert-grep --grep=\"wip\" HEAD");
+            .Should().Be("--regexp-ignore-case --invert-grep --grep=\"wip\" --parents HEAD");
     }
 
     [Test]
@@ -103,10 +119,10 @@ internal sealed class RevisionFilterTests
             SimplifyByDecoration: true, IgnoreCase: false, FullHistory: true, SimplifyMerges: true);
 
         filter.ToRevisionArguments().Should().Be(
-            "--no-merges --simplify-by-decoration --author=\"ann\" --full-history --simplify-merges --first-parent HEAD",
+            "--no-merges --simplify-by-decoration --author=\"ann\" --parents --full-history --simplify-merges --first-parent HEAD",
             "ignore case off drops --regexp-ignore-case; simplify by decoration is a revision filter for the full history");
         new RevisionFilter(SimplifyByDecoration: true, FullHistory: true).ToRevisionArguments().Should()
-            .StartWith("--simplify-by-decoration --full-history ");
+            .StartWith("--simplify-by-decoration --parents --full-history ");
         new RevisionFilter(Message: "fix", DiffContent: "x").ToRevisionArguments().Should()
             .EndWith("--all --boundary", "upstream adds the boundary for a message and a diff filter together");
         new RevisionFilter(CommitsLimit: 5).ToRevisionArguments().Should().NotContain("--max-count",

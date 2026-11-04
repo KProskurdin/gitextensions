@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Remotes;
+using GitCommands.Settings;
 using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
@@ -68,8 +69,6 @@ public partial class MainWindow : Window
     private ProcessWindow? _processWindow;
     private GitActionBanner? _actionBanner;
 
-    // The More... menu of a patch in progress; a rebase in progress opens the rebase window instead.
-    private Avalonia.Controls.Primitives.FlyoutBase? _moreFlyout;
     private ScriptHost? _scriptHost;
     private readonly PluginHost _plugins;
     private IReadOnlyList<IGitPlugin>? _loadedPlugins;
@@ -104,9 +103,7 @@ public partial class MainWindow : Window
         ShowSortMenus();
         ShowGridTooltips();
         ShowAvatarSettings();
-        _ = _commits.ApplyFilterAsync(WithStoredOptions(new RevisionFilter(CurrentBranchOnly: _preferences.ShowCurrentBranchOnly,
-            NoMerges: _preferences.HideMergeCommits, FirstParent: _preferences.ShowOnlyFirstParent,
-            SimplifyByDecoration: _preferences.ShowSimplifyByDecoration)));
+        _ = _commits.ApplyFilterAsync(StoredRevisionFilter.Initial(_preferences));
         WireToolbar();
         WireMenus();
         WireLeftPanel();
@@ -159,16 +156,20 @@ public partial class MainWindow : Window
         ResolveConflictsButton.Click += (_, _) => ShowConflicts();
         ContinueActionButton.Click += (_, _) => ContinueAction();
         AbortActionButton.Click += (_, _) => AbortAction();
-        _moreFlyout = MoreActionButton.Flyout;
         MoreActionButton.Click += (_, _) =>
         {
-            // Upstream's More... of a rebase opens FormRebase (StartTheContinueRebaseDialog).
-            if (_actionBanner?.Action == GitAction.Rebase)
+            // Upstream's More... of a rebase opens FormRebase (StartTheContinueRebaseDialog), of a patch FormApplyPatch
+            // (StartApplyPatchDialog), which shows the stopped git am's patches with Skip, Resolved and Abort.
+            switch (_actionBanner?.Action)
             {
-                RunOnRepository(path => ShowRebaseAsync(path, onto: null));
+                case GitAction.Rebase:
+                    RunOnRepository(path => ShowRebaseAsync(path, onto: null));
+                    break;
+                case GitAction.Patch:
+                    RunOnRepositoryFolder(ShowApplyPatch);
+                    break;
             }
         };
-        SkipPatchMenuItem.Click += (_, _) => RunOnRepository(path => _actions.SkipPatchAsync(path));
         BisectMoreButton.Click += (_, _) => Run(ShowBisectAsync);
     }
 
@@ -233,8 +234,9 @@ public partial class MainWindow : Window
         };
         WireGraphStyles();
         WireQuickSearch();
+        WireMouseNavigation();
         AboutMenuItem.Click += (_, _) =>
-            _ = new AboutWindow(_git?.Version?.ToString() is { } version ? $"git {version}" : "git").ShowDialog(this);
+            _ = new AboutWindow(_git?.Version?.ToString()).ShowDialog(this);
     }
 
     private void WireLeftPanel()
@@ -288,7 +290,8 @@ public partial class MainWindow : Window
             RunOnSelectedCommit((path, row) => ShowResetCurrentBranchAsync(this, path, row.Hash, ResetMode.Soft));
         RebaseOnCommitMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: false));
         RebaseInteractiveMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: true));
-        RebaseAdvancedMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => ShowRebaseAsync(path, row.Hash));
+        RebaseAdvancedMenuItem.Click += (_, _) =>
+            RunOnSelectedCommit((path, row) => ShowRebaseAsync(path, row.Hash, from: RebaseRangeStart()));
         MarkBadMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Bad);
         MarkGoodMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Good);
         BisectSkipMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Skip);
@@ -385,6 +388,14 @@ public partial class MainWindow : Window
 
     private async Task OnOpenedAsync()
     {
+        // As upstream's Program at startup: without a language, the user chooses one first (FormChooseTranslation), and
+        // the window takes it.
+        if (string.IsNullOrEmpty(_preferences.Translation))
+        {
+            await new ChooseTranslationWindow(_preferences).ShowDialog(this);
+            GitExtensions.Xplat.Ui.UpstreamTranslation.ApplyByText(this);
+        }
+
         Run(ShowPluginsAsync);
         await _recent.LoadAsync();
 
@@ -591,16 +602,7 @@ public partial class MainWindow : Window
                 Run(() => ShowSettingsAsync());
                 break;
             case BrowseCommand.FocusFilter:
-                // Upstream's FilterToolBar.SetFocus: the "Filter:" box, or from there the "Branches:" box.
-                if (RevisionFilterBox.IsKeyboardFocusWithin)
-                {
-                    BranchFilterBox.Focus();
-                }
-                else
-                {
-                    RevisionFilterBox.Focus();
-                }
-
+                FilterToolStrip.FocusFilter();
                 break;
             case BrowseCommand.FocusRevisionGrid:
                 CommitList.Focus();
@@ -777,14 +779,7 @@ public partial class MainWindow : Window
         if (await new FilterWindow(_commits.Filter, _preferences.MaxRevisionGraphCommits).ShowDialog<RevisionFilter?>(this)
             is { } filter)
         {
-            // Upstream's OkClick sets its settings: the current branch choice, and the full history and merge
-            // simplification the file history shares.
-            _preferences.ShowCurrentBranchOnly = filter.CurrentBranchOnly;
-            _preferences.FileHistory = _preferences.FileHistory with
-            {
-                FullHistory = filter.FullHistory,
-                SimplifyMerges = filter.SimplifyMerges,
-            };
+            StoredRevisionFilter.StoreDialogChoice(filter, _preferences);
             await ApplyRevisionFilterAsync(filter);
         }
     }
@@ -794,19 +789,9 @@ public partial class MainWindow : Window
     // only the filter window changes from here.
     private Task ApplyRevisionFilterAsync(RevisionFilter filter)
     {
-        _preferences.HideMergeCommits = filter.NoMerges;
-        _preferences.ShowOnlyFirstParent = filter.FirstParent;
-        _preferences.ShowSimplifyByDecoration = filter.SimplifyByDecoration;
-        _preferences.Save();
-        return _commits.ApplyFilterAsync(WithStoredOptions(filter));
+        StoredRevisionFilter.Store(filter, _preferences);
+        return _commits.ApplyFilterAsync(StoredRevisionFilter.WithStoredHistory(filter, _preferences));
     }
-
-    private RevisionFilter WithStoredOptions(RevisionFilter filter)
-        => filter with
-        {
-            FullHistory = _preferences.FileHistory.FullHistory,
-            SimplifyMerges = _preferences.FileHistory.SimplifyMerges,
-        };
 
     private async Task OpenRepositoryAsync(string path)
     {
@@ -944,17 +929,22 @@ public partial class MainWindow : Window
         if (action is GitPullAction.Fetch or GitPullAction.FetchAll or GitPullAction.FetchPruneAll)
         {
             string remote = action == GitPullAction.Fetch ? TrackingRemote() : "--all";
-            RunOnRepository(path => WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
-                () => _actions.FetchAsync(path, remote, prune: action == GitPullAction.FetchPruneAll)));
+            RunOnRepository(async path => await LoadPuttyKeysAsync(path, remote)
+                && await WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
+                    () => _actions.FetchAsync(path, remote, prune: action == GitPullAction.FetchPruneAll)));
             return;
         }
 
-        RunOnCurrentBranch((path, branch) => WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
-            () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase)));
+        RunOnCurrentBranch(async (path, branch) => await LoadPuttyKeysAsync(path, TrackingRemote())
+            && await WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
+                () => PullAndUpdateSubmodulesAsync(path,
+                    () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase),
+                    TrackingRemote())));
     }
 
     private void Push() => RunOnCurrentBranch(async (path, branch) =>
         await ConfirmPushAsync(TrackingRemote(), branch)
+        && await LoadPuttyKeysAsync(path, TrackingRemote())
         && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
             () => PushFlow.PushAsync(ProcessOwner, path,
                 new PushRequest(TrackingRemote(), branch, "", ForcePushOptions.DoNotForce, Track: true),
@@ -964,6 +954,7 @@ public partial class MainWindow : Window
     private void Fetch(string remote = RemoteName, bool prune = false) =>
         RunOnRepository(async path =>
             (!prune || await ConfirmPruneAsync(remote))
+            && await LoadPuttyKeysAsync(path, remote)
             && await WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
                 () => _actions.FetchAsync(path, remote, prune)));
 
@@ -1144,6 +1135,7 @@ public partial class MainWindow : Window
         PushWindow window = await NewPushWindowAsync(path, branch);
         PushRequest? request = await window.ShowDialog<PushRequest?>(this);
         if (request is not null
+            && (window.Dialog.ToUrl || await LoadPuttyKeysAsync(path, request.Remote))
             && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
                 () => PushFlow.PushAsync(ProcessOwner, path, request,
                     new PushOrigin(window.Dialog.Branch, _repository.CurrentBranch, _repository.TrackingRemote,
@@ -1163,7 +1155,27 @@ public partial class MainWindow : Window
             {
                 await ShowRemotesAsync(owner, remote);
                 return await PushRepository.LoadAsync(path);
-            });
+            },
+            remote => LoadPuttyKeysAsync(path, remote),
+            await Task.Run(() => DetailedSettings.GetRemoteBranchesDirectlyFromRemote.ValueOrDefault(
+                GitModules.Open(path).GetEffectiveSettings()))
+                ? remote => ReadRemoteHeadsAsync(path, remote)
+                : null);
+
+    // Upstream's LoadMultiBranchViewData with "Get remote branches directly from the remote": Pageant for the remote's
+    // key, git's ls-remote in the process window, and its refs; null after an error.
+    private async Task<IReadOnlyList<IGitRef>?> ReadRemoteHeadsAsync(string path, string remote)
+    {
+        if (!await LoadPuttyKeysAsync(path, remote)
+            || !await _actions.RunProgramAsync("git ls-remote", AppSettings.GitCommand,
+                PushDialog.LsRemoteArguments(remote), path))
+        {
+            return null;
+        }
+
+        IReadOnlyList<string> output = _actions.OutputLines;
+        return await Task.Run(() => PushDialog.RemoteHeadsFromLsRemote(GitModules.Open(path), output));
+    }
 
     private async Task ShowPullDialogAsync() => await ShowPullDialogAsync(this);
 
@@ -1177,12 +1189,15 @@ public partial class MainWindow : Window
         PullRequest? request = await (await NewPullWindowAsync(path)).ShowDialog<PullRequest?>(owner);
 
         // As upstream's dialog, a fetch with prune chosen there runs without the question the quick fetch and prune asks.
-        if (request is not null)
+        if (request is not null && await LoadPuttyKeysAsync(path, request.Remote))
         {
             // As upstream's pull dialog, "fetch only" runs the fetch scripts and a pull the pull scripts.
             bool fetchOnly = request.Action == PullAction.FetchOnly;
             await WithScriptsAsync(path, fetchOnly ? ScriptEvent.BeforeFetch : ScriptEvent.BeforePull,
-                fetchOnly ? ScriptEvent.AfterFetch : ScriptEvent.AfterPull, () => _actions.PullAsync(path, request));
+                fetchOnly ? ScriptEvent.AfterFetch : ScriptEvent.AfterPull,
+                () => fetchOnly
+                    ? _actions.PullAsync(path, request)
+                    : PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, request), request.Remote));
         }
     }
 
@@ -1217,6 +1232,13 @@ public partial class MainWindow : Window
             (Screenshot.FormatPatchWindow, { } path) => new FormatPatchWindow(path, _preferences),
             (Screenshot.ApplyPatchWindow, { } path) => new ApplyPatchWindow(path, _preferences, null, null, null),
             (Screenshot.ViewPatchWindow, { } path) => new ViewPatchWindow(path, null),
+            (Screenshot.GitIgnoreWindow, { } path) => new GitIgnoreWindow(path),
+            (Screenshot.CommandLogWindow, _) => new CommandLogWindow(),
+            (Screenshot.AboutWindow, _) => new AboutWindow(_git?.Version?.ToString()),
+            (Screenshot.ContributorsWindow, _) => new ContributorsWindow(),
+            (Screenshot.ChooseTranslationWindow, _) => new ChooseTranslationWindow(new InMemoryAppPreferences()),
+            (Screenshot.AddToGitIgnoreWindow, { } path) =>
+                new AddToGitIgnoreWindow(path, localExclude: false, ["*.txt"]),
             (Screenshot.CherryPickWindow, { } path) => new CherryPickWindow(path, "HEAD", _preferences, null),
             (Screenshot.ChooseCommitWindow, { } path) => new ChooseCommitWindow(path, "HEAD~1", _preferences),
             (Screenshot.CleanupRepositoryWindow, { } path) => new CleanupRepositoryWindow(path, null),
@@ -1262,7 +1284,8 @@ public partial class MainWindow : Window
                 await ShowRemotesAsync(owner, remote);
                 return await Task.Run(() => new ConfigFileRemoteSettingsManager(() => GitModules.Open(path))
                     .LoadRemotes(false).Select(loaded => loaded.Name ?? "").ToList());
-            });
+            },
+            owner => CheckoutFlow().StartAsync(owner, path));
         return new PullWindow(dialog, _preferences, PathUtil.GetDisplayPath(path.EnsureTrailingPathSeparator()),
             [.. _repository.Branches.Where(branch => branch.IsRemote).Select(branch => branch.Name)],
             [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)],
@@ -1520,12 +1543,20 @@ public partial class MainWindow : Window
     }
 
     // Upstream's StartRebaseDialog: the rebase window on the open repository.
-    private Task<bool> ShowRebaseAsync(string path, string? onto, bool interactive = false, bool immediately = false)
-        => NewRebaseWindow(path, onto, interactive, immediately).ShowDialog<bool>(this);
+    private Task<bool> ShowRebaseAsync(string path, string? onto, bool interactive = false, bool immediately = false,
+        string from = "")
+        => NewRebaseWindow(path, onto, interactive, immediately, from).ShowDialog<bool>(this);
 
-    private RebaseWindow NewRebaseWindow(string path, string? onto, bool interactive, bool immediately)
-        => new(path, _actions, _preferences, from: "", to: null, onto, interactive, immediately, _ => ShowCommitWindow(),
-            owner => _ = NewConflictsWindow(path).ShowDialog(owner));
+    private RebaseWindow NewRebaseWindow(string path, string? onto, bool interactive, bool immediately, string from = "")
+        => new(path, _actions, _preferences, from, to: null, onto, interactive, immediately, _ => ShowCommitWindow(),
+            owner => _ = NewConflictsWindow(path).ShowDialog(owner))
+        {
+            RunGit = arguments => RunGitWithOutputAsync(path, arguments),
+        };
+
+    // Upstream's OnRebaseWithAdvOptionsClicked: with two commits selected, the other one is the range's start (excluded).
+    private string RebaseRangeStart()
+        => SelectedRevisions is [_, var other] ? ObjectId.Parse(other.Hash).ToShortString() : "";
 
     private void PopTopStash()
     {
@@ -1598,9 +1629,12 @@ public partial class MainWindow : Window
     // Upstream's StartFileHistoryDialog: the file history window on <file>, selecting <revision>, on its Blame tab for
     // blame. Upstream starts it in a new process; here it is a window of this one.
     private FileHistoryWindow NewFileHistoryWindow(string path, string file, string? revision, bool showBlame)
-        => new(path, _actions, _preferences, file, revision, showBlame,
+        => new(path, _preferences, file, revision, showBlame,
             (repository, hash) => _actions.CherryPickAsync(repository, hash),
-            (repository, hash) => _actions.RevertAsync(repository, hash), RelevantRepositoryHost);
+            (repository, hash) => _actions.RevertAsync(repository, hash), RelevantRepositoryHost)
+        {
+            ShowSettings = () => ShowSettingsAsync(),
+        };
 
     // Upstream's StartReflogDialog: its create branch and reset windows open over it.
     private async Task ShowReflogAsync()
@@ -1809,8 +1843,6 @@ public partial class MainWindow : Window
         ContinueActionButton.IsVisible = buttons.Contains(GitActionButton.Continue);
         AbortActionButton.IsVisible = buttons.Contains(GitActionButton.Abort);
         MoreActionButton.IsVisible = buttons.Contains(GitActionButton.More);
-        MoreActionButton.Flyout = _actionBanner?.Action == GitAction.Rebase ? null : _moreFlyout;
-        SkipPatchMenuItem.IsVisible = _actionBanner?.Action == GitAction.Patch;
 
         ShowBanner(BisectBanner, BisectBannerText, GitActionBanner.ForBisect(_repository.IsBisecting));
         foreach (Control item in new Control[]
@@ -2123,7 +2155,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        bool saved = await new GitIgnoreWindow(path, localExclude: localExclude).ShowDialog<bool>(this);
+        bool saved = await GitIgnoreWindow.ShowAsync(this, path, localExclude);
         _plugins.RaisePost(PluginEvent.EditGitIgnore, saved);
         if (saved)
         {

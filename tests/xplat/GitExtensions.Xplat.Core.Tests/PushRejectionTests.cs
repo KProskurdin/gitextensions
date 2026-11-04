@@ -50,8 +50,18 @@ internal sealed class PushRejectionTests
         PushRejection.Find(_rejectedMain, "topic", "main", false, false).Should().BeNull("another branch was pushed");
         PushRejection.Find(_rejectedMain, "main", "main", toUrl: true, false).Should().BeNull();
         PushRejection.Find(_rejectedMain, "main", "main", false, isBare: true).Should().BeNull();
-        PushRejection.Find(_rejectedMain, "main", "main", false, false, PushKind.Multiple).Should().BeNull();
         PushRejection.Find(_rejectedMain, "", "", false, false).Should().BeNull("a detached HEAD has no branch");
+    }
+
+    [TestCase("push --progress \"origin\" main:main topic:topic", ForcePushOptions.ForceWithLease,
+        "push --force-with-lease --progress \"origin\" main:main topic:topic")]
+    [TestCase("push --progress \"origin\" main:main", ForcePushOptions.DoNotForce, "push --progress \"origin\" main:main")]
+    [TestCase("push -f --progress \"origin\" main:main", ForcePushOptions.ForceWithLease,
+        "push -f --progress \"origin\" main:main")]
+    public void WithForceInMultiple_should_add_force_with_lease_after_push_as_upstreams_retry(string arguments,
+        ForcePushOptions force, string expected)
+    {
+        PushRejection.WithForceInMultiple(arguments, force).Should().Be(expected);
     }
 
     [Test]

@@ -23,6 +23,7 @@ internal sealed class PullDialogTests
         {
             string text = (string)field.GetValue(null)!;
             string source = field.Name is nameof(PullDialog.NotOnBranchCaption) or nameof(PullDialog.ContinueText)
+                or nameof(PullDialog.CheckoutBranchText) or nameof(PullDialog.NotOnBranchHeading)
                 ? strings
                 : form;
             foreach (string line in text.Split(Environment.NewLine).Where(line => line.Length > 0))
@@ -172,6 +173,18 @@ internal sealed class PullDialogTests
         dialog.Request(new PullBranches(null, "")).Should().Be(new PullRequest("origin", "", PullAction.Rebase,
             Prune: false, AutoStash: true, LocalBranch: "", FetchTags: false, Unshallow: true, PruneTags: false));
         dialog.PulledAction.Should().Be(GitPullAction.Rebase);
+    }
+
+    [Test]
+    public void IsRefRemoved_should_match_gits_message_for_a_branch_gone_from_the_remote()
+    {
+        PullDialog.IsRefRemoved(
+            [
+                "Your configuration specifies to merge with the ref 'refs/heads/gone'",
+                "from the remote, but no such ref was fetched.",
+            ]).Should().BeTrue();
+        PullDialog.IsRefRemoved(["fatal: couldn't find remote ref gone"]).Should().BeFalse();
+        PullDialog.PruneArguments("origin").Should().Be("remote prune origin");
     }
 
     private static string TestFolder([CallerFilePath] string testFile = "") => Path.GetDirectoryName(testFile)!;

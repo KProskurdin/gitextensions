@@ -6,6 +6,7 @@ using GitCommands.Git;
 using GitCommands.Remotes;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.Core.Tests;
@@ -179,6 +180,20 @@ internal sealed class PushDialogTests
 
     private static ConfigFileRemote Remote(string name, string? pushUrl = null)
         => new() { Name = name, Url = $"https://example.com/{name}.git", PushUrl = pushUrl };
+
+    [Test]
+    public void RemoteHeadsFromLsRemote_should_read_the_refs_after_the_command_line()
+    {
+        IReadOnlyList<IGitRef> heads = PushDialog.RemoteHeadsFromLsRemote(GitModules.Open(Path.GetTempPath()),
+        [
+            "git ls-remote --heads \"origin\"",
+            "fa77791d780a01a06d1f7d4ccad4ef93ed0ae2fd\trefs/heads/main",
+            "0123456789012345678901234567890123456789\trefs/heads/topic",
+        ]);
+
+        heads.Select(head => head.LocalName).Should().Equal("main", "topic");
+        PushDialog.LsRemoteArguments("origin").Should().Be("ls-remote --heads \"origin\"");
+    }
 
     private static string TestFolder([CallerFilePath] string testFile = "") => Path.GetDirectoryName(testFile)!;
 

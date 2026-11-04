@@ -27,6 +27,11 @@ public partial class MainWindow
     // Upstream's text.
     private const string PuttyNotInstalled = "Is PuTTY installed?";
 
+    // Upstream's StartApplyPatchDialog.
+    private void ShowApplyPatch(string path)
+        => Run(() => new ApplyPatchWindow(path, _preferences, arguments => RunGitWithOutputAsync(path, arguments),
+            ShowConflicts, RefreshRepository).ShowDialog(this));
+
     private void WireCommandsMenu()
     {
         UndoLastCommitMenuItem.Click += (_, _) => RunOnRepository(UndoLastCommitAsync);
@@ -34,9 +39,7 @@ public partial class MainWindow
         CherryPickCommandMenuItem.Click += (_, _) => CherryPickSelectedRevision();
         FormatPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
             Run(() => new FormatPatchWindow(path, _preferences).ShowDialog(this)));
-        ApplyPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
-            Run(() => new ApplyPatchWindow(path, _preferences, arguments => RunGitWithOutputAsync(path, arguments),
-                ShowConflicts, RefreshRepository).ShowDialog(this)));
+        ApplyPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(ShowApplyPatch);
         ViewPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
             Run(() => new ViewPatchWindow(path, patchFile: null).ShowDialog(this)));
         ArchiveCommitMenuItem.Click += (_, _) => ArchiveSelectedRevision();

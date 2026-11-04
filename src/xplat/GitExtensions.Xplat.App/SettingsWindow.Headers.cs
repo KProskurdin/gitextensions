@@ -60,6 +60,10 @@ public partial class SettingsWindow
                 {
                     ChangePluginLevel(header.Level);
                 }
+                else if (page == DetailedTab)
+                {
+                    ChangeDetailedLevel(header.Level);
+                }
                 else if (page == GitConfigTab)
                 {
                     ChangeGitConfigLevel(header.Level);
@@ -69,12 +73,20 @@ public partial class SettingsWindow
             continue;
 
             // Upstream's header disables the page while it shows read-only settings; the Detailed page's revision graph
-            // settings are the user's, so they are edited at the global level only.
+            // settings are the user's, so that group is edited at the global level only (upstream's gbRevisionGraph).
             void ShowReadOnly()
-                => body.IsEnabled = !header.IsReadOnly && (page != DetailedTab || header.Level == SettingLevel.Global);
+            {
+                body.IsEnabled = !header.IsReadOnly;
+                if (page == DetailedTab)
+                {
+                    RevisionGraphGroup.IsEnabled = header.Level == SettingLevel.Global;
+                }
+            }
         }
 
         _buildServerLevel = _headers[BuildServerTab].Level;
         _pluginLevel = _headers[PluginsTab].Level;
+        _detailedLevel = _headers[DetailedTab].Level;
+        ShowDetailedValues();
     }
 }

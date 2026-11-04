@@ -7,7 +7,7 @@ using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
-using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
@@ -27,7 +27,6 @@ public partial class FileHistoryWindow : Window
     public const string RevisionFilteredCaption = "Cannot find revision";
 
     private readonly string _repositoryPath;
-    private readonly RepositoryOperationsViewModel _actions;
     private readonly IAppPreferences _preferences;
     private readonly string? _revision;
     private readonly Func<string, string, Task> _cherryPick;
@@ -35,6 +34,7 @@ public partial class FileHistoryWindow : Window
     private readonly FileHistoryDialog _dialog;
     private readonly GitModule _module;
     private readonly CommitListViewModel _commits;
+    private readonly GridSelection _selection = new();
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Task _shown = Task.CompletedTask;
     private bool _selectedOnce;
@@ -46,12 +46,13 @@ public partial class FileHistoryWindow : Window
     /// <param name="cherryPick">Upstream's "Cherry pick commit": cherry-picks a commit (repository, hash).</param>
     /// <param name="revert">Upstream's "Revert commit": reverts a commit (repository, hash).</param>
     /// <param name="repositoryHost">The repository host plugin, whose blame items the Blame tab's menu shows.</param>
-    public FileHistoryWindow(string repositoryPath, RepositoryOperationsViewModel actions, IAppPreferences preferences,
+    /// <param name="filterByRevision">Upstream's <c>filterByRevision</c>: the grid filtered by the commit's hash.</param>
+    public FileHistoryWindow(string repositoryPath, IAppPreferences preferences,
         string fileName, string? revision, bool showBlame, Func<string, string, Task> cherryPick,
-        Func<string, string, Task> revert, Func<IRepositoryHostPlugin?>? repositoryHost = null)
+        Func<string, string, Task> revert, Func<IRepositoryHostPlugin?>? repositoryHost = null,
+        bool filterByRevision = false)
     {
         _repositoryPath = repositoryPath;
-        _actions = actions;
         _preferences = preferences;
         _revision = revision;
         _cherryPick = cherryPick;
@@ -76,13 +77,28 @@ public partial class FileHistoryWindow : Window
         SaveAsMenuItem.IsVisible = !_dialog.IsSubmodule;
         Tabs.SelectedItem = TabFor(_dialog.InitialTab(showBlame));
         ShowOptionChecks();
+        WireFilterToolStrip(revision, filterByRevision);
 
         _commits.PropertyChanged += OnCommitsChanged;
-        HistoryList.SelectionChanged += (_, _) =>
+
+        // Upstream's grid selects several commits (Ctrl, Shift); the latest selected is the one the tabs show, and the Diff
+        // tab compares the earliest selected with it.
+        HistoryList.SelectionChanged += (_, e) =>
         {
-            if (HistoryList.SelectedItem is CommitListItem item && !ReferenceEquals(item.Row, _commits.Selected))
+            _selection.Update([.. HistoryList.SelectedItems?.OfType<CommitListItem>().Select(item => item.Row) ?? []],
+                [.. e.AddedItems.OfType<CommitListItem>().Select(item => item.Row)]);
+            if (_selection.Latest is not { } latest)
             {
-                Run(() => SelectAsync(item.Row));
+                return;
+            }
+
+            if (!ReferenceEquals(latest, _commits.Selected))
+            {
+                Run(() => SelectAsync(latest));
+            }
+            else
+            {
+                Run(() => _shown = ShowSelectedAsync());
             }
         };
         Tabs.SelectionChanged += (_, e) =>
@@ -106,6 +122,8 @@ public partial class FileHistoryWindow : Window
         Blame.ErrorOccurred += (_, message) => ShowError(message);
         WireToolbar();
         WireMenu();
+        WireGridMenus();
+        WireBuildServer();
         KeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape)
@@ -113,8 +131,17 @@ public partial class FileHistoryWindow : Window
                 Close();
             }
         };
-        Opened += (_, _) => Run(LoadAsync);
+        Opened += (_, _) =>
+        {
+            Run(LoadAsync);
+            Run(LoadCustomDifftoolsAsync);
+        };
     }
+
+    /// <summary>
+    ///  The selected commits, the latest selected first, for tests.
+    /// </summary>
+    public IReadOnlyList<CommitRow> SelectedRevisions => _selection.Revisions;
 
     /// <summary>
     ///  The rules, for tests.
@@ -156,21 +183,14 @@ public partial class FileHistoryWindow : Window
             return;
         }
 
+        // Upstream's SetAndApplyPathFilter keeps the grid's other filters.
         FileHistoryOptions options = _preferences.FileHistory;
-        await _commits.ApplyFilterAsync(new RevisionFilter(PathFilter: _dialog.FileName, FullHistory: options.FullHistory,
-            SimplifyMerges: options.SimplifyMerges));
-        if (_commits.RepositoryPath is null)
+        await ApplyGridFilterAsync(_commits.Filter with
         {
-            await _commits.OpenAsync(_repositoryPath);
-        }
-
-        // As upstream's grid: the caller's commit first, then the one selected before a reload; else the newest.
-        string? select = _selectedOnce ? _selectedHash : _revision;
-        _selectedOnce = true;
-        CommitListItem? selected = select is null
-            ? null
-            : _commits.VisibleRows.FirstOrDefault(item => item.Row.Hash.StartsWith(select, StringComparison.OrdinalIgnoreCase));
-        HistoryList.SelectedItem = selected ?? _commits.VisibleRows.FirstOrDefault();
+            PathFilter = _dialog.FileName,
+            FullHistory = options.FullHistory,
+            SimplifyMerges = options.SimplifyMerges,
+        });
     }
 
     private void OnCommitsChanged(object? sender, PropertyChangedEventArgs e)
@@ -179,6 +199,9 @@ public partial class FileHistoryWindow : Window
         {
             case nameof(CommitListViewModel.VisibleRows):
                 HistoryList.ItemsSource = _commits.VisibleRows;
+                break;
+            case nameof(CommitListViewModel.Filter):
+                ToolStripFilters.ShowFilterState();
                 break;
             case nameof(CommitListViewModel.ErrorMessage) when _commits.ErrorMessage is { } error:
                 ShowError(error);
@@ -230,6 +253,12 @@ public partial class FileHistoryWindow : Window
             TabFor(tab).IsVisible = tabs.Visible.Contains(tab);
         }
 
+        // The Build Report tab shows the build's report, not the file.
+        if (Tabs.SelectedItem == BuildReportTab)
+        {
+            return;
+        }
+
         if (!tabs.Visible.Contains(SelectedTab()) && tabs.Preferred is { } preferred)
         {
             Tabs.SelectedItem = TabFor(preferred);
@@ -245,6 +274,13 @@ public partial class FileHistoryWindow : Window
                 break;
             case FileHistoryTab.View when tabs.Visible.Contains(FileHistoryTab.View):
                 View.ShowText(fileName, await new GitCommitHistory().LoadFileTextAsync(_repositoryPath, row.Hash, fileName));
+                break;
+            case FileHistoryTab.Diff when tabs.Visible.Contains(FileHistoryTab.Diff)
+                                          && _selection.Revisions is [_, .., { } first]:
+                // Upstream's FileStatusItem(firstRev: the earliest selected, secondRev: the latest selected).
+                RevisionDiffFile file = new("M", fileName, OldPath: null, IsTracked: true);
+                await Diff.ShowDiffAsync(_repositoryPath, fileName, fileName, options =>
+                    RevisionDiff.DiffAsync(_module, ObjectId.Parse(first.Hash), ObjectId.Parse(row.Hash), file, options));
                 break;
             case FileHistoryTab.Diff when tabs.Visible.Contains(FileHistoryTab.Diff):
                 await Diff.ShowAsync(_repositoryPath, hash, fileName, staged, fileName);
@@ -305,20 +341,22 @@ public partial class FileHistoryWindow : Window
     {
         HistoryContextMenu.Opening += (_, _) =>
         {
-            CommitRow? row = _commits.Selected;
-            FileHistoryMenu menu = FileHistoryDialog.Menu(row is null ? 0 : 1,
+            IReadOnlyList<CommitRow> selected = _selection.Revisions;
+            CommitRow? row = selected.Count > 0 ? selected[0] : null;
+            FileHistoryMenu menu = FileHistoryDialog.Menu(selected.Count,
                 row is not null && ArtificialCommits.IsArtificial(row.Hash), row?.Hash == ArtificialCommits.WorkTreeHash,
                 File.Exists(Path.Combine(_repositoryPath, _dialog.FileName.ToNativePath())));
             OpenWithDifftoolMenuItem.IsEnabled = menu.OpenWithDifftool;
+            DiffToolRemoteLocalMenuItem.IsEnabled = menu.DiffToolRemoteLocal;
+            CopyMenus.Fill(CopyToClipboardMenuItem, selected, keep: null, value => Run(() => CopyTextAsync(value)));
             ManipulateCommitMenuItem.IsEnabled = menu.ManipulateCommit;
             SaveAsMenuItem.IsEnabled = menu.SaveAs;
             CopyToClipboardMenuItem.IsEnabled = menu.CopyToClipboard;
         };
-        CopyHashMenuItem.Click += (_, _) => Run(() => CopyAsync(row => row.Hash));
-        CopyMessageMenuItem.Click += (_, _) => Run(() => CopyAsync(row => _commits.Details?.Message ?? row.Subject));
-        CopyAuthorMenuItem.Click += (_, _) => Run(() => CopyAsync(row => row.Author));
-        CopyDateMenuItem.Click += (_, _) => Run(() => CopyAsync(row => row.Date));
-        OpenWithDifftoolMenuItem.Click += (_, _) => Run(OpenWithDifftoolAsync);
+        CustomDiffTools.OnClick(OpenWithDifftoolMenuItem,
+            tool => Run(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool)));
+        CustomDiffTools.OnClick(DiffToolRemoteLocalMenuItem,
+            tool => Run(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool)));
         SaveAsMenuItem.Click += (_, _) => Run(SaveAsAsync);
         CherryPickMenuItem.Click += (_, _) => RunOnSelected(_cherryPick);
         RevertCommitMenuItem.Click += (_, _) => RunOnSelected(_revert);
@@ -368,20 +406,38 @@ public partial class FileHistoryWindow : Window
         ShowAuthorAvatarMenuItem.IsChecked = blame.ShowAuthorAvatar;
     }
 
-    private async Task CopyAsync(Func<CommitRow, string> text)
+    private async Task CopyTextAsync(string? text)
     {
-        if (_commits.Selected is { } row && GetTopLevel(this)?.Clipboard is { } clipboard)
+        if (text is not null && GetTopLevel(this)?.Clipboard is { } clipboard)
         {
-            await clipboard.SetTextAsync(text(row));
+            await clipboard.SetTextAsync(text);
         }
     }
 
-    private async Task OpenWithDifftoolAsync()
+    // Upstream's LoadCustomDifftools: the diff tools under both difftool items.
+    private Task LoadCustomDifftoolsAsync()
+        => CustomDiffTools.LoadAsync(
+        [
+            (OpenWithDifftoolMenuItem, tool => Run(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool))),
+            (DiffToolRemoteLocalMenuItem, tool => Run(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool))),
+        ], diff: true, _preferences);
+
+    // Upstream's OpenFilesWithDiffTool: "Open with difftool" (DiffAB: a commit against its parent, or the two selected
+    // against each other) and "Difftool selected < - > local" (DiffBLocal), with the default tool or the chosen one.
+    private async Task OpenWithDifftoolAsync(RevisionDiffKind kind, string? tool)
     {
-        if (_commits.Selected is { } row)
+        IReadOnlyList<CommitRow> selected = _selection.Revisions;
+        if (selected.Count == 0)
         {
-            string fileName = _commits.FilePaths.TryGetValue(row.Hash, out string? name) ? name : _dialog.FileName;
-            await _actions.RunDiffToolAsync(_repositoryPath, fileName, row.Hash, staged: false);
+            return;
+        }
+
+        string? oldFileName = _commits.FilePaths.TryGetValue(selected[0].Hash, out string? name) ? name : null;
+        string fileName = _dialog.FileName;
+        if (await Task.Run(() => FileHistoryDialog.OpenWithDifftool(_module, selected, fileName, oldFileName, kind,
+                tool)) is { } error)
+        {
+            await new ErrorWindow(error).ShowDialog(this);
         }
     }
 
@@ -411,7 +467,7 @@ public partial class FileHistoryWindow : Window
 
     private void RunOnSelected(Func<string, string, Task> action)
     {
-        if (_commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
+        if (_selection.Revisions is [{ } row] && !ArtificialCommits.IsArtificial(row.Hash))
         {
             Run(() => action(_repositoryPath, row.Hash));
         }
@@ -433,7 +489,11 @@ public partial class FileHistoryWindow : Window
         };
 
     // The grid as the browse window's View menu and upstream's appearance settings say.
-    private void ShowGridColumns() => RevisionGridColumns.ShowAsSettingsSay(this, HistoryList, _preferences, _commits);
+    private void ShowGridColumns()
+    {
+        RevisionGridColumns.ShowAsSettingsSay(this, HistoryList, _preferences, _commits);
+        ShowBuildStatusColumn();
+    }
 
     private void ShowError(string message) => _ = new ErrorWindow(message).ShowDialog(this);
 

@@ -14,7 +14,9 @@
           <DataTemplate x:DataType="core:CommitFile">
             <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
             <DockPanel>
-              <TextBlock DockPanel.Dock="Left" Text="{Binding Status}" Margin="0,0,4,0" />
+              <!-- Upstream's FileStatusList image for the file's status, as the Diff tab's. -->
+              <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                     Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
               <TextBlock Text="{Binding Path, Converter={x:Static local:FilePathTrimming.Text}}"
                          TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
             </DockPanel>

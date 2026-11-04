@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 using DialogResult = System.Windows.Forms.DialogResult;
@@ -21,6 +23,8 @@ public partial class PushWindow : Window
     private readonly IAppPreferences _preferences;
     private bool _showing;
     private readonly Func<Window, string?, Task<PushRepository>>? _manageRemotes;
+    private readonly Func<string, Task>? _loadSshKey;
+    private readonly Func<string, Task<IReadOnlyList<IGitRef>?>>? _readRemoteHeads;
     private string? _rowsRemote;
 
     /// <param name="canCreatePullRequest">True when a repository host plugin knows the repository.</param>
@@ -29,8 +33,10 @@ public partial class PushWindow : Window
     ///  repository again (upstream's Manage remotes).</param>
     public PushWindow(PushDialog dialog, IAppPreferences preferences, string workingDirectory,
         bool canCreatePullRequest = false, Func<Window, Task>? openPull = null,
-        Func<Window, string?, Task<PushRepository>>? manageRemotes = null)
+        Func<Window, string?, Task<PushRepository>>? manageRemotes = null, Func<string, Task>? loadSshKey = null,
+        Func<string, Task<IReadOnlyList<IGitRef>?>>? readRemoteHeads = null)
     {
+        _readRemoteHeads = readRemoteHeads;
         _dialog = dialog;
         _preferences = preferences;
         _manageRemotes = manageRemotes;
@@ -48,6 +54,9 @@ public partial class PushWindow : Window
         AddRemoteButton.IsEnabled = manageRemotes is not null;
         AddRemoteButton.Click += (_, _) => UiActions.Run(() => ManageRemotesAsync(_dialog.Remote), _ => { });
         PullButton.IsEnabled = openPull is not null;
+        _loadSshKey = loadSshKey;
+        LoadSSHKey.Click += (_, _) => UiActions.Run(() => _loadSshKey?.Invoke(_dialog.Remote) ?? Task.CompletedTask,
+            _ => { });
         PullButton.Click += (_, _) => UiActions.Run(() => openPull!(this), _ => { });
 
         if (preferences.AlwaysShowAdvOpt)
@@ -56,6 +65,7 @@ public partial class PushWindow : Window
         }
 
         ShowDialogState();
+        Opened += (_, _) => UiActions.Run(LoadUrlHistoryAsync, _ => { });
         RemotesBox.SelectionChanged += (_, _) => Edit(() => _dialog.Remote = RemotesBox.SelectedItem as string ?? "");
         PushToRemoteRadio.IsCheckedChanged += (_, _) => Edit(() => _dialog.ToUrl = PushToUrlRadio.IsChecked == true);
         BranchBox.SelectionChanged += (_, _) => Edit(() => _dialog.Branch = BranchBox.SelectedItem as string ?? "");
@@ -139,14 +149,23 @@ public partial class PushWindow : Window
         if (_dialog.Tab == PushTab.MultipleBranches && _rowsRemote != _dialog.Remote)
         {
             _rowsRemote = _dialog.Remote;
-            _dialog.LoadMultipleBranches();
-            BranchRowsList.ItemsSource = _dialog.MultipleBranches;
+            if (_readRemoteHeads is null)
+            {
+                _dialog.LoadMultipleBranches();
+                BranchRowsList.ItemsSource = _dialog.MultipleBranches;
+            }
+            else
+            {
+                string remote = _dialog.Remote;
+                UiActions.Run(() => LoadRemoteHeadsAsync(remote), _ => { });
+            }
         }
 
         PushToRemoteRadio.IsChecked = !_dialog.ToUrl;
         PushToUrlRadio.IsChecked = _dialog.ToUrl;
         RemotesBox.SelectedItem = _dialog.Remote;
         RemotesBox.IsEnabled = !_dialog.ToUrl;
+        LoadSSHKey.IsVisible = _loadSshKey is not null && _dialog.RemoteHasPuttyKey;
         DestinationBox.IsEnabled = BrowseDestinationButton.IsEnabled = _dialog.ToUrl;
         DestinationBox.Text = _dialog.Destination;
         BranchBox.SelectedItem = _dialog.Branch;
@@ -190,6 +209,26 @@ public partial class PushWindow : Window
     }
 
     // Upstream's PushChanges, up to running the push.
+    // Upstream's LoadMultiBranchViewData with GetRemoteBranchesDirectlyFromRemote: the remote's branches as git's
+    // ls-remote lists them; after an error the rows stay as they were, as upstream's.
+    private async Task LoadRemoteHeadsAsync(string remote)
+    {
+        if (await _readRemoteHeads!(remote) is { } heads && _rowsRemote == remote)
+        {
+            _dialog.LoadMultipleBranches(heads);
+            BranchRowsList.ItemsSource = _dialog.MultipleBranches;
+        }
+    }
+
+    // Upstream's FormPush loads the remote URL history into the URL box, keeping the typed text.
+    private async Task LoadUrlHistoryAsync()
+    {
+        IList<GitCommands.UserRepositoryHistory.Repository> history = await AppServices.RemoteUrls.LoadAsync();
+        string? typed = DestinationBox.Text;
+        DestinationBox.ItemsSource = history.Select(repository => repository.Path).ToList();
+        DestinationBox.Text = typed;
+    }
+
     private async Task PushAsync()
     {
         KeepTypedValues();
@@ -226,6 +265,12 @@ public partial class PushWindow : Window
                 UpstreamTranslation.ByText(PushDialog.PushCaption)))
         {
             return;
+        }
+
+        // Upstream adds the URL pushed to to the remote URL history.
+        if (_dialog.ToUrl)
+        {
+            await AppServices.RemoteUrls.AddAsMostRecentAsync(_dialog.Destination);
         }
 
         _preferences.RecursiveSubmodules = _dialog.RecursiveSubmodules;

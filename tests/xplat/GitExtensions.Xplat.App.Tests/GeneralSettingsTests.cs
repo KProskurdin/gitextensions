@@ -219,7 +219,7 @@ internal sealed class GeneralSettingsTests
         TestAppBuilder.Preferences.RecentWorkingDir = null;
         TestAppBuilder.Preferences.DefaultCloneDestinationPath = "";
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar = true;
-        TestAppBuilder.Preferences.Translation = "";
+        TestAppBuilder.Preferences.Translation = ChooseTranslationWindow.English;
     }
 
     private static DateTime UnixDate(string seconds)

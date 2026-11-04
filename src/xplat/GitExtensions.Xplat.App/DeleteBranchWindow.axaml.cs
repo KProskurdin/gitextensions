@@ -33,6 +33,7 @@ public partial class DeleteBranchWindow : Window
         _currentBranch = currentBranch;
         _delete = delete;
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, DialogHelp.Manual("branches", "delete-branch"));
         UpstreamTranslation.Apply(this, "FormDeleteBranch");
         InitialFocus.Attach(this, () => Branches);
         Branches.ItemsSource = branches;

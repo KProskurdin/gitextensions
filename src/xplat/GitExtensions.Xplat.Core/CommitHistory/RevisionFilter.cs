@@ -21,6 +21,8 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 /// those needed to keep the graph (<c>--simplify-by-decoration</c>).</param>
 /// <param name="CommitsLimit">Upstream's "Limit" (<c>ByCommitsLimit</c>): the most commits read; 0 leaves upstream's
 /// <c>MaxRevisionGraphCommits</c> as the limit.</param>
+/// <param name="LastRevisionToDisplayHash">Upstream's <c>LastRevisionToDisplayHash</c>: the history stops at this commit
+/// (<c>...hash</c>), as FormChooseCommit does for the rebase window's range.</param>
 public sealed record RevisionFilter(
     bool CurrentBranchOnly = false,
     string Author = "",
@@ -39,7 +41,8 @@ public sealed record RevisionFilter(
     bool SimplifyMerges = false,
     bool IgnoreCase = true,
     bool SimplifyByDecoration = false,
-    int CommitsLimit = 0)
+    int CommitsLimit = 0,
+    string LastRevisionToDisplayHash = "")
 {
     // Upstream's Delimiters.WildcardBranchSearchValues: a branch filter word with these is a pattern for --branches=.
     private static readonly char[] _wildcards = ['?', '*', '['];
@@ -143,14 +146,19 @@ public sealed record RevisionFilter(
             arguments.Add(IsGitLogOptions(Message) ? Message.Trim() : $"--grep=\"{Clean(Message)}\"");
         }
 
-        // The full history (and merge simplification) apply to a history the revision filter narrows. Upstream adds
-        // --parents with them, which the new shell's log format always reads.
-        if (FullHistory && HasRevisionFilter)
+        // As upstream: a filter that may hide parents has git rewrite them (--parents), so the commits the grid shows
+        // connect in the graph (the log format's %P only gives the rewritten parents with it); the full history (and merge
+        // simplification) apply to such a history.
+        if (HasRevisionFilter)
         {
-            arguments.Add("--full-history");
-            if (SimplifyMerges)
+            arguments.Add("--parents");
+            if (FullHistory)
             {
-                arguments.Add("--simplify-merges");
+                arguments.Add("--full-history");
+                if (SimplifyMerges)
+                {
+                    arguments.Add("--simplify-merges");
+                }
             }
         }
 
@@ -202,6 +210,12 @@ public sealed record RevisionFilter(
             {
                 arguments.Add("--boundary");
             }
+        }
+
+        // Upstream's LastRevisionToDisplayHash (FormChooseCommit from the rebase window: down to the merge base).
+        if (!string.IsNullOrWhiteSpace(LastRevisionToDisplayHash))
+        {
+            arguments.Add($"...{LastRevisionToDisplayHash}");
         }
 
         return string.Join(' ', arguments);

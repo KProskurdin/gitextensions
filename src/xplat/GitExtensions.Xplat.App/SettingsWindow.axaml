@@ -233,13 +233,23 @@
           <CheckBox x:Name="ShowRevisionTooltipsCheck" Content="Show revision tooltips" />
         </StackPanel>
       </TabItem>
-      <!-- Upstream's "Detailed" page: its revision graph group. The push and merge window options are not ported. -->
+      <!-- Upstream's "Detailed" page: the revision graph group (the user's settings, global level only), and the push and
+           merge window groups (upstream's DetailedSettings, at the chosen level; an undecided box stores nothing). -->
       <TabItem x:Name="DetailedTab" Header="Detailed">
         <StackPanel Spacing="8" Margin="4,8">
-          <TextBlock Text="Revision graph" FontWeight="SemiBold" />
-          <CheckBox x:Name="MergeGraphLanesCheck" Content="Merge graph lanes having common parent" />
-          <CheckBox x:Name="GraphDiagonalsCheck" Content="Render graph with diagonals" />
-          <CheckBox x:Name="StraightenDiagonalsCheck" Content="Straighten graph diagonals" />
+          <StackPanel x:Name="RevisionGraphGroup" Spacing="8">
+            <TextBlock Text="Revision graph" FontWeight="SemiBold" />
+            <CheckBox x:Name="MergeGraphLanesCheck" Content="Merge graph lanes having common parent" />
+            <CheckBox x:Name="GraphDiagonalsCheck" Content="Render graph with diagonals" />
+            <CheckBox x:Name="StraightenDiagonalsCheck" Content="Straighten graph diagonals" />
+          </StackPanel>
+          <TextBlock x:Name="PushWindowGB" Text="Push window" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="chkRemotesFromServer" Content="Get remote branches directly from the remote" IsThreeState="True" />
+          <TextBlock x:Name="mergeWindowGroup" Text="Merge window" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <CheckBox x:Name="addLogMessages" Content="Add log messages" IsThreeState="True" />
+            <TextBox x:Name="nbMessages" Width="100" />
+          </StackPanel>
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Commit dialog" page: the settings whose feature the commit window has. -->

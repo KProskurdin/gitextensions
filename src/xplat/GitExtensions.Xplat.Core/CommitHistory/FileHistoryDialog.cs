@@ -1,4 +1,7 @@
 using GitCommands;
+using GitExtensions.Extensibility.Git;
+using GitUI;
+using GitUIPluginInterfaces;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
@@ -127,6 +130,35 @@ public sealed class FileHistoryDialog
             ManipulateCommit: selectedCount == 1 && !firstIsArtificial,
             SaveAs: selectedCount == 1,
             CopyToClipboard: selectedCount >= 1 && !firstIsArtificial);
+
+    /// <summary>
+    ///  Upstream's <c>OpenFilesWithDiffTool</c> through <c>GitUICommands.OpenWithDifftool</c>: the file in the difftool
+    ///  between the revisions <paramref name="kind"/> names for the selected commits (upstream's
+    ///  <c>RevisionDiffInfoProvider</c>: one commit against its parent or the working directory, two against each other).
+    ///  Returns upstream's error, or <see langword="null"/>.
+    /// </summary>
+    /// <param name="rows">The selected commits, the latest selected first (upstream's <c>GetSelectedRevisions</c>).</param>
+    /// <param name="fileName">The file's current name.</param>
+    /// <param name="oldFileName">Its name in the latest selected commit, or null.</param>
+    /// <param name="customTool">The tool chosen in the item's submenu, or null for the default one.</param>
+    public static string? OpenWithDifftool(IGitModule module, IReadOnlyList<CommitRow> rows, string fileName,
+        string? oldFileName, RevisionDiffKind kind, string? customTool = null)
+    {
+        GitRevision?[] revisions =
+        [
+            .. rows.Select(row => new GitRevision(ObjectId.Parse(row.Hash))
+            {
+                ParentIds = [.. (row.ParentHashes ?? []).Select(ObjectId.Parse)],
+            })
+        ];
+        if (!RevisionDiffInfoProvider.TryGet(revisions, kind, out string? first, out string? second, out string? error))
+        {
+            return error;
+        }
+
+        module.OpenWithDifftool(fileName, oldFileName, first, second, isTracked: true, customTool: customTool);
+        return null;
+    }
 }
 
 /// <summary>

@@ -4,6 +4,7 @@ using Avalonia.Media;
 using GitCommands;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
@@ -100,6 +101,10 @@ public partial class RebaseWindow : Window
         AbortButton.Click += (_, _) => Run(AbortAsync);
         EditTodoButton.Click += (_, _) => Run(EditTodoAsync);
         CommitButton.Click += (_, _) => _showCommit(this);
+        btnAddFiles.Click += (_, _) => Run(() => new AddFilesWindow(null, RunGit).ShowDialog(this));
+        btnChooseFromRevision.Click += (_, _) => Run(ChooseFromRevisionAsync);
+        PatchesList.DoubleTapped +=
+            (_, _) => Run(() => RebasePatchRow.OpenAsync(this, _repositoryPath, PatchesList.SelectedItem as RebasePatchRow));
         SolveConflictsButton.Click += (_, _) => _showConflicts(this);
         UnresolvedConflictsButton.Click += (_, _) => _showConflicts(this);
         KeyDown += (_, e) =>
@@ -122,6 +127,12 @@ public partial class RebaseWindow : Window
         };
         ShowOptionsState();
     }
+
+    /// <summary>
+    ///  Runs git with the arguments, showing its output (upstream's FormProcess), for "Add files"; true when git
+    ///  succeeded. Without it the button does nothing.
+    /// </summary>
+    public Func<string, Task<bool>>? RunGit { get; init; }
 
     /// <summary>
     ///  The dialog state, for tests.
@@ -186,6 +197,21 @@ public partial class RebaseWindow : Window
         }
     }
 
+    // Upstream's btnChooseFromRevision_Click: FormChooseCommit on the current branch down to its merge base with "Rebase
+    // on", the box's commit (else HEAD's first parent) selected; the chosen commit's short hash goes into the box.
+    private async Task ChooseFromRevisionAsync()
+    {
+        string from = FromBox.Text ?? "";
+        string onto = BranchesBox.Text ?? "";
+        (string preselect, string? mergeBase) = await Task.Run(() => RebaseDialog.ChooseFromRevision(_module, from, onto));
+        ChooseCommitWindow choose = new(_repositoryPath, preselect, _preferences, showCurrentBranchOnly: true,
+            lastRevisionToDisplayHash: mergeBase);
+        if (await choose.ShowDialog<CommitRow?>(this) is { } row)
+        {
+            FromBox.Text = ObjectId.Parse(row.Hash).ToShortString();
+        }
+    }
+
     private void ShowOptions()
     {
         ShowOptionsLink.IsVisible = false;
@@ -220,7 +246,7 @@ public partial class RebaseWindow : Window
         CommitterDateCheck.IsEnabled = _dialog.CanCommitterDateIsAuthorDate;
         UpdateRefsCheck.IsChecked = _dialog.UpdateRefs;
         SpecificRangeCheck.IsChecked = _dialog.SpecificRange;
-        FromBox.IsEnabled = ToBox.IsEnabled = _dialog.SpecificRange;
+        FromBox.IsEnabled = ToBox.IsEnabled = btnChooseFromRevision.IsEnabled = _dialog.SpecificRange;
         _showing = false;
     }
 
@@ -239,6 +265,7 @@ public partial class RebaseWindow : Window
         RebaseButton.IsVisible = buttons.Rebase;
         AutoStashCheck.IsEnabled = buttons.AutoStash;
         CommitButton.IsVisible = EditTodoButton.IsVisible = SkipButton.IsVisible = AbortButton.IsVisible = buttons.Steps;
+        btnAddFiles.IsVisible = buttons.Steps;
         ContinueButton.IsVisible = buttons.Continue;
         SolveConflictsButton.IsVisible = buttons.SolveConflicts;
         UnresolvedConflictsButton.IsVisible = buttons.UnresolvedConflicts;
@@ -380,5 +407,35 @@ public partial class RebaseWindow : Window
 /// </summary>
 public sealed record RebasePatchRow(RebasePatch Patch, IBrush? Foreground)
 {
+    // Upstream's PatchGrid text.
+    private const string UnableToShowPatchDetails = "Unable to show details of patch file.";
+    private const string ErrorCaption = "Error";
+
     public string Subject => (Patch.Subject ?? "").ReplaceLineEndings(" ").Trim();
+
+    /// <summary>
+    ///  Upstream's <c>PatchGrid.Patches_DoubleClick</c>: a commit opens its diff, a patch file the view patch window, and a
+    ///  row with neither upstream's error.
+    /// </summary>
+    public static async Task OpenAsync(Window owner, string repositoryPath, RebasePatchRow? row)
+    {
+        if (row?.Patch is not { } patch)
+        {
+            return;
+        }
+
+        if (patch.ObjectId is { IsZero: false, IsArtificial: false } objectId)
+        {
+            new CommitDiffWindow(repositoryPath, objectId.ToString()).Show(owner);
+        }
+        else if (string.IsNullOrEmpty(patch.FullName))
+        {
+            await new MessageBoxWindow(UpstreamTranslation.ByText(UnableToShowPatchDetails),
+                UpstreamTranslation.ByText(ErrorCaption), MessageBoxButtons.OK).ShowDialog(owner);
+        }
+        else
+        {
+            await new ViewPatchWindow(repositoryPath, patch.FullName).ShowDialog(owner);
+        }
+    }
 }

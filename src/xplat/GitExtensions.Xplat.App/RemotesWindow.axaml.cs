@@ -7,6 +7,7 @@ using GitCommands.Remotes;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
@@ -145,6 +146,8 @@ public partial class RemotesWindow : Window
         UrlBrowseButton.Click += (_, _) => Run(() => BrowseFolderAsync(UrlBox));
         PushUrlBrowseButton.Click += (_, _) => Run(() => BrowseFolderAsync(PushUrlBox));
         PuttyKeyBrowseButton.Click += (_, _) => Run(BrowsePuttyKeyAsync);
+        LoadSSHKey.Click += (_, _) => Run(LoadSshKeyAsync);
+        TestConnection.Click += (_, _) => Run(TestConnectionAsync);
 
         BranchesList.SelectionChanged += (_, _) => ShowSelectedBranch();
         RemoteRepositoryBox.LostFocus += (_, _) => Run(() => SetOnSelectedHeadAsync(head =>
@@ -434,6 +437,25 @@ public partial class RemotesWindow : Window
             _module.GetRefs(RefsFilter.Remotes)));
         MergeWithBox.ItemsSource = choices;
         MergeWithBox.Text = text;
+    }
+
+    // Upstream's LoadSshKeyClick: Pageant with the key in the box.
+    private async Task LoadSshKeyAsync()
+    {
+        string key = PuttyKeyBox.Text ?? "";
+        if (await Task.Run(() => Putty.StartPageantIfConfigured(key, UpstreamTranslation.ByText)) is { } error)
+        {
+            await new ErrorWindow(error).ShowDialog(this);
+        }
+    }
+
+    // Upstream's TestConnectionClick: plink to the URL in the box, in its own console window.
+    private async Task TestConnectionAsync()
+    {
+        if (await Putty.TestConnectionAsync(UrlBox.Text ?? "", UpstreamTranslation.ByText) is { } error)
+        {
+            await new ErrorWindow(error).ShowDialog(this);
+        }
     }
 
     private void Run(Func<Task> action)

@@ -257,31 +257,7 @@ public partial class MainWindow
 
     // Upstream's CopyContextMenuItem.OnDropDownOpening, for the grid's menu and the left panel's.
     private void FillCopyMenu(MenuItem host, IReadOnlyList<CommitRow> rows, Func<RefLabel, bool>? keep)
-    {
-        host.Items.Clear();
-        IReadOnlyList<GridCopyItem?> items = GridMenus.CopyItems(rows,
-            Ui.UpstreamTranslation.Text("TranslatedStrings", "_branchesText", "Branches"),
-            Ui.UpstreamTranslation.Text("TranslatedStrings", "_tagsText", "Tags"), keep);
-        foreach (GridCopyItem? item in items)
-        {
-            if (item is null)
-            {
-                host.Items.Add(new Separator());
-                continue;
-            }
-
-            MenuItem menuItem = new()
-            {
-                Header = item.Text,
-                Icon = item.Image is null ? null : UpstreamIcon(item.Image),
-                IsEnabled = item.Value is not null,
-                FontWeight = item.Value is null ? Avalonia.Media.FontWeight.Bold : Avalonia.Media.FontWeight.Normal,
-            };
-            string? value = item.Value;
-            menuItem.Click += (_, _) => Run(() => CopyTextAsync(value));
-            host.Items.Add(menuItem);
-        }
-    }
+        => CopyMenus.Fill(host, rows, keep, value => Run(() => CopyTextAsync(value)));
 
     private async Task CopyTextAsync(string? text)
     {

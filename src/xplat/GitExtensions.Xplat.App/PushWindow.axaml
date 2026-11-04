@@ -100,9 +100,16 @@
         </DockPanel>
       </TabItem>
     </TabControl>
-    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,6,0,0">
       <Button x:Name="PullButton" Content="P_ull" MinWidth="101" />
-      <Button x:Name="PushButton" Grid.Column="2" MinWidth="101" IsDefault="True">
+      <!-- Upstream's LoadSSHKey, left of Push, shown when the chosen remote has a PuTTY key. -->
+      <Button x:Name="LoadSSHKey" Grid.Column="2" MinWidth="137" Margin="0,0,18,0" IsVisible="False">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
+          <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button x:Name="PushButton" Grid.Column="3" MinWidth="101" IsDefault="True">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage ArrowUp}" Width="16" Height="16" />
           <AccessText Text="_Push" VerticalAlignment="Center" />

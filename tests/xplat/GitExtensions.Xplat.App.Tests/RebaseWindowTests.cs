@@ -5,6 +5,8 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 
@@ -154,6 +156,77 @@ internal sealed class RebaseWindowTests
             "upstream reads no refs for a rebase at once");
     }
 
+    [AvaloniaTest]
+    public void A_rebase_in_progress_offers_add_files()
+    {
+        MakeConflictingBranches();
+        GitProcess.RunAllowingFailure(_repo.Path, "rebase", "other");
+        List<string> commands = [];
+        RebaseWindow rebase = Open(onto: null, runGit: arguments =>
+        {
+            commands.Add(arguments);
+            return Task.FromResult(true);
+        });
+
+        Find<Button>(rebase, "btnAddFiles").IsVisible.Should().BeTrue();
+        Click(rebase, "btnAddFiles");
+        WaitUntil(() => rebase.OwnedWindows.OfType<AddFilesWindow>().Any());
+        AddFilesWindow addFiles = rebase.OwnedWindows.OfType<AddFilesWindow>().Single();
+        Click(addFiles, "AddFiles");
+        WaitUntil(() => !addFiles.IsVisible);
+        commands.Should().ContainSingle().Which.Should().StartWith("add");
+
+        Click(rebase, "AbortButton");
+        WaitUntil(() => !rebase.IsVisible);
+    }
+
+    [AvaloniaTest]
+    public void The_from_picker_lists_the_current_branch_down_to_the_merge_base_and_fills_the_box()
+    {
+        _repo.Run("checkout", "-q", "-b", "other", "HEAD~1");
+        File.WriteAllText(Path.Combine(_repo.Path, "b.txt"), "other");
+        _repo.Run("add", "b.txt");
+        _repo.Run("commit", "-q", "-m", "other work");
+        _repo.Run("checkout", "-q", _base);
+        RebaseWindow rebase = Open(onto: "other");
+        Find<Button>(rebase, "btnChooseFromRevision").IsEnabled.Should().BeFalse();
+
+        Find<CheckBox>(rebase, "SpecificRangeCheck").IsChecked = true;
+        Find<Button>(rebase, "btnChooseFromRevision").IsEnabled.Should().BeTrue();
+        Click(rebase, "btnChooseFromRevision");
+
+        WaitUntil(() => rebase.OwnedWindows.OfType<ChooseCommitWindow>().Any());
+        ChooseCommitWindow choose = rebase.OwnedWindows.OfType<ChooseCommitWindow>().Single();
+        WaitUntil(() => choose.CommitsLoaded.IsCompleted);
+        ListBox grid = Find<ListBox>(choose, "revisionGrid");
+        grid.Items.Cast<CommitListItem>().Select(item => item.Row.Subject).Should().Equal(["second"],
+            "the base branch's own commit since the merge base with other");
+        Click(choose, "btnOK");
+
+        WaitUntil(() => !choose.IsVisible);
+        string head = _repo.Run("rev-parse", "HEAD").Trim();
+        WaitUntil(() => !string.IsNullOrEmpty(Find<TextBox>(rebase, "FromBox").Text));
+        Find<TextBox>(rebase, "FromBox").Text.Should().Be(ObjectId.Parse(head).ToShortString());
+        rebase.Close();
+    }
+
+    [AvaloniaTest]
+    public void Opening_a_commit_row_shows_its_diff_as_upstreams_double_click()
+    {
+        MakeConflictingBranches();
+        GitProcess.RunAllowingFailure(_repo.Path, "rebase", "other");
+        RebaseWindow rebase = Open(onto: null);
+        RebasePatchRow row = Find<ListBox>(rebase, "PatchesList").Items.Cast<RebasePatchRow>()
+            .First(candidate => !candidate.Patch.ObjectId.IsZero);
+
+        _ = RebasePatchRow.OpenAsync(rebase, _repo.Path, row);
+
+        WaitUntil(() => rebase.OwnedWindows.OfType<CommitDiffWindow>().Any());
+        rebase.OwnedWindows.OfType<CommitDiffWindow>().Single().Close();
+        Click(rebase, "AbortButton");
+        WaitUntil(() => !rebase.IsVisible);
+    }
+
     private static void Reset()
     {
         TestAppBuilder.Preferences.RebaseAutoStash = false;
@@ -172,13 +245,16 @@ internal sealed class RebaseWindowTests
         _repo.Run("commit", "-q", "-am", "ours");
     }
 
-    private RebaseWindow Open(string? onto, bool immediately = false)
+    private RebaseWindow Open(string? onto, bool immediately = false, Func<string, Task<bool>>? runGit = null)
     {
         Window owner = new();
         owner.Show();
         RebaseWindow rebase = new(_repo.Path, new RepositoryOperationsViewModel(new GitOperations()),
             TestAppBuilder.Preferences, from: "", to: null, onto, interactive: false, startRebaseImmediately: immediately,
-            _ => { }, _ => { });
+            _ => { }, _ => { })
+        {
+            RunGit = runGit,
+        };
         _ = rebase.ShowDialog<bool>(owner);
         WaitUntil(() => rebase.RebaseLoaded.IsCompleted);
         return rebase;

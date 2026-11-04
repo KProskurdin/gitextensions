@@ -86,6 +86,53 @@ internal sealed class PushWindowTests
         owner.Close();
     }
 
+    [AvaloniaTest]
+    public void The_url_box_lists_the_remote_history()
+    {
+        TestAppBuilder.RemoteUrls.Entries.Clear();
+        TestAppBuilder.RemoteUrls.Entries.Add(new GitCommands.UserRepositoryHistory.Repository("https://example.com/a.git"));
+        Window owner = new();
+        owner.Show();
+        PushWindow push = NewWindow();
+        _ = push.ShowDialog(owner);
+
+        ComboBox urls = Find<ComboBox>(push, "DestinationBox");
+        WaitUntil(() => urls.ItemsSource is IEnumerable<string> items && items.Contains("https://example.com/a.git"));
+        TestAppBuilder.RemoteUrls.Entries.Clear();
+        owner.Close();
+    }
+
+    [AvaloniaTest]
+    public void Load_ssh_key_shows_for_a_remote_with_a_putty_key_and_loads_it()
+    {
+        Window owner = new();
+        owner.Show();
+        List<string> loaded = [];
+        PushWindow push = new(new PushDialog(new PushRepository("main",
+                [
+                    new ConfigFileRemote { Name = "origin", Url = "https://example.com/origin.git" },
+                    new ConfigFileRemote { Name = "keyed", Url = "git@example.com:keyed.git", PuttySshKey = "C:/keys/a.ppk" },
+                ],
+                [new LocalBranch("main")], [], [], "origin", null, IsBare: false, AutoSetupMerge: null,
+                (_, _) => null)),
+            TestAppBuilder.Preferences, "C:/repo/", loadSshKey: remote =>
+            {
+                loaded.Add(remote);
+                return Task.CompletedTask;
+            });
+        _ = push.ShowDialog(owner);
+        Button load = Find<Button>(push, "LoadSSHKey");
+        load.IsVisible.Should().BeFalse("origin has no PuTTY key");
+
+        Find<ComboBox>(push, "RemotesBox").SelectedItem = "keyed";
+        WaitUntil(() => load.IsVisible);
+        load.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        WaitUntil(() => loaded.Count == 1);
+        loaded.Should().Equal("keyed");
+        owner.Close();
+    }
+
     private static PushWindow NewWindow()
         => new(new PushDialog(new PushRepository("main",
                 [new ConfigFileRemote { Name = "origin", Url = "https://example.com/origin.git" }],

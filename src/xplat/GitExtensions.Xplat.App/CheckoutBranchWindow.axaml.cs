@@ -30,6 +30,7 @@ public partial class CheckoutBranchWindow : Window
         _module = module;
         _checkout = checkout;
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, DialogHelp.Manual("branches", "checkout-branch"));
 
         LocalChangesGroup.IsVisible = dialog.HasUncommittedChanges;
         _showing = true;

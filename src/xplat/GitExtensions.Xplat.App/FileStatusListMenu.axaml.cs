@@ -430,7 +430,7 @@ public partial class FileStatusListMenu : ContextMenu
     {
         List<string> patterns = [.. SelectedPaths().Select(GitIgnoreFile.PatternFor)];
         if (_binding is { } binding && binding.RepositoryPath() is { } path && patterns.Count > 0
-            && await new GitIgnoreWindow(path, patterns, localExclude).ShowDialog<bool>(binding.Owner))
+            && await AddToGitIgnoreWindow.ShowAsync(binding.Owner, path, localExclude, patterns))
         {
             binding.Refresh();
         }

@@ -6,6 +6,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -94,6 +95,114 @@ internal sealed class PullWindowTests
         Click(question, "YesButton");
         WaitUntil(() => result.IsCompleted);
         result.Result!.Action.Should().Be(PullAction.Rebase);
+        owner.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_pull_on_a_detached_head_offers_upstreams_checkout_branch_and_then_pulls()
+    {
+        Window owner = new();
+        owner.Show();
+        List<Window> checkoutOwners = [];
+        PullWindow pull = NewDetachedWindow(new PullWindowGit(_ => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult(false), CheckoutBranch: window =>
+            {
+                checkoutOwners.Add(window);
+                return Task.FromResult(true);
+            }));
+        Task<PullRequest?> result = pull.ShowDialog<PullRequest?>(owner);
+
+        Click(pull, "PullButton");
+
+        MessageBoxWindow question = Question(pull);
+        question.FindControl<TextBlock>("HeadingText")!.Text.Should().Be(PullDialog.NotOnBranchHeading);
+        ClickLink(question, PullDialog.CheckoutBranchText);
+        WaitUntil(() => result.IsCompleted);
+        checkoutOwners.Should().Equal(pull);
+        result.Result.Should().NotBeNull("the pull goes on after the checkout");
+        owner.Close();
+    }
+
+    [AvaloniaTest]
+    public void Cancelling_the_detached_head_question_or_the_checkout_closes_the_window_as_upstream()
+    {
+        Window owner = new();
+        owner.Show();
+        PullWindow pull = NewDetachedWindow(new PullWindowGit(_ => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult(false), CheckoutBranch: _ => Task.FromResult(false)));
+        Task<PullRequest?> result = pull.ShowDialog<PullRequest?>(owner);
+
+        Click(pull, "PullButton");
+        ClickLink(Question(pull), PullDialog.CheckoutBranchText);
+
+        WaitUntil(() => result.IsCompleted);
+        result.Result.Should().BeNull();
+        owner.Close();
+    }
+
+    [AvaloniaTest]
+    public void Continue_on_the_detached_head_question_pulls()
+    {
+        Window owner = new();
+        owner.Show();
+        PullWindow pull = NewDetachedWindow(new PullWindowGit(_ => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult(false)));
+        Task<PullRequest?> result = pull.ShowDialog<PullRequest?>(owner);
+
+        Click(pull, "PullButton");
+        ClickLink(Question(pull), PullDialog.ContinueText);
+
+        WaitUntil(() => result.IsCompleted);
+        result.Result.Should().NotBeNull();
+        owner.Close();
+    }
+
+    [Test]
+    public void HasUninitializedSubmodules_is_true_for_a_submodule_without_its_working_directory()
+    {
+        using TestRepository repo = new();
+        PullDialog.HasUninitializedSubmodules(GitModules.Open(repo.Path)).Should().BeFalse("there is no .gitmodules");
+
+        File.WriteAllText(Path.Combine(repo.Path, ".gitmodules"), "[submodule \"lib\"]\n\tpath = lib\n\turl = ../lib\n");
+
+        PullDialog.HasUninitializedSubmodules(GitModules.Open(repo.Path)).Should().BeTrue();
+    }
+
+    private static PullWindow NewDetachedWindow(PullWindowGit git)
+        => new(new PullDialog(["origin"], "", GitPullAction.None, GitPullAction.Merge, null, null),
+            TestAppBuilder.Preferences, "C:/repo/", ["origin/main"], [], isShallow: false, git);
+
+    private static MessageBoxWindow Question(Window window)
+    {
+        WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
+        return window.OwnedWindows.OfType<MessageBoxWindow>().Single();
+    }
+
+    // The task dialog's command links have no names; they are found by their text.
+    private static void ClickLink(MessageBoxWindow box, string text)
+        => box.GetLogicalDescendants().OfType<AccessText>().First(label => label.Text == text)
+            .FindLogicalAncestorOfType<Button>()!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    [AvaloniaTest]
+    public void The_url_box_lists_the_remote_history_and_a_pulled_folder_is_added_to_it()
+    {
+        TestAppBuilder.RemoteUrls.Entries.Clear();
+        TestAppBuilder.RemoteUrls.Entries.Add(new GitCommands.UserRepositoryHistory.Repository("https://example.com/a.git"));
+        string folder = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar);
+        Window owner = new();
+        owner.Show();
+        PullWindow pull = NewWindow(new PullWindowGit(_ => Task.FromResult<string?>("origin"),
+            (_, _, _) => Task.FromResult(false)));
+        _ = pull.ShowDialog<PullRequest?>(owner);
+        ComboBox urls = Find<ComboBox>(pull, "UrlBox");
+        WaitUntil(() => urls.ItemsSource is IEnumerable<string> items && items.Contains("https://example.com/a.git"));
+
+        Find<RadioButton>(pull, "PullFromUrlRadio").IsChecked = true;
+        urls.Text = folder;
+        Click(pull, "PullButton");
+
+        WaitUntil(() => TestAppBuilder.RemoteUrls.Entries.FirstOrDefault()?.Path == folder);
+        TestAppBuilder.RemoteUrls.Entries.Clear();
         owner.Close();
     }
 

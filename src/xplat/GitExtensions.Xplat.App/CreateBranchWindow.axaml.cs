@@ -50,6 +50,7 @@ public partial class CreateBranchWindow : Window
         _userAbleToChangeRevision = userAbleToChangeRevision;
         _couldBeOrphan = couldBeOrphan;
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, DialogHelp.Manual("branches", "create-branch"));
 
         BranchNameBox.LostFocus += (_, _) => NormaliseName();
         CheckoutAfterCreateCheck.IsCheckedChanged += (_, _) => _dialog.CheckoutAfterCreate = CheckoutAfterCreateCheck.IsChecked == true;

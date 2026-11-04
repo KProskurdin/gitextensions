@@ -133,7 +133,7 @@ public partial class SettingsWindow
                 GoToTab(SshTab);
                 break;
             case ChecklistItem.Language:
-                GoToTab(AppearanceTab);
+                UiActions.Run(ChooseLanguageAsync, ex => ErrorText.Text = ex.Message);
                 break;
             case ChecklistItem.CredentialWinStore:
                 UiActions.Run(() => Launcher.LaunchUriAsync(new Uri(SettingsChecklist.CredentialWinStoreHelp)),
@@ -143,6 +143,15 @@ public partial class SettingsWindow
     }
 
     private void GoToTab(TabItem tab) => GoToPage(_allPageNodes.First(node => node.Page == tab));
+
+    // Upstream's translationConfig_Click: the language chosen in FormChooseTranslation, shown on the appearance page,
+    // then the settings are stored and checked again.
+    private async Task ChooseLanguageAsync()
+    {
+        await new ChooseTranslationWindow(_preferences).ShowDialog(this);
+        ShowLanguages(_preferences.Translation);
+        await SaveAndRescanAsync();
+    }
 
     private async Task<ChecklistFacts> ReadChecklistFactsAsync()
     {

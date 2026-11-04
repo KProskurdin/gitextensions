@@ -61,6 +61,7 @@ public partial class CloneWindow : Window
         _openRepository = openRepository;
         _module = GitModules.Open(repositoryPath ?? "");
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, DialogHelp.Manual("getting_started", "clone-repository"));
         LoadSshKeyButton.IsVisible = GitSshHelpers.IsPlink;
         BranchesBox.ItemsSource = CloneDialog.DefaultBranchItems;
         BranchesBox.Text = CloneDialog.BranchDefaultRemoteHead;

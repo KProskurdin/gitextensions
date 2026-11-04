@@ -53,6 +53,7 @@ public partial class CherryPickWindow : Window
         _pick = pick;
         _module = GitModules.Open(repositoryPath);
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, DialogHelp.Manual("modify_history", "cherry-pick-commit"));
         UpstreamTranslation.Apply(this, "FormCherryPick");
         InitialFocus.Attach(this, () => lvParentsList.IsVisible ? lvParentsList : cbxAutoCommit);
         lvParentsList.ItemTemplate = new FuncDataTemplate<CherryPickParent>((parent, _) => ParentRow(parent));

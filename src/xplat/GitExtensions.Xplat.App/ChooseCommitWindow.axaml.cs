@@ -15,6 +15,7 @@ public partial class ChooseCommitWindow : Window
 {
     private readonly string _repositoryPath;
     private readonly string? _preselect;
+    private readonly RevisionFilter _filter;
     private readonly CommitListViewModel _commits;
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -26,10 +27,17 @@ public partial class ChooseCommitWindow : Window
     /// <param name="repositoryPath">The repository whose commits are listed.</param>
     /// <param name="preselect">The commit selected at first (upstream's <c>preselectCommit</c>), or null.</param>
     /// <param name="preferences">The grid's columns and dates, as the browse window shows them.</param>
-    public ChooseCommitWindow(string repositoryPath, string? preselect, IAppPreferences preferences)
+    /// <param name="showCurrentBranchOnly">Upstream's <c>showCurrentBranchOnly</c>: only the current branch's commits.</param>
+    /// <param name="lastRevisionToDisplayHash">
+    ///  Upstream's <c>lastRevisionToDisplayHash</c>: the history stops at this commit; null for the whole history.
+    /// </param>
+    public ChooseCommitWindow(string repositoryPath, string? preselect, IAppPreferences preferences,
+        bool showCurrentBranchOnly = false, string? lastRevisionToDisplayHash = null)
     {
         _repositoryPath = repositoryPath;
         _preselect = preselect;
+        _filter = new RevisionFilter(CurrentBranchOnly: showCurrentBranchOnly,
+            LastRevisionToDisplayHash: lastRevisionToDisplayHash ?? "");
         _commits = new CommitListViewModel(new GitCommitHistory(
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
             () => preferences.RevisionSortOrder));
@@ -59,6 +67,7 @@ public partial class ChooseCommitWindow : Window
     // Upstream's OnLoad and its constructor's preselected commit.
     private async Task LoadAsync()
     {
+        await _commits.ApplyFilterAsync(_filter);
         await _commits.OpenAsync(_repositoryPath);
         revisionGrid.ItemsSource = _commits.VisibleRows;
         string? hash = string.IsNullOrEmpty(_preselect)

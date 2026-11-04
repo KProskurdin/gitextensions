@@ -50,6 +50,7 @@ public partial class ResetCurrentBranchWindow : Window
         _module = GitModules.Open(repositoryPath);
         _dialog = new ResetCurrentBranchDialog(mode);
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, () => _dialog.HelpUrl());
         _radios = new Dictionary<ResetMode, RadioButton>
         {
             [ResetMode.Soft] = SoftRadio,

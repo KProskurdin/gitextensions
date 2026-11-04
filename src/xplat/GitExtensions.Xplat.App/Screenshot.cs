@@ -106,6 +106,18 @@ internal static class Screenshot
 
     public const string ViewPatchWindow = "viewpatch";
 
+    public const string GitIgnoreWindow = "gitignore";
+
+    public const string AddToGitIgnoreWindow = "addtogitignore";
+
+    public const string CommandLogWindow = "commandlog";
+
+    public const string AboutWindow = "about";
+
+    public const string ContributorsWindow = "contributors";
+
+    public const string ChooseTranslationWindow = "choosetranslation";
+
     /// <summary>
     ///  The file a window about one file shows (the file history), for the screenshot aid.
     /// </summary>

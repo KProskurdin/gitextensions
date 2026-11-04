@@ -78,6 +78,27 @@ internal sealed class GitActionBarTests
     }
 
     [AvaloniaTest]
+    public void More_of_a_stopped_git_am_opens_upstreams_apply_patch_window_on_its_patches()
+    {
+        string patch = ConflictingPatch();
+        GitProcess.RunAllowingFailure(_repo.Path, "am", patch).Should().NotBe(0);
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        WaitUntil(() => Find<Button>(window, "MoreActionButton").IsVisible);
+
+        Click(window, "MoreActionButton");
+
+        WaitUntil(() => window.OwnedWindows.OfType<ApplyPatchWindow>().Any());
+        ApplyPatchWindow apply = window.OwnedWindows.OfType<ApplyPatchWindow>().Single();
+        WaitUntil(() => apply.FindControl<Button>("Skip")!.IsEnabled);
+        apply.FindControl<Button>("Abort")!.IsEnabled.Should().BeTrue();
+        apply.Close();
+        Wait(new GitOperations().AbortPatchAsync(_repo.Path));
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void A_stopped_rebase_is_a_rebase_not_a_patch()
     {
         string baseBranch = MakeConflictingBranches();

@@ -15,8 +15,9 @@ internal sealed partial class MainMenuParityTests
     private const string FormBrowse = "src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs";
     private const string Menus = "src/app/GitUI/CommandsDialogs/Menus/";
 
-    // The new shell's own items, which upstream does not have.
-    private static readonly string[] _newShellItems = ["Browse _files..."];
+    // The new shell's own items, which upstream does not have, and the item upstream's dashboard (UserRepositoriesList's
+    // mnuConfigure) adds to its menu at run time.
+    private static readonly string[] _newShellItems = ["Browse _files...", "Recent repositories _settings"];
 
     [AvaloniaTest]
     [TestCase("_Start", Menus + "StartToolStripMenuItem.Designer.cs", null)]

@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.ContributorsWindow"
+        Title="The application would not be possible without..."
+        Width="624" Height="442" CanResize="False" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormContributors: the developers (team and contributors), translators and designers on three tabs, each
+       a read-only text filling its tab. -->
+  <Window.Styles>
+    <Style Selector="TextBox.names">
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="AcceptsReturn" Value="True" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+    </Style>
+  </Window.Styles>
+  <TabControl x:Name="Tabs" Padding="0">
+    <TabItem x:Name="DevelopersTab" Header="Developers">
+      <TextBox x:Name="DevelopersText" Classes="names" />
+    </TabItem>
+    <TabItem x:Name="TranslatorsTab" Header="Translators">
+      <TextBox x:Name="TranslatorsText" Classes="names" />
+    </TabItem>
+    <TabItem x:Name="DesignersTab" Header="Designers">
+      <TextBox x:Name="DesignersText" Classes="names" />
+    </TabItem>
+  </TabControl>
+</Window>

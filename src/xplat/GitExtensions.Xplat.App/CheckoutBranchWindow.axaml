@@ -8,9 +8,12 @@
        the local branch, and for a dirty working directory what happens to the local changes; Checkout at the bottom. -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-        <Button x:Name="CheckoutButton" Content="_Checkout" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
-      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="CheckoutButton" Content="_Checkout" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
+        </StackPanel>
+      </Grid>
     </Border>
     <StackPanel Margin="12" Spacing="3">
       <!-- Upstream's tlpnlBranches. -->

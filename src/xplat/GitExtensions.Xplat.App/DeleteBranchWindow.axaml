@@ -10,7 +10,12 @@
   <DockPanel>
     <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             Padding="9,8">
-      <Button x:Name="Delete" Content="_Delete" MinWidth="75" HorizontalAlignment="Right" HorizontalContentAlignment="Center" />
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+        <Panel Grid.Column="1">
+          <Button x:Name="Delete" Content="_Delete" MinWidth="75" HorizontalAlignment="Right" HorizontalContentAlignment="Center" />
+        </Panel>
+      </Grid>
     </Border>
     <Grid ColumnDefinitions="Auto,*,Auto" Margin="9" ColumnSpacing="4">
       <Label x:Name="labelSelectBranches" Content="Select _branches" Target="Branches" VerticalAlignment="Center" Padding="0" />

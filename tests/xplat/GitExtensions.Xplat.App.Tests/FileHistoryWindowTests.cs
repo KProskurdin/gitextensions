@@ -1,25 +1,46 @@
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
+using GitCommands.Settings;
+using GitExtensions.Extensibility.BuildServerIntegration;
+using GitExtensions.Extensibility.Git;
+using GitExtensions.Extensibility.Settings;
+using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.CommitHistory;
-using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Settings;
+using GitUIPluginInterfaces.BuildServerIntegration;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
 
 internal sealed class FileHistoryWindowTests
 {
+    private const string FakeBuildServer = "Fake CI";
     private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
 
     private TestRepository _repo = null!;
 
+    // The shared settings the tests change, restored after each.
+    private GridColumns _columns = null!;
+    private bool _showAvailableDiffTools;
+    private IReadOnlyList<string> _revisionFilterDropdowns = [];
+    private bool _showOnlyFirstParent;
+
     [SetUp]
     public void Setup()
     {
+        IAppPreferences preferences = TestAppBuilder.Preferences;
+        _columns = preferences.GridColumns;
+        _showAvailableDiffTools = preferences.ShowAvailableDiffTools;
+        _revisionFilterDropdowns = preferences.RevisionFilterDropdowns;
+        _showOnlyFirstParent = preferences.ShowOnlyFirstParent;
         _repo = new TestRepository();
 
         // a.txt ("first", "second") is renamed to b.txt, which "third" changes.
@@ -34,6 +55,12 @@ internal sealed class FileHistoryWindowTests
     public void TearDown()
     {
         Reset();
+        IAppPreferences preferences = TestAppBuilder.Preferences;
+        preferences.GridColumns = _columns;
+        preferences.ShowAvailableDiffTools = _showAvailableDiffTools;
+        preferences.RevisionFilterDropdowns = _revisionFilterDropdowns;
+        preferences.ShowOnlyFirstParent = _showOnlyFirstParent;
+        TestAppBuilder.UseBuildServers(new FixedBuildServerCatalog());
         _repo.Dispose();
     }
 
@@ -130,15 +157,162 @@ internal sealed class FileHistoryWindowTests
         diff.Close();
     }
 
+    [AvaloniaTest]
+    public void The_menu_has_upstreams_copy_items_and_difftool_against_the_working_directory()
+    {
+        FileHistoryWindow history = Open("b.txt");
+        Select(history, "second");
+        ListBox list = Find<ListBox>(history, "HistoryList");
+
+        list.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+
+        MenuItem copy = Find<MenuItem>(history, "CopyToClipboardMenuItem");
+        string shortHash = history.Commits.Selected!.Hash[..8];
+        copy.Items.OfType<MenuItem>().Select(item => item.Header as string)
+            .Should().Contain(header => header != null && header.Contains(shortHash, StringComparison.Ordinal));
+        Find<MenuItem>(history, "DiffToolRemoteLocalMenuItem").IsEnabled.Should().BeTrue("b.txt exists in the work tree");
+        list.ContextMenu!.Close();
+    }
+
+    [AvaloniaTest]
+    public void Two_selected_commits_compare_the_file_between_them_and_the_menu_follows_upstreams_rules()
+    {
+        FileHistoryWindow history = Open("b.txt");
+        Select(history, "third");
+        ListBox list = Find<ListBox>(history, "HistoryList");
+
+        list.SelectedItems!.Add(history.Commits.VisibleRows.Single(item => item.Row.Subject == "renamed"));
+
+        WaitUntil(() => history.SelectedRevisions.Count == 2 && history.Shown.IsCompleted);
+        history.SelectedRevisions.Select(row => row.Subject).Should().Equal("renamed", "third");
+        DiffView diff = Find<DiffView>(history, "Diff");
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "-three") && diff.Lines.Any(line => line.Text == "+two"));
+
+        list.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        Find<MenuItem>(history, "OpenWithDifftoolMenuItem").IsEnabled.Should().BeTrue("two commits are compared");
+        Find<MenuItem>(history, "DiffToolRemoteLocalMenuItem").IsEnabled.Should().BeFalse();
+        Find<MenuItem>(history, "ManipulateCommitMenuItem").IsEnabled.Should().BeFalse();
+        Find<MenuItem>(history, "SaveAsMenuItem").IsEnabled.Should().BeFalse();
+        list.ContextMenu!.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_difftool_items_offer_the_available_tools_until_the_dropdown_is_disabled()
+    {
+        TestAppBuilder.Preferences.ShowAvailableDiffTools = true;
+        FileHistoryWindow history = Open("b.txt");
+        MenuItem open = Find<MenuItem>(history, "OpenWithDifftoolMenuItem");
+        MenuItem local = Find<MenuItem>(history, "DiffToolRemoteLocalMenuItem");
+
+        WaitUntil(() => open.Items.Count > 0 && local.Items.Count > 0);
+        open.Items.OfType<MenuItem>().Select(item => item.Tag as string).Should()
+            .Equal("meld", "vscode", null);
+        open.Items.OfType<MenuItem>().Last().Header.Should().Be("Disable this dropdown");
+
+        open.Items.OfType<MenuItem>().Last().RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        TestAppBuilder.Preferences.ShowAvailableDiffTools.Should().BeFalse();
+        open.Items.Should().BeEmpty();
+        local.Items.Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void The_filter_toolbar_filters_the_files_history()
+    {
+        FileHistoryWindow history = Open("b.txt");
+        ComboBox box = history.FilterToolBar.FindControl<ComboBox>("RevisionFilterBox")!;
+
+        box.Text = "second";
+        box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+
+        WaitUntil(() => Subjects(history).SequenceEqual(["second"]));
+        history.Commits.Filter.PathFilter.Should().Be("b.txt", "the file's filter stays");
+        history.FilterToolBar.FindControl<ToolSplitButton>("AdvancedFilterButton")!.Image.Should()
+            .Be("FunnelExclamation");
+
+        Click(history, "LoadButton");
+        WaitUntil(() => history.Commits.Filter.Message == "second" && Subjects(history).SequenceEqual(["second"]));
+    }
+
+    [AvaloniaTest]
+    public void The_navigate_menu_moves_over_the_grid_and_back()
+    {
+        FileHistoryWindow history = Open("b.txt");
+        Select(history, "third");
+
+        Click(history, "GoToParentMenuItem");
+        WaitUntil(() => history.Commits.Selected?.Subject == "renamed");
+
+        Click(history, "NavigateBackwardMenuItem");
+        WaitUntil(() => history.Commits.Selected?.Subject == "third");
+        Find<MenuItem>(history, "GoToParentMenuItem").InputGesture.Should().NotBeNull("upstream's grid hotkey");
+    }
+
+    [AvaloniaTest]
+    public void The_view_menu_changes_the_grids_columns()
+    {
+        FileHistoryWindow history = Open("b.txt");
+        bool shown = TestAppBuilder.Preferences.GridColumns.ObjectId;
+
+        Click(history, "ShowObjectIdColumnMenuItem");
+
+        TestAppBuilder.Preferences.GridColumns.ObjectId.Should().Be(!shown);
+        history.Resources["ShowObjectIdColumn"].Should().Be(!shown);
+    }
+
+    [AvaloniaTest]
+    public void The_build_report_tab_follows_the_selected_commits_build()
+    {
+        TestAppBuilder.UseRevisionLinks();
+        string head = _repo.Run("rev-parse", "HEAD").Trim();
+        TestAppBuilder.UseBuildServers(new FixedBuildServerCatalog(new Dictionary<string, Func<IBuildServerAdapter>>
+        {
+            [FakeBuildServer] = () => new FakeAdapter(
+            [
+                new BuildInfo
+                {
+                    CommitHashList = [ObjectId.Parse(head)],
+                    Status = BuildStatus.Success,
+                    Url = "https://ci.example.com/build/7",
+                },
+            ]),
+        }));
+        DistributedSettings settings = AppServices.RevisionLinks.Open(_repo.Path);
+        BuildServerSettings.ServerName[settings] = FakeBuildServer;
+        BuildServerSettings.ShowBuildResultPage[settings] = true;
+        AppServices.RevisionLinks.Save(settings);
+
+        FileHistoryWindow history = Open("b.txt");
+        TabItem report = Find<TabItem>(history, "BuildReportTab");
+
+        WaitUntil(() => report.IsVisible);
+        history.BuildServerType.Should().Be(FakeBuildServer);
+        ToolTip.GetTip(Find<HyperlinkButton>(history, "OpenBuildReportLink")).Should()
+            .Be("https://ci.example.com/build/7");
+        report.Header.Should().Be(FileHistoryWindow.BuildReportTabCaption);
+
+        // Upstream's hand cursor over a build status with a report; none over a commit without a build.
+        StackPanel Status(string subject) => Find<ListBox>(history, "HistoryList").GetVisualDescendants()
+            .OfType<StackPanel>()
+            .Single(panel => panel.Classes.Contains("buildStatus")
+                             && panel.DataContext is CommitListItem item && item.Row.Subject == subject);
+        WaitUntil(() => Status("third").Cursor is not null);
+        Status("renamed").Cursor.Should().BeNull();
+
+        Select(history, "renamed");
+        WaitUntil(() => !report.IsVisible);
+    }
+
     private static void Reset() => TestAppBuilder.Preferences.FileHistory = new FileHistoryOptions();
 
     private FileHistoryWindow Open(string file, bool showBlame = false)
     {
         Window owner = new();
         owner.Show();
-        FileHistoryWindow history = new(_repo.Path, new RepositoryOperationsViewModel(new GitOperations()),
-            TestAppBuilder.Preferences, file, revision: null, showBlame, (_, _) => Task.CompletedTask,
-            (_, _) => Task.CompletedTask);
+        FileHistoryWindow history = new(_repo.Path, TestAppBuilder.Preferences, file, revision: null, showBlame,
+            (_, _) => Task.CompletedTask, (_, _) => Task.CompletedTask);
         history.Show(owner);
         WaitUntil(() => history.HistoryLoaded.IsCompleted);
         WaitUntil(() => history.Commits.Selected is not null || !Find<ListBox>(history, "HistoryList").IsVisible);
@@ -184,6 +358,26 @@ internal sealed class FileHistoryWindowTests
 
             Dispatcher.UIThread.RunJobs();
             Thread.Sleep(20);
+        }
+    }
+
+    // A build server that reports the given builds once.
+    private sealed class FakeAdapter(IReadOnlyList<BuildInfo> builds) : IBuildServerAdapter
+    {
+        public string UniqueKey => "https://ci.example.com";
+
+        public void Initialize(IBuildServerWatcher buildServerWatcher, SettingsSource config, Action openSettings,
+            Func<ObjectId, bool>? isCommitInRevisionGrid = null)
+        {
+        }
+
+        public IObservable<BuildInfo> GetFinishedBuildsSince(IScheduler scheduler, DateTime? sinceDate = null)
+            => builds.ToObservable(scheduler);
+
+        public IObservable<BuildInfo> GetRunningBuilds(IScheduler scheduler) => Observable.Empty<BuildInfo>();
+
+        public void Dispose()
+        {
         }
     }
 }

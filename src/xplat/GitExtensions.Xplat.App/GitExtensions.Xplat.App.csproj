@@ -23,6 +23,8 @@
     <!-- Upstream's icons and the resource list that names them, linked so a script's icon name (upstream's
          GitUI.Properties.Images) finds the same picture (ScriptIcons.cs). -->
     <AvaloniaResource Include="..\..\app\GitUI\Properties\Images.resx" Link="Assets\Upstream\Images.resx" />
+    <!-- Upstream's string resources: the contributor lists FormAbout and FormContributors show (UpstreamResources.cs). -->
+    <AvaloniaResource Include="..\..\app\GitUI\Properties\Resources.resx" Link="Assets\Upstream\Resources.resx" />
     <AvaloniaResource Include="..\..\app\GitUI\Resources\Icons\*.png" Link="Assets\Upstream\Icons\%(Filename)%(Extension)" />
     <!-- The dashboard's background pictures and wide logo, which upstream's resource list names too. -->
     <AvaloniaResource Include="..\..\app\GitUI\Resources\Backgrounds\*.png" Link="Assets\Upstream\Backgrounds\%(Filename)%(Extension)" />
@@ -56,6 +58,11 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
+    <!-- The commit the app was built from, for the environment information (upstream's exe uses it the same way). -->
+    <PackageReference Include="GitInfo">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>

@@ -121,6 +121,9 @@ public static class TestAppBuilder
         AppServices.RemoteUrls = RemoteUrls;
         AppServices.MergeSettings = MergeSettings;
         AppServices.Preferences = Preferences;
+
+        // A user who has chosen a language, so the main window does not ask for one first (upstream's FormChooseTranslation).
+        Preferences.Translation = ChooseTranslationWindow.English;
         AppServices.GitConfig = GitConfig;
         AppServices.WindowPlacements = WindowPlacements;
         AppServices.Splitters = Splitters;

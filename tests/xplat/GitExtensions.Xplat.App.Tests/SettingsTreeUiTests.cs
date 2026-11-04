@@ -187,7 +187,7 @@ internal sealed class SettingsTreeUiTests
                 config.SetAsync(ConfigScope.Global, key, "").Wait();
             }
 
-            TestAppBuilder.Preferences.Translation = "";
+            TestAppBuilder.Preferences.Translation = ChooseTranslationWindow.English;
         }
     }
 

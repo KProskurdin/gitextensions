@@ -117,6 +117,36 @@ public sealed class RebaseDialog
                 Default: conflictedMerge ? RebaseDefaultButton.SolveConflicts : RebaseDefaultButton.Rebase);
 
     /// <summary>
+    ///  Upstream's <c>btnChooseFromRevision_Click</c>: the commit FormChooseCommit selects at first (the box's, else HEAD's
+    ///  first parent, else none) and where its history stops (the merge base of <paramref name="onto"/> and HEAD; null for
+    ///  the whole history, also when they cannot be resolved).
+    /// </summary>
+    public static (string Preselect, string? MergeBase) ChooseFromRevision(IGitModule module, string from, string onto)
+    {
+        ObjectId firstParent = module.RevParse("HEAD~");
+        string preselect = !string.IsNullOrWhiteSpace(from) ? from
+            : firstParent.IsZero ? string.Empty
+            : firstParent.ToString();
+        string? mergeBase = null;
+        if (!string.IsNullOrWhiteSpace(onto))
+        {
+            try
+            {
+                ObjectId commit1 = module.RevParse(onto);
+                ObjectId commit2 = module.RevParse("HEAD");
+                ObjectId commonAncestor = module.GetMergeBase(commit1, commit2);
+                mergeBase = commonAncestor.IsZero ? null : commonAncestor.ToString();
+            }
+            catch (Exception)
+            {
+                // As upstream: the whole history is shown then.
+            }
+        }
+
+        return (preselect, mergeBase);
+    }
+
+    /// <summary>
     ///  Upstream's <c>CanContinueAction</c>: git reused a recorded resolution (rerere) and nothing is left to resolve, so
     ///  the rebase continues by itself.
     /// </summary>

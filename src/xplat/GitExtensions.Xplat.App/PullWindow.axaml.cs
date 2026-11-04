@@ -2,12 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 using MessageBoxDefaultButton = System.Windows.Forms.MessageBoxDefaultButton;
 using DialogResult = System.Windows.Forms.DialogResult;
 using TaskDialogButton = System.Windows.Forms.TaskDialogButton;
+using TaskDialogCommandLinkButton = System.Windows.Forms.TaskDialogCommandLinkButton;
 using TaskDialogPage = System.Windows.Forms.TaskDialogPage;
 
 namespace GitExtensions.Xplat.App;
@@ -16,11 +18,14 @@ namespace GitExtensions.Xplat.App;
 ///  The repository's git questions the pull window asks before it closes: a branch's <c>branch.&lt;name&gt;.remote</c>, and
 ///  whether a rebase would rebase a merge commit (remote, remote branch, current branch). <see cref="ManageRemotes"/>
 ///  opens the remotes window over the pull window with a remote chosen (or none) and lists the remotes again.
+///  <see cref="CheckoutBranch"/> is upstream's <c>StartCheckoutBranch</c> over the pull window: true when a branch was
+///  checked out.
 /// </summary>
 public sealed record PullWindowGit(
     Func<string, Task<string?>> BranchRemoteOf,
     Func<string, string, string, Task<bool>> RebasesMergeCommit,
-    Func<Window, string?, Task<IReadOnlyList<string>>>? ManageRemotes = null);
+    Func<Window, string?, Task<IReadOnlyList<string>>>? ManageRemotes = null,
+    Func<Window, Task<bool>>? CheckoutBranch = null);
 
 /// <summary>
 ///  Upstream's <c>FormPull</c> in the new shell: where to pull from, the branches, merge, rebase or fetch, the tags and
@@ -69,6 +74,7 @@ public partial class PullWindow : Window
         MergetoolButton.Click += (_, _) => solveConflicts?.Invoke();
 
         ShowDialogState();
+        Opened += (_, _) => UiActions.Run(LoadUrlHistoryAsync, _ => { });
         RemotesBox.SelectionChanged += (_, _) => Edit(() => _dialog.Remote = RemotesBox.SelectedItem as string ?? "");
         PullFromRemoteRadio.IsCheckedChanged +=
             (_, _) => Edit(() => _dialog.FromUrl = PullFromUrlRadio.IsChecked == true);
@@ -198,6 +204,15 @@ public partial class PullWindow : Window
         RemoteBranchBox.Text = typed;
     }
 
+    // Upstream's UpdateFormTitleAndButton when "Url" is chosen: the remote URL history, the typed text kept.
+    private async Task LoadUrlHistoryAsync()
+    {
+        IList<GitCommands.UserRepositoryHistory.Repository> history = await AppServices.RemoteUrls.LoadAsync();
+        string? typed = UrlBox.Text;
+        UrlBox.ItemsSource = history.Select(repository => repository.Path).ToList();
+        UrlBox.Text = typed;
+    }
+
     private async Task BrowseUrlAsync()
     {
         IReadOnlyList<IStorageFolder> folders =
@@ -242,18 +257,34 @@ public partial class PullWindow : Window
             }
         }
 
-        // Upstream also offers "Checkout branch" here; the new shell has no window to choose a branch in yet.
-        TaskDialogButton continueButton = new(UpstreamTranslation.ByText(PullDialog.ContinueText));
-        if (!_dialog.IsFetch && _dialog.RemoteBranch.Length == 0 && _dialog.IsDetached &&
-            !await AskAsync(
-                new TaskDialogPage
-                {
-                    Text = UpstreamTranslation.ByText(PullDialog.NotOnBranch),
-                    Caption = UpstreamTranslation.ByText(PullDialog.NotOnBranchCaption),
-                    Buttons = { TaskDialogButton.Cancel, continueButton },
-                }, continueButton))
+        // Upstream's detached HEAD question: check out a branch first (the pull then goes on), go on, or cancel, which
+        // closes the dialog as upstream's Cancel result does.
+        if (!_dialog.IsFetch && _dialog.RemoteBranch.Length == 0 && _dialog.IsDetached)
         {
-            return;
+            TaskDialogCommandLinkButton checkoutButton = new(UpstreamTranslation.ByText(PullDialog.CheckoutBranchText));
+            TaskDialogCommandLinkButton continueButton = new(UpstreamTranslation.ByText(PullDialog.ContinueText));
+            MessageBoxWindow question = new(new TaskDialogPage
+            {
+                Text = UpstreamTranslation.ByText(PullDialog.NotOnBranch),
+                Heading = UpstreamTranslation.ByText(PullDialog.NotOnBranchHeading),
+                Caption = UpstreamTranslation.ByText(PullDialog.NotOnBranchCaption),
+                Buttons = { TaskDialogButton.Cancel, checkoutButton, continueButton },
+                AllowCancel = true,
+            });
+            await question.ShowDialog(this);
+            if (question.ChosenButton != continueButton
+                && (question.ChosenButton != checkoutButton || _git.CheckoutBranch is null
+                                                            || !await _git.CheckoutBranch(this)))
+            {
+                Close(null);
+                return;
+            }
+        }
+
+        // Upstream adds a pulled folder to the remote URL history.
+        if (_dialog.FromUrl && Directory.Exists(_dialog.Url))
+        {
+            await AppServices.RemoteUrls.AddAsMostRecentAsync(_dialog.Url);
         }
 
         Dictionary<string, string?> remotes = [];

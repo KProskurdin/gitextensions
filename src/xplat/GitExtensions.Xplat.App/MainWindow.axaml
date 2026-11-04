@@ -25,6 +25,8 @@
       <!-- Shown instead of Repository, View, Commands and Plugins while the dashboard shows, as upstream's. -->
       <MenuItem x:Name="DashboardMenu" Header="_Dashboard">
         <MenuItem x:Name="DashboardRefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
+        <!-- Upstream's UserRepositoriesList adds its mnuConfigure here when it loads. -->
+        <MenuItem x:Name="DashboardRecentReposSettingsMenuItem" Header="Recent repositories _settings" Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
       <!-- "Browse files..." is the new shell's own. -->
       <MenuItem x:Name="RepositoryMainMenu" Header="_Repository">
@@ -275,59 +277,8 @@
           </local:ToolSplitButton>
           <local:ToolButton x:Name="EditSettingsButton" Image="Settings" ToolTip.Tip="Settings" />
         </StackPanel>
-        <!-- Upstream's FilterToolBar (FilterToolBar.Designer), in its order. -->
-        <StackPanel x:Name="FilterToolStrip" Classes="toolStrip">
-          <!-- The image and tooltip say whether a filter is on, as upstream's revisionGridFilter_FilterChanged sets them. -->
-          <local:ToolSplitButton x:Name="AdvancedFilterButton" Image="FunnelPencil" ToolTip.Tip="Advanced filter">
-            <local:ToolSplitButton.Flyout>
-              <MenuFlyout>
-                <MenuItem x:Name="ResetPathFilterMenuItem" Header="Reset _path filter" />
-                <MenuItem x:Name="ResetRevisionFiltersMenuItem" Header="_Reset revision filters" />
-                <Separator />
-                <MenuItem x:Name="AdvancedFilterMenuItem" Header="_Advanced filter" />
-              </MenuFlyout>
-            </local:ToolSplitButton.Flyout>
-          </local:ToolSplitButton>
-          <local:ToolToggleButton x:Name="ShowReflogButton" Image="Book" ToolTip.Tip="Show all reflog references" />
-          <!-- The image, text and tooltip are the chosen item's, as upstream's SelectShowBranchesFilterOption sets them. -->
-          <local:ToolSplitButton x:Name="ShowBranchesButton" Image="BranchLocal" Text="All branches" ToolTip.Tip="Show all branches">
-            <local:ToolSplitButton.Flyout>
-              <MenuFlyout>
-                <MenuItem x:Name="ShowBranchesAllMenuItem" Header="_All branches" Icon="{local:UpstreamIcon BranchLocal}" ToolTip.Tip="Show all branches" />
-                <MenuItem x:Name="ShowBranchesCurrentMenuItem" Header="_Current branch only" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show current branch only" />
-                <MenuItem x:Name="ShowBranchesFilteredMenuItem" Header="_Filtered branches" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show filtered branches" />
-              </MenuFlyout>
-            </local:ToolSplitButton.Flyout>
-          </local:ToolSplitButton>
-          <Label x:Name="BranchFilterLabel" Content="_Branches:" Target="{Binding #BranchFilterBox}" ToolTip.Tip="Branch filter"
-                 VerticalAlignment="Center" Padding="4,0,2,0" />
-          <AutoCompleteBox x:Name="BranchFilterBox" Width="100" MinimumPrefixLength="0" FilterMode="ContainsOrdinal"
-                           VerticalAlignment="Center" />
-          <local:ToolDropDownButton x:Name="BranchTypeButton" Image="EditFilter" ToolTip.Tip="Branch type">
-            <local:ToolDropDownButton.Flyout>
-              <MenuFlyout>
-                <MenuItem x:Name="BranchLocalMenuItem" Header="_Local" ToggleType="CheckBox" IsChecked="True" />
-                <MenuItem x:Name="BranchRemoteMenuItem" Header="_Remote" ToggleType="CheckBox" />
-                <MenuItem x:Name="BranchTagMenuItem" Header="_Tag" ToggleType="CheckBox" />
-              </MenuFlyout>
-            </local:ToolDropDownButton.Flyout>
-          </local:ToolDropDownButton>
-          <Rectangle Classes="toolSeparator" />
-          <Label x:Name="RevisionFilterLabel" Content="_Filter:" Target="{Binding #RevisionFilterBox}" ToolTip.Tip="Text filter"
-                 VerticalAlignment="Center" Padding="4,0,2,0" />
-          <ComboBox x:Name="RevisionFilterBox" IsEditable="True" Width="100" VerticalAlignment="Center" />
-          <local:ToolDropDownButton x:Name="RevisionFilterTypeButton" Image="EditFilter" ToolTip.Tip="Filter type">
-            <local:ToolDropDownButton.Flyout>
-              <MenuFlyout>
-                <MenuItem x:Name="CommitFilterMenuItem" Header="Commit _message" ToggleType="CheckBox" IsChecked="True" />
-                <MenuItem x:Name="CommitterFilterMenuItem" Header="_Committer" ToggleType="CheckBox" />
-                <MenuItem x:Name="AuthorFilterMenuItem" Header="_Author" ToggleType="CheckBox" />
-                <MenuItem x:Name="DiffContainsFilterMenuItem" Header="_Diff contains (SLOW)" ToggleType="CheckBox" />
-              </MenuFlyout>
-            </local:ToolDropDownButton.Flyout>
-          </local:ToolDropDownButton>
-          <local:ToolToggleButton x:Name="ShowFirstParentButton" Image="ShowOnlyFirstParent" ToolTip.Tip="Show only first parent" />
-        </StackPanel>
+        <!-- Upstream's FilterToolBar. -->
+        <local:FilterToolBar x:Name="FilterToolStrip" />
         <!-- Upstream's user menu bar: the enabled scripts whose event is "show in user menu bar". -->
         <StackPanel x:Name="UserScriptsPanel" Classes="toolStrip" Spacing="4" />
       </WrapPanel>
@@ -361,13 +312,7 @@
           <Button x:Name="ContinueActionButton" Content="Continue" />
           <Button x:Name="AbortActionButton" Content="Abort" />
           <!-- Upstream's More... opens FormRebase (the rebase window here) or FormApplyPatch, whose extra step the new shell offers here. -->
-          <Button x:Name="MoreActionButton" Content="M_ore...">
-            <Button.Flyout>
-              <MenuFlyout>
-                <MenuItem x:Name="SkipPatchMenuItem" Header="_Skip patch" ToolTip.Tip="Leave out the patch git am stopped at" />
-              </MenuFlyout>
-            </Button.Flyout>
-          </Button>
+          <Button x:Name="MoreActionButton" Content="M_ore..." />
         </StackPanel>
         <TextBlock x:Name="StateBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
       </DockPanel>
@@ -618,7 +563,7 @@
                 </StackPanel>
               </Border>
             </DockPanel>
-            <DockPanel Grid.Column="2" MinWidth="450">
+            <DockPanel x:Name="DashboardRepositories" Grid.Column="2" MinWidth="450">
               <Border DockPanel.Dock="Top" Height="68" Background="{DynamicResource DashboardHeaderBrush}" Padding="20,0,20,11">
                 <TextBlock Classes="dashboardHeading" Text="Recent repositories" VerticalAlignment="Bottom" />
               </Border>

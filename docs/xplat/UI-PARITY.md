@@ -526,6 +526,53 @@ toolbar icons with upstream's `ToolTipText`.
   FilterInfo / FormRevisionFilter row is `ported`. FormMergeBranch is `ported` too (checked against its designer; its
   old "Not ported" line was stale). Stale "Not ported" lines found in FormCommit and FormClone are marked. Next: the
   other partial rows of `PORTING-MAP.md`.
+- 2026-11-04, FormGitIgnore and FormAddToGitIgnore rebuilt as upstream's two windows: the editor with the default
+  ignores, "Add pattern", the help text and links and the unsaved-changes question; the add window with the live preview
+  of the matched files, now opened by the file lists' "Add to .gitignore" and "Add to .git/info/exclude". The
+  FormGitIgnore row is `ported`; the FormSubmodules row too (its last gap, the submodule tree, was done 2026-11-03).
+  See the FormGitIgnore note in `PORTING-MAP.md`. Next: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-04, FormGitCommandLog rebuilt as upstream's: the command log and the command cache tabs, the log oldest first
+  following the newest command, the menus with Save to file, Copy full command line and Clear, and the "Always on top",
+  "Word wrap" and "Capture call stacks" check boxes. The row is `ported`. See its note in `PORTING-MAP.md`. Next: the
+  other partial rows of `PORTING-MAP.md`.
+- 2026-11-04, FormAbout rebuilt as upstream's: the logo, donate badge and links, the contributor thanked every second
+  with FormContributors behind it, and upstream's environment information with its copy button (now also copied by
+  Help > Report an issue and the dashboard's Issues link). The row is `ported`. See its note in `PORTING-MAP.md`. Next:
+  the other partial rows of `PORTING-MAP.md`.
+- 2026-11-04, FormRebase's remaining buttons: "Add files" during a rebase, the From revision picker (FormChooseCommit on
+  the current branch down to the merge base), the range from two selected commits in the grid, and the commit
+  list's double-click (also in the apply patch window). See the FormRebase
+  note in `PORTING-MAP.md`. Next: the other partial rows of `PORTING-MAP.md`.
+- 2026-11-04, FormPull: "Checkout branch" in the detached HEAD question (Cancel closes the window, as upstream), the
+  remote URL history (in FormPush too), and the submodule update after every kind of pull. See the FormPull and FormPush
+  notes in `PORTING-MAP.md`. Next:
+  the other partial rows of `PORTING-MAP.md`.
+- 2026-11-04, FormFileHistory's menu: upstream's copy submenu (branches and tags too, shared with the browse grid) and
+  "Difftool selected < - > local". See the FormFileHistory note in `PORTING-MAP.md`. Next: the other partial rows of
+  `PORTING-MAP.md`.
+- 2026-11-04, rows checked against upstream and marked `ported` (their "Not ported" lines were stale): FormCreateBranch,
+  FormCheckoutBranch, FormCheckoutRevision, FormResetChanges; earlier today FormGitIgnore, FormSubmodules,
+  FormGitCommandLog and FormAbout. 69 rows are still `partial`.
+- 2026-11-04, FormRemotes' PuTTY buttons, "Load SSH key" and "Test connection" (core `Putty`). See the FormRemotes note
+  in `PORTING-MAP.md`.
+- 2026-11-04, PuTTY keys loaded into Pageant before pulls, fetches and pushes (dialogs and quick commands), and FormPush's
+  "Load SSH key". See the FormPush note in `PORTING-MAP.md`.
+- 2026-11-04, FormPull's prune offer after a pull rejected for a removed remote branch, and FormPush's rejection handling
+  for "Push multiple branches". See the FormPull and FormPush notes in `PORTING-MAP.md`.
+- 2026-11-04, the Detailed settings page's push and merge window groups, and the push window's "Get remote branches
+  directly from the remote" (`ls-remote`). See the GraphRenderer / DetailedSettingsPage and FormPush notes in
+  `PORTING-MAP.md`.
+- 2026-11-04, upstream's title bar help button, as decided with the user: F1 and a "?" button in the seven dialogs that
+  have it; FormResetCurrentBranch is `ported`. See "Title bar help button" in `PORTING-MAP.md`.
+- 2026-11-04, the mouse's back and forward buttons navigate the grid's history (over the grid and the commit's
+  details); the Navigate menu row is `ported`.
+- 2026-11-04, FormCommitDiff's file list shows upstream's status images.
+- 2026-11-04, FormFileHistory's remaining window parts: selecting several commits (the Diff tab and "Open with
+  difftool" between two), the custom diff tools under the difftool items, upstream's filter toolstrip (now a shared
+  `FilterToolBar` control the browse window uses too), the grid's Navigate and View menus with its hotkeys and quick
+  search, and the build status column with the Build Report tab. `UseBrowseForFileHistory` is not ported (decided with
+  the user: the file history window always opens), so FormFileHistory is `ported`. See FormFileHistory and FilterToolBar
+  in `PORTING-MAP.md`.
 
 ## Risks
 

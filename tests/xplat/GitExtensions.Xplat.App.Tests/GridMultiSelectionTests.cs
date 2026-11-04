@@ -186,7 +186,13 @@ internal sealed class GridMultiSelectionTests
         commits.ContextMenu!.Close();
 
         Find<MenuItem>(window, "CompareSelectedCommitsMenuItem").IsEnabled.Should().BeTrue();
-        Find<MenuItem>(window, "OpenCommitsWithDiffToolMenuItem").IsEnabled.Should().BeTrue();
+        MenuItem difftool = Find<MenuItem>(window, "OpenCommitsWithDiffToolMenuItem");
+        difftool.IsEnabled.Should().BeTrue();
+
+        // Upstream's CustomDiffMergeToolProvider: the tools, then "Disable this dropdown".
+        WaitUntil(() => difftool.Items.Count > 0);
+        difftool.Items.OfType<MenuItem>().Select(item => item.Tag as string).Should().Equal("meld", "vscode", null);
+        difftool.Items.OfType<MenuItem>().Last().Header.Should().Be("Disable this dropdown");
         window.Close();
     }
 
@@ -299,6 +305,27 @@ internal sealed class GridMultiSelectionTests
                                        && window.SelectedRevisions[0].Subject != "third");
 
         window.SelectedRevisions.Single().Subject.Should().Be("second", "third's nearest commit the grid shows");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Rebase_with_advanced_options_on_two_selected_commits_starts_the_range_at_the_other_one()
+    {
+        MainWindow window = OpenWindow();
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        Select(commits, "first");
+        commits.SelectedItems!.Add(Item(commits, "third"));
+
+        Find<MenuItem>(window, "RebaseAdvancedMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => window.OwnedWindows.OfType<RebaseWindow>().Any());
+        RebaseWindow rebase = window.OwnedWindows.OfType<RebaseWindow>().Single();
+        WaitUntil(() => rebase.RebaseLoaded.IsCompleted);
+        string first = _repo.Run("rev-parse", "HEAD~2").Trim();
+        Find<TextBox>(rebase, "FromBox").Text.Should().Be(GitExtensions.Extensibility.Git.ObjectId.Parse(first).ToShortString());
+        Find<CheckBox>(rebase, "SpecificRangeCheck").IsChecked.Should().BeTrue();
+        Find<ComboBox>(rebase, "BranchesBox").Text.Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
+        rebase.Close();
         window.Close();
     }
 

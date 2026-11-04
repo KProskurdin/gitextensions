@@ -39,7 +39,7 @@ internal sealed class PushRejectedFlow(RepositoryOperationsViewModel actions, IA
     {
         bool pushed = await actions.PushAsync(repositoryPath, request);
         while (!pushed && PushRejection.Find(actions.OutputLines, origin.PushedBranch, origin.CurrentBranch,
-                   origin.ToUrl, origin.IsBare, request.Kind) is { } currentBranchRejected)
+                   origin.ToUrl, origin.IsBare) is { } currentBranchRejected)
         {
             (GitPullAction pullAction, bool forcePush) = await AskAsync(owner(), request.Remote, currentBranchRejected);
             if (forcePush)

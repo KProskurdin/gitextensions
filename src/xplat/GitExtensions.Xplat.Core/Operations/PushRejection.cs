@@ -46,11 +46,9 @@ public static class PushRejection
     /// </summary>
     /// <param name="pushedBranch">The branch chosen in the push dialog (upstream checks it on every tab).</param>
     public static bool? Find(IEnumerable<string> output, string pushedBranch, string currentBranch, bool toUrl,
-        bool isBare, PushKind kind = PushKind.Branch)
+        bool isBare)
     {
-        // A push of several branches has no single command line upstream's retry could add the force to.
-        if (pushedBranch != currentBranch || currentBranch.Length == 0 || toUrl || isBare ||
-            kind == PushKind.Multiple)
+        if (pushedBranch != currentBranch || currentBranch.Length == 0 || toUrl || isBare)
         {
             return null;
         }
@@ -70,6 +68,23 @@ public static class PushRejection
         GitPullAction.Rebase => ActionRebase,
         _ => ActionNone,
     };
+
+    /// <summary>
+    ///  Upstream's retry of a rejected push of several branches: <c>--force-with-lease</c> inserted after <c>push</c> when
+    ///  the command line has no force option yet (<c>HandlePushOnExit</c>).
+    /// </summary>
+    public static string WithForceInMultiple(string arguments, ForcePushOptions force)
+    {
+        const string PushCommand = "push ";
+        if (force != ForcePushOptions.ForceWithLease || arguments.Contains(" -f ", StringComparison.Ordinal)
+                                                     || arguments.Contains(" --force", StringComparison.Ordinal))
+        {
+            return arguments;
+        }
+
+        int position = arguments.IndexOf(PushCommand, StringComparison.Ordinal);
+        return position < 0 ? arguments : arguments.Insert(position + PushCommand.Length, "--force-with-lease ");
+    }
 
     /// <summary>
     ///  The push again with force with lease, unless it already forces (upstream adds the option to the command line only

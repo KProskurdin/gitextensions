@@ -377,7 +377,7 @@ public partial class CommitWindow
     {
         List<string> patterns = [.. Selected(_unstaged).Select(change => GitIgnoreFile.PatternFor(change.Path))];
         if (patterns.Count > 0
-            && await new GitIgnoreWindow(_repositoryPath, patterns, localExclude).ShowDialog<bool>(this))
+            && await AddToGitIgnoreWindow.ShowAsync(this, _repositoryPath, localExclude, patterns))
         {
             await _refresh();
         }
@@ -385,7 +385,7 @@ public partial class CommitWindow
 
     private async Task EditIgnoreFileAsync(bool localExclude)
     {
-        if (await new GitIgnoreWindow(_repositoryPath, localExclude: localExclude).ShowDialog<bool>(this))
+        if (await GitIgnoreWindow.ShowAsync(this, _repositoryPath, localExclude))
         {
             await _refresh();
         }
@@ -448,7 +448,7 @@ public partial class CommitWindow
         public IReadOnlyList<FileChange> Shown { get; set; } = [];
     }
     private void ShowFileHistory(string file, bool showBlame)
-        => new FileHistoryWindow(_repositoryPath, _actions, _preferences, file, revision: null, showBlame,
+        => new FileHistoryWindow(_repositoryPath, _preferences, file, revision: null, showBlame,
             (repository, hash) => _actions.CherryPickAsync(repository, hash),
             (repository, hash) => _actions.RevertAsync(repository, hash)).Show(this);
 }

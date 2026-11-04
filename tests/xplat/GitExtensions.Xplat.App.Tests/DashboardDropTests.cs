@@ -1,0 +1,138 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Headless.NUnit;
+using Avalonia.Input;
+using Avalonia.Input.Raw;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using GitCommands;
+using NUnit.Framework;
+
+namespace GitExtensions.Xplat.App.Tests;
+
+// Upstream's dashboard (UserRepositoriesList): a folder dropped on the repository list, and the Dashboard menu's
+// "Recent repositories settings".
+internal sealed class DashboardDropTests
+{
+    private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(20);
+
+    [AvaloniaTest]
+    public void A_repository_folder_dropped_on_the_list_opens()
+    {
+        using TestRepository repo = new();
+        MainWindow window = NewWindow();
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        Drop(window, repo.Path);
+
+        WaitUntil(() => window.FindControl<Control>("BrowsePanel")!.IsVisible);
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_folder_that_is_no_repository_gets_upstreams_message()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "xplat-drop-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            MainWindow window = NewWindow();
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            Drop(window, folder);
+
+            WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
+            MessageBoxWindow message = window.OwnedWindows.OfType<MessageBoxWindow>().Single();
+            message.Title.Should().Be(MainWindow.CannotOpenFolderCaption);
+            message.Close();
+            window.FindControl<Control>("BrowsePanel")!.IsVisible.Should().BeFalse();
+            window.Close();
+        }
+        finally
+        {
+            Directory.Delete(folder);
+        }
+    }
+
+    [AvaloniaTest]
+    public void The_dashboard_menu_opens_the_recent_repositories_settings()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        window.FindControl<MenuItem>("DashboardRecentReposSettingsMenuItem")!
+            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => window.OwnedWindows.OfType<RecentRepositoriesSettingsWindow>().Any());
+        window.OwnedWindows.OfType<RecentRepositoriesSettingsWindow>().Single().Close();
+        window.Close();
+    }
+
+    private static MainWindow NewWindow() =>
+        new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+
+    private static void Drop(MainWindow window, string folder)
+    {
+        Control list = window.FindControl<Control>("DashboardRepositories")!;
+        Point point = list.TranslatePoint(new Point(list.Bounds.Width / 2, list.Bounds.Height / 2), window)!.Value;
+        DataTransfer data = new();
+        data.Add(DataTransferItem.CreateFile(new FakeFolder(folder)));
+        window.DragDrop(point, RawDragEventType.DragEnter, data, DragDropEffects.Copy, RawInputModifiers.None);
+        window.DragDrop(point, RawDragEventType.DragOver, data, DragDropEffects.Copy, RawInputModifiers.None);
+        window.DragDrop(point, RawDragEventType.Drop, data, DragDropEffects.Copy, RawInputModifiers.None);
+    }
+
+    private static void WaitUntil(Func<bool> condition)
+    {
+        DateTime deadline = DateTime.UtcNow + _timeout;
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                Assert.Fail("Timed out waiting for the UI");
+            }
+
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(20);
+        }
+    }
+
+    // A folder as a file manager drops it: only its path is read.
+    private sealed class FakeFolder(string path) : IStorageFolder
+    {
+        public string Name => System.IO.Path.GetFileName(path);
+
+        public Uri Path { get; } = new(path.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar);
+
+        public bool CanBookmark => false;
+
+        public Task<StorageItemProperties> GetBasicPropertiesAsync() => Task.FromResult(new StorageItemProperties());
+
+        public Task<string?> SaveBookmarkAsync() => Task.FromResult<string?>(null);
+
+        public Task<IStorageFolder?> GetParentAsync() => Task.FromResult<IStorageFolder?>(null);
+
+        public Task DeleteAsync() => Task.CompletedTask;
+
+        public Task<IStorageItem?> MoveAsync(IStorageFolder destination) => Task.FromResult<IStorageItem?>(null);
+
+        public IAsyncEnumerable<IStorageItem> GetItemsAsync() => AsyncEnumerable.Empty<IStorageItem>();
+
+        public Task<IStorageFolder?> GetFolderAsync(string name) => Task.FromResult<IStorageFolder?>(null);
+
+        public Task<IStorageFile?> GetFileAsync(string name) => Task.FromResult<IStorageFile?>(null);
+
+        public Task<IStorageFile?> CreateFileAsync(string name) => Task.FromResult<IStorageFile?>(null);
+
+        public Task<IStorageFolder?> CreateFolderAsync(string name) => Task.FromResult<IStorageFolder?>(null);
+
+        public void Dispose()
+        {
+        }
+    }
+}

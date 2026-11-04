@@ -20,14 +20,23 @@ public partial class MainWindow
     // opens.
     private RepositoryHistory _menuHistory = new([], []);
 
+    // Upstream's reportAnIssueToolStripMenuItem_Click and Dashboard's IssuesItem_Click: the environment information is
+    // copied for the issue's text before the issues page opens.
+    private async Task ReportIssueAsync()
+    {
+        await AboutWindow.CopyInformationAsync(this, _git?.Version?.ToString());
+        OpenUrl(IssuesUrl);
+    }
+
     private void WireStartMenu()
     {
         UserManualMenuItem.Click += (_, _) => OpenUrl(AppSettings.DocumentationBaseUrl);
         TranslateMenuItem.Click += (_, _) => OpenUrl(TranslateUrl);
-        ReportIssueMenuItem.Click += (_, _) => OpenUrl(IssuesUrl);
+        ReportIssueMenuItem.Click += (_, _) => Run(ReportIssueAsync);
         ChangelogMenuItem.Click += (_, _) => _ = new ChangeLogWindow().ShowDialog(this);
         DonateMenuItem.Click += (_, _) => _ = new DonateWindow(OpenUrl).ShowDialog(this);
         DashboardRefreshMenuItem.Click += (_, _) => Run(Dashboard.LoadAsync);
+        DashboardRecentReposSettingsMenuItem.Click += (_, _) => Run(ConfigureRecentRepositoriesAsync);
     }
 
     // The recent list changed: the menus show it at once, then again with the history's pins and the favourites.

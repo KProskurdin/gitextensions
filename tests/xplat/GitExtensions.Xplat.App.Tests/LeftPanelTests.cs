@@ -635,7 +635,8 @@ internal sealed class LeftPanelTests
     }
 
     private static T Find<T>(Window window, string name) where T : Control
-        => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");
+        => window.FindControl<T>(name) ?? window.FindControl<FilterToolBar>("FilterToolStrip")?.FindControl<T>(name) ??
+           throw new InvalidOperationException($"Control {name} not found");
 
     private static void WaitUntil(Func<bool> condition)
     {

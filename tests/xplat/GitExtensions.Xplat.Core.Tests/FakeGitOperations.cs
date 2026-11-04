@@ -173,8 +173,6 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public Task ContinuePatchAsync(string repositoryPath) => Record("ContinuePatch", repositoryPath);
 
-    public Task SkipPatchAsync(string repositoryPath) => Record("SkipPatch", repositoryPath);
-
     public Task AbortPatchAsync(string repositoryPath) => Record("AbortPatch", repositoryPath);
 
     public Task StartBisectAsync(string repositoryPath, IProgress<GitOutputLine>? output = null,

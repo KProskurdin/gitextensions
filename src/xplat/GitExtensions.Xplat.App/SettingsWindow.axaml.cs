@@ -1213,6 +1213,7 @@ public partial class SettingsWindow : Window
         }
 
         SaveBuildServerPage();
+        SaveDetailedPage();
         foreach ((DistributedSettings settings, RevisionLinkEditor _) in _revisionLinkLevels.Values)
         {
             AppServices.RevisionLinks.Save(settings);

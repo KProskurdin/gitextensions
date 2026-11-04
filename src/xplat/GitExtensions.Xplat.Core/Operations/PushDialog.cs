@@ -183,6 +183,11 @@ public sealed class PushDialog
     public IReadOnlyList<string> Remotes => [.. _repository.Remotes.Select(remote => remote.Name ?? "")];
 
     /// <summary>
+    ///  Upstream's <c>EnableLoadSshButton</c>: the chosen remote has a PuTTY key, so "Load SSH key" is shown.
+    /// </summary>
+    public bool RemoteHasPuttyKey => !string.IsNullOrWhiteSpace(_remote?.PuttySshKey);
+
+    /// <summary>
     ///  The chosen remote, or empty when the repository has none.
     /// </summary>
     public string Remote
@@ -296,12 +301,34 @@ public sealed class PushDialog
     public string Title(string workingDirectory) => $"{PushCaption} ({workingDirectory})";
 
     /// <summary>
-    ///  Fills the "Push multiple branches" rows for the chosen remote.
+    ///  Upstream's command for the remote's branches when <c>GetRemoteBranchesDirectlyFromRemote</c> is on.
     /// </summary>
-    public void LoadMultipleBranches()
+    public static string LsRemoteArguments(string remote) => $"ls-remote --heads \"{remote}\"";
+
+    /// <summary>
+    ///  Upstream's <c>CleanCommandOutput</c> and <c>ParseRefs</c>: the refs of git's <c>ls-remote</c> output, which starts
+    ///  at the first line's hash (40 characters before the first tab).
+    /// </summary>
+    public static IReadOnlyList<IGitRef> RemoteHeadsFromLsRemote(IGitModule module, IEnumerable<string> output)
+    {
+        const int HashLength = 40;
+        string text = string.Join("\n", output);
+        int firstTab = text.IndexOf('\t');
+        string refList = firstTab == HashLength ? text
+            : firstTab > HashLength ? text[(firstTab - HashLength)..]
+            : string.Empty;
+        return module.ParseRefs(refList);
+    }
+
+    /// <summary>
+    ///  Fills the "Push multiple branches" rows for the chosen remote, from <paramref name="remoteHeads"/> (the remote's
+    ///  branches as git's <c>ls-remote</c> lists them, upstream's <c>GetRemoteBranchesDirectlyFromRemote</c>) or, when
+    ///  null, from the remote branches the repository knows.
+    /// </summary>
+    public void LoadMultipleBranches(IReadOnlyList<IGitRef>? remoteHeads = null)
     {
         string remote = Remote;
-        List<IGitRef> remoteHeads = [.. _repository.RemoteBranches.Where(branch => branch.Remote == remote)];
+        remoteHeads ??= [.. _repository.RemoteBranches.Where(branch => branch.Remote == remote)];
         Dictionary<string, IGitRef> remoteByName = remoteHeads.ToDictionary(head => head.LocalName, head => head);
         List<PushBranchRow> rows = [];
         foreach (IGitRef head in _repository.LocalBranches)

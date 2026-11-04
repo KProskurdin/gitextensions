@@ -64,7 +64,7 @@ internal static class GitProcess
                 Directory.Delete(path, recursive: true);
                 return;
             }
-            catch (IOException) when (attempt < _deleteAttempts)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < _deleteAttempts)
             {
                 Thread.Sleep(_deleteRetryDelay);
             }

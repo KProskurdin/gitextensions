@@ -252,11 +252,6 @@ public interface IGitOperations
     /// </summary>
     Task ContinuePatchAsync(string repositoryPath);
 
-    /// <summary>
-    ///  Leaves out the patch <c>git am</c> stopped at and goes on with the next one.
-    /// </summary>
-    Task SkipPatchAsync(string repositoryPath);
-
     Task AbortPatchAsync(string repositoryPath);
 
     /// <summary>

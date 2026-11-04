@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
@@ -35,8 +36,13 @@ public sealed record PullBranches(
 ///  Upstream's <c>FormPull</c> without its window: the remotes with "[ All ]", the choices it starts with, which options
 ///  apply to the chosen action, the checks before pulling, and the request it runs.
 /// </summary>
-public sealed class PullDialog
+public sealed partial class PullDialog
 {
+    // Upstream's IsRefRemoved.
+    [GeneratedRegex(@"Your configuration specifies to .* the ref '.*'[\r]?\nfrom the remote, but no such ref was fetched.",
+        RegexOptions.ExplicitCapture)]
+    private static partial Regex RefRemovedRegex { get; }
+
     public const string AllRemotes = "[ All ]";
 
     // Upstream's texts.
@@ -54,6 +60,19 @@ public sealed class PullDialog
     public const string RebaseMergeQuestionCaption = "Rebase merge commit?";
     public const string NotOnBranchCaption = "Not on a branch";
     public const string ContinueText = "Continue";
+
+    // Upstream's TranslatedStrings for the detached HEAD question and FormPull's submodule question.
+    public const string CheckoutBranchText = "Checkout branch";
+    public const string NotOnBranchHeading = "You are not working on a branch";
+    public const string SubmodulesCaption = "Submodules";
+    public const string PruneBranchesCaption = "Pull was rejected";
+    public const string PruneBranchesMainInstruction = "Remote branch no longer exist";
+    public const string PruneBranchesBranch = "Do you want to delete all stale remote-tracking branches?";
+    public const string PruneFromCaption = "Prune remote branches from {0}";
+    public static readonly string InitSubmodulesQuestion =
+        "The pulled has submodules configured." + Environment.NewLine
+        + "Do you want to initialize the submodules?" + Environment.NewLine
+        + "This will initialize and update all submodules recursive.";
 
     public static readonly string FetchAllBranchesCanOnlyWithFetch =
         "You can only fetch all remote branches (*) without merge or rebase." + Environment.NewLine +
@@ -333,6 +352,28 @@ public sealed class PullDialog
     public static bool IsShallowRepository(string repositoryPath)
         => File.Exists(new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
             .ResolveGitInternalPath("shallow"));
+
+    /// <summary>
+    ///  Upstream's <c>HandlePullOnExit</c> check: git's output says the branch's configured remote ref no longer exists,
+    ///  so pruning the stale remote-tracking branches is offered.
+    /// </summary>
+    public static bool IsRefRemoved(IEnumerable<string> output) => RefRemovedRegex.IsMatch(string.Join("\n", output));
+
+    /// <summary>
+    ///  Upstream's prune of the remote after that question (<c>remote prune remote</c>).
+    /// </summary>
+    public static string PruneArguments(string remote) => "remote prune " + remote;
+
+    /// <summary>
+    ///  Upstream's <c>InitModules</c> check after a pull: true when the repository has a <c>.gitmodules</c> file and a
+    ///  submodule in it is not a working directory yet, so the submodules are to be initialized (upstream's "fast
+    ///  submodules check").
+    /// </summary>
+    public static bool HasUninitializedSubmodules(IGitModule module)
+        => File.Exists(Path.Join(module.WorkingDir, ".gitmodules"))
+           && !module.GetSubmodulesLocalPaths()
+               .Select(module.GetSubmodule)
+               .All(submodule => submodule.IsValidGitWorkingDir());
 
     /// <summary>
     ///  The action upstream stores as <c>FormPullAction</c> after a pull.

@@ -1,25 +1,68 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.CommandLogWindow"
-        Title="Git command log"
-        Width="1000" Height="560">
-  <Grid RowDefinitions="Auto,*,5,160" Margin="8">
-    <DockPanel Grid.Row="0" Margin="0,0,0,6" LastChildFill="False">
-      <TextBlock x:Name="CountText" DockPanel.Dock="Left" VerticalAlignment="Center" />
-      <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Clear" />
-      <Button x:Name="CopyButton" DockPanel.Dock="Right" Content="Copy command line" Margin="0,0,6,0" />
-    </DockPanel>
-    <ListBox x:Name="EntryList" Grid.Row="1" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}">
-      <ListBox.Styles>
-        <Style Selector="ListBoxItem">
-          <Setter Property="Padding" Value="4,0" />
-          <Setter Property="MinHeight" Value="0" />
-        </Style>
-      </ListBox.Styles>
-    </ListBox>
-    <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
-    <ScrollViewer Grid.Row="3">
-      <SelectableTextBlock x:Name="DetailText" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" TextWrapping="Wrap" />
-    </ScrollViewer>
-  </Grid>
+        Title="Git Command Log"
+        Width="659" Height="470" ShowInTaskbar="True">
+  <!-- Upstream's FormGitCommandLog: the command log and the command cache on two tabs, each a list above the selected
+       entry's detail (the detail's height fixed, as upstream's FixedPanel), and three check boxes below. -->
+  <Window.Styles>
+    <Style Selector="ListBox.log">
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontFamily" Value="{DynamicResource MonospaceFontFamily}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="ListBox.log ListBoxItem">
+      <Setter Property="Padding" Value="2,0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="TextBox.detail">
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="AcceptsReturn" Value="True" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="FontFamily" Value="{DynamicResource MonospaceFontFamily}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12" Margin="4,2,4,2">
+      <CheckBox x:Name="chkAlwaysOnTop" Content="Always on top" />
+      <CheckBox x:Name="chkWordWrap" Content="Word wrap" IsChecked="True" />
+      <CheckBox x:Name="chkCaptureCallStacks" Content="Capture call stacks" />
+    </StackPanel>
+    <TabControl x:Name="TabControl" Padding="0">
+      <TabItem x:Name="tabPageCommandLog" Header="Command log">
+        <Grid RowDefinitions="*,4,150">
+          <ListBox x:Name="LogItems" Classes="log">
+            <ListBox.ContextMenu>
+              <ContextMenu x:Name="contextMenu">
+                <MenuItem x:Name="mnuSaveToFile" Header="_Save to file" InputGesture="Ctrl+S"
+                          Icon="{local:UpstreamIcon SaveAs}" />
+                <MenuItem x:Name="mnuCopyCommandLine" Header="_Copy full command line" InputGesture="Ctrl+C"
+                          Icon="{local:UpstreamIcon CopyToClipboard}" />
+                <MenuItem x:Name="mnuClear" Header="C_lear" InputGesture="Ctrl+L" Icon="{local:UpstreamIcon ClearLog}" />
+              </ContextMenu>
+            </ListBox.ContextMenu>
+          </ListBox>
+          <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+          <TextBox x:Name="LogOutput" Grid.Row="2" Classes="detail" />
+        </Grid>
+      </TabItem>
+      <TabItem x:Name="tabPageCommandCache" Header="Command cache">
+        <Grid RowDefinitions="183,4,*">
+          <ListBox x:Name="CommandCacheItems" Classes="log">
+            <ListBox.ContextMenu>
+              <ContextMenu x:Name="cmsCache">
+                <MenuItem x:Name="tsmiClearCache" Header="C_lear" InputGesture="Ctrl+L"
+                          Icon="{local:UpstreamIcon ClearLog}" />
+              </ContextMenu>
+            </ListBox.ContextMenu>
+          </ListBox>
+          <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+          <TextBox x:Name="commandCacheOutput" Grid.Row="2" Classes="detail" />
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
 </Window>

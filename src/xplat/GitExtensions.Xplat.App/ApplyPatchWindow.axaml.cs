@@ -71,6 +71,8 @@ public partial class ApplyPatchWindow : Window
 
         // Upstream calls EnableButtons when the conflicts window returns; this window is told by being activated again.
         Activated += (_, _) => Refresh();
+        PatchGrid.DoubleTapped +=
+            (_, _) => Run(() => RebasePatchRow.OpenAsync(this, _repositoryPath, PatchGrid.SelectedItem as RebasePatchRow));
     }
 
     /// <summary>

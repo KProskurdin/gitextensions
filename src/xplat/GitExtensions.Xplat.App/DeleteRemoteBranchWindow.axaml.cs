@@ -46,6 +46,7 @@ public partial class DeleteRemoteBranchWindow : Window
         _deleteOnRemote = deleteOnRemote;
         _deleteLocalBranches = deleteLocalBranches;
         InitializeComponent();
+        DialogHelp.Attach(this, HelpButton, DialogHelp.Manual("branches", "delete-branch"));
         UpstreamTranslation.Apply(this, "FormDeleteRemoteBranch");
         InitialFocus.Attach(this, () => Branches);
         DeleteRemote.IsCheckedChanged += (_, _) => Delete.IsEnabled = DeleteRemote.IsChecked == true;

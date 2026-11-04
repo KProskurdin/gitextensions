@@ -550,9 +550,9 @@ public partial class MainWindow
         TreeFetchAndCheckoutMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, branch) =>
             FetchThenAsync(path, remote, () => StartCheckoutBranchAsync(path, branch.Name, remote: true)));
         TreeFetchAndMergeMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, name, _) =>
-            _actions.PullAsync(path, remote, name, rebase: false));
+            PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, remote, name, rebase: false), remote));
         TreeFetchAndRebaseMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, name, _) =>
-            _actions.PullAsync(path, remote, name, rebase: true));
+            PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, remote, name, rebase: true), remote));
         TreeFetchAndCreateBranchMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, branch) =>
             FetchThenAsync(path, remote, async () =>
             {

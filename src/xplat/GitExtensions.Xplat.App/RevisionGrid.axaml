@@ -65,10 +65,11 @@
                    FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowObjectIdColumn}" />
         <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
-             build report. -->
+             build report, with the hand cursor when it has one. -->
         <StackPanel Grid.Column="6" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
                     Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
-                    ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center">
+                    ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center"
+                    Cursor="{Binding Build.Url, Converter={x:Static local:LinkCursorConverter.Instance}}">
           <TextBlock Text="{Binding Build.Symbol}" IsVisible="{DynamicResource BuildStatusShowIcon}"
                      Foreground="{Binding Build.Status, Converter={x:Static local:BuildStatusBrushConverter.Instance}}" />
           <TextBlock Text="{Binding Build.Text}" IsVisible="{DynamicResource BuildStatusShowText}" TextTrimming="CharacterEllipsis"

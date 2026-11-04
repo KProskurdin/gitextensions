@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.ChooseTranslationWindow"
+        Title="Choose language" Width="800" Height="539" WindowStartupLocation="CenterScreen">
+  <!-- Upstream's FormChooseTranslation: the languages as large icons (their flags), chosen with one click. -->
+  <DockPanel Margin="12,9,12,12">
+    <TextBlock x:Name="label1" DockPanel.Dock="Top" Text="Choose your language" />
+    <TextBlock x:Name="label2" DockPanel.Dock="Top" Margin="0,9,0,3"
+               Text="You can change the language at any time in the settings dialog" />
+    <ListBox x:Name="lvTranslations">
+      <ListBox.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel />
+        </ItemsPanelTemplate>
+      </ListBox.ItemsPanel>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:TranslationChoice">
+          <StackPanel Width="160" Margin="4" Spacing="2">
+            <Image Source="{Binding Flag}" Width="150" Height="75" IsVisible="{Binding Flag, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" TextWrapping="Wrap" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

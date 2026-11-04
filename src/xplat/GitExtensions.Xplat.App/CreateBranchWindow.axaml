@@ -8,14 +8,17 @@
        the orphan options; Create branch in the strip at the bottom. -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-        <Button x:Name="CreateButton" MinWidth="107" IsDefault="True" VerticalAlignment="Center">
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <Image Source="{local:UpstreamImage BranchCreate}" Width="16" Height="16" />
-            <AccessText Text="_Create branch" VerticalAlignment="Center" />
-          </StackPanel>
-        </Button>
-      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="CreateButton" MinWidth="107" IsDefault="True" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Image Source="{local:UpstreamImage BranchCreate}" Width="16" Height="16" />
+              <AccessText Text="_Create branch" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
     </Border>
     <Grid Margin="12" ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
       <AccessText Text="_Branch name" VerticalAlignment="Center" Margin="3" />

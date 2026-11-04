@@ -42,28 +42,13 @@ public partial class MainWindow
 
     private bool _gridDiffToolsLoaded;
 
-    // Upstream's LoadCustomDifftools: the configured diff tools under the item when there are several, the default bold.
-    private async Task LoadGridDiffToolsAsync()
+    // Upstream's LoadCustomDifftools (CustomDiffMergeToolProvider): the diff tools under the item when there are several
+    // and "Show all available difftools" is on, the default bold, then "Disable this dropdown".
+    private Task LoadGridDiffToolsAsync()
     {
         _gridDiffToolsLoaded = true;
-        IReadOnlyList<string> tools = await AppServices.DiffMergeTools.GetAvailableAsync(diff: true);
-        if (tools.Count <= 1)
-        {
-            return;
-        }
-
-        foreach (string tool in tools)
-        {
-            MenuItem item = new()
-            {
-                Header = new TextBlock { Text = tool },
-                FontWeight = OpenCommitsWithDiffToolMenuItem.Items.Count == 0
-                    ? Avalonia.Media.FontWeight.Bold
-                    : Avalonia.Media.FontWeight.Normal,
-            };
-            item.Click += (_, _) => DiffSelectedCommitsWithDifftool(tool);
-            OpenCommitsWithDiffToolMenuItem.Items.Add(item);
-        }
+        return CustomDiffTools.LoadAsync(
+            [(OpenCommitsWithDiffToolMenuItem, tool => DiffSelectedCommitsWithDifftool(tool))], diff: true, _preferences);
     }
 
     // Upstream's OnGridViewSelectionChanged settings of the compare items, for the selected commit.

@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using GitCommands;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.Repository;
@@ -41,6 +42,10 @@ public partial class MainWindow
     private const double TileExtraWidth = 50;
     private const double TileMinHeight = 50;
 
+    // Upstream's TranslatedStrings.DirectoryInvalidRepository and UserRepositoriesList's _cannotOpenTheFolder.
+    public const string InvalidRepositoryText = "The selected item is not a valid git repository.";
+    public const string CannotOpenFolderCaption = "Cannot open the folder";
+
     private DashboardViewModel? _dashboardModel;
     private IReadOnlyList<string> _dashboardPaths = [];
 
@@ -51,6 +56,25 @@ public partial class MainWindow
             return new DashboardRepositoryState(valid,
                 valid && AppServices.Preferences.ShowRepoCurrentBranch ? RecentRepositoryBranches.CurrentBranch(path) : null);
         });
+
+    // One folder of the dropped items, as upstream's dashboard takes.
+    private static string? DroppedFolder(IDataTransfer data)
+        => data.TryGetFiles() is [{ } item] && item.TryGetLocalPath() is { Length: > 0 } path && Directory.Exists(path)
+            ? path
+            : null;
+
+    private async Task OpenDroppedFolderAsync(string folder)
+    {
+        if (!GitModule.IsValidGitWorkingDir(folder))
+        {
+            await new MessageBoxWindow(UpstreamTranslation.ByText(InvalidRepositoryText),
+                UpstreamTranslation.ByText(CannotOpenFolderCaption), System.Windows.Forms.MessageBoxButtons.OK)
+                .ShowDialog(this);
+            return;
+        }
+
+        await OpenRepositoryAsync(folder);
+    }
 
     private void WireDashboard()
     {
@@ -65,8 +89,21 @@ public partial class MainWindow
         DashboardDevelopLink.Click += (_, _) => OpenUrl(DevelopUrl);
         DashboardDonateLink.Click += (_, _) => OpenUrl(DonationUrl);
         DashboardTranslateLink.Click += (_, _) => OpenUrl(TranslateUrl);
-        DashboardIssuesLink.Click += (_, _) => OpenUrl(IssuesUrl);
+        DashboardIssuesLink.Click += (_, _) => Run(ReportIssueAsync);
         DashboardSearchBox.TextChanged += (_, _) => Dashboard.SearchText = DashboardSearchBox.Text ?? "";
+
+        // Upstream's UserRepositoriesList OnDragEnter and OnDragDrop: one folder dropped on the list opens, or upstream's
+        // message says it is not a repository.
+        DragDrop.SetAllowDrop(DashboardRepositories, true);
+        DashboardRepositories.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+            e.DragEffects = DroppedFolder(e.DataTransfer) is null ? DragDropEffects.None : DragDropEffects.Copy);
+        DashboardRepositories.AddHandler(DragDrop.DropEvent, (_, e) =>
+        {
+            if (DroppedFolder(e.DataTransfer) is { } folder)
+            {
+                Run(() => OpenDroppedFolderAsync(folder));
+            }
+        });
 
         // Upstream: Enter opens the first repository shown, Down moves into the list.
         DashboardSearchBox.KeyDown += (_, e) =>

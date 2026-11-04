@@ -65,6 +65,10 @@
           <CheckBox x:Name="SpecificRangeCheck" Content="Specific ra_nge" />
           <AccessText Text="_From (exc.)" VerticalAlignment="Center" />
           <TextBox x:Name="FromBox" Width="80" IsEnabled="False" />
+          <Button x:Name="btnChooseFromRevision" Width="25" Height="24" Padding="0" IsEnabled="False"
+                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+            <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
+          </Button>
           <AccessText Text="_To" VerticalAlignment="Center" />
           <ComboBox x:Name="ToBox" IsEditable="True" Width="184" IsEnabled="False" />
         </StackPanel>
@@ -100,6 +104,12 @@
         </DockPanel>
         <Grid Grid.Row="8" ColumnDefinitions="*,*" Margin="0,3">
           <StackPanel Orientation="Horizontal" Spacing="6" Margin="3">
+            <Button x:Name="btnAddFiles" MinWidth="79" IsVisible="False">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Image Source="{local:UpstreamImage BulletAdd}" Width="16" Height="16" />
+                <AccessText Text="_Add files" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
             <Button x:Name="CommitButton" MinWidth="86" IsVisible="False">
               <StackPanel Orientation="Horizontal" Spacing="4">
                 <Image Source="{local:UpstreamImage RepoStateStaged}" Width="16" Height="16" />

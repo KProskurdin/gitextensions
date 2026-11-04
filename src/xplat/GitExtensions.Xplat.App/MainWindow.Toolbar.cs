@@ -272,9 +272,11 @@ public partial class MainWindow
                 Fetch(remote: "--all", prune: true);
                 break;
             default:
-                RunOnCurrentBranch((path, branch) => WithScriptsAsync(path, ScriptEvent.BeforePull,
-                    ScriptEvent.AfterPull,
-                    () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase)));
+                RunOnCurrentBranch(async (path, branch) => await LoadPuttyKeysAsync(path, TrackingRemote())
+                    && await WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
+                        () => PullAndUpdateSubmodulesAsync(path,
+                            () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase),
+                            TrackingRemote())));
                 break;
         }
     }

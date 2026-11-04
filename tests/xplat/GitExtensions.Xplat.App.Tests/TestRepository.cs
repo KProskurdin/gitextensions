@@ -12,6 +12,11 @@ internal sealed class TestRepository : IDisposable
         Run("init", "-q");
         Run("config", "user.name", "Test");
         Run("config", "user.email", "test@example.com");
+
+        // git's automatic maintenance after a fetch or commit runs on in the background and holds its lock files while
+        // the test deletes the folder.
+        Run("config", "maintenance.auto", "false");
+        Run("config", "gc.auto", "0");
         File.WriteAllText(System.IO.Path.Combine(Path, "a.txt"), "one");
         Run("add", "a.txt");
         Run("commit", "-q", "-m", "first");

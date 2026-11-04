@@ -457,9 +457,6 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> ContinuePatchAsync(string repositoryPath)
         => RunAsync("Patch applied", repositoryPath, () => _operations.ContinuePatchAsync(repositoryPath));
 
-    public Task<bool> SkipPatchAsync(string repositoryPath)
-        => RunAsync("Patch skipped", repositoryPath, () => _operations.SkipPatchAsync(repositoryPath));
-
     public Task<bool> AbortPatchAsync(string repositoryPath)
         => RunAsync("Patch aborted", repositoryPath, () => _operations.AbortPatchAsync(repositoryPath));
 

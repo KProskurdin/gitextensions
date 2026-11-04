@@ -17,15 +17,18 @@
        where the clone goes, the repository type and the options; Load SSH key and Clone at the bottom. -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-        <Button x:Name="LoadSshKeyButton" MinWidth="120" VerticalAlignment="Center" IsVisible="False">
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
-            <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
-          </StackPanel>
-        </Button>
-        <Button x:Name="CloneButton" Content="Clone" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
-      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+          <Button x:Name="LoadSshKeyButton" MinWidth="120" VerticalAlignment="Center" IsVisible="False">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
+              <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="CloneButton" Content="Clone" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
+        </StackPanel>
+      </Grid>
     </Border>
     <StackPanel Margin="12">
       <Grid ColumnDefinitions="Auto,*,100" RowDefinitions="Auto,Auto,Auto,Auto">

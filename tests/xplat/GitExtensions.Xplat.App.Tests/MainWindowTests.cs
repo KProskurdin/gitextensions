@@ -426,6 +426,28 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void The_mouses_back_and_forward_buttons_navigate_over_the_grid()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = 0;
+        string Selected() => ((CommitListItem)commits.SelectedItem!).Row.Subject;
+        Click(window, "GoToParentMenuItem");
+        Selected().Should().Be("first");
+        Point overGrid = commits.TranslatePoint(new Point(40, 10), window)!.Value;
+
+        window.MouseDown(overGrid, MouseButton.XButton1);
+        window.MouseUp(overGrid, MouseButton.XButton1);
+        WaitUntil(() => Selected() == "second");
+
+        window.MouseDown(overGrid, MouseButton.XButton2);
+        window.MouseUp(overGrid, MouseButton.XButton2);
+        WaitUntil(() => Selected() == "first");
+    }
+
+    [AvaloniaTest]
     public void Double_click_on_a_commit_opens_upstreams_commit_diff_window()
     {
         MainWindow window = NewWindow();
@@ -1527,15 +1549,14 @@ internal sealed class MainWindowTests
         unstaged.SelectedIndex = 0;
 
         Click(commit, "UnstagedAddToGitIgnoreMenuItem");
-        WaitUntil(() => commit.OwnedWindows.OfType<GitIgnoreWindow>().Any());
-        GitIgnoreWindow ignore = commit.OwnedWindows.OfType<GitIgnoreWindow>().Single();
-        WaitUntil(() => Find<Button>(ignore, "SaveButton").IsEnabled);
-        Find<TextBox>(ignore, "ContentBox").Text.Should().Be("/notes.txt\n");
-        Click(ignore, "SaveButton");
+        WaitUntil(() => commit.OwnedWindows.OfType<AddToGitIgnoreWindow>().Any());
+        AddToGitIgnoreWindow ignore = commit.OwnedWindows.OfType<AddToGitIgnoreWindow>().Single();
+        Find<TextBox>(ignore, "FilePattern").Text.Should().Be("/notes.txt");
+        Click(ignore, "AddToIgnore");
 
         WaitUntil(() =>
             unstaged.ItemCount == 1 && unstaged.Items.OfType<FileChange>().Single().Path == ".gitignore");
-        File.ReadAllText(Path.Combine(_repo.Path, ".gitignore")).Should().Be("/notes.txt\n");
+        File.ReadAllText(Path.Combine(_repo.Path, ".gitignore")).Should().Be("/notes.txt" + Environment.NewLine);
         commit.Close();
     }
 
@@ -2169,8 +2190,8 @@ internal sealed class MainWindowTests
         CommandLogWindow log = window.OwnedWindows.OfType<CommandLogWindow>().Single();
 
         log.Entries.Should().Contain(entry => entry.Arguments.Contains("for-each-ref", StringComparison.Ordinal));
-        Find<ListBox>(log, "EntryList").SelectedIndex = 0;
-        Find<SelectableTextBlock>(log, "DetailText").Text.Should().Contain("Arguments:");
+        Find<ListBox>(log, "LogItems").SelectedIndex = 0;
+        Find<TextBox>(log, "LogOutput").Text.Should().Contain("Arguments:");
         log.Close();
     }
 
@@ -2316,6 +2337,7 @@ internal sealed class MainWindowTests
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??
+           window.FindControl<FilterToolBar>("FilterToolStrip")?.FindControl<T>(name) ??
            window.GetLogicalDescendants().OfType<T>().FirstOrDefault(control => control.Name == name) ??
            throw new InvalidOperationException($"Control {name} not found");
 

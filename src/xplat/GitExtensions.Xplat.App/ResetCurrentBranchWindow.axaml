@@ -23,9 +23,12 @@
                      Content="_Hard: reset working directory and index&#10;(discard ALL local changes, even uncommitted changes)" />
       </StackPanel>
     </HeaderedContentControl>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3">
-      <Button x:Name="OkButton" Content="OK" MinWidth="91" IsDefault="True" />
-      <Button x:Name="CancelButton" Content="Cancel" MinWidth="91" IsCancel="True" />
-    </StackPanel>
+    <Grid ColumnDefinitions="Auto,*" Margin="3">
+      <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+        <Button x:Name="OkButton" Content="OK" MinWidth="91" IsDefault="True" />
+        <Button x:Name="CancelButton" Content="Cancel" MinWidth="91" IsCancel="True" />
+      </StackPanel>
+    </Grid>
   </StackPanel>
 </Window>

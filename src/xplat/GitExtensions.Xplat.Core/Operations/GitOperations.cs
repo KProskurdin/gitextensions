@@ -211,7 +211,8 @@ public sealed class GitOperations : IGitOperations
                     request.RecursiveSubmodules),
                 PushKind.Tag or PushKind.AllTags => Commands.PushTag(request.Remote, request.Tag,
                     request.Kind == PushKind.AllTags, request.Force),
-                PushKind.Multiple => Commands.PushMultiple(request.Remote, request.Actions ?? []),
+                PushKind.Multiple => PushRejection.WithForceInMultiple(
+                    Commands.PushMultiple(request.Remote, request.Actions ?? []).ToString(), request.Force),
 
                 // As upstream's PushChanges: a local branch's full name, so a tag of the same name is not pushed.
                 _ => Commands.Push(request.Remote, module.FormatBranchName(request.LocalBranch),
@@ -530,9 +531,6 @@ public sealed class GitOperations : IGitOperations
 
     public Task ContinuePatchAsync(string repositoryPath)
         => RunAsync(repositoryPath, _ => Commands.Resolved());
-
-    public Task SkipPatchAsync(string repositoryPath)
-        => RunAsync(repositoryPath, _ => Commands.Skip());
 
     public Task AbortPatchAsync(string repositoryPath)
         => RunAsync(repositoryPath, _ => Commands.Abort());
