@@ -54,7 +54,7 @@ public partial class StashWindow : Window
     private int _filesVersion;
     private StashRevisions? _revisions;
     // Upstream FileStatusList's title of an invalid filter's error.
-    private const string RegexErrorTitle = "Regex error";
+
 
     private FileTreeRows<StashFileRow> _tree = null!;
     private IReadOnlyList<(string Group, IReadOnlyList<StashFileRow> Files)> _fileGroups = [];
@@ -86,6 +86,30 @@ public partial class StashWindow : Window
             }
         };
         FilesList.SelectionChanged += (_, _) => ShowSelectedFile();
+
+        // Upstream's FileViewer_TopScrollReached and FileViewer_BottomScrollReached.
+        Diff.TopScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(FilesList, next: false, item => item is StashFileRow { IsFile: true });
+            Diff.ScrollToBottom();
+        };
+        Diff.BottomScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(FilesList, next: true, item => item is StashFileRow { IsFile: true });
+            Diff.ScrollToTop();
+        };
+        Diff.LinesHotkey += (_, command) =>
+        {
+            if (SelectedFiles is [{ } file])
+            {
+                Run(() => DiffLinePatching.RunAsync(this, Diff, command, MenuServices ?? new FileListMenuServices(_actions),
+                    _repositoryPath, StatusLetter(file.Change.Kind), () =>
+                    {
+                        ShowSelectedFile();
+                        return Task.CompletedTask;
+                    }));
+            }
+        };
         StashAllButton.Click += (_, _) => Run(() => StashAsync(selectedOnly: false));
         StashSelectedButton.Click += (_, _) => Run(() => StashAsync(selectedOnly: true));
         DropButton.Click += (_, _) => Run(DropAsync);
@@ -99,6 +123,16 @@ public partial class StashWindow : Window
             Services = () => MenuServices ?? new FileListMenuServices(_actions),
             Refresh = () => Run(LoadAsync),
             RunScript = RunScript,
+            FocusedPath = () => (FileStatusListMenu.FocusedItem(FilesList) as StashFileRow)?.File?.Change.Path,
+            FindFile = new FileListFind(
+                () =>
+                [
+                    .. _fileGroups.SelectMany(group => group.Files).Select(row => row.File)
+                        .OfType<StashFile>().Select(file => (file.Change.Path, (string?)null))
+                ],
+                SelectFile),
+            Tree = _tree.MenuTree(),
+            Viewer = () => Diff,
         });
         KeyDown += OnKeyDown;
         Opened += (_, _) =>
@@ -135,8 +169,23 @@ public partial class StashWindow : Window
     /// </summary>
     internal FileListMenuServices? MenuServices { get; init; }
 
+    // Upstream's SelectedItems: a single selected folder or group node stands for the files below it.
     private IReadOnlyList<StashFile> SelectedFiles
-        => [.. FilesList.SelectedItems?.OfType<StashFileRow>().Select(row => row.File).OfType<StashFile>() ?? []];
+        =>
+        [
+            .. (FileListNodes.SelectedNode(FilesList)?.Files ?? FilesList.SelectedItems?.Cast<object>() ?? [])
+            .OfType<StashFileRow>().Select(row => row.File).OfType<StashFile>()
+        ];
+
+    // Upstream's SelectedGitItem setter after "Find file": the first shown row of the file is the only one selected.
+    private void SelectFile(string path)
+    {
+        if (FilesList.Items.OfType<StashFileRow>().FirstOrDefault(row => row.File?.Change.Path == path) is { } row)
+        {
+            FilesList.SelectedItem = row;
+            FilesList.ScrollIntoView(row);
+        }
+    }
 
     // As upstream: the left panel keeps its 280 pixels unless the options and buttons need more (a larger font).
     private void FitLeftPanel()
@@ -221,9 +270,8 @@ public partial class StashWindow : Window
     private void ShowFileRows()
     {
         HashSet<StashFileRow> selected = [.. FilesList.SelectedItems?.OfType<StashFileRow>() ?? []];
-        Regex? filter = FileStatusList.Filter(FilesFilterBox.Text, out string? error);
-        ToolTip.SetTip(FilesFilterBox, error is null ? null : $"{RegexErrorTitle}: {error}");
         List<object> rows = [];
+        int shown = 0;
         _tree.BeginFill();
         foreach ((string group, IReadOnlyList<StashFileRow> files) in _fileGroups)
         {
@@ -232,15 +280,24 @@ public partial class StashWindow : Window
                 rows.Add(new StashFileRow(UpstreamTranslation.ByText(group), null));
             }
 
-            _tree.Add(rows, [.. files.Where(file => filter?.IsMatch(file.Text) ?? true)],
-                depth: group.Length > 0 ? 1 : 0, keyPrefix: $"{group}\n");
+            List<StashFileRow> matching = [.. files.Where(file => FilesFilterBox.IsMatch(file.Text))];
+            shown += matching.Count;
+            _tree.Add(rows, matching, depth: group.Length > 0 ? 1 : 0, keyPrefix: $"{group}\n");
         }
 
         FilesList.ItemsSource = rows;
+        // Avalonia keeps a selected row that the new list has an equal one of (the rows are records); adding that one too
+        // would list the file twice in SelectedItems.
         foreach (StashFileRow row in rows.OfType<StashFileRow>().Where(selected.Contains))
         {
-            FilesList.SelectedItems?.Add(row);
+            if (FilesList.SelectedItems is { } selectedItems && !selectedItems.Contains(row))
+            {
+                selectedItems.Add(row);
+            }
         }
+
+        _tree.EndFill();
+        FilesFilterBox.Shown(shown);
     }
 
     // Upstream FileStatusList's toolbar over the Stashed list: the filter box, the group-by buttons, the tree button and
@@ -263,7 +320,8 @@ public partial class StashWindow : Window
             _tree.CollapseGroups([.. FilesList.ItemsSource?.Cast<object>() ?? []]);
             ShowFileRows();
         };
-        FilesFilterBox.TextChanged += (_, _) => ShowFileRows();
+        FilesFilterBox.WorkingDirectory = () => _repositoryPath;
+        FilesFilterBox.FilterChanged += (_, _) => ShowFileRows();
         FilesByPathButton.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
         FilesByExtensionButton.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
         FilesByStatusButton.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
@@ -298,10 +356,18 @@ public partial class StashWindow : Window
         UpdateStashSelectedButton();
         if (SelectedFiles is [{ } file])
         {
+            Diff.LineAction = DiffLinePatching.For(_repositoryPath, file.Change.Path, StatusLetter(file.Change.Kind),
+                SecondOf(file));
             Run(() => Diff.ShowAsync(_repositoryPath, file.Commit, file.Change.Path, file.Change.Staged,
                 file.Change.Path));
         }
     }
+
+    // The revision a file's diff shows: its stash commit, else the index or the working directory.
+    private static ObjectId SecondOf(StashFile file)
+        => file.Commit is { } commit && ObjectId.TryParse(commit, out ObjectId id) ? id
+            : file.Change.Staged ? ObjectId.IndexId
+            : ObjectId.WorkTreeId;
 
     private void UpdateStashSelectedButton()
         => StashSelectedButton.IsEnabled = _dialog.CanStashSelected(SelectedFiles.Count);
@@ -397,7 +463,8 @@ public partial class StashWindow : Window
                 IsTracked: file.Change.Kind != ChangeKind.Untracked, revisions.Of(file.Change)))
         ];
         DiffMenuRevisions first = menuFiles[0].Revisions!;
-        return new DiffMenuSelection(first.First, first.Second, first.SecondParents, menuFiles);
+        return new DiffMenuSelection(first.First, first.Second, first.SecondParents, menuFiles,
+            FileListNodes.SelectedNode(FilesList)?.Folder);
     }
 
     // Git's status letter for a change, as the menu's rules read it.

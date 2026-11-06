@@ -67,11 +67,32 @@ public partial class RevisionDiffWindow : Window
                     (DiffFilesStatusTreeMenuItem, DiffListSortType.FileStatus),
                     (DiffFilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
                 ],
-                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem));
+                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem), oldPath: file => file.OldPath);
+        DiffFilesFilterBox.WorkingDirectory = () => _repositoryPath;
         lblFirstCommitBack.Background = Brush(AppColor.AnsiTerminalRedBackNormal);
         lblSecondCommitBack.Background = Brush(AppColor.AnsiTerminalGreenBackNormal);
         ckCompareToMergeBase.IsEnabled = false;
         DiffFiles.SelectionChanged += (_, _) => Run(ShowSelectedFileDiffAsync);
+
+        // Upstream's FileViewer_TopScrollReached and FileViewer_BottomScrollReached.
+        DiffText.TopScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(DiffFiles, next: false, item => item is RevisionDiffFile);
+            DiffText.ScrollToBottom();
+        };
+        DiffText.BottomScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(DiffFiles, next: true, item => item is RevisionDiffFile);
+            DiffText.ScrollToTop();
+        };
+        DiffText.LinesHotkey += (_, command) =>
+        {
+            if (MenuServices is { } services && DiffFiles.SelectedItem is RevisionDiffFile file)
+            {
+                Run(() => DiffLinePatching.RunAsync(this, DiffText, command, services, _repositoryPath, file.Status,
+                    ShowSelectedFileDiffAsync));
+            }
+        };
         btnSwap.Click += (_, _) =>
         {
             (_second, _first) = (_first, _second);
@@ -93,6 +114,11 @@ public partial class RevisionDiffWindow : Window
             Services = () => MenuServices,
             Refresh = PopulateDiffFiles,
             RunScript = RunScript,
+            FocusedPath = () => (FileStatusListMenu.FocusedItem(DiffFiles) as RevisionDiffFile)?.Path,
+            FindFile = new FileListFind(() => [.. (_files.Files ?? []).Select(file => (file.Path, file.OldPath))],
+                _files.SelectPath),
+            Tree = _files.MenuTree,
+            Viewer = () => DiffText,
         });
         Opened += (_, _) => Run(LoadAsync);
     }
@@ -189,6 +215,11 @@ public partial class RevisionDiffWindow : Window
             return Task.CompletedTask;
         }
 
+        // Upstream's viewer applies a commit's lines; between a commit and the working directory or the index the
+        // lines are not the index's own, so they are not staged here.
+        DiffText.LineAction = MenuServices is null || toId.IsArtificial
+            ? DiffLineAction.None
+            : DiffLinePatching.For(_repositoryPath, file.Path, file.Status, toId);
         return DiffText.ShowDiffAsync(_repositoryPath, file.Path, file.Path,
             options => RevisionDiff.DiffAsync(_module, fromId, toId, file, options));
     }
@@ -259,11 +290,13 @@ public partial class RevisionDiffWindow : Window
             return null;
         }
 
+        // Upstream's SelectedItems: a single selected folder node stands for the files below it.
+        IFileListNode? node = FileListNodes.SelectedNode(DiffFiles);
         return new DiffMenuSelection(from, second, from is { } parent ? [parent] : [],
         [
-            .. (DiffFiles.SelectedItems ?? Array.Empty<object>()).OfType<RevisionDiffFile>()
+            .. (node?.Files ?? DiffFiles.SelectedItems?.Cast<object>() ?? []).OfType<RevisionDiffFile>()
             .Select(file => new DiffMenuFile(file.Status, file.Path, file.OldPath, file.IsTracked))
-        ]);
+        ], node?.Folder);
     }
 
     // Upstream's file list scripts: with the compared revision and the selected files.

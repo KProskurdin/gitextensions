@@ -21,6 +21,17 @@ internal sealed class FileStatusTreeTests
     }
 
     [Test]
+    public void A_folder_node_should_know_its_path_files_and_node_keys()
+    {
+        FileStatusTreeNode<File> src = Build(DiffListSortType.FilePath).Single(node => node.Text == "src");
+
+        src.FolderPath.Should().Be("src");
+        src.Files().Select(file => file.Path).Should().Equal("src/lib/c.cs", "src/a.cs", "src/b.cs");
+        src.NodeKeys().Should().Equal("src/", "src/lib/");
+        src.Children[1].NodeKeys().Should().BeEmpty("a file node has none");
+    }
+
+    [Test]
     public void Build_should_show_a_folder_holding_one_file_as_the_file_in_a_dense_tree()
     {
         Describe(Build(DiffListSortType.FilePath, denseTree: true)).Should().Equal(

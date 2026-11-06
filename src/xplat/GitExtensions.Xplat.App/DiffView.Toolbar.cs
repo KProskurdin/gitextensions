@@ -7,14 +7,21 @@ using GitExtensions.Xplat.Core.Diff;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Which selected-line action the window around a diff offers in its menu: upstream FileViewer shows "Stage selected
-///  line(s)" for the working directory's diff and "Unstage selected line(s)" for the index's.
+///  Which selected-line actions the window around a diff offers in its menu (upstream FileViewer's
+///  <c>SupportLinePatching</c>): "Stage selected line(s)" for the working directory's diff, "Unstage selected line(s)"
+///  for the index's, "Stage selected line(s)" for a commit's diff too (it applies the lines to the working directory and
+///  the index), and "Reset selected line(s)" for all three.
 /// </summary>
 public enum DiffLineAction
 {
     None,
     Stage,
     Unstage,
+
+    /// <summary>
+    ///  A commit's diff: staging applies the lines (upstream's cherry pick of lines), resetting undoes them.
+    /// </summary>
+    Apply,
 }
 
 // Upstream FileViewer's toolbar (fileviewerToolbar) and menu (contextMenu).
@@ -52,6 +59,7 @@ public partial class DiffView
         DiffContextMenu.Opening += (_, _) => ShowMenu();
         StageLinesMenuItem.Click += (_, _) => LinesHotkey?.Invoke(this, DiffCommand.StageLines);
         UnstageLinesMenuItem.Click += (_, _) => LinesHotkey?.Invoke(this, DiffCommand.UnstageLines);
+        ResetLinesMenuItem.Click += (_, _) => LinesHotkey?.Invoke(this, DiffCommand.ResetLines);
         CopyMenuItem.Click += (_, _) => Copy(DiffCopy.Text(SelectedOrAllLines(), _textIsDiff));
         CopyPatchMenuItem.Click += (_, _) => Copy(DiffCopy.Patch(SelectedOrAllLines()));
         CopyNewVersionMenuItem.Click += (_, _) => Copy(DiffCopy.Version(SelectedOrAllLines(), _textIsDiff, newVersion: true));
@@ -110,10 +118,12 @@ public partial class DiffView
     private void ShowMenu()
     {
         bool selected = DiffList.Selection.SelectedIndexes.Count > 0 && _request is not null && _text is null;
-        StageLinesMenuItem.IsVisible = LineAction == DiffLineAction.Stage;
+        StageLinesMenuItem.IsVisible = LineAction is DiffLineAction.Stage or DiffLineAction.Apply;
         StageLinesMenuItem.IsEnabled = selected;
         UnstageLinesMenuItem.IsVisible = LineAction == DiffLineAction.Unstage;
         UnstageLinesMenuItem.IsEnabled = selected;
+        ResetLinesMenuItem.IsVisible = LineAction != DiffLineAction.None;
+        ResetLinesMenuItem.IsEnabled = selected;
         CopyNewVersionMenuItem.IsVisible = CopyOldVersionMenuItem.IsVisible = _textIsDiff;
         foreach (Control item in new Control[]
                  {

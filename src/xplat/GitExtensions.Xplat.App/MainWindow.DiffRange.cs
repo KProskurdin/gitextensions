@@ -37,14 +37,15 @@ public partial class MainWindow
                 DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem),
             file => file.DiffFile?.DiffStatus ?? DiffBranchStatus.Unknown,
             new DiffStatusButtons(DiffFilesUnequalChangeButton, DiffFilesOnlyBButton, DiffFilesOnlyAButton,
-                DiffFilesSameChangeButton, DiffFilesStatusFilterSeparator));
+                DiffFilesSameChangeButton, DiffFilesStatusFilterSeparator), oldPath: file => file.DiffFile?.OldPath);
 
     // Called on each selection change, after the selection is tracked.
     private void ShowSelectionDiff()
     {
         int version = ++_diffGroupsVersion;
         IReadOnlyList<CommitRow> selected = SelectedRevisions;
-        if (RepositoryPath is not { } path || !UsesDiffGroups(selected))
+        string grep = _gitGrep;
+        if (RepositoryPath is not { } path || !(UsesDiffGroups(selected) || (grep.Length > 0 && selected.Count > 0)))
         {
             if (_diffGroups is not null)
             {
@@ -64,7 +65,7 @@ public partial class MainWindow
             IReadOnlyList<DiffGroup> groups = await Task.Run(() =>
             {
                 GitModule module = GitModules.Open(path);
-                return DiffGroups.Calculate(module, revisions, module.GetCurrentCheckout(), describe);
+                return DiffGroups.Calculate(module, revisions, module.GetCurrentCheckout(), describe, grep: grep);
             });
             if (version != _diffGroupsVersion)
             {
@@ -101,9 +102,19 @@ public partial class MainWindow
     private static (DiffGroup Group, RevisionDiffFile File)? GroupFile(CommitFile file)
         => file is { Group: { } group, DiffFile: { } diffFile } ? (group, diffFile) : null;
 
-    private static Task ShowGroupFileDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
-        => view.ShowDiffAsync(path, file.Path, file.Path,
+    // A file of the "grep" group shows its matches (upstream's ViewGrepAsync), any other file its diff.
+    private static async Task ShowGroupFileDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
+    {
+        if (file.GrepString is { } grep)
+        {
+            await view.ShowGrepAsync(file.Path, options => Task.Run(() =>
+                GitGrep.FileAsync(GitModules.Open(path), group.Second, file.Path, grep, options)));
+            return;
+        }
+
+        await view.ShowDiffAsync(path, file.Path, file.Path,
             options => DiffGroups.DiffAsync(GitModules.Open(path), group, file, options));
+    }
 
     // Upstream's difftool for a file of a group: between its group's revisions (none for the combined diff).
     private static Task OpenGroupFileInDiffToolAsync(string path, DiffGroup group, RevisionDiffFile file, string? tool)

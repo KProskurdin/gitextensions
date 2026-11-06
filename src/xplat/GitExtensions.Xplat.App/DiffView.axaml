@@ -30,6 +30,8 @@
         <ContextMenu x:Name="DiffContextMenu">
           <MenuItem x:Name="StageLinesMenuItem" Header="Stage selected line(s)" Icon="{local:UpstreamIcon Stage}" />
           <MenuItem x:Name="UnstageLinesMenuItem" Header="Unstage selected line(s)" Icon="{local:UpstreamIcon Unstage}" />
+          <MenuItem x:Name="ResetLinesMenuItem" Header="Reset selected line(s)"
+                    Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
           <MenuItem x:Name="CopyMenuItem" Header="_Copy" />
           <MenuItem x:Name="CopyPatchMenuItem" Header="Copy _patch" />
           <MenuItem x:Name="CopyNewVersionMenuItem" Header="Copy _new version" />
@@ -43,6 +45,7 @@
           <MenuItem x:Name="IgnoreWhitespaceEolMenuItem" Header="Ignore whitespace changes at end of _line" ToggleType="CheckBox" />
           <MenuItem x:Name="IgnoreWhitespaceChangeMenuItem" Header="Ignore changes in _amount of whitespace" ToggleType="CheckBox" />
           <MenuItem x:Name="IgnoreAllWhitespaceMenuItem" Header="Ignore all _whitespace changes" ToggleType="CheckBox" />
+          <MenuItem x:Name="ContinuousScrollMenuItem" ToggleType="CheckBox" />
         </ContextMenu>
       </ListBox.ContextMenu>
       <ListBox.ItemTemplate>

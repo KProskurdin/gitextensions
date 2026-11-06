@@ -123,11 +123,11 @@ internal sealed class StashWindowTests
             WaitUntil(() => Rows(window).Count(row => row.IsFile) == 2);
             ListBox files = Find<ListBox>(window, "FilesList");
 
-            Find<TextBox>(window, "FilesFilterBox").Text = @"^docs/";
+            Find<FileFilterBox>(window, "FilesFilterBox").Text = @"^docs/";
             Dispatcher.UIThread.RunJobs();
             Rows(window).Where(row => row.IsFile).Select(row => row.Text).Should().Equal("docs/n.txt");
 
-            Find<TextBox>(window, "FilesFilterBox").Text = "";
+            Find<FileFilterBox>(window, "FilesFilterBox").Text = "";
             Find<ToolSplitButton>(window, "FilesAsTreeButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
             Dispatcher.UIThread.RunJobs();
 

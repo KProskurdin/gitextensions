@@ -21,7 +21,7 @@ public partial class CommitWindow
     private const string DeleteSelectedFilesCaption = "Delete";
     private const string DeleteFailedText = "Delete file failed";
     private const string StopTrackingFailText = "Fail to stop tracking the file '{0}'.";
-    private const string RegexErrorTitle = "RegEx";
+
 
     // Upstream FormCommit's tooltips of the stage and unstage all buttons.
     private const string StageAllText = "Stage all";
@@ -41,6 +41,13 @@ public partial class CommitWindow
 
     // Git's setting of upstream's initial "Show untracked files", and its value that turns them off.
     private const string ShowUntrackedFilesSetting = "status.showuntrackedfiles";
+
+    // Upstream FileStatusList's tooltips of "Skip worktree" and "Assume unchanged".
+    private const string SkipWorktreeToolTip = "Hide already tracked files that will change but that you don't want to commit."
+                                               + "\nSuitable for some config files modified locally.";
+    private const string AssumeUnchangedToolTip = "Tell git to not check the status of this file for performance benefits."
+                                                  + "\nUse this feature when a file is big and never change."
+                                                  + "\nGit will never check if the file has changed that will improve status check performance.";
     private const string NoUntrackedFiles = "no";
 
     private void WireFileLists()
@@ -84,6 +91,16 @@ public partial class CommitWindow
 
         ShowGroupBy();
         WireListSettings();
+        UnstagedOpenSubmoduleMenuItem.Click += (_, _) => WithSubmodules(_unstaged, (submodules, paths) => submodules.Open(paths[0]));
+        StagedOpenSubmoduleMenuItem.Click += (_, _) => WithSubmodules(_staged, (submodules, paths) => submodules.Open(paths[0]));
+        UnstagedUpdateSubmoduleMenuItem.Click += (_, _) => WithSubmodules(_unstaged, (submodules, paths) => submodules.Update(paths));
+        UnstagedResetSubmoduleMenuItem.Click += (_, _) => WithSubmodules(_unstaged, (submodules, paths) => submodules.Reset(paths));
+        UnstagedStashSubmoduleMenuItem.Click += (_, _) => WithSubmodules(_unstaged, (submodules, paths) => submodules.Stash(paths));
+        UnstagedCommitSubmoduleMenuItem.Click += (_, _) => WithSubmodules(_unstaged, (submodules, paths) => submodules.Commit(paths));
+        UnstagedSkipWorktreeMenuItem.Click += (_, _) => Run(() => SetIndexFlagAsync(IndexFlag.SkipWorktree));
+        UnstagedAssumeUnchangedMenuItem.Click += (_, _) => Run(() => SetIndexFlagAsync(IndexFlag.AssumeUnchanged));
+        ToolTip.SetTip(UnstagedSkipWorktreeMenuItem, UpstreamTranslation.ByText(SkipWorktreeToolTip));
+        ToolTip.SetTip(UnstagedAssumeUnchangedMenuItem, UpstreamTranslation.ByText(AssumeUnchangedToolTip));
         return;
 
         void Wire(FileListParts parts)
@@ -96,7 +113,8 @@ public partial class CommitWindow
                 ShowGroupBy();
                 ShowChanges();
             });
-            parts.Filter.TextChanged += (_, _) => ShowChanges();
+            parts.Filter.WorkingDirectory = () => _repositoryPath;
+            parts.Filter.FilterChanged += (_, _) => ShowChanges();
             parts.ByPath.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
             parts.ByExtension.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
             parts.ByStatus.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
@@ -202,19 +220,19 @@ public partial class CommitWindow
 
         void Show(FileListParts parts, IEnumerable<FileChange> changes)
         {
-            Regex? filter = FileStatusList.Filter(parts.Filter.Text, out string? error);
-            ToolTip.SetTip(parts.Filter, error is null ? null : $"{RegexErrorTitle}: {error}");
             bool showUntracked = parts.ShowUntracked.IsChecked;
             IReadOnlyList<FileChange> shown =
             [
                 .. changes.Where(change => showUntracked || change.Kind != ChangeKind.Untracked)
-                    .Where(change => filter?.IsMatch(change.Path) ?? true)
+                    .Where(change => parts.Filter.IsMatch(change.Path))
             ];
             parts.Shown = shown;
             List<object> items = [];
             parts.Tree?.BeginFill();
             parts.Tree?.Add(items, shown, depth: 0, keyPrefix: "");
             parts.List.ItemsSource = items;
+            parts.Tree?.EndFill();
+            parts.Filter.Shown(shown.Count);
             parts.NoFiles.IsVisible = shown.Count == 0;
         }
     }
@@ -232,7 +250,7 @@ public partial class CommitWindow
             denseTree, groupNodesInFlatList);
 
     // Upstream's FileStatusList.IsFilterActive.
-    private static bool IsFiltered(FileListParts parts) => !string.IsNullOrEmpty(parts.Filter.Text);
+    private static bool IsFiltered(FileListParts parts) => parts.Filter.IsActive;
 
     // Upstream's group-by buttons choose the grouping and keep the tree or flat variant.
     private void SetGroupBy(DiffListSortType sorting)
@@ -279,7 +297,73 @@ public partial class CommitWindow
         parts.AddToGitIgnore?.IsVisible = state.Ignore;
         parts.AddToGitInfoExclude?.IsVisible = state.Ignore;
         parts.StopTracking.IsVisible = state.StopTracking;
+        // Upstream's submodule items: open for one submodule in either list; the others for the working directory's
+        // submodules whose folders exist (ShouldShowSubmoduleMenus).
+        bool openSubmodule = Submodules is not null && selected is [{ IsSubmodule: true }];
+        (parts.Staged ? StagedOpenSubmoduleMenuItem : UnstagedOpenSubmoduleMenuItem).IsVisible = openSubmodule;
+        if (!parts.Staged)
+        {
+            bool submoduleItems = Submodules is not null && selected.Any(change => change.IsSubmodule)
+                                                         && selected.All(change => Directory.Exists(FullPath(change)));
+            foreach (Control item in new Control[]
+                     {
+                         UnstagedUpdateSubmoduleMenuItem, UnstagedResetSubmoduleMenuItem, UnstagedStashSubmoduleMenuItem,
+                         UnstagedCommitSubmoduleMenuItem, UnstagedSubmoduleSeparator
+                     })
+            {
+                item.IsVisible = submoduleItems;
+            }
+
+            UnstagedSkipWorktreeMenuItem.IsVisible = state.IndexFlags;
+            UnstagedSkipWorktreeMenuItem.IsChecked = state.SkipWorktreeChecked;
+            UnstagedAssumeUnchangedMenuItem.IsVisible = state.IndexFlags;
+            UnstagedAssumeUnchangedMenuItem.IsChecked = state.AssumeUnchangedChecked;
+        }
+
         ShowFileListScripts(parts.Menu, parts.RunScript);
+    }
+
+    /// <summary>
+    ///  The browse window's submodule commands for upstream's submodule items; null leaves them out (a commit window on a
+    ///  submodule).
+    /// </summary>
+    internal FileListSubmodules? Submodules { get; init; }
+
+    // The selected submodules' paths (Distinct, as upstream's), for a submodule item; then the lists are read again.
+    private void WithSubmodules(FileListParts parts, Func<FileListSubmodules, IReadOnlyList<string>, Task> action)
+    {
+        if (Submodules is { } submodules
+            && Selected(parts).Where(change => change.IsSubmodule).Select(change => change.Path).Distinct().ToList() is
+                { Count: > 0 } paths)
+        {
+            Run(async () =>
+            {
+                await action(submodules, paths);
+                await _refresh();
+            });
+        }
+    }
+
+    // Upstream's SkipWorktree_Click and AssumeUnchanged_Click: the flag set on the selected tracked files when none has it,
+    // else cleared, then the lists read again.
+    private async Task SetIndexFlagAsync(IndexFlag flag)
+    {
+        List<FileChange> selected = [.. Selected(_unstaged).Where(change => change.Kind != ChangeKind.Untracked)];
+        if (selected.Count == 0)
+        {
+            return;
+        }
+
+        bool value = flag == IndexFlag.SkipWorktree
+            ? !selected.Any(change => change.IsSkipWorktree)
+            : !selected.Any(change => change.IsAssumeUnchanged);
+        (bool done, string output) = await GitRepositoryService.SetIndexFlagAsync(_repositoryPath, selected, flag, value);
+        if (!done && output.Trim().Length > 0)
+        {
+            ShowError(output.Trim());
+        }
+
+        await _refresh();
     }
 
     private async Task ResetSelectedAsync(FileListParts parts)
@@ -407,7 +491,7 @@ public partial class CommitWindow
     private sealed record FileListParts(
         bool Staged,
         ListBox List,
-        TextBox Filter,
+        FileFilterBox Filter,
         TextBlock NoFiles,
         ToolToggleButton ByPath,
         ToolToggleButton ByExtension,

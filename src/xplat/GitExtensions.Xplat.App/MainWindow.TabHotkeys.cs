@@ -21,6 +21,15 @@ public partial class MainWindow
             return RunBrowseDiffHotkey(diffCommand);
         }
 
+        // Upstream's File tree tab is a RevisionDiffControl too, with the same hotkeys: the parents' in the grid, the others
+        // the file list menu's.
+        if (IsWithin(e.Source, FileTreeView) && Hotkeys.BrowseDiff.Match(e) is { } treeCommand)
+        {
+            return treeCommand is BrowseDiffCommand.GoToFirstParent or BrowseDiffCommand.GoToLastParent
+                ? RunBrowseDiffHotkey(treeCommand)
+                : FileTreeContextMenu.ExecuteCommand(treeCommand);
+        }
+
         if (IsWithin(e.Source, BranchTreeView) && SelectedRepoObject is { Kind: RepoObjectKind.Stash }
                                                && Hotkeys.Stash.Match(e) is { } stashCommand)
         {
@@ -60,11 +69,10 @@ public partial class MainWindow
                 NewFileHistoryWindow(path, file, row.Hash, showBlame: false).Show(this);
                 return true;
             case BrowseDiffCommand.Blame when file is not null && !workTree && !index:
-                NewFileHistoryWindow(path, file, row.Hash, showBlame: true).Show(this);
+                BlameDiffFile();
                 return true;
             case BrowseDiffCommand.ShowFileTree when file is not null && !workTree && !index:
-                DetailTabs.SelectedItem = FileTreeTab;
-                SelectInFileTree(file);
+                Run(() => ShowInFileTreeAsync(file, blame: false));
                 return true;
             case BrowseDiffCommand.EditFile when file is not null:
                 new EditorWindow(Path.Combine(path, file)).Show(this);
@@ -93,6 +101,19 @@ public partial class MainWindow
             case BrowseDiffCommand.DeleteSelectedFiles when (workTree || index) && files.Count > 0:
                 Run(CommitFilesContextMenu.DeleteAsync);
                 return true;
+
+            // Upstream's tsmiMove.PerformClick, which does nothing while the item is hidden.
+            case BrowseDiffCommand.RenameMove when CommitFilesContextMenu.State() is { RenameMove: true }:
+                Run(CommitFilesContextMenu.MoveAsync);
+                return true;
+            case BrowseDiffCommand.FindFile:
+                Run(CommitFilesContextMenu.FindFileAsync);
+                return true;
+            case BrowseDiffCommand.FindInCommitFilesUsingGitGrepDiffTab or BrowseDiffCommand.OpenAsTempFile
+                or BrowseDiffCommand.OpenAsTempFileWith or BrowseDiffCommand.OpenWithDifftoolFirstToLocal
+                or BrowseDiffCommand.OpenWithDifftoolSelectedToLocal or BrowseDiffCommand.FilterFileInGrid
+                or BrowseDiffCommand.OpenWorkingDirectoryFileWith or BrowseDiffCommand.AddFileToGitIgnore:
+                return CommitFilesContextMenu.ExecuteCommand(command);
             default:
                 return false;
         }
@@ -142,6 +163,11 @@ public partial class MainWindow
         List<FileTreeNode> path = [];
         if (Find(roots, path))
         {
+            foreach (FileTreeNode folder in path.Take(path.Count - 1))
+            {
+                folder.IsExpanded = true;
+            }
+
             FileTreeView.SelectedItem = path[^1];
         }
 

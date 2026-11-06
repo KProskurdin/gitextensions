@@ -21,6 +21,16 @@ public sealed record DiffGroup(ObjectId? First, ObjectId Second, string Summary,
     public bool IsCombinedDiff => First == ObjectId.CombinedDiffId;
 
     /// <summary>
+    ///  Upstream's "grep" group: the files of <see cref="Second"/> that git-grep matched.
+    /// </summary>
+    public bool IsGrep => Icon == GrepIcon;
+
+    /// <summary>
+    ///  Upstream's image of the "grep" group (its <c>GitGrepIconName</c> stands for <c>Images.ViewFile</c>).
+    /// </summary>
+    public const string GrepIcon = "ViewFile";
+
+    /// <summary>
     ///  Upstream's <c>GetGroupName</c>: the shown and the total count (only the total when all are shown) and the summary.
     /// </summary>
     public string Header(int shown) => $"({(shown >= Files.Count ? "" : $"{shown}/")}{Files.Count}) {Summary}";
@@ -49,8 +59,10 @@ public static class DiffGroups
     ///  each as <paramref name="describe"/> names its revision. Upstream's range diff item is left out: the new shell has no
     ///  view for <c>git range-diff</c>.
     /// </summary>
+    /// <param name="grep">Upstream's git-grep argument (<see cref="GitGrep.SearchArgument"/>); with one, the last group is
+    /// upstream's "grep" group of the latest selected revision's matching files.</param>
     public static IReadOnlyList<DiffGroup> Calculate(GitModule module, IReadOnlyList<GitRevision> revisions,
-        ObjectId headId, Func<ObjectId, string> describe, CancellationToken cancellationToken = default)
+        ObjectId headId, Func<ObjectId, string> describe, CancellationToken cancellationToken = default, string grep = "")
     {
         FileStatusDiffCalculator calculator = new(() => module)
         {
@@ -62,12 +74,14 @@ public static class DiffGroups
                 : module.GetRevision(revision.ObjectId, shortFormat: true),
         };
         calculator.SetDiff(revisions, headId, allowMultiDiff: true);
+        calculator.SetGrep(grep, fileTreeMode: false);
         return
         [
-            .. calculator.Calculate([], refreshDiff: true, refreshGrep: false, cancellationToken)
+            .. calculator.Calculate([], refreshDiff: true, refreshGrep: grep.Length > 0, cancellationToken)
                 .Where(group => !group.Statuses.Any(item => item.IsRangeDiff))
                 .Select(group => new DiffGroup(group.FirstRev?.ObjectId, group.SecondRev.ObjectId, group.Summary,
-                    group.IconName, [.. group.Statuses.Where(item => !item.IsStatusOnly).Select(item => File(item, group))]))
+                    FileStatusDiffCalculator.IsGrepItemStatuses(group) ? DiffGroup.GrepIcon : group.IconName,
+                    [.. group.Statuses.Where(item => !item.IsStatusOnly).Select(item => File(item, group))]))
         ];
     }
 
@@ -102,5 +116,7 @@ public static class DiffGroups
             item.IsTracked || (!item.TreeId.IsZero && !group.SecondRev.ObjectId.IsZero))
         {
             DiffStatus = item.DiffStatus,
+            GrepString = string.IsNullOrWhiteSpace(item.GrepString) ? null : item.GrepString,
+            IsSubmodule = item.IsSubmodule,
         };
 }

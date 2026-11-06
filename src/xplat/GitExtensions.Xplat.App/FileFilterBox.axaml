@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GitExtensions.Xplat.App"
+             x:Class="GitExtensions.Xplat.App.FileFilterBox">
+  <!-- Upstream FileStatusList's cboFilterComboBox with its DeleteFilterButton. -->
+  <DockPanel>
+    <local:ToolButton x:Name="DeleteFilterButton" DockPanel.Dock="Right" Image="DeleteText" IsVisible="False" />
+    <ComboBox x:Name="cboFilterComboBox" IsEditable="True" HorizontalAlignment="Stretch"
+              PlaceholderText="Filter files using a regular expression..." />
+  </DockPanel>
+</UserControl>

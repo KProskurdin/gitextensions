@@ -158,6 +158,26 @@ internal sealed class DiffFileMenuTests
     }
 
     [Test]
+    public void For_should_offer_rename_for_one_tracked_file_as_upstreams_menu_does()
+    {
+        DiffMenuFile tracked = new("M", "a.txt", null, IsTracked: true);
+
+        State(CommitSelection(tracked)).RenameMove.Should().BeTrue();
+        State(CommitSelection(tracked, new DiffMenuFile("M", "b.txt", null, IsTracked: true))).RenameMove
+            .Should().BeFalse();
+        State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [],
+            [new DiffMenuFile("?", "new.txt", null, IsTracked: false)])).RenameMove.Should().BeFalse();
+    }
+
+    [Test]
+    public void IsValidMove_should_take_only_a_new_name_as_upstreams_move_command()
+    {
+        DiffFileMenu.IsValidMove(_workingDir, "a.txt", "b.txt").Should().BeTrue();
+        DiffFileMenu.IsValidMove(_workingDir, "a.txt", "a.txt").Should().BeFalse();
+        DiffFileMenu.IsValidMove(_workingDir, "a.txt", " ").Should().BeFalse();
+    }
+
+    [Test]
     public void ResetQuestion_should_name_the_revision_and_report_new_files()
     {
         DiffMenuSelection selection = new(ObjectId.IndexId, ObjectId.WorkTreeId, [],
@@ -182,6 +202,124 @@ internal sealed class DiffFileMenuTests
     }
 
     [Test]
+    public void For_should_offer_a_file_of_the_file_tree_as_upstreams_file_tree_mode()
+    {
+        DiffFileMenuState state = State(TreeSelection(null, "src/a.txt"));
+
+        state.Stage.Should().BeFalse();
+        state.Unstage.Should().BeFalse();
+        state.ResetToSecond.Should().Be("Second: B " + Commit.ToShortString());
+        state.ResetToFirst.Should().BeNull("the file tree has no first revision");
+        state.OpenRevisionFile.Should().BeTrue();
+        state.DeleteFile.Should().BeFalse();
+        state.RenameMove.Should().BeTrue();
+        state.FileHistory.Should().BeTrue();
+        state.Blame.Should().BeTrue();
+        state.AddToIgnore.Should().BeFalse();
+    }
+
+    [Test]
+    public void For_should_offer_a_selected_folder_as_upstreams_selected_folder()
+    {
+        DiffFileMenuState state = State(TreeSelection("src", "src/a.txt", "src/b.txt"));
+
+        state.RenameMove.Should().BeTrue();
+        state.FileHistory.Should().BeTrue();
+        state.FilterFileInGrid.Should().BeTrue();
+        state.Blame.Should().BeFalse("upstream blames files only");
+        state.ShowInFileTree.Should().BeTrue();
+    }
+
+    [Test]
+    public void For_should_offer_no_history_for_the_root_folder_of_several_files()
+    {
+        DiffFileMenuState state = State(TreeSelection("", "a.txt", "src/b.txt"));
+
+        state.FileHistory.Should().BeFalse();
+        state.RenameMove.Should().BeTrue();
+    }
+
+    [Test]
+    public void For_should_offer_cherry_pick_changes_for_one_file_the_viewer_can_patch_as_upstream()
+    {
+        DiffMenuFile file = new("M", "a.txt", null, IsTracked: true);
+
+        DiffFileMenu.For(CommitSelection(file), _workingDir, Describe, supportLinePatching: true).CherryPick
+            .Should().BeTrue();
+        DiffFileMenu.For(CommitSelection(file), _workingDir, Describe).CherryPick.Should().BeFalse();
+        DiffFileMenu.For(CommitSelection(file, new DiffMenuFile("M", "b.txt", null, IsTracked: true)), _workingDir,
+            Describe, supportLinePatching: true).CherryPick.Should().BeFalse("upstream patches one file");
+        DiffFileMenu.For(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [file]), _workingDir, Describe,
+            supportLinePatching: true).CherryPick.Should().BeFalse("not the working directory's changes");
+    }
+
+    [Test]
+    public void For_should_offer_the_submodule_items_for_a_working_directory_submodule_as_upstream()
+    {
+        Directory.CreateDirectory(Path.Combine(_workingDir, "lib"));
+        DiffMenuFile submodule = new("M", "lib", null, IsTracked: true) { IsSubmodule = true };
+
+        DiffFileMenuState workTree = State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [submodule]));
+        DiffFileMenuState commit = State(CommitSelection(submodule));
+
+        (workTree.Submodule, workTree.OpenSubmodule).Should().Be((true, true));
+        (commit.Submodule, commit.OpenSubmodule).Should().Be((false, true), "upstream opens any submodule entry");
+        State(CommitSelection(new DiffMenuFile("M", "a.txt", null, IsTracked: true))).OpenSubmodule.Should().BeFalse();
+    }
+
+    [Test]
+    public void MoveTarget_should_be_the_one_file_or_the_selected_folder()
+    {
+        DiffFileMenu.MoveTarget(TreeSelection(null, "src/a.txt")).Should().Be(("src/a.txt", false));
+        DiffFileMenu.MoveTarget(TreeSelection("src", "src/a.txt")).Should().Be(("src", true));
+        DiffFileMenu.MoveTarget(TreeSelection(null, "a.txt", "b.txt")).Should().BeNull();
+        DiffFileMenu.MoveTarget(TreeSelection("", "a.txt", "b.txt"))
+            .Should().BeNull("a group node is upstream's root folder, whose empty name git cannot move");
+    }
+
+    [Test]
+    public void The_root_folder_of_a_group_node_should_act_as_its_files()
+    {
+        DiffMenuSelection group = TreeSelection("", "a.txt", "src/b.txt");
+
+        DiffFileMenu.CopiedPaths(group).Should().Equal("a.txt", "src/b.txt");
+        DiffFileMenu.GridPathFilter(group).Should().Be("\"a.txt\" \"src/b.txt\"");
+        DiffFileMenu.IgnorePatterns(group).Should().Equal("/a.txt", "/src/b.txt");
+    }
+
+    [Test]
+    public void CopiedPaths_and_IgnorePatterns_should_take_the_selected_folder_as_upstream()
+    {
+        DiffMenuSelection folder = TreeSelection("src/x", "src/x/a.txt", "src/x/b.txt");
+        DiffMenuSelection files = TreeSelection(null, "a.txt", "src/b.txt");
+
+        DiffFileMenu.CopiedPaths(folder).Should().Equal("src/x");
+        DiffFileMenu.CopiedPaths(files).Should().Equal("a.txt", "src/b.txt");
+        DiffFileMenu.IgnorePatterns(folder).Should().Equal("/src/x/");
+        DiffFileMenu.IgnorePatterns(files).Should().Equal("/a.txt", "/src/b.txt");
+        DiffFileMenu.IgnorePatterns(TreeSelection("", "a.txt")).Should().Equal("/a.txt");
+    }
+
+    [Test]
+    public void GridPathFilter_should_be_the_folder_or_the_files_quoted_as_upstreams()
+    {
+        DiffFileMenu.GridPathFilter(TreeSelection("src", "src/a.txt")).Should().Be("src");
+        DiffFileMenu.GridPathFilter(TreeSelection(null, "a.txt", "my file.txt")).Should().Be("\"a.txt\" \"my file.txt\"");
+    }
+
+    [Test]
+    public void FileHistoryTarget_should_be_the_file_from_its_revision_or_the_folder_from_the_checkout()
+    {
+        DiffFileMenu.FileHistoryTarget(TreeSelection(null, "a.txt"), "head")
+            .Should().Be(("a.txt", Commit.ToString()));
+        DiffFileMenu.FileHistoryTarget(TreeSelection("src", "src/a.txt"), "head").Should().Be(("src", "head"));
+        DiffFileMenu.FileHistoryTarget(TreeSelection("", "a.txt"), "head").Should().BeNull();
+        DiffFileMenu.FileHistoryTarget(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [],
+                [new DiffMenuFile("M", "a.txt", null, IsTracked: true)]), "head")
+            .Should().Be(("a.txt", (string?)null));
+    }
+
+    [Test]
     public void SaveSuggestion_should_be_the_file_or_the_folder_the_files_share()
     {
         DiffMenuSelection one = CommitSelection(new DiffMenuFile("M", "src/a.txt", null, IsTracked: true));
@@ -194,6 +332,11 @@ internal sealed class DiffFileMenuTests
 
     private static DiffMenuSelection CommitSelection(params DiffMenuFile[] files)
         => new(Parent, Commit, [Parent], files);
+
+    // The File tree tab's selection: the commit's files with no first revision.
+    private static DiffMenuSelection TreeSelection(string? folder, params string[] files)
+        => new(null, Commit, [Parent], [.. files.Select(file => new DiffMenuFile("", file, null, IsTracked: true))],
+            folder, TreeFiles: true);
 
     private DiffFileMenuState State(DiffMenuSelection selection)
         => DiffFileMenu.For(selection, _workingDir, Describe);

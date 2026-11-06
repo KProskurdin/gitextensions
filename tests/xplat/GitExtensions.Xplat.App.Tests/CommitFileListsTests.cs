@@ -51,15 +51,15 @@ internal sealed class CommitFileListsTests
         ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
         WaitUntil(() => unstaged.ItemCount == 2);
 
-        Find<TextBox>(commit, "UnstagedFilterBox").Text = @"\.MD$";
+        Find<FileFilterBox>(commit, "UnstagedFilterBox").Text = @"\.MD$";
 
         WaitUntil(() => Paths(unstaged).SequenceEqual(["notes.md"]));
         Find<TextBlock>(commit, "UnstagedNoFilesText").IsVisible.Should().BeFalse();
 
-        Find<TextBox>(commit, "UnstagedFilterBox").Text = "(";
+        Find<FileFilterBox>(commit, "UnstagedFilterBox").Text = "(";
 
         WaitUntil(() => Paths(unstaged).Count == 2);
-        ToolTip.GetTip(Find<TextBox>(commit, "UnstagedFilterBox")).Should().NotBeNull();
+        Find<FileFilterBox>(commit, "UnstagedFilterBox").Error.Should().NotBeNull();
         commit.Close();
     }
 
@@ -74,7 +74,7 @@ internal sealed class CommitFileListsTests
         ToolButton stageAll = Find<ToolButton>(commit, "StageAllButton");
         ToolTip.GetTip(stageAll).Should().Be("Stage all");
 
-        Find<TextBox>(commit, "UnstagedFilterBox").Text = @"\.md$";
+        Find<FileFilterBox>(commit, "UnstagedFilterBox").Text = @"\.md$";
 
         WaitUntil(() => Paths(unstaged).SequenceEqual(["notes.md"]));
         ToolTip.GetTip(stageAll).Should().Be("Stage filtered");
@@ -84,7 +84,7 @@ internal sealed class CommitFileListsTests
 
         WaitUntil(() => Paths(Find<ListBox>(commit, "StagedList")).SequenceEqual(["notes.md"]));
         WaitUntil(() => Paths(unstaged).SequenceEqual(["a.txt"]));
-        Find<TextBox>(commit, "UnstagedFilterBox").Text.Should().BeEmpty();
+        Find<FileFilterBox>(commit, "UnstagedFilterBox").Text.Should().BeEmpty();
         ToolTip.GetTip(stageAll).Should().Be("Stage all");
         commit.Close();
     }

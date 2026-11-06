@@ -176,8 +176,39 @@ public sealed class GitRepositoryService : IRepositoryService
             _ => ChangeKind.Modified,
         };
 
-        return new FileChange(status.Name, kind, Staged: status.Staged == StagedStatus.Index);
+        return new FileChange(status.Name, kind, Staged: status.Staged == StagedStatus.Index)
+        {
+            IsSkipWorktree = status.IsSkipWorktree,
+            IsAssumeUnchanged = status.IsAssumeUnchanged,
+            IsSubmodule = status.IsSubmodule,
+        };
     }
+
+    /// <summary>
+    ///  Upstream's <c>SkipWorktree_Click</c> and <c>AssumeUnchanged_Click</c>: git's skip-worktree or assume-unchanged flag
+    ///  set or cleared on the files that do not have it as asked (upstream's <c>SkipWorktreeFiles</c> and
+    ///  <c>AssumeUnchangedFiles</c>); false with git's output when git failed.
+    /// </summary>
+    public static Task<(bool Done, string Output)> SetIndexFlagAsync(string repositoryPath, IReadOnlyList<FileChange> files,
+        IndexFlag flag, bool value) =>
+        Task.Run(() =>
+        {
+            GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
+            List<GitItemStatus> statuses =
+            [
+                .. files.Select(file => new GitItemStatus(file.Path)
+                {
+                    IsTracked = true,
+                    IsSkipWorktree = file.IsSkipWorktree,
+                    IsAssumeUnchanged = file.IsAssumeUnchanged
+                })
+            ];
+            string output;
+            bool done = flag == IndexFlag.SkipWorktree
+                ? module.SkipWorktreeFiles(statuses, value, out output)
+                : module.AssumeUnchangedFiles(statuses, value, out output);
+            return (done, output);
+        });
 
     // Upstream's GitStatusMonitor reads the status with --no-optional-locks: a refresh, such as when the window is activated
     // again, then never holds the index lock while a command the user started needs it ("index.lock: File exists"). A

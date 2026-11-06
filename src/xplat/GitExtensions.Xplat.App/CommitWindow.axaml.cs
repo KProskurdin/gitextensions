@@ -135,8 +135,39 @@ public partial class CommitWindow : Window
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
         StagedList.SelectionChanged += (_, _) => OnFileSelected(StagedList, UnstagedList, staged: true);
         Diff.LineSelectionChanged += (_, _) => UpdateState();
+
+        // Upstream's FileViewer_TopScrollReached and FileViewer_BottomScrollReached: in the list of the shown file.
+        Diff.TopScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(_diffStaged ? StagedList : UnstagedList, next: false,
+                item => item is FileChange);
+            Diff.ScrollToBottom();
+        };
+        Diff.BottomScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(_diffStaged ? StagedList : UnstagedList, next: true,
+                item => item is FileChange);
+            Diff.ScrollToTop();
+        };
         Diff.LinesHotkey += (_, command) =>
         {
+            // Upstream's ResetSelectedLines, after its question; here for an edited file's lines.
+            if (command == DiffCommand.ResetLines)
+            {
+                if (Idle && Diff.SelectedRange() is { } range && _diffChange is { Kind: ChangeKind.Modified } change)
+                {
+                    Run(async () =>
+                    {
+                        if (await DiffLinePatching.ResetAsync(this, _actions, _repositoryPath, range, _diffStaged))
+                        {
+                            await Diff.ShowAsync(_repositoryPath, commitHash: null, change.Path, _diffStaged, change.Label);
+                        }
+                    });
+                }
+
+                return;
+            }
+
             bool unstage = command == DiffCommand.UnstageLines;
             if (unstage ? CanUnstageLines : CanStageLines)
             {

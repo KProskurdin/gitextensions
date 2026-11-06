@@ -98,6 +98,8 @@ internal static class Screenshot
 
     public const string ChooseCommitWindow = "choosecommit";
 
+    public const string SearchWindow = "search";
+
     public const string CherryPickWindow = "cherrypick";
 
     public const string FormatPatchWindow = "formatpatch";

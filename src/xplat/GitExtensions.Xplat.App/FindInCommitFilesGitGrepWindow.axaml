@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.FindInCommitFilesGitGrepWindow"
+        Title="Find in commit files using git-grep"
+        Width="460" SizeToContent="Height" CanResize="False" CanMinimize="False" CanMaximize="False"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormFindInCommitFilesGitGrep: the git-grep expression with the list's earlier searches, the options, match
+       case and whole word, and at the bottom the check box for the list's own box and Find, which keeps the window open. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            Padding="12,8">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+        <CheckBox x:Name="chkShowSearchBox" Grid.Column="1" Content="_Show 'Find in commit files using git-grep'" />
+        <Button x:Name="btnSearch" Grid.Column="2" Content="_Find" MinWidth="75" HorizontalContentAlignment="Center"
+                IsDefault="True" />
+      </Grid>
+    </Border>
+    <Grid Margin="9" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="6" RowSpacing="4">
+      <Label x:Name="label1" Content="Fi_nd what:" Target="cboFindInCommitFilesGitGrep" Padding="0" VerticalAlignment="Center" />
+      <ComboBox x:Name="cboFindInCommitFilesGitGrep" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch"
+                PlaceholderText="git-grep regular expression..." />
+      <Label x:Name="lblOptions" Grid.Row="1" Content="_Options:" Target="txtOptions" Padding="0" VerticalAlignment="Center" />
+      <TextBox x:Name="txtOptions" Grid.Row="1" Grid.Column="1" />
+      <CheckBox x:Name="chkMatchWholeWord" Grid.Row="2" Grid.Column="1" Content="Match _whole word" />
+      <CheckBox x:Name="chkMatchCase" Grid.Row="3" Grid.Column="1" Content="Match _case" />
+    </Grid>
+  </DockPanel>
+</Window>

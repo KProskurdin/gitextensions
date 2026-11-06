@@ -3,8 +3,10 @@ namespace GitExtensions.Xplat.Core.CommitHistory;
 /// <summary>
 ///  A folder or file in the tree of a commit. <see cref="Path"/> is repository-relative with '/' separators, as git writes it.
 /// </summary>
-public sealed class FileTreeNode
+public sealed class FileTreeNode : ObservableObject
 {
+    private bool _isExpanded;
+
     public FileTreeNode(string name, string path, bool isFolder)
     {
         Name = name;
@@ -18,7 +20,39 @@ public sealed class FileTreeNode
 
     public bool IsFolder { get; }
 
+    /// <summary>
+    ///  Upstream's image of the node in its file tree mode: the folder image, or for a file upstream's default file image
+    ///  (upstream shows the system's icon for the file's type, which the new shell does not have).
+    /// </summary>
+    public string Image => IsFolder ? "FolderClosed" : "File";
+
     public List<FileTreeNode> Children { get; } = [];
+
+    /// <summary>
+    ///  Whether the tree shows the folder's children.
+    /// </summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
+
+    /// <summary>
+    ///  This node and every node below it, depth first.
+    /// </summary>
+    public IEnumerable<FileTreeNode> Descendants()
+    {
+        yield return this;
+        foreach (FileTreeNode node in Children.SelectMany(child => child.Descendants()))
+        {
+            yield return node;
+        }
+    }
+
+    /// <summary>
+    ///  The files at or below this node, as upstream's <c>ItemTags</c> of a tree node.
+    /// </summary>
+    public IEnumerable<FileTreeNode> Files() => Descendants().Where(node => !node.IsFolder);
 }
 
 /// <summary>

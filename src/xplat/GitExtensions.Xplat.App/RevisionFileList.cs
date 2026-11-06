@@ -25,14 +25,15 @@ internal sealed class RevisionFileList<T>
 {
     // Upstream's texts.
     public const string NoChanges = "No changes";
-    private const string RegexErrorTitle = "Regex error";
+
 
     // Upstream's icons of the BASE groups (FileStatusDiffCalculator).
     private const string DiffAIcon = "DiffA";
     private const string DiffBIcon = "DiffB";
 
     private readonly ListBox _list;
-    private readonly TextBox _filter;
+    private readonly FileFilterBox _filter;
+    private readonly Func<T, string?>? _oldPath;
     private readonly ToolToggleButton _byPath;
     private readonly ToolToggleButton _byExtension;
     private readonly ToolToggleButton _byStatus;
@@ -52,10 +53,12 @@ internal sealed class RevisionFileList<T>
     /// <param name="treeButtons">Upstream's collapse and tree buttons, for the lists whose toolbar has them.</param>
     /// <param name="diffStatus">Upstream's <c>DiffStatus</c> of a file in a BASE group, for its image and the
     ///  <paramref name="statusButtons"/>' filter.</param>
-    public RevisionFileList(ListBox list, TextBox filter, ToolToggleButton byPath, ToolToggleButton byExtension,
+    /// <param name="oldPath">A file's path before a rename, which the filter also matches.</param>
+    public RevisionFileList(ListBox list, FileFilterBox filter, ToolToggleButton byPath, ToolToggleButton byExtension,
         ToolToggleButton byStatus, TextBlock noFiles, IAppPreferences preferences, Func<T, string> path,
         Func<T, string> status, Func<T, DiffGroup?>? groupOf = null, FileListTreeButtons? treeButtons = null,
-        Func<T, DiffBranchStatus>? diffStatus = null, DiffStatusButtons? statusButtons = null)
+        Func<T, DiffBranchStatus>? diffStatus = null, DiffStatusButtons? statusButtons = null,
+        Func<T, string?>? oldPath = null)
     {
         _groupOf = groupOf;
         _treeButtons = treeButtons;
@@ -63,6 +66,7 @@ internal sealed class RevisionFileList<T>
         _diffStatus = diffStatus ?? (_ => DiffBranchStatus.Unknown);
         _list = list;
         _filter = filter;
+        _oldPath = oldPath;
         _byPath = byPath;
         _byExtension = byExtension;
         _byStatus = byStatus;
@@ -75,7 +79,7 @@ internal sealed class RevisionFileList<T>
         statusButtons?.Wire(Show);
         _noFiles.Text = UpstreamTranslation.ByText(NoChanges);
         _noFiles.IsVisible = false;
-        _filter.TextChanged += (_, _) => Show();
+        _filter.FilterChanged += (_, _) => Show();
         _byPath.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
         _byExtension.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
         _byStatus.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
@@ -91,17 +95,48 @@ internal sealed class RevisionFileList<T>
 
         ShowGroupBy();
 
-        // Upstream's diff group nodes expand and collapse on a click.
+        // Upstream's diff group nodes expand and collapse on a click on their glyph or on a double-click.
         _list.AddHandler(InputElement.TappedEvent, (_, e) =>
         {
-            if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext is DiffGroupHeader
-                header)
+            if (IsExpander(e.Source) && HeaderOf(e.Source) is { } header)
             {
-                _expanded[header.Group] = !header.IsExpanded;
-                Show();
+                Toggle(header);
             }
         }, handledEventsToo: true);
+        _list.AddHandler(InputElement.DoubleTappedEvent, (_, e) =>
+        {
+            if (!IsExpander(e.Source) && HeaderOf(e.Source) is { } header)
+            {
+                Toggle(header);
+            }
+        }, handledEventsToo: true);
+        MenuTree = _tree.MenuTree((node, expanded) =>
+        {
+            if (node is DiffGroupHeader header)
+            {
+                _expanded[header.Group] = expanded;
+            }
+        });
+        return;
+
+        static DiffGroupHeader? HeaderOf(object? source)
+            => (source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext as DiffGroupHeader;
+
+        static bool IsExpander(object? source)
+            => (source as Visual)?.FindAncestorOfType<TextBlock>(includeSelf: true)?.Classes
+                .Contains(FileTreeRows<T>.ExpanderClass) == true;
+
+        void Toggle(DiffGroupHeader header)
+        {
+            _expanded[header.Group] = !header.IsExpanded;
+            Show();
+        }
     }
+
+    /// <summary>
+    ///  Upstream's tree items of the list's menu, for its folder, group and diff group nodes.
+    /// </summary>
+    public FileListTree MenuTree { get; }
 
     /// <summary>
     ///  The files to list; null while they are being read (the list is empty, without the NoFiles text).
@@ -122,8 +157,7 @@ internal sealed class RevisionFileList<T>
     private void Show()
     {
         HashSet<string> selected = [.. (_list.SelectedItems ?? Array.Empty<object>()).OfType<T>().Select(Key)];
-        Regex? filter = FileStatusList.Filter(_filter.Text, out string? error);
-        ToolTip.SetTip(_filter, error is null ? null : $"{RegexErrorTitle}: {error}");
+
         if (_files is null)
         {
             _list.ItemsSource = null;
@@ -157,10 +191,15 @@ internal sealed class RevisionFileList<T>
                 bool expanded = _expanded.TryGetValue(group, out bool state)
                     ? state
                     : group.ExpandedAt(index, groups.Count);
-                items.Add(new DiffGroupHeader(group, group.Header(shown.Count), expanded));
+                string keyPrefix = $"{group.Summary}\n";
+                items.Add(new DiffGroupHeader(group, group.Header(shown.Count), expanded)
+                {
+                    Files = [.. shown],
+                    NodeKeys = _tree.NodeKeys(shown, keyPrefix)
+                });
                 if (expanded)
                 {
-                    _tree.Add(items, shown, depth: 1, keyPrefix: $"{group.Summary}\n");
+                    _tree.Add(items, shown, depth: 1, keyPrefix);
                 }
 
                 fileCount += shown.Count;
@@ -169,22 +208,30 @@ internal sealed class RevisionFileList<T>
 
         _list.ItemsSource = items;
         _noFiles.IsVisible = fileCount == 0 && groups.Count < 2;
+        _filter.Shown(fileCount);
 
         // Upstream's UpdateToolbar shows the collapse button while the list has diff group nodes, and the diff status
         // filter while it has a BASE group (HasDiffABGroups).
         _treeButtons?.CollapseGroups?.IsVisible = groups.Count >= 2;
         _statusButtons?.SetVisible(groups.Any(group => group.Icon is DiffAIcon or DiffBIcon));
+        // Avalonia keeps a selected item that the new list has an equal one of (the files are records); adding that one
+        // too would list the file twice in SelectedItems.
         foreach (T file in items.OfType<T>().Where(file => selected.Contains(Key(file))))
         {
-            _list.SelectedItems?.Add(file);
+            if (_list.SelectedItems is { } selectedItems && !selectedItems.Contains(file))
+            {
+                selectedItems.Add(file);
+            }
         }
+
+        _tree.EndFill();
 
         // Upstream's IsFilterMatch: the diff status filter, then the regular expression.
         IReadOnlyList<T> Matching(IEnumerable<T> files)
             =>
             [
                 .. files.Where(file => (_statusButtons?.Shows(_diffStatus(file)) ?? true)
-                                       && (filter?.IsMatch(_path(file)) ?? true))
+                                       && _filter.IsMatch(_path(file), _oldPath?.Invoke(file)))
             ];
     }
 
@@ -211,6 +258,19 @@ internal sealed class RevisionFileList<T>
 
     // A file is the same across a reload by its group's summary and its path.
     private string Key(T file) => $"{_groupOf?.Invoke(file)?.Summary}\n{_path(file)}";
+
+    /// <summary>
+    ///  Upstream's <c>SelectedGitItem</c> setter, as "Find file" uses it: the first shown file with the path is the only one
+    ///  selected and scrolled into view.
+    /// </summary>
+    public void SelectPath(string path)
+    {
+        if (_list.Items.OfType<T>().FirstOrDefault(file => _path(file) == path) is { } file)
+        {
+            _list.SelectedItem = file;
+            _list.ScrollIntoView(file);
+        }
+    }
 
     private void SetGroupBy(DiffListSortType grouping)
     {
@@ -274,7 +334,7 @@ internal sealed record DiffStatusButtons(ToolToggleButton Unequal, ToolToggleBut
 ///  Upstream's group node of a <c>FileStatusList</c> with several diff groups: the group's icon, its count and summary,
 ///  and whether its files are shown below it.
 /// </summary>
-public sealed class DiffGroupHeader(DiffGroup group, string text, bool isExpanded)
+public sealed class DiffGroupHeader(DiffGroup group, string text, bool isExpanded) : IFileListNode
 {
     public DiffGroup Group { get; } = group;
 
@@ -284,4 +344,17 @@ public sealed class DiffGroupHeader(DiffGroup group, string text, bool isExpande
 
     // The tree's expander, as a glyph.
     public string Expander => IsExpanded ? "▾" : "▸";
+
+    // Upstream's group node is not tagged with a path: the menu takes it as the root folder.
+    string IFileListNode.Folder => "";
+
+    IReadOnlyList<object> IFileListNode.Files => Files;
+
+    internal IReadOnlyList<object> Files { get; init; } = [];
+
+    IReadOnlyList<string> IFileListNode.NodeKeys => NodeKeys;
+
+    internal IReadOnlyList<string> NodeKeys { get; init; } = [];
+
+    string IFileListNode.SelectionKey => "group\n" + Group.Summary;
 }

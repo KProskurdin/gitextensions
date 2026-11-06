@@ -33,6 +33,7 @@ public enum BrowseCommand
     Rebase,
     Stash,
     StashPop,
+    FindFileInSelectedCommit,
 }
 
 /// <summary>
@@ -99,6 +100,7 @@ public enum DiffCommand
     PreviousChange,
     StageLines,
     UnstageLines,
+    ResetLines,
     IgnoreAllWhitespace,
     IncreaseContext,
     DecreaseContext,
@@ -135,6 +137,17 @@ public enum BrowseDiffCommand
     GoToFirstParent,
     GoToLastParent,
     OpenWorkingDirectoryFile,
+    RenameMove,
+    FindFile,
+    FindInCommitFilesUsingGitGrepDiffTab,
+    FindInCommitFilesUsingGitGrepFileTreeTab,
+    OpenAsTempFile,
+    OpenAsTempFileWith,
+    OpenWithDifftoolFirstToLocal,
+    OpenWithDifftoolSelectedToLocal,
+    FilterFileInGrid,
+    OpenWorkingDirectoryFileWith,
+    AddFileToGitIgnore,
 }
 
 /// <summary>
@@ -297,6 +310,7 @@ public static class Hotkeys
             [BrowseCommand.Rebase] = (44, "Rebase"),
             [BrowseCommand.Stash] = (16, "Stash"),
             [BrowseCommand.StashPop] = (17, "StashPop"),
+            [BrowseCommand.FindFileInSelectedCommit] = (9, "FindFileInSelectedCommit"),
         },
         new Dictionary<BrowseCommand, WinFormsKeys>
         {
@@ -321,6 +335,7 @@ public static class Hotkeys
             [BrowseCommand.Rebase] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.E,
             [BrowseCommand.Stash] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.Up,
             [BrowseCommand.StashPop] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.Down,
+            [BrowseCommand.FindFileInSelectedCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.F,
         });
 
     /// <summary>
@@ -433,6 +448,7 @@ public static class Hotkeys
             [DiffCommand.PreviousChange] = (7, "PreviousChange"),
             [DiffCommand.StageLines] = (12, "StageLines"),
             [DiffCommand.UnstageLines] = (13, "UnstageLines"),
+            [DiffCommand.ResetLines] = (14, "ResetLines"),
             [DiffCommand.IgnoreAllWhitespace] = (15, "IgnoreAllWhitespace"),
             [DiffCommand.IncreaseContext] = (2, "IncreaseNumberOfVisibleLines"),
             [DiffCommand.DecreaseContext] = (3, "DecreaseNumberOfVisibleLines"),
@@ -444,6 +460,7 @@ public static class Hotkeys
             [DiffCommand.PreviousChange] = WinFormsKeys.Alt | WinFormsKeys.Up,
             [DiffCommand.StageLines] = WinFormsKeys.S,
             [DiffCommand.UnstageLines] = WinFormsKeys.U,
+            [DiffCommand.ResetLines] = WinFormsKeys.R,
             [DiffCommand.IgnoreAllWhitespace] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.W,
             [DiffCommand.IncreaseContext] = WinFormsKeys.Control | WinFormsKeys.Oemplus,
             [DiffCommand.DecreaseContext] = WinFormsKeys.Control | WinFormsKeys.OemMinus,
@@ -490,6 +507,17 @@ public static class Hotkeys
             [BrowseDiffCommand.GoToFirstParent] = (18, "GoToFirstParent"),
             [BrowseDiffCommand.GoToLastParent] = (19, "GoToLastParent"),
             [BrowseDiffCommand.OpenWorkingDirectoryFile] = (20, "OpenWorkingDirectoryFile"),
+            [BrowseDiffCommand.RenameMove] = (23, "RenameMove"),
+            [BrowseDiffCommand.FindFile] = (15, "FindFile"),
+            [BrowseDiffCommand.FindInCommitFilesUsingGitGrepDiffTab] = (17, "FindInCommitFilesUsingGitGrep_DiffTab"),
+            [BrowseDiffCommand.FindInCommitFilesUsingGitGrepFileTreeTab] = (24, "FindInCommitFilesUsingGitGrep_FileTreeTab"),
+            [BrowseDiffCommand.OpenAsTempFile] = (5, "OpenAsTempFile"),
+            [BrowseDiffCommand.OpenAsTempFileWith] = (6, "OpenAsTempFileWith"),
+            [BrowseDiffCommand.OpenWithDifftoolFirstToLocal] = (7, "OpenWithDifftoolFirstToLocal"),
+            [BrowseDiffCommand.OpenWithDifftoolSelectedToLocal] = (8, "OpenWithDifftoolSelectedToLocal"),
+            [BrowseDiffCommand.FilterFileInGrid] = (13, "FilterFileInGrid"),
+            [BrowseDiffCommand.OpenWorkingDirectoryFileWith] = (16, "OpenWorkingDirectoryFileWith"),
+            [BrowseDiffCommand.AddFileToGitIgnore] = (22, "AddFileToGitIgnore"),
         },
         new Dictionary<BrowseDiffCommand, WinFormsKeys>
         {
@@ -505,6 +533,15 @@ public static class Hotkeys
             [BrowseDiffCommand.GoToFirstParent] = WinFormsKeys.Control | WinFormsKeys.Left,
             [BrowseDiffCommand.GoToLastParent] = WinFormsKeys.Control | WinFormsKeys.Right,
             [BrowseDiffCommand.OpenWorkingDirectoryFile] = WinFormsKeys.Shift | WinFormsKeys.F4,
+            [BrowseDiffCommand.RenameMove] = WinFormsKeys.F2,
+            [BrowseDiffCommand.FindInCommitFilesUsingGitGrepDiffTab] =
+                WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.F,
+            [BrowseDiffCommand.OpenAsTempFile] = WinFormsKeys.Control | WinFormsKeys.F3,
+            [BrowseDiffCommand.OpenAsTempFileWith] = WinFormsKeys.Shift | WinFormsKeys.Control | WinFormsKeys.F3,
+            [BrowseDiffCommand.OpenWithDifftoolFirstToLocal] = WinFormsKeys.Alt | WinFormsKeys.F3,
+            [BrowseDiffCommand.OpenWithDifftoolSelectedToLocal] = WinFormsKeys.Shift | WinFormsKeys.Alt | WinFormsKeys.F3,
+            [BrowseDiffCommand.FilterFileInGrid] = WinFormsKeys.F,
+            [BrowseDiffCommand.OpenWorkingDirectoryFileWith] = WinFormsKeys.Shift | WinFormsKeys.Control | WinFormsKeys.F4,
         });
 
     /// <summary>

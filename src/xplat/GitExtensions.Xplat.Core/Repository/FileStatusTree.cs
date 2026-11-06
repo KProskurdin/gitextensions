@@ -24,9 +24,23 @@ public enum FileStatusTreeNodeKind
 ///  A node of upstream's <c>FileStatusList</c> tree: its text (a folder's or file's path below its parent folder), image,
 ///  a key that names it across a refresh, the file of a file node and the nodes below it.
 /// </summary>
+/// <param name="FolderPath">A folder node's whole path (upstream's <c>RelativePath</c> tag); "" for the other nodes.</param>
 public sealed record FileStatusTreeNode<T>(FileStatusTreeNodeKind Kind, string Text, string Image, string Key, T? File,
-    IReadOnlyList<FileStatusTreeNode<T>> Children)
-    where T : class;
+    IReadOnlyList<FileStatusTreeNode<T>> Children, string FolderPath = "")
+    where T : class
+{
+    /// <summary>
+    ///  The files at or below this node.
+    /// </summary>
+    public IEnumerable<T> Files()
+        => File is { } file ? [file] : Children.SelectMany(child => child.Files());
+
+    /// <summary>
+    ///  The keys of this node and of the folder and group nodes below it.
+    /// </summary>
+    public IEnumerable<string> NodeKeys()
+        => Kind == FileStatusTreeNodeKind.File ? [] : Children.SelectMany(child => child.NodeKeys()).Prepend(Key);
+}
 
 /// <summary>
 ///  Upstream's <c>FileStatusList</c> grouping (<c>GetNodes</c>' <c>CreateGroup</c>, <c>StatusSorter</c>): by path a
@@ -160,7 +174,7 @@ public static class FileStatusTree
                 }
 
                 nodes.Add(new FileStatusTreeNode<T>(FileStatusTreeNodeKind.Folder, Relative(shown.Path, parentPath), FolderImage,
-                    $"{keyPrefix}{shown.Path}/", null, Children(shown, shown.Path)));
+                    $"{keyPrefix}{shown.Path}/", null, Children(shown, shown.Path), shown.Path));
             }
 
             nodes.AddRange(folder.Files.OrderBy(path, StringComparer.InvariantCulture)

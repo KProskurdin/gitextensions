@@ -298,6 +298,7 @@
           <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
           <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
           <CheckBox x:Name="RememberSyntaxHighlightingCheck" Content="Remember the 'Show syntax highlighting' preference" />
+          <CheckBox x:Name="ContScrollToNextFileOnlyWithAltCheck" Content="Enable automatic continuous scroll (without ALT button)" />
           <CheckBox x:Name="ShowDiffForAllParentsCheck" Content="Show file differences for all parents in browse dialog" />
           <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools"
                     ToolTip.Tip="Show all configured difftools in a dropdown.&#10;The primary difftool can still be selected by clicking the main menu entry." />

@@ -51,7 +51,9 @@ internal sealed class PluginHostTests
         // A repository plugin is off on the dashboard, as upstream's UpdatePluginMenu turns it off.
         item.IsEnabled.Should().BeFalse();
         Open(window, _repo.Path);
-        item.IsEnabled.Should().BeTrue();
+
+        // The plugins move to the repository at the end of the opening, after the window is no longer busy.
+        WaitUntil(() => item.IsEnabled);
         item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
         _plugin.ExecutedIn.Should().ContainSingle().Which.Should().Be(_repo.Path);
@@ -64,6 +66,9 @@ internal sealed class PluginHostTests
         window.Show();
         WaitForPluginItem(window);
         Open(window, _repo.Path);
+
+        // The plugins move to the repository at the end of the opening, after the window is no longer busy.
+        WaitUntil(() => _plugin.Calls.Contains($"register {_repo.Path}"));
         Click(window, "CloseRepositoryMenuItem");
         window.Close();
 

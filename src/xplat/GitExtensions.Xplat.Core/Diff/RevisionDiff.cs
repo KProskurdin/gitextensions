@@ -16,6 +16,17 @@ public sealed record RevisionDiffFile(string Status, string Path, string? OldPat
     /// </summary>
     public DiffBranchStatus DiffStatus { get; init; }
 
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.GrepString</c>: the git-grep argument a file of the "grep" group matched; null for a
+    ///  changed file.
+    /// </summary>
+    public string? GrepString { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsSubmodule</c>.
+    /// </summary>
+    public bool IsSubmodule { get; init; }
+
     public string Display => OldPath is null ? $"{Status} {Path}" : $"{Status} {OldPath} -> {Path}";
 
     /// <summary>

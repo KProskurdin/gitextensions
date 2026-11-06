@@ -87,6 +87,21 @@ public enum ChangeKind
 
 public sealed record FileChange(string Path, ChangeKind Kind, bool Staged)
 {
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsSkipWorktree</c>: git's skip-worktree flag of the file in the index.
+    /// </summary>
+    public bool IsSkipWorktree { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsAssumeUnchanged</c>: git's assume-unchanged flag of the file in the index.
+    /// </summary>
+    public bool IsAssumeUnchanged { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsSubmodule</c>: the entry is a submodule.
+    /// </summary>
+    public bool IsSubmodule { get; init; }
+
     public string Display => $"{Kind}{(Staged ? " (staged)" : "")}: {Path}";
 
     /// <summary>

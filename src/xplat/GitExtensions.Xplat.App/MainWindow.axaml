@@ -750,6 +750,23 @@
                     <local:ToolToggleButton x:Name="DiffFilesSameChangeButton" Text="=" Foreground="#00A800" IsChecked="True"
                                             IsVisible="False" ToolTip.Tip="Show files changed equally" />
                     <Rectangle Classes="toolSeparator" />
+                    <!-- Upstream's btnFindInFilesGitGrep (GitGrepBox): toggles the git-grep box or window; its menu has the
+                         git-grep settings and what the button shows. -->
+                    <local:ToolSplitButton x:Name="DiffFilesGitGrepButton" Image="ViewFile"
+                                           ToolTip.Tip="Toggle 'Find in commit files using git-grep'">
+                      <local:ToolSplitButton.Flyout>
+                        <MenuFlyout>
+                          <MenuItem x:Name="DiffFilesFindUsingMatchCaseMenuItem" Header="Match _case" ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesFindUsingWholeWordMenuItem" Header="Match _whole word" ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesFindUsingOptionsMenuItem" Header="_Options" />
+                          <Separator />
+                          <MenuItem x:Name="DiffFilesFindUsingDialogMenuItem" Header="Using _dialog" ToggleType="Radio" />
+                          <MenuItem x:Name="DiffFilesFindUsingInputBoxMenuItem" Header="Using _input box" ToggleType="Radio" />
+                          <MenuItem x:Name="DiffFilesFindUsingBothMenuItem" Header="Using _both" ToggleType="Radio" />
+                        </MenuFlyout>
+                      </local:ToolSplitButton.Flyout>
+                    </local:ToolSplitButton>
+                    <Rectangle Classes="toolSeparator" />
                     <!-- Upstream FileStatusList's settings menu as RevisionDiffControl binds it (canAutoRefresh). -->
                     <local:ToolDropDownButton x:Name="DiffFilesSettingsButton" Image="Settings" ToolTip.Tip="Settings">
                       <local:ToolDropDownButton.Flyout>
@@ -770,8 +787,13 @@
                       </local:ToolDropDownButton.Flyout>
                     </local:ToolDropDownButton>
                   </StackPanel>
-                  <TextBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..."
-                           Margin="0,0,0,2" />
+                  <!-- Upstream's cboFindInCommitFilesGitGrep with its DeleteSearchButton, above the filter. -->
+                  <DockPanel DockPanel.Dock="Top" Margin="0,0,0,2">
+                    <local:ToolButton x:Name="DiffFilesGitGrepDeleteButton" DockPanel.Dock="Right" Image="DeleteText"
+                                      IsVisible="False" />
+                    <ComboBox x:Name="DiffFilesGitGrepBox" IsEditable="True" HorizontalAlignment="Stretch" IsVisible="False" />
+                  </DockPanel>
+                  <local:FileFilterBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
                   <Panel>
                   <ListBox x:Name="CommitFilesList" SelectionMode="Multiple">
                     <!-- Upstream FileStatusList's item menu (ItemContextMenu, "DiffContextMenu") in its designer's order, with
@@ -795,7 +817,7 @@
                            a click expands or collapses it. -->
                       <DataTemplate x:DataType="local:FileTreeRow">
                         <DockPanel Background="Transparent" Margin="{Binding Indent}">
-                          <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                          <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
                           <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                                  Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
                           <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
@@ -805,7 +827,7 @@
                            summary; a click expands or collapses it. -->
                       <DataTemplate x:DataType="local:DiffGroupHeader">
                         <DockPanel Background="Transparent" ToolTip.Tip="{Binding Text}">
-                          <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                          <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
                           <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                                  Source="{Binding Group.Icon, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
                           <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
@@ -818,7 +840,7 @@
                   </Panel>
                 </DockPanel>
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-                <local:DiffView x:Name="CommitDiff" Grid.Column="2" />
+                <local:DiffView x:Name="CommitDiff" Grid.Column="2" EnableAutomaticContinuousScroll="False" />
               </Grid>
             </TabItem>
             <TabItem x:Name="FileTreeTab">
@@ -829,15 +851,41 @@
                 </StackPanel>
               </TabItem.Header>
               <Grid x:Name="FileTreeSplitGrid" ColumnDefinitions="300,5,*">
-                <TreeView x:Name="FileTreeView" Grid.Column="0">
+                <!-- Upstream's File tree tab is a RevisionDiffControl in file tree mode: its FileStatusList selects several
+                     nodes and has the file list menu (MainWindow.FileTreeMenu.cs), and Blame shows in place of the file. -->
+                <DockPanel Grid.Column="0">
+                <!-- Upstream's cboFindInCommitFilesGitGrep of the File tree tab's list (its toolbar is hidden in file
+                     tree mode): with a search the tree lists the files git-grep matched. -->
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,2">
+                  <local:ToolButton x:Name="FileTreeGitGrepDeleteButton" DockPanel.Dock="Right" Image="DeleteText"
+                                    IsVisible="False" />
+                  <ComboBox x:Name="FileTreeGitGrepBox" IsEditable="True" HorizontalAlignment="Stretch" IsVisible="False" />
+                </DockPanel>
+                <!-- Upstream's filter box of the list, which file tree mode keeps. -->
+                <local:FileFilterBox x:Name="FileTreeFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
+                <TreeView x:Name="FileTreeView" SelectionMode="Multiple">
+                  <TreeView.ContextMenu>
+                    <local:FileStatusListMenu x:Name="FileTreeContextMenu" />
+                  </TreeView.ContextMenu>
+                  <TreeView.Styles>
+                    <Style Selector="TreeViewItem" x:DataType="core:FileTreeNode">
+                      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    </Style>
+                  </TreeView.Styles>
                   <TreeView.ItemTemplate>
                     <TreeDataTemplate x:DataType="core:FileTreeNode" ItemsSource="{Binding Children}">
-                      <TextBlock Text="{Binding Name}" />
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Image Width="16" Height="16"
+                               Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                      </StackPanel>
                     </TreeDataTemplate>
                   </TreeView.ItemTemplate>
                 </TreeView>
+                </DockPanel>
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-                <local:DiffView x:Name="FileContentView" Grid.Column="2" />
+                <local:DiffView x:Name="FileContentView" Grid.Column="2" EnableAutomaticContinuousScroll="False" />
+                <local:BlameView x:Name="FileTreeBlame" Grid.Column="2" IsVisible="False" />
               </Grid>
             </TabItem>
             <!-- Upstream's GPG tab (RevisionGpgInfoControl), shown for real commits while ShowGpgInformation is on: the

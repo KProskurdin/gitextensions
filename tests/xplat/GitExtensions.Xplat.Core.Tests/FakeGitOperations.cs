@@ -27,6 +27,13 @@ internal sealed class FakeGitOperations : IGitOperations
         bool unstage, bool isNewFile = false) => Record("StageLines",
         $"{repositoryPath} {selectionStart}+{selectionLength} unstage={unstage} new={isNewFile}");
 
+    public Task ResetLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
+        bool staged) => Record("ResetLines", $"{repositoryPath} {selectionStart}+{selectionLength} staged={staged}");
+
+    public Task ApplyLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
+        bool reverse, bool isNewFile = false, bool isRenamed = false) => Record("ApplyLines",
+        $"{repositoryPath} {selectionStart}+{selectionLength} reverse={reverse} new={isNewFile} renamed={isRenamed}");
+
     public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
         CommitExtras? extras = null) =>
         Record("Commit", $"{repositoryPath} {message} amend={amend} signOff={signOff} author={author}"

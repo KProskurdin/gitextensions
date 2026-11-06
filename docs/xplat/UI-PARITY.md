@@ -573,6 +573,45 @@ toolbar icons with upstream's `ToolTipText`.
   search, and the build status column with the Build Report tab. `UseBrowseForFileHistory` is not ported (decided with
   the user: the file history window always opens), so FormFileHistory is `ported`. See FormFileHistory and FilterToolBar
   in `PORTING-MAP.md`.
+- 2026-11-06, the file list menu (Diff tab, FormDiff, FormStash): "Diff the selected files", "Remember Second / First for
+  diff" and "Diff with" the remembered file, the custom difftool list under the difftool items, and "Rename / move" with
+  its F2 hotkey in the Diff tab. Fixed: a refilled list could hold the selected file twice, so the menu counted two
+  files. The app tests build again: `DashboardDropTests` (from the 2026-11-04 commit) implemented Avalonia's
+  `IStorageFolder`, which Avalonia 12 forbids, and now uses Avalonia's own folder item. See RevisionDiffControl in
+  `PORTING-MAP.md`.
+- 2026-11-06, upstream's "Find file" search window: the file list menu's "Find file..." and the browse window's
+  Ctrl+Shift+F (find a file of the selected commit in the File tree tab). See SearchWindow / Find file in
+  `PORTING-MAP.md`. The File tree tab still lacked upstream's file list menu then (added the same day, below).
+- 2026-11-06, the File tree tab's item menu: upstream's file list menu in file tree mode (the commit's files, a selected
+  folder renamed, copied, ignored, filtered or shown in history as upstream's `SelectedFolder`), the tree items (select
+  all, collapse and expand all, collapse root folders), several selected nodes, the BrowseDiff hotkeys, and Blame in place
+  of the file's content. The Diff tab's Blame now opens the file there, as upstream's. See RevisionDiffControl in
+  `PORTING-MAP.md`. Left: git-grep, file images and the folder summary in the tree; tree items and folder selection in the
+  Diff tab's tree.
+- 2026-11-06, folder selection in the file lists' trees (the Diff tab, FormDiff, FormStash): a click selects a folder or
+  group node, its glyph or a double-click toggles it, as upstream's tree; a selected node stands for its files in the menu
+  (upstream's `SelectedFolder`), and the menus have the tree items. See RevisionDiffControl in `PORTING-MAP.md`.
+- 2026-11-06, "Find in commit files using git-grep" in the Diff tab: upstream's box, toolbar button and window, the
+  "grep" group of matching files and their matches in the viewer, the menu items and the Ctrl+Shift+F hotkey. See
+  RevisionDiffControl in `PORTING-MAP.md`. The File tree tab's git-grep was added the same day: its box and the menu's
+  items, the tree listing only the matching files, and their matches in the viewer. Also the File tree tab's filter box.
+- 2026-11-06, upstream's file filter combo box in every file list (`FileFilterBox`): the 250 ms delay, the sample and
+  recent filters, the delete button, the colors, working directory paths cut and old names matched. See RevisionDiffControl
+  in `PORTING-MAP.md`.
+- 2026-11-06, a selected folder's description in the Diff and File tree tabs' viewer, and the File tree tab's folder and
+  file images.
+- 2026-11-06, upstream's line patching: "Reset selected line(s)" (R) in the commit window, and in the Diff tab, FormDiff
+  and FormStash the viewer's stage, unstage and reset of lines, a commit's lines applied or undone, and the file menu's
+  "Cherry pick changes". See RevisionDiffControl in `PORTING-MAP.md`.
+- 2026-11-06, upstream's continuous scroll in the commit window, FormDiff and FormStash (Alt + wheel past a diff's end, or
+  always with the setting, which the viewer's menu and the Diff viewer settings page have). See FileViewer in
+  `PORTING-MAP.md`. Also: the browse window stays busy until opening a repository has finished (recent list, setting,
+  plugins), which two plugin tests and a settings test raced.
+- 2026-11-06, the commit window's "Skip worktree" and "Assume unchanged" items. See FormCommit in `PORTING-MAP.md`.
+- 2026-11-06, the Diff tab menu's submodule items (update, reset, stash, commit, open with Git Extensions), also in the
+  commit window. See RevisionDiffControl in `PORTING-MAP.md`.
+- 2026-11-06, the file menus' "Open ... with..." items (Windows' "Open with" dialog, on Windows only) and the remaining
+  BrowseDiff hotkeys of the menu (open revision, difftool to the working directory, filter in grid, add to .gitignore).
 
 ## Risks
 

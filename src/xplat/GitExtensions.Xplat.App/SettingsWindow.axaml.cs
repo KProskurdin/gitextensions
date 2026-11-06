@@ -138,6 +138,7 @@ public partial class SettingsWindow : Window
         RememberContextLinesCheck.IsChecked = preferences.RememberNumberOfContextLines;
         RememberNonPrintingCheck.IsChecked = preferences.RememberShowNonPrintingCharsPreference;
         RememberSyntaxHighlightingCheck.IsChecked = preferences.RememberShowSyntaxHighlightingInDiff;
+        ContScrollToNextFileOnlyWithAltCheck.IsChecked = preferences.AutomaticContinuousScroll;
         ShowAllDiffToolsCheck.IsChecked = preferences.ShowAvailableDiffTools;
 
         // Upstream's DiffViewerSettingsPage sets its runtime tooltip.
@@ -1156,6 +1157,7 @@ public partial class SettingsWindow : Window
         _preferences.RememberNumberOfContextLines = RememberContextLinesCheck.IsChecked == true;
         _preferences.RememberShowNonPrintingCharsPreference = RememberNonPrintingCheck.IsChecked == true;
         _preferences.RememberShowSyntaxHighlightingInDiff = RememberSyntaxHighlightingCheck.IsChecked == true;
+        _preferences.AutomaticContinuousScroll = ContScrollToNextFileOnlyWithAltCheck.IsChecked == true;
         _preferences.ShowAvailableDiffTools = ShowAllDiffToolsCheck.IsChecked == true;
         _preferences.ShowDiffForAllParents = ShowDiffForAllParentsCheck.IsChecked == true;
         _preferences.DiffVerticalRulerPosition = (int)(VerticalRulerBox.Value ?? 0);

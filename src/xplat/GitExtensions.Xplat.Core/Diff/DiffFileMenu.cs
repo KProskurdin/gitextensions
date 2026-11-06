@@ -1,6 +1,7 @@
 using System.Text;
 using GitCommands;
 using GitCommands.Git;
+using GitCommands.Git.Extended;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Repository;
@@ -20,7 +21,13 @@ public sealed record DiffMenuFile(
     string Path,
     string? OldPath,
     bool IsTracked,
-    DiffMenuRevisions? Revisions = null);
+    DiffMenuRevisions? Revisions = null)
+{
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsSubmodule</c>.
+    /// </summary>
+    public bool IsSubmodule { get; init; }
+}
 
 /// <summary>
 ///  The two revisions one file is shown between when a list shows its files between different ones, as upstream's
@@ -33,11 +40,17 @@ public sealed record DiffMenuRevisions(ObjectId? First, ObjectId Second, IReadOn
 ///  (A, the parent; <see langword="null"/> before the first commit) and <see cref="Second"/> (B, the selected commit, or
 ///  the working directory's or the index's artificial id).
 /// </summary>
+/// <param name="Folder">Upstream's <c>SelectedFolder</c>: the path of the one folder selected in a tree ("" for its root),
+/// whose files are <paramref name="Files"/>; <see langword="null"/> when files are selected.</param>
+/// <param name="TreeFiles">Whether the files are a commit's files as upstream's File tree tab lists them
+/// (<c>GetTreeFiles</c>: tracked, with no change and no staged state), not changes between two revisions.</param>
 public sealed record DiffMenuSelection(
     ObjectId? First,
     ObjectId Second,
     IReadOnlyList<ObjectId> SecondParents,
-    IReadOnlyList<DiffMenuFile> Files);
+    IReadOnlyList<DiffMenuFile> Files,
+    string? Folder = null,
+    bool TreeFiles = false);
 
 /// <summary>
 ///  Which items of upstream's file list menu (<c>FileStatusList.UpdateStatusOfMenuItems</c>,
@@ -48,9 +61,12 @@ public sealed record DiffMenuSelection(
 public sealed record DiffFileMenuState(
     bool Stage,
     bool Unstage,
+    bool Submodule,
+    bool OpenSubmodule,
     bool ResetFile,
     string? ResetToSecond,
     string? ResetToFirst,
+    bool CherryPick,
     bool OpenWithDifftool,
     string? DiffSecondCaption,
     string? DiffFirstCaption,
@@ -64,6 +80,7 @@ public sealed record DiffFileMenuState(
     bool OpenRevisionFileEnabled,
     bool EditWorkingFile,
     bool SaveAs,
+    bool RenameMove,
     bool DeleteFile,
     string DeleteFileText,
     bool CopyPaths,
@@ -95,12 +112,15 @@ public static class DiffFileMenu
     /// <param name="workingDir">The repository's working directory, which the paths are relative to.</param>
     /// <param name="describe">Upstream's <c>DescribeRevision</c>: how the menu names a revision.</param>
     /// <param name="isBareRepository">Whether the repository has no working directory.</param>
+    /// <param name="supportLinePatching">Upstream's <c>getSupportLinePatching</c>: whether the viewer can patch the shown
+    /// file's lines, for "Cherry pick changes".</param>
     public static DiffFileMenuState For(DiffMenuSelection selection, string workingDir, Func<ObjectId, string> describe,
-        bool isBareRepository = false)
+        bool isBareRepository = false, bool supportLinePatching = false)
     {
         FullPathResolver resolver = new(() => workingDir);
         FileStatusItem[] items = Items(selection);
-        ContextMenuSelectionInfo info = SelectionInfo(items, isBareRepository, resolver);
+        ContextMenuSelectionInfo info = SelectionInfo(items, selection.Folder, isBareRepository, resolver,
+            supportPatches: items.Length == 1 && supportLinePatching);
         RevisionDiffController rules = new(() => null!, resolver);
         FileStatusListContextMenuController diffTools = new();
         ContextMenuDiffToolInfo diffToolInfo = DiffToolInfo(selection, items, resolver);
@@ -120,11 +140,14 @@ public static class DiffFileMenu
         bool canOpenFile = info.SelectedGitItemCount == 1 && info.AllFilesExist;
         bool showToLocal = !diffTools.ShouldHideToLocal(diffToolInfo);
         return new DiffFileMenuState(
+            Submodule: rules.ShouldShowSubmoduleMenus(info),
+            OpenSubmodule: items is [{ Item.IsSubmodule: true }],
             Stage: rules.ShouldShowMenuStage(info),
             Unstage: rules.ShouldShowMenuUnstage(info),
             ResetFile: (canResetToSecond || canResetToFirst) && rules.ShouldShowResetFileMenus(info),
             ResetToSecond: canResetToSecond ? SelectedRevisionText + describe(second) : null,
             ResetToFirst: canResetToFirst ? FirstRevisionText + describe(first) : null,
+            CherryPick: rules.ShouldShowMenuCherryPick(info),
             OpenWithDifftool: rules.ShouldShowDifftoolMenus(info),
             DiffSecondCaption: items.Length > 0
                 ? SelectedRevisionText + DescribeRevisions([.. items.SecondIds()], describe)
@@ -143,6 +166,7 @@ public static class DiffFileMenu
             OpenRevisionFileEnabled: rules.ShouldShowMenuShowInFileTree(info),
             EditWorkingFile: rules.ShouldShowMenuEditWorkingDirectoryFile(info),
             SaveAs: rules.ShouldShowMenuSaveAs(info),
+            RenameMove: rules.ShouldShowMenuMove(info),
             DeleteFile: rules.ShouldShowMenuDeleteFile(info),
             DeleteFileText: ResourceManager.TranslatedStrings.GetDeleteFile(info.SelectedGitItemCount),
             CopyPaths: rules.ShouldShowMenuCopyFileName(info),
@@ -294,6 +318,78 @@ public static class DiffFileMenu
         });
 
     /// <summary>
+    ///  Upstream's <c>Move_Click</c> checks a new name with <c>MoveCommand.Validate</c> before it runs git: not empty and not
+    ///  the old name.
+    /// </summary>
+    public static bool IsValidMove(string workingDir, string oldName, string newName, bool isFolder = false)
+        => new MoveCommand(GitModules.Open(workingDir).GitExecutable)
+            .Validate(new MoveCommand.Arguments(isFolder, oldName, newName));
+
+    /// <summary>
+    ///  Upstream's <c>Move_Click</c>: <c>git mv</c> of a file or folder to <paramref name="newName"/> (upstream's
+    ///  <c>MoveCommand</c>, which first makes the new name's folder). Throws with git's error when git fails.
+    /// </summary>
+    public static Task MoveAsync(string workingDir, string oldName, string newName, bool isFolder = false)
+        => Task.Run(() => new MoveCommand(GitModules.Open(workingDir).GitExecutable)
+            .Execute(new MoveCommand.Arguments(isFolder, oldName, newName)));
+
+    /// <summary>
+    ///  What "Rename / move" renames (upstream's <c>Move_Click</c>): the one selected file, else the selected folder; null
+    ///  for none and for the root folder (a group node), whose empty name upstream's <c>MoveCommand</c> never takes.
+    /// </summary>
+    public static (string Path, bool IsFolder)? MoveTarget(DiffMenuSelection selection)
+        => selection.Files is [{ } file] && selection.Folder is null ? (file.Path, false)
+            : selection.Folder is { Length: > 0 } folder ? (folder, true)
+            : null;
+
+    /// <summary>
+    ///  The paths "Copy path(s)" copies (upstream's <c>getSelectedFilePaths</c>): the selected folder, else the files (also
+    ///  for the root folder, whose path upstream copies as an empty text).
+    /// </summary>
+    public static IReadOnlyList<string> CopiedPaths(DiffMenuSelection selection)
+        => selection.Folder is { Length: > 0 } folder ? [folder] : [.. selection.Files.Select(file => file.Path)];
+
+    /// <summary>
+    ///  The patterns "Add file to .gitignore" proposes (upstream's <c>AddFileToIgnoreFile</c>): the selected folder (not the
+    ///  root) as "/folder/", else each file anchored at the root.
+    /// </summary>
+    public static IReadOnlyList<string> IgnorePatterns(DiffMenuSelection selection)
+        => selection.Folder is { Length: > 0 } folder
+            ? [$"/{folder}/"]
+            : [.. selection.Files.Select(file => GitIgnoreFile.PatternFor(file.Path))];
+
+    /// <summary>
+    ///  The grid's path filter of "Filter file in grid" (upstream RevisionDiffControl's <c>FilterFileInGrid</c>): the
+    ///  selected folder, else the selected files, each in quotes (also for the root folder, whose empty path would clear
+    ///  upstream's filter).
+    /// </summary>
+    public static string GridPathFilter(DiffMenuSelection selection)
+        => selection.Folder is { Length: > 0 } folder
+            ? folder
+            : string.Join(" ", selection.Files.Select(file => file.Path.ToPosixPath().QuoteNE()));
+
+    /// <summary>
+    ///  The file and revision of "File history" and "Blame" (upstream's <c>StartFileHistoryDialog</c>): a selected folder
+    ///  (not the root) from the current checkout (<paramref name="currentCheckout"/>), else the first selected tracked file
+    ///  from its second revision (null for the working directory and the index); null for neither.
+    /// </summary>
+    public static (string Path, string? Revision)? FileHistoryTarget(DiffMenuSelection selection, string? currentCheckout)
+    {
+        if (selection.Folder is { } folder)
+        {
+            return folder.Length == 0 ? null : (folder, currentCheckout);
+        }
+
+        if (selection.Files is not [{ IsTracked: true } file, ..])
+        {
+            return null;
+        }
+
+        ObjectId second = RevisionsOf(selection, file).Second;
+        return (file.Path, second.IsArtificial ? null : second.ToString());
+    }
+
+    /// <summary>
     ///  The revisions <paramref name="file"/> is shown between: its own, else the selection's.
     /// </summary>
     public static DiffMenuRevisions RevisionsOf(DiffMenuSelection selection, DiffMenuFile file)
@@ -318,7 +414,7 @@ public static class DiffFileMenu
     // The selection as upstream's FileStatusItems: the files' git status as FileStatusList reads it from git. Files shown
     // between the same revisions share the revisions' objects, as FileStatusList's do (upstream tells revisions apart by
     // reference).
-    private static FileStatusItem[] Items(DiffMenuSelection selection)
+    internal static FileStatusItem[] Items(DiffMenuSelection selection)
     {
         Dictionary<(ObjectId? First, ObjectId Second), (GitRevision? First, GitRevision Second)> revisions = [];
         return [.. selection.Files.Select(Item)];
@@ -333,6 +429,11 @@ public static class DiffFileMenu
                 revisions[(pair.First, pair.Second)] = shared;
             }
 
+            if (selection.TreeFiles)
+            {
+                return new FileStatusItem(shared.First, shared.Second, TreeStatusOf(file));
+            }
+
             StagedStatus staged = pair.Second == ObjectId.WorkTreeId ? StagedStatus.WorkTree
                 : pair.Second == ObjectId.IndexId ? StagedStatus.Index
                 : StagedStatus.None;
@@ -340,13 +441,25 @@ public static class DiffFileMenu
         }
     }
 
+    // Upstream's GetTreeFiles: a file of a commit's tree is tracked, with nothing changed and no staged state.
+    private static GitItemStatus TreeStatusOf(DiffMenuFile file)
+        => new(file.Path)
+        {
+            IsTracked = true,
+            IsNew = false,
+            IsChanged = false,
+            IsDeleted = false,
+            Staged = StagedStatus.Unset
+        };
+
     private static GitItemStatus StatusOf(DiffMenuFile file, StagedStatus staged)
     {
         GitItemStatus status = new(file.Path)
         {
             OldName = file.OldPath,
             Staged = staged,
-            IsTracked = file.IsTracked
+            IsTracked = file.IsTracked,
+            IsSubmodule = file.IsSubmodule
         };
         switch (file.Status.FirstOrDefault())
         {
@@ -374,9 +487,9 @@ public static class DiffFileMenu
         return status;
     }
 
-    // Upstream's GetSelectionInfo; line patching ("Cherry pick changes") is not offered in the Diff tab here.
-    private static ContextMenuSelectionInfo SelectionInfo(FileStatusItem[] items, bool isBareRepository,
-        IFullPathResolver resolver)
+    // Upstream's GetSelectionInfo; supportPatches is its one selected item with a viewer that can patch its lines.
+    private static ContextMenuSelectionInfo SelectionInfo(FileStatusItem[] items, string? folder, bool isBareRepository,
+        IFullPathResolver resolver, bool supportPatches)
     {
         GitRevision? selectedRevision = items.FirstOrDefault()?.SecondRevision;
         bool allFilesExist = items.Length != 0;
@@ -394,7 +507,7 @@ public static class DiffFileMenu
 
         return new ContextMenuSelectionInfo(
             SelectedRevision: selectedRevision,
-            SelectedFolder: null,
+            SelectedFolder: folder is null ? null : RelativePath.From(folder),
             IsDisplayOnlyDiff: false,
             IsStatusOnly: false,
             SelectedGitItemCount: items.Length,
@@ -405,7 +518,7 @@ public static class DiffFileMenu
             AllDirectoriesExist: allDirectoriesExist,
             AllFilesOrUntrackedDirectoriesExist: allFilesOrUntrackedDirectoriesExist,
             IsAnyTracked: items.Any(item => item.Item.IsTracked),
-            SupportPatches: false,
+            SupportPatches: supportPatches,
             IsDeleted: items.Any(item => item.Item.IsDeleted),
             IsAnySubmodule: items.Any(item => item.Item.IsSubmodule));
     }

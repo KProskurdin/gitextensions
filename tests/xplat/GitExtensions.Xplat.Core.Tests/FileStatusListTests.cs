@@ -39,6 +39,30 @@ internal sealed class FileStatusListTests
     }
 
     [Test]
+    public void FileMenuState_should_offer_the_index_flags_for_tracked_working_directory_files_as_upstream()
+    {
+        FileChange edited = new("a.txt", ChangeKind.Modified, Staged: false) { IsSkipWorktree = true };
+        FileChange untracked = new("b.txt", ChangeKind.Untracked, Staged: false);
+
+        FileMenuState state = FileMenuState.For([edited], staged: false, _ => true);
+        (state.IndexFlags, state.SkipWorktreeChecked, state.AssumeUnchangedChecked).Should().Be((true, true, false));
+        FileMenuState.For([untracked], staged: false, _ => true).IndexFlags.Should().BeFalse("git flags only tracked files");
+        FileMenuState.For([edited with { Staged = true }], staged: true, _ => true).IndexFlags
+            .Should().BeFalse("upstream offers them for the working directory's files");
+    }
+
+    [Test]
+    public void FolderDescription_should_count_and_list_the_files_below_the_folder_as_upstream()
+    {
+        string nl = Environment.NewLine;
+
+        FileStatusList.FolderDescription("src", ["src/a.cs", "src/sub/b.cs"])
+            .Should().Be(("src/", $"(2) src/{nl}{nl}a.cs{nl}sub/b.cs"));
+        FileStatusList.FolderDescription("", ["a.cs", "src/b.cs"])
+            .Should().Be(("/", $"(2) /{nl}{nl}a.cs{nl}src/b.cs"), "a group node is the root folder");
+    }
+
+    [Test]
     public void Filter_should_be_a_case_insensitive_regex_and_report_an_invalid_one()
     {
         FileStatusList.Filter("", out _).Should().BeNull();

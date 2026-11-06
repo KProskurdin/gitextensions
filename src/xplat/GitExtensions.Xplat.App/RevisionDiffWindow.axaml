@@ -82,8 +82,7 @@
           <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
           <local:ToolToggleButton x:Name="DiffFilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
         </StackPanel>
-        <TextBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..."
-                 Margin="0,0,0,2" />
+        <local:FileFilterBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
         <Panel>
           <ListBox x:Name="DiffFiles" SelectionMode="Multiple">
             <!-- Upstream FileStatusList's item menu as FormDiff has it: without BindContextMenu, so without "Show in File
@@ -105,7 +104,7 @@
               <!-- Upstream's folder node, or an extension or status group node. -->
               <DataTemplate x:DataType="local:FileTreeRow">
                 <DockPanel Background="Transparent" Margin="{Binding Indent}">
-                  <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                  <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
                   <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                          Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
                   <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />

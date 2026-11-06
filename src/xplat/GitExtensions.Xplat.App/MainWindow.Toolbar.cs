@@ -56,9 +56,10 @@ public partial class MainWindow
     private const double RevisionInfoWidth = 490 + 17;
 
     /// <summary>
-    ///  True while the window reads or writes the repository; the toolbar's repository actions wait for it.
+    ///  True while the window reads or writes the repository, also until opening a repository has finished (the recent
+    ///  list, the settings and the plugins follow the reading); the toolbar's repository actions wait for it.
     /// </summary>
-    public bool IsBusy => _commits.IsLoading || _repository.IsLoading || _actions.IsBusy;
+    public bool IsBusy => _commits.IsLoading || _repository.IsLoading || _actions.IsBusy || _openings > 0;
 
     /// <summary>
     ///  The open repository's path, or null on the dashboard.

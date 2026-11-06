@@ -84,11 +84,17 @@
               </local:ToolDropDownButton.Flyout>
             </local:ToolDropDownButton>
           </StackPanel>
-          <TextBox x:Name="UnstagedFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..." Margin="0,0,0,2" />
+          <local:FileFilterBox x:Name="UnstagedFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
           <Panel>
             <ListBox x:Name="UnstagedList" SelectionMode="Multiple">
               <ListBox.ContextMenu>
               <ContextMenu x:Name="UnstagedContextMenu">
+                <MenuItem x:Name="UnstagedOpenSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" />
+                <MenuItem x:Name="UnstagedUpdateSubmoduleMenuItem" Header="_Update submodule" Icon="{local:UpstreamIcon SubmodulesUpdate}" />
+                <MenuItem x:Name="UnstagedResetSubmoduleMenuItem" Header="R_eset submodule changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
+                <MenuItem x:Name="UnstagedStashSubmoduleMenuItem" Header="S_tash submodule changes" Icon="{local:UpstreamIcon Stash}" />
+                <MenuItem x:Name="UnstagedCommitSubmoduleMenuItem" Header="_Commit submodule changes" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}" />
+                <Separator x:Name="UnstagedSubmoduleSeparator" />
                 <MenuItem x:Name="UnstagedStageFileMenuItem" Header="_Stage selected" FontWeight="Bold" Icon="{local:UpstreamIcon Stage}" />
                 <MenuItem x:Name="UnstagedResetFileMenuItem" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
                   <MenuItem x:Name="UnstagedResetFileToFirstMenuItem" />
@@ -107,6 +113,8 @@
                 <Separator />
                 <MenuItem x:Name="UnstagedAddToGitIgnoreMenuItem" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
                 <MenuItem x:Name="UnstagedAddToGitInfoExcludeMenuItem" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
+                <MenuItem x:Name="UnstagedSkipWorktreeMenuItem" Header="S_kip worktree" ToggleType="CheckBox" />
+                <MenuItem x:Name="UnstagedAssumeUnchangedMenuItem" Header="Assu_me unchanged" ToggleType="CheckBox" />
                 <MenuItem x:Name="UnstagedStopTrackingMenuItem" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
                 <Separator />
                 <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
@@ -126,7 +134,7 @@
                 <!-- Upstream's folder node, or an extension or status group node. -->
                 <DataTemplate x:DataType="local:FileTreeRow">
                   <DockPanel Background="Transparent" Margin="{Binding Indent}">
-                    <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                    <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
                     <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                            Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
                     <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
@@ -195,11 +203,12 @@
               </local:ToolDropDownButton.Flyout>
             </local:ToolDropDownButton>
           </StackPanel>
-          <TextBox x:Name="StagedFilterBox" DockPanel.Dock="Top" PlaceholderText="Filter files using a regular expression..." Margin="0,0,0,2" />
+          <local:FileFilterBox x:Name="StagedFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
           <Panel>
             <ListBox x:Name="StagedList" SelectionMode="Multiple">
               <ListBox.ContextMenu>
               <ContextMenu x:Name="StagedContextMenu">
+                <MenuItem x:Name="StagedOpenSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" />
                 <MenuItem x:Name="StagedUnstageFileMenuItem" Header="_Unstage selected" FontWeight="Bold" Icon="{local:UpstreamIcon Unstage}" />
                 <MenuItem x:Name="StagedResetFileMenuItem" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
                   <MenuItem x:Name="StagedResetFileToFirstMenuItem" />
@@ -235,7 +244,7 @@
                 <!-- Upstream's folder node, or an extension or status group node. -->
                 <DataTemplate x:DataType="local:FileTreeRow">
                   <DockPanel Background="Transparent" Margin="{Binding Indent}">
-                    <TextBlock DockPanel.Dock="Left" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                    <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
                     <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
                            Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
                     <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />

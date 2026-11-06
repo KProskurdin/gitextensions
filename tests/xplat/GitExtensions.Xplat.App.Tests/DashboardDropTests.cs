@@ -81,7 +81,7 @@ internal sealed class DashboardDropTests
         Control list = window.FindControl<Control>("DashboardRepositories")!;
         Point point = list.TranslatePoint(new Point(list.Bounds.Width / 2, list.Bounds.Height / 2), window)!.Value;
         DataTransfer data = new();
-        data.Add(DataTransferItem.CreateFile(new FakeFolder(folder)));
+        data.Add(DataTransferItem.CreateFile(LocalFolder(folder)));
         window.DragDrop(point, RawDragEventType.DragEnter, data, DragDropEffects.Copy, RawInputModifiers.None);
         window.DragDrop(point, RawDragEventType.DragOver, data, DragDropEffects.Copy, RawInputModifiers.None);
         window.DragDrop(point, RawDragEventType.Drop, data, DragDropEffects.Copy, RawInputModifiers.None);
@@ -102,37 +102,15 @@ internal sealed class DashboardDropTests
         }
     }
 
-    // A folder as a file manager drops it: only its path is read.
-    private sealed class FakeFolder(string path) : IStorageFolder
+    // A folder as a file manager drops it. Avalonia's storage items cannot be implemented outside Avalonia and the headless
+    // platform has no storage provider, so this is Avalonia's own folder item for a local path.
+    private static IStorageFolder LocalFolder(string path)
     {
-        public string Name => System.IO.Path.GetFileName(path);
-
-        public Uri Path { get; } = new(path.TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar);
-
-        public bool CanBookmark => false;
-
-        public Task<StorageItemProperties> GetBasicPropertiesAsync() => Task.FromResult(new StorageItemProperties());
-
-        public Task<string?> SaveBookmarkAsync() => Task.FromResult<string?>(null);
-
-        public Task<IStorageFolder?> GetParentAsync() => Task.FromResult<IStorageFolder?>(null);
-
-        public Task DeleteAsync() => Task.CompletedTask;
-
-        public Task<IStorageItem?> MoveAsync(IStorageFolder destination) => Task.FromResult<IStorageItem?>(null);
-
-        public IAsyncEnumerable<IStorageItem> GetItemsAsync() => AsyncEnumerable.Empty<IStorageItem>();
-
-        public Task<IStorageFolder?> GetFolderAsync(string name) => Task.FromResult<IStorageFolder?>(null);
-
-        public Task<IStorageFile?> GetFileAsync(string name) => Task.FromResult<IStorageFile?>(null);
-
-        public Task<IStorageFile?> CreateFileAsync(string name) => Task.FromResult<IStorageFile?>(null);
-
-        public Task<IStorageFolder?> CreateFolderAsync(string name) => Task.FromResult<IStorageFolder?>(null);
-
-        public void Dispose()
-        {
-        }
+        Type type = typeof(IStorageFolder).Assembly.GetType("Avalonia.Platform.Storage.FileIO.BclStorageFolder")
+                    ?? throw new InvalidOperationException("Avalonia's BclStorageFolder is missing");
+        return (IStorageFolder)Activator.CreateInstance(type,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                                                    | System.Reflection.BindingFlags.NonPublic,
+            binder: null, [new DirectoryInfo(path)], culture: null)!;
     }
 }

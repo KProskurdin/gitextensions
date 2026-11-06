@@ -137,6 +137,23 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             () => _operations.StageLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, unstage,
                 isNewFile));
 
+    /// <summary>
+    ///  Undoes the lines selected in a working directory or index diff (see <see cref="IGitOperations.ResetLinesAsync"/>).
+    /// </summary>
+    public Task<bool> ResetLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
+        bool staged)
+        => RunAsync("Reset selected lines", repositoryPath,
+            () => _operations.ResetLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, staged));
+
+    /// <summary>
+    ///  Applies or undoes the lines selected in a commit's diff (see <see cref="IGitOperations.ApplyLinesAsync"/>).
+    /// </summary>
+    public Task<bool> ApplyLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
+        bool reverse, bool isNewFile = false, bool isRenamed = false)
+        => RunAsync(reverse ? "Reverted selected lines" : "Cherry picked selected lines", repositoryPath,
+            () => _operations.ApplyLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, reverse,
+                isNewFile, isRenamed));
+
     public Task<bool> CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
         CommitExtras? extras = null)
     {

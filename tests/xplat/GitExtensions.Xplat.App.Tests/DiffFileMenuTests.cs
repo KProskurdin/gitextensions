@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -37,6 +38,7 @@ internal sealed class DiffFileMenuTests
     [TearDown]
     public void TearDown()
     {
+        DiffFileRemember.Forget();
         TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = false;
         _repo.Dispose();
     }
@@ -57,6 +59,8 @@ internal sealed class DiffFileMenuTests
             .Be($"Second: B {Short("HEAD")}: {branch}", "upstream names a commit by its first branch");
         Item(files, "tsmiResetFileToParent").Header.Should().Be("First: A " + Short("HEAD~1") + ": add z");
         Item(files, "tsmiOpenRevisionFile").IsVisible.Should().BeTrue();
+        Item(files, "tsmiOpenRevisionFileWith").IsVisible.Should().Be(OperatingSystem.IsWindows(),
+            "upstream's \"Open with\" dialog is Windows'");
         Item(files, "tsmiSaveAs").IsVisible.Should().BeTrue();
         Item(files, "tsmiDeleteFile").IsVisible.Should().BeFalse();
         Item(files, "tsmiFileHistory").IsEnabled.Should().BeTrue();
@@ -80,6 +84,23 @@ internal sealed class DiffFileMenuTests
             .Be($"Are you sure you want to reset all selected files to First: A {Short("HEAD~1")}: add z?");
         Click(Find<Button>(question, "ResetButton"));
         WaitUntil(() => _repo.ReadFile("z.md") == "z");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Upstreams_F_hotkey_in_the_diff_tabs_list_filters_the_grid_by_the_file()
+    {
+        MainWindow window = OpenWindow();
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+        ListBox files = SelectCommitFile(window, "change z", "z.md");
+        WaitUntil(() => files.ContainerFromItem(files.SelectedItem!) is not null);
+        files.ContainerFromItem(files.SelectedItem!)!.Focus();
+
+        window.KeyPress(Key.F, RawInputModifiers.None, PhysicalKey.F, keySymbol: null);
+
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        WaitUntil(() => commits.Items.Cast<CommitListItem>().Select(item => item.Row.Subject)
+            .SequenceEqual(["change z", "add z"]));
         window.Close();
     }
 
@@ -196,6 +217,107 @@ internal sealed class DiffFileMenuTests
         WaitUntil(() => diff.OwnedWindows.OfType<FileHistoryWindow>().Any());
         diff.OwnedWindows.OfType<FileHistoryWindow>().Single().Close();
         diff.Close();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Rename_move_asks_for_the_new_name_and_moves_the_file_with_git()
+    {
+        MainWindow window = OpenWindow();
+        ListBox files = SelectCommitFile(window, "change z", "z.md");
+        OpenMenu(files);
+        Item(files, "tsmiMove").IsVisible.Should().BeTrue();
+
+        Click(Item(files, "tsmiMove"));
+
+        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
+        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
+        prompt.Title.Should().Be("Rename / move");
+        TextBox name = Find<TextBox>(prompt, "ValueBox");
+        name.Text.Should().Be("z.md");
+        name.Text = "docs/y.md";
+        Click(Find<Button>(prompt, "OkButton"));
+        WaitUntil(() => _repo.ReadFile("docs/y.md") == "changed" && _repo.ReadFile("z.md") is null);
+        _repo.Run("status", "--porcelain").Should().Contain("R  z.md -> docs/y.md");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void F2_in_the_diff_tabs_file_list_renames_the_file_as_upstreams_hotkey()
+    {
+        MainWindow window = OpenWindow();
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+        ListBox files = SelectCommitFile(window, "change z", "z.md");
+        WaitUntil(() => files.ContainerFromItem(files.SelectedItem!) is not null);
+        files.ContainerFromItem(files.SelectedItem!)!.Focus();
+
+        window.KeyPress(Key.F2, RawInputModifiers.None, PhysicalKey.F2, keySymbol: null);
+
+        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
+        Click(Find<Button>(window.OwnedWindows.OfType<PromptWindow>().Single(), "CancelButton"));
+        WaitUntil(() => !window.OwnedWindows.OfType<PromptWindow>().Any());
+        _repo.ReadFile("z.md").Should().Be("changed");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_remembered_file_is_offered_for_a_diff_with_another_revision()
+    {
+        MainWindow window = OpenWindow();
+        ListBox files = SelectCommitFile(window, "change z", "z.md");
+        OpenMenu(files);
+        Item(files, "tsmiDiffWithRemembered").IsVisible.Should().BeFalse("nothing is remembered yet");
+        Item(files, "tsmiRememberSecondRevDiff").IsEnabled.Should().BeTrue();
+
+        Click(Item(files, "tsmiRememberSecondRevDiff"));
+        OpenMenu(files);
+        Item(files, "tsmiDiffWithRemembered").IsEnabled.Should().BeFalse("upstream does not diff a file with itself");
+        files = SelectCommitFile(window, "add z", "z.md");
+        OpenMenu(files);
+
+        MenuItem diffWithRemembered = Item(files, "tsmiDiffWithRemembered");
+        diffWithRemembered.IsVisible.Should().BeTrue();
+        diffWithRemembered.IsEnabled.Should().BeTrue();
+        diffWithRemembered.Header.Should().Be("_Diff with \"z.md\"");
+        Item(files, "tsmiDiffTwoSelected").IsVisible.Should().BeFalse("one file is selected");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Two_selected_files_are_offered_for_a_diff_with_each_other()
+    {
+        TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = true;
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "edited");
+        File.WriteAllText(Path.Combine(_repo.Path, "z.md"), "edited");
+        MainWindow window = OpenWindow();
+        ListBox files = SelectCommitFile(window, ArtificialCommits.WorkTreeSubject, "a.txt");
+        files.SelectedItems!.Add(files.Items.Cast<CommitFile>().First(item => item.Path == "z.md"));
+        Dispatcher.UIThread.RunJobs();
+
+        OpenMenu(files);
+
+        Item(files, "tsmiDiffTwoSelected").IsVisible.Should().BeTrue();
+        Item(files, "tsmiDiffTwoSelected").IsEnabled.Should().BeTrue();
+        Item(files, "tsmiRememberSecondRevDiff").IsVisible.Should().BeFalse();
+        Item(files, "tsmiMove").IsVisible.Should().BeFalse("upstream renames one file");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_selected_file_is_selected_once_after_the_list_is_filled_again()
+    {
+        MainWindow window = OpenWindow();
+        ListBox files = SelectCommitFile(window, "change z", "z.md");
+        FileFilterBox filter = Find<FileFilterBox>(window, "DiffFilesFilterBox");
+
+        filter.Text = "z";
+        Dispatcher.UIThread.RunJobs();
+        filter.Text = "";
+        Dispatcher.UIThread.RunJobs();
+
+        files.SelectedItems!.Cast<CommitFile>().Select(file => file.Path).Should().Equal("z.md");
+        OpenMenu(files);
+        Item(files, "tsmiMove").IsVisible.Should().BeTrue("one file is selected");
         window.Close();
     }
 

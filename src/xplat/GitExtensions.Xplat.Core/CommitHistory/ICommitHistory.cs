@@ -220,6 +220,11 @@ public sealed record CommitFile(string Status, string Path)
     public string Display => $"{Status} {Path}";
 
     /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsSubmodule</c>: the entry is a submodule (git's mode 160000).
+    /// </summary>
+    public bool IsSubmodule { get; init; }
+
+    /// <summary>
     ///  Upstream's status image for the file.
     /// </summary>
     public string Image => DiffFile?.Image ?? Repository.FileStatusList.ImageForStatus(Status);

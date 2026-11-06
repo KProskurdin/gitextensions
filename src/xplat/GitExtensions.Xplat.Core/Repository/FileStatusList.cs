@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
@@ -107,6 +108,34 @@ public static class FileStatusList
     }
 
     /// <summary>
+    ///  Upstream RevisionDiffControl's <c>ShowSelectedFolderAsync</c> description of a selected folder (or group node, the
+    ///  root folder ""): its path with a trailing '/', and as text the number of files and the path, then each file's path
+    ///  below the folder.
+    /// </summary>
+    public static (string Path, string Text) FolderDescription(string folder, IReadOnlyList<string> files)
+    {
+        string path = folder;
+        int nameStart = path.Length;
+        if (!path.EndsWith('/'))
+        {
+            path += '/';
+            if (path.Length > 1)
+            {
+                nameStart++;
+            }
+        }
+
+        StringBuilder text = new();
+        text.Append('(').Append(files.Count).Append(") ").AppendLine(path);
+        foreach (string file in files)
+        {
+            text.AppendLine().Append(file.Length >= nameStart ? file[nameStart..] : file);
+        }
+
+        return (path, text.ToString());
+    }
+
+    /// <summary>
     ///  Upstream's filter box: a regular expression matched against the path, ignoring case. An empty text shows every file;
     ///  an invalid expression gives null and <paramref name="error"/>, and upstream then keeps the list as it was.
     /// </summary>
@@ -148,6 +177,16 @@ public sealed record FileMenuState(
     bool Ignore,
     bool StopTracking)
 {
+    /// <summary>
+    ///  Upstream's "Skip worktree" and "Assume unchanged": for tracked working directory files, checked when a selected
+    ///  file has the flag.
+    /// </summary>
+    public bool IndexFlags { get; init; }
+
+    public bool SkipWorktreeChecked { get; init; }
+
+    public bool AssumeUnchangedChecked { get; init; }
+
     /// <param name="selected">The selected files of one list.</param>
     /// <param name="staged">Whether the list is the staged one (index) rather than the unstaged one (working directory).</param>
     /// <param name="exists">Whether a repository-relative path exists as a file.</param>
@@ -170,6 +209,20 @@ public sealed record FileMenuState(
             History: single && anyTracked,
             Blame: single && anyTracked,
             Ignore: !staged && any,
-            StopTracking: single && anyTracked);
+            StopTracking: single && anyTracked)
+        {
+            IndexFlags = !staged && any && anyTracked,
+            SkipWorktreeChecked = selected.Any(file => file.IsSkipWorktree),
+            AssumeUnchangedChecked = selected.Any(file => file.IsAssumeUnchanged),
+        };
     }
+}
+
+/// <summary>
+///  Git's index flags that upstream's file lists set: skip-worktree and assume-unchanged.
+/// </summary>
+public enum IndexFlag
+{
+    SkipWorktree,
+    AssumeUnchanged,
 }

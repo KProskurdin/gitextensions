@@ -96,6 +96,8 @@
     <Compile Include="..\..\app\GitUI\UserControls\FileStatusItem.cs" Link="Upstream\RevisionDiff\FileStatusItem.cs" />
     <Compile Include="..\..\app\GitUI\UserControls\FileStatusItemExtensions.cs" Link="Upstream\RevisionDiff\FileStatusItemExtensions.cs" />
     <Compile Include="..\..\app\GitUI\RevisionDiffInfoProvider.cs" Link="Upstream\RevisionDiff\RevisionDiffInfoProvider.cs" />
+    <Compile Include="..\..\app\GitUI\CommandsDialogs\RememberFileContextMenuController.cs" Link="Upstream\RevisionDiff\RememberFileContextMenuController.cs" />
+    <Compile Include="..\..\app\GitUI\FindFilePredicateProvider.cs" Link="Upstream\RevisionDiff\FindFilePredicateProvider.cs" />
     <!-- Upstream's file groups of a diff (each parent of a merge, the combined diff, A/B/BASE for several commits), unchanged
          (Diff/DiffGroups.cs); Diff/UpstreamDiffTexts.cs stands in for the GitUI TranslatedStrings texts it uses. -->
     <Compile Include="..\..\app\GitUI\UserControls\FileStatusDiffCalculator.cs" Link="Upstream\RevisionDiff\FileStatusDiffCalculator.cs" />

@@ -25,6 +25,21 @@ public interface IGitOperations
     Task StageLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength, bool unstage,
         bool isNewFile = false);
 
+    /// <summary>
+    ///  Upstream FileViewer's <c>ResetNoncommittedSelectedLines</c>: the selected lines of a working directory diff are
+    ///  undone in the working directory, those of an index diff (<paramref name="staged"/>) in the index and the working
+    ///  directory.
+    /// </summary>
+    Task ResetLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength, bool staged);
+
+    /// <summary>
+    ///  Upstream FileViewer's <c>ApplySelectedLines</c> for a commit's diff: the selected lines are applied to the working
+    ///  directory and the index (or undone there, <paramref name="reverse"/>) with git's three-way merge, which leaves
+    ///  conflicts to resolve when they do not apply cleanly.
+    /// </summary>
+    Task ApplyLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength, bool reverse,
+        bool isNewFile = false, bool isRenamed = false);
+
     Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
         CommitExtras? extras = null);
 

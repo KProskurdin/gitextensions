@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.SearchWindow"
+        Title="Git Extensions"
+        MinWidth="325" SizeToContent="WidthAndHeight" CanResize="False" ShowInTaskbar="False"
+        WindowDecorations="BorderOnly" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's SearchWindow: a window without a title bar holding the label and upstream's SearchControl, whose matches
+       drop down below the text box while there are any. -->
+  <StackPanel Margin="4" Spacing="2">
+    <TextBlock x:Name="lblEnterFileName" Text="Enter File Name" />
+    <TextBox x:Name="txtSearchBox" />
+    <ListBox x:Name="listBoxSearchResult" IsVisible="False" MaxHeight="800" />
+  </StackPanel>
+</Window>

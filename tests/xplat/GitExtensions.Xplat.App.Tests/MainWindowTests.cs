@@ -301,11 +301,14 @@ internal sealed class MainWindowTests
         WaitUntil(() => files.ItemCount > 0);
         files.SelectedIndex = 0;
 
+        // Upstream's BlameFile: the file's blame in the File tree tab.
+        string file = files.Items.OfType<CommitFile>().First().Path;
         PressIn(files, Key.B, KeyModifiers.None);
-        WaitUntil(() => window.OwnedWindows.OfType<FileHistoryWindow>().Any());
-        FileHistoryWindow history = window.OwnedWindows.OfType<FileHistoryWindow>().Single();
-        Find<TabControl>(history, "Tabs").SelectedItem.Should().Be(Find<TabItem>(history, "BlameTab"));
-        history.Close();
+        BlameView blame = Find<BlameView>(window, "FileTreeBlame");
+        WaitUntil(() => blame.IsVisible && blame.Lines.Count > 0);
+        Find<TabControl>(window, "DetailTabs").SelectedItem.Should().Be(Find<TabItem>(window, "FileTreeTab"));
+        Find<TreeView>(window, "FileTreeView").SelectedItem.Should().BeOfType<FileTreeNode>().Which.Path.Should().Be(file);
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
 
         PressIn(files, Key.Left, KeyModifiers.Control);
         ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");

@@ -422,6 +422,17 @@ public interface IAppPreferences
     bool ShowDiffForAllParents { get; set; }
 
     /// <summary>
+    ///  Upstream <c>AutomaticContinuousScroll</c> ("Enable automatic continuous scroll (without ALT button)"): scrolling past
+    ///  the top or bottom of a diff moves to the previous or next file without Alt held.
+    /// </summary>
+    bool AutomaticContinuousScroll { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>DiffViewer.AutomaticContinuousScrollDelay</c>: the milliseconds before the next such move.
+    /// </summary>
+    int AutomaticContinuousScrollDelay { get; }
+
+    /// <summary>
     ///  The options a new diff view starts with, by upstream's rules (FileViewer's constructor).
     /// </summary>
     DiffOptions InitialDiffOptions();
@@ -540,6 +551,32 @@ public interface IAppPreferences
     ///  nodes.
     /// </summary>
     bool FileStatusShowGroupNodesInFlatList { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>ShowFindInCommitFilesGitGrep</c>: the file lists show the "Find in commit files using git-grep" box.
+    /// </summary>
+    bool ShowFindInCommitFilesGitGrep { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>FileStatusFindInFilesGitGrepTypeIndex</c>: what the file lists' git-grep button opens, 0 the window, 1
+    ///  the box, 2 both.
+    /// </summary>
+    int FindInFilesGitGrepTypeIndex { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>GitGrepIgnoreCase</c>, which upstream's git-grep commands read: git-grep ignores case.
+    /// </summary>
+    bool GitGrepIgnoreCase { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>GitGrepMatchWholeWord</c>, which upstream's git-grep commands read: git-grep matches whole words.
+    /// </summary>
+    bool GitGrepMatchWholeWord { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>GitGrepUserArguments</c>, which upstream's git-grep commands read: more git-grep options.
+    /// </summary>
+    string GitGrepUserArguments { get; set; }
 
     /// <summary>
     ///  Upstream's <c>closecommitdialogafterlastcommit</c>: the commit window closes after a commit that leaves no unstaged
@@ -1223,6 +1260,14 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.ShowDiffForAllParents = value;
     }
 
+    public bool AutomaticContinuousScroll
+    {
+        get => AppSettings.AutomaticContinuousScroll;
+        set => AppSettings.AutomaticContinuousScroll = value;
+    }
+
+    public int AutomaticContinuousScrollDelay => AppSettings.AutomaticContinuousScrollDelay;
+
     // Upstream's runtime settings: the value of this run, read back from the saved default unless remembered.
     public DiffOptions InitialDiffOptions()
         => new(AppSettings.IgnoreWhitespaceKind.GetValue(reload: !AppSettings.RememberIgnoreWhiteSpacePreference),
@@ -1439,6 +1484,36 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.FileStatusShowGroupNodesInFlatList.Value;
         set => AppSettings.FileStatusShowGroupNodesInFlatList.Value = value;
+    }
+
+    public bool ShowFindInCommitFilesGitGrep
+    {
+        get => AppSettings.ShowFindInCommitFilesGitGrep.Value;
+        set => AppSettings.ShowFindInCommitFilesGitGrep.Value = value;
+    }
+
+    public int FindInFilesGitGrepTypeIndex
+    {
+        get => AppSettings.FileStatusFindInFilesGitGrepTypeIndex.Value;
+        set => AppSettings.FileStatusFindInFilesGitGrepTypeIndex.Value = value;
+    }
+
+    public bool GitGrepIgnoreCase
+    {
+        get => AppSettings.GitGrepIgnoreCase.Value;
+        set => AppSettings.GitGrepIgnoreCase.Value = value;
+    }
+
+    public bool GitGrepMatchWholeWord
+    {
+        get => AppSettings.GitGrepMatchWholeWord.Value;
+        set => AppSettings.GitGrepMatchWholeWord.Value = value;
+    }
+
+    public string GitGrepUserArguments
+    {
+        get => AppSettings.GitGrepUserArguments.Value;
+        set => AppSettings.GitGrepUserArguments.Value = value;
     }
 
     public bool CloseCommitDialogAfterLastCommit
@@ -1851,6 +1926,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool ShowDiffForAllParents { get; set; } = true;
 
+    public bool AutomaticContinuousScroll { get; set; }
+
+    public int AutomaticContinuousScrollDelay { get; set; } = 600;
+
     // The values of this run and the saved defaults, as upstream's runtime settings keep them.
     private DiffOptions _diffOptions = new();
     private DiffOptions _savedDiffOptions = new();
@@ -1963,6 +2042,16 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool FileStatusMergeSingleItemWithFolder { get; set; }
 
     public bool FileStatusShowGroupNodesInFlatList { get; set; }
+
+    public bool ShowFindInCommitFilesGitGrep { get; set; }
+
+    public int FindInFilesGitGrepTypeIndex { get; set; } = 1;
+
+    public bool GitGrepIgnoreCase { get; set; }
+
+    public bool GitGrepMatchWholeWord { get; set; }
+
+    public string GitGrepUserArguments { get; set; } = "";
 
     public bool CloseCommitDialogAfterLastCommit { get; set; } = true;
 

@@ -78,9 +78,13 @@ public partial class MainWindow
             }
             else
             {
+                // As the file lists: an equal row Avalonia kept selected is not added twice.
                 foreach (CommitListItem row in rows)
                 {
-                    CommitList.SelectedItems?.Add(row);
+                    if (CommitList.SelectedItems is { } selectedItems && !selectedItems.Contains(row))
+                    {
+                        selectedItems.Add(row);
+                    }
                 }
             }
 

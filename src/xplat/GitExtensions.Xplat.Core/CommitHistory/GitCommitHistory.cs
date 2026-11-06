@@ -301,12 +301,13 @@ public sealed class GitCommitHistory : ICommitHistory
     private static IReadOnlyList<CommitFile> LoadFiles(string path, string hash)
     {
         // The working directory's files are its unstaged changes and untracked files; the index's are the staged changes.
-        // A merge (a stash too) lists its changes against the first parent, as the diff shows them.
+        // A merge (a stash too) lists its changes against the first parent, as the diff shows them. Git's raw format
+        // gives the modes, of which 160000 is a submodule's.
         GitArgumentBuilder arguments = hash == ArtificialCommits.WorkTreeHash
-            ? new GitArgumentBuilder("diff") { "--name-status", "--no-color" }
+            ? new GitArgumentBuilder("diff") { "--raw", "--no-color" }
             : hash == ArtificialCommits.IndexHash
-                ? new GitArgumentBuilder("diff") { "--cached", "--name-status", "--no-color" }
-                : new GitArgumentBuilder("show") { "--format=", "--first-parent", "--name-status", "--no-color", hash };
+                ? new GitArgumentBuilder("diff") { "--cached", "--raw", "--no-color" }
+                : new GitArgumentBuilder("show") { "--format=", "--first-parent", "--raw", "--no-color", hash };
         GitModule module = CreateModule(path);
         ExecutionResult result = module.GitExecutable.Execute(arguments, throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
@@ -316,9 +317,14 @@ public sealed class GitCommitHistory : ICommitHistory
 
         List<CommitFile> files = result.StandardOutput
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Split('\t'))
-            .Where(fields => fields.Length >= 2)
-            .Select(fields => new CommitFile(fields[0][..1], fields[^1].TrimEnd('\r')))
+            .Select(line => line.TrimEnd('\r').Split('\t'))
+            .Where(fields => fields.Length >= 2 && fields[0].StartsWith(':'))
+            .Select(fields => (Meta: fields[0][1..].Split(' '), Path: fields[^1]))
+            .Where(raw => raw.Meta.Length >= 5)
+            .Select(raw => new CommitFile(raw.Meta[4][..1], raw.Path)
+            {
+                IsSubmodule = raw.Meta[0] == SubmoduleMode || raw.Meta[1] == SubmoduleMode
+            })
             .ToList();
         if (hash == ArtificialCommits.WorkTreeHash)
         {
@@ -330,6 +336,9 @@ public sealed class GitCommitHistory : ICommitHistory
 
         return files;
     }
+
+    // Git's mode of a submodule entry (a commit in the tree).
+    private const string SubmoduleMode = "160000";
 
     private static IReadOnlyList<string> LoadTree(string path, string hash)
     {

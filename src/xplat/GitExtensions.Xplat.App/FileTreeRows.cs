@@ -10,17 +10,25 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Upstream's <c>FileStatusList</c> tree in a list box (core <see cref="FileStatusTree"/>): the folder and the extension
-///  or status group nodes as rows with an expander that a click collapses or expands (all expanded at first, as upstream's
-///  <c>ExpandAll</c>), the files below them indented and named below their folder (set on each file's container,
-///  <see cref="FileRows"/>). Shared by the browse window's Diff tab, FormDiff and the commit window's lists.
+///  or status group nodes as rows with an expander that a click on it or a double-click on the row collapses or expands
+///  (all expanded at first, as upstream's <c>ExpandAll</c>), the files below them indented and named below their folder
+///  (set on each file's container, <see cref="FileRows"/>). A selected node stays selected when the list is filled again.
+///  Shared by the browse window's Diff tab, FormDiff, FormStash and the commit window's lists.
 /// </summary>
 internal sealed class FileTreeRows<T>
     where T : class
 {
+    /// <summary>
+    ///  The class of the expander in a node's template: a click on it collapses or expands the node.
+    /// </summary>
+    public const string ExpanderClass = "expander";
+
+    private readonly ListBox _list;
     private readonly IAppPreferences _preferences;
     private readonly Func<T, string> _path;
     private readonly Func<T, string> _image;
     private readonly Func<T, ChangeKind> _kind;
+    private readonly Action _refresh;
 
     // The folder and group nodes the user collapsed.
     private readonly HashSet<string> _collapsed = new(StringComparer.Ordinal);
@@ -28,24 +36,33 @@ internal sealed class FileTreeRows<T>
     // The text and depth of each shown file.
     private readonly Dictionary<object, (string Text, int Depth)> _fileRows = new(ReferenceEqualityComparer.Instance);
 
+    // The nodes selected when the fill started.
+    private HashSet<string> _selectedNodes = new(StringComparer.Ordinal);
+
     /// <param name="refresh">Fills the list again after a node was collapsed or expanded.</param>
     public FileTreeRows(ListBox list, IAppPreferences preferences, Func<T, string> path, Func<T, string> image,
         Func<T, ChangeKind> kind, Action refresh)
     {
+        _list = list;
         _preferences = preferences;
         _path = path;
         _image = image;
         _kind = kind;
+        _refresh = refresh;
+
+        // Upstream's tree selects a node on a click and expands or collapses it on its glyph or on a double-click.
         list.AddHandler(InputElement.TappedEvent, (_, e) =>
         {
-            if ((e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext is FileTreeRow row)
+            if (IsExpander(e.Source) && RowOf(e.Source) is { } row)
             {
-                if (!_collapsed.Remove(row.Key))
-                {
-                    _collapsed.Add(row.Key);
-                }
-
-                refresh();
+                Toggle(row);
+            }
+        }, handledEventsToo: true);
+        list.AddHandler(InputElement.DoubleTappedEvent, (_, e) =>
+        {
+            if (!IsExpander(e.Source) && RowOf(e.Source) is { } row)
+            {
+                Toggle(row);
             }
         }, handledEventsToo: true);
         list.ContainerPrepared += (_, e) =>
@@ -70,18 +87,127 @@ internal sealed class FileTreeRows<T>
     public void Reset() => _collapsed.Clear();
 
     /// <summary>
-    ///  Starts a new fill of the list.
+    ///  Starts a new fill of the list: the selected nodes are noted, to be selected again by <see cref="EndFill"/>.
     /// </summary>
-    public void BeginFill() => _fileRows.Clear();
+    public void BeginFill()
+    {
+        _fileRows.Clear();
+        _selectedNodes = new HashSet<string>(
+            _list.SelectedItems?.OfType<IFileListNode>().Select(node => node.SelectionKey) ?? [], StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    ///  Ends a fill after the list shows its new rows: the nodes selected before are selected again.
+    /// </summary>
+    public void EndFill()
+    {
+        if (_selectedNodes.Count == 0 || _list.SelectedItems is not { } selected)
+        {
+            return;
+        }
+
+        foreach (IFileListNode node in _list.Items.OfType<IFileListNode>()
+                     .Where(node => _selectedNodes.Contains(node.SelectionKey)))
+        {
+            selected.Add(node);
+        }
+    }
+
+
+    /// <summary>
+    ///  Upstream's tree items for the list (<c>FileStatusList.TreeContextMenu.cs</c>) outside file tree mode: select all,
+    ///  collapse all and expand all for the selected nodes; no "Collapse root folders".
+    /// </summary>
+    /// <param name="setExpanded">Collapses or expands a selected node that is not a <see cref="FileTreeRow"/> (a diff
+    /// group's).</param>
+    public FileListTree MenuTree(Action<IFileListNode, bool>? setExpanded = null)
+    {
+        return new FileListTree(
+            HasSubnodes: () => SelectedNodes().Count > 0,
+            SelectAll: SelectAll,
+            CollapseAll: () => SetExpanded(SelectedNodes(), false),
+            ExpandAll: () => SetExpanded(SelectedNodes(), true),
+            AnyRootExpanded: () => false,
+            CollapseRootFolders: () => { });
+
+        // Upstream's SelectAll_Click: the selected nodes expanded all the way down, and only the files below them selected.
+        void SelectAll()
+        {
+            List<IFileListNode> nodes = SelectedNodes();
+            HashSet<object> files = new(nodes.SelectMany(node => node.Files), ReferenceEqualityComparer.Instance);
+            SetExpanded(nodes, true);
+            if (_list.SelectedItems is not { } selected)
+            {
+                return;
+            }
+
+            selected.Clear();
+            foreach (object file in _list.Items.OfType<T>().Where(files.Contains))
+            {
+                selected.Add(file);
+            }
+        }
+
+        void SetExpanded(IReadOnlyList<IFileListNode> nodes, bool expanded)
+        {
+            foreach (IFileListNode node in nodes)
+            {
+                foreach (string key in node.NodeKeys)
+                {
+                    if (expanded)
+                    {
+                        _collapsed.Remove(key);
+                    }
+                    else
+                    {
+                        _collapsed.Add(key);
+                    }
+                }
+
+                if (node is not FileTreeRow)
+                {
+                    setExpanded?.Invoke(node, expanded);
+                }
+            }
+
+            _refresh();
+        }
+    }
+
+    /// <summary>
+    ///  The keys of the folder and group nodes <paramref name="files"/> would show below <paramref name="keyPrefix"/>.
+    /// </summary>
+    public IReadOnlyList<string> NodeKeys(IReadOnlyList<T> files, string keyPrefix)
+        => [.. Tree(files).SelectMany(node => node.NodeKeys()).Select(key => keyPrefix + key)];
+
+    private List<IFileListNode> SelectedNodes() => [.. _list.SelectedItems?.OfType<IFileListNode>() ?? []];
+
+    private void Toggle(FileTreeRow row)
+    {
+        if (!_collapsed.Remove(row.Key))
+        {
+            _collapsed.Add(row.Key);
+        }
+
+        _refresh();
+    }
+
+    private static FileTreeRow? RowOf(object? source)
+        => (source as Visual)?.FindAncestorOfType<ListBoxItem>(includeSelf: true)?.DataContext as FileTreeRow;
+
+    private static bool IsExpander(object? source)
+        => (source as Visual)?.FindAncestorOfType<TextBlock>(includeSelf: true)?.Classes.Contains(ExpanderClass) == true;
+
+    private IReadOnlyList<FileStatusTreeNode<T>> Tree(IReadOnlyList<T> files)
+        => FileStatusTree.Build(files, _preferences.DiffListSorting, _preferences.FileStatusMergeSingleItemWithFolder,
+            _preferences.FileStatusShowGroupNodesInFlatList, _path, _image, _kind);
 
     /// <summary>
     ///  Adds the rows of <paramref name="files"/> at <paramref name="depth"/>, their nodes' keys after
     ///  <paramref name="keyPrefix"/> (a diff group's).
     /// </summary>
     public void Add(List<object> items, IReadOnlyList<T> files, int depth, string keyPrefix)
-        => AddNodes(items, FileStatusTree.Build(files, _preferences.DiffListSorting,
-            _preferences.FileStatusMergeSingleItemWithFolder, _preferences.FileStatusShowGroupNodesInFlatList, _path,
-            _image, _kind), depth, keyPrefix);
+        => AddNodes(items, Tree(files), depth, keyPrefix);
 
     /// <summary>
     ///  Upstream's <c>CollapseGroups_Click</c> for the extension and status groups among <paramref name="rows"/>; false
@@ -113,7 +239,12 @@ internal sealed class FileTreeRows<T>
             string key = keyPrefix + node.Key;
             bool expanded = !_collapsed.Contains(key);
             items.Add(new FileTreeRow(node.Text, node.Image, key, expanded, FileRows.IndentOf(depth),
-                node.Kind == FileStatusTreeNodeKind.Group));
+                node.Kind == FileStatusTreeNodeKind.Group)
+            {
+                Folder = node.FolderPath,
+                Files = [.. node.Files()],
+                NodeKeys = [.. node.NodeKeys().Select(nodeKey => keyPrefix + nodeKey)]
+            });
             if (expanded)
             {
                 AddNodes(items, node.Children, depth + 1, keyPrefix);
@@ -202,9 +333,72 @@ internal sealed record FileListTreeButtons(Button? CollapseGroups, ToolSplitButt
 }
 
 /// <summary>
+///  A node of upstream's <c>FileStatusList</c> tree with nodes below it, as the file list menu takes it when it is the only
+///  one selected (upstream's <c>SelectedFolder</c> and <c>SelectedItems</c>).
+/// </summary>
+internal interface IFileListNode
+{
+    /// <summary>
+    ///  A folder node's path; "" for a group node (upstream takes a node not tagged with a path as the root folder).
+    /// </summary>
+    string Folder { get; }
+
+    /// <summary>
+    ///  The files at or below the node, also those of its collapsed nodes.
+    /// </summary>
+    IReadOnlyList<object> Files { get; }
+
+    /// <summary>
+    ///  The collapse keys of the node and of the nodes below it.
+    /// </summary>
+    IReadOnlyList<string> NodeKeys { get; }
+
+    /// <summary>
+    ///  Names the node across a fill of the list.
+    /// </summary>
+    string SelectionKey { get; }
+}
+
+/// <summary>
+///  The selected node of a file list shown as a tree.
+/// </summary>
+internal static class FileListNodes
+{
+    /// <summary>
+    ///  Upstream FileStatusList's <c>SelectNextVisibleItem</c> and <c>SelectPreviousVisibleItem</c>, as continuous scroll
+    ///  uses them: the next or previous shown file becomes the only one selected (the same one at the list's end), the
+    ///  first file when none is selected.
+    /// </summary>
+    public static void SelectNeighbourFile(ListBox list, bool next, Func<object, bool> isFile)
+    {
+        List<object> items = [.. list.Items.OfType<object>()];
+        int current = list.SelectedItem is { } selected ? items.IndexOf(selected) : -1;
+        object? target = current < 0
+            ? items.FirstOrDefault(isFile)
+            : next
+                ? items.Skip(current + 1).FirstOrDefault(isFile)
+                : items.Take(current).LastOrDefault(isFile);
+        if (target is null)
+        {
+            return;
+        }
+
+        list.SelectedItem = target;
+        list.ScrollIntoView(target);
+    }
+
+    /// <summary>
+    ///  The selection when it is a single folder or group node, as upstream's <c>SelectedFolder</c>; else null.
+    /// </summary>
+    public static IFileListNode? SelectedNode(ListBox list)
+        => list.SelectedItems is { Count: 1 } selected && selected[0] is IFileListNode node ? node : null;
+}
+
+/// <summary>
 ///  A folder node, or a group node of the extension or status grouping, of upstream's <c>FileStatusList</c> tree.
 /// </summary>
 public sealed class FileTreeRow(string text, string image, string key, bool isExpanded, Thickness indent, bool isGroup)
+    : IFileListNode
 {
     public string Text { get; } = text;
 
@@ -223,6 +417,21 @@ public sealed class FileTreeRow(string text, string image, string key, bool isEx
 
     // The tree's expander, as a glyph.
     public string Expander => IsExpanded ? "▾" : "▸";
+
+    /// <summary>
+    ///  A folder's path; "" for a group.
+    /// </summary>
+    public string Folder { get; init; } = "";
+
+    IReadOnlyList<object> IFileListNode.Files => Files;
+
+    internal IReadOnlyList<object> Files { get; init; } = [];
+
+    IReadOnlyList<string> IFileListNode.NodeKeys => NodeKeys;
+
+    internal IReadOnlyList<string> NodeKeys { get; init; } = [];
+
+    string IFileListNode.SelectionKey => "node\n" + Key;
 }
 
 /// <summary>

@@ -3,12 +3,25 @@
              xmlns:local="using:GitExtensions.Xplat.App"
              x:Class="GitExtensions.Xplat.App.FileStatusListMenu">
   <!-- Upstream FileStatusList's ItemContextMenu, in its order and with its names, for the items the new shell has. -->
+  <!-- Upstream's open submodule item, inserted at the very top for a selected submodule. -->
+  <MenuItem x:Name="openSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" />
+  <!-- Upstream's tree items (FileStatusList.TreeContextMenu.cs), inserted first, for a list shown as a tree. -->
+  <MenuItem x:Name="_selectAll" Header="S_elect all" Icon="{local:UpstreamIcon FileTree}" />
+  <MenuItem x:Name="_collapseAll" Header="C_ollapse all" Icon="{local:UpstreamIcon CollapseAll}" />
+  <MenuItem x:Name="_expandAll" Header="E_xpand all" Icon="{local:UpstreamIcon ExpandAll}" />
+  <Separator x:Name="_treeContextMenuSeparator" />
+  <MenuItem x:Name="tsmiUpdateSubmodule" Header="_Update submodule" Icon="{local:UpstreamIcon SubmodulesUpdate}" />
+  <MenuItem x:Name="tsmiResetSubmoduleChanges" Header="R_eset submodule changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
+  <MenuItem x:Name="tsmiStashSubmoduleChanges" Header="S_tash submodule changes" Icon="{local:UpstreamIcon Stash}" />
+  <MenuItem x:Name="tsmiCommitSubmoduleChanges" Header="_Commit submodule changes" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}" />
+  <Separator x:Name="sepSubmodule" />
   <MenuItem x:Name="tsmiStageFile" Header="_Stage selected" Icon="{local:UpstreamIcon Stage}" />
   <MenuItem x:Name="tsmiUnstageFile" Header="_Unstage selected" Icon="{local:UpstreamIcon Unstage}" />
   <MenuItem x:Name="tsmiResetFileTo" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
     <MenuItem x:Name="tsmiResetFileToSelected" />
     <MenuItem x:Name="tsmiResetFileToParent" />
   </MenuItem>
+  <MenuItem x:Name="tsmiCherryPickChanges" Header="Cherr_y pick changes" Icon="{local:UpstreamIcon CherryPick}" />
   <Separator x:Name="sepGit" />
   <MenuItem x:Name="tsmiOpenWithDifftool" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}">
     <MenuItem x:Name="tsmiSecondDiffCaption" IsEnabled="False" />
@@ -17,11 +30,19 @@
     <MenuItem x:Name="tsmiDiffFirstToSelected" Header="_First -&gt; Second" />
     <MenuItem x:Name="tsmiDiffSelectedToLocal" Header="_Second -&gt; Working directory" />
     <MenuItem x:Name="tsmiDiffFirstToLocal" Header="First -&gt; _Working directory" />
+    <Separator x:Name="sepDifftoolRemember" />
+    <MenuItem x:Name="tsmiDiffTwoSelected" Header="_Diff the selected files" />
+    <MenuItem x:Name="tsmiDiffWithRemembered" />
+    <MenuItem x:Name="tsmiRememberSecondRevDiff" Header="_Remember Second for diff" />
+    <MenuItem x:Name="tsmiRememberFirstRevDiff" Header="R_emember First for diff" />
   </MenuItem>
   <MenuItem x:Name="tsmiOpenWorkingDirectoryFile" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
+  <MenuItem x:Name="tsmiOpenWorkingDirectoryFileWith" Header="Open working directory file with..." />
   <MenuItem x:Name="tsmiOpenRevisionFile" Header="Ope_n this revision (temp file)" Icon="{local:UpstreamIcon ViewFile}" />
+  <MenuItem x:Name="tsmiOpenRevisionFileWith" Header="Open this revision _with... (temp file)" />
   <MenuItem x:Name="tsmiEditWorkingDirectoryFile" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
   <MenuItem x:Name="tsmiSaveAs" Header="S_ave selected as..." Icon="{local:UpstreamIcon SaveAs}" />
+  <MenuItem x:Name="tsmiMove" Header="Rena_me / move" />
   <MenuItem x:Name="tsmiDeleteFile" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
   <Separator x:Name="sepFile" />
   <MenuItem x:Name="tsmiCopyPaths" Header="Copy _path(s)" Icon="{local:UpstreamIcon CopyToClipboard}" />
@@ -31,10 +52,16 @@
   <MenuItem x:Name="tsmiFilterFileInGrid" Header="Filter file in _grid" Icon="{local:UpstreamIcon FunnelPencil}" />
   <MenuItem x:Name="tsmiFileHistory" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
   <MenuItem x:Name="tsmiBlame" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
+  <MenuItem x:Name="tsmiFindFile" Header="_Find file..." />
+  <MenuItem x:Name="tsmiOpenFindInCommitFilesGitGrepDialog" Header="Find in _commit files using git-grep..."
+            Icon="{local:UpstreamIcon ViewFile}" />
+  <MenuItem x:Name="tsmiShowFindInCommitFilesGitGrep" Header="Show 'Find in commit fi_les using git-grep'"
+            ToggleType="CheckBox" />
   <Separator x:Name="sepIgnore" />
   <MenuItem x:Name="tsmiAddFileToGitIgnore" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
   <MenuItem x:Name="tsmiAddFileToGitInfoExclude" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
   <MenuItem x:Name="tsmiStopTracking" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
   <Separator x:Name="sepScripts" />
   <MenuItem x:Name="tsmiRunScript" Header="Run script" Icon="{local:UpstreamIcon Console}" />
+  <MenuItem x:Name="_collapseRootFolders" Header="Collap_se root folders" Icon="{local:UpstreamIcon TreeCollapseAll}" />
 </ContextMenu>

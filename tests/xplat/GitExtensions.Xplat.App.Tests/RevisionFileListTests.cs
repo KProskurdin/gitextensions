@@ -64,7 +64,7 @@ internal sealed class RevisionFileListTests
         Find<ToolToggleButton>(window, "DiffFilesByStatusButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Paths(files).Should().Equal(["z.md", "b.txt"], "a modified file comes before an added one");
 
-        TextBox filter = Find<TextBox>(window, "DiffFilesFilterBox");
+        FileFilterBox filter = Find<FileFilterBox>(window, "DiffFilesFilterBox");
         filter.Text = "\\.md$";
         Dispatcher.UIThread.RunJobs();
         Paths(files).Should().Equal("z.md");
@@ -76,7 +76,7 @@ internal sealed class RevisionFileListTests
         filter.Text = "(";
         Dispatcher.UIThread.RunJobs();
         files.ItemCount.Should().Be(2, "an invalid expression filters nothing");
-        ToolTip.GetTip(filter).Should().NotBeNull();
+        filter.Error.Should().NotBeNull();
         window.Close();
     }
 
@@ -105,12 +105,18 @@ internal sealed class RevisionFileListTests
             .Select(FileRows.GetIndent).Should().OnlyContain(indent => indent.Left > 0, "a folder's files are indented");
 
         FileTreeRow folder = files.Items.OfType<FileTreeRow>().Single();
-        ListBoxItem container = files.GetVisualDescendants().OfType<ListBoxItem>().Single(item => item.DataContext == folder);
-        Point point = container.TranslatePoint(new Point(20, container.Bounds.Height / 2), window)!.Value;
-        window.MouseDown(point, MouseButton.Left);
-        window.MouseUp(point, MouseButton.Left);
+        ClickRow(window, files, folder, x: 20);
+        Rows(files).Should().Equal(["> src", "a.cs", "b.cs"], "a click on the node selects it, as upstream's tree");
+        files.SelectedItem.Should().Be(folder);
+
+        ClickRow(window, files, folder, x: 4);
+        Rows(files).Should().Equal(["+ src"], "a click on the glyph collapses the folder");
+        files.SelectedItem.Should().BeOfType<FileTreeRow>("the folder stays selected");
+
+        RowContainer(files, files.Items.OfType<FileTreeRow>().Single())
+            .RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
         Dispatcher.UIThread.RunJobs();
-        Rows(files).Should().Equal(["+ src"], "a click collapses the folder");
+        Rows(files).Should().Equal(["> src", "a.cs", "b.cs"], "a double-click expands it again");
 
         Find<ToolSplitButton>(window, "DiffFilesAsTreeButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
         Dispatcher.UIThread.RunJobs();
@@ -118,6 +124,102 @@ internal sealed class RevisionFileListTests
         TestAppBuilder.Preferences.DiffListSorting.Should().Be(DiffListSortType.FilePathFlat);
         Find<ToolSplitButton>(window, "DiffFilesAsTreeButton").Image.Should().Be("DocumentTree");
         Rows(files).Should().Equal("src/a.cs", "src/b.cs");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_selected_folder_stands_for_its_files_in_the_menu_as_upstreams_selected_folder()
+    {
+        TestAppBuilder.Preferences.DiffListSorting = DiffListSortType.FilePath;
+        Directory.CreateDirectory(Path.Combine(_repo.Path, "src", "sub"));
+        File.WriteAllText(Path.Combine(_repo.Path, "src", "a.cs"), "a");
+        File.WriteAllText(Path.Combine(_repo.Path, "src", "sub", "b.cs"), "b");
+        File.WriteAllText(Path.Combine(_repo.Path, "src", "sub", "c.cs"), "c");
+        _repo.Run("add", "-A");
+        _repo.Run("commit", "-q", "-m", "add src");
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "add src");
+        ListBox files = Find<ListBox>(window, "CommitFilesList");
+        WaitUntil(() => files.ItemCount == 5);
+        files.SelectedItem = files.Items.OfType<FileTreeRow>().First(row => row.Folder == "src");
+        DiffView viewer = Find<DiffView>(window, "CommitDiff");
+        WaitUntil(() => viewer.Lines.Any(line => line.Text == "(3) src/"));
+        viewer.Lines.Select(line => line.Text).Should().Contain(["a.cs", "sub/b.cs", "sub/c.cs"],
+            "upstream shows the files below a selected folder");
+        OpenMenu(files);
+        MenuItem Item(string name) => Find<MenuItem>(files.ContextMenu!, name);
+        Item("_selectAll").IsVisible.Should().BeTrue();
+        Item("_collapseAll").IsVisible.Should().BeTrue();
+        Item("_collapseRootFolders").IsVisible.Should().BeFalse("upstream offers it in the File tree tab only");
+        Item("tsmiMove").IsVisible.Should().BeTrue("upstream renames a selected folder");
+        Item("tsmiFileHistory").IsEnabled.Should().BeTrue("upstream shows a folder's history");
+        Item("tsmiBlame").IsEnabled.Should().BeFalse();
+
+        Item("_collapseAll").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+        Rows(files).Should().Equal(["+ src"]);
+        files.SelectedItem.Should().BeOfType<FileTreeRow>().Which.Folder.Should().Be("src");
+
+        Item("_selectAll").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+        Rows(files).Should().Equal("> src", "> sub", "b.cs", "c.cs", "a.cs");
+        files.SelectedItems!.OfType<CommitFile>().Select(file => file.Path).Should()
+            .BeEquivalentTo("src/a.cs", "src/sub/b.cs", "src/sub/c.cs");
+
+        files.SelectedItem = files.Items.OfType<FileTreeRow>().First(row => row.Folder == "src");
+        OpenMenu(files);
+        Item("tsmiMove").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
+        PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
+        TextBox name = Find<TextBox>(prompt, "ValueBox");
+        name.Text.Should().Be("src");
+        name.Text = "lib";
+        Find<Button>(prompt, "OkButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        WaitUntil(() => _repo.ReadFile("lib/sub/b.cs") == "b" && _repo.ReadFile("src/a.cs") is null);
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_filter_is_upstreams_combo_box_with_its_samples_the_filters_that_matched_and_a_delete_button()
+    {
+        TestAppBuilder.Preferences.DiffListSorting = DiffListSortType.FilePathFlat;
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "change z add b");
+        ListBox files = Find<ListBox>(window, "CommitFilesList");
+        WaitUntil(() => files.ItemCount == 2);
+        FileFilterBox filter = Find<FileFilterBox>(window, "DiffFilesFilterBox");
+        ComboBox box = filter.GetLogicalDescendants().OfType<ComboBox>().Single();
+        Button delete = filter.GetLogicalDescendants().OfType<Button>().Single();
+        box.Items.Cast<string>().Should().Equal("^(?!.*NotThisWord)", @"^(?!.*\bg?tests?/)");
+        delete.IsVisible.Should().BeFalse();
+
+        box.Text = @"\.md$";
+
+        Paths(files).Should().HaveCount(2, "upstream filters 250 ms after the typing stops");
+        WaitUntil(() => Paths(files).SequenceEqual(["z.md"]));
+        delete.IsVisible.Should().BeTrue();
+        box.Background.Should().NotBeNull("upstream colors a box that filters");
+        box.Items.Cast<string>().First().Should().Be(@"\.md$", "a filter that matched files goes first");
+
+        filter.Text = "nothing";
+        box.Items.Cast<string>().Should().NotContain("nothing", "a filter that matched nothing is not kept");
+
+        box.Text = Path.Combine(_repo.Path, "b.txt");
+        WaitUntil(() => Paths(files).SequenceEqual(["b.txt"]));
+        box.Text.Should().Be("b.txt", "a full path in the working directory is cut to the path in it");
+
+        delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        filter.Text.Should().BeEmpty();
+        Paths(files).Should().HaveCount(2);
         window.Close();
     }
 
@@ -187,6 +289,30 @@ internal sealed class RevisionFileListTests
                     : "",
             })
         ];
+    }
+
+    private static ListBoxItem RowContainer(ListBox files, object row)
+    {
+        Dispatcher.UIThread.RunJobs();
+        return files.GetVisualDescendants().OfType<ListBoxItem>().Single(item => item.DataContext == row);
+    }
+
+    // A left click at x on the row's container, in window coordinates.
+    private static void ClickRow(Window window, ListBox files, object row, double x)
+    {
+        ListBoxItem container = RowContainer(files, row);
+        Point point = container.TranslatePoint(new Point(x, container.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(point, MouseButton.Left);
+        window.MouseUp(point, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    // The menu updates itself for the selection when it opens, as upstream's ItemContextMenu_Opening.
+    private static void OpenMenu(ListBox list)
+    {
+        list.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        list.ContextMenu!.Close();
     }
 
     private static T Find<T>(Control root, string name)

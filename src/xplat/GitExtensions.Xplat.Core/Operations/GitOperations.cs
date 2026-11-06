@@ -75,22 +75,59 @@ public sealed class GitOperations : IGitOperations
                 throw new GitOperationException("The selected lines have no added or removed line to apply.");
             }
 
-            GitModule module = CreateModule(repositoryPath);
-            ExecutionResult result = module.GitExecutable.Execute(
-                new GitArgumentBuilder("apply")
-                {
-                    "--cached", "--index", "--whitespace=nowarn", { unstage, "--reverse" }
-                },
-                input => input.BaseStream.Write(patch),
-                throwOnErrorExit: false);
-            if (!result.ExitedSuccessfully)
+            ApplyPatch(repositoryPath, patch, new GitArgumentBuilder("apply")
             {
-                string detail = result.AllOutput.Trim();
-                throw new GitOperationException(detail.Length > 0
-                    ? detail
-                    : $"git apply failed with exit code {result.ExitCode}");
-            }
+                "--cached", "--index", "--whitespace=nowarn", { unstage, "--reverse" }
+            });
         });
+
+    public Task ResetLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
+        bool staged)
+        => Task.Run(() =>
+        {
+            byte[]? patch = staged
+                ? PatchManager.GetSelectedLinesAsPatch(diffText, selectionStart, selectionLength, isIndex: true,
+                    Encoding.UTF8, reset: true, isNewFile: false, isRenamed: false)
+                : PatchManager.GetResetWorkTreeLinesAsPatch(diffText, selectionStart, selectionLength, Encoding.UTF8);
+            ApplyPatch(repositoryPath, patch, new GitArgumentBuilder("apply")
+            {
+                "--whitespace=nowarn", { staged, "--reverse --index" }
+            });
+        });
+
+    public Task ApplyLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
+        bool reverse, bool isNewFile = false, bool isRenamed = false)
+        => Task.Run(() =>
+        {
+            byte[]? patch = reverse
+                ? PatchManager.GetResetWorkTreeLinesAsPatch(diffText, selectionStart, selectionLength, Encoding.UTF8)
+                : PatchManager.GetSelectedLinesAsPatch(diffText, selectionStart, selectionLength, isIndex: false,
+                    Encoding.UTF8, reset: false, isNewFile, isRenamed);
+            ApplyPatch(repositoryPath, patch, new GitArgumentBuilder("apply")
+            {
+                "--3way", "--index", "--whitespace=nowarn"
+            });
+        });
+
+    // Upstream's ProcessApplyOutput: the patch on git-apply's input; git's output is the error when it fails.
+    private void ApplyPatch(string repositoryPath, byte[]? patch, GitArgumentBuilder arguments)
+    {
+        if (patch is not { Length: > 0 })
+        {
+            throw new GitOperationException("The selected lines have no added or removed line to apply.");
+        }
+
+        GitModule module = CreateModule(repositoryPath);
+        ExecutionResult result = module.GitExecutable.Execute(arguments, input => input.BaseStream.Write(patch),
+            throwOnErrorExit: false);
+        if (!result.ExitedSuccessfully)
+        {
+            string detail = result.AllOutput.Trim();
+            throw new GitOperationException(detail.Length > 0
+                ? detail
+                : $"git apply failed with exit code {result.ExitCode}");
+        }
+    }
 
     public Task CommitAsync(string repositoryPath, string message, bool amend, bool signOff, string author,
         CommitExtras? extras = null)

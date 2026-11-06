@@ -23,6 +23,11 @@ public partial class DiffView : UserControl
     private string? _syntaxPath;
     private bool _textIsDiff = true;
     private IReadOnlyList<DiffLine>? _text;
+
+    // A file's git-grep matches, shown instead of a diff or a text (upstream's ViewMode.Grep), and how they are read for
+    // the view's options.
+    private IReadOnlyList<GrepLine>? _grep;
+    private Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>>? _grepRead;
     private DiffOptions _options;
 
     // The item template's padding and line number columns, before a line's text.
@@ -38,6 +43,7 @@ public partial class DiffView : UserControl
         // As upstream's FileViewer, each view starts from the options of this run or the saved defaults.
         _options = AppServices.Preferences.InitialDiffOptions();
         WireOptions();
+        WireContinuousScroll();
         DiffList.SizeChanged += (_, _) => ShowVerticalRuler();
         DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
         DiffList.PropertyChanged += (_, e) =>
@@ -84,6 +90,8 @@ public partial class DiffView : UserControl
     {
         _request = new DiffRequest(repositoryPath, commitHash, filePath, staged);
         _text = null;
+        _grep = null;
+        _grepRead = null;
         _syntaxPath = filePath;
         _textIsDiff = true;
         _hasOptions = true;
@@ -101,6 +109,8 @@ public partial class DiffView : UserControl
     {
         _request = new DiffRequest(repositoryPath, CommitHash: null, filePath, Staged: false, read);
         _text = null;
+        _grep = null;
+        _grepRead = null;
         _syntaxPath = filePath;
         _textIsDiff = true;
         _hasOptions = true;
@@ -116,6 +126,8 @@ public partial class DiffView : UserControl
     public void ShowText(string title, string? content)
     {
         _request = null;
+        _grep = null;
+        _grepRead = null;
         TitleText.Text = title;
         _hasOptions = false;
         ShowToolbar();
@@ -132,6 +144,8 @@ public partial class DiffView : UserControl
     public void ShowPatch(string title, string patch)
     {
         _request = null;
+        _grep = null;
+        _grepRead = null;
         TitleText.Text = title;
         _hasOptions = false;
         ShowToolbar();
@@ -155,6 +169,20 @@ public partial class DiffView : UserControl
            && int.TryParse(line.NewNumber.Length > 0 ? line.NewNumber : line.OldNumber, out int number)
             ? number
             : null;
+
+    /// <summary>
+    ///  The whole diff as git printed it, as upstream's <c>CherryPickAllChanges</c> applies it; null while no diff is shown.
+    /// </summary>
+    public (string Text, int Start, int Length)? WholeRange()
+    {
+        if (_request is null || _text is not null || _viewModel.Lines.Count == 0)
+        {
+            return null;
+        }
+
+        string text = string.Join('\n', _viewModel.Lines.Select(line => line.Text)) + "\n";
+        return (text, 0, text.Length);
+    }
 
     public (string Text, int Start, int Length)? SelectedRange()
     {
@@ -189,10 +217,44 @@ public partial class DiffView : UserControl
         return (text.ToString(), start, end - start);
     }
 
+    /// <summary>
+    ///  Shows a file's git-grep matches as upstream's viewer does (<c>ViewGrepAsync</c>, <c>GrepHighlightService</c>): each
+    ///  line with its number in the file, the matches in git's match color, the function lines and the separators as
+    ///  headers; git's error instead when it failed. <paramref name="read"/> reads them again when the context changes.
+    /// </summary>
+    public Task ShowGrepAsync(string title,
+        Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>> read)
+    {
+        _request = null;
+        _text = null;
+        _grepRead = read;
+        TitleText.Text = title;
+        _hasOptions = true;
+        ShowToolbar();
+        _syntaxPath = title;
+        _textIsDiff = false;
+        return LoadGrepAsync(read);
+    }
+
+    private async Task LoadGrepAsync(Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>> read)
+    {
+        (IReadOnlyList<GrepLine> lines, string? error) = await read(_options);
+        if (_grepRead != read)
+        {
+            return;
+        }
+
+        ShowError(error);
+        _grep = lines;
+        ShowLines();
+    }
+
     public void Clear()
     {
         _request = null;
         _text = null;
+        _grep = null;
+        _grepRead = null;
         TitleText.Text = "";
         ShowError(null);
         Lines = [];
@@ -201,6 +263,12 @@ public partial class DiffView : UserControl
 
     private void Reload()
     {
+        if (_grepRead is { } grepRead)
+        {
+            UiActions.Run(() => LoadGrepAsync(grepRead), ex => ShowError(ex.Message));
+            return;
+        }
+
         if (_request is { } request)
         {
             UiActions.Run(() => LoadAsync(request), ex => ShowError(ex.Message));
@@ -238,6 +306,14 @@ public partial class DiffView : UserControl
     // while "Show syntax highlighting" is on, a file's text always.
     private void ShowLines()
     {
+        if (_grep is { } grep)
+        {
+            Lines = [.. grep.Select(GrepItem)];
+            DiffList.ItemsSource = Lines;
+            ShowVerticalRuler();
+            return;
+        }
+
         SyntaxHighlighter? highlighter = (_options.ShowSyntaxHighlighting || !_textIsDiff) && _syntaxPath is { } path
             && SyntaxDefinitions.ForFile(path) is { } syntax
                 ? new SyntaxHighlighter(syntax)
@@ -251,6 +327,52 @@ public partial class DiffView : UserControl
         ];
         DiffList.ItemsSource = Lines;
         ShowVerticalRuler();
+        ApplyPendingScroll();
+    }
+
+    // Upstream's GetDiffLineInfo for grep: a function line and a separator as headers, the matches marked.
+    private static DiffLineItem GrepItem(GrepLine line)
+    {
+        string number = line.Number?.ToString(CultureInfo.InvariantCulture) ?? "";
+        return line.Kind switch
+        {
+            GrepLineKind.Function => new DiffLineItem(line.Text, ThemeBrushes.ForegroundFor(DiffLineKind.Header),
+                ThemeBrushes.BackgroundFor(DiffLineKind.Hunk), NewNumber: number),
+            GrepLineKind.Separator => new DiffLineItem(line.Text, ThemeBrushes.ForegroundFor(DiffLineKind.Header)),
+            _ => new DiffLineItem(line.Text, ThemeBrushes.ForegroundFor(DiffLineKind.Context), NewNumber: number)
+            {
+                Runs = MatchRuns(line)
+            },
+        };
+    }
+
+    // The line in parts, git's matches bold in the theme's match color (upstream's red of git's "color.grep.match").
+    private static IReadOnlyList<DiffTextRun>? MatchRuns(GrepLine line)
+    {
+        if (line.Matches.Count == 0)
+        {
+            return null;
+        }
+
+        List<DiffTextRun> runs = [];
+        int position = 0;
+        foreach ((int start, int length) in line.Matches)
+        {
+            if (start > position)
+            {
+                runs.Add(new DiffTextRun(line.Text[position..start], null, false, false));
+            }
+
+            runs.Add(new DiffTextRun(line.Text.Substring(start, length), ThemeBrushes.Current.Removed, true, false));
+            position = start + length;
+        }
+
+        if (position < line.Text.Length)
+        {
+            runs.Add(new DiffTextRun(line.Text[position..], null, false, false));
+        }
+
+        return runs;
     }
 
     // Upstream's nonprinting characters mark a line's spaces, tabs and end, not a diff line's +, - or space.
@@ -353,6 +475,7 @@ public partial class DiffView : UserControl
                 break;
             case DiffCommand.StageLines:
             case DiffCommand.UnstageLines:
+            case DiffCommand.ResetLines:
                 if (LinesHotkey is { } handler)
                 {
                     handler(this, command);

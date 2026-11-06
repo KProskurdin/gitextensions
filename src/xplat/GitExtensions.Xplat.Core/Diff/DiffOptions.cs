@@ -23,6 +23,16 @@ public sealed record DiffOptions(
     // Upstream's "entire file": git's context made larger than any file.
     private const int EntireFileContext = 9000;
 
+    // Upstream FileViewer.GetExtraGrepArguments' context for the entire file.
+    private const int EntireFileGrepContext = 100_000;
+
+    /// <summary>
+    ///  The git-grep arguments of a file's grep view, as upstream's <c>FileViewer.GetExtraGrepArguments</c> builds them: no
+    ///  file names, and the lines around each match the context says (the whole file for the entire file).
+    /// </summary>
+    public IReadOnlyList<string> GrepArguments
+        => ["-h", $"--context={(ShowEntireFile ? EntireFileGrepContext : ContextLines)}"];
+
     /// <summary>
     ///  The git diff arguments, as upstream's <c>FileViewer.GetExtraDiffArguments</c> builds them.
     /// </summary>

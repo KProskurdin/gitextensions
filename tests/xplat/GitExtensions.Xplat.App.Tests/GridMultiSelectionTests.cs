@@ -92,7 +92,8 @@ internal sealed class GridMultiSelectionTests
                 "upstream collapses the third group unless it is a plain diff of few files");
             files.Items.OfType<CommitFile>().Should().NotContain(file => file.Group == headers[2].Group);
 
-            ClickItem(window, files, headers[2]);
+            // Upstream expands a node on a click on its glyph.
+            ClickItem(window, files, headers[2], x: 4);
             WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Group is { IsCombinedDiff: true }));
             files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Group is { IsCombinedDiff: true });
             DiffView diff = Find<DiffView>(window, "CommitDiff");
@@ -338,7 +339,7 @@ internal sealed class GridMultiSelectionTests
         return window;
     }
 
-    private static void ClickItem(Window window, ListBox list, object item)
+    private static void ClickItem(Window window, ListBox list, object item, double x = 20)
     {
         list.ScrollIntoView(item);
         Dispatcher.UIThread.RunJobs();
@@ -346,7 +347,7 @@ internal sealed class GridMultiSelectionTests
         ListBoxItem container = containers.SingleOrDefault(candidate => Equals(candidate.DataContext, item))
                                 ?? throw new InvalidOperationException(
                                     $"No container for {item} among {string.Join(", ", containers.Select(candidate => candidate.DataContext))}");
-        Point point = container.TranslatePoint(new Point(20, container.Bounds.Height / 2), window)!.Value;
+        Point point = container.TranslatePoint(new Point(x, container.Bounds.Height / 2), window)!.Value;
         window.MouseDown(point, MouseButton.Left);
         window.MouseUp(point, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();

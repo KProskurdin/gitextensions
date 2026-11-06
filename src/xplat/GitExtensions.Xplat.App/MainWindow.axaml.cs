@@ -16,6 +16,7 @@ using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Plugins;
@@ -78,6 +79,9 @@ public partial class MainWindow : Window
 
     // The commit whose tree the File tree tab shows, so the tree is read again only when the selection moves.
     private string? _fileTreeHash;
+
+    // The repository openings not finished yet (IsBusy).
+    private int _openings;
     private int _fileTreeVersion;
     private DateTime _lastActivationRefresh = DateTime.MinValue;
 
@@ -248,8 +252,15 @@ public partial class MainWindow : Window
     private void WireCommitList()
     {
         WireDiffFileList();
+        DiffFilesFilterBox.WorkingDirectory = () => RepositoryPath;
+        WireDiffGitGrep();
+        WireFileTreeGitGrep();
         WireDiffFileSettings();
-        DetailTabs.SelectionChanged += (_, _) => ShowFileTreeIfVisible();
+        DetailTabs.SelectionChanged += (_, _) =>
+        {
+            ShowGitGrepBoxOfTab();
+            ShowFileTreeIfVisible();
+        };
         WireCommitInfo();
         FileTreeView.SelectionChanged += (_, _) => Run(ShowSelectedTreeFileAsync);
         CommitList.SelectionChanged += (_, e) =>
@@ -271,6 +282,8 @@ public partial class MainWindow : Window
         CommitContextMenu.Opening += (_, _) => ShowGridScripts();
         WireGridMenu();
         WireDiffFileMenu();
+        WireFileTreeMenu();
+        WireDiffLinePatching();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
 
         // Upstream's DiffFiles_DoubleClick: the file's history at the selected commit.
@@ -310,21 +323,56 @@ public partial class MainWindow : Window
         _fileTreeHash = hash;
         int version = ++_fileTreeVersion;
         FileContentView.Clear();
-        Run(async () =>
+        ShowFileTreeBlame(false);
+        Task load = LoadFileTreeAsync();
+        _fileTreeLoad = load;
+        Run(() => load);
+        return;
+
+        async Task LoadFileTreeAsync()
         {
-            IReadOnlyList<string> files = await _history.LoadTreeAsync(path, hash);
+            // Upstream's file tree mode with a git-grep search lists the files it matched, expanded while they are few.
+            string grep = _fileTreeGrep;
+            IReadOnlyList<string> files = grep.Length > 0
+                ? await GitGrep.FilesAsync(GitModules.Open(path), hash, grep)
+                : await _history.LoadTreeAsync(path, hash);
             if (version == _fileTreeVersion)
             {
-                FileTreeView.ItemsSource = FileTree.Build(files);
+                _fileTreeFiles = files;
+                ShowFileTreeFiles();
             }
-        });
+        }
     }
 
     private async Task ShowSelectedTreeFileAsync()
     {
+        // Upstream's ShowSelectedFolderAsync, before blame: a selected folder shows the files below it.
+        if (FileTreeView.SelectedItems is { Count: 1 } && FileTreeView.SelectedItem is FileTreeNode { IsFolder: true } folder)
+        {
+            ShowFileTreeBlame(false);
+            (string title, string description) = FileStatusList.FolderDescription(folder.Path,
+                [.. folder.Files().Select(node => node.Path)]);
+            FileContentView.ShowText(title, description);
+            return;
+        }
+
         if (RepositoryPath is not { } path || _fileTreeHash is not { } hash ||
             FileTreeView.SelectedItem is not FileTreeNode { IsFolder: false } file)
         {
+            return;
+        }
+
+        ShowFileTreeBlame(_fileTreeBlame);
+        if (_fileTreeBlame)
+        {
+            await FileTreeBlame.LoadAsync(path, hash, file.Path);
+            return;
+        }
+
+        // Upstream's viewer shows the file's matches while the list has a git-grep search (no forceFileView then).
+        if (_fileTreeGrep is { Length: > 0 } grep)
+        {
+            await FileContentView.ShowGrepAsync(file.Path, options => TreeFileGrepAsync(path, hash, file.Path, grep, options));
             return;
         }
 
@@ -631,6 +679,9 @@ public partial class MainWindow : Window
             case BrowseCommand.StashPop:
                 PopTopStash();
                 break;
+            case BrowseCommand.FindFileInSelectedCommit:
+                Run(FindFileInSelectedCommitAsync);
+                break;
         }
     }
 
@@ -802,23 +853,32 @@ public partial class MainWindow : Window
             _navigationHistory.Clear();
         }
 
-        await _commits.OpenAsync(path);
-        if (RepositoryPath is { } repositoryPath)
+        _openings++;
+        try
         {
-            ShowRepositoryPanels();
-            await _repository.RefreshAsync(repositoryPath);
-            await _recent.AddAsync(repositoryPath);
-            if (_showUntrackedReadFor != repositoryPath)
+            await _commits.OpenAsync(path);
+            if (RepositoryPath is { } repositoryPath)
             {
-                _showUntrackedReadFor = repositoryPath;
-                await ReadShowUntrackedFilesAsync(repositoryPath);
+                ShowRepositoryPanels();
+                await _repository.RefreshAsync(repositoryPath);
+                await _recent.AddAsync(repositoryPath);
+                if (_showUntrackedReadFor != repositoryPath)
+                {
+                    _showUntrackedReadFor = repositoryPath;
+                    await ReadShowUntrackedFilesAsync(repositoryPath);
+                }
+
+                // Upstream's RecentWorkingDir, which the next start can open.
+                _preferences.RecentWorkingDir = repositoryPath;
             }
 
-            // Upstream's RecentWorkingDir, which the next start can open.
-            _preferences.RecentWorkingDir = repositoryPath;
+            RegisterPlugins();
+        }
+        finally
+        {
+            _openings--;
         }
 
-        RegisterPlugins();
         await LaunchBuildServerAsync();
     }
 
@@ -1090,7 +1150,8 @@ public partial class MainWindow : Window
         if (DetailTabs.SelectedItem == FileTreeTab)
         {
             return ScriptFileOptions.For(
-                FileTreeView.SelectedItem is FileTreeNode node ? [node.Path] : [], FileContentView.CurrentFileLine);
+                [.. FileTreeView.SelectedItems?.OfType<FileTreeNode>().Select(node => node.Path) ?? []],
+                FileContentView.CurrentFileLine);
         }
 
         if (DetailTabs.SelectedItem == DiffTab)
@@ -1241,6 +1302,7 @@ public partial class MainWindow : Window
                 new AddToGitIgnoreWindow(path, localExclude: false, ["*.txt"]),
             (Screenshot.CherryPickWindow, { } path) => new CherryPickWindow(path, "HEAD", _preferences, null),
             (Screenshot.ChooseCommitWindow, { } path) => new ChooseCommitWindow(path, "HEAD~1", _preferences),
+            (Screenshot.SearchWindow, { } path) => await NewScreenshotSearchWindowAsync(path),
             (Screenshot.CleanupRepositoryWindow, { } path) => new CleanupRepositoryWindow(path, null),
             (Screenshot.MailMapWindow, { } path) => new RepositoryTextFileWindow(path, RepositoryTextFiles.MailMap),
             (Screenshot.VerifyDatabaseWindow, { } path) => NewVerifyDatabaseWindow(path),
@@ -1318,7 +1380,10 @@ public partial class MainWindow : Window
         CommitWindow window = new(path, _repository, _actions, _repositoryService, _preferences,
             () => OpenRepositoryAsync(path),
             _commitMessages, _plugins.ExecuteByName,
-            (owner, page) => ShowSettingsAsync(owner: owner, page: page));
+            (owner, page) => ShowSettingsAsync(owner: owner, page: page))
+        {
+            Submodules = DiffFileSubmodules(() => _commitWindow ?? (Window)this)
+        };
         _commitWindow = window;
         window.Closed += (_, _) =>
         {
@@ -2253,9 +2318,20 @@ public partial class MainWindow : Window
 
     private void ShowSelectedCommitFileDiff()
     {
+        CommitDiff.LineAction = SelectedFileLineAction();
         ShowCommitDiffButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
         // Upstream has no difftool for the combined diff of a merge.
         CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile { Group.IsCombinedDiff: not true };
+
+        // Upstream's ShowSelectedFolderAsync: a selected folder or group node shows the files below it.
+        if (FileListNodes.SelectedNode(CommitFilesList) is { } node)
+        {
+            (string folder, string description) = FileStatusList.FolderDescription(node.Folder,
+                [.. node.Files.OfType<CommitFile>().Select(folderFile => folderFile.Path)]);
+            CommitDiff.ShowText(folder, description);
+            return;
+        }
+
         if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile groupItem
             && GroupFile(groupItem) is { } grouped)
         {
