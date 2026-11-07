@@ -47,6 +47,7 @@ internal static class RevisionGridColumns
         window.Resources["ShowDateColumn"] = columns.Date;
         SetWidths(window, preferences.RelativeDate);
         window.Resources["ShowObjectIdColumn"] = columns.ObjectId;
+        window.Resources["ShowNotesColumn"] = preferences.GridViewOptions.NotesInSeparateColumn;
         window.Resources["ShowAuthorAvatarColumn"] = preferences.ShowAuthorAvatarColumn;
         window.Resources["FillRefLabels"] = preferences.FillRefLabels;
         window.Resources["BuildStatusShowIcon"] = false;
@@ -54,6 +55,7 @@ internal static class RevisionGridColumns
         window.Resources["BuildStatusColumnWidth"] = 0.0;
         grid.Classes.Set("alternate", preferences.RevisionGraphDrawAlternateBackColor);
         commits.ViewOptions = preferences.GridViewOptions;
+        commits.DrawNonRelativesTextGray = preferences.RevisionGraphDrawNonRelativesTextGray;
     }
 
     private static double Measure(Control window, string text, string familyKey, string sizeKey, string? weightKey,

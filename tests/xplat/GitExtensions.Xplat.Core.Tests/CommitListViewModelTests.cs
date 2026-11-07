@@ -3,6 +3,7 @@ using GitExtensions.Extensibility.BuildServerIntegration;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.Core.Tests;
@@ -129,6 +130,71 @@ internal sealed class CommitListViewModelTests
         _viewModel.VisibleRows.Select(item => item.Changes).Should().Equal(
             new ArtificialChanges(2, 0, 0), new ArtificialChanges(0, 1, 0), null);
         _viewModel.Status.Should().Be("1 commit");
+    }
+
+    [TestCase(false, false, false)]
+    [TestCase(true, false, true)]
+    [TestCase(true, true, false)]
+    [TestCase(false, true, false)]
+    public async Task Git_notes_follow_the_body_only_without_their_column_as_upstreams(bool showGitNotes, bool column,
+        bool notesInBody)
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+            [new CommitRow("aaa1", "aaa1", "subject", "a", "d", Body: "subject\n\nbody", HasMultiLineMessage: true)
+            {
+                Notes = "reviewed\nby Ann\n",
+            }], HasMore: false));
+        await open;
+
+        _viewModel.ViewOptions = new GridViewOptions(ShowGitNotes: showGitNotes, NotesInSeparateColumn: column);
+
+        CommitListItem item = _viewModel.VisibleRows.Single();
+        item.BodyText.Should().StartWith(" body");
+        item.BodyText.Contains("Notes:", StringComparison.Ordinal).Should().Be(notesInBody);
+        item.BodyText.Contains("reviewed", StringComparison.Ordinal).Should().Be(notesInBody);
+        item.NotesText.Should().Be("reviewed", "the notes column shows the first line");
+        item.NotesTooltip.Should().Be("reviewed\nby Ann\n");
+    }
+
+    [Test]
+    public async Task DrawNonRelativesTextGray_marks_the_commits_that_are_not_ancestors_of_head()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+        [
+            new CommitRow("side", "side", "side", "a", "d", ["base"]),
+            new CommitRow("head", "head", "head", "a", "d", ["base"], Labels: [new RefLabel("HEAD", RefKind.Head)]),
+            new CommitRow("base", "base", "base", "a", "d"),
+        ], HasMore: false));
+        await open;
+        _viewModel.VisibleRows.Should().NotContain(item => item.IsNonRelativeText);
+
+        _viewModel.DrawNonRelativesTextGray = true;
+
+        _viewModel.VisibleRows.Where(item => item.IsNonRelativeText).Select(item => item.Row.Hash).Should().Equal("side");
+
+        _viewModel.HighlightBranch(_viewModel.VisibleRows.Single(item => item.Row.Hash == "side").Row);
+
+        _viewModel.VisibleRows.Where(item => item.IsNonRelativeText).Select(item => item.Row.Hash).Should()
+            .Equal(["head"], "upstream's highlighted branch decides the relatives");
+    }
+
+    [Test]
+    public async Task An_artificial_rows_message_tooltip_is_upstreams_summary_of_its_changes()
+    {
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+            [.. ArtificialCommits.Rows("Ann", null), .. Page(hasMore: false, "aaa1").Rows], HasMore: false));
+        await open;
+
+        ArtificialChanges workTree = ArtificialChanges.Of([new FileChange("a.txt", ChangeKind.Modified, Staged: false)]);
+        _viewModel.SetArtificialChangeCounts(workTree, ArtificialChanges.Unknown);
+
+        _viewModel.VisibleRows.Select(item => item.MessageTooltip).Should()
+            .Equal(workTree.Summary, null, _viewModel.VisibleRows[2].Row.Tooltip?.Message);
+        workTree.Summary.Should().NotBeNullOrEmpty();
+        _viewModel.VisibleRows[1].Changes!.Parts.Should().Equal(new ArtificialChangePart("RepoStateUnknown", null));
     }
 
     [Test]

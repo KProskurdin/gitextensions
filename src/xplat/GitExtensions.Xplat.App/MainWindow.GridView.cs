@@ -37,6 +37,21 @@ public partial class MainWindow
             ShowCommitBody = !_preferences.GridViewOptions.ShowCommitBody,
         });
 
+        // Upstream's ToggleShowGitNotes and ToggleShowGitNotesColumn read the history again (the notes come with it).
+        ShowGitNotesMenuItem.Click += (_, _) =>
+        {
+            SetGridViewOptions(_preferences.GridViewOptions with { ShowGitNotes = !_preferences.GridViewOptions.ShowGitNotes });
+            RefreshRepository();
+        };
+        ShowGitNotesColumnMenuItem.Click += (_, _) =>
+        {
+            SetGridViewOptions(_preferences.GridViewOptions with
+            {
+                NotesInSeparateColumn = !_preferences.GridViewOptions.NotesInSeparateColumn,
+            });
+            RefreshRepository();
+        };
+
         ShowGraphColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
         {
             Graph = !_preferences.GridColumns.Graph,
@@ -92,9 +107,17 @@ public partial class MainWindow
         Resources["ShowDateColumn"] = columns.Date;
         RevisionGridColumns.SetWidths(this, _preferences.RelativeDate);
         Resources["ShowObjectIdColumn"] = columns.ObjectId;
+        Resources["ShowNotesColumn"] = _preferences.GridViewOptions.NotesInSeparateColumn;
         Resources["FillRefLabels"] = _preferences.FillRefLabels;
         CommitList.Classes.Set("alternate", _preferences.RevisionGraphDrawAlternateBackColor);
         _commits.ViewOptions = _preferences.GridViewOptions;
+        _commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
+        DrawNonRelativesGrayMenuItem.IsChecked = _commits.DrawNonRelativesGray;
+        _commits.DrawNonRelativesTextGray = _preferences.RevisionGraphDrawNonRelativesTextGray;
+        foreach (Control container in CommitList.GetRealizedContainers())
+        {
+            ShowAuthoredHighlight(container);
+        }
     }
 
     private void ShowViewMenuChecks()
@@ -108,6 +131,8 @@ public partial class MainWindow
         ShowRemoteBranchesMenuItem.IsChecked = options.ShowRemoteBranches;
         ShowTagsMenuItem.IsChecked = options.ShowTags;
         ShowCommitBodyMenuItem.IsChecked = options.ShowCommitBody;
+        ShowGitNotesMenuItem.IsChecked = options.ShowGitNotes;
+        ShowGitNotesColumnMenuItem.IsChecked = options.NotesInSeparateColumn;
         GridColumns columns = _preferences.GridColumns;
         ShowGraphColumnMenuItem.IsChecked = columns.Graph;
         ShowAvatarColumnMenuItem.IsChecked = _preferences.ShowAuthorAvatarColumn;

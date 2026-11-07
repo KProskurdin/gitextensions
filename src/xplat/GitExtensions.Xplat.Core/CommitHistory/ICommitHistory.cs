@@ -91,6 +91,12 @@ public sealed record CommitRow(
     public string? ReflogSelector { get; init; }
 
     /// <summary>
+    ///  Upstream's <c>GitRevision.Notes</c>: the commit's git notes, read with the log while the grid shows them
+    ///  ("Show git notes" or the notes column); null when not read.
+    /// </summary>
+    public string? Notes { get; init; }
+
+    /// <summary>
     ///  Upstream's <c>IsStash</c>: the row is a stash's main commit.
     /// </summary>
     public bool IsStash => ReflogSelector is not null;
@@ -160,6 +166,19 @@ public sealed record RefLabel(string Name, RefKind Kind)
     ///  branch tracking it; null when there is none.
     /// </summary>
     public string? AheadBehind { get; init; }
+
+    /// <summary>
+    ///  Upstream's tooltip text after the label's name when git knows how it tracks or is tracked
+    ///  (<see cref="RefLabelTooltips.LocalTracking"/>, <see cref="RefLabelTooltips.RemoteTracking"/>); null when there is
+    ///  none.
+    /// </summary>
+    public string? Tracking { get; init; }
+
+    /// <summary>
+    ///  The remote branch the checked-out branch tracks (upstream's <c>IGitRef.IsSelectedHeadMergeSource</c>), which the
+    ///  grid draws after an outlined arrow.
+    /// </summary>
+    public bool IsMergeSource { get; init; }
 
     /// <summary>
     ///  Classifies a full reference name such as "refs/heads/main"; the label shows its short name.

@@ -44,6 +44,12 @@ public interface IGitOperations
         CommitExtras? extras = null);
 
     /// <summary>
+    ///  Upstream's <c>GitModule.EditNotes</c>: <c>git notes edit</c> of <paramref name="commit"/>, in
+    ///  <paramref name="editorCommand"/> (see <see cref="GitEditorCommand"/>).
+    /// </summary>
+    Task EditNotesAsync(string repositoryPath, string commit, string editorCommand);
+
+    /// <summary>
     ///  Commits with the message git asks for in <paramref name="editorCommand"/> (see <see cref="GitEditorCommand"/>), as
     ///  upstream's commit window does when messages are not composed in it (<c>UseFormCommitMessage</c>).
     /// </summary>

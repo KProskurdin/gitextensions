@@ -57,7 +57,7 @@ internal sealed class DiffLinePatchingTests
         Find<TextBlock>(question, "MessageText").Text.Should()
             .Be("Are you sure you want to reset the changes to the selected lines?");
         Click(question, "ConfirmButton");
-        WaitUntil(() => ReadLines()[1] == "line 2");
+        WaitUntil(() => ReadLines().ElementAtOrDefault(1) == "line 2");
         ReadLines()[18].Should().Be("line 19 changed", "only the selected lines are reset");
         commit.Close();
         window.Close();
@@ -73,7 +73,7 @@ internal sealed class DiffLinePatchingTests
 
         ClickDiffMenuItem(diff, "StageLinesMenuItem");
 
-        WaitUntil(() => ReadLines()[1] == "line 2 changed");
+        WaitUntil(() => ReadLines().ElementAtOrDefault(1) == "line 2 changed");
         ReadLines()[18].Should().Be("line 19", "only the selected lines are applied");
         _repo.Run("diff", "--cached", "lines.txt").Should().Contain("+line 2 changed", "upstream applies with --index");
         window.Close();
@@ -90,7 +90,7 @@ internal sealed class DiffLinePatchingTests
 
         ClickDiffMenuItem(diff, "ResetLinesMenuItem");
 
-        WaitUntil(() => ReadLines()[18] == "line 19");
+        WaitUntil(() => ReadLines().ElementAtOrDefault(18) == "line 19");
         ReadLines()[1].Should().Be("line 2 changed");
         window.Close();
     }
@@ -128,6 +128,7 @@ internal sealed class DiffLinePatchingTests
         _repo.Run("commit", "-q", "-am", "revert");
     }
 
+    // While git rewrites the file it can be read empty or cut short, so waits read lines with ElementAtOrDefault.
     private string[] ReadLines() =>
         _repo.ReadFile("lines.txt")?.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n') ?? [];
 

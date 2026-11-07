@@ -39,6 +39,9 @@ internal sealed class FakeGitOperations : IGitOperations
         Record("Commit", $"{repositoryPath} {message} amend={amend} signOff={signOff} author={author}"
                          + (extras is null ? "" : $" {extras}"));
 
+    public Task EditNotesAsync(string repositoryPath, string commit, string editorCommand) =>
+        Record("EditNotes", $"{repositoryPath} {commit} {editorCommand}");
+
     public Task CommitWithEditorAsync(string repositoryPath, bool amend, bool signOff, string author,
         string editorCommand, CommitExtras? extras = null) =>
         Record("CommitWithEditor", $"{repositoryPath} amend={amend} signOff={signOff} author={author} {editorCommand}");

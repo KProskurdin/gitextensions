@@ -68,11 +68,18 @@
         <TextBlock Margin="4,8" TextWrapping="Wrap"
                    Text="Select one of the subnodes to view or edit the settings of a Git Extensions Plugin." />
       </TabItem>
-      <!-- Upstream's "Colors" page: its "Theme" group, the CSS themes next to the app and the user's own, and the
-           colorblind variation. -->
+      <!-- Upstream's "Colors" page: its "Revision graph" group, then its "Theme" group, the CSS themes next to the app
+           and the user's own, and the colorblind variation. -->
       <TabItem x:Name="ColorsTab" Header="Colors">
         <StackPanel Spacing="8" Margin="4,8">
-          <TextBlock Text="Theme" FontWeight="SemiBold" />
+          <TextBlock Text="Revision graph" FontWeight="SemiBold" />
+          <CheckBox x:Name="MulticolorBranches" Content="Multicolor branches" />
+          <CheckBox x:Name="chkDrawAlternateBackColor" Content="Draw alternate background" />
+          <CheckBox x:Name="DrawNonRelativesGray" Content="Draw non relatives graph gray" />
+          <CheckBox x:Name="DrawNonRelativesTextGray" Content="Draw non relatives text gray" />
+          <CheckBox x:Name="chkHighlightAuthored" Content="Highlight authored revisions" />
+          <CheckBox x:Name="chkFillRefLabels" Content="Fill git ref labels" />
+          <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,8,0,0" />
           <ComboBox x:Name="ThemeBox" MinWidth="260" />
           <CheckBox x:Name="ColorblindCheck" Content="Colorblind" />
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
@@ -226,11 +233,15 @@
           </StackPanel>
         </StackPanel>
       </TabItem>
-      <!-- Upstream's "Browse repository window" page: the setting whose feature the browse window has. -->
+      <!-- Upstream's "Browse repository window" page: the settings whose features the browse window has, in upstream's
+           groups and order. They apply when saved, so "(restart required)" is left out of the texts. -->
       <TabItem x:Name="BrowseRepositoryTab" Header="Browse repository window">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="General" FontWeight="SemiBold" />
+          <CheckBox x:Name="chkShowFindInCommitFilesGitGrep" Content="Show 'Find in commit files using git-grep'" />
           <CheckBox x:Name="ShowRevisionTooltipsCheck" Content="Show revision tooltips" />
+          <TextBlock Text="Tabs" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="chkShowGpgInformation" Content="Show GPG information" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Detailed" page: the revision graph group (the user's settings, global level only), and the push and

@@ -76,6 +76,35 @@ internal sealed class CommitInfoTests
     }
 
     [AvaloniaTest]
+    public void Add_notes_edits_the_notes_in_gits_editor_and_the_commit_info_shows_them()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "xplat-editor-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        string script = Path.Combine(folder, "editor.sh");
+        File.WriteAllText(script, "#!/bin/sh\nprintf 'reviewed by Ann\\n' > \"$1\"\n");
+        string? editorBefore = AppServices.EditorCommand;
+        AppServices.EditorCommand = $"sh '{script.Replace('\\', '/')}'";
+        try
+        {
+            MainWindow window = OpenWindow(selectedIndex: 0);
+            WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
+            Find<MenuItem>(window, "addNoteToolStripMenuItem").InputGesture.Should()
+                .Be(new Avalonia.Input.KeyGesture(Avalonia.Input.Key.N,
+                    Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift));
+
+            Click(window, "addNoteToolStripMenuItem");
+
+            WaitUntil(() => _repo.Run("log", "-1", "--format=%N").Trim() == "reviewed by Ann");
+            WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Contains("reviewed by Ann"));
+        }
+        finally
+        {
+            AppServices.EditorCommand = editorBefore;
+            GitProcess.DeleteFolder(folder);
+        }
+    }
+
+    [AvaloniaTest]
     public void Copy_commit_info_puts_the_header_and_the_message_on_the_clipboard()
     {
         MainWindow window = OpenWindow(selectedIndex: 0);

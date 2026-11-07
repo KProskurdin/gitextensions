@@ -39,8 +39,29 @@ internal sealed class ToolbarDropDownTests
         Click(window, button);
 
         MenuFlyout flyout = (MenuFlyout)button.Flyout!;
-        WaitUntil(() => flyout.IsOpen && flyout.Items.Count > 0);
+        WaitUntil(() => flyout.IsOpen && flyout.Items.Count > 0, () => State(window, button, flyout));
         PopupWidth(flyout).Should().BeGreaterThan(50, "the menu is laid out with its items, not as a thin line");
+        flyout.Hide();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_branch_drop_down_is_upstreams_checkout_item_then_the_local_branches_read_as_it_opens()
+    {
+        string head = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
+        _repo.Run("branch", "topic");
+        MainWindow window = OpenWindow();
+        Button button = window.FindControl<Button>("BranchSelectButton")!;
+        WaitUntil(() => button.IsEffectivelyEnabled);
+
+        Click(window, button);
+
+        MenuFlyout flyout = (MenuFlyout)button.Flyout!;
+        WaitUntil(() => flyout.IsOpen && flyout.Items.Count > 2, () => State(window, button, flyout));
+        ((MenuItem)flyout.Items[0]!).Header.Should().Be("Chec_kout branch...");
+        flyout.Items[1].Should().BeOfType<Separator>();
+        flyout.Items.Skip(2).Cast<MenuItem>().Select(item => ((TextBlock)item.Header!).Text).Should()
+            .BeEquivalentTo([head, "topic"]);
         flyout.Hide();
         window.Close();
     }
@@ -109,6 +130,10 @@ internal sealed class ToolbarDropDownTests
     private MainWindow OpenWindow()
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+
+        // The whole toolbar must fit, as the clicks land on the buttons' centers: the headless font is wide, so the working
+        // directory's path alone is about 900 pixels, and the buttons after it would be in the overflow drop-down.
+        window.Width = 2400;
         window.Show();
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
@@ -118,19 +143,31 @@ internal sealed class ToolbarDropDownTests
     private static void Click(Window window, Control control)
     {
         Point center = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
+        new Rect(window.ClientSize).Contains(center).Should().BeTrue("the click must land inside the window, on {0}", control.Name);
         window.MouseDown(center, MouseButton.Left);
         window.MouseUp(center, MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
     }
 
-    private static void WaitUntil(Func<bool> condition)
+    // What a click on the button met, for a timed-out wait on its menu.
+    private static string State(Window window, Control button, MenuFlyout flyout)
+    {
+        Point center = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+        Control? hit = window.InputHitTest(center) as Control;
+        return $"button {button.Bounds} at {center} in window {window.ClientSize}, enabled {button.IsEffectivelyEnabled}, "
+               + $"visible {button.IsEffectivelyVisible}, hit {hit?.GetType().Name} '{hit?.Name}', flyout open {flyout.IsOpen} "
+               + $"with {flyout.Items.Count} items, populated {((PopulatingMenuFlyout)flyout).Populated.Status}, "
+               + $"working dir '{((ToolDropDownButton)window.FindControl<Button>("WorkingDirButton")!).Text}'";
+    }
+
+    private static void WaitUntil(Func<bool> condition, Func<string>? state = null)
     {
         DateTime deadline = DateTime.UtcNow + _timeout;
         while (!condition())
         {
             if (DateTime.UtcNow > deadline)
             {
-                Assert.Fail("Timed out waiting for the UI");
+                Assert.Fail("Timed out waiting for the UI" + (state is null ? "" : ": " + state()));
             }
 
             Dispatcher.UIThread.RunJobs();

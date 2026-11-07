@@ -102,6 +102,16 @@ public sealed record FileChange(string Path, ChangeKind Kind, bool Staged)
     /// </summary>
     public bool IsSubmodule { get; init; }
 
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsChanged</c> of a submodule: its commit changed.
+    /// </summary>
+    public bool IsSubmoduleChanged { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsDirty</c> of a submodule: it has changes of its own (modified or untracked files).
+    /// </summary>
+    public bool IsSubmoduleDirty { get; init; }
+
     public string Display => $"{Kind}{(Staged ? " (staged)" : "")}: {Path}";
 
     /// <summary>

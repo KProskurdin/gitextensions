@@ -18,6 +18,8 @@
         <MenuItem x:Name="ShowContainedInTagsMenuItem" Header="Show tags containing this commit" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowAnnotatedTagsMessagesMenuItem" Header="Show messages of annotated tags" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowDerivesFromTagMenuItem" Header="Show the most recent tag this commit derives from" ToggleType="CheckBox" />
+        <Separator />
+        <MenuItem x:Name="addNoteToolStripMenuItem" Header="Add _notes" />
       </ContextMenu>
     </ScrollViewer.ContextMenu>
     <StackPanel x:Name="RevisionInfoPanel">

@@ -268,6 +268,11 @@ internal sealed class MainWindowTests
                 .Equal("Working directory", "Commit index", "second", "first");
             Find<TextBlock>(window, "StatusText").Text.Should().Be("2 commits");
 
+            // Upstream's tooltip of an artificial row: the summary of its changes.
+            WaitUntil(() => commits.Items.OfType<CommitListItem>().First().Changes?.IsKnown == true);
+            commits.Items.OfType<CommitListItem>().Take(2).Select(item => item.MessageTooltip?.ReplaceLineEndings("\n"))
+                .Should().Equal("1 new file\n- untracked.txt\n", "1 new file\n- staged.txt\n");
+
             commits.SelectedIndex = 0;
             ListBox files = Find<ListBox>(window, "CommitFilesList");
 

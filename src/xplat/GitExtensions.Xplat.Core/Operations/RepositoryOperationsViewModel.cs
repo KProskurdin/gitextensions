@@ -177,6 +177,15 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
                 () => _operations.CommitWithEditorAsync(repositoryPath, amend, signOff, author.Trim(), editor, extras))
             : RejectAsync("No editor is available for the commit message.");
 
+    /// <summary>
+    ///  Upstream's "Add notes" (<c>FormBrowse.AddNotes</c>): the commit's notes in git's editor (<see cref="EditorCommand"/>);
+    ///  the repository is read again, so the commit info shows them.
+    /// </summary>
+    public Task<bool> EditNotesAsync(string repositoryPath, string commit)
+        => EditorCommand is { } editor
+            ? RunAsync("Edited notes", repositoryPath, () => _operations.EditNotesAsync(repositoryPath, commit, editor))
+            : RejectAsync("No editor is available for the notes.");
+
     public Task<bool> CreateBranchAsync(string repositoryPath, string name, bool checkout, string? startPoint = null)
     {
         if (string.IsNullOrWhiteSpace(name))

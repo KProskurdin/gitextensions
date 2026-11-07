@@ -73,11 +73,14 @@ internal sealed class GeneralSettingsTests
         MainWindow window = OpenWindow();
         ToolButton commit = Find<ToolButton>(window, "CommitDialogButton");
         WaitUntil(() => commit.Text == "Commit (1)");
+        commit.Image.Should().Be("RepoStateDirty");
 
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar = false;
         Click(window, "RefreshMenuItem");
 
+        // Upstream's RepoStateVisualiser is not asked then: the button shows the clean image.
         WaitUntil(() => commit.Text == "Commit");
+        commit.Image.Should().Be("RepoStateClean");
     }
 
     [AvaloniaTest]
@@ -211,6 +214,32 @@ internal sealed class GeneralSettingsTests
         Find<Border>(window, "QuickSearchPanel").IsVisible.Should().BeTrue();
     }
 
+    [AvaloniaTest]
+    public void The_browse_repository_window_page_shows_the_git_grep_box_and_hides_the_GPG_tab_when_saved()
+    {
+        MainWindow window = OpenWindow();
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedIndex = commits.Items.OfType<CommitListItem>().ToList().FindIndex(item => item.Row.Subject == "second");
+        WaitUntil(() => Find<TabItem>(window, "GpgInfoTab").IsVisible);
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+
+        Click(window, "SettingsMenuItem");
+        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+        SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+        WaitUntil(() => settings.IsGitConfigLoaded);
+        Find<CheckBox>(settings, "chkShowFindInCommitFilesGitGrep").IsChecked.Should().BeFalse();
+        Find<CheckBox>(settings, "chkShowGpgInformation").IsChecked.Should().BeTrue();
+        Find<CheckBox>(settings, "chkShowFindInCommitFilesGitGrep").IsChecked = true;
+        Find<CheckBox>(settings, "chkShowGpgInformation").IsChecked = false;
+        Click(settings, "SaveButton");
+        WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+
+        TestAppBuilder.Preferences.ShowFindInCommitFilesGitGrep.Should().BeTrue();
+        TestAppBuilder.Preferences.ShowGpgInformation.Should().BeFalse();
+        WaitUntil(() => !Find<TabItem>(window, "GpgInfoTab").IsVisible);
+        WaitUntil(() => window.DiffGitGrep!.BoxVisible);
+    }
+
     private static void Reset()
     {
         TestAppBuilder.Preferences.RelativeDate = true;
@@ -220,6 +249,8 @@ internal sealed class GeneralSettingsTests
         TestAppBuilder.Preferences.DefaultCloneDestinationPath = "";
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar = true;
         TestAppBuilder.Preferences.Translation = ChooseTranslationWindow.English;
+        TestAppBuilder.Preferences.ShowGpgInformation = true;
+        TestAppBuilder.Preferences.ShowFindInCommitFilesGitGrep = false;
     }
 
     private static DateTime UnixDate(string seconds)

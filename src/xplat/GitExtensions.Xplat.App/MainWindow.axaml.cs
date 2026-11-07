@@ -95,7 +95,7 @@ public partial class MainWindow : Window
             () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
             () => _preferences.RevisionSortOrder, AppServices.RevisionLinks,
             showArtificialCommits: () => _preferences.RevisionGraphShowArtificialCommits,
-            showStashes: () => _preferences.ShowStashes);
+            showStashes: () => _preferences.ShowStashes, gridView: () => _preferences.GridViewOptions);
         _repositoryService = new GitRepositoryService(RefSorting);
         _commits = new CommitListViewModel(_history);
         _repository = new RepositoryViewModel(_repositoryService);
@@ -417,6 +417,7 @@ public partial class MainWindow : Window
         RebaseMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Rebase);
         CreateTagMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.CreateTag);
         SettingsMenuItem.InputGesture = Hotkeys.GestureFor(BrowseCommand.Settings);
+        RevisionInfo.AddNotesGesture = Hotkeys.GestureFor(BrowseCommand.AddNotes);
         foreach ((MenuItem item, GridCommand command) in NavigateMenuCommands())
         {
             item.InputGesture = Hotkeys.Grid.GestureFor(command);
@@ -492,6 +493,17 @@ public partial class MainWindow : Window
                     commit.Close();
                 }
 
+                Close();
+                return;
+            }
+
+            // XPLAT_SCREENSHOT_WINDOW=overflow: the browse window narrow enough for its toolstrip to overflow.
+            if (Screenshot.RequestedWindow == Screenshot.OverflowWindow)
+            {
+                WindowState = WindowState.Normal;
+                Width = 700;
+                await Task.Delay(TimeSpan.FromMilliseconds(1500));
+                await Screenshot.SaveAsync(this, screenshot);
                 Close();
                 return;
             }
@@ -691,6 +703,9 @@ public partial class MainWindow : Window
                 break;
             case BrowseCommand.FindFileInSelectedCommit:
                 Run(FindFileInSelectedCommitAsync);
+                break;
+            case BrowseCommand.AddNotes:
+                AddNotes();
                 break;
         }
     }
@@ -1090,7 +1105,11 @@ public partial class MainWindow : Window
     }
 
     // Upstream's ShowRevisionGridTooltips; upstream needs a restart, here it applies when the settings are saved.
-    private void ShowGridTooltips() => ToolTip.SetServiceEnabled(CommitList, _preferences.ShowRevisionGridTooltips);
+    private void ShowGridTooltips()
+    {
+        ToolTip.SetServiceEnabled(CommitList, _preferences.ShowRevisionGridTooltips);
+        RefLabelView.SetShowRevisionTooltips(CommitList, _preferences.ShowRevisionGridTooltips);
+    }
 
     // Upstream's branch sort (RefsSortBy, RefsSortOrder, done by git) and priorities, read at each refresh.
     private RefSorting RefSorting() => CommitInfoView.UserRefSorting(_preferences);
@@ -1463,7 +1482,12 @@ public partial class MainWindow : Window
         {
             ThemeApplier.Apply(_preferences);
             FontApplier.Apply(_preferences);
-            RevisionGridColumns.SetWidths(this, _preferences.RelativeDate);
+
+            // Upstream's Colors page: the revision graph group; the Browse repository window page: the git-grep box and
+            // the GPG tab.
+            ShowGridView();
+            ShowGitGrepBoxOfTab();
+            ShowGpgTab();
             FilePathTrimming.Apply(_preferences);
             ShowGridTooltips();
             ShowAvatarSettings();
@@ -1869,6 +1893,7 @@ public partial class MainWindow : Window
                 UpdateBusyState();
                 break;
             case nameof(RepositoryViewModel.Changes):
+            case nameof(RepositoryViewModel.ChangesRead):
                 UpdateCommitButton();
                 UpdateStateBanner();
                 ShowArtificialChangeCounts();

@@ -30,20 +30,23 @@ public sealed class GitCommitHistory : ICommitHistory
     private readonly Func<FileHistoryOptions> _fileHistory;
     private readonly Func<bool> _showArtificialCommits;
     private readonly Func<bool> _showStashes;
+    private readonly Func<GridViewOptions> _gridView;
 
     /// <summary>
     ///  Reads commits; the grid's dates follow <paramref name="dateStyle"/> and the order <paramref name="sortOrder"/>
     ///  (upstream's <c>RevisionSortOrder</c>), asked at each read so a changed setting applies to the next reload
     ///  (upstream's defaults when none is given). The details list the revision links defined in <paramref name="links"/>.
     ///  With <paramref name="showArtificialCommits"/> the first page has upstream's working directory and index rows, and
-    ///  with <paramref name="showStashes"/> the stashes are rows of their own (upstream's <c>ShowStashes</c>).
+    ///  with <paramref name="showStashes"/> the stashes are rows of their own (upstream's <c>ShowStashes</c>). The rows get
+    ///  their git notes while <paramref name="gridView"/> shows them, and "Show git notes" lists the notes refs' commits too.
     /// </summary>
     public GitCommitHistory(Func<CommitDateStyle>? dateStyle = null, Func<RevisionSortOrder>? sortOrder = null,
         IRevisionLinkStore? links = null, Func<FileHistoryOptions>? fileHistory = null,
-        Func<bool>? showArtificialCommits = null, Func<bool>? showStashes = null)
+        Func<bool>? showArtificialCommits = null, Func<bool>? showStashes = null, Func<GridViewOptions>? gridView = null)
     {
         _showArtificialCommits = showArtificialCommits ?? (() => false);
         _showStashes = showStashes ?? (() => false);
+        _gridView = gridView ?? (() => new GridViewOptions());
         _links = links;
         _fileHistory = fileHistory ?? (() => new FileHistoryOptions());
         _dateStyle = dateStyle ?? (() => new CommitDateStyle());
@@ -56,7 +59,8 @@ public sealed class GitCommitHistory : ICommitHistory
 
         // git applies --skip after the order and the filters, so the next page continues where the loaded ones end.
         bool showStashes = _showStashes();
-        string revision = Sorted(filter?.ToRevisionArguments(showStashes) ?? "HEAD");
+        GridViewOptions gridView = _gridView();
+        string revision = Sorted(filter?.ToRevisionArguments(showStashes, gridView.ShowGitNotes) ?? "HEAD");
         if (skip > 0)
         {
             revision = $"--skip={skip.ToString(System.Globalization.CultureInfo.InvariantCulture)} {revision}";
@@ -71,7 +75,7 @@ public sealed class GitCommitHistory : ICommitHistory
             (string pathFilter, IReadOnlyDictionary<string, string>? paths) =
                 PathFilter(repositoryPath, filter?.PathFilter ?? "", options);
             return ReadPage(repositoryPath, revision, pathFilter, limit, markHead: true, style, artificial, showStashes,
-                filter?.ShowReflog == true) with
+                filter?.ShowReflog == true, gridView.ReadsNotes) with
             {
                 FilePaths = paths
             };
@@ -362,7 +366,7 @@ public sealed class GitCommitHistory : ICommitHistory
     ///  history is not loaded in full.
     /// </summary>
     private static CommitPage ReadPage(string path, string revision, string pathFilter, int limit, bool markHead,
-        CommitDateStyle style, bool artificial = false, bool stashes = false, bool reflog = false)
+        CommitDateStyle style, bool artificial = false, bool stashes = false, bool reflog = false, bool notes = false)
     {
         GitModule module = CreateModule(path);
         if (!module.IsValidGitWorkingDir())
@@ -384,7 +388,7 @@ public sealed class GitCommitHistory : ICommitHistory
         try
         {
             new RevisionReader(module).GetLog(observer, revisionFilter: revision, pathFilter: pathFilter,
-                hasNotes: false,
+                hasNotes: notes,
                 autostashLabel: "", cancellationToken: stopReading.Token);
         }
         catch (OperationCanceledException) when (stopReading.IsCancellationRequested)
@@ -446,7 +450,10 @@ public sealed class GitCommitHistory : ICommitHistory
                 r.ParentIds?.Select(id => id.ToString()).ToList() ?? [],
                 [.. refs.Where(label => !label.IsBisect).Select(label => label.Name)], refs,
                 RevisionTooltips.For(r, refs), r.Body, r.HasMultiLineMessage, r.AuthorEmail, r.AuthorDate,
-                r.CommitDate);
+                r.CommitDate)
+            {
+                Notes = r.Notes,
+            };
         }
     }
 
@@ -505,6 +512,9 @@ public sealed class GitCommitHistory : ICommitHistory
                     AheadBehind = aheadBehind.TryGetValue(label.Name, out AheadBehindData local)
                         ? local.ToDisplay(withCounts: false, reverse: true)
                         : null,
+                    Tracking = aheadBehind.TryGetValue(label.Name, out AheadBehindData tracked)
+                        ? RefLabelTooltips.LocalTracking(tracked)
+                        : null,
                 },
                 RefKind.RemoteBranch => label with
                 {
@@ -512,6 +522,9 @@ public sealed class GitCommitHistory : ICommitHistory
                     remotes.FirstOrDefault(remote => label.Name.StartsWith(remote + "/", StringComparison.Ordinal)),
                     AheadBehind = aheadBehindByRemote.TryGetValue(parts[0], out AheadBehindData tracking)
                         ? tracking.ToDisplay(withCounts: false)
+                        : null,
+                    Tracking = aheadBehindByRemote.TryGetValue(parts[0], out AheadBehindData trackedBy)
+                        ? RefLabelTooltips.RemoteTracking(trackedBy)
                         : null,
                 },
                 _ => label,
@@ -530,6 +543,17 @@ public sealed class GitCommitHistory : ICommitHistory
             }
 
             names.Add(label);
+        }
+
+        // Upstream's UpdateSelectedRef: the remote branch the checked-out branch tracks is its merge source.
+        string? mergeSource = labels.Values.SelectMany(names => names).FirstOrDefault(label => label.IsCurrent)?.Upstream;
+        foreach (List<RefLabel> names in labels.Values)
+        {
+            int index = names.FindIndex(label => label.Kind == RefKind.RemoteBranch && label.Name == mergeSource);
+            if (index >= 0)
+            {
+                names[index] = names[index] with { IsMergeSource = true };
+            }
         }
 
         return labels;
@@ -563,8 +587,10 @@ public sealed class GitCommitHistory : ICommitHistory
             };
         }
 
+        // Upstream's commit info reads the message with the notes (CommitDataManager.UpdateBodyAndNotes), which its body
+        // renderer shows after the message.
         GitRevision revision = new RevisionReader(module)
-                                   .GetRevision(hash, hasNotes: false, throwOnError: true,
+                                   .GetRevision(hash, hasNotes: true, throwOnError: true,
                                        cancellationToken: CancellationToken.None)
                                ?? throw new InvalidOperationException($"Commit not found: {hash}");
         CommitData data = new CommitDataManager(() => module).CreateFromRevision(revision, children: null);

@@ -62,7 +62,8 @@ public partial class FileHistoryWindow : Window
             isSubmodule: GitModule.IsValidGitWorkingDir(Path.Combine(repositoryPath, fileName.ToNativePath())));
         _commits = new CommitListViewModel(new GitCommitHistory(
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
-            () => preferences.RevisionSortOrder, fileHistory: () => preferences.FileHistory));
+            () => preferences.RevisionSortOrder, fileHistory: () => preferences.FileHistory,
+            gridView: () => preferences.GridViewOptions));
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.FileHistoryWindow");
         ShowGridColumns();

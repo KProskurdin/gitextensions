@@ -63,6 +63,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/HelperDialogs/FormRemoteProcess.cs`, `FormProcess.cs` | `src/xplat/GitExtensions.Xplat.App/ProcessWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOutputRunner.cs`, `RepositoryOperationsViewModel.cs` (`OutputLines`, `Cancel`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormSettings.cs` (pages: appearance, commit dialog, git, git config) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)`, `ThemeApplier.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs`, `GitConfigService.cs` | `52d08e996` | partial |
 | `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ColorsSettings/ColorsSettingsPage.cs` (revision graph group); `src/app/GitUI/UserControls/RevisionGrid/RevisionDataGridView.cs` (`GetForeground`, `GetCommitBodyForeground`) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Colors page), `RevisionGrid.axaml`, `ThemeApplier.cs`, `MainWindow.GridView.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (`DrawNonRelativesTextGray`), `CommitGraph.cs` (`GraphRowRef.IsRelative`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormAbout.cs`, `EnvironmentInfo.cs`, `AboutBoxDialog/FormContributors.cs`; `src/app/GitUI/UserEnvironmentInformation.cs` (`GetInformation`, `GetGitVersionInfo`, `CopyInformation`) | `src/xplat/GitExtensions.Xplat.App/AboutWindow.axaml(.cs)`, `ContributorsWindow.axaml(.cs)`, `UpstreamResources.cs`; `src/xplat/GitExtensions.Xplat.Core/Platform/EnvironmentInformation.cs`, `Contributors.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs`, `DashboardTheme.cs`, `UserRepositoriesList.cs`, `UserRepositoriesListController.cs`, `FormDashboardCategoryTitle.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories), `MainWindow.Dashboard.cs`, `ThemeApplier.cs` (dashboard colors); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs`, `Dashboard.cs` | `52d08e996` | partial |
 | `src/app/GitUI/LeftPanel/RepoObjectsTree.cs`, `RepoObjectsTree.Designer.cs`, `RepoObjectsTree.ContextActions.cs`, `ContextMenu/MenuItemsGenerator.cs`, `MenuItemsStrings.cs`, `LocalBranchTree.cs`, `RemoteBranchTree.cs`, `TagTree.cs`, `StashTree.cs`, `SubmoduleTree.cs`, `WorktreeTree.cs` and their nodes | `src/xplat/GitExtensions.Xplat.Core/Repository/RepoObjectsTree.cs`, `GitRepositoryService.cs` (ahead and behind, worktrees, remote URLs, merged branches); `src/xplat/GitExtensions.Xplat.App/MainWindow.LeftPanel.cs`, `MainWindow.MergedBranches.cs`, `MainWindow.HiddenRefs.cs`, `MainWindow.SubmoduleTree.cs`, `MainWindow.axaml` (`LeftPanel`); core `Repository/RepoObjectSearch.cs`, `Repository/RepoObjectSelection.cs`, `Repository/SubmoduleStructure.cs` | `afc512395` | ported |
@@ -146,7 +147,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/RepositoryCurrentBranchNameProvider.cs`; `DashboardControl/UserRepositoriesListController.cs` (`GetCurrentBranchName`) | `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs` (`RecentRepositoryBranches`), `RecentRepositoriesViewModel.cs` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/RevisionGrid/QuickSearchProvider.cs`; `src/app/GitCommands/Git/GitRevisionTester.cs` (`Matches`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/QuickSearch.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.QuickSearch.cs` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/RevisionGrid/Graph/LaneInfoProvider.cs`; `Graph/BranchFinder.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/LaneInfoProvider.cs`, `CommitGraph.cs`; `src/xplat/GitExtensions.Xplat.App/GraphCell.cs` | `52d08e996` | ported |
-| `src/app/GitUI/UserControls/RevisionGrid/ArtificialCommitChangeCount.cs`; `RevisionGridControl.cs` (artificial rows) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/ArtificialCommits.cs`, `GitCommitHistory.cs`, `CommitListViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/ArtificialCommitChangeCount.cs`; `RevisionGridControl.cs` (artificial rows) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/ArtificialCommits.cs`, `GitCommitHistory.cs`, `CommitListViewModel.cs` (`ArtificialChanges`); `src/xplat/GitExtensions.Xplat.App/MainWindow.GraphStyles.cs`, `RevisionGrid.axaml` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/BuildReportTabPageExtension.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs`, `MainWindow.axaml` (`BuildReportTab`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (menus), `FormBrowse.cs` (menu visibility on the dashboard); `Menus/StartToolStripMenuItem.cs`, `ToolsToolStripMenuItem.cs`, `HelpToolStripMenuItem.cs`; `src/app/GitUI/RepositoryHistoryUIService.cs` (`PopulateRecentRepositoriesMenu`, `PopulateFavouriteRepositoriesMenu`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (menus), `MainWindow.StartMenu.cs`, `MainWindow.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepositoryMenus.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (`ToolStripMain`), `FormBrowse.cs` (toolstrip parts of `InitMenusAndToolbars`, `RefreshDefaultPullAction`, the layout toggles, the title); `Menus/WorkingDirectoryToolStripSplitButton.cs`; `ToolStripPushButton.cs`; `src/app/GitUI/UserControls/RepoStateVisualiser.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs`, `MainWindow.axaml` (toolstrip), `UpstreamImages.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepoState.cs`, `RecentRepositories.cs` (`Caption`), `BrowseWindowTitle.cs` | `52d08e996` | ported |
@@ -1729,11 +1730,13 @@ application font through the windows' style). Not ported: "Show end-of-line mark
 (`ShowRevisionGridTooltips`, on by default) and the tooltips it controls, with upstream's texts: the message column shows
 the message summary (upstream's `GitRevisionSummaryBuilder`) when it has more lines or the commit has refs, then the refs in
 brackets (local branches, remote branches, tags); the author column the author and committer; the date column both dates;
-the hash column the full hash. Upstream needs a restart; here the setting applies when the settings are saved. Not ported:
-ahead/behind counts in the ref lines and the tooltips of a hovered ref label (the shell has no ahead/behind data per ref),
-and the page's other settings: the Console tab and its shell, GPG information, find
-in commit files with git grep, output history (the shell has none of them); "Show file history in the main window" and
-"Show blame in diff viewer" (the shell shows file history and blame in their own windows only).
+the hash column the full hash. Upstream needs a restart; here the setting applies when the settings are saved. (The
+ahead/behind counts in the ref lines came later; the tooltips of a hovered ref label on 2026-11-07, see
+MessageColumnProvider.) Added 2026-11-07: "Show 'Find in commit files using git-grep'" in the General group and the Tabs
+group's "Show GPG information", in upstream's order, applied when saved (the git-grep box of the shown tab, the GPG tab),
+so their "(restart required)" is left out. Not ported: the Console tab and its shell, output history (the shell has
+neither); "Show file history in the main window" (decided with the user, see FormFileHistory) and "Show blame in diff
+viewer".
 
 **BlameViewerSettingsPage / blame gutter and menu** (`partial`). Ported 2026-10-07: the blame window blames with upstream's
 flags (`-M`, `-C`, `-w` from `DetectCopyInFileOnBlame`, `DetectCopyInAllOnBlame`, `IgnoreWhitespaceOnBlame`) and shows
@@ -1783,8 +1786,11 @@ DecreaseNumberOfVisibleLines, ShowEntireFile), kept for the next view in this ru
 "Remember" settings and "Save current view settings as default". Added 2026-10-11: remember non-printing characters and
 syntax highlighting, the vertical ruler position and "Show all available difftools" (FileViewer row). Added 2026-11-03:
 "Show file differences for all parents in browse dialog" (`showdiffforallparents`, with upstream's runtime tooltip; the
-Diff tab's groups, RevisionDiffControl row). Not ported: diff appearance, combined diff, continuous scroll, submodule
-diff and Git coloring, whose FileViewer features the shell does not have (PLAN.md M8).
+Diff tab's groups, RevisionDiffControl row). Not ported: diff appearance, combined diff, submodule diff and Git coloring,
+whose FileViewer features the shell does not have (PLAN.md M8); continuous scroll came on 2026-11-06 (FileViewer row).
+Changed 2026-11-07: "Save current view settings as default" saves every runtime setting of `AppSettings` as upstream's
+`SaveCurrentViewSettingsAsDefault` does (by reflection over its static fields), so also the grid's sort order, reflog
+references, current branch only and branch filter, and the diff appearance; it saved only the four diff viewer choices.
 
 **CommitDialogSettingsPage** (`ported`). Ported 2026-10-07: the second-line setting, the remembered Amend check box and
 the Commit & Push button, under upstream's keys and labels. In the commit window (FormCommit row): the message goes through
@@ -1993,6 +1999,16 @@ for reference, as WinForms' dark mode supplies them): WindowText, GrayText and H
 and accent resources, and come back to the app's own when a theme without them is applied. Not ported: the other system
 colors (Fluent draws the controls from its light or dark variant), the theme editor, `UseSystemVisualStyle`, and the
 restart prompt (the new shell applies a theme at once).
+
+**ColorsSettingsPage (revision graph group)** (`ported`). 2026-11-07: the Colors page has upstream's "Revision graph"
+group above the theme, with its six check boxes in its order and with its control names: Multicolor branches
+(`multicolorbranches`, stored only, as upstream reads it nowhere else), Draw alternate background, Draw non relatives
+graph gray, Draw non relatives text gray, Highlight authored revisions and Fill git ref labels. Saving applies them to the
+grid at once (upstream's grid reloads its settings the same way). "Draw non relatives text gray"
+(`revisiongraphdrawnonrelativestextgray`) is new in the grid: a row whose commit is no relative of the checked-out one
+(upstream's `RevisionGraph.IsRowRelative`, so also after "Highlight selected branch") has its text in upstream's
+`RevisionDataGridView` colors (gray, lighter while selected in the focused grid; the body a lighter gray, lighter again
+while selected), fixed per light and dark mode as upstream's; in every grid that uses the shared row template.
 
 **InteractiveGitActionControl** (`partial`). Ported 2026-10-09: upstream's two notification bars above the grid, one for a
 bisect and one for a stopped rebase, merge or patch (`git am`) or for conflicts left by any command, with upstream's texts,
@@ -2229,11 +2245,17 @@ the text clears after `revisiongridquicksearchtimeout`, and the next and previou
 **LaneInfoProvider** (`ported`). 2026-10-10: the graph's tooltip for a lane, with upstream's text (the commit or the child
 it leads to, the branch upstream's `BranchFinder` finds, the message summary), on the pointer's lane.
 
-**ArtificialCommitChangeCount / artificial rows** (`partial`). 2026-10-10: the "Working directory" and "Commit index" rows
+**ArtificialCommitChangeCount / artificial rows** (`ported`). 2026-10-10: the "Working directory" and "Commit index" rows
 before HEAD (on the first page without a filter), their files and diffs, and the change count beside them
-(`showgitstatusforartificialcommits`). Not ported: upstream's summary of the changes by kind (changed, new, deleted,
-submodules) on the artificial rows. Added 2026-11-03: that summary's text (`GetSummary`, core
+(`showgitstatusforartificialcommits`). Added 2026-11-03: the summary's text (`GetSummary`, core
 `SubmoduleStructure.ChangeSummary`) is the left panel's tooltip of the shown project (see RepoObjectsTree).
+Completed 2026-11-07: core `ArtificialChanges` groups the changes as upstream's `Update` (changed, new, deleted files,
+submodules whose commit changed, dirty submodules; `FileChange.IsSubmoduleChanged/IsSubmoduleDirty` keep upstream's
+porcelain v2 flags of a submodule), with the icons of `DrawArtificialRevision` for each group (`SubmoduleRevisionDown`,
+`SubmoduleDirty` for the submodules), the unknown state image until the status has been read
+(`RepositoryViewModel.ChangesRead`, upstream's `DataValid`), and `GetSummary` as the row's message tooltip
+(`CommitListItem.MessageTooltip`; `ArtificialChanges.Summarize` is the one text, the left panel's too). An unknown row
+counts as without changes, as upstream's `HasChanges`, so the Navigate toggle passes over it.
 
 **BuildReportTabPageExtension** (`ported`). 2026-10-10: a "Build Report" tab while `ShowBuildResultPage` is on and the
 selected commit's build has a report, following the selected build. Difference: the report is a link that opens in the
@@ -2248,10 +2270,22 @@ with upstream's images by resource name (`UpstreamImages`, which reads the linke
 commit info toggles; the submodules, worktrees, working directory and branch drop-downs; the pull split button (merge,
 rebase, fetch, open dialog, fetch all, fetch and prune all, and the default pull action, shown as the button's image and
 text); push with upstream's `AheadBehindData.ToDisplay` text and tooltips; "Commit (n)" with `RepoStateVisualiser`'s
-image; the stash split button; the folder, terminal and settings buttons; then the filter toolstrip (see **FilterToolBar**).
+image (since 2026-11-07 also its dirty submodules state, the unknown state until the status has been read, and the clean
+image while `ShowGitStatusInBrowseToolbar` is off, as upstream); the stash split button; the folder, terminal and settings
+buttons; then the filter toolstrip (see **FilterToolBar**). 2026-11-07: the branch drop-down is upstream's
+`CurrentBranchDropDownOpening`: "Checkout branch..." with its hotkey and a separator, then the local branches read from
+git as the menu opens (`GitRepositoryService.GetBranchMenuBranchesAsync`, the user's ref sort, at most 100), each with the
+branch image, or the closed eye and gray text when the grid does not show its commit; a click checks it out. It used to
+list the snapshot's branches with the current one checked, and opened empty when clicked before the first read.
+2026-11-07: upstream's ToolStrip overflow (items' `Overflow` is `AsNeeded`) on the main toolstrip (`OverflowToolStrip`):
+the items that do not fit, from the end, are left out of the row and a "»" button at its end opens a drop-down with them.
+As upstream's overflow drop-down hosts the items themselves, they move into it while it is open (their clicks, split
+button menus and state work there) and back into their places when it closes; it closes on an item's click (but not
+while that item's own menu is open), when that menu closes, on a press outside it and on Escape. A separator never ends
+the row; in the drop-down separators lie flat. Before, a toolbar wider than the window cut its last buttons off.
 The working directory caption is upstream's `RecentRepoSplitter` caption and `PathUtil.GetDisplayPath`, and the window
 title is upstream's `AppTitleGenerator` (both linked GitCommands code, unchanged). The path box, Open, Init, Clone, Fetch,
-Push tags, Files and Reflog buttons were removed; their actions are in the menus, as upstream. Differences: toolstrip overflow is not ported. Since 2026-10-16 the stash button opens the stash window as upstream's, and
+Push tags, Files and Reflog buttons were removed; their actions are in the menus, as upstream. Toolstrip overflow: see 2026-11-07 below. Since 2026-10-16 the stash button opens the stash window as upstream's, and
 its menu has "Manage stashes..." and "Create a stash..."; Commands has upstream's "Manage stashes..." in place of the new
 shell's "Stash changes" and "Stash pop" (both stay in the stash button's menu, with their hotkeys shown there). 2026-10-13: the layout toggles are checked buttons (`ToolToggleButton`) as upstream's, and the split view toggle
 is kept in upstream's `ShowSplitViewLayout`; the commit info position split button (`CommitInfoPosition`: below the grid
@@ -2321,10 +2355,30 @@ date and topo order), the group captions in italics as `MenuUtil.SetAsCaptionMen
 author, date and SHA-1 columns start at upstream's providers' widths (`RevisionGridColumns`): the author 130 px, the date
 130 px for relative dates, else the width of the current time in the general format; the SHA-1 the width of the eight
 characters upstream's 60 px hold in its default font. Upstream keeps no column widths, as its grid has no header row to
-resize them. Not ported: git notes and
-session refs in the grid (the stashes came on 2026-11-02, see RevisionGridControl), the superproject labels and refs, the notes column, per-remote label colors, the label hover
-frame and tooltip per label, the multi-line indicator, non-relatives drawn in gray text (their lanes are gray), the
-"unknown" artificial state and submodule counts, the merge source arrow, and "Save current view settings as default".
+resize them. Not ported: the
+session refs in the grid (the stashes came on 2026-11-02, see RevisionGridControl), and the superproject labels and refs ("Save current view settings as default" is on the Diff viewer page, see DiffViewerSettingsPage). (The "unknown" artificial state and the submodule
+counts came on 2026-11-07, see ArtificialCommitChangeCount. The per-remote label colors were already ported, see
+`RefLabelView.RemoteColors`; the earlier mention here was stale.)
+2026-11-07: the label under the pointer gets upstream's highlight frame (the outline in the label's own color, dashed for
+the virtual ahead/behind label, drawn after the nestled label) and upstream's tooltip for its `highlightRef` (core
+`RefLabelTooltips`, upstream's `TranslatedStrings` texts): "[name]" with the counts and "is tracking [...]" or "was
+tracking [...], but the remote is gone" for a local branch, "is tracked by [...]" for a remote branch (`RefLabel.Tracking`,
+read with the labels from upstream's `AheadBehindDataProvider`), else "is a local branch", "is a remote branch" or "is
+a tag"; then the commit's message tooltip. The virtual ahead/behind label shows its branch's tooltip, as upstream's
+`NestledVirtualRef` resolves to the same ref. With `ShowRevisionGridTooltips` off only a label with tracking information
+shows its first part, as upstream's (`RefLabelView.ShowRevisionTooltips`, inherited from the grid). Also 2026-11-07:
+upstream's `MultilineIndicator`, the box with three dots at the message cell's right end for a message with a body (the
+window text color at alphas 32 and 128, upstream's paddings), the subject and body cut before it; and non-relatives' text
+in gray (see ColorsSettingsPage). Difference: upstream drops the indicator in a cell narrower than twice its width; here
+it stays. Also: upstream's merge source arrow (`IsSelectedHeadMergeSource`, `RefLabelIcon.HeadMergeSource`): the remote
+branch the checked-out branch tracks (`RefLabel.IsMergeSource`, found as upstream's `UpdateSelectedRef`) is drawn after
+an outlined arrow when it is a label of its own, never when nestled against its branch. Also: upstream's git notes in
+the grid, the View menu's "Show git notes" (`showgitnotes`: the notes after the body, as `GetBody` formats them with
+`FormatBodyAndNotes`, and the notes refs' commits listed, without `--exclude=refs/notes/`) and "Show Git notes column"
+(`ShowGitNotesColumn`: upstream's `NotesColumnProvider` after the message, the notes' first line 50 pixels wide with all
+of them as the tooltip, the notes then out of the body). Either choice reads the notes with the log (`GetLog`'s
+`hasNotes`) and reads the history again when changed, as upstream's toggles do; also in the file history, choose commit
+and format patch grids. Not ported: their hotkeys (no default key upstream).
 
 **CommitInfo and the detail tabs** (`partial`). 2026-10-13: the detail tabs carry upstream's images (Commit, Diff, File tree,
 GPG). The commit info is upstream's layout on the window color: the avatar beside the header, whose rows come from
@@ -2340,5 +2394,12 @@ Copy commit info (`CommitDataHeaderRenderer.GetPlainText` and the message) and t
 upstream's settings. Copy hash and Copy message are only in the grid's menu, as upstream. The GPG tab is
 `RevisionGpgInfoControl` over upstream's `GpgInfoProvider` and `GitGpgController`: shown for real commits while
 `ShowGpgInformation` is on, read when the tab is selected. Not ported: the Console tab (ConEmu) and the Output history tab,
-"Add notes", git notes in the message, the back and forward mouse buttons (done 2026-11-04, see Navigate menu), the settings checkbox for GPG information, and
-translations of the commit info texts that upstream keeps in `CommitInfo` and GitUI's `TranslatedStrings`.
+the back and forward mouse buttons (done 2026-11-04, see Navigate menu), and
+translations of the commit info texts that upstream keeps in `CommitInfo` and GitUI's `TranslatedStrings`. Added
+2026-11-07: the settings checkbox for GPG information (see FormBrowseRepoSettingsPage); the commit's git notes after its
+message, as upstream's commit info reads the message with the notes (`UpdateBodyAndNotes`) and its body renderer shows
+them; and the menu's "Add notes" (upstream's `FormBrowse.AddNotes`, `GitModule.EditNotes`: `git notes edit` of the
+commit) with its hotkey (`AddNotes`, Ctrl+Shift+N, also in the browse window). Difference: git edits the notes in the
+app's editor (`GitEditorCommand`, for this call only), as the new shell does for every editor git asks for, where upstream
+uses `core.editor` and a console window for a terminal editor. The grid's notes ("Show git notes", the notes column):
+see MessageColumnProvider.

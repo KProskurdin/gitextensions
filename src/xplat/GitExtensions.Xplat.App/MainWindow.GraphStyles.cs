@@ -70,7 +70,7 @@ public partial class MainWindow
     }
 
     // Upstream's "Show number of changed files for artificial commits": the working directory's unstaged and untracked
-    // files, the index's staged ones.
+    // files, the index's staged ones; upstream's unknown state until the status has been read.
     private void ShowArtificialChangeCounts()
     {
         if (!_preferences.ShowGitStatusForArtificialCommits)
@@ -79,9 +79,15 @@ public partial class MainWindow
             return;
         }
 
+        if (!_repository.ChangesRead)
+        {
+            _commits.SetArtificialChangeCounts(ArtificialChanges.Unknown, ArtificialChanges.Unknown);
+            return;
+        }
+
         _commits.SetArtificialChangeCounts(
-            ArtificialChanges.Of(_repository.Changes.Where(change => !change.Staged).Select(change => change.Kind)),
-            ArtificialChanges.Of(_repository.Changes.Where(change => change.Staged).Select(change => change.Kind)));
+            ArtificialChanges.Of([.. _repository.Changes.Where(change => !change.Staged)]),
+            ArtificialChanges.Of([.. _repository.Changes.Where(change => change.Staged)]));
     }
 
     private void HighlightSelectedBranch()

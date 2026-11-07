@@ -38,13 +38,28 @@ public sealed record GridLabel(string Text, RefKind Kind, GridLabelShape Shape =
     ///  its kind's: a remote branch's remote, or for the label nestled against a local branch the remote it tracks.
     /// </summary>
     public string? Remote { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>RefLabelIcon.HeadMergeSource</c>: the remote branch the checked-out branch tracks, drawn after an
+    ///  outlined arrow; never for a label nestled against another.
+    /// </summary>
+    public bool IsMergeSource { get; init; }
 }
 
 /// <summary>
-///  Upstream's revision grid choices of the View menu: the "Grid labels" (<c>ShowTags</c>, <c>ShowRemoteBranches</c>)
-///  and the commit body after the subject (<c>ShowCommitBodyInRevisionGrid</c>).
+///  Upstream's revision grid choices of the View menu: the "Grid labels" (<c>ShowTags</c>, <c>ShowRemoteBranches</c>),
+///  the commit body after the subject (<c>ShowCommitBodyInRevisionGrid</c>), and the git notes (<c>ShowGitNotes</c>: the
+///  notes after the body; <c>ShowGitNotesColumn</c>: a column of their own instead), as upstream's message column settings
+///  hold them.
 /// </summary>
-public sealed record GridViewOptions(bool ShowTags = true, bool ShowRemoteBranches = true, bool ShowCommitBody = true);
+public sealed record GridViewOptions(bool ShowTags = true, bool ShowRemoteBranches = true, bool ShowCommitBody = true,
+    bool ShowGitNotes = false, bool NotesInSeparateColumn = false)
+{
+    /// <summary>
+    ///  Upstream's <c>RevisionReader.GetLog</c> argument: the log reads the notes while either choice shows them.
+    /// </summary>
+    public bool ReadsNotes => ShowGitNotes || NotesInSeparateColumn;
+}
 
 /// <summary>
 ///  Lays out a commit's labels as upstream's <c>MessageColumnProvider.OnCellPainting</c> draws them: HEAD is not a label
@@ -109,6 +124,7 @@ public static class GridLabels
                 {
                     Ref = label,
                     Remote = label.Remote,
+                    IsMergeSource = label.IsMergeSource,
                     Nestled = new GridLabel(arrows, remote ? RefKind.Branch : RefKind.RemoteBranch,
                         remote ? GridLabelShape.PointLeft : GridLabelShape.NotchLeft)
                     {
@@ -127,6 +143,7 @@ public static class GridLabels
             {
                 Ref = label,
                 Remote = label.Remote,
+                IsMergeSource = label.IsMergeSource,
             });
         }
 

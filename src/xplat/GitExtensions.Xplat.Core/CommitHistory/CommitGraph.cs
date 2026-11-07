@@ -146,7 +146,10 @@ public sealed class CommitGraph
         CommitRow row = OrderedRows[index];
         return new GraphRowRef(this, index,
             HasRefs: row.Labels?.Any(label => label.Kind != RefKind.Head) is true,
-            IsHead: row.Labels?.Any(label => label.Kind == RefKind.Head) is true);
+            IsHead: row.Labels?.Any(label => label.Kind == RefKind.Head) is true)
+        {
+            IsRelative = _graph.IsRowRelative(index),
+        };
     }
 
     internal IRevisionGraphRow? SegmentsFor(int index) => _graph.GetSegmentsForRow(index);
@@ -200,4 +203,11 @@ public sealed class CommitGraph
 ///  A row's place in a <see cref="CommitGraph"/>: what its graph cell draws. Upstream draws a commit with refs as a
 ///  square and the checked-out commit with an outline.
 /// </summary>
-public sealed record GraphRowRef(CommitGraph Graph, int Index, bool HasRefs, bool IsHead);
+public sealed record GraphRowRef(CommitGraph Graph, int Index, bool HasRefs, bool IsHead)
+{
+    /// <summary>
+    ///  Upstream's <c>RevisionGraph.IsRowRelative</c>: the commit is an ancestor of the checked-out one, or of the branch
+    ///  "Highlight selected branch" highlights.
+    /// </summary>
+    public bool IsRelative { get; init; } = true;
+}

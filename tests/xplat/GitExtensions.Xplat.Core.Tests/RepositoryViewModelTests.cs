@@ -21,9 +21,11 @@ internal sealed class RepositoryViewModelTests
     public async Task RefreshAsync_should_show_branch_branches_and_changes()
     {
         Task refresh = _viewModel.RefreshAsync("/work/one");
+        _viewModel.ChangesRead.Should().BeFalse();
         _service.Complete(0, Snapshot("main", new BranchInfo("main", IsRemote: false, IsCurrent: true)));
         await refresh;
 
+        _viewModel.ChangesRead.Should().BeTrue();
         _viewModel.CurrentBranch.Should().Be("main");
         _viewModel.Branches.Should().ContainSingle().Which.Display.Should().Be("* main");
         _viewModel.Changes.Should().ContainSingle().Which.Display.Should().Be("Modified: a.txt");
@@ -53,6 +55,7 @@ internal sealed class RepositoryViewModelTests
         _viewModel.ErrorMessage.Should().Be("Not a git repository: /work/none");
         _viewModel.CurrentBranch.Should().BeEmpty();
         _viewModel.Changes.Should().BeEmpty();
+        _viewModel.ChangesRead.Should().BeFalse();
     }
 
     [Test]
@@ -96,6 +99,18 @@ internal sealed class RepositoryViewModelTests
     {
         GitRepositoryService.ToFileChange(new GitItemStatus("new.txt") { IsNew = true })
             .Should().Be(new FileChange("new.txt", ChangeKind.Untracked, Staged: false));
+    }
+
+    [Test]
+    public void ToFileChange_should_keep_upstreams_changed_and_dirty_flags_of_a_submodule()
+    {
+        FileChange submodule = GitRepositoryService.ToFileChange(new GitItemStatus("lib")
+        {
+            IsTracked = true, IsSubmodule = true, IsChanged = true, IsDirty = true, Staged = StagedStatus.WorkTree
+        });
+
+        submodule.IsSubmoduleChanged.Should().BeTrue();
+        submodule.IsSubmoduleDirty.Should().BeTrue();
     }
 
     [Test]

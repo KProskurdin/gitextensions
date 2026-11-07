@@ -42,6 +42,7 @@ public partial class CommitInfoView : UserControl
         CommitInfoContextMenu.Opening += (_, _) => ShowCommitInfoMenu();
         CopyCommitInfoLinkMenuItem.Click += (_, _) => Run(() => CopyTextAsync(_commitInfoLink ?? ""));
         CopyCommitInfoMenuItem.Click += (_, _) => Run(() => CopyTextAsync(PlainText()));
+        addNoteToolStripMenuItem.Click += (_, _) => AddNotesRequested?.Invoke(this, EventArgs.Empty);
         ShowContainedInBranchesMenuItem.Click += (_, _) => SetOptions(options => options with
         {
             BranchesLocal = !options.BranchesLocal
@@ -73,6 +74,20 @@ public partial class CommitInfoView : UserControl
     ///  revision it names. Without a handler, as upstream's, such links do nothing.
     /// </summary>
     public event EventHandler<string>? RevisionLinkClicked;
+
+    /// <summary>
+    ///  Upstream's "Add notes" item of the commit info's menu; the window edits the shown commit's notes.
+    /// </summary>
+    public event EventHandler? AddNotesRequested;
+
+    /// <summary>
+    ///  The hotkey shown beside "Add notes" (upstream's <c>FormBrowse.Command.AddNotes</c>).
+    /// </summary>
+    public KeyGesture? AddNotesGesture
+    {
+        get => addNoteToolStripMenuItem.InputGesture;
+        set => addNoteToolStripMenuItem.InputGesture = value;
+    }
 
     public IAppPreferences Preferences { get; set; } = AppServices.Preferences;
 

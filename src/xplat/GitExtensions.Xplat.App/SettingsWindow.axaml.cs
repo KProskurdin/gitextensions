@@ -81,6 +81,12 @@ public partial class SettingsWindow : Window
 
         ShowThemes(preferences.Theme);
         ColorblindCheck.IsChecked = preferences.ThemeVariations.Contains(ThemeVariations.Colorblind);
+        MulticolorBranches.IsChecked = preferences.MulticolorBranches;
+        chkDrawAlternateBackColor.IsChecked = preferences.RevisionGraphDrawAlternateBackColor;
+        DrawNonRelativesGray.IsChecked = preferences.RevisionGraphDrawNonRelativesGray;
+        DrawNonRelativesTextGray.IsChecked = preferences.RevisionGraphDrawNonRelativesTextGray;
+        chkHighlightAuthored.IsChecked = preferences.HighlightAuthoredRevisions;
+        chkFillRefLabels.IsChecked = preferences.FillRefLabels;
         CloseAfterCommitCheck.IsChecked = preferences.CloseCommitDialogAfterCommit;
         CloseProcessDialogCheck.IsChecked = preferences.CloseProcessDialog;
         StartWithRecentWorkingDirCheck.IsChecked = preferences.StartWithRecentWorkingDir;
@@ -113,6 +119,8 @@ public partial class SettingsWindow : Window
         ShowCommitCountCheck.IsCheckedChanged += (_, _) => SetSubmoduleStatus();
         ShowArtificialCountCheck.IsCheckedChanged += (_, _) => SetSubmoduleStatus();
         ShowRevisionTooltipsCheck.IsChecked = preferences.ShowRevisionGridTooltips;
+        chkShowFindInCommitFilesGitGrep.IsChecked = preferences.ShowFindInCommitFilesGitGrep;
+        chkShowGpgInformation.IsChecked = preferences.ShowGpgInformation;
         MergeGraphLanesCheck.IsChecked = preferences.MergeGraphLanesHavingCommonParent;
         GraphDiagonalsCheck.IsChecked = preferences.RenderGraphWithDiagonals;
         StraightenDiagonalsCheck.IsChecked = preferences.StraightenGraphDiagonals;
@@ -1094,6 +1102,12 @@ public partial class SettingsWindow : Window
         }
 
         _preferences.ThemeVariations = ColorblindCheck.IsChecked == true ? [ThemeVariations.Colorblind] : [];
+        _preferences.MulticolorBranches = MulticolorBranches.IsChecked == true;
+        _preferences.RevisionGraphDrawAlternateBackColor = chkDrawAlternateBackColor.IsChecked == true;
+        _preferences.RevisionGraphDrawNonRelativesGray = DrawNonRelativesGray.IsChecked == true;
+        _preferences.RevisionGraphDrawNonRelativesTextGray = DrawNonRelativesTextGray.IsChecked == true;
+        _preferences.HighlightAuthoredRevisions = chkHighlightAuthored.IsChecked == true;
+        _preferences.FillRefLabels = chkFillRefLabels.IsChecked == true;
         _preferences.CloseCommitDialogAfterCommit = CloseAfterCommitCheck.IsChecked == true;
         _preferences.CloseProcessDialog = CloseProcessDialogCheck.IsChecked == true;
         _preferences.StartWithRecentWorkingDir = StartWithRecentWorkingDirCheck.IsChecked == true;
@@ -1123,6 +1137,8 @@ public partial class SettingsWindow : Window
         _preferences.ShowGitStatusInBrowseToolbar = ShowCommitCountCheck.IsChecked == true;
         _preferences.ShowSubmoduleStatus = ShowSubmoduleStatusCheck.IsChecked == true;
         _preferences.ShowRevisionGridTooltips = ShowRevisionTooltipsCheck.IsChecked == true;
+        _preferences.ShowFindInCommitFilesGitGrep = chkShowFindInCommitFilesGitGrep.IsChecked == true;
+        _preferences.ShowGpgInformation = chkShowGpgInformation.IsChecked == true;
         _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
         _preferences.RenderGraphWithDiagonals = GraphDiagonalsCheck.IsChecked == true;
         _preferences.StraightenGraphDiagonals = StraightenDiagonalsCheck.IsChecked == true;

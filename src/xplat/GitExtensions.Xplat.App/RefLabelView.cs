@@ -2,8 +2,10 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtUtils.GitUI.Theming;
@@ -15,7 +17,8 @@ namespace GitExtensions.Xplat.App;
 ///  A ref label of the revision grid as upstream's <c>RevisionGridRefRenderer.DrawRefEx</c> draws it: the outline of its
 ///  shape in a light shade of the ref's color (filled when <c>FillRefLabels</c> is on, or with the window color on a
 ///  selected row), the text in a darker shade, the checked-out branch bold after a filled arrow, and the label nestled
-///  against it (dashed when it only shows ahead and behind arrows). A bisect mark is upstream's image instead.
+///  against it (dashed when it only shows ahead and behind arrows). A bisect mark is upstream's image instead. The label
+///  under the pointer gets upstream's highlight frame and its tooltip (<see cref="RefLabelTooltips"/>).
 /// </summary>
 public sealed class RefLabelView : Control
 {
@@ -36,12 +39,22 @@ public sealed class RefLabelView : Control
         AvaloniaProperty.RegisterAttached<RefLabelView, Control, IReadOnlyDictionary<string, DrawingColor>?>(
             "RemoteColors", inherits: true);
 
+    /// <summary>
+    ///  Upstream's <c>ShowRevisionGridTooltips</c>, set on the grid and inherited by its labels: while it is off the grid's
+    ///  tooltips are off, but a label still shows how its branch tracks or is tracked, as upstream's.
+    /// </summary>
+    public static readonly AttachedProperty<bool> ShowRevisionTooltipsProperty =
+        AvaloniaProperty.RegisterAttached<RefLabelView, Control, bool>("ShowRevisionTooltips", true, inherits: true);
+
     // Upstream's sizes at 100 % (RevisionGridRefRenderer and MessageColumnProvider).
     private const double PaddingTopBottom = 2;
     private const double CornerRadius = 2.5;
     private const double MarginRight = 5;
     private const double ImageMargin = 4;
     private static readonly double[] _dashPattern = [4, 4];
+
+    // The part under the pointer (the label or the one nestled against it), which upstream frames in its color.
+    private GridLabel? _hovered;
 
     static RefLabelView()
     {
@@ -70,6 +83,56 @@ public sealed class RefLabelView : Control
     public static void SetRemoteColors(Control control, IReadOnlyDictionary<string, DrawingColor>? colors)
         => control.SetValue(RemoteColorsProperty, colors);
 
+    public static void SetShowRevisionTooltips(Control control, bool show)
+        => control.SetValue(ShowRevisionTooltipsProperty, show);
+
+    /// <summary>
+    ///  Upstream's tooltip of the label at <paramref name="point"/> (<see cref="LabelAt"/>): null outside the labels, where
+    ///  the row's message tooltip shows, and where upstream shows none.
+    /// </summary>
+    public string? TooltipAt(Point point)
+        => LabelAt(point)?.Ref is { } label
+            ? RefLabelTooltips.For(label,
+                (this.FindAncestorOfType<ListBoxItem>()?.DataContext as CommitListItem)?.MessageTooltip,
+                GetValue(ShowRevisionTooltipsProperty))
+            : null;
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        Point point = e.GetPosition(this);
+        SetHovered(Parts(Bounds.Height).OfType<LabelPart>().LastOrDefault(part => part.Rect.Contains(point))?.Label);
+        string? tooltip = TooltipAt(point);
+        ToolTip.SetTip(this, tooltip);
+
+        // While the grid's tooltips are off, a label's tracking text still shows, as upstream's.
+        if (tooltip is not null && !GetValue(ShowRevisionTooltipsProperty))
+        {
+            ToolTip.SetServiceEnabled(this, true);
+        }
+        else
+        {
+            ClearValue(ToolTip.ServiceEnabledProperty);
+        }
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        SetHovered(null);
+        ClearValue(ToolTip.TipProperty);
+        ClearValue(ToolTip.ServiceEnabledProperty);
+    }
+
+    private void SetHovered(GridLabel? label)
+    {
+        if (!ReferenceEquals(label, _hovered))
+        {
+            _hovered = label;
+            InvalidateVisual();
+        }
+    }
+
     protected override Size MeasureOverride(Size availableSize)
     {
         double cellHeight = double.IsFinite(availableSize.Height) ? availableSize.Height : TextHeight() + 6;
@@ -97,9 +160,23 @@ public sealed class RefLabelView : Control
 
     public override void Render(DrawingContext context)
     {
-        foreach (Part part in Parts(Bounds.Height))
+        List<Part> parts = Parts(Bounds.Height);
+        foreach (Part part in parts)
         {
+            // An unfilled label is only a frame and text, which the pointer would pass through; the transparent fill
+            // makes the whole label take the pointer for its tooltip and frame.
+            if (part is LabelPart label)
+            {
+                context.FillRectangle(Brushes.Transparent, label.Rect);
+            }
+
             part.Draw(context);
+        }
+
+        // Upstream draws the frame after the label nestled against it.
+        foreach (LabelPart part in parts.OfType<LabelPart>().Where(part => ReferenceEquals(part.Label, _hovered)))
+        {
+            part.DrawHighlight(context);
         }
     }
 
@@ -146,7 +223,7 @@ public sealed class RefLabelView : Control
     {
         FormattedText text = Text(label.Text, label.IsCurrent);
         double paddingLeftRight = label.Text.Length == 0 ? 1 : 4;
-        double iconWidth = label.IsCurrent ? cellHeight / 2 : 0;
+        double iconWidth = label.IsCurrent || label.IsMergeSource ? cellHeight / 2 : 0;
         double height = text.Height + PaddingTopBottom + PaddingTopBottom - 1;
         double pointWidth = height / 2;
         double extraWidth = label.Shape switch
@@ -248,27 +325,34 @@ public sealed class RefLabelView : Control
                 dashed ? new DashStyle(_dashPattern, 0) : null);
             context.DrawGeometry(background, frame, outline);
 
-            if (label.IsCurrent)
+            if (label.IsCurrent || label.IsMergeSource)
             {
-                // Upstream's DrawArrow: a filled triangle before the text of the checked-out branch.
+                // Upstream's DrawArrow: a triangle before the text, filled for the checked-out branch and outlined for
+                // the remote branch it tracks.
                 double height = Rect.Height - 6;
                 double x = Rect.X + iconOffset + 4;
                 double y = Rect.Y + 3;
                 StreamGeometry arrow = new();
                 using (StreamGeometryContext path = arrow.Open())
                 {
-                    path.BeginFigure(new Point(x, y), isFilled: true);
+                    path.BeginFigure(new Point(x, y), isFilled: label.IsCurrent);
                     path.LineTo(new Point(x + (height / 2), y + (height / 2)));
                     path.LineTo(new Point(x, y + height));
                     path.EndFigure(isClosed: true);
                 }
 
-                context.DrawGeometry(new SolidColorBrush(ToColor(color)), null, arrow);
+                SolidColorBrush arrowBrush = new(ToColor(color));
+                context.DrawGeometry(label.IsCurrent ? arrowBrush : null, label.IsCurrent ? null : new Pen(arrowBrush, 1), arrow);
             }
 
             text.SetForegroundBrush(new SolidColorBrush(ToColor(fill ? color : ColorHelper.Lerp(color, DrawingColor.Black, 0.25f))));
             context.DrawText(text, textOrigin);
         }
+
+        // Upstream's highlight frame of a hovered label (RefLabelHighlightWidth): the outline in the label's color.
+        public void DrawHighlight(DrawingContext context)
+            => context.DrawGeometry(null, new Pen(new SolidColorBrush(ToColor(color)), 1, dashed ? new DashStyle(_dashPattern, 0) : null),
+                Outline(label.Shape, Rect, PointWidth));
 
         private static DrawingColor WindowColor()
             => ThemeBrushes.Current.Colors.Get(System.Drawing.KnownColor.Window) is { IsEmpty: false } themed

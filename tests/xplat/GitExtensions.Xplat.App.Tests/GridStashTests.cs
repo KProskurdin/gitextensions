@@ -75,7 +75,9 @@ internal sealed class GridStashTests
         Find<MenuItem>(window, "PopStashMenuItem").IsVisible.Should().BeTrue();
         Find<MenuItem>(window, "PopStashMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-        WaitUntil(() => _repo.ReadFile("a.txt") == "older stash");
+        WaitUntil(() => window.OwnedWindows.OfType<ErrorWindow>().FirstOrDefault() is { } error
+            ? throw new AssertionException("The pop failed: " + error.FindControl<TextBlock>("MessageText")?.Text)
+            : _repo.ReadFile("a.txt") == "older stash");
         _repo.Run("stash", "list").Trim().Split('\n').Should().ContainSingle().Which.Should().Contain("newer");
         window.Close();
     }

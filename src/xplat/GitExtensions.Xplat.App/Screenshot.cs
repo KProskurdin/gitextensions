@@ -22,6 +22,12 @@ internal static class Screenshot
 
     public const string CommitWindow = "commit";
 
+    /// <summary>
+    ///  The browse window 700 pixels wide, so its toolstrip overflows (the drop-down is a window of its own and not in
+    ///  the picture).
+    /// </summary>
+    public const string OverflowWindow = "overflow";
+
     public const string SettingsWindow = "settings";
 
     public const string PullWindow = "pull";

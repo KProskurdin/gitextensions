@@ -16,6 +16,7 @@ public partial class MainWindow
     {
         RevisionInfo.Preferences = _preferences;
         RevisionInfo.RevisionLinkClicked += (_, revision) => Run(() => GoToRevisionAsync(revision));
+        RevisionInfo.AddNotesRequested += (_, _) => AddNotes();
         DetailTabs.SelectionChanged += (_, _) => ShowGpgIfVisible();
     }
 
@@ -74,6 +75,15 @@ public partial class MainWindow
         {
             // As upstream, a commit the filters hide, such as a second parent with "first parent only".
             ShowRevisionFiltered(hash);
+        }
+    }
+
+    // Upstream's AddNotes: the selected commit's notes in git's editor; nothing for an artificial row.
+    private void AddNotes()
+    {
+        if (_commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
+        {
+            RunOnRepository(path => _actions.EditNotesAsync(path, row.Hash));
         }
     }
 

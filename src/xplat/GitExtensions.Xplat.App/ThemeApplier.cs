@@ -80,6 +80,29 @@ internal static class ThemeApplier
         SetBrush(app, AlternateRowKey, panel.MakeDarkerBy(colors.IsDark ? -0.018 : 0.025));
         SetBrush(app, GridBodyKey, SystemColor(colors, System.Drawing.KnownColor.GrayText));
 
+        // Upstream's MultilineIndicator: the window text color at an alpha of 32 behind three dots at 128.
+        System.Drawing.Color windowText = colors.Get(System.Drawing.KnownColor.WindowText) is { IsEmpty: false } themedText
+            ? themedText
+            : colors.IsDark
+                ? System.Drawing.Color.White
+                : System.Drawing.Color.Black;
+        SetBrush(app, GridMultilineIndicatorKey, System.Drawing.Color.FromArgb(32, windowText));
+        SetBrush(app, GridMultilineIndicatorDotKey, System.Drawing.Color.FromArgb(128, windowText));
+
+        // Upstream's RevisionDataGridView colors for "Draw non relatives text gray", fixed per light and dark mode.
+        SetBrush(app, GridNonRelativeTextKey, colors.IsDark
+            ? System.Drawing.Color.FromArgb(192, 192, 192)
+            : SystemColor(colors, System.Drawing.KnownColor.GrayText));
+        SetBrush(app, GridNonRelativeSelectedTextKey, colors.IsDark
+            ? System.Drawing.Color.FromArgb(235, 235, 215)
+            : System.Drawing.Color.FromArgb(188, 188, 188));
+        SetBrush(app, GridNonRelativeBodyKey, colors.IsDark
+            ? System.Drawing.Color.FromArgb(130, 130, 130)
+            : System.Drawing.Color.FromArgb(152, 152, 152));
+        SetBrush(app, GridNonRelativeSelectedBodyKey, colors.IsDark
+            ? System.Drawing.Color.FromArgb(170, 170, 150)
+            : System.Drawing.Color.FromArgb(161, 161, 161));
+
         // Upstream's commit info (CommitInfo): on the window color, the message on a panel 4% darker.
         System.Drawing.Color window = colors.Get(System.Drawing.KnownColor.Window) is { IsEmpty: false } themedWindow
             ? themedWindow
@@ -128,6 +151,12 @@ internal static class ThemeApplier
     public const string AuthoredHighlightKey = "AuthoredHighlightBrush";
     public const string AlternateRowKey = "AlternateRowBrush";
     public const string GridBodyKey = "GridBodyBrush";
+    public const string GridMultilineIndicatorKey = "GridMultilineIndicatorBrush";
+    public const string GridMultilineIndicatorDotKey = "GridMultilineIndicatorDotBrush";
+    public const string GridNonRelativeTextKey = "GridNonRelativeTextBrush";
+    public const string GridNonRelativeSelectedTextKey = "GridNonRelativeSelectedTextBrush";
+    public const string GridNonRelativeBodyKey = "GridNonRelativeBodyBrush";
+    public const string GridNonRelativeSelectedBodyKey = "GridNonRelativeSelectedBodyBrush";
     public const string CommitInfoBackgroundKey = "CommitInfoBackgroundBrush";
     public const string CommitMessageBackgroundKey = "CommitMessageBackgroundBrush";
     public const string DialogFooterKey = "DialogFooterBrush";

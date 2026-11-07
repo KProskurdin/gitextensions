@@ -166,6 +166,16 @@ public sealed class GitOperations : IGitOperations
                 GitEditorCommand.Environment(editorCommand));
         });
 
+    // Upstream runs git notes edit in core.editor (a console window for a terminal editor); here git gets the app's editor
+    // for this call, as for every editor the new shell asks git for.
+    public Task EditNotesAsync(string repositoryPath, string commit, string editorCommand)
+        => Task.Run(async () =>
+        {
+            GitModule module = CreateModule(repositoryPath);
+            await GitOutputRunner.RunAsync(module.WorkingDir, new GitArgumentBuilder("notes") { "edit", commit },
+                NullOutput.Instance, CancellationToken.None, GitEditorCommand.Environment(editorCommand));
+        });
+
     public Task RunCommandsAsync(string repositoryPath, IReadOnlyList<ArgumentString> commands)
         => Task.Run(() =>
         {

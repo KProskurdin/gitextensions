@@ -110,7 +110,9 @@ public partial class MainWindow
                 Run(PickAndOpenRepositoryAsync);
             }
         }, RoutingStrategies.Tunnel);
-        ((PopulatingMenuFlyout)BranchSelectButton.Flyout!).Populating += (_, _) => ShowBranchSelectMenu();
+        PopulatingMenuFlyout branches = (PopulatingMenuFlyout)BranchSelectButton.Flyout!;
+        branches.PopulateAsync = ShowBranchSelectMenuAsync;
+        branches.ReportError = ex => ShowError(ex.Message);
 
         PullMergeMenuItem.Click += (_, _) => PullWith(GitPullAction.Merge);
         PullRebaseMenuItem.Click += (_, _) => PullWith(GitPullAction.Rebase);
@@ -629,27 +631,44 @@ public partial class MainWindow
         UpdateBusyState();
     }
 
-    // Upstream's branch drop-down: the local branches, the current one checked; another one is checked out.
-    private void ShowBranchSelectMenu()
+    // Upstream's CurrentBranchDropDownOpening: "Checkout branch..." with its hotkey, then the local branches read from git
+    // as the menu opens; a branch whose commit the grid does not show has the closed eye and gray text. A click checks the
+    // branch out.
+    private async Task ShowBranchSelectMenuAsync()
     {
         MenuFlyout flyout = (MenuFlyout)BranchSelectButton.Flyout!;
         flyout.Items.Clear();
-        foreach (BranchInfo branch in _repository.Branches.Where(branch => !branch.IsRemote))
+        if (RepositoryPath is not { } path)
         {
+            return;
+        }
+
+        IReadOnlyList<(string Name, string Hash)> branches =
+            await GitRepositoryService.GetBranchMenuBranchesAsync(path, RefSorting());
+        MenuItem checkout = new()
+        {
+            Header = CheckoutBranchMenuItem.Header,
+            Icon = UpstreamIcon("BranchCheckout"),
+            InputGesture = Hotkeys.GestureFor(BrowseCommand.CheckoutBranch),
+        };
+        checkout.Click += (_, _) => RunOnRepository(repository => StartCheckoutBranchAsync(repository));
+        flyout.Items.Add(checkout);
+        flyout.Items.Add(new Separator());
+        foreach ((string name, string hash) in branches)
+        {
+            bool visible = _commits.IndexOfHash(hash) is not null;
+            TextBlock text = new() { Text = name };
+            if (!visible)
+            {
+                text.Bind(TextBlock.ForegroundProperty, this.GetResourceObservable(ThemeApplier.DisabledTextKey));
+            }
+
             MenuItem item = new()
             {
-                Header = new TextBlock { Text = branch.Name },
-                ToggleType = MenuItemToggleType.Radio,
-                IsChecked = branch.IsCurrent,
+                Header = text,
+                Icon = UpstreamIcon(visible ? "Branch" : "EyeClosed"),
             };
-            string name = branch.Name;
-            item.Click += (_, _) =>
-            {
-                if (!branch.IsCurrent)
-                {
-                    RunOnRepository(path => StartCheckoutBranchAsync(path, name));
-                }
-            };
+            item.Click += (_, _) => RunOnRepository(repository => StartCheckoutBranchAsync(repository, name));
             flyout.Items.Add(item);
         }
     }
@@ -661,8 +680,13 @@ public partial class MainWindow
         string commit = GitExtensions.Xplat.Ui.UpstreamTranslation.ByText("Commit");
         CommitDialogButton.Text =
             count == 0 || !_preferences.ShowGitStatusInBrowseToolbar ? commit : $"{commit} ({count})";
+
+        // Upstream's RepoStateVisualiser: the clean image while the toolbar shows no status, the unknown one until the
+        // status has been read.
         CommitDialogButton.Image =
-            RepositoryPath is null ? "RepoStateClean" : RepoStates.Of(_repository.Changes).ToString();
+            RepositoryPath is null || !_preferences.ShowGitStatusInBrowseToolbar ? nameof(RepoState.RepoStateClean)
+            : !_repository.ChangesRead ? nameof(RepoState.RepoStateUnknown)
+            : RepoStates.Of(_repository.Changes).ToString();
     }
 
     private static Image? UpstreamIcon(string name)

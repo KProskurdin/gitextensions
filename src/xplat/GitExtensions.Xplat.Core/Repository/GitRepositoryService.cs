@@ -117,6 +117,23 @@ public sealed class GitRepositoryService : IRepositoryService
         return (texts, related);
     }
 
+    /// <summary>
+    ///  Upstream FormBrowse's branch drop-down (<c>CurrentBranchDropDownOpening</c>): the local branches as
+    ///  <c>GitModule.GetRefs(RefsFilter.Heads)</c> lists them, in <paramref name="sorting"/>, at most upstream's 100.
+    /// </summary>
+    public static Task<IReadOnlyList<(string Name, string Hash)>> GetBranchMenuBranchesAsync(string repositoryPath,
+        RefSorting sorting) =>
+        Task.Run<IReadOnlyList<(string Name, string Hash)>>(() =>
+        [
+            .. GetRefs(new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath), RefsFilter.Heads,
+                    sorting)
+                .Take(MaxBranchMenuItems)
+                .Select(branch => (branch.Name, branch.ObjectId.ToString())),
+        ]);
+
+    // Upstream's limit: the drop-down hangs when it is too large.
+    private const int MaxBranchMenuItems = 100;
+
     // Upstream's GitModule.GetRefs, with the sort given instead of read from upstream's settings.
     private static IReadOnlyList<IGitRef> GetRefs(GitModule module, RefsFilter filter, RefSorting sorting)
     {
@@ -187,6 +204,8 @@ public sealed class GitRepositoryService : IRepositoryService
             IsSkipWorktree = status.IsSkipWorktree,
             IsAssumeUnchanged = status.IsAssumeUnchanged,
             IsSubmodule = status.IsSubmodule,
+            IsSubmoduleChanged = status.IsSubmodule && status.IsChanged,
+            IsSubmoduleDirty = status.IsSubmodule && status.IsDirty,
         };
     }
 

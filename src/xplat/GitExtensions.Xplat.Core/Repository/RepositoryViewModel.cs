@@ -10,6 +10,7 @@ public sealed class RepositoryViewModel : ObservableObject
     private string _currentBranch = "";
     private IReadOnlyList<BranchInfo> _branches = [];
     private IReadOnlyList<FileChange> _changes = [];
+    private bool _changesRead;
     private bool _isLoading;
     private bool _isMerging;
     private bool _isRebasing;
@@ -54,6 +55,16 @@ public sealed class RepositoryViewModel : ObservableObject
     {
         get => _changes;
         private set => SetProperty(ref _changes, value);
+    }
+
+    /// <summary>
+    ///  True once <see cref="Changes"/> holds the repository's status; before, upstream shows its unknown state (a
+    ///  <c>GitStatusMonitor</c> that has not reported).
+    /// </summary>
+    public bool ChangesRead
+    {
+        get => _changesRead;
+        private set => SetProperty(ref _changesRead, value);
     }
 
     /// <summary>
@@ -232,6 +243,7 @@ public sealed class RepositoryViewModel : ObservableObject
     {
         CurrentBranch = "";
         Branches = [];
+        ChangesRead = false;
         Changes = [];
         Stashes = [];
         Tags = [];
@@ -262,6 +274,7 @@ public sealed class RepositoryViewModel : ObservableObject
 
             CurrentBranch = snapshot.CurrentBranch ?? "";
             Branches = snapshot.Branches;
+            ChangesRead = true;
             Changes = snapshot.Changes;
             IsMerging = snapshot.IsMerging;
             IsRebasing = snapshot.IsRebasing;

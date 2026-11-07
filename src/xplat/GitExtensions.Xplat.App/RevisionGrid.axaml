@@ -10,63 +10,77 @@
          View menu's Columns say (MainWindow.GridView sets the Show*Column resources); upstream's initial widths, the
          author 130 px, the date and SHA-1 as RevisionGridColumns sets them. -->
     <DataTemplate x:Key="RevisionRowTemplate" x:DataType="core:CommitListItem">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Classes.nonRelative="{Binding IsNonRelativeText}">
         <local:GraphCell Grid.Column="0" Graph="{Binding Graph}" VerticalAlignment="Stretch"
                          IsVisible="{DynamicResource ShowGraphColumn}" />
         <!-- Upstream's MessageColumnProvider: the ref labels, the fixup marker, the subject (bold for the checked-out
-             commit) and the body in gray; an artificial row's label and its change counts. -->
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"
-                    Background="Transparent" ToolTip.Tip="{Binding Row.Tooltip.Message}">
-          <ItemsControl Classes="refLabels" ItemsSource="{Binding GridLabels}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="core:GridLabel">
-                <local:RefLabelView Label="{Binding}" Fill="{DynamicResource FillRefLabels}"
-                                    IsRowSelected="{Binding $parent[ListBoxItem].IsSelected}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <ItemsControl ItemsSource="{Binding Changes.Parts, FallbackValue={x:Null}}" Margin="1,0,0,0" VerticalAlignment="Center">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="core:ArtificialChangePart">
-                <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,4,0">
-                  <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="12" Height="12"
-                         VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding Text}" MinWidth="14" VerticalAlignment="Center" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <Image Source="{local:UpstreamImage FixupAndSquashMessageMarker}" Width="16" Height="16" Margin="0,0,4,0"
-                 VerticalAlignment="Center" IsVisible="{Binding IsFixup}" />
-          <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" IsVisible="{Binding !IsArtificial}"
-                     FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
-          <TextBlock Classes="commitBody" Text="{Binding BodyText}" VerticalAlignment="Center"
-                     FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
-        </StackPanel>
-        <local:AvatarView Grid.Column="2" Classes="gridAvatar" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
+             commit) and the body in gray; an artificial row's label and its change counts, with the changed files as
+             its tooltip; upstream's multi-line indicator (MultilineIndicator) at the cell's right end for a message with
+             a body, the text cut before it. -->
+        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" Background="Transparent" ToolTip.Tip="{Binding MessageTooltip}">
+          <StackPanel Classes="message" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
+            <ItemsControl Classes="refLabels" ItemsSource="{Binding GridLabels}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="core:GridLabel">
+                  <local:RefLabelView Label="{Binding}" Fill="{DynamicResource FillRefLabels}"
+                                      IsRowSelected="{Binding $parent[ListBoxItem].IsSelected}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{Binding Changes.Parts, FallbackValue={x:Null}}" Margin="1,0,0,0" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="core:ArtificialChangePart">
+                  <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,4,0">
+                    <Image Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" Width="12" Height="12"
+                           VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Text}" MinWidth="14" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Image Source="{local:UpstreamImage FixupAndSquashMessageMarker}" Width="16" Height="16" Margin="0,0,4,0"
+                   VerticalAlignment="Center" IsVisible="{Binding IsFixup}" />
+            <TextBlock Text="{Binding Row.Subject}" VerticalAlignment="Center" IsVisible="{Binding !IsArtificial}"
+                       FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
+            <TextBlock Classes="commitBody" Text="{Binding BodyText}" VerticalAlignment="Center"
+                       FontWeight="{Binding IsCheckedOut, Converter={x:Static local:BoldConverter.Instance}}" />
+          </StackPanel>
+          <Border Grid.Column="1" Classes="multilineIndicator" Margin="4,0" Padding="4,5,4,4" VerticalAlignment="Center"
+                  IsVisible="{Binding Row.HasMultiLineMessage}">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <Rectangle Width="2" Height="2" />
+              <Rectangle Width="2" Height="2" />
+              <Rectangle Width="2" Height="2" />
+            </StackPanel>
+          </Border>
+        </Grid>
+        <!-- Upstream's NotesColumnProvider: the first line of the git notes, 50 pixels wide, all of them as the tooltip. -->
+        <TextBlock Grid.Column="2" Width="50" Margin="0,0,6,0" Text="{Binding NotesText}" ToolTip.Tip="{Binding NotesTooltip}"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowNotesColumn}" />
+        <local:AvatarView Grid.Column="3" Classes="gridAvatar" Width="16" Height="16" ImageSize="32" Margin="0,0,4,0"
                           VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorAvatarColumn}"
                           Email="{Binding Row.AuthorEmail}" AuthorName="{Binding Row.Author}" />
-        <TextBlock Grid.Column="3" Width="130" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
+        <TextBlock Grid.Column="4" Width="130" Margin="0,0,6,0" Text="{Binding Row.Author}" ToolTip.Tip="{Binding Row.Tooltip.Author}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowAuthorNameColumn}" />
-        <TextBlock Grid.Column="4" Width="{DynamicResource DateColumnWidth}" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
+        <TextBlock Grid.Column="5" Width="{DynamicResource DateColumnWidth}" Margin="0,0,6,0" Text="{Binding Row.Date}" ToolTip.Tip="{Binding Row.Tooltip.Date}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowDateColumn}" />
-        <TextBlock Grid.Column="5" Width="{DynamicResource ObjectIdColumnWidth}" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
+        <TextBlock Grid.Column="6" Width="{DynamicResource ObjectIdColumnWidth}" Text="{Binding Row.ShortHash}" ToolTip.Tip="{Binding Row.Tooltip.Hash}"
                    FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}"
                    FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}"
                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{DynamicResource ShowObjectIdColumn}" />
         <!-- Upstream's build status cell: the symbol and/or the description in the status color; a click opens the
              build report, with the hand cursor when it has one. -->
-        <StackPanel Grid.Column="6" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
+        <StackPanel Grid.Column="7" Classes="buildStatus" Orientation="Horizontal" Spacing="4" ClipToBounds="True"
                     Background="Transparent" Width="{DynamicResource BuildStatusColumnWidth}"
                     ToolTip.Tip="{Binding Build.Tooltip}" VerticalAlignment="Center"
                     Cursor="{Binding Build.Url, Converter={x:Static local:LinkCursorConverter.Instance}}">
@@ -112,6 +126,28 @@
   </Style>
   <Style Selector="ListBox.revisionGrid:not(:focus-within) ListBoxItem:selected TextBlock.commitBody">
     <Setter Property="Foreground" Value="{DynamicResource GridBodyBrush}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <!-- Upstream's "Draw non relatives text gray" (GetForeground, GetCommitBodyForeground): the subject and the columns'
+       text gray, lighter while the row is selected in the focused grid; the body a lighter gray, lighter again while
+       the row is selected. -->
+  <Style Selector="Border.multilineIndicator">
+    <Setter Property="Background" Value="{DynamicResource GridMultilineIndicatorBrush}" />
+  </Style>
+  <Style Selector="Border.multilineIndicator Rectangle">
+    <Setter Property="Fill" Value="{DynamicResource GridMultilineIndicatorDotBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid Grid.nonRelative > TextBlock, ListBox.revisionGrid Grid.nonRelative StackPanel.message > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource GridNonRelativeTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid:focus-within ListBoxItem:selected Grid.nonRelative > TextBlock, ListBox.revisionGrid:focus-within ListBoxItem:selected Grid.nonRelative StackPanel.message > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource GridNonRelativeSelectedTextBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid Grid.nonRelative TextBlock.commitBody">
+    <Setter Property="Foreground" Value="{DynamicResource GridNonRelativeBodyBrush}" />
+  </Style>
+  <Style Selector="ListBox.revisionGrid ListBoxItem:selected Grid.nonRelative TextBlock.commitBody">
+    <Setter Property="Foreground" Value="{DynamicResource GridNonRelativeSelectedBodyBrush}" />
     <Setter Property="Opacity" Value="1" />
   </Style>
 </Styles>

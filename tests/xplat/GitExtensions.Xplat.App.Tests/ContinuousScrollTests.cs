@@ -79,7 +79,8 @@ internal sealed class ContinuousScrollTests
     private static void Wheel(Window window, DiffView diff, bool down, RawInputModifiers modifiers)
     {
         ListBox lines = diff.FindControl<ListBox>("DiffList")!;
-        Point point = lines.TranslatePoint(new Point(lines.Bounds.Width / 2, 10), window)!.Value;
+        // Below the viewer's toolbar, which shows over the top lines while the pointer is on the viewer.
+        Point point = lines.TranslatePoint(new Point(lines.Bounds.Width / 2, lines.Bounds.Height / 2), window)!.Value;
         window.MouseWheel(point, new Vector(0, down ? -1 : 1), modifiers);
         Dispatcher.UIThread.RunJobs();
     }

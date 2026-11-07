@@ -168,6 +168,17 @@ public interface IAppPreferences
     bool RevisionGraphDrawNonRelativesGray { get; set; }
 
     /// <summary>
+    ///  Upstream <c>revisiongraphdrawnonrelativestextgray</c> (off by default): the grid's text of commits that are not
+    ///  relatives of the checked-out commit is gray.
+    /// </summary>
+    bool RevisionGraphDrawNonRelativesTextGray { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>multicolorbranches</c> (on by default), on its Colors page; upstream reads it nowhere else.
+    /// </summary>
+    bool MulticolorBranches { get; set; }
+
+    /// <summary>
     ///  Upstream <c>revisiongraphshowworkingdirchanges</c> (on by default): the grid shows the working directory and index as
     ///  artificial commits above HEAD.
     /// </summary>
@@ -443,8 +454,10 @@ public interface IAppPreferences
     void SetDiffOptions(DiffOptions options);
 
     /// <summary>
-    ///  Upstream's "Save current view settings as default": the current whitespace and entire file choices become the
-    ///  saved defaults.
+    ///  Upstream's "Save current view settings as default" (<c>RevisionGridMenuCommands.SaveCurrentViewSettingsAsDefault</c>):
+    ///  every view choice upstream keeps for the session only (its runtime settings: the diff viewer's whitespace, entire
+    ///  file, nonprinting characters, syntax highlighting and appearance, and the grid's sort order, reflog references,
+    ///  current branch only and branch filter) becomes the saved default.
     /// </summary>
     void SaveDiffOptionsAsDefault();
 
@@ -927,6 +940,18 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.RevisionGraphDrawNonRelativesGray = value;
     }
 
+    public bool RevisionGraphDrawNonRelativesTextGray
+    {
+        get => AppSettings.RevisionGraphDrawNonRelativesTextGray;
+        set => AppSettings.RevisionGraphDrawNonRelativesTextGray = value;
+    }
+
+    public bool MulticolorBranches
+    {
+        get => AppSettings.MulticolorBranches;
+        set => AppSettings.MulticolorBranches = value;
+    }
+
     public bool RevisionGraphShowArtificialCommits
     {
         get => AppSettings.RevisionGraphShowArtificialCommits;
@@ -1291,10 +1316,14 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public void SaveDiffOptionsAsDefault()
     {
-        AppSettings.IgnoreWhitespaceKind.Save();
-        AppSettings.ShowEntireFile.Save();
-        AppSettings.ShowNonPrintingChars.Save();
-        AppSettings.ShowSyntaxHighlightingInDiff.Save();
+        // Upstream's loop over AppSettings' static fields (the properties' backing fields), so a runtime setting upstream
+        // adds is saved too.
+        foreach (System.Reflection.FieldInfo field in typeof(AppSettings).GetFields(System.Reflection.BindingFlags.Public
+                     | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static))
+        {
+            (field.GetValue(null) as GitCommands.Settings.IRuntimeSetting)?.Save();
+        }
+
         AppSettings.SaveSettings();
     }
 
@@ -1404,12 +1433,15 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public GridViewOptions GridViewOptions
     {
-        get => new(AppSettings.ShowTags, AppSettings.ShowRemoteBranches, AppSettings.ShowCommitBodyInRevisionGrid);
+        get => new(AppSettings.ShowTags, AppSettings.ShowRemoteBranches, AppSettings.ShowCommitBodyInRevisionGrid,
+            AppSettings.ShowGitNotes, AppSettings.ShowGitNotesColumn.Value);
         set
         {
             AppSettings.ShowTags = value.ShowTags;
             AppSettings.ShowRemoteBranches = value.ShowRemoteBranches;
             AppSettings.ShowCommitBodyInRevisionGrid = value.ShowCommitBody;
+            AppSettings.ShowGitNotes = value.ShowGitNotes;
+            AppSettings.ShowGitNotesColumn.Value = value.NotesInSeparateColumn;
         }
     }
 
@@ -1812,6 +1844,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool RelativeDate { get; set; } = true;
 
     public bool RevisionGraphDrawNonRelativesGray { get; set; } = true;
+
+    public bool RevisionGraphDrawNonRelativesTextGray { get; set; }
+
+    public bool MulticolorBranches { get; set; } = true;
 
     // Off, unlike upstream: the tests count the commits git lists; the ones about the artificial rows turn it on.
     public bool RevisionGraphShowArtificialCommits { get; set; }

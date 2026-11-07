@@ -43,6 +43,23 @@ internal sealed class GridLabelsTests
     }
 
     [Test]
+    public void Layout_should_mark_the_merge_source_drawn_as_a_label_of_its_own_but_never_a_nestled_one()
+    {
+        RefLabel mergeSource = new("origin/main", RefKind.RemoteBranch) { Remote = "origin", IsMergeSource = true };
+
+        GridLabels.Layout([mergeSource], _all).Should().ContainSingle().Which.IsMergeSource.Should().BeTrue();
+        GridLabels.Layout([mergeSource with { AheadBehind = "↑" }], _all).Single().IsMergeSource.Should().BeTrue();
+
+        GridLabel pair = GridLabels.Layout(
+        [
+            mergeSource,
+            new RefLabel("main", RefKind.Branch) { IsCurrent = true, Upstream = "origin/main" },
+        ], _all).Single();
+        pair.IsMergeSource.Should().BeFalse();
+        pair.Nestled!.IsMergeSource.Should().BeFalse("upstream draws a nestled remote without an icon");
+    }
+
+    [Test]
     public void Layout_should_add_the_ahead_and_behind_arrows_of_a_branch_tracked_elsewhere()
     {
         IReadOnlyList<GridLabel> layout = GridLabels.Layout(

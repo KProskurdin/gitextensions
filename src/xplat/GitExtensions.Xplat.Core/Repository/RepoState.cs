@@ -10,25 +10,29 @@ public enum RepoState
     RepoStateUntrackedOnly,
     RepoStateStaged,
     RepoStateMixed,
+    RepoStateDirtySubmodules,
+    RepoStateUnknown,
 }
 
 public static class RepoStates
 {
     /// <summary>
     ///  Upstream's rule: nothing changed is clean; only work tree changes are dirty, or untracked only when all of them are
-    ///  untracked files; only staged changes are staged; both are mixed. (Upstream's dirty-submodules state needs the
-    ///  submodule status of each change, which the snapshot does not have; such a change counts as dirty.)
+    ///  untracked files, or dirty submodules when all of them are submodules; only staged changes are staged; both are
+    ///  mixed.
     /// </summary>
     public static RepoState Of(IReadOnlyList<FileChange> changes)
     {
         int index = changes.Count(change => change.Staged);
         int workTree = changes.Count - index;
         int untracked = changes.Count(change => change.Kind == ChangeKind.Untracked);
+        int workTreeSubmodules = changes.Count(change => !change.Staged && change.IsSubmodule);
         return (index, workTree) switch
         {
             (0, 0) => RepoState.RepoStateClean,
             (0, _) when workTree == untracked => RepoState.RepoStateUntrackedOnly,
-            (0, _) => RepoState.RepoStateDirty,
+            (0, _) when workTree != workTreeSubmodules => RepoState.RepoStateDirty,
+            (0, _) => RepoState.RepoStateDirtySubmodules,
             (_, 0) => RepoState.RepoStateStaged,
             _ => RepoState.RepoStateMixed,
         };

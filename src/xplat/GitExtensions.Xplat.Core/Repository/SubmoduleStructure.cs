@@ -1,9 +1,9 @@
-using System.Text;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Submodules;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.CommitHistory;
 using ResourceManager;
 using UpstreamSubmoduleInfo = GitCommands.Submodules.SubmoduleInfo;
 
@@ -202,40 +202,16 @@ public sealed record SubmoduleStructure(SubmoduleProject Top, IReadOnlyList<Subm
     /// </summary>
     public static string ChangeSummary(IReadOnlyList<GitItemStatus> items)
     {
-        const int maxItems = 5;
-        StringBuilder builder = new();
-        Append([.. items.Where(item => !item.IsNew && !item.IsDeleted && !item.IsSubmodule)], "changed file");
-        Append([.. items.Where(item => item.IsDeleted && !item.IsSubmodule)], "deleted file");
-        Append([.. items.Where(item => item.IsNew && !item.IsSubmodule)], "new file");
-        Append([.. items.Where(item => item.IsSubmodule && item.IsChanged)], "changed submodule");
-        Append([.. items.Where(item => item.IsSubmodule && item.IsDirty)], "dirty submodule");
-        return builder.ToString();
+        return ArtificialChanges.Summarize(
+        [
+            ("changed file", Names(item => !item.IsNew && !item.IsDeleted && !item.IsSubmodule)),
+            ("deleted file", Names(item => item.IsDeleted && !item.IsSubmodule)),
+            ("new file", Names(item => item.IsNew && !item.IsSubmodule)),
+            ("changed submodule", Names(item => item.IsSubmodule && item.IsChanged)),
+            ("dirty submodule", Names(item => item.IsSubmodule && item.IsDirty)),
+        ]);
 
-        void Append(IReadOnlyList<GitItemStatus> group, string singular)
-        {
-            if (group.Count == 0)
-            {
-                return;
-            }
-
-            if (builder.Length != 0)
-            {
-                builder.AppendLine();
-            }
-
-            builder.Append($"{group.Count} {singular}{(group.Count == 1 ? "" : "s")}").AppendLine();
-            foreach (GitItemStatus item in group.Take(maxItems))
-            {
-                builder.Append("- ").AppendLine(item.Name);
-            }
-
-            if (group.Count > maxItems)
-            {
-                int unlisted = group.Count - maxItems;
-                builder.Append("- (").Append(unlisted).Append(" more file").Append(unlisted == 1 ? "" : "s").Append(')')
-                    .AppendLine();
-            }
-        }
+        IReadOnlyList<string> Names(Func<GitItemStatus, bool> predicate) => [.. items.Where(predicate).Select(item => item.Name)];
     }
 
     // Upstream's SubmoduleTree.CreateSubmoduleNodes: the project holding a submodule is the nearest one whose path its path

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using GitExtensions.Extensibility.BuildServerIntegration;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.BuildServer;
@@ -40,6 +41,18 @@ public sealed record CommitListItem(CommitRow Row, GraphRowRef Graph)
     public ArtificialChanges? Changes { get; init; }
 
     /// <summary>
+    ///  Upstream's message cell tooltip: an artificial row's summary of its changes
+    ///  (<c>ArtificialCommitChangeCount.GetSummary</c>), else the commit's message.
+    /// </summary>
+    public string? MessageTooltip => IsArtificial ? Changes?.Summary : Row.Tooltip?.Message;
+
+    /// <summary>
+    ///  Upstream's "Draw non relatives text gray": the row's text is gray, as the commit is no relative of the checked-out
+    ///  one.
+    /// </summary>
+    public bool IsNonRelativeText { get; init; }
+
+    /// <summary>
     ///  The commit HEAD points at, whose subject upstream draws bold.
     /// </summary>
     public bool IsCheckedOut => Row.Labels?.Any(label => label.Kind == RefKind.Head) == true;
@@ -58,6 +71,16 @@ public sealed record CommitListItem(CommitRow Row, GraphRowRef Graph)
     ///  a space; empty when the body is off or not read.
     /// </summary>
     public string BodyText { get; init; } = "";
+
+    /// <summary>
+    ///  Upstream's notes column (<c>NotesColumnProvider</c>): the first line of the commit's notes; empty without notes.
+    /// </summary>
+    public string NotesText => Row.Notes is { } notes ? notes.Split('\n')[0].TrimEnd('\r') : "";
+
+    /// <summary>
+    ///  The notes column's tooltip: all the notes, as upstream's.
+    /// </summary>
+    public string? NotesTooltip => string.IsNullOrEmpty(Row.Notes) ? null : Row.Notes;
 }
 
 /// <summary>
@@ -69,54 +92,116 @@ public sealed record ArtificialChangePart(string Image, int? Count)
 }
 
 /// <summary>
-///  The changed files of an artificial row by upstream's groups: changed, new (added or untracked) and deleted.
+///  The changes of an artificial row by upstream's groups (<c>ArtificialCommitChangeCount</c>): changed, new (added or
+///  untracked) and deleted files, submodules whose commit changed and dirty submodules (a submodule can be both).
 /// </summary>
-public sealed record ArtificialChanges(int Changed, int New, int Deleted)
+public sealed record ArtificialChanges(int Changed, int New, int Deleted, int SubmodulesChanged = 0, int SubmodulesDirty = 0)
 {
-    public bool HasChanges => Changed + New + Deleted > 0;
+    /// <summary>
+    ///  The counts before the repository's status has been read (upstream's <c>DataValid</c> false), shown with upstream's
+    ///  unknown state image.
+    /// </summary>
+    public static ArtificialChanges Unknown { get; } = new(0, 0, 0) { IsKnown = false };
 
     /// <summary>
-    ///  Upstream's DrawArtificialRevision icons: the counts of the groups that have files, or the clean state image.
+    ///  False while the status has not been read (upstream's <c>DataValid</c>).
+    /// </summary>
+    public bool IsKnown { get; init; } = true;
+
+    /// <summary>
+    ///  Upstream's <c>GetSummary</c>, the row's tooltip: each group's count and its first files; null without changes.
+    /// </summary>
+    public string? Summary { get; init; }
+
+    public bool HasChanges => IsKnown && Changed + New + Deleted + SubmodulesChanged + SubmodulesDirty > 0;
+
+    /// <summary>
+    ///  Upstream's DrawArtificialRevision icons: the counts of the groups that have changes, the clean state image without
+    ///  any, or the unknown state image before the status has been read.
     /// </summary>
     public IReadOnlyList<ArtificialChangePart> Parts =>
-        HasChanges
-            ?
-            [
-                .. new[]
-                    {
-                        new ArtificialChangePart("FileStatusModified", Changed),
-                        new ArtificialChangePart("FileStatusAdded", New),
-                        new ArtificialChangePart("FileStatusRemoved", Deleted),
-                    }
-                    .Where(part => part.Count > 0)
-            ]
-            : [new ArtificialChangePart("RepoStateClean", null)];
+        !IsKnown
+            ? [new ArtificialChangePart("RepoStateUnknown", null)]
+            : HasChanges
+                ?
+                [
+                    .. new[]
+                        {
+                            new ArtificialChangePart("FileStatusModified", Changed),
+                            new ArtificialChangePart("FileStatusAdded", New),
+                            new ArtificialChangePart("FileStatusRemoved", Deleted),
+                            new ArtificialChangePart("SubmoduleRevisionDown", SubmodulesChanged),
+                            new ArtificialChangePart("SubmoduleDirty", SubmodulesDirty),
+                        }
+                        .Where(part => part.Count > 0)
+                ]
+                : [new ArtificialChangePart("RepoStateClean", null)];
 
     /// <summary>
-    ///  Counts <paramref name="changes"/> as upstream's <c>ArtificialCommitChangeCount</c> groups them.
+    ///  Groups <paramref name="changes"/> as upstream's <c>ArtificialCommitChangeCount.Update</c> does, with its summary.
     /// </summary>
-    public static ArtificialChanges Of(IEnumerable<ChangeKind> changes)
+    public static ArtificialChanges Of(IReadOnlyList<FileChange> changes)
     {
-        int changed = 0;
-        int added = 0;
-        int deleted = 0;
-        foreach (ChangeKind change in changes)
+        List<FileChange> files = [.. changes.Where(change => !change.IsSubmodule)];
+        List<string> changed = [.. files.Where(change => !IsNew(change) && change.Kind != ChangeKind.Deleted).Select(Name)];
+        List<string> added = [.. files.Where(IsNew).Select(Name)];
+        List<string> deleted = [.. files.Where(change => change.Kind == ChangeKind.Deleted).Select(Name)];
+        List<string> submodulesChanged = [.. changes.Where(change => change.IsSubmoduleChanged).Select(Name)];
+        List<string> submodulesDirty = [.. changes.Where(change => change.IsSubmoduleDirty).Select(Name)];
+        string summary = Summarize(
+        [
+            ("changed file", changed),
+            ("deleted file", deleted),
+            ("new file", added),
+            ("changed submodule", submodulesChanged),
+            ("dirty submodule", submodulesDirty),
+        ]);
+
+        return new ArtificialChanges(changed.Count, added.Count, deleted.Count, submodulesChanged.Count, submodulesDirty.Count)
         {
-            switch (change)
+            Summary = summary.Length == 0 ? null : summary,
+        };
+
+        static bool IsNew(FileChange change) => change.Kind is ChangeKind.Added or ChangeKind.Untracked;
+
+        static string Name(FileChange change) => change.Path;
+    }
+
+    /// <summary>
+    ///  Upstream's <c>ArtificialCommitChangeCount.GetSummary</c> text: per group with names, its count ("2 changed files")
+    ///  and at most five of its names, a blank line between the groups.
+    /// </summary>
+    public static string Summarize(IEnumerable<(string Singular, IReadOnlyList<string> Names)> groups)
+    {
+        const int maxItems = 5;
+        StringBuilder builder = new();
+        foreach ((string singular, IReadOnlyList<string> names) in groups)
+        {
+            if (names.Count == 0)
             {
-                case ChangeKind.Added or ChangeKind.Untracked:
-                    added++;
-                    break;
-                case ChangeKind.Deleted:
-                    deleted++;
-                    break;
-                default:
-                    changed++;
-                    break;
+                continue;
+            }
+
+            if (builder.Length != 0)
+            {
+                builder.AppendLine();
+            }
+
+            builder.Append($"{names.Count} {singular}{(names.Count == 1 ? "" : "s")}").AppendLine();
+            foreach (string name in names.Take(maxItems))
+            {
+                builder.Append("- ").AppendLine(name);
+            }
+
+            if (names.Count > maxItems)
+            {
+                int unlisted = names.Count - maxItems;
+                builder.Append("- (").Append(unlisted).Append(" more file").Append(unlisted == 1 ? "" : "s").Append(')')
+                    .AppendLine();
             }
         }
 
-        return new ArtificialChanges(changed, added, deleted);
+        return builder.ToString();
     }
 }
 
@@ -136,6 +221,7 @@ public sealed class CommitListViewModel : ObservableObject
     private IReadOnlyList<CommitRow> _rows = [];
     private CommitGraph? _graph;
     private bool _drawNonRelativesGray = true;
+    private bool _drawNonRelativesTextGray;
     private Dictionary<string, ArtificialChanges> _artificialChanges = new(StringComparer.Ordinal);
     private GridViewOptions _viewOptions = new();
     private IReadOnlyList<CommitRow>? _graphRows;
@@ -357,6 +443,22 @@ public sealed class CommitListViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    ///  Upstream's "Draw non relatives text gray" (<c>revisiongraphdrawnonrelativestextgray</c>): the text of commits that
+    ///  are not relatives (<see cref="GraphRowRef.IsRelative"/>) is gray (<see cref="CommitListItem.IsNonRelativeText"/>).
+    /// </summary>
+    public bool DrawNonRelativesTextGray
+    {
+        get => _drawNonRelativesTextGray;
+        set
+        {
+            if (SetProperty(ref _drawNonRelativesTextGray, value) && _graph is not null)
+            {
+                RefreshVisibleRows();
+            }
+        }
+    }
+
     private GraphDrawStyle BaseDrawStyle =>
         _drawNonRelativesGray ? GraphDrawStyle.DrawNonRelativesGray : GraphDrawStyle.Normal;
 
@@ -369,6 +471,12 @@ public sealed class CommitListViewModel : ObservableObject
         {
             graph.HighlightBranch(row.Hash);
             GraphAppearanceChanged?.Invoke(this, EventArgs.Empty);
+
+            // Upstream's highlight changes which commits are relatives, and so the gray text.
+            if (_drawNonRelativesTextGray)
+            {
+                RefreshVisibleRows();
+            }
         }
     }
 
@@ -410,9 +518,11 @@ public sealed class CommitListViewModel : ObservableObject
             CommitRow row = _graph.OrderedRows[i];
             if (_filterText.Length == 0 || Matches(row, _filterText))
             {
-                items.Add(new CommitListItem(row, _graph.RowAt(i))
+                GraphRowRef graphRow = _graph.RowAt(i);
+                items.Add(new CommitListItem(row, graphRow)
                 {
                     Build = BuildStatusOf(row.Hash),
+                    IsNonRelativeText = _drawNonRelativesTextGray && !graphRow.IsRelative,
                     Changes = _artificialChanges.GetValueOrDefault(row.Hash),
 
                     // Upstream draws an artificial row's subject as a label of its own, and a stash's selector after the
@@ -422,7 +532,7 @@ public sealed class CommitListViewModel : ObservableObject
                         : row.StashLabel is { } stash
                             ? [.. GridLabels.Layout(row.Labels ?? [], _viewOptions), new GridLabel(stash, RefKind.Head)]
                             : GridLabels.Layout(row.Labels ?? [], _viewOptions),
-                    BodyText = _viewOptions.ShowCommitBody ? BodyOf(row) : "",
+                    BodyText = _viewOptions.ShowCommitBody ? BodyOf(row, _viewOptions) : "",
                 });
             }
         }
@@ -430,12 +540,21 @@ public sealed class CommitListViewModel : ObservableObject
         VisibleRows = items;
     }
 
-    // Upstream's DrawCommitMessage: the message's non-empty lines after the subject, each after a space.
-    private static string BodyOf(CommitRow row)
-        => ArtificialCommits.IsArtificial(row.Hash) || row.Body is null
-            ? ""
-            : string.Concat(row.Body.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1)
-                .Select(line => " " + line.TrimEnd('\r')));
+    // Upstream's DrawCommitMessage: the message's non-empty lines after the subject, each after a space; with "Show git
+    // notes" and no notes column, the notes after the message as upstream's GetBody formats them.
+    private static string BodyOf(CommitRow row, GridViewOptions options)
+    {
+        if (ArtificialCommits.IsArtificial(row.Hash) || row.Body is null)
+        {
+            return "";
+        }
+
+        string message = options.ShowGitNotes && !options.NotesInSeparateColumn
+            ? GitExtensions.Extensibility.Extensions.UIExtensions.FormatBodyAndNotes(row.Body, row.Notes)
+            : row.Body;
+        return string.Concat(message.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1)
+            .Select(line => " " + line.TrimEnd('\r')));
+    }
 
     private static bool Matches(CommitRow row, string text) =>
         row.Hash.Contains(text, StringComparison.OrdinalIgnoreCase)

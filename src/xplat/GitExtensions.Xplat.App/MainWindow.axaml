@@ -100,6 +100,7 @@
         <MenuItem Classes="groupHeader" Header="Commits" IsEnabled="False" />
         <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowGitNotesMenuItem" Header="Show git _notes" ToggleType="CheckBox" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
         <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />
@@ -114,6 +115,7 @@
         <Separator />
         <MenuItem Classes="groupHeader" Header="Columns" IsEnabled="False" />
         <MenuItem x:Name="ShowGraphColumnMenuItem" Header="Show revision _graph column" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowGitNotesColumnMenuItem" Header="Show Git _notes column" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowAvatarColumnMenuItem" Header="Show aut_hor avatar column" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowAuthorNameColumnMenuItem" Header="Show a_uthor name column" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowDateColumnMenuItem" Header="Show _date column" ToggleType="CheckBox" />
@@ -198,7 +200,8 @@
          in its order, with its images and tooltips. -->
     <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,0,1" Padding="2,1">
       <WrapPanel>
-        <StackPanel x:Name="MainToolStrip" Classes="toolStrip">
+        <!-- Upstream's ToolStripMain overflows: the items that do not fit go into the "»" drop-down. -->
+        <local:OverflowToolStrip x:Name="MainToolStrip" Classes="toolStrip">
           <local:ToolButton x:Name="RefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh" />
           <Rectangle Classes="toolSeparator" />
           <local:ToolToggleButton x:Name="ToggleLeftPanelButton" Image="LayoutSidebarLeft" ToolTip.Tip="Toggle left panel" IsChecked="True" />
@@ -276,7 +279,7 @@
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <local:ToolButton x:Name="EditSettingsButton" Image="Settings" ToolTip.Tip="Settings" />
-        </StackPanel>
+        </local:OverflowToolStrip>
         <!-- Upstream's FilterToolBar. -->
         <local:FilterToolBar x:Name="FilterToolStrip" />
         <!-- Upstream's user menu bar: the enabled scripts whose event is "show in user menu bar". -->

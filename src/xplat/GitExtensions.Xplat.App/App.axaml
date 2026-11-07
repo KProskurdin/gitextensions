@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:GitExtensions.Xplat.App"
              x:Class="GitExtensions.Xplat.App.App"
              RequestedThemeVariant="Default">
   <Application.Resources>
@@ -38,6 +39,25 @@
     <Style Selector="StackPanel.toolStrip">
       <Setter Property="Orientation" Value="Horizontal" />
       <Setter Property="Margin" Value="2,1,6,1" />
+    </Style>
+    <Style Selector="local|OverflowToolStrip.toolStrip">
+      <Setter Property="Margin" Value="2,1,6,1" />
+    </Style>
+    <!-- Upstream's overflow drop-down (ToolStripOverflow): the left-out items one below the other, separators lying flat. -->
+    <Style Selector="Border.toolStripOverflow">
+      <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="2" />
+    </Style>
+    <Style Selector="StackPanel.toolStripOverflow > :is(Control)">
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="StackPanel.toolStripOverflow > Rectangle.toolSeparator">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Width" Value="NaN" />
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Margin" Value="0,3" />
     </Style>
     <Style Selector="Rectangle.toolSeparator">
       <Setter Property="Width" Value="1" />

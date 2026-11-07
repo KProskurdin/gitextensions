@@ -15,6 +15,13 @@ internal sealed class RevisionFilterTests
     }
 
     [Test]
+    public void Show_git_notes_should_list_the_notes_refs_commits_too()
+    {
+        RevisionFilter.AllBranches.ToRevisionArguments(showGitNotes: true).Should().Be(
+            "--exclude=refs/stash --exclude=refs/agents/** --exclude=refs/sessions/** --exclude=refs/copilot/checkpoints/** --all");
+    }
+
+    [Test]
     public void Current_branch_only_should_read_from_HEAD()
     {
         new RevisionFilter(CurrentBranchOnly: true).ToRevisionArguments().Should().Be("HEAD");

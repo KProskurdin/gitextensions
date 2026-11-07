@@ -94,7 +94,7 @@ public sealed record RevisionFilter(
     ///  With <paramref name="showStashes"/> (upstream's <c>ShowStashes</c>) the latest stash is listed too: all refs then
     ///  include refs/stash, and a branch choice gets upstream's <c>AddFirstStashRef</c>.
     /// </summary>
-    public string ToRevisionArguments(bool showStashes = false)
+    public string ToRevisionArguments(bool showStashes = false, bool showGitNotes = false)
     {
         List<string> arguments = [];
 
@@ -192,9 +192,14 @@ public sealed record RevisionFilter(
         }
         else
         {
-            // As upstream with its default settings: every ref except notes, the stash and the refs coding agents keep
-            // (upstream c16194306; literal prefixes, as GitRefName.RefsAgentsPrefix is newer than the fork base).
-            arguments.Add("--exclude=refs/notes/");
+            // As upstream with its default settings: every ref except notes (unless ShowGitNotes), the stash and the refs
+            // coding agents keep (upstream c16194306; literal prefixes, as GitRefName.RefsAgentsPrefix is newer than the
+            // fork base).
+            if (!showGitNotes)
+            {
+                arguments.Add("--exclude=refs/notes/");
+            }
+
             if (!showStashes)
             {
                 arguments.Add("--exclude=refs/stash");

@@ -40,7 +40,7 @@ public partial class ChooseCommitWindow : Window
             LastRevisionToDisplayHash: lastRevisionToDisplayHash ?? "");
         _commits = new CommitListViewModel(new GitCommitHistory(
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
-            () => preferences.RevisionSortOrder));
+            () => preferences.RevisionSortOrder, gridView: () => preferences.GridViewOptions));
         InitializeComponent();
         UpstreamTranslation.Apply(this, "FormChooseCommit");
         RevisionGridColumns.ShowAsSettingsSay(this, revisionGrid, preferences, _commits);

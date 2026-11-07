@@ -638,6 +638,36 @@ toolbar icons with upstream's `ToolTipText`.
   items were built in the flyout's `Opening` event, and an Avalonia 12 `MenuFlyout` whose items change while it opens
   keeps the size of its empty presenter. They are now `PopulatingMenuFlyout`s, built before they open (after the read,
   for the worktrees, the earlier messages and the difftools). `ToolbarDropDownTests` checks that each opens wide.
+- 2026-11-07, the grid's artificial rows as upstream's `ArtificialCommitChangeCount`: the changed and dirty submodule
+  counts with their icons, the unknown state until the status has been read, and the summary of the changed files as the
+  row's tooltip. The toolbar's commit button got `RepoStateVisualiser`'s dirty submodules and unknown states, and the
+  clean image while the setting hides the status. The ArtificialCommitChangeCount row is `ported`; see it and the
+  FormBrowse toolbar note in `PORTING-MAP.md`. 56 rows are still `partial`.
+- 2026-11-07, the grid's ref labels: upstream's highlight frame on the label under the pointer and its tooltip (the
+  branch's tracking, ahead and behind counts, or what the ref is, then the commit's message). See the MessageColumnProvider
+  row's note in `PORTING-MAP.md`. Fixed a flaky test: `DiffLinePatchingTests` read the file while git rewrote it.
+- 2026-11-07, the Colors settings page's "Revision graph" group (six check boxes, applied when saved) and "Draw non
+  relatives text gray" in the grid. See the ColorsSettingsPage row and note in `PORTING-MAP.md`.
+- 2026-11-07, the grid's multi-line indicator (three dots at the message's right end for a commit with a body). See the
+  MessageColumnProvider row's note in `PORTING-MAP.md`.
+- 2026-11-07, the toolbar's branch drop-down as upstream's (checkout item, branches read from git as it opens, hidden
+  branches marked). See the FormBrowse toolbar note in `PORTING-MAP.md`. Fixed the flaky `ToolbarDropDownTests` branch
+  case at its root: the headless font is wide, so the working directory's path made its button about 900 pixels wide and
+  the branch button lay outside the 900 pixel test window, where the click hit nothing. The tests' window is wide enough
+  now, and their clicks fail at once outside it. The product side, a toolbar wider than the window cutting its last buttons off,
+  is fixed by the overflow drop-down below.
+- 2026-11-07, the grid's merge source arrow (an outlined arrow on the remote branch the checked-out branch tracks). See
+  the MessageColumnProvider row's note in `PORTING-MAP.md`.
+- 2026-11-07, "Save current view settings as default" saves all of upstream's runtime view settings (grid sort, reflog,
+  branch filter, current branch only, diff appearance), not only the diff viewer's four. See DiffViewerSettingsPage in
+  `PORTING-MAP.md`.
+- 2026-11-07, the Browse repository window settings page's "Show 'Find in commit files using git-grep'" and "Show GPG
+  information" (Tabs group). See FormBrowseRepoSettingsPage in `PORTING-MAP.md`.
+- 2026-11-07, upstream's toolstrip overflow (G2) on the browse window's main toolstrip: the buttons that do not fit go into
+  a "»" drop-down that hosts the buttons themselves. See the FormBrowse toolbar note in `PORTING-MAP.md`.
+- 2026-11-07, git notes in the commit info (after the message) and its menu's "Add notes" with the Ctrl+Shift+N hotkey.
+  See the CommitInfo note in `PORTING-MAP.md`. Then the grid's notes: the View menu's "Show git notes" and "Show Git
+  notes column". See the MessageColumnProvider row's note in `PORTING-MAP.md`.
 
 ## Risks
 
