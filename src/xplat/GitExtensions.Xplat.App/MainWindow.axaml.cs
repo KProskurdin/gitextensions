@@ -88,6 +88,9 @@ public partial class MainWindow : Window
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
+
+        // Upstream's FileViewer settings button opens the settings dialog on its page.
+        DiffView.ShowSettings = (owner, page) => ShowSettingsAsync(owner: owner, page: page);
         _history = new GitCommitHistory(
             () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
             () => _preferences.RevisionSortOrder, AppServices.RevisionLinks,
@@ -570,6 +573,13 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        // Upstream's FileViewer handles its hotkeys before the controls around it.
+        if (DiffView.Focused(e) is { } viewer && viewer.RunHotkey(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (RunTabHotkey(e))
         {
             e.Handled = true;
@@ -2166,6 +2176,7 @@ public partial class MainWindow : Window
         await new StashWindow(path, _actions, _preferences, manageStashes, initialStash)
         {
             MenuServices = FileListMenuServices,
+            Submodules = stashWindow => DiffFileSubmodules(() => stashWindow),
         }.ShowDialog(owner);
         RefreshRepository();
     }

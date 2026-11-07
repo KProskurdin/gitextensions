@@ -88,37 +88,7 @@
           <Panel>
             <ListBox x:Name="UnstagedList" SelectionMode="Multiple">
               <ListBox.ContextMenu>
-              <ContextMenu x:Name="UnstagedContextMenu">
-                <MenuItem x:Name="UnstagedOpenSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" />
-                <MenuItem x:Name="UnstagedUpdateSubmoduleMenuItem" Header="_Update submodule" Icon="{local:UpstreamIcon SubmodulesUpdate}" />
-                <MenuItem x:Name="UnstagedResetSubmoduleMenuItem" Header="R_eset submodule changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
-                <MenuItem x:Name="UnstagedStashSubmoduleMenuItem" Header="S_tash submodule changes" Icon="{local:UpstreamIcon Stash}" />
-                <MenuItem x:Name="UnstagedCommitSubmoduleMenuItem" Header="_Commit submodule changes" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}" />
-                <Separator x:Name="UnstagedSubmoduleSeparator" />
-                <MenuItem x:Name="UnstagedStageFileMenuItem" Header="_Stage selected" FontWeight="Bold" Icon="{local:UpstreamIcon Stage}" />
-                <MenuItem x:Name="UnstagedResetFileMenuItem" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
-                  <MenuItem x:Name="UnstagedResetFileToFirstMenuItem" />
-                </MenuItem>
-                <Separator />
-                <MenuItem x:Name="UnstagedOpenWithDifftoolMenuItem" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" />
-                <MenuItem x:Name="UnstagedOpenWorkingFileMenuItem" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
-                <MenuItem x:Name="UnstagedEditWorkingFileMenuItem" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
-                <MenuItem x:Name="UnstagedDeleteFileMenuItem" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
-                <Separator />
-                <MenuItem x:Name="UnstagedCopyPathsMenuItem" Header="Copy _path(s)" />
-                <MenuItem x:Name="UnstagedShowInFolderMenuItem" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
-                <Separator />
-                <MenuItem x:Name="UnstagedFileHistoryMenuItem" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
-                <MenuItem x:Name="UnstagedBlameMenuItem" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
-                <Separator />
-                <MenuItem x:Name="UnstagedAddToGitIgnoreMenuItem" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
-                <MenuItem x:Name="UnstagedAddToGitInfoExcludeMenuItem" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
-                <MenuItem x:Name="UnstagedSkipWorktreeMenuItem" Header="S_kip worktree" ToggleType="CheckBox" />
-                <MenuItem x:Name="UnstagedAssumeUnchangedMenuItem" Header="Assu_me unchanged" ToggleType="CheckBox" />
-                <MenuItem x:Name="UnstagedStopTrackingMenuItem" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
-                <Separator />
-                <MenuItem x:Name="UnstagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
-              </ContextMenu>
+              <local:FileStatusListMenu x:Name="UnstagedFilesMenu" />
               </ListBox.ContextMenu>
               <ListBox.DataTemplates>
                 <DataTemplate x:DataType="repo:FileChange">
@@ -207,28 +177,7 @@
           <Panel>
             <ListBox x:Name="StagedList" SelectionMode="Multiple">
               <ListBox.ContextMenu>
-              <ContextMenu x:Name="StagedContextMenu">
-                <MenuItem x:Name="StagedOpenSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" />
-                <MenuItem x:Name="StagedUnstageFileMenuItem" Header="_Unstage selected" FontWeight="Bold" Icon="{local:UpstreamIcon Unstage}" />
-                <MenuItem x:Name="StagedResetFileMenuItem" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
-                  <MenuItem x:Name="StagedResetFileToFirstMenuItem" />
-                </MenuItem>
-                <Separator />
-                <MenuItem x:Name="StagedOpenWithDifftoolMenuItem" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" />
-                <MenuItem x:Name="StagedOpenWorkingFileMenuItem" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
-                <MenuItem x:Name="StagedEditWorkingFileMenuItem" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
-                <MenuItem x:Name="StagedDeleteFileMenuItem" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
-                <Separator />
-                <MenuItem x:Name="StagedCopyPathsMenuItem" Header="Copy _path(s)" />
-                <MenuItem x:Name="StagedShowInFolderMenuItem" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
-                <Separator />
-                <MenuItem x:Name="StagedFileHistoryMenuItem" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
-                <MenuItem x:Name="StagedBlameMenuItem" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
-                <Separator />
-                <MenuItem x:Name="StagedStopTrackingMenuItem" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
-                <Separator />
-                <MenuItem x:Name="StagedRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
-              </ContextMenu>
+              <local:FileStatusListMenu x:Name="StagedFilesMenu" />
               </ListBox.ContextMenu>
               <ListBox.DataTemplates>
                 <DataTemplate x:DataType="repo:FileChange">

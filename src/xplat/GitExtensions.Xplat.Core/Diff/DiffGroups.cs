@@ -100,7 +100,7 @@ public static class DiffGroups
         return Task.Run<IReadOnlyList<DiffLine>>(() =>
         {
             module.GetCombinedDiffContent(group.Second, file.Path, string.Join(" ", options.Arguments),
-                module.FilesEncoding, out string diff, useGitColoring: false, GitCommandConfiguration.Default,
+                options.EncodingFor(module), out string diff, useGitColoring: false, GitCommandConfiguration.Default,
                 cancellationToken);
             return DiffParser.ParseCombined(diff);
         }, cancellationToken);

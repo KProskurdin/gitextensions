@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
+using GitExtensions.Xplat.Core.Platform;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -66,6 +67,16 @@ internal sealed class DiffFileMenuTests
         Item(files, "tsmiFileHistory").IsEnabled.Should().BeTrue();
         Item(files, "tsmiAddFileToGitIgnore").IsVisible.Should().BeFalse();
         Item(files, "tsmiStopTracking").IsVisible.Should().BeTrue();
+        Item(files, "tsmiInteractiveAdd").IsVisible.Should().BeFalse("a commit's file is not the working directory's");
+        Item(files, "tsmiResetChunkOfFile").IsVisible.Should().BeFalse();
+        if (OperatingSystem.IsWindows())
+        {
+            WaitUntil(() => VisualStudio.InitAsync().IsCompleted);
+            OpenMenu(files);
+            Item(files, "tsmiOpenInVisualStudio").IsVisible.Should().Be(VisualStudio.IsInstalled,
+                "upstream offers the working directory file in Visual Studio when it is installed");
+        }
+
         window.Close();
     }
 
@@ -130,9 +141,23 @@ internal sealed class DiffFileMenuTests
 
         Click(Item(files, "tsmiOpenRevisionFile"));
 
-        WaitUntil(() => File.Exists(temp) && File.ReadAllText(temp) == "z");
+        WaitUntil(() => ReadWritten(temp) == "z");
         File.Delete(temp);
         window.Close();
+        return;
+
+        // Git may still be writing the file, or the program it opens with may be reading it.
+        static string? ReadWritten(string path)
+        {
+            try
+            {
+                return File.Exists(path) ? File.ReadAllText(path) : null;
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+        }
     }
 
     [AvaloniaTest]
@@ -149,6 +174,9 @@ internal sealed class DiffFileMenuTests
         Item(files, "tsmiAddFileToGitIgnore").IsVisible.Should().BeTrue();
         Item(files, "tsmiResetFileTo").IsEnabled.Should().BeFalse();
         Item(files, "tsmiOpenRevisionFile").IsVisible.Should().BeFalse();
+        Item(files, "tsmiInteractiveAdd").IsVisible.Should().Be(!OperatingSystem.IsMacOS(),
+            "upstream offers git's interactive add for one working directory file");
+        Item(files, "tsmiResetChunkOfFile").IsVisible.Should().Be(!OperatingSystem.IsMacOS());
 
         Click(Item(files, "tsmiDeleteFile"));
         WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());
@@ -318,6 +346,71 @@ internal sealed class DiffFileMenuTests
         files.SelectedItems!.Cast<CommitFile>().Select(file => file.Path).Should().Equal("z.md");
         OpenMenu(files);
         Item(files, "tsmiMove").IsVisible.Should().BeTrue("one file is selected");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Ctrl_A_in_the_diff_tabs_tree_selects_all_its_files_and_expands_their_folders()
+    {
+        DiffListSortType sorting = TestAppBuilder.Preferences.DiffListSorting;
+        TestAppBuilder.Preferences.DiffListSorting = DiffListSortType.FilePath;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(_repo.Path, "src"));
+            File.WriteAllText(Path.Combine(_repo.Path, "src", "a.cs"), "a");
+            File.WriteAllText(Path.Combine(_repo.Path, "src", "b.cs"), "b");
+            File.WriteAllText(Path.Combine(_repo.Path, "c.md"), "c");
+            _repo.Run("add", "-A");
+            _repo.Run("commit", "-q", "-m", "add src");
+            MainWindow window = OpenWindow();
+            Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            WaitUntil(() => commits.Items.Cast<CommitListItem>().Any(item => item.Row.Subject == "add src"));
+            commits.SelectedItem = commits.Items.Cast<CommitListItem>().First(item => item.Row.Subject == "add src");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            WaitUntil(() => files.Items.OfType<CommitFile>().Count() == 3);
+            files.SelectedItem = files.Items.OfType<FileTreeRow>().Single();
+            Click(Item(files, "_collapseAll"));
+            WaitUntil(() => files.Items.OfType<FileTreeRow>().Single().IsExpanded == false);
+            CommitFile last = files.Items.OfType<CommitFile>().Single();
+            files.SelectedItem = last;
+            WaitUntil(() => files.ContainerFromItem(last) is not null);
+            files.ContainerFromItem(last)!.Focus();
+
+            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+
+            files.SelectedItems!.Cast<object>().Should().AllBeOfType<CommitFile>("upstream selects files only")
+                .And.Subject.Cast<CommitFile>().Select(file => file.Path).Should()
+                .BeEquivalentTo(["src/a.cs", "src/b.cs", "c.md"]);
+            files.Items.OfType<FileTreeRow>().Single().IsExpanded.Should().BeTrue("the folder's files are rows again");
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.DiffListSorting = sorting;
+        }
+    }
+
+    [AvaloniaTest]
+    public void The_compare_windows_list_has_upstreams_file_list_hotkeys()
+    {
+        MainWindow window = OpenWindow();
+        RevisionDiffWindow diff = CompareParentWithHead(window);
+        ListBox files = SelectDiffFile(diff, "z.md");
+        WaitUntil(() => files.ContainerFromItem(files.SelectedItem!) is not null);
+        files.ContainerFromItem(files.SelectedItem!)!.Focus();
+
+        diff.KeyPress(Key.R, RawInputModifiers.None, PhysicalKey.R, keySymbol: null);
+
+        WaitUntil(() => diff.OwnedWindows.OfType<ResetChangesWindow>().Any());
+        Click(Find<Button>(diff.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton"));
+        WaitUntil(() => _repo.ReadFile("z.md") == "z");
+
+        files.SelectedItems!.Clear();
+        files.ContainerFromIndex(0)!.Focus();
+        diff.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+        files.SelectedItems.Cast<RevisionDiffFile>().Select(file => file.Path).Should().Equal("z.md");
+        diff.Close();
         window.Close();
     }
 

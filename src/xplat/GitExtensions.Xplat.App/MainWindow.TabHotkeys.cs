@@ -89,15 +89,6 @@ public partial class MainWindow
                 Run(() => _actions.UnstageAsync(path, files));
                 return true;
 
-            // Upstream's ResetSelectedFilesWithConfirmation: to the first revision, when the menu offers it.
-            case BrowseDiffCommand.ResetSelectedFiles when files.Count > 0:
-                if (CommitFilesContextMenu.State() is not { ResetFile: true, ResetToFirst: not null })
-                {
-                    return false;
-                }
-
-                Run(() => CommitFilesContextMenu.ResetAsync(toFirst: true));
-                return true;
             case BrowseDiffCommand.DeleteSelectedFiles when (workTree || index) && files.Count > 0:
                 Run(CommitFilesContextMenu.DeleteAsync);
                 return true;
@@ -112,7 +103,9 @@ public partial class MainWindow
             case BrowseDiffCommand.FindInCommitFilesUsingGitGrepDiffTab or BrowseDiffCommand.OpenAsTempFile
                 or BrowseDiffCommand.OpenAsTempFileWith or BrowseDiffCommand.OpenWithDifftoolFirstToLocal
                 or BrowseDiffCommand.OpenWithDifftoolSelectedToLocal or BrowseDiffCommand.FilterFileInGrid
-                or BrowseDiffCommand.OpenWorkingDirectoryFileWith or BrowseDiffCommand.AddFileToGitIgnore:
+                or BrowseDiffCommand.OpenWorkingDirectoryFileWith or BrowseDiffCommand.AddFileToGitIgnore
+                or BrowseDiffCommand.ResetSelectedFiles or BrowseDiffCommand.SelectFirstGroupChanges
+                or BrowseDiffCommand.OpenInVisualStudio:
                 return CommitFilesContextMenu.ExecuteCommand(command);
             default:
                 return false;

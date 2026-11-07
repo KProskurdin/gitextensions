@@ -21,13 +21,14 @@ public sealed class GitDiffService : IDiffService
         => Task.Run(() =>
         {
             GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
-            string output = Run(module, options ?? new DiffOptions(), commitHash is null
+            DiffOptions diffOptions = options ?? new DiffOptions();
+            string output = Run(module, diffOptions, commitHash is null
                 ? new GitArgumentBuilder("diff") { { staged, "--cached" } }
                 : new GitArgumentBuilder("show") { "--format=", "--first-parent", commitHash }, filePath);
 
             if (output.Length == 0 && commitHash is null && !staged && filePath is not null && IsUntracked(module, filePath))
             {
-                output = RunNoIndexDiff(module, filePath);
+                output = RunNoIndexDiff(module, filePath, diffOptions.EncodingFor(module));
             }
 
             return DiffParser.Parse(output);
@@ -48,7 +49,9 @@ public sealed class GitDiffService : IDiffService
             arguments.Add(filePath.Quote());
         }
 
-        ExecutionResult result = module.GitExecutable.Execute(arguments, throwOnErrorExit: false);
+        // As upstream's GetSingleDiffAsync and GetCurrentChanges: git's output read in the viewer's encoding.
+        ExecutionResult result = module.GitExecutable.Execute(arguments, outputEncoding: options.EncodingFor(module),
+            throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
         {
             string error = result.StandardError.Trim();
@@ -66,11 +69,11 @@ public sealed class GitDiffService : IDiffService
     }
 
     // An untracked file has no diff against the index, so it is shown as added from /dev/null. git exits with 1 when the files differ.
-    private static string RunNoIndexDiff(GitModule module, string filePath)
+    private static string RunNoIndexDiff(GitModule module, string filePath, System.Text.Encoding encoding)
     {
         ExecutionResult result = module.GitExecutable.Execute(
             new GitArgumentBuilder("diff") { "--no-index", "--no-color", "--no-ext-diff", "--", "/dev/null", filePath.Quote() },
-            throwOnErrorExit: false);
+            outputEncoding: encoding, throwOnErrorExit: false);
         if (result.ExitCode is not (0 or 1))
         {
             string error = result.StandardError.Trim();

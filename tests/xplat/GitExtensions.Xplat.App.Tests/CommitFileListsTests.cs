@@ -3,6 +3,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.Repository;
@@ -160,18 +161,27 @@ internal sealed class CommitFileListsTests
         unstaged.SelectedIndex = 0;
         OpenMenu(unstaged);
 
-        Find<MenuItem>(commit, "UnstagedStageFileMenuItem").IsVisible.Should().BeTrue();
-        Find<MenuItem>(commit, "UnstagedResetFileMenuItem").IsEnabled.Should().BeFalse("an untracked file has no version to reset to");
-        Find<MenuItem>(commit, "UnstagedAddToGitIgnoreMenuItem").IsVisible.Should().BeTrue();
-        Find<MenuItem>(commit, "UnstagedStopTrackingMenuItem").IsVisible.Should().BeFalse();
-        Find<MenuItem>(commit, "UnstagedDeleteFileMenuItem").Header.Should().Be("Delete file");
+        Item(unstaged, "tsmiStageFile").IsVisible.Should().BeTrue();
+        Item(unstaged, "tsmiStageFile").FontWeight.Should().Be(FontWeight.Bold, "upstream's FormCommit binds its stage");
+        Item(unstaged, "tsmiUnstageFile").IsVisible.Should().BeFalse();
+        Item(unstaged, "tsmiResetFileTo").IsEnabled.Should().BeFalse("an untracked file has no version to reset to");
+        Item(unstaged, "tsmiAddFileToGitIgnore").IsVisible.Should().BeTrue();
+        Item(unstaged, "tsmiStopTracking").IsVisible.Should().BeFalse();
+        Item(unstaged, "tsmiDeleteFile").Header.Should().Be("Delete file");
+        Item(unstaged, "tsmiInteractiveAdd").IsVisible.Should().Be(!OperatingSystem.IsMacOS(),
+            "upstream's FormCommit lists have the whole file list menu");
+        Item(unstaged, "tsmiShowInFileTree").IsVisible.Should().BeFalse("FormCommit binds no file tree");
+        Item(unstaged, "tsmiFilterFileInGrid").IsVisible.Should().BeFalse("FormCommit has no grid");
 
         staged.SelectedIndex = 0;
         OpenMenu(staged);
 
-        Find<MenuItem>(commit, "StagedUnstageFileMenuItem").IsVisible.Should().BeTrue();
-        Find<MenuItem>(commit, "StagedResetFileToFirstMenuItem").Header.Should().Be("First: A HEAD");
-        Find<MenuItem>(commit, "StagedStopTrackingMenuItem").IsVisible.Should().BeTrue();
+        Item(staged, "tsmiUnstageFile").IsVisible.Should().BeTrue();
+        Item(staged, "tsmiStageFile").IsVisible.Should().BeFalse();
+        Item(staged, "tsmiResetFileToParent").Header.Should()
+            .Be("First: A " + _repo.Run("rev-parse", "--short=8", "HEAD").Trim(), "upstream names HEAD by its hash");
+        Item(staged, "tsmiStopTracking").IsVisible.Should().BeTrue();
+        Item(staged, "tsmiAddFileToGitIgnore").IsVisible.Should().BeFalse();
         commit.Close();
     }
 
@@ -185,9 +195,9 @@ internal sealed class CommitFileListsTests
         WaitUntil(() => staged.ItemCount == 1);
         staged.SelectedIndex = 0;
 
-        Click(commit, "StagedResetFileToFirstMenuItem");
-        WaitUntil(() => commit.OwnedWindows.OfType<ConfirmWindow>().Any());
-        Click(commit.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
+        ClickItem(staged, "tsmiResetFileToParent");
+        WaitUntil(() => commit.OwnedWindows.OfType<ResetChangesWindow>().Any());
+        Click(commit.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
 
         WaitUntil(() => staged.ItemCount == 0 && Find<ListBox>(commit, "UnstagedList").ItemCount == 0);
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
@@ -203,7 +213,7 @@ internal sealed class CommitFileListsTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        Click(commit, "UnstagedDeleteFileMenuItem");
+        ClickItem(unstaged, "tsmiDeleteFile");
         WaitUntil(() => commit.OwnedWindows.OfType<ConfirmWindow>().Any());
         Click(commit.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
 
@@ -222,7 +232,7 @@ internal sealed class CommitFileListsTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        Click(commit, "UnstagedStopTrackingMenuItem");
+        ClickItem(unstaged, "tsmiStopTracking");
 
         WaitUntil(() => Paths(Find<ListBox>(commit, "StagedList")).SequenceEqual(["a.txt"]));
         _repo.Run("status", "--porcelain").Should().Contain("D  a.txt");
@@ -306,7 +316,8 @@ internal sealed class CommitFileListsTests
         unstaged.Items.OfType<FileTreeRow>().Single().Text.Should().Be("docs", "upstream's tree shows the file's folder");
         unstaged.SelectedItem = unstaged.Items.OfType<FileChange>().Single();
 
-        ((MenuItem)Find<MenuItem>(commit, "UnstagedCopyPathsMenuItem").ItemsSource!.Cast<object>().First())
+        OpenMenu(unstaged);
+        ((MenuItem)Item(unstaged, "tsmiCopyPaths").ItemsSource!.Cast<object>().First())
             .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Task<string?> text = TopLevel.GetTopLevel(commit)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
@@ -317,6 +328,13 @@ internal sealed class CommitFileListsTests
 
     private static IReadOnlyList<string> Paths(ListBox list)
         => [.. (list.ItemsSource?.OfType<FileChange>() ?? []).Select(change => change.Path)];
+
+    // An item of the list's file list menu (upstream's names), which has its own name scope.
+    private static MenuItem Item(ListBox list, string name)
+        => list.ContextMenu!.FindControl<MenuItem>(name) ?? throw new InvalidOperationException($"No item {name}");
+
+    private static void ClickItem(ListBox list, string name)
+        => Item(list, name).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     // The menu updates itself for the selection when it opens, as upstream's ItemContextMenu_Opening.
     private static void OpenMenu(ListBox list)

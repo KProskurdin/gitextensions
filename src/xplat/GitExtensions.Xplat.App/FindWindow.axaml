@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GitExtensions.Xplat.App.FindWindow"
+        Title="Find"
+        SizeToContent="WidthAndHeight" CanResize="False" ShowInTaskbar="False">
+  <!-- Upstream's FindAndReplaceForm in find mode (the viewer is read-only, so upstream hides its replace controls): the
+       text to look for, whole word and case, and the buttons on the right. -->
+  <Grid Margin="8" ColumnDefinitions="Auto,240,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6"
+        RowSpacing="4">
+    <Label x:Name="label1" Content="Fi_nd what:" Target="txtLookFor" VerticalAlignment="Center" />
+    <TextBox x:Name="txtLookFor" Grid.Column="1" />
+    <CheckBox x:Name="chkMatchWholeWord" Grid.Row="1" Grid.Column="1" Content="Match _whole word" />
+    <CheckBox x:Name="chkMatchCase" Grid.Row="2" Grid.Column="1" Content="Match _case" />
+    <Button x:Name="btnFindPrevious" Grid.Column="2" Content="Find pre_vious" HorizontalAlignment="Stretch" />
+    <Button x:Name="btnFindNext" Grid.Row="1" Grid.Column="2" Content="_Find next" IsDefault="True"
+            HorizontalAlignment="Stretch" />
+    <Button x:Name="btnHighlightAll" Grid.Row="2" Grid.Column="2" Content="Find &amp; highlight _all"
+            HorizontalAlignment="Stretch" />
+    <Button x:Name="btnCancel" Grid.Row="3" Grid.Column="2" Content="Cancel" IsCancel="True"
+            HorizontalAlignment="Stretch" />
+  </Grid>
+</Window>

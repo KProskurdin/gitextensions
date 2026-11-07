@@ -107,6 +107,8 @@
 
   <ItemGroup>
     <PackageReference Include="ExCSS" />
+    <!-- Upstream's "Open in Visual Studio" on Windows (Platform/VisualStudio.cs). -->
+    <PackageReference Include="EnvDTE" />
     <!-- Upstream's encrypted build server credentials on Windows (BuildServer/BuildServerCredentialStore.cs). -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>

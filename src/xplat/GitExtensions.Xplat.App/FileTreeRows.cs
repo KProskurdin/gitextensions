@@ -87,6 +87,29 @@ internal sealed class FileTreeRows<T>
     public void Reset() => _collapsed.Clear();
 
     /// <summary>
+    ///  Expands the nodes with <paramref name="keys"/> at the next fill.
+    /// </summary>
+    public void Expand(IEnumerable<string> keys) => _collapsed.ExceptWith(keys);
+
+    /// <summary>
+    ///  Makes the shown rows of <paramref name="files"/> the list's selection.
+    /// </summary>
+    public void Select(IEnumerable<object> files)
+    {
+        if (_list.SelectedItems is not { } selected)
+        {
+            return;
+        }
+
+        HashSet<object> wanted = new(files, ReferenceEqualityComparer.Instance);
+        selected.Clear();
+        foreach (object file in _list.Items.OfType<T>().Where(wanted.Contains))
+        {
+            selected.Add(file);
+        }
+    }
+
+    /// <summary>
     ///  Starts a new fill of the list: the selected nodes are noted, to be selected again by <see cref="EndFill"/>.
     /// </summary>
     public void BeginFill()
@@ -134,18 +157,9 @@ internal sealed class FileTreeRows<T>
         void SelectAll()
         {
             List<IFileListNode> nodes = SelectedNodes();
-            HashSet<object> files = new(nodes.SelectMany(node => node.Files), ReferenceEqualityComparer.Instance);
+            List<object> files = [.. nodes.SelectMany(node => node.Files)];
             SetExpanded(nodes, true);
-            if (_list.SelectedItems is not { } selected)
-            {
-                return;
-            }
-
-            selected.Clear();
-            foreach (object file in _list.Items.OfType<T>().Where(files.Contains))
-            {
-                selected.Add(file);
-            }
+            Select(files);
         }
 
         void SetExpanded(IReadOnlyList<IFileListNode> nodes, bool expanded)
@@ -385,6 +399,38 @@ internal static class FileListNodes
 
         list.SelectedItem = target;
         list.ScrollIntoView(target);
+    }
+
+    /// <summary>
+    ///  Upstream FileStatusList's <c>SelectNextItem</c>: the shown file after (or before) the selected one becomes the only
+    ///  one selected, around at the ends with <paramref name="loop"/>; the first or last file without a selection. The
+    ///  selected file, or null when there is none to select.
+    /// </summary>
+    public static object? SelectNextFile(ListBox list, bool backward, bool loop, Func<object, bool> isFile)
+    {
+        List<object> files = [.. list.Items.OfType<object>().Where(isFile)];
+        if (files.Count == 0)
+        {
+            return null;
+        }
+
+        int current = list.SelectedItem is { } selected ? files.IndexOf(selected) : -1;
+        int next = current < 0
+            ? backward ? files.Count - 1 : 0
+            : current + (backward ? -1 : 1);
+        if (next < 0 || next >= files.Count)
+        {
+            if (!loop)
+            {
+                return list.SelectedItem;
+            }
+
+            next = backward ? files.Count - 1 : 0;
+        }
+
+        list.SelectedItem = files[next];
+        list.ScrollIntoView(files[next]);
+        return files[next];
     }
 
     /// <summary>

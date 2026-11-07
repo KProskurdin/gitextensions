@@ -40,6 +40,12 @@ public sealed class GitRepositoryService : IRepositoryService
             GetWorktrees(new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)));
 
     /// <summary>
+    ///  HEAD's commit; the zero id before the first commit.
+    /// </summary>
+    public static ObjectId HeadId(string repositoryPath)
+        => new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath).RevParse("HEAD");
+
+    /// <summary>
     ///  True when HEAD contains the local branch <paramref name="branch"/>: upstream's <c>GitModule.GetMergedBranches</c>,
     ///  which its branch delete dialog uses to ask before deleting unmerged work.
     /// </summary>

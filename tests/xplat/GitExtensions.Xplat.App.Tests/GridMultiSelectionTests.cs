@@ -339,6 +339,43 @@ internal sealed class GridMultiSelectionTests
         return window;
     }
 
+    [AvaloniaTest]
+    public void Ctrl_A_in_the_diff_tab_selects_the_files_of_the_first_diff_group_as_upstreams_hotkey()
+    {
+        _repo.Run("checkout", "-q", "-b", "side", "HEAD~1");
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "c");
+        _repo.Run("add", "c.txt");
+        _repo.Run("commit", "-q", "-m", "side");
+        bool allParents = AppSettings.ShowDiffForAllParents;
+        AppSettings.ShowDiffForAllParents = true;
+        try
+        {
+            MainWindow window = OpenWindow();
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            Select(commits, "side");
+            commits.SelectedItems!.Add(Item(commits, "third"));
+            WaitUntil(() => files.Items.OfType<DiffGroupHeader>().Count() == 3);
+            DiffGroupHeader first = files.Items.OfType<DiffGroupHeader>().First();
+            CommitFile file = files.Items.OfType<CommitFile>().Last();
+            files.SelectedItem = file;
+            WaitUntil(() => files.ContainerFromItem(file) is not null);
+            files.ContainerFromItem(file)!.Focus();
+
+            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+
+            files.SelectedItems!.Cast<object>().Should().AllBeOfType<CommitFile>()
+                .And.Subject.Cast<CommitFile>().Should().HaveCount(2)
+                .And.OnlyContain(selected => selected.Group == first.Group, "upstream's FirstGroupItems");
+            window.Close();
+        }
+        finally
+        {
+            AppSettings.ShowDiffForAllParents = allParents;
+        }
+    }
+
     private static void ClickItem(Window window, ListBox list, object item, double x = 20)
     {
         list.ScrollIntoView(item);

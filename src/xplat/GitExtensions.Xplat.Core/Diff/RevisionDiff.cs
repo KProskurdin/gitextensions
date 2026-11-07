@@ -86,7 +86,10 @@ public static class RevisionDiff
             .. items.Where(item => !item.IsStatusOnly)
                 .Select(item => new RevisionDiffFile(StatusOf(item), item.Name,
                     item.IsRenamed || item.IsCopied ? item.OldName : null,
-                    item.IsTracked || (!item.TreeId.IsZero && !second.IsZero)))
+                    item.IsTracked || (!item.TreeId.IsZero && !second.IsZero))
+                {
+                    IsSubmodule = item.IsSubmodule
+                })
         ];
     }
 
@@ -98,7 +101,7 @@ public static class RevisionDiff
         RevisionDiffFile file, DiffOptions options, CancellationToken cancellationToken = default)
     {
         (Patch? patch, string? error) = await module.GetSingleDiffAsync(first, second, file.Path, file.OldPath,
-            string.Join(" ", options.Arguments), module.FilesEncoding, cacheResult: false, file.IsTracked,
+            string.Join(" ", options.Arguments), options.EncodingFor(module), cacheResult: false, file.IsTracked,
             useGitColoring: false, GitCommandConfiguration.Default, cancellationToken);
         if (patch is null && error is { Length: > 0 })
         {

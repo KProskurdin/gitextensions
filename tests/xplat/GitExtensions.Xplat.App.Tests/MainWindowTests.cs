@@ -1232,9 +1232,9 @@ internal sealed class MainWindowTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        Click(commit, "UnstagedResetFileToFirstMenuItem");
-        WaitUntil(() => commit.OwnedWindows.OfType<ConfirmWindow>().Any());
-        Click(commit.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
+        unstaged.ContextMenu!.FindControl<MenuItem>("tsmiResetFileToParent")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        WaitUntil(() => commit.OwnedWindows.OfType<ResetChangesWindow>().Any());
+        Click(commit.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
 
         WaitUntil(() => unstaged.ItemCount == 0);
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
@@ -1551,7 +1551,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        Click(commit, "UnstagedAddToGitIgnoreMenuItem");
+        unstaged.ContextMenu!.FindControl<MenuItem>("tsmiAddFileToGitIgnore")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         WaitUntil(() => commit.OwnedWindows.OfType<AddToGitIgnoreWindow>().Any());
         AddToGitIgnoreWindow ignore = commit.OwnedWindows.OfType<AddToGitIgnoreWindow>().Single();
         Find<TextBox>(ignore, "FilePattern").Text.Should().Be("/notes.txt");
@@ -1983,7 +1983,7 @@ internal sealed class MainWindowTests
         ContextMenu menu = unstaged.ContextMenu!;
         unstaged.RaiseEvent(new ContextRequestedEventArgs());
         MenuItem item = menu.Items.OfType<MenuItem>().Single(entry => entry.Header is TextBlock { Text: "Tag file" });
-        Find<MenuItem>(commit, "UnstagedRunScriptMenuItem").IsEnabled.Should().BeFalse();
+        menu.FindControl<MenuItem>("tsmiRunScript")!.IsEnabled.Should().BeFalse();
         item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         menu.Close();
 

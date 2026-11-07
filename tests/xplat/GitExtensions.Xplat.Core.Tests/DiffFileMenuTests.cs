@@ -109,6 +109,38 @@ internal sealed class DiffFileMenuTests
     }
 
     [Test]
+    public void For_should_offer_interactive_add_and_reset_chunk_for_one_working_directory_file_only()
+    {
+        File.WriteAllText(Path.Combine(_workingDir, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(_workingDir, "b.txt"), "b");
+        DiffMenuFile a = new("M", "a.txt", null, IsTracked: true);
+        DiffMenuFile b = new("M", "b.txt", null, IsTracked: true);
+
+        State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [a])).InteractiveAddReset.Should().BeTrue();
+        State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [a, b])).InteractiveAddReset.Should()
+            .BeFalse("upstream's canResetAddInteractively needs a single file");
+        State(new DiffMenuSelection(Parent, ObjectId.IndexId, [Parent], [a])).InteractiveAddReset.Should()
+            .BeFalse("an index file is not the working directory's");
+        State(CommitSelection(a)).InteractiveAddReset.Should().BeFalse();
+        State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [a with { IsSubmodule = true }]))
+            .InteractiveAddReset.Should().BeFalse("a submodule is not a file");
+    }
+
+    [Test]
+    public void For_should_offer_the_index_flags_for_the_working_directorys_tracked_files_as_upstream()
+    {
+        DiffMenuFile edited = new("M", "a.txt", null, IsTracked: true) { IsSkipWorktree = true };
+        DiffMenuFile untracked = new("?", "b.txt", null, IsTracked: false);
+
+        DiffFileMenuState state = State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [edited]));
+        (state.IndexFlags, state.SkipWorktreeChecked, state.AssumeUnchangedChecked).Should().Be((true, true, false));
+        State(new DiffMenuSelection(ObjectId.IndexId, ObjectId.WorkTreeId, [], [untracked])).IndexFlags.Should()
+            .BeFalse("git flags only tracked files");
+        State(new DiffMenuSelection(Parent, ObjectId.IndexId, [Parent], [edited])).IndexFlags.Should()
+            .BeFalse("upstream offers them for the working directory's files");
+    }
+
+    [Test]
     public void For_should_limit_single_file_items_to_one_selected_file()
     {
         File.WriteAllText(Path.Combine(_workingDir, "a.txt"), "a");

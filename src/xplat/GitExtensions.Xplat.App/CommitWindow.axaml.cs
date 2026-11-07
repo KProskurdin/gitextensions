@@ -250,12 +250,6 @@ public partial class CommitWindow : Window
 
     private void Run(Func<Task> action) => UiActions.Run(action, ex => ShowError(ex.Message));
 
-    // Upstream's file list menu (FileStatusList): scripts shown in file lists are items of the menu, the others under "Run
-    // script".
-    private void ShowFileListScripts(ContextMenu menu, MenuItem host)
-        => ScriptMenus.Fill(menu, host, script => script.OnEvent == ScriptEvent.ShowInFileList,
-            script => Run(() => RunScriptAsync(script)));
-
     // As upstream FormCommit's script options: the files selected in the list last used and the line selected in the diff.
     private Task<bool> RunScriptAsync(ScriptDefinition script)
         => new ScriptHost(this, _actions, runPlugin: _runPlugin).RunAsync(script, _repositoryPath, [],
@@ -268,6 +262,13 @@ public partial class CommitWindow : Window
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (HandleAutoCompleteKey(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        // Upstream's FileViewer handles its hotkeys before FormCommit's.
+        if (DiffView.Focused(e) is { } viewer && viewer.RunHotkey(e))
         {
             e.Handled = true;
             return;

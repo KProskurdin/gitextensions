@@ -67,6 +67,7 @@ public partial class MainWindow
             GitGrep = _fileTreeGitGrep,
             IsFileTreeMode = true,
             BlameChecked = () => _fileTreeBlame,
+            SelectFirstGroup = SelectAllFilesInFileTree,
             CurrentCheckout = () => _commits.VisibleRows.FirstOrDefault(item => item.IsCheckedOut)?.Row.Hash,
             Tree = new FileListTree(
                 HasSubnodes: () => SelectedTreeNodes().Any(node => node.Children.Count > 0),
@@ -124,6 +125,23 @@ public partial class MainWindow
             return;
         }
 
+        selected.Clear();
+        foreach (FileTreeNode file in files)
+        {
+            selected.Add(file);
+        }
+    }
+
+    // Upstream's FirstGroupItems in file tree mode (no diff groups): every file the tree shows, also those in collapsed
+    // folders, which stay collapsed.
+    private void SelectAllFilesInFileTree()
+    {
+        if (FileTreeView.SelectedItems is not { } selected)
+        {
+            return;
+        }
+
+        List<FileTreeNode> files = [.. TreeFiles()];
         selected.Clear();
         foreach (FileTreeNode file in files)
         {

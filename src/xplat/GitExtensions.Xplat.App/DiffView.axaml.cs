@@ -40,10 +40,12 @@ public partial class DiffView : UserControl
         InitializeComponent();
         _viewModel.PropertyChanged += (_, e) => OnDiffChanged(e.PropertyName);
 
-        // As upstream's FileViewer, each view starts from the options of this run or the saved defaults.
-        _options = AppServices.Preferences.InitialDiffOptions();
+        // As upstream's FileViewer, each view starts from the options of this run or the saved defaults; "Treat all files as
+        // text" starts off in each.
+        _options = AppServices.Preferences.InitialDiffOptions() with { TreatAllFilesAsText = false, Encoding = null };
         WireOptions();
         WireContinuousScroll();
+        WireFind();
         DiffList.SizeChanged += (_, _) => ShowVerticalRuler();
         DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
         DiffList.PropertyChanged += (_, e) =>
@@ -258,6 +260,7 @@ public partial class DiffView : UserControl
         TitleText.Text = "";
         ShowError(null);
         Lines = [];
+        ResetFind();
         DiffList.ItemsSource = Lines;
     }
 
@@ -309,6 +312,7 @@ public partial class DiffView : UserControl
         if (_grep is { } grep)
         {
             Lines = [.. grep.Select(GrepItem)];
+            ResetFind();
             DiffList.ItemsSource = Lines;
             ShowVerticalRuler();
             return;
@@ -325,6 +329,7 @@ public partial class DiffView : UserControl
                 line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
                 line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "") { Runs = Highlight(highlighter, line), })
         ];
+        ResetFind();
         DiffList.ItemsSource = Lines;
         ShowVerticalRuler();
         ApplyPendingScroll();
@@ -445,9 +450,21 @@ public partial class DiffView : UserControl
     // Upstream FileViewer's hotkeys, while the diff has the focus.
     private void OnDiffKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
     {
+        if (RunHotkey(e))
+        {
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    ///  Upstream FileViewer's <c>ExecuteCommand</c> for a key: true when the viewer took it. A window that reads its own
+    ///  hotkeys before its controls asks the viewer first while it has the focus, as upstream's inner controls come first.
+    /// </summary>
+    public bool RunHotkey(Avalonia.Input.KeyEventArgs e)
+    {
         if (Hotkeys.Diff.Match(e) is not { } command)
         {
-            return;
+            return false;
         }
 
         switch (command)
@@ -455,34 +472,73 @@ public partial class DiffView : UserControl
             case DiffCommand.NextChange:
             case DiffCommand.PreviousChange:
                 GoToChange(next: command == DiffCommand.NextChange);
-                e.Handled = true;
-                break;
+                return true;
             case DiffCommand.IgnoreAllWhitespace:
                 ChangeOptions(_options.ToggleIgnoreWhitespace(IgnoreWhitespaceKind.AllSpace));
-                e.Handled = true;
-                break;
+                return true;
             case DiffCommand.IncreaseContext:
                 ChangeOptions(_options.WithMoreContext());
-                e.Handled = true;
-                break;
+                return true;
             case DiffCommand.DecreaseContext:
                 ChangeOptions(_options.WithLessContext());
-                e.Handled = true;
-                break;
+                return true;
             case DiffCommand.ShowEntireFile:
                 ChangeOptions(_options.ToggleEntireFile());
-                e.Handled = true;
-                break;
+                return true;
             case DiffCommand.StageLines:
             case DiffCommand.UnstageLines:
             case DiffCommand.ResetLines:
                 if (LinesHotkey is { } handler)
                 {
                     handler(this, command);
-                    e.Handled = true;
+                    return true;
                 }
 
-                break;
+                return false;
+            case DiffCommand.Find:
+                Find();
+                return true;
+
+            // Upstream's FindNextAsync(searchForwardOrOpenWithDifftool): with nothing to look for, F3 is the window's
+            // "open with difftool".
+            case DiffCommand.FindNextOrOpenWithDifftool:
+                if (_findWindow is not { LookFor.Length: > 0 })
+                {
+                    return false;
+                }
+
+                UiActions.Run(() => FindNextAsync(viaF3: true, searchBackward: false, TextNotFoundText),
+                    ex => ShowError(ex.Message));
+                return true;
+            case DiffCommand.FindPrevious:
+                UiActions.Run(() => FindNextAsync(viaF3: true, searchBackward: true, TextNotFoundText),
+                    ex => ShowError(ex.Message));
+                return true;
+            case DiffCommand.GoToLine:
+                UiActions.Run(GoToLineAsync, ex => ShowError(ex.Message));
+                return true;
+
+            case DiffCommand.TreatFileAsText:
+                if (!IsPartialTextView)
+                {
+                    return false;
+                }
+
+                ChangeOptions(_options with { TreatAllFilesAsText = !_options.TreatAllFilesAsText });
+                return true;
+
+            // Upstream's PerformClickIfAvailable: only while the menu offers the item.
+            case DiffCommand.ShowSyntaxHighlighting:
+                ShowMenu();
+                if (!SyntaxHighlightingMenuItem.IsVisible || !SyntaxHighlightingMenuItem.IsEnabled)
+                {
+                    return false;
+                }
+
+                ChangeOptions(_options with { ShowSyntaxHighlighting = !_options.ShowSyntaxHighlighting });
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -500,7 +556,7 @@ public partial class DiffView : UserControl
         }
 
         // Nonprinting characters and syntax highlighting change only the display; the diff is not read again for them.
-        bool sameDiff = options.Arguments.SequenceEqual(_options.Arguments);
+        bool sameDiff = options.Arguments.SequenceEqual(_options.Arguments) && Equals(options.Encoding, _options.Encoding);
         _options = options;
         AppServices.Preferences.SetDiffOptions(options);
         ShowOptions();
@@ -518,6 +574,12 @@ public partial class DiffView : UserControl
     {
         ErrorText.Text = message ?? "";
         ErrorText.IsVisible = message is not null;
+
+        // A search waiting for the next file's lines goes on after its error too.
+        if (message is not null)
+        {
+            _linesShown?.TrySetResult();
+        }
     }
 
     private sealed record DiffRequest(string RepositoryPath, string? CommitHash, string? FilePath, bool Staged,
@@ -544,7 +606,13 @@ public sealed record DiffLineItem(
 /// <summary>
 ///  A part of a line with its syntax color (null for the line's color), bold and italic.
 /// </summary>
-public sealed record DiffTextRun(string Text, IBrush? Foreground, bool Bold, bool Italic);
+public sealed record DiffTextRun(string Text, IBrush? Foreground, bool Bold, bool Italic)
+{
+    /// <summary>
+    ///  The part's background, e.g. a found occurrence's mark; null for the line's.
+    /// </summary>
+    public IBrush? Background { get; init; }
+}
 
 /// <summary>
 ///  A text block that shows <see cref="Runs"/> in their colors when there are any, otherwise its text.
@@ -593,6 +661,11 @@ public sealed class SyntaxTextBlock : TextBlock
             if (run.Italic)
             {
                 inline.FontStyle = FontStyle.Italic;
+            }
+
+            if (run.Background is not null)
+            {
+                inline.Background = run.Background;
             }
 
             inlines.Add(inline);

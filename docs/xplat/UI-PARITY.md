@@ -612,6 +612,27 @@ toolbar icons with upstream's `ToolTipText`.
   commit window. See RevisionDiffControl in `PORTING-MAP.md`.
 - 2026-11-06, the file menus' "Open ... with..." items (Windows' "Open with" dialog, on Windows only) and the remaining
   BrowseDiff hotkeys of the menu (open revision, difftool to the working directory, filter in grid, add to .gitignore).
+- 2026-11-07, the BrowseDiff hotkeys in FormDiff's and FormStash's file lists (upstream loads them in every
+  FileStatusList), the `SelectFirstGroupChanges` hotkey (Ctrl+A: the first diff group's files) in every list with the
+  menu, and the submodule items in FormDiff and FormStash. See RevisionDiffControl in `PORTING-MAP.md`.
+- 2026-11-07, the file menu's "Reset chunk of file..." and "Interactive add..." (git's interactive patch in a console
+  window on Windows, in the terminal emulator elsewhere, not on macOS). See RevisionDiffControl in `PORTING-MAP.md`.
+- 2026-11-07, the file menu's "Open in Visual Studio" and its Ctrl+Shift+S hotkey (Windows only). See RevisionDiffControl
+  in `PORTING-MAP.md`.
+- 2026-11-07, the commit window's lists use the shared file list menu, as upstream's FormCommit binds FileStatusList's
+  (its own two menus are gone), so they have the whole menu and the BrowseDiff hotkeys; "Skip worktree" and "Assume
+  unchanged" moved into the shared menu. See FormCommit in `PORTING-MAP.md`. Fixed two flaky tests at their root: a
+  submodule stash raced the viewer's diff of the submodule (git's index lock in it), and a test read a file git was
+  still writing. Upstream FileStatusList's item menu is now ported in every list that has it.
+- 2026-11-07, the viewer's find (Ctrl+F, F3, Shift+F3; upstream's find window, highlight all, the Diff tab's search going
+  on in the next file) and go to line (Ctrl+G), and the syntax highlighting hotkey (X). The browse and commit windows let
+  the focused viewer take its hotkeys first. See FileViewer in `PORTING-MAP.md`.
+- 2026-11-07, the viewer's "Treat all files as text" (a binary file's changes as text). Next and previous occurrence are
+  not ported: they need text selected in a line, which the shell's viewer does not have. See FileViewer in
+  `PORTING-MAP.md`.
+- 2026-11-07, the viewer toolbar's encoding box (diffs and grep matches read in the chosen encoding, the repository's by
+  default) and settings button. The second submodule stash test had the same race as the first (now waits for the
+  viewer) and read a file git was rewriting. See FileViewer in `PORTING-MAP.md`.
 
 ## Risks
 

@@ -12,6 +12,20 @@ namespace GitExtensions.Xplat.Core.Repository;
 public static class FileStatusList
 {
     /// <summary>
+    ///  Git's status letter for a working directory or index change, as the file list menu's rules read it.
+    /// </summary>
+    public static string StatusLetter(ChangeKind kind)
+        => kind switch
+        {
+            ChangeKind.Added => "A",
+            ChangeKind.Untracked => "?",
+            ChangeKind.Deleted => "D",
+            ChangeKind.Renamed => "R",
+            ChangeKind.Conflict => "U",
+            _ => "M"
+        };
+
+    /// <summary>
     ///  Upstream's <c>GetItemImageKey</c> for a working directory or index file: deleted, then new or untracked, then
     ///  unmerged, then changed, then renamed.
     /// </summary>
@@ -156,65 +170,6 @@ public static class FileStatusList
             error = ex.Message;
             return null;
         }
-    }
-}
-
-/// <summary>
-///  Which items of upstream's file list menu (<c>FileStatusList.UpdateStatusOfMenuItems</c>, with
-///  <c>RevisionDiffController</c>'s rules) apply to the files selected in the commit window's unstaged or staged list.
-/// </summary>
-public sealed record FileMenuState(
-    bool Stage,
-    bool Unstage,
-    bool ResetFile,
-    bool OpenWorkingFile,
-    bool EditWorkingFile,
-    bool DeleteFile,
-    bool CopyPaths,
-    bool ShowInFolder,
-    bool History,
-    bool Blame,
-    bool Ignore,
-    bool StopTracking)
-{
-    /// <summary>
-    ///  Upstream's "Skip worktree" and "Assume unchanged": for tracked working directory files, checked when a selected
-    ///  file has the flag.
-    /// </summary>
-    public bool IndexFlags { get; init; }
-
-    public bool SkipWorktreeChecked { get; init; }
-
-    public bool AssumeUnchangedChecked { get; init; }
-
-    /// <param name="selected">The selected files of one list.</param>
-    /// <param name="staged">Whether the list is the staged one (index) rather than the unstaged one (working directory).</param>
-    /// <param name="exists">Whether a repository-relative path exists as a file.</param>
-    public static FileMenuState For(IReadOnlyList<FileChange> selected, bool staged, Func<string, bool> exists)
-    {
-        int count = selected.Count;
-        bool any = count > 0;
-        bool anyTracked = selected.Any(file => file.Kind != ChangeKind.Untracked);
-        bool allExist = any && selected.All(file => exists(file.Path));
-        bool single = count == 1;
-        return new FileMenuState(
-            Stage: !staged && any,
-            Unstage: staged && any,
-            ResetFile: any && anyTracked,
-            OpenWorkingFile: single && allExist,
-            EditWorkingFile: single && allExist,
-            DeleteFile: allExist,
-            CopyPaths: any,
-            ShowInFolder: any,
-            History: single && anyTracked,
-            Blame: single && anyTracked,
-            Ignore: !staged && any,
-            StopTracking: single && anyTracked)
-        {
-            IndexFlags = !staged && any && anyTracked,
-            SkipWorktreeChecked = selected.Any(file => file.IsSkipWorktree),
-            AssumeUnchangedChecked = selected.Any(file => file.IsAssumeUnchanged),
-        };
     }
 }
 

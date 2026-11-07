@@ -45,7 +45,11 @@
           <MenuItem x:Name="IgnoreWhitespaceEolMenuItem" Header="Ignore whitespace changes at end of _line" ToggleType="CheckBox" />
           <MenuItem x:Name="IgnoreWhitespaceChangeMenuItem" Header="Ignore changes in _amount of whitespace" ToggleType="CheckBox" />
           <MenuItem x:Name="IgnoreAllWhitespaceMenuItem" Header="Ignore all _whitespace changes" ToggleType="CheckBox" />
+          <Separator x:Name="TreatAllFilesAsTextSeparator" />
+          <MenuItem x:Name="TreatAllFilesAsTextMenuItem" Header="_Treat all files as text" ToggleType="CheckBox" />
           <MenuItem x:Name="ContinuousScrollMenuItem" ToggleType="CheckBox" />
+          <MenuItem x:Name="FindMenuItem" Header="_Find..." Icon="{local:UpstreamIcon Preview}" />
+          <MenuItem x:Name="GoToLineMenuItem" Header="_Go to line" />
         </ContextMenu>
       </ListBox.ContextMenu>
       <ListBox.ItemTemplate>
@@ -80,6 +84,8 @@
       <local:ToolToggleButton x:Name="IgnoreWhitespaceEolToggle" Image="WhitespaceIgnoreEol" ToolTip.Tip="Ignore whitespace changes at end of line" />
       <local:ToolToggleButton x:Name="IgnoreWhitespaceChangeToggle" Image="WhitespaceIgnore" ToolTip.Tip="Ignore changes in amount of whitespace" />
       <local:ToolToggleButton x:Name="IgnoreAllWhitespaceToggle" Image="WhitespaceIgnoreAll" ToolTip.Tip="Ignore all whitespace changes" />
+      <ComboBox x:Name="EncodingBox" Width="140" VerticalAlignment="Center" />
+      <local:ToolButton x:Name="SettingsButton" Image="Settings" ToolTip.Tip="Settings" />
     </StackPanel>
     </Panel>
   </DockPanel>

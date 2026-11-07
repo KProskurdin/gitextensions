@@ -165,13 +165,7 @@ internal sealed class RevisionFileList<T>
             return;
         }
 
-        List<DiffGroup> groups = _groupOf is null
-            ? []
-            :
-            [
-                .. _files.Select(_groupOf).OfType<DiffGroup>().Distinct(ReferenceEqualityComparer.Instance)
-                    .Cast<DiffGroup>()
-            ];
+        List<DiffGroup> groups = Groups(_files);
         List<object> items = [];
         _tree.BeginFill();
         int fileCount = 0;
@@ -225,15 +219,25 @@ internal sealed class RevisionFileList<T>
         }
 
         _tree.EndFill();
-
-        // Upstream's IsFilterMatch: the diff status filter, then the regular expression.
-        IReadOnlyList<T> Matching(IEnumerable<T> files)
-            =>
-            [
-                .. files.Where(file => (_statusButtons?.Shows(_diffStatus(file)) ?? true)
-                                       && _filter.IsMatch(_path(file), _oldPath?.Invoke(file)))
-            ];
     }
+
+    // The files' diff groups in their order.
+    private List<DiffGroup> Groups(IReadOnlyList<T> files)
+        => _groupOf is null
+            ? []
+            :
+            [
+                .. files.Select(_groupOf).OfType<DiffGroup>().Distinct(ReferenceEqualityComparer.Instance)
+                    .Cast<DiffGroup>()
+            ];
+
+    // Upstream's IsFilterMatch: the diff status filter, then the regular expression.
+    private IReadOnlyList<T> Matching(IEnumerable<T> files)
+        =>
+        [
+            .. files.Where(file => (_statusButtons?.Shows(_diffStatus(file)) ?? true)
+                                   && _filter.IsMatch(_path(file), _oldPath?.Invoke(file)))
+        ];
 
     // Upstream's CollapseGroups_Click: the diff groups and the extension or status groups collapse; when none was expanded,
     // the selected file's diff group expands.
@@ -254,6 +258,38 @@ internal sealed class RevisionFileList<T>
         }
 
         Show();
+    }
+
+    /// <summary>
+    ///  Upstream's <c>SelectFirstGroupChanges</c> hotkey (<c>FirstGroupItems</c>): the shown files of the first diff group,
+    ///  or all shown files without diff groups, become the selection. Upstream selects the files of collapsed nodes as they
+    ///  are; a list here holds only the rows shown, so their nodes are expanded first.
+    /// </summary>
+    public void SelectFirstGroupFiles()
+    {
+        if (_files is null)
+        {
+            return;
+        }
+
+        List<DiffGroup> groups = Groups(_files);
+        IReadOnlyList<T> files;
+        string keyPrefix = "";
+        if (groups.Count < 2)
+        {
+            files = Matching(_files);
+        }
+        else
+        {
+            DiffGroup first = groups[0];
+            files = Matching(_files.Where(file => ReferenceEquals(_groupOf?.Invoke(file), first)));
+            keyPrefix = $"{first.Summary}\n";
+            _expanded[first] = true;
+        }
+
+        _tree.Expand(_tree.NodeKeys(files, keyPrefix));
+        Show();
+        _tree.Select(files);
     }
 
     // A file is the same across a reload by its group's summary and its path.

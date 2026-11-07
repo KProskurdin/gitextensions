@@ -103,7 +103,7 @@ public partial class StashWindow : Window
             if (SelectedFiles is [{ } file])
             {
                 Run(() => DiffLinePatching.RunAsync(this, Diff, command, MenuServices ?? new FileListMenuServices(_actions),
-                    _repositoryPath, StatusLetter(file.Change.Kind), () =>
+                    _repositoryPath, FileStatusList.StatusLetter(file.Change.Kind), () =>
                     {
                         ShowSelectedFile();
                         return Task.CompletedTask;
@@ -132,8 +132,11 @@ public partial class StashWindow : Window
                 ],
                 SelectFile),
             Tree = _tree.MenuTree(),
+            SelectFirstGroup = SelectFirstGroupFiles,
             Viewer = () => Diff,
+            Submodules = () => Submodules?.Invoke(this),
         });
+        FilesMenu.AttachHotkeys(FilesList);
         KeyDown += OnKeyDown;
         Opened += (_, _) =>
         {
@@ -169,6 +172,12 @@ public partial class StashWindow : Window
     /// </summary>
     internal FileListMenuServices? MenuServices { get; init; }
 
+    /// <summary>
+    ///  The browse window's submodule commands for the file list's menu, with this window as the owner of their dialogs;
+    ///  null leaves out the submodule items.
+    /// </summary>
+    internal Func<Window, FileListSubmodules>? Submodules { get; init; }
+
     // Upstream's SelectedItems: a single selected folder or group node stands for the files below it.
     private IReadOnlyList<StashFile> SelectedFiles
         =>
@@ -176,6 +185,21 @@ public partial class StashWindow : Window
             .. (FileListNodes.SelectedNode(FilesList)?.Files ?? FilesList.SelectedItems?.Cast<object>() ?? [])
             .OfType<StashFileRow>().Select(row => row.File).OfType<StashFile>()
         ];
+
+    // Upstream's SelectFirstGroupChanges hotkey (FirstGroupItems): the first group's shown files (the index's for the
+    // working directory, else all), their folders expanded since the list holds only the rows shown.
+    private void SelectFirstGroupFiles()
+    {
+        if (_fileGroups is not [var (group, files), ..])
+        {
+            return;
+        }
+
+        List<StashFileRow> matching = [.. files.Where(file => FilesFilterBox.IsMatch(file.Text))];
+        _tree.Expand(_tree.NodeKeys(matching, $"{group}\n"));
+        ShowFileRows();
+        _tree.Select(matching);
+    }
 
     // Upstream's SelectedGitItem setter after "Find file": the first shown row of the file is the only one selected.
     private void SelectFile(string path)
@@ -356,7 +380,7 @@ public partial class StashWindow : Window
         UpdateStashSelectedButton();
         if (SelectedFiles is [{ } file])
         {
-            Diff.LineAction = DiffLinePatching.For(_repositoryPath, file.Change.Path, StatusLetter(file.Change.Kind),
+            Diff.LineAction = DiffLinePatching.For(_repositoryPath, file.Change.Path, FileStatusList.StatusLetter(file.Change.Kind),
                 SecondOf(file));
             Run(() => Diff.ShowAsync(_repositoryPath, file.Commit, file.Change.Path, file.Change.Staged,
                 file.Change.Path));
@@ -459,8 +483,13 @@ public partial class StashWindow : Window
 
         List<DiffMenuFile> menuFiles =
         [
-            .. files.Select(file => new DiffMenuFile(StatusLetter(file.Change.Kind), file.Change.Path, OldPath: null,
-                IsTracked: file.Change.Kind != ChangeKind.Untracked, revisions.Of(file.Change)))
+            .. files.Select(file => new DiffMenuFile(FileStatusList.StatusLetter(file.Change.Kind), file.Change.Path, OldPath: null,
+                IsTracked: file.Change.Kind != ChangeKind.Untracked, revisions.Of(file.Change))
+            {
+                IsSubmodule = file.Change.IsSubmodule,
+                IsSkipWorktree = file.Change.IsSkipWorktree,
+                IsAssumeUnchanged = file.Change.IsAssumeUnchanged
+            })
         ];
         DiffMenuRevisions first = menuFiles[0].Revisions!;
         return new DiffMenuSelection(first.First, first.Second, first.SecondParents, menuFiles,
@@ -468,16 +497,6 @@ public partial class StashWindow : Window
     }
 
     // Git's status letter for a change, as the menu's rules read it.
-    private static string StatusLetter(ChangeKind kind)
-        => kind switch
-        {
-            ChangeKind.Added => "A",
-            ChangeKind.Untracked => "?",
-            ChangeKind.Deleted => "D",
-            ChangeKind.Renamed => "R",
-            ChangeKind.Conflict => "U",
-            _ => "M"
-        };
 
     // Upstream's file list scripts: with the shown stash and the selected files.
     private void RunScript(ScriptDefinition script)

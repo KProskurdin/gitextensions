@@ -10,7 +10,8 @@ namespace GitExtensions.Xplat.App;
 public partial class MainWindow
 {
     private void WireDiffLinePatching()
-        => CommitDiff.LinesHotkey += (_, command) =>
+    {
+        CommitDiff.LinesHotkey += (_, command) =>
         {
             if (RepositoryPath is { } path && CommitFilesList.SelectedItem is CommitFile file)
             {
@@ -22,6 +23,12 @@ public partial class MainWindow
                     }));
             }
         };
+
+        // Upstream RevisionDiffControl's SetFileLoader(GetNextPatchFile): the viewer's search goes on in the list's next
+        // file, around at its ends.
+        CommitDiff.NextFile = backward =>
+            FileListNodes.SelectNextFile(CommitFilesList, backward, loop: true, item => item is CommitFile);
+    }
 
     // Upstream's SupportLinePatching for the Diff tab's selected file: none for a folder, a grep match or a combined diff.
     private DiffLineAction SelectedFileLineAction()

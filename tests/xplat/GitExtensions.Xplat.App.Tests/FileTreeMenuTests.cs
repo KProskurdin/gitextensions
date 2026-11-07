@@ -195,6 +195,26 @@ internal sealed class FileTreeMenuTests
             => ((IReadOnlyList<FileTreeNode>)tree.ItemsSource!).SelectMany(root => root.Files()).Select(file => file.Path);
     }
 
+    [AvaloniaTest]
+    public void Ctrl_A_in_the_file_tree_selects_every_file_and_leaves_the_folders_collapsed()
+    {
+        MainWindow window = OpenWindow();
+        TreeView tree = ShowFileTree(window);
+        FileTreeNode notes = Node(tree, "notes.txt");
+        tree.SelectedItem = notes;
+        WaitUntil(() => tree.TreeContainerFromItem(notes) is not null);
+        tree.TreeContainerFromItem(notes)!.Focus();
+
+        window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+
+        List<FileTreeNode> files = [.. ((IReadOnlyList<FileTreeNode>)tree.ItemsSource!).SelectMany(root => root.Descendants())
+            .Where(node => !node.IsFolder)];
+        files.Select(file => file.Path).Should().Contain(["docs/guide.md", "docs/sub/deep.md", "notes.txt"]);
+        tree.SelectedItems!.Cast<FileTreeNode>().Should().BeEquivalentTo(files, "upstream's FirstGroupItems in file tree mode");
+        Node(tree, "docs").IsExpanded.Should().BeFalse("upstream selects the files without expanding their folders");
+        window.Close();
+    }
+
     private MainWindow OpenWindow()
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));

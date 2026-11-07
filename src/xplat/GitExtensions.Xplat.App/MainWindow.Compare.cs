@@ -214,6 +214,7 @@ public partial class MainWindow
         {
             ShowInTaskbar = true,
             MenuServices = FileListMenuServices,
+            Submodules = owner => DiffFileSubmodules(() => owner),
         }.Show(this);
 
     private Task ShowCompareErrorAsync(string text)

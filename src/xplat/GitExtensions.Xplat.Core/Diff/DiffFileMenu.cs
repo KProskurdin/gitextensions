@@ -27,6 +27,16 @@ public sealed record DiffMenuFile(
     ///  Upstream's <c>GitItemStatus.IsSubmodule</c>.
     /// </summary>
     public bool IsSubmodule { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsSkipWorktree</c>: git's skip-worktree flag of the file in the index.
+    /// </summary>
+    public bool IsSkipWorktree { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsAssumeUnchanged</c>: git's assume-unchanged flag of the file in the index.
+    /// </summary>
+    public bool IsAssumeUnchanged { get; init; }
 }
 
 /// <summary>
@@ -92,7 +102,11 @@ public sealed record DiffFileMenuState(
     bool Blame,
     bool IgnoreSeparator,
     bool AddToIgnore,
-    bool StopTracking);
+    bool StopTracking,
+    bool InteractiveAddReset,
+    bool IndexFlags,
+    bool SkipWorktreeChecked,
+    bool AssumeUnchangedChecked);
 
 /// <summary>
 ///  Upstream's file list item menu (<c>FileStatusList.ContextMenu.cs</c>) for the browse window's Diff tab: the state of
@@ -179,7 +193,16 @@ public static class DiffFileMenu
             Blame: rules.ShouldShowMenuBlame(info),
             IgnoreSeparator: canIgnoreFiles || canStopTracking,
             AddToIgnore: canIgnoreFiles,
-            StopTracking: canStopTracking);
+            StopTracking: canStopTracking,
+
+            // Upstream's canResetAddInteractively: one working directory file, not a submodule.
+            InteractiveAddReset: info.IsAnyItemWorkTree && isSingleFile,
+
+            // Upstream's "Skip worktree" and "Assume unchanged": for the working directory's tracked files, checked
+            // while one selected file has git's flag.
+            IndexFlags: canIgnoreFiles && info.IsAnyTracked,
+            SkipWorktreeChecked: items.Any(item => item.Item.IsSkipWorktree),
+            AssumeUnchangedChecked: items.Any(item => item.Item.IsAssumeUnchanged));
     }
 
     /// <summary>
@@ -259,6 +282,21 @@ public static class DiffFileMenu
     ///  the temporary folder under its own name. Returns the file's path, or <see langword="null"/> when the revision has no
     ///  such file.
     /// </summary>
+    /// <summary>
+    ///  Upstream's <c>SkipWorktree_Click</c> and <c>AssumeUnchanged_Click</c>: git's flag set on the selected files, or
+    ///  cleared (<c>SkipWorktreeFiles</c> and <c>AssumeUnchangedFiles</c>, which skip the files that already are as
+    ///  asked).
+    /// </summary>
+    public static Task SetIndexFlagAsync(DiffMenuSelection selection, string workingDir, IndexFlag flag, bool value)
+        => Task.Run(() =>
+        {
+            GitModule module = GitModules.Open(workingDir);
+            List<GitItemStatus> items = [.. Items(selection).Items()];
+            _ = flag == IndexFlag.SkipWorktree
+                ? module.SkipWorktreeFiles(items, value, out _)
+                : module.AssumeUnchangedFiles(items, value, out _);
+        });
+
     public static Task<string?> SaveToTempFileAsync(DiffMenuSelection selection, string workingDir)
         => Task.Run(async () =>
         {
@@ -459,7 +497,9 @@ public static class DiffFileMenu
             OldName = file.OldPath,
             Staged = staged,
             IsTracked = file.IsTracked,
-            IsSubmodule = file.IsSubmodule
+            IsSubmodule = file.IsSubmodule,
+            IsSkipWorktree = file.IsSkipWorktree,
+            IsAssumeUnchanged = file.IsAssumeUnchanged
         };
         switch (file.Status.FirstOrDefault())
         {

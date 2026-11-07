@@ -105,6 +105,12 @@ public enum DiffCommand
     IncreaseContext,
     DecreaseContext,
     ShowEntireFile,
+    Find,
+    FindNextOrOpenWithDifftool,
+    FindPrevious,
+    GoToLine,
+    ShowSyntaxHighlighting,
+    TreatFileAsText,
 }
 
 /// <summary>
@@ -148,6 +154,8 @@ public enum BrowseDiffCommand
     FilterFileInGrid,
     OpenWorkingDirectoryFileWith,
     AddFileToGitIgnore,
+    SelectFirstGroupChanges,
+    OpenInVisualStudio,
 }
 
 /// <summary>
@@ -453,6 +461,12 @@ public static class Hotkeys
             [DiffCommand.IncreaseContext] = (2, "IncreaseNumberOfVisibleLines"),
             [DiffCommand.DecreaseContext] = (3, "DecreaseNumberOfVisibleLines"),
             [DiffCommand.ShowEntireFile] = (4, "ShowEntireFile"),
+            [DiffCommand.Find] = (0, "Find"),
+            [DiffCommand.FindNextOrOpenWithDifftool] = (8, "FindNextOrOpenWithDifftool"),
+            [DiffCommand.FindPrevious] = (9, "FindPrevious"),
+            [DiffCommand.GoToLine] = (1, "GoToLine"),
+            [DiffCommand.ShowSyntaxHighlighting] = (17, "ShowSyntaxHighlighting"),
+            [DiffCommand.TreatFileAsText] = (5, "TreatFileAsText"),
         },
         new Dictionary<DiffCommand, WinFormsKeys>
         {
@@ -465,6 +479,11 @@ public static class Hotkeys
             [DiffCommand.IncreaseContext] = WinFormsKeys.Control | WinFormsKeys.Oemplus,
             [DiffCommand.DecreaseContext] = WinFormsKeys.Control | WinFormsKeys.OemMinus,
             [DiffCommand.ShowEntireFile] = WinFormsKeys.Control | WinFormsKeys.E,
+            [DiffCommand.Find] = WinFormsKeys.Control | WinFormsKeys.F,
+            [DiffCommand.FindNextOrOpenWithDifftool] = WinFormsKeys.F3,
+            [DiffCommand.FindPrevious] = WinFormsKeys.Shift | WinFormsKeys.F3,
+            [DiffCommand.GoToLine] = WinFormsKeys.Control | WinFormsKeys.G,
+            [DiffCommand.ShowSyntaxHighlighting] = WinFormsKeys.X,
         });
 
     /// <summary>
@@ -518,6 +537,8 @@ public static class Hotkeys
             [BrowseDiffCommand.FilterFileInGrid] = (13, "FilterFileInGrid"),
             [BrowseDiffCommand.OpenWorkingDirectoryFileWith] = (16, "OpenWorkingDirectoryFileWith"),
             [BrowseDiffCommand.AddFileToGitIgnore] = (22, "AddFileToGitIgnore"),
+            [BrowseDiffCommand.SelectFirstGroupChanges] = (14, "SelectFirstGroupChanges"),
+            [BrowseDiffCommand.OpenInVisualStudio] = (21, "OpenInVisualStudio"),
         },
         new Dictionary<BrowseDiffCommand, WinFormsKeys>
         {
@@ -542,6 +563,8 @@ public static class Hotkeys
             [BrowseDiffCommand.OpenWithDifftoolSelectedToLocal] = WinFormsKeys.Shift | WinFormsKeys.Alt | WinFormsKeys.F3,
             [BrowseDiffCommand.FilterFileInGrid] = WinFormsKeys.F,
             [BrowseDiffCommand.OpenWorkingDirectoryFileWith] = WinFormsKeys.Shift | WinFormsKeys.Control | WinFormsKeys.F4,
+            [BrowseDiffCommand.SelectFirstGroupChanges] = WinFormsKeys.Control | WinFormsKeys.A,
+            [BrowseDiffCommand.OpenInVisualStudio] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.S,
         });
 
     /// <summary>

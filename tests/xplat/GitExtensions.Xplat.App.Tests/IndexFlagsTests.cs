@@ -47,8 +47,8 @@ internal sealed class IndexFlagsTests
         WaitUntil(() => unstaged.Items.OfType<FileChange>().Any(change => change.Path == "config.txt"));
         unstaged.SelectedItem = unstaged.Items.OfType<FileChange>().Single(change => change.Path == "config.txt");
         OpenMenu(unstaged);
-        MenuItem skip = Find<MenuItem>(commit, "UnstagedSkipWorktreeMenuItem");
-        MenuItem assume = Find<MenuItem>(commit, "UnstagedAssumeUnchangedMenuItem");
+        MenuItem skip = unstaged.ContextMenu!.FindControl<MenuItem>("tsmiSkipWorktree")!;
+        MenuItem assume = unstaged.ContextMenu!.FindControl<MenuItem>("tsmiAssumeUnchanged")!;
         (skip.IsVisible, skip.IsChecked, assume.IsVisible, assume.IsChecked).Should().Be((true, false, true, false));
 
         skip.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));

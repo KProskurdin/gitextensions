@@ -250,6 +250,64 @@ internal sealed class DiffViewOptionsTests
         text.Result.Should().Be("changed");
     }
 
+    [AvaloniaTest]
+    public void Treat_all_files_as_text_shows_a_binary_files_changes_in_this_viewer_only()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "\0abc\n");
+        _repo.Run("add", "a.txt");
+        _repo.Run("commit", "-q", "-m", "binary");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "\0abd\n");
+        DiffView diff = Show();
+        WaitUntil(() => diff.Lines.Any(line => line.Text.StartsWith("Binary files", StringComparison.Ordinal)));
+        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        OpenMenu(lines);
+        MenuItem item = lines.ContextMenu!.Items.OfType<MenuItem>().Single(entry => entry.Name == "TreatAllFilesAsTextMenuItem");
+        item.IsVisible.Should().BeTrue("upstream offers it for a diff");
+
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => Added(diff) == 1);
+        item.IsChecked.Should().BeTrue();
+        new DiffView().Options.TreatAllFilesAsText.Should().BeFalse("upstream's choice belongs to one viewer");
+
+        diff.ShowText("a.txt", "text");
+        OpenMenu(lines);
+        item.IsVisible.Should().BeFalse("a file's text has no diff to treat");
+    }
+
+    [AvaloniaTest]
+    public void The_encoding_box_reads_the_diff_again_in_the_chosen_encoding_as_upstreams()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "café\n");
+        _repo.Run("add", "a.txt");
+        _repo.Run("commit", "-q", "-m", "utf-8");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "café!\n");
+
+        // Upstream's list comes from the user's settings; ASCII reads the UTF-8 "é" differently.
+        System.Text.Encoding ascii = new System.Text.ASCIIEncoding();
+        bool added = AppSettings.AvailableEncodings.TryAdd(ascii.WebName, ascii);
+        try
+        {
+            DiffView diff = Show();
+            WaitUntil(() => diff.Lines.Any(line => line.Text == "+café!"));
+            ComboBox encodings = diff.FindControl<ComboBox>("EncodingBox")!;
+
+            encodings.SelectedItem = ascii.EncodingName;
+
+            WaitUntil(() => !diff.IsLoading && diff.Lines.Any(line => line.Text.StartsWith("+caf", StringComparison.Ordinal))
+                                            && !diff.Lines.Any(line => line.Text == "+café!"));
+            diff.Options.Encoding!.EncodingName.Should().Be(ascii.EncodingName);
+            new DiffView().Options.Encoding.Should().BeNull("a new viewer reads in the repository's encoding again");
+        }
+        finally
+        {
+            if (added)
+            {
+                AppSettings.AvailableEncodings.Remove(ascii.WebName);
+            }
+        }
+    }
+
     private static void OpenMenu(ListBox list)
     {
         list.RaiseEvent(new ContextRequestedEventArgs());

@@ -1,3 +1,5 @@
+using System.Text;
+using GitCommands;
 using GitCommands.Settings;
 
 namespace GitExtensions.Xplat.Core.Diff;
@@ -13,8 +15,16 @@ public sealed record DiffOptions(
     bool ShowEntireFile = false,
     bool Histogram = false,
     bool ShowNonPrintingChars = false,
-    bool ShowSyntaxHighlighting = true)
+    bool ShowSyntaxHighlighting = true,
+    bool TreatAllFilesAsText = false,
+    Encoding? Encoding = null)
 {
+    /// <summary>
+    ///  Upstream FileViewer's <c>Encoding</c>: the viewer's choice, else the repository's files encoding
+    ///  (<c>Module.FilesEncoding</c>).
+    /// </summary>
+    public Encoding EncodingFor(GitModule module) => Encoding ?? module.FilesEncoding;
+
     /// <summary>
     ///  Upstream's default number of context lines (git's default too).
     /// </summary>
@@ -22,6 +32,9 @@ public sealed record DiffOptions(
 
     // Upstream's "entire file": git's context made larger than any file.
     private const int EntireFileContext = 9000;
+
+    // Git's option that treats every file as text (diff and grep).
+    private const string TextArgument = "--text";
 
     // Upstream FileViewer.GetExtraGrepArguments' context for the entire file.
     private const int EntireFileGrepContext = 100_000;
@@ -31,7 +44,9 @@ public sealed record DiffOptions(
     ///  file names, and the lines around each match the context says (the whole file for the entire file).
     /// </summary>
     public IReadOnlyList<string> GrepArguments
-        => ["-h", $"--context={(ShowEntireFile ? EntireFileGrepContext : ContextLines)}"];
+        => TreatAllFilesAsText
+            ? ["-h", $"--context={(ShowEntireFile ? EntireFileGrepContext : ContextLines)}", TextArgument]
+            : ["-h", $"--context={(ShowEntireFile ? EntireFileGrepContext : ContextLines)}"];
 
     /// <summary>
     ///  The git diff arguments, as upstream's <c>FileViewer.GetExtraDiffArguments</c> builds them.
@@ -68,6 +83,12 @@ public sealed record DiffOptions(
             else
             {
                 arguments.Add($"--unified={ContextLines}");
+            }
+
+            // Upstream's "Treat all files as text": git shows a binary file's changes as text.
+            if (TreatAllFilesAsText)
+            {
+                arguments.Add(TextArgument);
             }
 
             return arguments;

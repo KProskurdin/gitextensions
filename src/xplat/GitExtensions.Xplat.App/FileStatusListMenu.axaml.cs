@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -32,6 +33,13 @@ public partial class FileStatusListMenu : ContextMenu
     private const string SaveFileFilterAllFiles = "All files";
     private const string NewNameText = "New name";
 
+    // Upstream FileStatusList's tooltips of "Skip worktree" and "Assume unchanged".
+    private const string SkipWorktreeToolTip = "Hide already tracked files that will change but that you don't want to commit."
+                                               + "\nSuitable for some config files modified locally.";
+    private const string AssumeUnchangedToolTip = "Tell git to not check the status of this file for performance benefits."
+                                                  + "\nUse this feature when a file is big and never change."
+                                                  + "\nGit will never check if the file has changed that will improve status check performance.";
+
     private static readonly IFileManager FileManager =
         new SystemFileManager(new SystemProcessLauncher(), HostPlatform.Current);
 
@@ -42,6 +50,13 @@ public partial class FileStatusListMenu : ContextMenu
     {
         InitializeComponent();
         UpstreamTranslation.Apply(this, "FileStatusList");
+
+        // Upstream FileStatusList's OnRuntimeLoad starts looking for Visual Studio.
+        if (OperatingSystem.IsWindows())
+        {
+            _ = VisualStudio.InitAsync();
+        }
+
         Opening += (_, _) =>
         {
             UpdateStatusOfMenuItems();
@@ -58,6 +73,11 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiCommitSubmoduleChanges.Click += (_, _) => WithSubmodules((submodules, paths) => submodules.Commit(paths));
         tsmiStageFile.Click += (_, _) => Run(() => StageAsync(stage: true));
         tsmiUnstageFile.Click += (_, _) => Run(() => StageAsync(stage: false));
+        tsmiSkipWorktree.Click += (_, _) => Run(() => SetIndexFlagAsync(IndexFlag.SkipWorktree, tsmiSkipWorktree));
+        tsmiAssumeUnchanged.Click += (_, _) =>
+            Run(() => SetIndexFlagAsync(IndexFlag.AssumeUnchanged, tsmiAssumeUnchanged));
+        ToolTip.SetTip(tsmiSkipWorktree, UpstreamTranslation.ByText(SkipWorktreeToolTip));
+        ToolTip.SetTip(tsmiAssumeUnchanged, UpstreamTranslation.ByText(AssumeUnchangedToolTip));
 
         // Upstream's ResetFile_Click: the parent item resets to the first revision when it can.
         tsmiResetFileTo.Click += (_, e) =>
@@ -69,6 +89,8 @@ public partial class FileStatusListMenu : ContextMenu
         };
         tsmiResetFileToSelected.Click += (_, _) => Run(() => ResetAsync(toFirst: false));
         tsmiCherryPickChanges.Click += (_, _) => Run(CherryPickChangesAsync);
+        tsmiResetChunkOfFile.Click += (_, _) => Run(() => InteractivePatchAsync(reset: true));
+        tsmiInteractiveAdd.Click += (_, _) => Run(() => InteractivePatchAsync(reset: false));
         tsmiResetFileToParent.Click += (_, _) => Run(() => ResetAsync(toFirst: true));
 
         // Upstream's OpenFilesWithDiffTool: the parent item runs First -> Second.
@@ -91,6 +113,13 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiOpenWorkingDirectoryFileWith.Click += (_, _) => OpenWorkingDirectoryFileWith();
         tsmiOpenRevisionFileWith.Click += (_, _) => Run(OpenRevisionFileWithAsync);
         tsmiEditWorkingDirectoryFile.Click += (_, _) => EditWorkingDirectoryFile();
+        tsmiOpenInVisualStudio.Click += (_, _) =>
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Run(OpenInVisualStudioAsync);
+            }
+        };
         tsmiSaveAs.Click += (_, _) => Run(SaveAsAsync);
         tsmiMove.Click += (_, _) => Run(MoveAsync);
         tsmiDeleteFile.Click += (_, _) => Run(DeleteAsync);
@@ -141,7 +170,17 @@ public partial class FileStatusListMenu : ContextMenu
     /// <summary>
     ///  What the window's list adds to the menu, as upstream's <c>BindContextMenu</c>.
     /// </summary>
-    internal void Bind(FileStatusListMenuBinding binding) => _binding = binding;
+    internal void Bind(FileStatusListMenuBinding binding)
+    {
+        _binding = binding;
+
+        // Upstream's BindContextMenu with stage and unstage (FormCommit's lists) makes both items bold.
+        if (binding.Stage is not null || binding.Unstage is not null)
+        {
+            tsmiStageFile.FontWeight = FontWeight.Bold;
+            tsmiUnstageFile.FontWeight = FontWeight.Bold;
+        }
+    }
 
     /// <summary>
     ///  The menu's items for the selection, or null without one; for the list's hotkeys.
@@ -188,6 +227,30 @@ public partial class FileStatusListMenu : ContextMenu
             return true;
         }
 
+        // Upstream's ResetSelectedFilesWithConfirmation: to the first revision when the menu offers it; the key is taken
+        // either way.
+        if (command == BrowseDiffCommand.ResetSelectedFiles)
+        {
+            if (State() is { ResetFile: true, ResetToFirst: not null })
+            {
+                Run(() => ResetAsync(toFirst: true));
+            }
+
+            return true;
+        }
+
+        // Upstream's SelectFirstGroupChangesIfFocused.
+        if (command == BrowseDiffCommand.SelectFirstGroupChanges)
+        {
+            if (_binding?.SelectFirstGroup is not { } selectFirstGroup)
+            {
+                return false;
+            }
+
+            selectFirstGroup();
+            return true;
+        }
+
         // Upstream's git-grep hotkeys: each tab's own.
         if ((command == BrowseDiffCommand.FindInCommitFilesUsingGitGrepDiffTab && _binding?.IsFileTreeMode == true)
             || (command == BrowseDiffCommand.FindInCommitFilesUsingGitGrepFileTreeTab && _binding?.IsFileTreeMode != true))
@@ -201,6 +264,7 @@ public partial class FileStatusListMenu : ContextMenu
             BrowseDiffCommand.ShowHistory => tsmiFileHistory,
             BrowseDiffCommand.Blame => tsmiBlame,
             BrowseDiffCommand.EditFile => tsmiEditWorkingDirectoryFile,
+            BrowseDiffCommand.OpenInVisualStudio => tsmiOpenInVisualStudio,
             BrowseDiffCommand.StageSelectedFile => tsmiStageFile,
             BrowseDiffCommand.UnStageSelectedFile => tsmiUnstageFile,
             BrowseDiffCommand.ShowFileTree => tsmiShowInFileTree,
@@ -229,6 +293,19 @@ public partial class FileStatusListMenu : ContextMenu
         return true;
     }
 
+    /// <summary>
+    ///  Upstream FileStatusList's hotkeys (section "BrowseDiff", which every FileStatusList loads) while
+    ///  <paramref name="list"/> has the focus, before the list's own keys (Ctrl+A selects all rows).
+    /// </summary>
+    internal void AttachHotkeys(ListBox list)
+        => list.AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (Hotkeys.BrowseDiff.Match(e) is { } command && ExecuteCommand(command))
+            {
+                e.Handled = true;
+            }
+        }, RoutingStrategies.Tunnel);
+
     // Upstream's UpdateStatusOfMenuItems, InitResetFileToToolStripMenuItem and OpenWithDifftool_DropDownOpening.
     private void UpdateStatusOfMenuItems()
     {
@@ -248,7 +325,7 @@ public partial class FileStatusListMenu : ContextMenu
 
         DiffFileMenuState state = DiffFileMenu.For(selection, path, binding.DescribeRevision,
             supportLinePatching: SupportLinePatching());
-        bool submodules = binding.Submodules is not null;
+        bool submodules = binding.Submodules() is not null;
         openSubmoduleMenuItem.IsVisible = submodules && state.OpenSubmodule;
         tsmiUpdateSubmodule.IsVisible = tsmiResetSubmoduleChanges.IsVisible = tsmiStashSubmoduleChanges.IsVisible
             = tsmiCommitSubmoduleChanges.IsVisible = sepSubmodule.IsVisible = submodules && state.Submodule;
@@ -261,6 +338,8 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiResetFileToParent.IsVisible = state.ResetToFirst is not null;
         tsmiResetFileToParent.Header = state.ResetToFirst;
         tsmiCherryPickChanges.IsVisible = state.CherryPick && binding.Services() is not null;
+        tsmiResetChunkOfFile.IsVisible = tsmiInteractiveAdd.IsVisible
+            = state.InteractiveAddReset && InteractivePatch.IsAvailable(HostPlatform.Current);
         sepGit.IsVisible = true;
         tsmiOpenWithDifftool.IsVisible = true;
         tsmiOpenWithDifftool.IsEnabled = state.OpenWithDifftool;
@@ -280,6 +359,7 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiOpenRevisionFileWith.IsVisible = OperatingSystem.IsWindows() && state.OpenRevisionFile;
         tsmiOpenRevisionFileWith.IsEnabled = state.OpenRevisionFileEnabled;
         tsmiEditWorkingDirectoryFile.IsVisible = state.EditWorkingFile;
+        tsmiOpenInVisualStudio.IsVisible = state.EditWorkingFile && OperatingSystem.IsWindows() && VisualStudio.IsInstalled;
         tsmiSaveAs.IsVisible = state.SaveAs;
         tsmiMove.IsVisible = state.RenameMove && DiffFileMenu.MoveTarget(selection) is not null;
         tsmiDeleteFile.Header = state.DeleteFileText;
@@ -312,6 +392,9 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiAddFileToGitIgnore.IsVisible = state.AddToIgnore;
         tsmiAddFileToGitInfoExclude.IsVisible = state.AddToIgnore;
         tsmiStopTracking.IsVisible = state.StopTracking;
+        tsmiSkipWorktree.IsVisible = tsmiAssumeUnchanged.IsVisible = state.IndexFlags;
+        tsmiSkipWorktree.IsChecked = state.SkipWorktreeChecked;
+        tsmiAssumeUnchanged.IsChecked = state.AssumeUnchangedChecked;
         ShowScripts();
     }
 
@@ -332,7 +415,7 @@ public partial class FileStatusListMenu : ContextMenu
     // Upstream's submodule items: each acts on the selected submodules' paths (Distinct, as upstream's).
     private void WithSubmodules(Func<FileListSubmodules, IReadOnlyList<string>, Task> action)
     {
-        if (_binding?.Submodules is { } submodules && SelectedFiles() is { } selection
+        if (_binding?.Submodules() is { } submodules && SelectedFiles() is { } selection
             && selection.Files.Where(file => file.IsSubmodule).Select(file => file.Path).Distinct().ToList() is
                 { Count: > 0 } paths)
         {
@@ -386,6 +469,18 @@ public partial class FileStatusListMenu : ContextMenu
 
     private DiffMenuSelection? SelectedFiles() => _binding?.Selection();
 
+    // Upstream's InteractiveAdd_Click and ResetChunkOfFile_Click: git's interactive patch of the file in a window of its
+    // own, then the list read again.
+    private async Task InteractivePatchAsync(bool reset)
+    {
+        if (_binding is { } binding && binding.RepositoryPath() is { } path
+                                    && SelectedFiles() is { Files: [{ } file] })
+        {
+            await InteractivePatch.RunAsync(path, file.Path, reset, HostPlatform.Current);
+            binding.Refresh();
+        }
+    }
+
     private IEnumerable<string> SelectedPaths() => SelectedFiles()?.Files.Select(file => file.Path) ?? [];
 
     // Upstream's getSelectedFilePaths: the selected folder, else the selected files.
@@ -402,8 +497,31 @@ public partial class FileStatusListMenu : ContextMenu
 
     // Upstream's StageFile_Click and UnstageFile_Click: the selected working directory files to the index, or the selected
     // index files back.
+    // Upstream's SkipWorktree_Click and AssumeUnchanged_Click: the item checks on the click (CheckOnClick), and git's flag
+    // follows it on the selected files; then the list is read again.
+    private async Task SetIndexFlagAsync(IndexFlag flag, MenuItem item)
+    {
+        if (_binding is { } binding && binding.RepositoryPath() is { } path && SelectedFiles() is { } selection)
+        {
+            bool value = flag == IndexFlag.SkipWorktree
+                ? !selection.Files.Any(file => file.IsSkipWorktree)
+                : !selection.Files.Any(file => file.IsAssumeUnchanged);
+            item.IsChecked = value;
+            await DiffFileMenu.SetIndexFlagAsync(selection, path, flag, value);
+            binding.Refresh();
+        }
+    }
+
+    // Upstream's StageFile_Click and UnstageFile_Click: the window's own stage or unstage when it gave one (FormCommit's),
+    // else the selected working directory's or index's files.
     private async Task StageAsync(bool stage)
     {
+        if ((stage ? _binding?.Stage : _binding?.Unstage) is { } own)
+        {
+            own();
+            return;
+        }
+
         if (_binding is not { } binding || binding.RepositoryPath() is not { } path
                                         || binding.Services() is not { } services)
         {
@@ -574,6 +692,27 @@ public partial class FileStatusListMenu : ContextMenu
         {
             new EditorWindow(Path.Combine(path, file)).Show(owner);
         }
+    }
+
+    // Upstream's OpenInVisualStudio_Click: the working directory file at the viewer's line, after upstream's question when
+    // Visual Studio rejects the call.
+    [SupportedOSPlatform("windows")]
+    private async Task OpenInVisualStudioAsync()
+    {
+        if (!VisualStudio.IsInstalled || _binding is not { } binding
+            || binding.RepositoryPath() is not { } path || SelectedPaths().FirstOrDefault() is not { } file)
+        {
+            return;
+        }
+
+        await VisualStudio.OpenFileAsync(Path.GetFullPath(Path.Combine(path, file)),
+            binding.Viewer?.Invoke()?.CurrentFileLine ?? 0, async () =>
+            {
+                MessageBoxWindow question = new(UpstreamTranslation.ByText(VisualStudio.RetryOpenText),
+                    UpstreamTranslation.ByText(VisualStudio.RetryCaption), System.Windows.Forms.MessageBoxButtons.YesNo);
+                await question.ShowDialog(binding.Owner);
+                return question.Result == System.Windows.Forms.DialogResult.Yes;
+            });
     }
 
     // Upstream's OpenRevisionFile_Click: the file as it is in the selected revision, from the temporary folder.
@@ -909,13 +1048,30 @@ internal sealed class FileStatusListMenuBinding
     /// <summary>
     ///  Upstream's submodule commands for the selected submodules; null hides the submodule items.
     /// </summary>
-    public FileListSubmodules? Submodules { get; init; }
+    public Func<FileListSubmodules?> Submodules { get; init; } = () => null;
 
     /// <summary>
     ///  The list's "Find in commit files using git-grep" (upstream's <c>CanUseFindInCommitFilesGitGrep</c>); null hides its
     ///  items.
     /// </summary>
     public GitGrepBox? GitGrep { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>stage</c> of <c>BindContextMenu</c> (FormCommit's working directory list): what "Stage selected" does
+    ///  instead of staging the selected files itself; null for the menu's own.
+    /// </summary>
+    public Action? Stage { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>unstage</c> of <c>BindContextMenu</c> (FormCommit's staged list); null for the menu's own.
+    /// </summary>
+    public Action? Unstage { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>SelectFirstGroupChanges</c> hotkey (<c>FirstGroupItems</c>): selects the files of the list's first
+    ///  diff group, or all its files when it shows no diff groups; null leaves the key to the list.
+    /// </summary>
+    public Action? SelectFirstGroup { get; init; }
 
     /// <summary>
     ///  Upstream's file tree mode (the File tree tab), for its own git-grep hotkey.

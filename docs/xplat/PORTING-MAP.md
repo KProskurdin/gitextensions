@@ -506,6 +506,22 @@ upstream's submodule items (`FileChange.IsSubmodule`), the browse window's comma
 RevisionDiffControl): in the working directory list "Open with Git Extensions" for one submodule and update, reset, stash
 and commit for submodules whose folders exist; in the staged list "Open with Git Extensions"; the lists are read again
 after. A commit window on a submodule (from the left panel) has no submodule items.
+Changed 2026-11-07: upstream's FormCommit has no item menus of its own; both lists bind FileStatusList's menu
+(`BindContextMenu(RescanChanges, canAutoRefresh, stage, unstage)`). The commit window's two hand-built menus (and core
+`FileMenuState`, their rules) are replaced by the shared `FileStatusListMenu` (see RevisionDiffControl), bound the same way
+(`CommitWindow.BindFileMenu`): the working directory's files between the index and the working directory, the staged ones
+between HEAD and the index (a selected folder node stands for its files), the window's refresh, its stage for "Stage
+selected" in the working directory's list and its unstage for "Unstage selected" in the staged list (both bold, as
+upstream's), the file history window, the scripts, find file, the tree items and the submodule items. So the lists now
+have every item of upstream's menu that FormCommit's binding leaves in: reset chunk, interactive add, the difftool
+choices (First -> Second, to the working directory, the remembered file, the custom tools), the "with..." items, open
+this revision, save as, rename / move, find file, Visual Studio, skip worktree and assume unchanged (now in the shared
+menu, for every list's working directory files), and the BrowseDiff hotkeys, which upstream's FileStatusList loads in
+FormCommit too (they act after the window's own Commit hotkeys, which the window reads first). Upstream's behaviour that
+replaced the window's own: reset uses upstream's FormResetChanges question and `ResetChanges` (before: a yes/no question,
+then a discard or a reset to HEAD), the reset item names HEAD by its short hash (before: "HEAD"), and the difftool items
+open upstream's diff kinds. Not shown, as upstream's FormCommit binds no file tree, grid or viewer for them: show in file
+tree, filter file in grid, cherry pick changes, the git-grep items.
 Changed 2026-10-13 (UI parity U3.2): the bottom panel is upstream's: the column of commit buttons (Commit with upstream's
 image, a key while the commit is signed; Commit & push, which reads "Commit & force push" after an amend with
 `CommitAndPushForcedWhenAmend` and "Push", only pushing, when there is nothing to commit; Amend commit with upstream's
@@ -740,6 +756,39 @@ of the last one, shows the previous or next file of the list (`SelectPreviousVis
 it (not in the browse window's tabs, where upstream's `EnableAutomaticContinuousScroll` is off); the viewer's menu has the
 setting's item ("Enable automatic continuous scroll (without ALT button)") and the Diff viewer settings page its check box. "Reset selected line(s)" and the line items of commit
 diffs were added 2026-11-06 (see RevisionDiffControl); FormStash's "Cherry pick changes" too.
+Added 2026-11-07, upstream FileViewer's find and go to line (`DiffView.Find.cs`, `FindWindow`, `GoToLineWindow`, core
+`Diff/TextSearch.cs`): the menu's "Find..." and "Go to line" and the hotkeys Find (Ctrl+F), FindNextOrOpenWithDifftool
+(F3), FindPrevious (Shift+F3) and GoToLine (Ctrl+G), plus ShowSyntaxHighlighting (X, while the menu offers the item).
+The find window is upstream's `FindAndReplaceForm` in find mode (upstream hides replace for a read-only viewer, and the
+shell's viewer is always read-only): find what, match whole word, match case, find next and previous, "Find & highlight
+all" and Cancel, titled "Find - <file>" and "(selection only)"; one window per viewer that closing hides, as upstream's.
+The search is upstream's `TextEditorSearcher` over the shown lines (from the caret, around at the ends, the scan region
+of several selected lines). Upstream's messages: "No string specified to look for!", "Text not found" and, for
+highlight all, "Search text not found." ("Not found"). F3 with nothing to look for leaves the key to the window (its
+difftool), as upstream's `FindNextAsync(searchForwardOrOpenWithDifftool)`. The Diff tab's viewer has upstream's file
+loader (RevisionDiffControl's `GetNextPatchFile`): while the window shows, a search that wraps around goes on in the
+list's next file (previous for find previous), around the list, until it is back at the first file it moved to.
+Differences, as the viewer selects whole lines and has no caret: an occurrence found selects its line and is marked in
+it (upstream's highlight color) instead of being selected as text, the next search starts after it while its line stays
+selected (else at the selected line's start), and Find keeps the last text to look for (upstream takes the text selected
+in one line or the word at the caret). Go to line is upstream's `FormGoToLine` (1 to `MaxLineNumber`): a file's text
+goes to the line, a diff to the first line at or after the new file's number. The browse and commit windows now let the
+focused viewer take its hotkeys before their own, as upstream's control order does. Not ported: replace (read-only),
+next and previous occurrence (Alt+Right, Alt+Left: upstream marks every occurrence of the text selected in the viewer
+and moves the caret between the marks; the shell's viewer selects whole lines and has no text selection or caret),
+word coloring and difftastic.
+Added the same day, upstream's "Treat all files as text" (`DiffOptions.TreatAllFilesAsText`): the menu's check item
+after a separator, for a diff or git-grep's matches only (upstream's `isPartialTextView`), and its hotkey
+`TreatFileAsText` (upstream gives it no key); git's `--text` goes to the viewer's diff and grep arguments, so a binary
+file's changes show. As upstream's, it belongs to one viewer: off in each new one and never saved.
+Added the same day, the rest of upstream's toolbar: the encoding box (`encodingToolStripComboBox`, upstream's
+`AppSettings.AvailableEncodings` by name) shows the viewer's encoding, the repository's `FilesEncoding` until one is
+chosen, and a choice reads the view again in it (`DiffOptions.Encoding`, for one viewer as upstream's `Encoding`); and
+the settings button, which opens the settings on the Diff viewer page. The viewer's diffs, combined diffs and grep
+matches are now read in that encoding as upstream reads them (`GetSingleDiffAsync`, `GetCurrentChanges` and
+`GetGrepFileAsync` with the viewer's `Encoding`); before, the working directory's, the index's and a commit's diffs were
+read as git's output comes. A file's text (the File tree tab, blame) is read by its window, not by the viewer, so the box
+does not change it (upstream reads the blob in the viewer's encoding).
 
 **RevisionDiffControl** (`partial`). Ported: the files a selected commit changed, with status letters, the selected
 file's diff beside the list (the Diff tab), and an action that opens it in its own window. Added 2026-10-10: the
@@ -946,13 +995,47 @@ top (a new instance on the submodule, upstream's error when its folder does not 
 submodule commands (`MainWindow.SubmoduleTree.cs`). Differences: upstream's update is one `git submodule update` for all
 selected submodules, here one per submodule; upstream opens the submodule with the commits of the change selected, here
 on its own HEAD; the open item is not bold for upstream's `OpenSubmoduleDiffInSeparateWindow`. The commit window has
-them too (see FormCommit); FormDiff and FormStash do not offer them yet.
+them too (see FormCommit); FormDiff and FormStash since 2026-11-07 (below).
 Added the same day in every list with the menu: "Open working directory file with..." and "Open this revision with...
 (temp file)", upstream's `OsShellUtil.OpenAs` (Windows' "Open with" dialog), shown on Windows only; and the BrowseDiff
 hotkeys of the menu's other items (upstream's codes and keys): `OpenAsTempFile` (Ctrl+F3), `OpenAsTempFileWith`
 (Shift+Ctrl+F3), `OpenWithDifftoolFirstToLocal` (Alt+F3), `OpenWithDifftoolSelectedToLocal` (Shift+Alt+F3),
 `FilterFileInGrid` (F), `OpenWorkingDirectoryFileWith` (Shift+Ctrl+F4) and `AddFileToGitIgnore` (no key), in the Diff tab
 and the File tree tab, each clicking its item when it shows (upstream's `PerformClick`).
+Added 2026-11-07: upstream loads the BrowseDiff hotkeys in every `FileStatusList`, so FormDiff's and FormStash's file
+lists now have them too (`FileStatusListMenu.AttachHotkeys`: the list's keys before its own, each command as upstream
+FileStatusList's `ExecuteCommand` runs it; the parents' hotkeys are RevisionDiffControl's and stay in the Diff tab).
+`ResetSelectedFiles` (R) is the menu's reset to the first revision in every list and now takes the key even when that
+item is disabled, as upstream's ("Hotkey executed when menu is disabled"). Added `SelectFirstGroupChanges` (14,
+Ctrl+A, upstream's `FirstGroupItems`): the shown files of the first diff group, or all shown files when the list has no
+diff groups (FormStash's working directory: the index's group), become the selection, never a folder or group node. The
+File tree tab selects every file of the tree and leaves the folders as they are, as upstream; in the ListBox lists (the
+Diff tab, FormDiff, FormStash), which hold only the rows shown, the files' collapsed folders and the first diff group
+are expanded first (upstream selects the files of collapsed nodes without showing them). The submodule items are now in
+FormDiff and FormStash too (their windows get the browse window's submodule commands, the window owning the dialogs);
+FormDiff's files now carry upstream's `GitItemStatus.IsSubmodule` (before, a submodule entry in FormDiff was not marked).
+The commit window's two lists got them the same day with the shared menu (see FormCommit). Also the same day, "Skip
+worktree" and "Assume unchanged" moved from the commit window into the shared menu (upstream's rule: the working
+directory's tracked files; checked while a selected file has git's flag), so the Diff tab's working directory row and
+FormStash's working directory offer them too; the Diff tab's files carry no index flags, so the items show unchecked
+there.
+Added the same day, "Reset chunk of file..." and "Interactive add..." (upstream's `canResetAddInteractively`: one
+working directory file, not a submodule; core `DiffFileMenuState.InteractiveAddReset`), in every list with the menu:
+git's `checkout -p` or `add --patch` of the file in a window of its own, waited for, then the list read again (core
+`Diff/InteractivePatch.cs`). On Windows they are upstream's own `GitModule.ResetInteractiveAsync` and
+`AddInteractiveAsync` (git in a console window). Elsewhere a program started from the desktop has no console, so git runs
+in the terminal emulator the toolbar's terminal button opens (`TERMINAL`, else `x-terminal-emulator`), given git's
+command after `-e`; a terminal that returns before its window closes refreshes the list early (the browse window reads
+the status again when it is activated). Not on macOS: Terminal takes no command to run and wait for, so the items stay
+hidden there.
+Added the same day, "Open in Visual Studio" (Windows only, core `Platform/VisualStudio.cs`, upstream's
+`VisualStudioIntegration` with EnvDTE): the menu starts upstream's search for `devenv` with `vswhere` (its arguments);
+the item shows for a working directory file the menu can edit once Visual Studio was found, and opens it in a running
+instance whose solution has it (found in the running object table; at the viewer's line, the window brought to the
+front), after upstream's question ("Visual Studio failed to open the file...", "Retry") while an instance rejects the
+call, else in a new instance; also its BrowseDiff hotkey `OpenInVisualStudio` (21, Ctrl+Shift+S). Differences: an empty
+`vswhere` output (no edition installed) is no Visual Studio, where upstream takes it as a path and shows the item; the
+path given to a new instance is quoted (upstream's splits at a space).
 
 **FormFileHistory** (`ported`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
 and a diff of that file in a chosen commit. Added 2026-10-10: the history follows renames as upstream's

@@ -118,8 +118,11 @@ public partial class RevisionDiffWindow : Window
             FindFile = new FileListFind(() => [.. (_files.Files ?? []).Select(file => (file.Path, file.OldPath))],
                 _files.SelectPath),
             Tree = _files.MenuTree,
+            SelectFirstGroup = _files.SelectFirstGroupFiles,
             Viewer = () => DiffText,
+            Submodules = () => Submodules?.Invoke(this),
         });
+        DiffFilesMenu.AttachHotkeys(DiffFiles);
         Opened += (_, _) => Run(LoadAsync);
     }
 
@@ -138,6 +141,12 @@ public partial class RevisionDiffWindow : Window
     ///  that need them.
     /// </summary>
     internal FileListMenuServices? MenuServices { get; init; }
+
+    /// <summary>
+    ///  The browse window's submodule commands for the file list's menu, with this window as the owner of their dialogs;
+    ///  null leaves out the submodule items.
+    /// </summary>
+    internal Func<Window, FileListSubmodules>? Submodules { get; init; }
 
     // Upstream's constructor (the merge base, which later picks do not change) and Load (PopulateDiffFiles).
     private async Task LoadAsync()
@@ -295,7 +304,10 @@ public partial class RevisionDiffWindow : Window
         return new DiffMenuSelection(from, second, from is { } parent ? [parent] : [],
         [
             .. (node?.Files ?? DiffFiles.SelectedItems?.Cast<object>() ?? []).OfType<RevisionDiffFile>()
-            .Select(file => new DiffMenuFile(file.Status, file.Path, file.OldPath, file.IsTracked))
+            .Select(file => new DiffMenuFile(file.Status, file.Path, file.OldPath, file.IsTracked)
+            {
+                IsSubmodule = file.IsSubmodule
+            })
         ], node?.Folder);
     }
 

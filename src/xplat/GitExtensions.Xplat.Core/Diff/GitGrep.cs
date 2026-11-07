@@ -88,7 +88,8 @@ public static partial class GitGrep
         string path, string grepString, DiffOptions options, CancellationToken cancellationToken = default)
     {
         ExecutionResult result = await module.GetGrepFileAsync(revision, path, string.Join(" ", options.GrepArguments), grepString,
-            useGitColoring: true, showFunctionName: true, Configuration(module), module.FilesEncoding, cancellationToken);
+            useGitColoring: true, showFunctionName: true, Configuration(module), options.EncodingFor(module),
+            cancellationToken);
         return result.ExitedSuccessfully
             ? (Parse(result.StandardOutput), null)
             : ([], $"{result.StandardError}{Environment.NewLine}Git command (exit code: {result.ExitCodeDisplay}): {result}");

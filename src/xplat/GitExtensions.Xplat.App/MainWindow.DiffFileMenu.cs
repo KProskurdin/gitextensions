@@ -46,9 +46,10 @@ public partial class MainWindow
                 () => [.. (_diffFiles?.Files ?? []).Select(file => (file.Path, file.DiffFile?.OldPath))],
                 file => _diffFiles?.SelectPath(file)),
             Tree = _diffFiles?.MenuTree,
+            SelectFirstGroup = () => _diffFiles?.SelectFirstGroupFiles(),
             Viewer = () => CommitDiff,
             GitGrep = _diffGitGrep,
-            Submodules = DiffFileSubmodules(() => this),
+            Submodules = () => DiffFileSubmodules(() => this),
             CurrentCheckout = () => _commits.VisibleRows.FirstOrDefault(item => item.IsCheckedOut)?.Row.Hash,
         });
 

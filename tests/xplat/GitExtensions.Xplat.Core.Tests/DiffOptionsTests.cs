@@ -20,6 +20,14 @@ internal sealed class DiffOptionsTests
     }
 
     [Test]
+    public void Treat_all_files_as_text_should_add_gits_text_option_to_the_diff_and_grep_arguments_as_upstream()
+    {
+        new DiffOptions(TreatAllFilesAsText: true).Arguments.Should().Equal("--unified=3", "--text");
+        new DiffOptions(TreatAllFilesAsText: true).GrepArguments.Should().Equal("-h", "--context=3", "--text");
+        new DiffOptions().GrepArguments.Should().Equal("-h", "--context=3");
+    }
+
+    [Test]
     public void Toggles_should_follow_upstreams_buttons()
     {
         DiffOptions options = new();
