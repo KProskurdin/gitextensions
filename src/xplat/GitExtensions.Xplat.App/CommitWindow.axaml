@@ -290,13 +290,13 @@
               <!-- Upstream's "Commit message" menu: earlier messages, the submodule change list and "Show only my messages". -->
               <local:ToolDropDownButton x:Name="CommitMessageMenuButton" Image="WorkingDirChanges" Text="Commit _message">
                 <local:ToolDropDownButton.Flyout>
-                  <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                  <local:PopulatingMenuFlyout Placement="BottomEdgeAlignedLeft" />
                 </local:ToolDropDownButton.Flyout>
               </local:ToolDropDownButton>
               <!-- Upstream's "Commit templates" menu: the plugins' templates, then the user's own. -->
               <local:ToolDropDownButton x:Name="CommitTemplatesButton" Image="CommitTemplates" Text="Commit _templates">
                 <local:ToolDropDownButton.Flyout>
-                  <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                  <local:PopulatingMenuFlyout Placement="BottomEdgeAlignedLeft" />
                 </local:ToolDropDownButton.Flyout>
               </local:ToolDropDownButton>
               <local:ToolButton x:Name="CreateBranchButton" Image="BranchCreate" Text="Create _branch" />

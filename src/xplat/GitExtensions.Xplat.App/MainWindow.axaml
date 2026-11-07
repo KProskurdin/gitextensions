@@ -217,23 +217,23 @@
           <!-- Upstream's toolStripButtonLevelUp: in a submodule the button opens the superproject, else the drop-down. -->
           <local:ToolSplitButton x:Name="SubmodulesButton" Image="SubmodulesManage" ToolTip.Tip="Submodules">
             <local:ToolSplitButton.Flyout>
-              <MenuFlyout />
+              <local:PopulatingMenuFlyout />
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <local:ToolDropDownButton x:Name="WorktreesButton" Image="WorkTree" ToolTip.Tip="Worktrees">
             <local:ToolDropDownButton.Flyout>
-              <MenuFlyout />
+              <local:PopulatingMenuFlyout />
             </local:ToolDropDownButton.Flyout>
           </local:ToolDropDownButton>
           <!-- Upstream's WorkingDirectoryToolStripSplitButton: the repository's caption; the drop-down is built on opening. -->
           <local:ToolDropDownButton x:Name="WorkingDirButton" Text="WorkingDir">
             <local:ToolDropDownButton.Flyout>
-              <MenuFlyout />
+              <local:PopulatingMenuFlyout />
             </local:ToolDropDownButton.Flyout>
           </local:ToolDropDownButton>
           <local:ToolDropDownButton x:Name="BranchSelectButton" Image="Branch" Text="Branch" ToolTip.Tip="Change current branch">
             <local:ToolDropDownButton.Flyout>
-              <MenuFlyout />
+              <local:PopulatingMenuFlyout />
             </local:ToolDropDownButton.Flyout>
           </local:ToolDropDownButton>
           <Rectangle Classes="toolSeparator" />

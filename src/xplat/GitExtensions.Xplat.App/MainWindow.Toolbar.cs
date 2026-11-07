@@ -92,10 +92,13 @@ public partial class MainWindow
         FillTerminals();
         TerminalButton.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         EditSettingsButton.Click += (_, _) => Run(() => ShowSettingsAsync());
-        ((MenuFlyout)SubmodulesButton.Flyout!).Opening += (_, _) => ShowSubmodulesMenu();
+        // The menus are built before they open: Avalonia shows a menu whose items change while it opens as a thin line.
+        ((PopulatingMenuFlyout)SubmodulesButton.Flyout!).Populating += (_, _) => ShowSubmodulesMenu();
         SubmodulesButton.Click += (_, _) => OnSubmodulesButtonClick();
-        ((MenuFlyout)WorktreesButton.Flyout!).Opening += (_, _) => Run(ShowWorktreesMenuAsync);
-        ((MenuFlyout)WorkingDirButton.Flyout!).Opening += (_, _) => ShowWorkingDirMenu();
+        PopulatingMenuFlyout worktrees = (PopulatingMenuFlyout)WorktreesButton.Flyout!;
+        worktrees.PopulateAsync = ShowWorktreesMenuAsync;
+        worktrees.ReportError = ex => ShowError(ex.Message);
+        ((PopulatingMenuFlyout)WorkingDirButton.Flyout!).Populating += (_, _) => ShowWorkingDirMenu();
         ToolTip.SetTip(WorkingDirButton, UpstreamTranslation.ByText(WorkingDirToolTipText));
 
         // Upstream's MouseUpHandler: a right click starts "Open repository".
@@ -107,7 +110,7 @@ public partial class MainWindow
                 Run(PickAndOpenRepositoryAsync);
             }
         }, RoutingStrategies.Tunnel);
-        ((MenuFlyout)BranchSelectButton.Flyout!).Opening += (_, _) => ShowBranchSelectMenu();
+        ((PopulatingMenuFlyout)BranchSelectButton.Flyout!).Populating += (_, _) => ShowBranchSelectMenu();
 
         PullMergeMenuItem.Click += (_, _) => PullWith(GitPullAction.Merge);
         PullRebaseMenuItem.Click += (_, _) => PullWith(GitPullAction.Rebase);

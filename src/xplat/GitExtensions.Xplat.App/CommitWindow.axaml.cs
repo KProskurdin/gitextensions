@@ -130,8 +130,9 @@ public partial class CommitWindow : Window
         CommitButton.Click += (_, _) => Run(CommitAsync);
         CommitAndPushButton.Click += (_, _) => Run(CommitAndPushAsync);
         AmendCheck.IsCheckedChanged += (_, _) => Run(ToggleAmendAsync);
-        CommitTemplatesFlyout.Opening += (_, _) => ShowCommitTemplates();
-        CommitMessageFlyout.Opening += (_, _) => Run(ShowPreviousMessagesAsync);
+        ((PopulatingMenuFlyout)CommitTemplatesFlyout).Populating += (_, _) => ShowCommitTemplates();
+        ((PopulatingMenuFlyout)CommitMessageFlyout).PopulateAsync = ShowPreviousMessagesAsync;
+        ((PopulatingMenuFlyout)CommitMessageFlyout).ReportError = ex => ShowError(ex.Message);
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
         StagedList.SelectionChanged += (_, _) => OnFileSelected(StagedList, UnstagedList, staged: true);
         Diff.LineSelectionChanged += (_, _) => UpdateState();

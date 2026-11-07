@@ -633,6 +633,11 @@ toolbar icons with upstream's `ToolTipText`.
 - 2026-11-07, the viewer toolbar's encoding box (diffs and grep matches read in the chosen encoding, the repository's by
   default) and settings button. The second submodule stash test had the same race as the first (now waits for the
   viewer) and read a file git was rewriting. See FileViewer in `PORTING-MAP.md`.
+- 2026-11-07, fixed: the toolbar's submodules, worktrees, working directory and branch drop-downs (and the commit
+  window's "Commit message" and "Commit templates" menus and the difftool chooser) opened as a thin empty line. Their
+  items were built in the flyout's `Opening` event, and an Avalonia 12 `MenuFlyout` whose items change while it opens
+  keeps the size of its empty presenter. They are now `PopulatingMenuFlyout`s, built before they open (after the read,
+  for the worktrees, the earlier messages and the difftools). `ToolbarDropDownTests` checks that each opens wide.
 
 ## Risks
 

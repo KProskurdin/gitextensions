@@ -13,11 +13,14 @@ internal static class DiffToolChoices
     /// <param name="showError">Shows a failure to the user.</param>
     public static void Attach(Button button, Func<string, Task> open, Action<string> showError)
     {
-        MenuFlyout flyout = new();
+        // Built before it opens: Avalonia shows a menu whose items change while it opens as a thin line.
+        PopulatingMenuFlyout flyout = new()
+        {
+            ReportError = ex => showError(ex.Message),
+        };
+        flyout.PopulateAsync = () => FillAsync(flyout, open, showError);
         button.Flyout = flyout;
         Show(button);
-        flyout.Opening += (_, _) =>
-            UiActions.Run(() => FillAsync(flyout, open, showError), ex => showError(ex.Message));
     }
 
     private static async Task FillAsync(MenuFlyout flyout, Func<string, Task> open, Action<string> showError)
