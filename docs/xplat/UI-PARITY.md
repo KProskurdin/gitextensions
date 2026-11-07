@@ -668,6 +668,36 @@ toolbar icons with upstream's `ToolTipText`.
 - 2026-11-07, git notes in the commit info (after the message) and its menu's "Add notes" with the Ctrl+Shift+N hotkey.
   See the CommitInfo note in `PORTING-MAP.md`. Then the grid's notes: the View menu's "Show git notes" and "Show Git
   notes column". See the MessageColumnProvider row's note in `PORTING-MAP.md`.
+- 2026-11-07, audit of every `partial` row of `PORTING-MAP.md`: each "not ported" line was checked against the code, and
+  each note ends with an "Audit 2026-11-07" line naming what is really missing and which earlier lines are stale. Ten
+  rows had nothing left and are `ported` (FormRemotes, FormResolveConflicts, Dashboard, the Scripts, Revision links,
+  Detailed and Plugins pages, the askpass helper, FormGitStatistics, Avatars); 46 stay `partial`. What is left, by area:
+  - Revision grid: the authors of several selected commits highlighted; session refs; the superproject's labels and refs.
+  - Viewer (FileViewer): diff appearance (git word diff, difftastic), git's coloring, combined diff of merges, the
+    submodule diff window, images and binary content, replace; continuous scroll in the Diff tab and in FormCommitDiff.
+  - Diff and File tree tabs: the range diff item, "Show skip-worktree files" and the settings menu's toolbar submenu,
+    renaming a folder, the File tree tab's submodule items, "Show blame in diff viewer", and the git-grep window's
+    selected text, "Treat all files as text" and next/previous match.
+  - Blame: the blame menu's commit items (blame this or the previous revision, show changes, copy hash, message or all)
+    and selecting the commit in the grid.
+  - Dialogs: FormCommit's "Stage in superproject", hiding "Stash staged" for an old git and the progress bar; FormPush's
+    Azure DevOps link; the help pictures' dark theme adaptation; FormClone's Pageant and PuTTY prompts, help button and
+    `StartCloneDialog`; FormRebase's rerere check after Continue; FormDiff's choose commit artificial commits; the
+    process dialog's "Keep dialog open" and PuTTY retry; FormStash's loading animation; the action bar's Abort without
+    asking; the editor's `i18n.filesEncoding` and todo syntax highlighting (no editor control).
+  - Settings: the tool path and command fields and rows, the files encoding, the warning without git; "Download Git",
+    validating the git command, the HOME check and FormFixHome's search; "Show end-of-line markers as glyph"; the help
+    links of the sorting page; the theme editor; the pages and settings of features the shell lacks (Console, Shell
+    extension, Git > Advanced, help images, spelling dictionary); the checklist's installer rows and startup check; the
+    confirmations of features the shell lacks.
+  - Hotkeys: FormCommit's alternative next and previous keys, the reset-to-defaults button, the commands of missing
+    features.
+  - Plugins and the rest: the repository hosts menu, a load error's clipboard copy, `RunCommand`, `GetService` and
+    `BrowseRepo`; Gource's author pictures (now possible, the shell has an avatar service); the `searchfile` verb; the
+    bisect toolbar icons; the pull request window's status icons; `commit.template` and plugin template icons; the
+    spelling checker and its "Mark ill formed lines"; the filter toolbar's shortcut texts, "No results found" and
+    drop-down width; the PuTTY menu items (Windows); the Console and Output history tabs (ConEmu, Windows only); the
+    commit info texts' translations.
 
 ## Risks
 
