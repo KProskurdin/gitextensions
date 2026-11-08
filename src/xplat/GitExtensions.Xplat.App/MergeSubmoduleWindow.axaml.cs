@@ -47,14 +47,7 @@ public partial class MergeSubmoduleWindow : Window
             Close(true);
         });
         // Upstream's btOpenSubmodule_Click: a new instance on the submodule.
-        OpenSubmoduleButton.Click += (_, _) =>
-        {
-            if (Environment.ProcessPath is { } process)
-            {
-                string submodulePath = _module.GetSubmoduleFullPath(_fileName);
-                _launcher.Start(process, [submodulePath], submodulePath);
-            }
-        };
+        OpenSubmoduleButton.Click += (_, _) => NewInstanceCommand.Start(_launcher, _module.GetSubmoduleFullPath(_fileName));
         CheckoutBranchButton.Click += (_, _) => Run(CheckoutBranchAsync);
         Opened += (_, _) => Run(LoadAsync);
     }

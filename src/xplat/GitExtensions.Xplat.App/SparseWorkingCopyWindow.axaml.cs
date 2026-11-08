@@ -45,10 +45,10 @@ public partial class SparseWorkingCopyWindow : Window
         _sparse.PropertyChanged += (_, _) => ShowState();
         ShowState();
 
-        // As upstream's: the editor takes Enter, so Ctrl+Enter saves.
+        // As upstream's: the editor takes Enter, so Ctrl+Enter (Cmd+Enter on macOS) saves.
         AddHandler(KeyDownEvent, (_, e) =>
         {
-            if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.Control)
+            if (e.Key == Key.Enter && e.KeyModifiers == Hotkeys.CommandModifier)
             {
                 e.Handled = true;
                 Run(SaveAndCloseAsync);

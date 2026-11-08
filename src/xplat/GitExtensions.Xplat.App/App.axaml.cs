@@ -76,6 +76,7 @@ public partial class App : Application
             else
             {
                 desktop.MainWindow = new MainWindow(FindGit());
+                SetUpMacOS(desktop);
             }
         }
 

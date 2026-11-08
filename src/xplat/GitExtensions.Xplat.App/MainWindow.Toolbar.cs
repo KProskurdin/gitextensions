@@ -35,9 +35,9 @@ public partial class MainWindow
     // WorkingDirectoryToolStripSplitButton's texts.
     private const string ConfigureWorkingDirMenuText = "Co&nfigure this menu...";
     private const string RepositorySearchPlaceholderText = "Search repositories...";
-    private const string WorkingDirToolTipText = "Change working directory\n"
+    private static readonly string WorkingDirToolTipText = "Change working directory\n"
         + "Left click opens the drop-down menu.\n"
-        + "Then hold Ctrl in order to open the selected repository in a new instance.\n"
+        + $"Then hold {Hotkeys.CommandModifierName} in order to open the selected repository in a new instance.\n"
         + "Right click starts the \"Open repository\" dialog.";
 
     // ToolStripPushButton's texts.
@@ -65,6 +65,16 @@ public partial class MainWindow
     ///  The open repository's path, or null on the dashboard.
     /// </summary>
     public string? OpenRepositoryPath => RepositoryPath;
+
+    /// <summary>
+    ///  Shows the About window, as the Help menu does, also for the macOS application menu.
+    /// </summary>
+    public void ShowAbout() => _ = new AboutWindow(_git?.Version?.ToString()).ShowDialog(this);
+
+    /// <summary>
+    ///  Opens the settings, as the Tools menu does, for the macOS application menu.
+    /// </summary>
+    public void ShowSettings() => Run(() => ShowSettingsAsync());
 
     /// <summary>
     ///  Opens <paramref name="path"/> as upstream's working directory drop-down and Start > Open do.

@@ -5,13 +5,14 @@ using GitExtensions.Xplat.Ui;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FindAndReplaceForm</c> in find mode, one per viewer and kept while it lives: closing hides it, as
+///  Upstream's <c>FindAndReplaceForm</c>, one per viewer and kept while it lives: closing hides it, as
 ///  upstream's does, so the next Find shows it again with the last search. The viewer runs the searches it asks for.
 /// </summary>
 public partial class FindWindow : Window
 {
     // Upstream's texts.
     public const string FindText = "Find";
+    public const string FindAndReplaceText = "Find & replace";
     public const string SelectionOnlyText = "selection only";
 
     // Upstream shows the form this far right of and below its owner's corner.
@@ -27,6 +28,8 @@ public partial class FindWindow : Window
         btnFindNext.Click += (_, _) => FindNextRequested?.Invoke(this, false);
         btnFindPrevious.Click += (_, _) => FindNextRequested?.Invoke(this, true);
         btnHighlightAll.Click += (_, _) => HighlightAllRequested?.Invoke(this, EventArgs.Empty);
+        btnReplace.Click += (_, _) => ReplaceRequested?.Invoke(this, EventArgs.Empty);
+        btnReplaceAll.Click += (_, _) => ReplaceAllRequested?.Invoke(this, EventArgs.Empty);
         btnCancel.Click += (_, _) => Close();
 
         // Upstream's FindAndReplaceForm_FormClosing: a user's close hides the form, which is used again, and drops the
@@ -56,6 +59,16 @@ public partial class FindWindow : Window
     public event EventHandler? HighlightAllRequested;
 
     /// <summary>
+    ///  Raised for upstream's "Replace".
+    /// </summary>
+    public event EventHandler? ReplaceRequested;
+
+    /// <summary>
+    ///  Raised for upstream's "Replace All".
+    /// </summary>
+    public event EventHandler? ReplaceAllRequested;
+
+    /// <summary>
     ///  Raised when the user closed the window, which hides it.
     /// </summary>
     public event EventHandler? Hidden;
@@ -67,6 +80,36 @@ public partial class FindWindow : Window
     {
         get => txtLookFor.Text ?? "";
         set => txtLookFor.Text = value;
+    }
+
+    /// <summary>
+    ///  Upstream's <c>ReplaceMode</c>: the replace controls show, and Replace takes the place of highlighting.
+    /// </summary>
+    public bool ReplaceMode
+    {
+        get => txtReplaceWith.IsVisible;
+        set
+        {
+            txtReplaceWith.IsVisible = lblReplaceWith.IsVisible = btnReplace.IsVisible = btnReplaceAll.IsVisible = value;
+            btnReplace.IsDefault = value;
+            btnFindNext.IsDefault = !value;
+            btnHighlightAll.IsVisible = !value && CanHighlightAll;
+            UpdateTitleBar();
+        }
+    }
+
+    /// <summary>
+    ///  Whether the window's owner can mark every occurrence; a plain text box cannot.
+    /// </summary>
+    public bool CanHighlightAll { get; set; } = true;
+
+    /// <summary>
+    ///  Upstream's <c>txtReplaceWith</c>.
+    /// </summary>
+    public string ReplaceWith
+    {
+        get => txtReplaceWith.Text ?? "";
+        set => txtReplaceWith.Text = value;
     }
 
     public bool MatchCase => chkMatchCase.IsChecked == true;
@@ -101,10 +144,10 @@ public partial class FindWindow : Window
         UpdateTitleBar();
     }
 
-    // Upstream's UpdateTitleBar in find mode.
+    // Upstream's UpdateTitleBar.
     private void UpdateTitleBar()
     {
-        string text = UpstreamTranslation.ByText(FindText);
+        string text = UpstreamTranslation.ByText(ReplaceMode ? FindAndReplaceText : FindText);
         if (_fileName is not null)
         {
             text += " - " + Path.GetFileName(_fileName);

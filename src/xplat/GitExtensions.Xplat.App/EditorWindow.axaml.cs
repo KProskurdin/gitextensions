@@ -37,6 +37,7 @@ public partial class EditorWindow : Window
         KeepEditingButton.Click += (_, _) => SaveChangesBar.IsVisible = false;
         ContentBox.TextChanged += (_, _) => SaveButton.IsEnabled = HasChanges;
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+        AddEditorMenu();
         Closing += OnClosing;
         Opened += (_, _) => Run(LoadAsync);
     }
@@ -133,6 +134,10 @@ public partial class EditorWindow : Window
         {
             e.Handled = true;
             Run(SaveAsync);
+        }
+        else if (RunFindHotkey(e))
+        {
+            e.Handled = true;
         }
     }
 

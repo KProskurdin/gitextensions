@@ -805,7 +805,7 @@ public partial class ConflictsWindow : Window
             ConflictsCommand.ChooseBase => () => ChooseAsync(ConflictsDialog.Base),
             _ => null,
         };
-        if (e.KeyModifiers == KeyModifiers.Control)
+        if (e.KeyModifiers == Hotkeys.CommandModifier)
         {
             action = e.Key switch
             {

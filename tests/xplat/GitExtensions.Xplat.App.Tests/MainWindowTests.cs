@@ -326,7 +326,8 @@ internal sealed class MainWindowTests
         window.Show();
         Open(window, _repo.Path);
         Button button = Find<Button>(window, "WorkingDirButton");
-        (ToolTip.GetTip(button) as string).Should().StartWith("Change working directory");
+        (ToolTip.GetTip(button) as string).Should().StartWith("Change working directory")
+            .And.Contain($"Then hold {Hotkeys.CommandModifierName} in order");
         MenuFlyout flyout = (MenuFlyout)button.Flyout!;
         flyout.ShowAt(button);
         WaitUntil(() => flyout.Items.Count > 0);
@@ -1118,9 +1119,10 @@ internal sealed class MainWindowTests
         window.Show();
         Open(window, _repo.Path);
 
+        KeyGesture commit = Hotkeys.GestureFor(BrowseCommand.Commit)!;
         window.RaiseEvent(new KeyEventArgs
         {
-            RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space, KeyModifiers = Hotkeys.CommandModifier,
+            RoutedEvent = InputElement.KeyDownEvent, Key = commit.Key, KeyModifiers = commit.KeyModifiers,
         });
 
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
@@ -1830,7 +1832,7 @@ internal sealed class MainWindowTests
 
             Click(settings, "bResetToDefaults");
 
-            settings.HotkeyBoxes[BrowseCommand.Commit].Text.Should().NotContain("K", "the default is upstream's Ctrl+Space");
+            settings.HotkeyBoxes[BrowseCommand.Commit].Text.Should().NotContain("K", "the default is not the stored key");
             TestAppBuilder.Preferences.SerializedHotkeys.Should().Contain("KeyData=\"K Control\"", "only Save stores it");
             Click(settings, "SaveButton");
             WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());

@@ -1,5 +1,7 @@
 using Avalonia;
+using GitCommands;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 
 namespace GitExtensions.Xplat.App;
 
@@ -45,6 +47,16 @@ internal static class Program
         else
         {
             InitialRepository = args.Length > 0 ? args[0] : null;
+
+            // Not for the prompt and editor runs above: git started those, and they start nothing themselves.
+            LoginShellPath.Apply();
+        }
+
+        // As upstream's Program.Main. Among others it fills AppSettings.AvailableEncodings, without which the viewer and the
+        // Git config page offer no encoding at all. The prompt starts nothing that needs it, and has to appear at once.
+        if (AskPassPrompt is null)
+        {
+            AppSettings.LoadSettings();
         }
 
         // Upstream code (the shared core, plugins) shows WinForms message boxes; until now they returned no answer.

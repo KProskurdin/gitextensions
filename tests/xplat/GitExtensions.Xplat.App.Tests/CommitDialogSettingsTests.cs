@@ -220,6 +220,36 @@ internal sealed class CommitDialogSettingsTests
     }
 
     [AvaloniaTest]
+    [Platform(Include = "MacOsX")]
+    public void Option_Esc_asks_for_the_list_and_leaves_the_window_open()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "RenderWidget.cs"),
+            "public class RenderWidget\n{\n    public void DrawFrame() { }\n}\n");
+        _repo.Run("add", "RenderWidget.cs");
+        CommitWindow commit = OpenCommitWindow(Open());
+        TextBox box = Find<TextBox>(commit, "CommitMessageBox");
+        WaitUntil(() => commit.IsVisible);
+        box.Focus();
+
+        commit.KeyTextInput("DF");
+        commit.KeyPress(Key.Escape, RawInputModifiers.Alt, PhysicalKey.Escape, keySymbol: null);
+
+        WaitUntil(() => box.Text == "DrawFrame");
+        commit.IsVisible.Should().BeTrue();
+        commit.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_commit_buttons_tooltip_names_the_command_key()
+    {
+        CommitWindow commit = OpenCommitWindow(Open());
+
+        ToolTip.GetTip(Find<Button>(commit, "CommitButton")).Should()
+            .Be($"Commit the staged changes ({Hotkeys.CommandModifierName}+Enter)");
+        commit.Close();
+    }
+
+    [AvaloniaTest]
     public void Without_composing_in_the_window_git_asks_its_editor_for_the_message()
     {
         string folder = Path.Combine(Path.GetTempPath(), "xplat-editor-" + Guid.NewGuid().ToString("N"));

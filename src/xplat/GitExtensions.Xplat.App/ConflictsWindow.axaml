@@ -18,9 +18,9 @@
               <MenuItem x:Name="CustomMergeToolMenuItem" Header="Open in _mergetool" />
               <MenuItem x:Name="MarkAsSolvedMenuItem" Header="Mark conflict as solved" />
               <Separator />
-              <MenuItem x:Name="ChooseLocalMenuItem" Header="Choose local" InputGesture="Ctrl+D1" />
-              <MenuItem x:Name="ChooseRemoteMenuItem" Header="Choose remote" InputGesture="Ctrl+D2" />
-              <MenuItem x:Name="ChooseBaseMenuItem" Header="Choose base" InputGesture="Ctrl+D3" />
+              <MenuItem x:Name="ChooseLocalMenuItem" Header="Choose local" InputGesture="{local:CommandGesture D1}" />
+              <MenuItem x:Name="ChooseRemoteMenuItem" Header="Choose remote" InputGesture="{local:CommandGesture D2}" />
+              <MenuItem x:Name="ChooseBaseMenuItem" Header="Choose base" InputGesture="{local:CommandGesture D3}" />
               <Separator />
               <MenuItem x:Name="OpenLocalWithMenuItem" Header="Open local with" />
               <MenuItem x:Name="OpenRemoteWithMenuItem" Header="Open remote with" />

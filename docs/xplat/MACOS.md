@@ -13,7 +13,7 @@ Windows; each is corrected where a real result exists.
 
 | Check | Result | How |
 |---|---|---|
-| Runs on a Mac | Yes | Core 900, app 704 and shadow projects 3821 pass, 0 fail, and the bundle starts through `open` (MAC2). Earlier partial runs: a test run on 2026-10-16, and commits `da72971a1`, `735c6ae4d` |
+| Runs on a Mac | Yes | Latest: core 912, app 718 and shadow projects 3821 pass, 0 fail, and the packaged bundle starts through `open` (MAC2 to MAC5). Earlier partial runs: a test run on 2026-10-16, and commits `da72971a1`, `735c6ae4d` |
 | Compiles for Apple Silicon | Yes | `publish-app.sh osx-arm64` on Windows, 2026-11-08, 0 errors; on the Mac too, and there it packs a working zip |
 | Bundle layout | Right | `Contents/MacOS/GitExtensions` is an arm64 Mach-O file. `libAvaloniaNative`, `libSkiaSharp` and `libHarfBuzzSharp` are there, as are the Plugins (17 entries) and Themes folders. Not started |
 | Packing the bundle on Windows | **Fails, and the script still prints the zip's path** | `Compress-Archive` threw and no zip was written. Files from NTFS also have no executable bit. Pack only on a Mac or CI |
@@ -214,7 +214,7 @@ Run in this order, from fast to slow: core, shadow projects, then the app. Treat
 
 No group of tests is skipped without looking at each one.
 
-**Results, 2026-11-08, on macOS, all from one tree:**
+**First complete results, 2026-11-08, on macOS, all from one tree (MAC3 to MAC5 added tests since: core 912, app 718):**
 
 | Suite | Result |
 |---|---|
@@ -328,6 +328,30 @@ updated (**done**).
 
 Exit: tests for items 1 to 4, and item 5 tried and recorded.
 
+**Status 2026-11-08, on macOS: items 1 to 4 are done with tests; item 5 is open, it needs real keys.**
+
+| Decision | Why |
+|---|---|
+| Commit: Cmd+Return (upstream Ctrl+Space) | Cmd+Space is Spotlight's. The same key commits in the commit window it opens |
+| Merge: Cmd+Option+M (upstream Ctrl+M) | Cmd+M is Minimize, and Cmd+Shift+M is the grid's "hide merge commits" |
+| Left panel multi-select: Option+Space (upstream Ctrl+Space) | Spotlight again. The command now means "toggle" on macOS, as its handler read Cmd from the keys held and Option+Space would have marked one node alone. A test caught this |
+| Cmd+W stays "close repository", Cmd+, stays settings | Close enough to the convention, and the convention itself |
+| Commit message completion: Ctrl+Space stays, Option+Esc added | Ctrl+Space is the system's next input source when there are several; Option+Esc is macOS's own completion key |
+| The viewer's Replace: Cmd+Option+F (upstream Ctrl+H) | Cmd+H is Hide. This is macOS's own key for find and replace |
+| No Cmd+R for refresh | Cmd+R is the grid's "compare to base", so F5 (Fn+F5 on a laptop) and the toolbar button remain. Decide after trying it |
+
+`HotkeyTable` keeps upstream's defaults and a short macOS table, so the other OSes are unchanged and a stored hotkey still wins.
+`Hotkeys.MacOSReservedKeys` and `MacOSKeysTests` check every table's macOS defaults on every OS. Gesture texts come from
+`{local:CommandGesture S}` and `{local:CommandShortcutText ...}`, not literal `Ctrl+`. These three had no test pressing them, which is
+why they passed before: Cmd+digit in the conflicts window, Cmd+Enter in the sparse window, Cmd+T in the lost objects list.
+
+The Cmd right-click and Cmd-click code is tested in the grid. "New instance" with Cmd held has no test: its launcher starts a real
+process.
+
+**To try on real keys (item 5), and new from this phase:** Cmd+A in a real list (headless keeps Ctrl for it); a physical Ctrl+click
+as a right-click; Cmd+Return, Cmd+Option+M and Option+Space; Option as Alt; function keys; trackpad scrolling in the grid and diff;
+and whether menu mnemonics (`_File`) look right.
+
 ### MAC4. Fitting into macOS (about a week)
 
 1. **`PATH` for a program started from Finder.** Such a process gets a minimal `PATH`. `XplatGitDiscovery` finds git itself in
@@ -353,6 +377,19 @@ Exit: tests for items 1 to 4, and item 5 tried and recorded.
 
 Exit: items decided, done or recorded in `PORTING-MAP.md` as a macOS note, tested where a test can reach them.
 
+**Status 2026-11-08, on macOS. Checked below means by running the published bundle through `open`, with no person at the screen:**
+
+| Item | State |
+|---|---|
+| 1. `PATH` | **Done, checked.** `LoginShellPath` reads it with a 3 second limit when no terminal started the app. A `core.fsmonitor` script in a scratch repository recorded what git saw: `/opt/homebrew/bin` and `~/.local/bin` from the user's fish, colons included |
+| 2. Application menu | **Done, not seen.** `Name`, About and Settings (`App.MacOS.cs`) are tested as a menu, but nobody has looked at the real menu bar, or whether macOS adds Hide and Quit as expected |
+| 3. System menu bar | **Waiting for `PLAN.md` section 9, question 15.** Nothing done |
+| 4. Dock icon | **Done, not seen.** A bundle has an `.icns` and `CFBundleIconFile` (MAC5). Nobody has looked at it, or at a run without a bundle |
+| 5. Opening a folder | **Done, checked.** `open -a` with a folder and a new data folder opens that repository, through the activation event. `CFBundleDocumentTypes` lists folders. A real drop on the Dock icon is not tried, and only the first of several items opens. **Closing the last window still quits**, so a Dock click with no windows cannot happen: kept, as a window here is a repository browser. Say if you want the usual macOS behavior |
+| 6. "New instance" | **Done.** In a bundle it runs `open -n`, at all four places (`NewInstanceCommand`). `open -n` itself was run; the menu items were not clicked |
+| 7. Interactive add, Reset chunk | **Done, half checked.** A generated `.command` script runs in Terminal and leaves git's exit code in a file, also when the window is closed. The script ran for real against a repository with a difficult file name, but **Terminal has not been opened by it** |
+| 8, 9. Dark mode, font | **Not decided:** they need someone looking at it |
+
 ### MAC5. Packaging on a Mac (part of M7)
 
 `PLAN.md`'s M7 keeps the signing decision (question 8). What a Mac makes possible, and what is wrong now in `publish-app.sh`:
@@ -365,6 +402,30 @@ Exit: items decided, done or recorded in `PORTING-MAP.md` as a macOS note, teste
    wherever it is offered.
 
 Exit: a CI-built package, downloaded to the Mac and started, passes the smoke list.
+
+**Status 2026-11-08, on macOS. Items 1 to 5 are done in `publish-app.sh`; the exit is open, as no CI has run:**
+
+| Item | Result |
+|---|---|
+| 1. Failed pack | The script stops when the file was not written, and refuses to pack for macOS except on a Mac |
+| 2. Icon | `.icns` built from the 512-pixel logo with `sips` and `iconutil`, largest 512 pixels. Not seen in the Dock |
+| 3. Minimum version | Every binary declares macOS 12.0 or lower (`vtool -show-build`), the same as `Info.plist`. Microsoft's list of supported versions was not compared, and nothing older than 27.2 has been tried |
+| 4. Signature | Ad-hoc on the whole bundle, with `org.gitextensions.xplat` and the `Info.plist` bound; `codesign --verify --deep --strict` passes in the script and on the copies from the zip and dmg |
+| 5. `.dmg` | Built beside the zip, with an Applications link, and uploaded by CI |
+
+**The bundle's layout changed for the signature.** `codesign` refuses a bundle with anything but native code in `Contents/MacOS`: it
+takes the .NET assemblies for unsigned code and `Plugins/GitExtensions.Plugins.*` for bundles. So native libraries and the executable
+stay there, everything else is in `Contents/Resources` with a link from `MacOS`, and each native library has a link back from
+`Resources`, because the .NET host follows the link to the app's assembly and looks for the runtime beside the real file. Both zip and
+dmg keep the links. If a new top-level file appears in the publish folder it is handled the same way, with no list to keep.
+
+Checked from both a fresh zip and a mounted dmg, through `open`, on a scratch repository: the app starts and opens it. From the zip
+also: plugins load through the link (Settings lists all eight), the bundle works as git's editor, a folder arrives by event, and
+git sees the login shell's `PATH`. Starting the executable directly prints one `sandbox_extension_issue_file_to_process failed` line and
+then works; it was seen only since the bundle has a real identifier, and not looked into.
+
+**Not checked:** a really downloaded, quarantined copy (the `xattr` line above is from Apple's rules, not tried here), and a Gatekeeper
+prompt. Notarization stays with question 8.
 
 ## 9. After MAC2: which parity work to do where
 

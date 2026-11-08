@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GitCommands;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
@@ -189,10 +190,9 @@ public partial class MainWindow
     private void OpenSubmoduleInNewInstance(SubmoduleProject project)
         => Run(async () =>
         {
-            if (await SubmoduleDirectoryExistsAsync(project) && Environment.ProcessPath is { } executable)
+            if (await SubmoduleDirectoryExistsAsync(project))
             {
-                string path = FolderOf(project.Path);
-                _launcher.Start(executable, [path], path);
+                NewInstanceCommand.Start(_launcher, FolderOf(project.Path));
             }
         });
 

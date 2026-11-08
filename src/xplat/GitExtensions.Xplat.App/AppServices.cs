@@ -108,6 +108,11 @@ public static class AppServices
     public static IGitConfigService GitConfig { get; set; } = new GitConfigService();
 
     /// <summary>
+    ///  Whether a git command answers. Tests replace it to see the page without git.
+    /// </summary>
+    public static Func<string?, Task<bool>> CanFindGit { get; set; } = GitConfigChoices.CanFindGitAsync;
+
+    /// <summary>
     ///  The diff and merge tools git can start on this computer. Tests replace it, because the list depends on the machine.
     /// </summary>
     public static IDiffMergeToolCatalog DiffMergeTools { get; set; } = new GitDiffMergeToolCatalog();

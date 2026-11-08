@@ -27,7 +27,7 @@ criterion, and the milestones beyond M4 are estimates only.
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS seen working 2026-11-08 (`MACOS.md`, MAC2) | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 900 core and 704 app, all passing, and a bundle that starts through `open` (`MACOS.md`, MAC2; the smoke list is open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
+| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 912 core and 718 app, all passing, and a signed zip and dmg that start through `open` (`MACOS.md`, MAC2 to MAC5; the checks at the screen are open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
 | Fork workflow | Partly set up | `upstream` remote added on the Mac and fetched. `tests/xplat/verify-upstream.sh` passed on `c584b9740` on macOS, 2026-11-08 (`SYNC-LOG.md`). Local `master` NOT moved (user decision) |
 | CI | **Written, has never run** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS: shadow and app tests, screenshot, benchmark, packages, nightly upstream check. Fixed 2026-11-08 to trigger on `feature/**` and with the missing submodules; it runs on the user's next push (`MACOS.md`, MAC1). `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
@@ -1021,11 +1021,10 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
 
 ### 12.3 M7, packaging and distribution (started)
 
-Done: unsigned packages per OS from `src/xplat/eng/publish-app.sh` (Windows zip, Linux tarball with a `.desktop` entry,
-macOS `.app` zip), built by CI. To do:
-1. Signing and notarization (needs section 9, question 8: an Apple developer account).
-2. An `.icns` icon and a `.dmg` for macOS (`MACOS.md`, MAC5, with what else is wrong in `publish-app.sh`). Build the macOS
-   package on a Mac or in CI only: packing failed on Windows on 2026-11-08, and NTFS has no executable bit.
+Done: packages per OS from `src/xplat/eng/publish-app.sh` (Windows zip, Linux tarball with a `.desktop` entry, macOS `.app`
+with an `.icns`, as a zip and a `.dmg`, ad-hoc signed; built on a Mac 2026-11-08, `MACOS.md`, MAC5), to be built by CI. To do:
+1. Real signing and notarization (needs section 9, question 8: an Apple developer account).
+2. Trying a downloaded macOS package, the last exit item of MAC5.
 3. An AppImage, and a `.deb` or `.rpm`, for Linux.
 4. An installer for the Avalonia app on Windows.
 
@@ -1058,6 +1057,10 @@ bug found by the comparison: lane colors differ from upstream's (U1 item 1).
 This comes before the rest of section 12 and before more UI parity work. `MACOS.md` has the handoff, the setup, and phases
 MAC0 (handoff), MAC1 (CI runs), MAC2 (first results and smoke test), MAC3 (keys), MAC4 (fitting into macOS) and MAC5
 (packaging). `UI-PARITY.md`, "Continuing on macOS", sorts the remaining features by where they can be done.
+
+State on 2026-11-08: the test parts of MAC2, MAC3 items 1 to 4, most of MAC4 and items 1 to 5 of MAC5 are done on macOS. Left
+for the user: pushing for the first CI run (MAC1), the checks at the screen (MAC2's smoke list, MAC3 item 5, the menu bar and Terminal
+in MAC4), and questions 12 to 15. `MACOS.md` has each one's state. Windows and Linux have run none of this yet.
 
 ### 12.5 Open decisions (section 9)
 

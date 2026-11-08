@@ -292,7 +292,7 @@ public partial class VerifyDatabaseWindow : Window
     // Upstream's ProcessKeyPreview: the menu's shortcuts work while the menu is closed, for the items it would enable.
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.KeyModifiers != KeyModifiers.Control || !EnableMenuItems())
+        if (e.KeyModifiers != Hotkeys.CommandModifier || !EnableMenuItems())
         {
             return;
         }

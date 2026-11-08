@@ -1276,6 +1276,12 @@ public partial class SettingsWindow : Window
         await SaveGitConfigAsync();
 
         _saved = true;
+        if (!close && !IsGitConfigLoaded)
+        {
+            // Apply may have just stored a git command that works.
+            await LoadGitConfigAsync();
+        }
+
         if (close)
         {
             Close(true);

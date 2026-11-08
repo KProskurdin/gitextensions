@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -44,6 +46,21 @@ internal sealed class SparseWorkingCopyWindowTests
         _repo.Run("config", "--local", "core.sparsecheckout").Trim().Should().Be("true");
         File.ReadAllText(_rulesFile).Should().Be("/a.txt");
         commands.Should().Equal("read-tree -m -u HEAD");
+        owner.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_command_key_with_Enter_saves_and_closes()
+    {
+        (Window owner, SparseWorkingCopyWindow window) = Open([]);
+        Click(window, "EnableButton");
+        Find<TextBox>(window, "RulesEditor").Text = "/a.txt";
+        Dispatcher.UIThread.RunJobs();
+
+        window.KeyPress(Key.Enter, TestKeys.Command, PhysicalKey.Enter, keySymbol: null);
+
+        WaitUntil(() => !window.IsVisible);
+        File.ReadAllText(_rulesFile).Should().Be("/a.txt");
         owner.Close();
     }
 

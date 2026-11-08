@@ -343,7 +343,7 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiResetFileToParent.Header = state.ResetToFirst;
         tsmiCherryPickChanges.IsVisible = state.CherryPick && binding.Services() is not null;
         tsmiResetChunkOfFile.IsVisible = tsmiInteractiveAdd.IsVisible
-            = state.InteractiveAddReset && InteractivePatch.IsAvailable(HostPlatform.Current);
+            = state.InteractiveAddReset;
         sepGit.IsVisible = true;
         tsmiOpenWithDifftool.IsVisible = true;
         tsmiOpenWithDifftool.IsEnabled = state.OpenWithDifftool;

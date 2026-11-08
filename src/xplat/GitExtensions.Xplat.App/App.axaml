@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GitExtensions.Xplat.App"
              x:Class="GitExtensions.Xplat.App.App"
+             Name="Git Extensions"
              RequestedThemeVariant="Default">
   <Application.Resources>
     <!-- The first installed family wins: Windows, macOS, then the usual Linux monospace fonts. FontApplier replaces these

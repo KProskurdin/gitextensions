@@ -70,15 +70,15 @@
             <ContextMenu x:Name="mnuLostObjects">
               <MenuItem x:Name="mnuLostObjectView" Header="View" Icon="{local:UpstreamIcon ViewFile}" />
               <MenuItem x:Name="mnuLostObjectsCreateTag" Header="Create tag" Icon="{local:UpstreamIcon TagCreate}"
-                        InputGesture="Ctrl+T" />
+                        InputGesture="{local:CommandGesture T}" />
               <MenuItem x:Name="mnuLostObjectsCreateBranch" Header="Create branch" Icon="{local:UpstreamIcon BranchCreate}"
-                        InputGesture="Ctrl+B" />
+                        InputGesture="{local:CommandGesture B}" />
               <MenuItem x:Name="copyHashToolStripMenuItem" Header="Copy object hash"
                         Icon="{local:UpstreamIcon CopyToClipboard}" />
               <MenuItem x:Name="copyParentHashToolStripMenuItem" Header="Copy parent hash"
                         Icon="{local:UpstreamIcon CopyToClipboard}" />
               <MenuItem x:Name="saveAsToolStripMenuItem" Header="Save as..." Icon="{local:UpstreamIcon SaveAs}"
-                        InputGesture="Ctrl+S" />
+                        InputGesture="{local:CommandGesture S}" />
             </ContextMenu>
           </ListBox.ContextMenu>
         </ListBox>

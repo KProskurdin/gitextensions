@@ -37,11 +37,11 @@
           <ListBox x:Name="LogItems" Classes="log">
             <ListBox.ContextMenu>
               <ContextMenu x:Name="contextMenu">
-                <MenuItem x:Name="mnuSaveToFile" Header="_Save to file" InputGesture="Ctrl+S"
+                <MenuItem x:Name="mnuSaveToFile" Header="_Save to file" InputGesture="{local:CommandGesture S}"
                           Icon="{local:UpstreamIcon SaveAs}" />
-                <MenuItem x:Name="mnuCopyCommandLine" Header="_Copy full command line" InputGesture="Ctrl+C"
+                <MenuItem x:Name="mnuCopyCommandLine" Header="_Copy full command line" InputGesture="{local:CommandGesture C}"
                           Icon="{local:UpstreamIcon CopyToClipboard}" />
-                <MenuItem x:Name="mnuClear" Header="C_lear" InputGesture="Ctrl+L" Icon="{local:UpstreamIcon ClearLog}" />
+                <MenuItem x:Name="mnuClear" Header="C_lear" InputGesture="{local:CommandGesture L}" Icon="{local:UpstreamIcon ClearLog}" />
               </ContextMenu>
             </ListBox.ContextMenu>
           </ListBox>
@@ -54,7 +54,7 @@
           <ListBox x:Name="CommandCacheItems" Classes="log">
             <ListBox.ContextMenu>
               <ContextMenu x:Name="cmsCache">
-                <MenuItem x:Name="tsmiClearCache" Header="C_lear" InputGesture="Ctrl+L"
+                <MenuItem x:Name="tsmiClearCache" Header="C_lear" InputGesture="{local:CommandGesture L}"
                           Icon="{local:UpstreamIcon ClearLog}" />
               </ContextMenu>
             </ListBox.ContextMenu>

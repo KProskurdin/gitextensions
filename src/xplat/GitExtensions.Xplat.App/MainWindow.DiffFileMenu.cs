@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
@@ -74,10 +75,7 @@ public partial class MainWindow
                     return;
                 }
 
-                if (Environment.ProcessPath is { } executable)
-                {
-                    _launcher.Start(executable, [full], full);
-                }
+                NewInstanceCommand.Start(_launcher, full);
             },
             Update: async paths =>
             {

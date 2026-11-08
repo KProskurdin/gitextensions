@@ -168,7 +168,7 @@ internal sealed class CommitFileListsTests
         Item(unstaged, "tsmiAddFileToGitIgnore").IsVisible.Should().BeTrue();
         Item(unstaged, "tsmiStopTracking").IsVisible.Should().BeFalse();
         Item(unstaged, "tsmiDeleteFile").Header.Should().Be("Delete file");
-        Item(unstaged, "tsmiInteractiveAdd").IsVisible.Should().Be(!OperatingSystem.IsMacOS(),
+        Item(unstaged, "tsmiInteractiveAdd").IsVisible.Should().BeTrue(
             "upstream's FormCommit lists have the whole file list menu");
         Item(unstaged, "tsmiShowInFileTree").IsVisible.Should().BeFalse("FormCommit binds no file tree");
         Item(unstaged, "tsmiFilterFileInGrid").IsVisible.Should().BeFalse("FormCommit has no grid");

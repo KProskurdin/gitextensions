@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -77,6 +79,23 @@ internal sealed class ConflictsWindowTests
         WaitUntil(() => !conflicts.IsVisible);
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("theirs");
         _commitsOffered.Should().Be(1);
+    }
+
+    [AvaloniaTest]
+    public void The_command_key_with_a_number_chooses_a_side_and_the_menu_shows_it()
+    {
+        MergeConflict(theirs: "theirs");
+        ConflictsWindow conflicts = Open();
+        Find<MenuItem>(conflicts, "ChooseLocalMenuItem").InputGesture.Should().Be(new KeyGesture(Key.D1, Hotkeys.CommandModifier));
+        Find<MenuItem>(conflicts, "ChooseRemoteMenuItem").InputGesture.Should().Be(new KeyGesture(Key.D2, Hotkeys.CommandModifier));
+        Find<MenuItem>(conflicts, "ChooseBaseMenuItem").InputGesture.Should().Be(new KeyGesture(Key.D3, Hotkeys.CommandModifier));
+
+        conflicts.KeyPress(Key.D2, TestKeys.Command, PhysicalKey.Digit2, keySymbol: null);
+
+        WaitUntil(() => conflicts.OwnedWindows.OfType<ConfirmWindow>().Any());
+        Click(conflicts.OwnedWindows.OfType<ConfirmWindow>().Single(), "ConfirmButton");
+        WaitUntil(() => !conflicts.IsVisible);
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("theirs");
     }
 
     [AvaloniaTest]

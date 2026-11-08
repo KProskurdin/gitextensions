@@ -152,11 +152,12 @@ public partial class MainWindow
         }
 
         // Upstream's ContextMenuOpening: a right-clicked label gets the focused menu, its "advanced" items under "Other
-        // actions", unless Shift or "always show advanced options" asks for the whole menu (Ctrl overrides both); either
+        // actions", unless Shift or "always show advanced options" asks for the whole menu (Ctrl overrides both, and Cmd
+        // on macOS, where Ctrl with a click already is the right-click); either
         // way the ref submenus offer only that ref.
         RefLabel? clicked = _rightClickedRef;
         _rightClickedRef = null;
-        ArrangeGridMenu(GridMenus.IsFocused(clicked is not null, _rightClickModifiers.HasFlag(KeyModifiers.Control),
+        ArrangeGridMenu(GridMenus.IsFocused(clicked is not null, _rightClickModifiers.HasFlag(Hotkeys.CommandModifier),
             _rightClickModifiers.HasFlag(KeyModifiers.Shift), _preferences.AlwaysShowAdvOpt));
         Func<RefLabel, bool>? keep = clicked is null ? null : GridMenus.Only(clicked);
 

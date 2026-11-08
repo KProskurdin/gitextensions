@@ -203,18 +203,19 @@ internal sealed class LeftPanelTests
     }
 
     [AvaloniaTest]
-    public void Ctrl_Space_marks_several_branches_whose_menu_filters_the_grid_for_all_of_them()
+    public void The_multi_select_key_marks_several_branches_whose_menu_filters_the_grid_for_all_of_them()
     {
         _repo.Run("branch", "older", "HEAD~1");
         _repo.Run("tag", "v1", "HEAD~1");
         MainWindow window = OpenWindow();
         TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        KeyGesture multiSelect = Hotkeys.LeftPanel.GestureFor(LeftPanelCommand.MultiSelect)!;
         tree.SelectedItem = BranchNode(tree, "older");
         FocusItem(tree, BranchNode(tree, "older")!);
-        window.KeyPress(Key.Space, TestKeys.Command, PhysicalKey.Space, keySymbol: null);
+        window.KeyPress(multiSelect.Key, TestKeys.Raw(multiSelect.KeyModifiers), PhysicalKey.Space, keySymbol: null);
         tree.SelectedItem = TagNode(tree, "v1");
         FocusItem(tree, TagNode(tree, "v1")!);
-        window.KeyPress(Key.Space, TestKeys.Command, PhysicalKey.Space, keySymbol: null);
+        window.KeyPress(multiSelect.Key, TestKeys.Raw(multiSelect.KeyModifiers), PhysicalKey.Space, keySymbol: null);
 
         BranchNode(tree, "older")!.IsMultiSelected.Should().BeTrue();
         TagNode(tree, "v1")!.IsMultiSelected.Should().BeTrue();

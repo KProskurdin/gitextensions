@@ -110,3 +110,11 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
 - Measures (PLAN.md 11.2): upstream files modified 0; seam count 8, all in the section 5 table, no new one; anchors intact yes;
   shadow build and tests pass yes; ported forms out of date: the 12 rows above.
 - Local changes only; `master` is not moved. The `upstream` remote was added, as `MACOS.md` section 3 says.
+
+### 2026-11-08: after MAC3 to MAC5, no merge
+
+- `tests/xplat/verify-upstream.sh` on `c584b9740` on macOS: 3902 passed, 0 failed, 222 ignored. Upstream files modified 0, seam count 8.
+- On macOS: core 912, shadow projects 3821 pass and 201 ignored, then app 718 of 718 after the last change, which touched only the
+  commit window's completion and app tests. The settings folder and `~/.gitconfig` were unchanged by hash in each run. Windows and
+  Linux were not run.
+

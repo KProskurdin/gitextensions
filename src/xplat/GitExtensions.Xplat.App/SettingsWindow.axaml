@@ -466,7 +466,10 @@
       <!-- Upstream's "Config" page under Git (GitConfigSettingsPage): one column of git's own settings at the level the
            page header chooses, in upstream's order. The tool and editor boxes offer what git and this computer have. -->
       <TabItem x:Name="GitConfigTab" Header="Config">
-        <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
+        <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
+          <!-- Upstream's InvalidGitPathGlobal, while git cannot be found. -->
+          <TextBlock x:Name="InvalidGitPathText" Grid.Row="0" Grid.Column="4" Grid.RowSpan="2" IsVisible="False"
+                     Text="You need to set the correct path to&#10;git before you can change&#10;global settings." />
           <TextBlock Grid.Row="0" Text="User name" VerticalAlignment="Center" />
           <TextBox x:Name="UserNameBox" Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" />
           <TextBlock Grid.Row="1" Text="User email" VerticalAlignment="Center" />
@@ -480,14 +483,29 @@
           <TextBlock Grid.Row="4" Text="Mergetool" VerticalAlignment="Center" />
           <ComboBox x:Name="MergeToolBox" Grid.Row="4" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
                     Margin="0,0,0,6" />
-          <TextBlock Grid.Row="5" Text="Difftool" VerticalAlignment="Center" />
-          <ComboBox x:Name="DiffToolBox" Grid.Row="5" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
+          <TextBlock Grid.Row="5" Text="Path to mergetool" VerticalAlignment="Center" />
+          <TextBox x:Name="MergeToolPathBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" />
+          <Button x:Name="BrowseMergeToolButton" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="6" Text="Mergetool command" VerticalAlignment="Center" />
+          <TextBox x:Name="MergeToolCommandBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
+          <Button x:Name="SuggestMergeToolButton" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="7" Text="Difftool" VerticalAlignment="Center" />
+          <ComboBox x:Name="DiffToolBox" Grid.Row="7" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
                     Margin="0,0,0,6" />
-          <TextBlock Grid.Row="6" Text="Path to commit template" VerticalAlignment="Center" />
-          <TextBox x:Name="CommitTemplateBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="6" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="8" Text="Path to difftool" VerticalAlignment="Center" />
+          <TextBox x:Name="DiffToolPathBox" Grid.Row="8" Grid.Column="2" Margin="0,0,0,6" />
+          <Button x:Name="BrowseDiffToolButton" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="9" Text="Difftool command" VerticalAlignment="Center" />
+          <TextBox x:Name="DiffToolCommandBox" Grid.Row="9" Grid.Column="2" Margin="0,0,0,6" />
+          <Button x:Name="SuggestDiffToolButton" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="10" Text="Path to commit template" VerticalAlignment="Center" />
+          <TextBox x:Name="CommitTemplateBox" Grid.Row="10" Grid.Column="2" Margin="0,0,0,6" />
+          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <TextBlock Grid.Row="11" Text="Files content encoding" VerticalAlignment="Center" />
+          <ComboBox x:Name="FilesEncodingBox" Grid.Row="11" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+          <Button x:Name="ConfigureEncodingButton" Grid.Row="11" Grid.Column="4" Content="Configure" Margin="0,0,0,6" />
           <!-- Upstream's groupBoxLineEndings. -->
-          <StackPanel Grid.Row="7" Grid.ColumnSpan="5" Spacing="4" Margin="0,6,0,0">
+          <StackPanel Grid.Row="12" Grid.ColumnSpan="5" Spacing="4" Margin="0,6,0,0">
             <TextBlock Text="Line endings" FontWeight="SemiBold" />
             <RadioButton x:Name="AutoCrlfTrueRadio" GroupName="AutoCrlf" />
             <RadioButton x:Name="AutoCrlfInputRadio" GroupName="AutoCrlf" />

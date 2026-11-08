@@ -46,6 +46,36 @@ public sealed record GrepLine(int? Number, GrepLineKind Kind, string Text, IRead
 /// </summary>
 public static partial class GitGrep
 {
+    /// <summary>
+    ///  Upstream's <c>GoToNextChange</c> and <c>GoToPreviousChange</c> in git-grep's view: the next or previous group of
+    ///  matching lines from line <paramref name="from"/>, or null; lines that match one after the other are one stop.
+    /// </summary>
+    public static int? FindMatch(IReadOnlyList<GrepLine> lines, int from, bool forward)
+    {
+        if (forward)
+        {
+            for (int i = Math.Max(from + 1, 0); i < lines.Count; i++)
+            {
+                if (IsMatchStart(lines, i))
+                {
+                    return i;
+                }
+            }
+
+            return null;
+        }
+
+        for (int i = Math.Min(from < 0 ? lines.Count : from, lines.Count) - 1; i >= 0; i--)
+        {
+            if (IsMatchStart(lines, i))
+            {
+                return i;
+            }
+        }
+
+        return null;
+    }
+
     // Upstream texts.
     public const string Title = "Find in commit files using git-grep";
     public const string Watermark = "Find in commit files using git-grep regular expression...";
@@ -254,4 +284,7 @@ public static partial class GitGrep
             }
         }
     }
+
+    private static bool IsMatchStart(IReadOnlyList<GrepLine> lines, int index)
+        => lines[index].Kind == GrepLineKind.Match && (index == 0 || lines[index - 1].Kind != GrepLineKind.Match);
 }

@@ -20,6 +20,39 @@ public static class GitConfigChoices
     private const string HelperPartSeparator = "--";
 
     /// <summary>
+    ///  Upstream's <c>CheckSettingsLogic.CanFindGitCmd</c>: whether <paramref name="gitCommand"/>, or git on the PATH when it
+    ///  is empty, answers. A command that cannot start is an answer too, as the box may hold half a path while it is typed.
+    /// </summary>
+    public static Task<bool> CanFindGitAsync(string? gitCommand)
+        => Task.Run(() =>
+        {
+            try
+            {
+                string command = string.IsNullOrWhiteSpace(gitCommand) ? "git" : gitCommand.Trim();
+                using Process? git = Process.Start(new ProcessStartInfo(command, "--version")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                });
+                if (git is null)
+                {
+                    return false;
+                }
+
+                string output = git.StandardOutput.ReadToEnd();
+                git.WaitForExit();
+                return git.ExitCode == 0 && output.Length > 0;
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                Trace.WriteLine($"Could not run git: {ex.Message}");
+                return false;
+            }
+        });
+
+    /// <summary>
     ///  The credential helpers git can use here, by the name <c>credential.helper</c> takes. As upstream on Windows: the
     ///  helpers shipped with Git for Windows (<c>manager</c>, ...), then <c>store</c> and <c>cache</c>. Upstream offers
     ///  only <c>oauth</c>, <c>store</c> and <c>cache</c> on other OSes; the new shell also lists the helpers installed in

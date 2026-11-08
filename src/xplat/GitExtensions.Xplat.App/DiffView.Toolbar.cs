@@ -271,6 +271,17 @@ public partial class DiffView
     // Upstream's next and previous change buttons and hotkeys.
     private void GoToChange(bool next)
     {
+        if (_grep is { } grep)
+        {
+            if (GitGrep.FindMatch(grep, DiffList.SelectedIndex, next) is { } match)
+            {
+                DiffList.SelectedIndex = match;
+                DiffList.ScrollIntoView(match);
+            }
+
+            return;
+        }
+
         IReadOnlyList<DiffLine> lines = _text ?? _viewModel.Lines;
         if (DiffNavigation.FindChange(lines, DiffList.SelectedIndex, next) is { } index)
         {

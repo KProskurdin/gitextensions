@@ -258,13 +258,14 @@ public partial class MainWindow
     {
         switch (command)
         {
-            // Upstream's MultiSelect and MultiSelectWithChildren click the selected node with the keys held.
+            // Upstream's MultiSelect and MultiSelectWithChildren click the selected node with the keys held. On macOS
+            // MultiSelect's default has no Cmd (Cmd+Space is Spotlight's), so the command itself means "toggle" there.
             case LeftPanelCommand.MultiSelect:
             case LeftPanelCommand.MultiSelectWithChildren:
                 if (SelectedRepoObject is { } selected)
                 {
                     RepoObjectSelection.Click(_repoObjects, selected, rightButton: false,
-                        multiple: modifiers.HasFlag(Hotkeys.CommandModifier),
+                        multiple: OperatingSystem.IsMacOS() || modifiers.HasFlag(Hotkeys.CommandModifier),
                         includingDescendants: modifiers.HasFlag(KeyModifiers.Shift));
                 }
 

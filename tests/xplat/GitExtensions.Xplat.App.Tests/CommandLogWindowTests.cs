@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -55,6 +56,18 @@ internal sealed class CommandLogWindowTests
 
         Click(window, "mnuClear");
         WaitUntil(() => Ours(window).Count == 0);
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_menus_show_the_command_key()
+    {
+        CommandLogWindow window = Open();
+
+        List<MenuItem> items = [.. window.FindControl<ListBox>("LogItems")!.ContextMenu!.Items.OfType<MenuItem>()];
+        items.Single(item => item.Name == "mnuSaveToFile").InputGesture.Should().Be(new KeyGesture(Key.S, Hotkeys.CommandModifier));
+        items.Single(item => item.Name == "mnuCopyCommandLine").InputGesture.Should().Be(new KeyGesture(Key.C, Hotkeys.CommandModifier));
+        items.Single(item => item.Name == "mnuClear").InputGesture.Should().Be(new KeyGesture(Key.L, Hotkeys.CommandModifier));
         window.Close();
     }
 

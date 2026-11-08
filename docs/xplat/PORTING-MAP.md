@@ -140,6 +140,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (repository hosts menu); `src/app/GitUI/GitUICommands.cs` (repository host methods); `src/app/GitUI/UserControls/BlameControl.cs` (`ConfigureRepositoryHostPlugin`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.RepositoryHosts.cs`, `PluginHost.cs`, `RepositoryHosts/RepositoryHostMenus.cs`, `BlameWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` (commit templates menu); `src/app/GitCommands/CommitTemplateManager.cs` (used as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/CommitDialog/FormCommitTemplateSettings.cs` | `src/xplat/GitExtensions.Xplat.App/CommitTemplateSettingsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`, `CommitMessageValidation.cs` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/FormAvailableEncodings.cs` | `src/xplat/GitExtensions.Xplat.App/AvailableEncodingsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Settings/DiffMergeToolSettings.cs` | `0174ba1cc` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` ("Commit message" menu, reset buttons, `IsCommitMessageValid`, `FormatAllText`, conventional commits) | `src/xplat/GitExtensions.Xplat.Core/Repository/PreviousCommitMessages.cs`, `CommitMessageValidation.cs`, `ConventionalCommits.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`, `ResetChangesWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/SpellChecker/EditNetSpell.cs` (auto-completion); `src/app/GitUI/AutoCompletion/*.cs`, `SpellChecker/WordAtCursorExtractor.cs`, `SpellCheckerHelper.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitMessageAutoCompletion.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.AutoComplete.cs` | `52d08e996` | partial |
 | `src/app/GitUI/Avatars/*.cs` (`AvatarService` and its providers; `TemplateFormatter.cs`, `HexString.cs` linked as is); `src/app/GitUI/UserControls/AvatarControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Avatars/AvatarService.cs`, `AuthorInitials.cs`; `src/xplat/GitExtensions.Xplat.App/AvatarView.cs`, `SettingsWindow.Appearance.cs` | `52d08e996` | ported |
@@ -818,7 +819,11 @@ it (upstream's highlight color) instead of being selected as text, the next sear
 selected (else at the selected line's start), and Find keeps the last text to look for (upstream takes the text selected
 in one line or the word at the caret). Go to line is upstream's `FormGoToLine` (1 to `MaxLineNumber`): a file's text
 goes to the line, a diff to the first line at or after the new file's number. The browse and commit windows now let the
-focused viewer take its hotkeys before their own, as upstream's control order does. Not ported: replace (read-only),
+focused viewer take its hotkeys before their own, as upstream's control order does. Replace: added 2026-11-08 in the editor window, the
+only place upstream offers it (`EditorWindow.Find.cs`, core `Diff/TextReplace.cs`): find, replace, replace all, go to line and their
+hotkeys, with the text box's real selection, so the word at the caret and a selection are taken as upstream's `ShowFor` takes them.
+The `Replace` hotkey's default is macOS's Cmd+Option+F there, as upstream's Ctrl+H would be Hide. Difference: "Find & highlight all" is
+left out in the editor, as a text box cannot mark text. Not ported:
 next and previous occurrence (Alt+Right, Alt+Left: upstream marks every occurrence of the text selected in the viewer
 and moves the caret between the marks; the shell's viewer selects whole lines and has no text selection or caret),
 word coloring and difftastic.
@@ -1107,8 +1112,8 @@ git's `checkout -p` or `add --patch` of the file in a window of its own, waited 
 `AddInteractiveAsync` (git in a console window). Elsewhere a program started from the desktop has no console, so git runs
 in the terminal emulator the toolbar's terminal button opens (`TERMINAL`, else `x-terminal-emulator`), given git's
 command after `-e`; a terminal that returns before its window closes refreshes the list early (the browse window reads
-the status again when it is activated). Not on macOS: Terminal takes no command to run and wait for, so the items stay
-hidden there.
+the status again when it is activated). macOS (2026-11-08): Terminal takes no command to run and wait for, so it opens a
+generated `.command` script that leaves git's exit code in a file, which the app waits for (`InteractivePatch.MacScript`).
 Added the same day, "Open in Visual Studio" (Windows only, core `Platform/VisualStudio.cs`, upstream's
 `VisualStudioIntegration` with EnvDTE): the menu starts upstream's search for `devenv` with `vswhere` (its arguments);
 the item shows for a working directory file the menu can edit once Visual Studio was found, and opens it in a running
@@ -1129,7 +1134,9 @@ Audit 2026-11-07 (all "not ported" lines above checked against the code; continu
 "Show skip-worktree files" since done, and the File tree tab's submodule items and "Show blame in diff viewer" too, see above): still
 missing: the settings menu's toolbar submenu, and in the
 git-grep window the viewer's selected text, "Treat all files as text" and next and previous match. Stale above: the menu
-items listed as missing in the earlier lines are ported (2026-11-06 and 2026-11-07).
+items listed as missing in the earlier lines are ported (2026-11-06 and 2026-11-07). Since then: next and previous match done
+2026-11-08 (`GitGrep.FindMatch`, a group of matching lines is one stop, as upstream's); "Treat all files as text" was already done on
+2026-11-07 for the grep view too. The selected text stays out: the viewer has no text selection.
 
 **FormFileHistory** (`ported`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
 and a diff of that file in a chosen commit. Added 2026-10-10: the history follows renames as upstream's
@@ -1361,6 +1368,15 @@ column of choices; and it stored the tools in `merge.tool` and `diff.tool`. The 
 content encoding, the warning when git cannot be found.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the tool path and command rows
 (with Browse and Suggest), the files content encoding, and the warning when git cannot be found.
+All three done 2026-11-08 on macOS (core `Settings/DiffMergeToolSettings.cs`, `SettingsWindow.GitConfig.cs`), with upstream's
+`GitPath_TextChanged` check of what is typed in the Paths page. Differences: upstream writes a tool's path and command on every save,
+which turns what it found on this computer into the user's setting; here a tool that stayed writes only what was edited, and a newly
+chosen tool writes both as upstream. The file dialog has no `.exe` filter off Windows. What is typed as the git command is tried and
+the page follows it, but it is stored on OK or Apply, where upstream stores it at once, as this window can still be cancelled.
+
+**FormAvailableEncodings** (`ported`, 2026-11-08). `AvailableEncodingsWindow`, rules in core `AvailableEncodingsDialog`. As upstream, except
+`CanRemove`: upstream compares exact types, which today's `Encoding.ASCII` and `Encoding.UTF8` do not have, so its button wrongly stays
+enabled for them. The list is saved when the dialog closes with OK, as this window has no later save of `AppSettings`.
 
 **ChecklistSettingsPage** (`partial`). Ported 2026-10-14 (UI-PARITY U4.3): the Checklist page on the Git Extensions node,
 shown first as upstream, with upstream's rows, texts and colors (`OtherColors`, dimmed toward the editor background in a
@@ -2619,3 +2635,10 @@ uses `core.editor` and a console window for a terminal editor. The grid's notes 
 see MessageColumnProvider.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the Console tab, the Output
 history tab and the translations of the commit info texts.
+
+**macOS notes, 2026-11-08** (no upstream form to compare with; `MACOS.md`, MAC3 and MAC4). `HotkeySettingsManager`: three defaults
+differ on macOS only, where the system takes upstream's key (`HotkeyTable`'s `macOSDefaults`: Commit, Merge, the left panel's
+MultiSelect), and that MultiSelect always toggles there. `EditNetSpell`: a typing pause while the words are still being read now
+shows the list when they arrive, on every OS; upstream shows nothing until the next key. The words are read again each time the
+changes are, so this was not only a moment after the window opens, and it made a test flaky. FormBrowse's and the other "new
+instance" items go through `NewInstanceCommand`, which on macOS uses `open -n` in a bundle.

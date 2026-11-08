@@ -148,6 +148,7 @@ jobs:
           path: |
             ${{ runner.temp }}/xplat-publish/*.zip
             ${{ runner.temp }}/xplat-publish/*.tar.gz
+            ${{ runner.temp }}/xplat-publish/*.dmg
 
   upstream-merge-check:
     # Only meaningful on the fork: needs the upstream remote, which is added here.

@@ -180,6 +180,10 @@ internal sealed partial class GridMenuTests
         Find<ContextMenu>(window, "CommitContextMenu").Items.Should().Contain(Find<MenuItem>(window, "CheckoutCommitMenuItem"));
         Headers(window, "GridRenameBranchMenuItem").Should().Equal("topic");
 
+        RightClickLabel(window, "topic", TestKeys.Command | RawInputModifiers.Shift);
+
+        otherActions.IsVisible.Should().BeTrue("the command key, upstream's Ctrl, asks for the focused menu whatever else is held");
+
         OpenMenu(window);
 
         otherActions.IsVisible.Should().BeFalse("no label was clicked");

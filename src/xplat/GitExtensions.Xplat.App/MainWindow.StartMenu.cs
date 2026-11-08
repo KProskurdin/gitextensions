@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using GitCommands;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 
@@ -132,16 +133,16 @@ public partial class MainWindow
         };
         ToolTip.SetTip(item, entry.Tooltip);
 
-        // Upstream's OpenRepo: with Ctrl held the repository opens in a new instance. A click gives no modifiers, so
+        // Upstream's OpenRepo: with Ctrl (Cmd on macOS) held the repository opens in a new instance. A click gives no modifiers, so
         // the release that makes it is read first.
         bool newInstance = false;
-        item.AddHandler(PointerReleasedEvent, (_, e) => newInstance = e.KeyModifiers.HasFlag(KeyModifiers.Control),
+        item.AddHandler(PointerReleasedEvent, (_, e) => newInstance = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier),
             RoutingStrategies.Tunnel, handledEventsToo: true);
         item.Click += (_, _) =>
         {
-            if (newInstance && Environment.ProcessPath is { } process)
+            if (newInstance)
             {
-                _launcher.Start(process, [entry.Path], entry.Path);
+                NewInstanceCommand.Start(_launcher, entry.Path);
             }
             else
             {

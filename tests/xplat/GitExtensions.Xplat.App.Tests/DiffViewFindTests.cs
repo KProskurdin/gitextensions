@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diff;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -141,6 +142,36 @@ internal sealed class DiffViewFindTests
                         && diff.FindControl<ListBox>("DiffList")!.SelectedIndex is >= 0 and var line
                         && diff.Lines[line].Text.Contains("needle two", StringComparison.Ordinal));
         find.Close();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public async Task The_next_and_previous_buttons_move_between_git_greps_matches()
+    {
+        DiffView diff = new();
+        Window window = new() { Content = diff, Width = 900, Height = 600 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        GrepLine[] grep =
+        [
+            new(1, GrepLineKind.Context, "before", []),
+            new(2, GrepLineKind.Match, "first", []),
+            new(3, GrepLineKind.Match, "second", []),
+            new(null, GrepLineKind.Separator, "--", []),
+            new(9, GrepLineKind.Match, "third", []),
+        ];
+        await diff.ShowGrepAsync("notes.txt", _ => Task.FromResult<(IReadOnlyList<GrepLine>, string?)>((grep, null)));
+        Dispatcher.UIThread.RunJobs();
+        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        Button next = diff.FindControl<ToolButton>("NextChangeButton")!;
+        Button previous = diff.FindControl<ToolButton>("PreviousChangeButton")!;
+
+        next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        lines.SelectedIndex.Should().Be(1);
+        next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        lines.SelectedIndex.Should().Be(4, "lines that match one after the other are one stop, as upstream's");
+        previous.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        lines.SelectedIndex.Should().Be(1);
         window.Close();
     }
 

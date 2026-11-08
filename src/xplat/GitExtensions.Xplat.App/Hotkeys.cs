@@ -112,6 +112,11 @@ public enum DiffCommand
     DecreaseContext,
     ShowEntireFile,
     Find,
+
+    /// <summary>
+    ///  Find and replace in a viewer that can be edited, as upstream's; plain find in one that cannot.
+    /// </summary>
+    Replace,
     FindNextOrOpenWithDifftool,
     FindPrevious,
     GoToLine,
@@ -191,13 +196,16 @@ public enum ConflictsCommand
 /// <summary>
 ///  The hotkeys of one window: upstream's defaults (<c>HotkeySettingsManager</c>, the window's section), replaced by what
 ///  the user stored in upstream's <c>SerializedHotkeys</c> setting under the same section, so a hotkey changed in either app
-///  applies in both. Ctrl becomes Cmd on macOS, the platform's command modifier.
+///  applies in both. Ctrl becomes Cmd on macOS, the platform's command modifier, and a key macOS keeps for itself has another
+///  default there.
 /// </summary>
 public sealed class HotkeyTable<TCommand>
     where TCommand : struct
 {
     private readonly string _section;
     private readonly IReadOnlyDictionary<TCommand, (int Code, string Name)> _upstreamCommands;
+    private readonly IReadOnlyDictionary<TCommand, WinFormsKeys> _upstreamDefaults;
+    private readonly IReadOnlyDictionary<TCommand, WinFormsKeys> _macOSDefaults;
     private readonly IReadOnlyDictionary<TCommand, WinFormsKeys> _defaults;
     private readonly Func<TCommand, string>? _describe;
     private Dictionary<TCommand, WinFormsKeys> _current;
@@ -206,20 +214,43 @@ public sealed class HotkeyTable<TCommand>
     /// <param name="upstreamCommands">Upstream's command code and name of each command the user can change.</param>
     /// <param name="defaults">Upstream's default keys; a command missing from <paramref name="upstreamCommands"/> keeps its key.</param>
     /// <param name="describe">The command's label in Settings; by default its enum name in words.</param>
+    /// <param name="macOSDefaults">The keys that differ on macOS, because the system or its conventions take upstream's.</param>
     public HotkeyTable(string section, IReadOnlyDictionary<TCommand, (int Code, string Name)> upstreamCommands,
-        IReadOnlyDictionary<TCommand, WinFormsKeys> defaults, Func<TCommand, string>? describe = null)
+        IReadOnlyDictionary<TCommand, WinFormsKeys> defaults, Func<TCommand, string>? describe = null,
+        IReadOnlyDictionary<TCommand, WinFormsKeys>? macOSDefaults = null)
     {
         _section = section;
         _upstreamCommands = upstreamCommands;
-        _defaults = defaults;
+        _upstreamDefaults = defaults;
+        _macOSDefaults = macOSDefaults ?? new Dictionary<TCommand, WinFormsKeys>();
+        _defaults = Defaults(OperatingSystem.IsMacOS());
         _describe = describe;
-        _current = new Dictionary<TCommand, WinFormsKeys>(defaults);
+        _current = new Dictionary<TCommand, WinFormsKeys>(_defaults);
     }
 
     /// <summary>
     ///  The commands whose hotkey can be changed, i.e. those upstream stores.
     /// </summary>
     public IReadOnlyList<TCommand> Configurable => [.. _upstreamCommands.Keys];
+
+    /// <summary>
+    ///  The default keys on macOS or on the other OSes, whichever OS this runs on, so a test on any OS can check both.
+    /// </summary>
+    public IReadOnlyDictionary<TCommand, WinFormsKeys> Defaults(bool macOS)
+    {
+        if (!macOS)
+        {
+            return _upstreamDefaults;
+        }
+
+        Dictionary<TCommand, WinFormsKeys> defaults = new(_upstreamDefaults);
+        foreach ((TCommand command, WinFormsKeys keys) in _macOSDefaults)
+        {
+            defaults[command] = keys;
+        }
+
+        return defaults;
+    }
 
     /// <summary>
     ///  The command's label in Settings: "QuickFetch" reads as "Quick fetch".
@@ -271,7 +302,7 @@ public sealed class HotkeyTable<TCommand>
                     change.Value is { } gesture ? Hotkeys.ToWinFormsKeys(gesture) : WinFormsKeys.None)));
 
     /// <summary>
-    ///  Upstream's default hotkey of the command, or null when it has none.
+    ///  The command's default hotkey on this OS, or null when it has none.
     /// </summary>
     public KeyGesture? DefaultGestureFor(TCommand command)
         => _defaults.TryGetValue(command, out WinFormsKeys keys) ? Hotkeys.ToGesture(keys) : null;
@@ -360,6 +391,14 @@ public static class Hotkeys
             [BrowseCommand.StashPop] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.Down,
             [BrowseCommand.FindFileInSelectedCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.F,
             [BrowseCommand.AddNotes] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.N,
+        },
+        macOSDefaults: new Dictionary<BrowseCommand, WinFormsKeys>
+        {
+            // Spotlight's key, so upstream's never arrives. The same key commits in the commit window it opens.
+            [BrowseCommand.Commit] = WinFormsKeys.Control | WinFormsKeys.Return,
+
+            // Minimize's key. Cmd+Shift+M is the grid's "hide merge commits".
+            [BrowseCommand.Merge] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.M,
         });
 
     /// <summary>
@@ -488,6 +527,7 @@ public static class Hotkeys
             [DiffCommand.DecreaseContext] = (3, "DecreaseNumberOfVisibleLines"),
             [DiffCommand.ShowEntireFile] = (4, "ShowEntireFile"),
             [DiffCommand.Find] = (0, "Find"),
+            [DiffCommand.Replace] = (16, "Replace"),
             [DiffCommand.FindNextOrOpenWithDifftool] = (8, "FindNextOrOpenWithDifftool"),
             [DiffCommand.FindPrevious] = (9, "FindPrevious"),
             [DiffCommand.GoToLine] = (1, "GoToLine"),
@@ -508,12 +548,18 @@ public static class Hotkeys
             [DiffCommand.DecreaseContext] = WinFormsKeys.Control | WinFormsKeys.OemMinus,
             [DiffCommand.ShowEntireFile] = WinFormsKeys.Control | WinFormsKeys.E,
             [DiffCommand.Find] = WinFormsKeys.Control | WinFormsKeys.F,
+            [DiffCommand.Replace] = WinFormsKeys.Control | WinFormsKeys.H,
             [DiffCommand.FindNextOrOpenWithDifftool] = WinFormsKeys.F3,
             [DiffCommand.FindPrevious] = WinFormsKeys.Shift | WinFormsKeys.F3,
             [DiffCommand.GoToLine] = WinFormsKeys.Control | WinFormsKeys.G,
             [DiffCommand.ShowSyntaxHighlighting] = WinFormsKeys.X,
             [DiffCommand.ShowGitWordColoring] = WinFormsKeys.Control | WinFormsKeys.D,
             [DiffCommand.ShowDifftastic] = WinFormsKeys.Control | WinFormsKeys.T,
+        },
+        macOSDefaults: new Dictionary<DiffCommand, WinFormsKeys>
+        {
+            // Hide's key. This is macOS's own for find and replace.
+            [DiffCommand.Replace] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.F,
         });
 
     /// <summary>
@@ -535,6 +581,11 @@ public static class Hotkeys
             [LeftPanelCommand.Search] = WinFormsKeys.F3,
             [LeftPanelCommand.MultiSelect] = WinFormsKeys.Control | WinFormsKeys.Space,
             [LeftPanelCommand.MultiSelectWithChildren] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Space,
+        },
+        macOSDefaults: new Dictionary<LeftPanelCommand, WinFormsKeys>
+        {
+            // Spotlight's key. Option, as no text is typed while the tree has the focus.
+            [LeftPanelCommand.MultiSelect] = WinFormsKeys.Alt | WinFormsKeys.Space,
         });
 
     /// <summary>
@@ -646,6 +697,36 @@ public static class Hotkeys
     ///  Ctrl, or Cmd on macOS.
     /// </summary>
     public static KeyModifiers CommandModifier => OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+
+    /// <summary>
+    ///  The command modifier's name in a text.
+    /// </summary>
+    public static string CommandModifierName => OperatingSystem.IsMacOS() ? "Cmd" : "Ctrl";
+
+    /// <summary>
+    ///  Keys that macOS or its conventions take, in the stored form where Control stands for Cmd. A default on one of these
+    ///  would never reach the app or would surprise the user. Cmd+W is not here on purpose: closing the repository is close
+    ///  enough to closing the window, and Cmd+, already opens the settings as macOS expects.
+    /// </summary>
+    public static IReadOnlyList<WinFormsKeys> MacOSReservedKeys { get; } =
+    [
+        WinFormsKeys.Control | WinFormsKeys.Space, // Spotlight
+        WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.Space, // Finder search
+        WinFormsKeys.Control | WinFormsKeys.Tab, // Switch application
+        WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Tab,
+        WinFormsKeys.Control | WinFormsKeys.Oemtilde, // Switch window
+        WinFormsKeys.Control | WinFormsKeys.H, // Hide
+        WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.H, // Hide others
+        WinFormsKeys.Control | WinFormsKeys.M, // Minimize
+        WinFormsKeys.Control | WinFormsKeys.Q, // Quit
+        WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Q, // Log out
+        WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.D3, // Screenshots
+        WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.D4,
+        WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.D5,
+        WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.D, // Show the Dock
+        WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.Escape, // Force quit
+        WinFormsKeys.F11, // Show the desktop
+    ];
 
     /// <summary>
     ///  The browse window's commands whose hotkey can be changed.

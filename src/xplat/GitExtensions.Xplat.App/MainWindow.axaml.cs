@@ -241,8 +241,7 @@ public partial class MainWindow : Window
         WireGraphStyles();
         WireQuickSearch();
         WireMouseNavigation();
-        AboutMenuItem.Click += (_, _) =>
-            _ = new AboutWindow(_git?.Version?.ToString()).ShowDialog(this);
+        AboutMenuItem.Click += (_, _) => ShowAbout();
     }
 
     private void WireLeftPanel()

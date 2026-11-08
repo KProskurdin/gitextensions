@@ -235,7 +235,7 @@
                 <Setter Property="MinHeight" Value="26" />
               </Style>
             </StackPanel.Styles>
-            <Button x:Name="CommitButton" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)" />
+            <Button x:Name="CommitButton" ToolTip.Tip="{local:CommandShortcutText 'Commit the staged changes ({0}+Enter)'}" />
             <Button x:Name="CommitAndPushButton" />
             <CheckBox x:Name="StageInSuperprojectCheck" Content="Stage _in Superproject" IsVisible="False"
                       ToolTip.Tip="Stage current submodule in superproject after commit" />

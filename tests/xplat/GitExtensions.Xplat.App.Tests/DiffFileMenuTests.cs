@@ -221,9 +221,9 @@ internal sealed class DiffFileMenuTests
         Item(files, "tsmiAddFileToGitIgnore").IsVisible.Should().BeTrue();
         Item(files, "tsmiResetFileTo").IsEnabled.Should().BeFalse();
         Item(files, "tsmiOpenRevisionFile").IsVisible.Should().BeFalse();
-        Item(files, "tsmiInteractiveAdd").IsVisible.Should().Be(!OperatingSystem.IsMacOS(),
+        Item(files, "tsmiInteractiveAdd").IsVisible.Should().BeTrue(
             "upstream offers git's interactive add for one working directory file");
-        Item(files, "tsmiResetChunkOfFile").IsVisible.Should().Be(!OperatingSystem.IsMacOS());
+        Item(files, "tsmiResetChunkOfFile").IsVisible.Should().BeTrue();
 
         Click(Item(files, "tsmiDeleteFile"));
         WaitUntil(() => window.OwnedWindows.OfType<ConfirmWindow>().Any());

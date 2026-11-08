@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -85,6 +86,28 @@ internal sealed class VerifyDatabaseWindowTests
 
         Find<CheckBox>(window, "ShowOtherObjects").IsChecked = false;
         Find<CheckBox>(window, "ShowCommitsAndTags").IsChecked.Should().BeTrue("one of the two stays checked");
+        owner.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_menus_shortcuts_use_the_command_key_and_show_it()
+    {
+        List<ObjectId> tagged = [];
+        (Window owner, VerifyDatabaseWindow window) = Open(createTag: (_, id) =>
+        {
+            tagged.Add(id);
+            return Task.FromResult(false);
+        });
+        ListBox list = Find<ListBox>(window, "Warnings");
+        Find<MenuItem>(window, "mnuLostObjectsCreateTag").InputGesture.Should().Be(new KeyGesture(Key.T, Hotkeys.CommandModifier));
+        Find<MenuItem>(window, "mnuLostObjectsCreateBranch").InputGesture.Should().Be(new KeyGesture(Key.B, Hotkeys.CommandModifier));
+        Find<MenuItem>(window, "saveAsToolStripMenuItem").InputGesture.Should().Be(new KeyGesture(Key.S, Hotkeys.CommandModifier));
+        list.SelectedItem = window.Rows.Single(row => row.Object.ObjectType == LostObjectType.Commit);
+        WaitUntil(() => window.PreviewShown.IsCompleted);
+
+        window.KeyPress(Key.T, TestKeys.Command, PhysicalKey.T, keySymbol: null);
+
+        WaitUntil(() => tagged.Count == 1);
         owner.Close();
     }
 
@@ -196,12 +219,13 @@ internal sealed class VerifyDatabaseWindowTests
         main.Close();
     }
 
-    private (Window Owner, VerifyDatabaseWindow Window) Open(Func<string, Task<bool>>? runGit = null)
+    private (Window Owner, VerifyDatabaseWindow Window) Open(Func<string, Task<bool>>? runGit = null,
+        Func<Window, ObjectId, Task<bool>>? createTag = null)
     {
         Window owner = new();
         owner.Show();
         VerifyDatabaseWindow window = new(_repo.Path, runGit ?? (_ => Task.FromResult(true)),
-            (_, _) => Task.FromResult(false), (_, _) => Task.FromResult(false));
+            createTag ?? ((_, _) => Task.FromResult(false)), (_, _) => Task.FromResult(false));
         _ = window.ShowDialog(owner);
         WaitUntil(() => window.Rows.Count > 0 && window.ObjectsLoaded.IsCompleted);
         return (owner, window);

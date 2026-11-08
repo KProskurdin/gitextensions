@@ -32,6 +32,10 @@ public partial class CommitWindow
 
     // Ctrl+Space was pressed while the words were being read, so the list opens when they are there.
     private bool _autoCompleteAsked;
+
+    // Typing paused while the words were being read. They are read again each time the changes are, also when the file
+    // watcher reports late, so this happens at any time, not only just after the window opens.
+    private bool _autoCompleteFollowTypingWhenRead;
     private IReadOnlyList<AutoCompleteWord> _autoCompleteMatches = [];
 
     // Upstream's _autoCompleteWasUserActivated: after Ctrl+Space the list also follows a word of one letter.
@@ -90,6 +94,11 @@ public partial class CommitWindow
             {
                 _autoCompleteAsked = false;
                 UpdateOrShowAutoComplete(calledByUser: true);
+            }
+            else if (_autoCompleteFollowTypingWhenRead)
+            {
+                _autoCompleteFollowTypingWhenRead = false;
+                UpdateOrShowAutoComplete(calledByUser: false);
             }
         }
         catch (OperationCanceledException)
@@ -151,7 +160,7 @@ public partial class CommitWindow
             return false;
         }
 
-        if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.Control && _preferences.ProvideAutocompletion)
+        if (IsAutoCompleteKey(e) && _preferences.ProvideAutocompletion)
         {
             UpdateOrShowAutoComplete(calledByUser: true);
             return true;
@@ -213,6 +222,7 @@ public partial class CommitWindow
         {
             // Upstream says the words are still being read; here the list opens once they are.
             _autoCompleteAsked |= calledByUser;
+            _autoCompleteFollowTypingWhenRead = !calledByUser;
             return;
         }
 
@@ -265,10 +275,17 @@ public partial class CommitWindow
     private void CloseAutoComplete()
     {
         _autoCompleteRequests++;
+        _autoCompleteFollowTypingWhenRead = false;
         AutoCompletePopup.IsOpen = false;
         _autoCompleteMatches = [];
         _autoCompleteWasUserActivated = false;
     }
+
+    // Upstream's Ctrl+Space stays Ctrl on macOS, as Cmd+Space is Spotlight's. It can be the system's key for the next input
+    // source too, so macOS also gets its own key for asking for completions, Option+Esc.
+    private static bool IsAutoCompleteKey(KeyEventArgs e)
+        => (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.Control)
+            || (OperatingSystem.IsMacOS() && e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.Alt);
 
     // The caret's line in the message box, for the list to open below it.
     private Rect CaretRect()
