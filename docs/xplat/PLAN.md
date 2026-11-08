@@ -1,6 +1,7 @@
 # Cross-platform Git Extensions: implementation plan
 
-Status: revised 2026-10-03 after the goal update. Owner: KProskurdin. Working branch: `feature/cross-os-ui`.
+Status: revised 2026-10-03 after the goal update, and 2026-11-08 for moving development to macOS (`MACOS.md`). Owner:
+KProskurdin. Working branch: `feature/cross-os-ui`.
 
 Goals this plan serves (both are hard requirements):
 1. **A cross-platform application**, not only passing tests: Git Extensions runs as a usable app on
@@ -26,9 +27,9 @@ criterion, and the milestones beyond M4 are estimates only.
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS by CI only | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | M1 to M6 work items done (2026-10-11): browse, commit, write operations, settings, themes, hotkeys, plugins, scripts | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows and Linux (WSLg), checked by screenshot. Tests 2026-10-11: 384 core and 276 app on Windows, 384 core on Linux (WSL; the Linux app run is to repeat). Not run on macOS |
+| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 on Windows: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11. **Never started on macOS**: on 2026-11-08 it was only compiled for `osx-arm64`, and the bundle's layout was checked (`MACOS.md`, section 1) |
 | Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master afc512395, verified 2026-10-11). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
-| CI | Written, not run on GitHub | `.github/workflows/xplat.yml`: shadow tests on Windows and Ubuntu, nightly upstream check. No macOS job. The app is not built in CI |
+| CI | **Written, has never run** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS: shadow and app tests, screenshot, benchmark, packages, nightly upstream check. It triggers on `xplat/**` while the work is on `feature/cross-os-ui`, and `origin/master` lacks the file, so no scheduled or manual run is possible. Two jobs also lack the submodules they need. Fix in `MACOS.md`, MAC1 |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
 
 Upstream size, for scale (measured 2026-10-03):
@@ -99,6 +100,9 @@ docs/xplat/
   PLAN.md                  this file
   SYNC-LOG.md              one entry per upstream check or merge
   PORTING-MAP.md           NEW in M1: one row per ported upstream file
+  UI-PARITY.md             the look and behavior against the WinForms app, and the remaining features
+  MACOS.md                 setup, commands, predicted failures and phases MAC0 to MAC5 for working on a Mac
+  reference/windows/       proposed: pictures of the WinForms app, which cannot run on a Mac (section 9, question 14)
 GitExtensions.xplat.slnx    solution for everything above
 .github/workflows/xplat.yml CI: shadow tests on Windows, Linux and macOS (macOS added in M1), nightly upstream check
 ```
@@ -154,6 +158,8 @@ Exit: shared core builds and tests on Windows and Linux; fork has an upstream re
 Exit: the app opens a repository on Windows, Linux and macOS, lists commits, shows the selected
 commit's details, and remembers its state across restarts. On macOS the exit is verified by CI
 (build, headless tests, screenshot artifact); a run on real hardware follows when a Mac is available.
+*Correction 2026-11-08:* that CI has never run (section 2). This exit, and the same "macOS pending CI" wording below and
+in M2 to M6, are therefore open, and `MACOS.md` phases MAC1 and MAC2 are what closes them.
 
 Done: window, path box, commit list (read-only), developer screenshot aid.
 
@@ -815,12 +821,18 @@ order users would notice them, are listed in section 12.4.
 | Upstream merge check | `tests/xplat/verify-upstream.sh` | Linux (CI nightly) | Builds and tests shadow projects against `upstream/master` in a temporary worktree |
 | App unit tests (view models) | NUnit | Windows, Linux, macOS | Start in M2 |
 | App UI tests | Avalonia.Headless | Windows, Linux, macOS | Start in M1 |
-| App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux, macOS (CI) | Manual review, and an artifact in CI from M1. The macOS screenshot comes from a CI runner until a Mac is available |
+| App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux, macOS | Manual review, and an artifact in CI once MAC1 is done. The aid renders the content only, without title bar or native menu bar; `screencapture` covers those on a Mac |
+| macOS smoke test | The real app, by hand, from `dotnet run` and from a bundle | macOS | The list in `MACOS.md`, MAC2. Repeated before a macOS package is offered |
+| Windows checks that need a person | Pageant, taskbar, Credential Manager and others | Windows | The list in `MACOS.md`, section 7, done in one go when a Windows machine is at hand |
 | Git behavior | Real temporary repositories (`ReferenceRepository`) | Windows, Linux, macOS | As upstream does. macOS needs the Command Line Tools on the runner |
 | Drift checks | `port-drift.sh`, `xplat-drift.sh`, `verify-upstream.sh` | Linux (nightly) | Upstream changes to ported files and to mirrored tests are reported, not discovered by accident |
 
+**Which machine runs what, from 2026-11-08:** macOS locally for every change. Windows and Linux in CI (MAC1), because they
+are no longer at hand. CI sees a change only after the user pushes it, so a status report says which commit CI last checked.
+
 Principle: no test is excluded silently. A Windows-only test is an `XplatPlatformSkips.cs` entry
-with a reason. A Linux-only expectation is an `XplatLinux*.cs` test.
+with a reason. A Linux-only expectation is an `XplatLinux*.cs` test, and a macOS-only one an `XplatMac*.cs` test. A test that
+must be skipped on macOS but still passes on Linux gets a macOS-only skip (to add, `MACOS.md`, MAC2).
 
 ## 9. Open decisions (need the user)
 
@@ -838,6 +850,7 @@ These change the plan. Each has a recommendation, but the choice is the user's.
    *Consequence:* the seam count stays at 7 and must not grow without a table entry.
 4. **macOS hardware run.** *Decided 2026-10-03:* the user will test the macOS build on their own
    laptop later. Until then, CI-only evidence (question 11) is what the milestones use.
+   *Updated 2026-11-08:* development moves to a Mac, so hardware runs are now routine (`MACOS.md`).
 4. **Translations:** reuse the Transifex `.xlf` files, or start new?
    *Recommendation:* reuse. The strings already exist and translators already work on them.
    Needs a check of how `TranslationString` maps to the Avalonia side.
@@ -867,6 +880,18 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 11. **macOS evidence until a Mac exists:** accept CI-only evidence (build, headless tests, screenshot
     artifact) as the macOS exit for M1 and M2, with a real run before any macOS release?
     *Recommendation:* yes. A macOS release must not ship without a run on hardware.
+    *Overtaken 2026-11-08:* real runs replace it (question 4). CI remains the evidence for Windows and Linux.
+12. **Where the work runs after the move.** *Assumed 2026-11-08, to confirm:* the Mac is the main machine, Windows stays
+    reachable through CI and now and then a machine or VM, and Linux is CI only. If no Windows machine remains, the list in
+    `MACOS.md` section 7 cannot be checked by anyone and must be marked unverified in `PORTING-MAP.md`.
+13. **Default branch of the fork on GitHub.** The nightly upstream check runs only from the default branch, and `master` is
+    meant to mirror upstream, so it does not have the workflow. *Recommendation:* make the integration branch the default
+    (`feature/cross-os-ui` now, `xplat/main` if that is created, section 11.3). Only the user can change this.
+14. **Reference pictures of the WinForms app.** Keep them in the repository, or outside? *Recommendation:* in
+    `docs/xplat/reference/windows/`, a fork-owned folder, so a later session on a Mac finds them; a few MB in total. They must
+    be taken before leaving Windows, or later on a Windows machine or VM.
+15. **macOS menu bar.** In the window, as on the other OSes, or in the system menu bar? *Recommendation:* the system menu
+    bar, generated from the window's menu so there is one definition (`MACOS.md`, MAC4). Not needed before MAC2.
 
 ## 10. Risks
 
@@ -875,7 +900,10 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 | Upstream GitUI churn breaks ported forms faster than we port them | High | `PORTING-MAP.md` and the weekly upstream script; port the high-churn forms last |
 | Revision graph is harder to port than estimated | High | M3.5 spike before M3 is committed |
 | Avalonia API changes between majors | Medium | Pin versions in `Directory.Packages.props`; upgrade deliberately |
-| macOS untested until a Mac is available | Medium | Add a macOS CI job as soon as one is available; until then, say so in every status report |
+| macOS failures found all at once: nothing has ever run there, while the app grew to about 700 tests | High | `MACOS.md`: CI first, then a first run with predicted failures listed, and no new parity work until it is read. Say the OS in every status report |
+| Windows breaks unnoticed once no one develops on it | High | CI on Windows for every push (MAC1), and the Windows check list (`MACOS.md`, section 7) |
+| The WinForms app, the parity reference, cannot run on a Mac | Medium | Designer files, then reference pictures taken beforehand, then a Windows machine (`MACOS.md`, section 6) |
+| Knowledge left on the Windows machine (Claude's memory, global rules, session scripts) | Medium | `MACOS.md`, section 2; the rules themselves are now in `CLAUDE.md` |
 | Seams grow beyond what `XplatPatch` can carry | Medium | Each seam is in section 5; more than about 10 means revisiting the approach |
 | Upstream test changes make Linux counterparts stale | Medium | Verify script runs nightly; `XplatLinux*.cs` tests have the upstream test name in their comment |
 | WinForms-only features (shell extension, ConEmu, WiX) confuse users on other OSes | Low | Document them as Windows-only; hide the menu items on other OSes |
@@ -934,7 +962,7 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
      model: `master` mirrors `upstream/master` and is moved by the user only (fast-forward);
      `xplat/main` is the fork's integration branch; feature work branches from `xplat/main`. The
      sync merges `master` into `xplat/main`. Automation does not create, move or commit branches.
-  5. Run the Windows and Linux test suites.
+  5. Run the macOS test suites locally, and confirm the Windows and Linux ones in CI.
   6. For each upstream commit that touched a ported form, update `PORTING-MAP.md`: port it, or
      record that it was deliberately skipped, with the reason.
   7. Append a line to `SYNC-LOG.md`: date, upstream commit, number of commits, seam status.
@@ -976,19 +1004,19 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
 
 ### 12.1 User actions
 
-1. Remove the two leftovers of a failed test run from the repository (see `SYNC-LOG.md` 2026-10-11):
+1. Done (checked 2026-11-08, neither is left): remove the two leftovers of a failed test run (see `SYNC-LOG.md` 2026-10-11):
    `git config --unset http.proxy` and `git branch -D pr/n7_ann/feature`.
-2. Commit the current work (about 70 files in the working tree).
+2. Done: the work is committed and pushed by the user, up to `4e556130c`.
 3. Decide whether to merge `upstream/master` (`afc512395`, 18 commits ahead of the fork base) and move `master` (M0's open
    item). Record the merge in `SYNC-LOG.md`.
 
 ### 12.2 Checks not run yet
 
-1. Linux (WSL) app tests: the run of 2026-10-11 was stopped by the host for lack of memory. The Linux core tests pass
+1. Linux app tests: the run of 2026-10-11 in WSL was stopped by the host for lack of memory, and CI now replaces it (MAC1). The Linux core tests passed then
    (384). Repeat the app run and record it.
-2. CI on GitHub: `.github/workflows/xplat.yml` has not run there yet. The macOS evidence for M1 to M6 depends on it
+2. CI on GitHub: `.github/workflows/xplat.yml` has not run there yet and cannot from this branch (section 2; MAC1). The evidence for M1 to M6 on macOS depends on it
    (section 9, question 11), and so do the screenshot (`app-screenshot`) and package (`app-packages`) jobs.
-3. macOS on hardware: nothing has run on a Mac yet. The user tests the build on their own laptop (section 9, question 4)
+3. macOS on hardware: nothing has run on a Mac yet. This is `MACOS.md` phase MAC2 now (section 9, question 4)
    and the run is recorded in `SYNC-LOG.md`.
 
 ### 12.3 M7, packaging and distribution (started)
@@ -996,7 +1024,8 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
 Done: unsigned packages per OS from `src/xplat/eng/publish-app.sh` (Windows zip, Linux tarball with a `.desktop` entry,
 macOS `.app` zip), built by CI. To do:
 1. Signing and notarization (needs section 9, question 8: an Apple developer account).
-2. An `.icns` icon and a `.dmg` for macOS.
+2. An `.icns` icon and a `.dmg` for macOS (`MACOS.md`, MAC5, with what else is wrong in `publish-app.sh`). Build the macOS
+   package on a Mac or in CI only: packing failed on Windows on 2026-11-08, and NTFS has no executable bit.
 3. An AppImage, and a `.deb` or `.rpm`, for Linux.
 4. An installer for the Avalonia app on Windows.
 
@@ -1024,10 +1053,17 @@ The look and behavior of the Avalonia app against the WinForms app: the comparis
 U2 browse window, U3 commit window, U4 settings, U5 other windows, U6 UX details) are in `UI-PARITY.md`. It includes a
 bug found by the comparison: lane colors differ from upstream's (U1 item 1).
 
+### 12.4c Moving development to macOS
+
+This comes before the rest of section 12 and before more UI parity work. `MACOS.md` has the handoff, the setup, and phases
+MAC0 (handoff), MAC1 (CI runs), MAC2 (first results and smoke test), MAC3 (keys), MAC4 (fitting into macOS) and MAC5
+(packaging). `UI-PARITY.md`, "Continuing on macOS", sorts the remaining features by where they can be done.
+
 ### 12.5 Open decisions (section 9)
 
 1. Question 7: confirm "keep upstream behavior" for branch-name rules and commit-message line endings.
 2. Question 8: an Apple developer account for signing and notarization.
 3. Question 9: who maintains the xplat track, and how often it syncs with upstream.
 4. Question 10: the terminal on Linux and macOS (recommendation: a configurable command with a default from the OS).
-5. Question 11: accept CI-only macOS evidence until a run on hardware (recommendation: yes; no macOS release without one).
+5. Questions 12 to 15, from the move to macOS: where the work runs, the fork's default branch, the reference pictures, and
+   the macOS menu bar. Questions 12 to 14 affect the handoff, so they come first.

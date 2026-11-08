@@ -80,10 +80,12 @@ Severity: **A** visible at first glance, **B** noticed in daily use, **C** detai
 2. **Reuse upstream's assets, never copy them.** Icons from `Images.resx` and `Resources/Icons` (already linked), texts from
    upstream (and so its translations), colors from the theme files.
 3. **Same layout on every OS.** Keep the Windows layout on Linux and macOS; adapt only what the OS dictates (Cmd keys, the
-   macOS menu bar later).
+   macOS menu bar later; see `MACOS.md`, MAC3 and MAC4).
 4. **Behavior first where they conflict.** A feature the Avalonia app has that upstream shows elsewhere moves to where
    upstream shows it (usually a context menu), rather than being removed.
 5. **Each step is checked by screenshot against the original** with the capture script, and recorded in `PORTING-MAP.md`.
+   On a Mac the original cannot run: use the designer files, then reference pictures, then a Windows machine (`MACOS.md`,
+   section 6). Say in the Progress entry which of these the step was checked against.
 
 ## Plan
 
@@ -719,6 +721,42 @@ toolbar icons with upstream's `ToolTipText`.
   `PORTING-MAP.md`.
 - 2026-11-08, submodules in the viewer (upstream's status text, "Open Submodule Diff in separate window"), "Show blame in diff viewer" and the File tree tab's submodule items. See the FileViewer and RevisionDiffControl notes in `PORTING-MAP.md`.
 - 2026-11-08, the app icon on every window: only the browse window set one, so all others had a blank taskbar button. It now comes from the application's `Window` style, which plugin windows get too.
+- 2026-11-08, plan for moving development to macOS: `MACOS.md`, and the section below. No code changed.
+
+### Continuing on macOS
+
+Written 2026-11-08. Parity work resumes after phases MAC1 and MAC2 of `MACOS.md`, so that the first macOS test results are
+not mixed with new changes. This sorts the audit's list above (2026-11-07) by where the work can be done and checked. All
+results so far come from Windows: nothing in this list or the Progress above has been seen on a Mac.
+
+**Do on the Mac, fully checkable there.** In the proposed order, starting with what affects first use:
+
+1. Settings: the tool path and command fields, the files encoding, the warning without git, validating the git command.
+2. Viewer and tabs: replace; the settings menu's toolbar submenu; the git-grep window's selected text, "Treat all files as
+   text" and next/previous match; the blame text pane's find, syntax colors and encoding.
+3. Dialogs: FormCommit's progress bar, FormPush's Azure DevOps link, the help pictures in dark themes,
+   `StartCloneDialog`, FormDiff's choose commit artificial commits, FormStash's loading animation, the editor's
+   `i18n.filesEncoding` and todo highlighting.
+4. Revision grid: session refs, the superproject's labels and refs.
+5. Plugins and the rest: the repository hosts menu, a load error's clipboard copy, `RunCommand`, `GetService`, `BrowseRepo`,
+   the `searchfile` verb, bisect toolbar icons, the pull request window's status icons, `commit.template`, plugin template
+   icons, the filter toolbar's drop-down width, the commit info translations.
+6. The larger ones: the theme editor, then the spelling checker with "Mark ill formed lines" and its dictionary setting.
+   The hotkeys and settings pages of a feature come with that feature. Output history can be done too; only its Console half
+   is ConEmu.
+
+**Windows only: do not start from the Mac** (`MACOS.md`, section 7): FormClone's PuTTY prompts, the process dialog's PuTTY
+retry, the PuTTY menu items, "Download Git", the HOME check and FormFixHome's search, the checklist's installer rows and
+startup check, the Shell extension page, the Console tab (ConEmu).
+
+**Needs a decision off Windows:** what the Console tab and its settings page mean without ConEmu (leave them out, as now, or
+an embedded terminal, which would be new work). Recommendation: leave out, and record `windows-only` in `PORTING-MAP.md`.
+
+**New for macOS:** the Cmd keys and macOS's reserved keys (MAC3), and the menu bar, application menu and `PATH` (MAC4). They
+have no upstream form to compare with, so a test or a recorded check is their evidence, and notes go in `PORTING-MAP.md`.
+
+**Items that look different on a Mac** are not parity bugs: `MACOS.md`, section 6, lists them. The reverse also holds: a step
+that adds a Windows-only code path while on the Mac goes on the Windows check list.
 
 ## Risks
 

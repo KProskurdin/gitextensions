@@ -54,7 +54,13 @@ This repository is a fork that must stay mergeable with upstream (`gitextensions
 - Logic inside upstream WinForms forms is reimplemented in the new shell, never moved out of the form. Every reimplementation gets a row in `docs/xplat/PORTING-MAP.md`.
 - Upstream settings keys, registry names and file formats are read as they are; the fork does not rename or migrate them.
 - Do not add new public types or members to upstream projects, and do not change `GitExtensions.Extensibility` (its interface version is public).
-- Windows-only tests are ignored with a reason in `XplatPlatformSkips.cs`; Linux expectations are separate `XplatLinux*.cs` tests. Do not change upstream test files.
+- Windows-only tests are ignored with a reason in `XplatPlatformSkips.cs`; Linux expectations are separate `XplatLinux*.cs` tests, and macOS-only ones `XplatMac*.cs`. Do not change upstream test files.
 - Every milestone's exit criteria include: `tests/xplat/verify-upstream.sh` passes on the current `upstream/master`, and the seam count has not grown without a table entry.
 - When an upstream change breaks a seam anchor, the build must fail loudly. Fix the seam in `src/xplat`; do not copy the upstream file.
 - Never move local `master` or create/commit branches on the user's behalf. The user commits and moves `master`.
+- Never run git commands that write the index (`git add`, `git mv`, `git rm`, `git stash`). Move and delete files with plain `mv` and `rm`; the user stages everything.
+- Tests must never run git in the repository itself (`TestAppBuilder` sets this up; do not bypass it).
+
+### Working on macOS and Linux
+
+The app and its tests build with `GitExtensions.xplat.slnx`, not `GitExtensions.slnx`, which is WinForms and Windows-only. The commands above that name no project, `update-loc.cmd` and `src/native` do not apply. `docs/xplat/MACOS.md` has the setup, the commands, what a Mac cannot verify and the order of the work; read it before working on a Mac. Status reports say which OS a result comes from.
