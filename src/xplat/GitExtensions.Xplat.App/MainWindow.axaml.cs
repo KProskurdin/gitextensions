@@ -4,7 +4,6 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -105,7 +104,6 @@ public partial class MainWindow : Window
             ShowCommitWindow);
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
-        Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://GitExtensions/Assets/git-extensions-logo-256px.png")));
 
         ShowSortMenus();
         ShowGridTooltips();
@@ -206,7 +204,8 @@ public partial class MainWindow : Window
         ResetChangesMenuItem.Click += (_, _) => RunOnRepository(ResetChangesAsync);
         CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
         CheckoutBranchMenuItem.Click += (_, _) => RunOnRepository(path => StartCheckoutBranchAsync(path));
-        CheckoutRevisionMenuItem.Click += (_, _) => RunOnRepository(path => ShowCheckoutRevisionAsync(path, revision: null));
+        CheckoutRevisionMenuItem.Click +=
+            (_, _) => RunOnRepository(path => ShowCheckoutRevisionAsync(path, revision: null));
         MergeMenuItem.Click += (_, _) => RunOnRepository(path => ShowMergeAsync(path, branch: null));
         RebaseMenuItem.Click += (_, _) => ShowRebaseOnSelectedCommit();
         CreateTagMenuItem.Click += (_, _) => Run(() => ShowCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
@@ -294,7 +293,8 @@ public partial class MainWindow : Window
         CommitFilesList.DoubleTapped += (_, _) =>
         {
             if (_preferences.OpenSubmoduleDiffInSeparateWindow
-                && CommitFilesList.SelectedItem is CommitFile file && (file.IsSubmodule || file.DiffFile?.IsSubmodule == true))
+                && CommitFilesList.SelectedItem is CommitFile file &&
+                (file.IsSubmodule || file.DiffFile?.IsSubmodule == true))
             {
                 CommitFilesContextMenu.RunDoubleClick();
             }
@@ -364,7 +364,8 @@ public partial class MainWindow : Window
     private async Task ShowSelectedTreeFileAsync()
     {
         // Upstream's ShowSelectedFolderAsync, before blame: a selected folder shows the files below it.
-        if (FileTreeView.SelectedItems is { Count: 1 } && FileTreeView.SelectedItem is FileTreeNode { IsFolder: true } folder)
+        if (FileTreeView.SelectedItems is { Count: 1 } &&
+            FileTreeView.SelectedItem is FileTreeNode { IsFolder: true } folder)
         {
             ShowFileTreeBlame(false);
             (string title, string description) = FileStatusList.FolderDescription(folder.Path,
@@ -389,7 +390,8 @@ public partial class MainWindow : Window
         // Upstream's viewer shows the file's matches while the list has a git-grep search (no forceFileView then).
         if (_fileTreeGrep is { Length: > 0 } grep)
         {
-            await FileContentView.ShowGrepAsync(file.Path, options => TreeFileGrepAsync(path, hash, file.Path, grep, options));
+            await FileContentView.ShowGrepAsync(file.Path,
+                options => TreeFileGrepAsync(path, hash, file.Path, grep, options));
             return;
         }
 
@@ -865,7 +867,8 @@ public partial class MainWindow : Window
 
     private async Task EditRevisionFilterAsync()
     {
-        if (await new FilterWindow(_commits.Filter, _preferences.MaxRevisionGraphCommits).ShowDialog<RevisionFilter?>(this)
+        if (await new FilterWindow(_commits.Filter, _preferences.MaxRevisionGraphCommits)
+                .ShowDialog<RevisionFilter?>(this)
             is { } filter)
         {
             StoredRevisionFilter.StoreDialogChoice(filter, _preferences);
@@ -1028,16 +1031,20 @@ public partial class MainWindow : Window
         {
             string remote = action == GitPullAction.Fetch ? TrackingRemote() : "--all";
             RunOnRepository(async path => await LoadPuttyKeysAsync(path, remote)
-                && await WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
-                    () => _actions.FetchAsync(path, remote, prune: action == GitPullAction.FetchPruneAll)));
+                                          && await WithScriptsAsync(path, ScriptEvent.BeforeFetch,
+                                              ScriptEvent.AfterFetch,
+                                              () => _actions.FetchAsync(path, remote,
+                                                  prune: action == GitPullAction.FetchPruneAll)));
             return;
         }
 
         RunOnCurrentBranch(async (path, branch) => await LoadPuttyKeysAsync(path, TrackingRemote())
-            && await WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
-                () => PullAndUpdateSubmodulesAsync(path,
-                    () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase),
-                    TrackingRemote())));
+                                                   && await WithScriptsAsync(path, ScriptEvent.BeforePull,
+                                                       ScriptEvent.AfterPull,
+                                                       () => PullAndUpdateSubmodulesAsync(path,
+                                                           () => _actions.PullAsync(path, TrackingRemote(), branch,
+                                                               action == GitPullAction.Rebase),
+                                                           TrackingRemote())));
     }
 
     private void Push() => RunOnCurrentBranch(async (path, branch) =>
@@ -1252,7 +1259,8 @@ public partial class MainWindow : Window
 
     // Upstream's StartPushDialog: the dialog on the open repository; its Pull button opens the pull dialog over it.
     private async Task<PushWindow> NewPushWindowAsync(string path, string? branch = null)
-        => new(new PushDialog(await PushRepository.LoadAsync(path), branch), _preferences, path.EnsureTrailingPathSeparator(),
+        => new(new PushDialog(await PushRepository.LoadAsync(path), branch), _preferences,
+            path.EnsureTrailingPathSeparator(),
             _plugins.HasRepositoryHost, owner => ShowPullDialogAsync(owner),
             async (owner, remote) =>
             {
@@ -1324,7 +1332,8 @@ public partial class MainWindow : Window
             (Screenshot.CreateWorktreeWindow, { } path) => new CreateWorktreeWindow(path,
                 ManageWorktreeDialog.MainWorktreePath(_repository.Worktrees, path), _actions, _preferences),
             (Screenshot.FileHistoryWindow, { } path) => NewFileHistoryWindow(path,
-                Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? "", revision: null, showBlame: false),
+                Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? "", revision: null,
+                showBlame: false),
             (Screenshot.CommitDiffWindow, { } path) => new CommitDiffWindow(path, _commits.Selected?.Hash ?? "HEAD"),
             (Screenshot.BlameWindow, { } path) => new BlameWindow(path, "HEAD",
                 Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? ""),
@@ -1368,8 +1377,10 @@ public partial class MainWindow : Window
                 (_, _) => Task.FromResult(false)),
             (Screenshot.DeleteTagWindow, { } path) => new DeleteTagWindow(null, _repository.Tags, _repository.Remotes,
                 _repository.TrackingRemote ?? "", (_, _) => Task.CompletedTask),
-            (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1", ResetMode.Soft),
-            (Screenshot.RebaseWindow, { } path) => NewRebaseWindow(path, "HEAD~1", interactive: false, immediately: false),
+            (Screenshot.ResetCurrentBranchWindow, { } path) => NewResetCurrentBranchWindow(path, "HEAD~1",
+                ResetMode.Soft),
+            (Screenshot.RebaseWindow, { } path) => NewRebaseWindow(path, "HEAD~1", interactive: false,
+                immediately: false),
             _ => null,
         };
 
@@ -1395,7 +1406,8 @@ public partial class MainWindow : Window
         return new PullWindow(dialog, _preferences, PathUtil.GetDisplayPath(path.EnsureTrailingPathSeparator()),
             [.. _repository.Branches.Where(branch => branch.IsRemote).Select(branch => branch.Name)],
             [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)],
-            await Task.Run(() => PullDialog.IsShallowRepository(path)), git, ShowConflicts, owner => ShowStashWindowAsync(owner));
+            await Task.Run(() => PullDialog.IsShallowRepository(path)), git, ShowConflicts,
+            owner => ShowStashWindowAsync(owner));
     }
 
     // One commit window at a time, as upstream; asking again brings the open one forward.
@@ -1620,7 +1632,8 @@ public partial class MainWindow : Window
 
     private CheckoutBranchFlow CheckoutFlow()
         => new(_actions, _preferences,
-            (repository, checkout) => WithScriptsAsync(repository, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
+            (repository, checkout) => WithScriptsAsync(repository, ScriptEvent.BeforeCheckout,
+                ScriptEvent.AfterCheckout,
                 checkout, PluginEvent.CheckoutBranch),
             UpdateSubmodulesAfterCheckoutAsync);
 
@@ -1630,7 +1643,8 @@ public partial class MainWindow : Window
 
     private CheckoutRevisionWindow NewCheckoutRevisionWindow(string path, string? revision)
         => new(path, _actions, revision,
-            (repository, checkout) => WithScriptsAsync(repository, ScriptEvent.BeforeCheckout, ScriptEvent.AfterCheckout,
+            (repository, checkout) => WithScriptsAsync(repository, ScriptEvent.BeforeCheckout,
+                ScriptEvent.AfterCheckout,
                 checkout, PluginEvent.CheckoutRevision),
             UpdateSubmodulesAfterCheckoutAsync);
 
@@ -1661,7 +1675,8 @@ public partial class MainWindow : Window
         string from = "")
         => NewRebaseWindow(path, onto, interactive, immediately, from).ShowDialog<bool>(this);
 
-    private RebaseWindow NewRebaseWindow(string path, string? onto, bool interactive, bool immediately, string from = "")
+    private RebaseWindow NewRebaseWindow(string path, string? onto, bool interactive, bool immediately,
+        string from = "")
         => new(path, _actions, _preferences, from, to: null, onto, interactive, immediately, _ => ShowCommitWindow(),
             owner => _ = NewConflictsWindow(path).ShowDialog(owner))
         {
@@ -1742,7 +1757,8 @@ public partial class MainWindow : Window
 
     private ReflogWindow NewReflogWindow(string path)
         => new(path,
-            (owner, id) => new CreateBranchWindow(path, _actions, _preferences, id.ToString(), checkoutAfterCreation: false,
+            (owner, id) => new CreateBranchWindow(path, _actions, _preferences, id.ToString(),
+                checkoutAfterCreation: false,
                 userAbleToChangeRevision: false, couldBeOrphan: false).ShowDialog<bool>(owner),
             (owner, id, mode) => ShowResetCurrentBranchAsync(owner, path, id.ToString(), mode));
 
@@ -2086,7 +2102,8 @@ public partial class MainWindow : Window
         TerminalMenuItem.IsEnabled = open;
         GitGuiMenuItem.IsEnabled = GitKMenuItem.IsEnabled = UndoLastCommitMenuItem.IsEnabled = open;
         GitAttributesMenuItem.IsEnabled = MailMapMenuItem.IsEnabled = CleanupMenuItem.IsEnabled = open;
-        GitMaintenanceMenuItem.IsEnabled = ManageSubmodulesMenuItem.IsEnabled = SparseWorkingCopyMenuItem.IsEnabled = open;
+        GitMaintenanceMenuItem.IsEnabled =
+            ManageSubmodulesMenuItem.IsEnabled = SparseWorkingCopyMenuItem.IsEnabled = open;
         RepositorySettingsMenuItem.IsEnabled = open;
         FilesMenuItem.IsEnabled = open;
         UpdateAllSubmodulesMenuItem.IsEnabled = SyncAllSubmodulesMenuItem.IsEnabled = open;
@@ -2197,8 +2214,7 @@ public partial class MainWindow : Window
 
         await new StashWindow(path, _actions, _preferences, manageStashes, initialStash)
         {
-            MenuServices = FileListMenuServices,
-            Submodules = stashWindow => DiffFileSubmodules(() => stashWindow),
+            MenuServices = FileListMenuServices, Submodules = stashWindow => DiffFileSubmodules(() => stashWindow),
         }.ShowDialog(owner);
         RefreshRepository();
     }
@@ -2224,7 +2240,8 @@ public partial class MainWindow : Window
     private async Task CreateWorktreeAsync()
     {
         if (RepositoryPath is { } path &&
-            await WorktreeFlow().CreateAsync(this, path, ManageWorktreeDialog.MainWorktreePath(_repository.Worktrees, path)))
+            await WorktreeFlow().CreateAsync(this, path,
+                ManageWorktreeDialog.MainWorktreePath(_repository.Worktrees, path)))
         {
             RefreshRepository();
         }
@@ -2239,7 +2256,8 @@ public partial class MainWindow : Window
         ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
             hasExistingFiles: workTree.Any(change => !IsNew(change)), hasNewFiles: workTree.Any(IsNew));
         return action != ResetChangesWindow.ResetAction.Cancel
-               && await _actions.ResetAllChangesAsync(path, clean: action == ResetChangesWindow.ResetAction.ResetAndDelete,
+               && await _actions.ResetAllChangesAsync(path,
+                   clean: action == ResetChangesWindow.ResetAction.ResetAndDelete,
                    onlyWorkTree: false);
 
         static bool IsNew(FileChange change) => change.Kind is ChangeKind.Untracked or ChangeKind.Added;
@@ -2307,7 +2325,7 @@ public partial class MainWindow : Window
     private async Task OpenCommitFileInDiffToolAsync(string? tool)
     {
         if (RepositoryPath is { } path && CommitFilesList.SelectedItem is CommitFile groupItem
-            && GroupFile(groupItem) is { } grouped)
+                                       && GroupFile(groupItem) is { } grouped)
         {
             if (!grouped.Group.IsCombinedDiff)
             {
@@ -2334,7 +2352,7 @@ public partial class MainWindow : Window
     private void ShowCommitDiff()
     {
         if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile groupItem
-            && GroupFile(groupItem) is { } grouped)
+                                                 && GroupFile(groupItem) is { } grouped)
         {
             new DiffWindow(grouped.File.Path,
                 view => ShowGroupFileDiffAsync(view, repositoryPath, grouped.Group, grouped.File)).Show(this);
@@ -2359,7 +2377,10 @@ public partial class MainWindow : Window
 
         ShowCommitDiffButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
         // Upstream has no difftool for the combined diff of a merge or the range diff item.
-        CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile { Group: not ({ IsCombinedDiff: true } or { IsRangeDiff: true }) };
+        CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile
+        {
+            Group: not ({ IsCombinedDiff: true } or { IsRangeDiff: true })
+        };
 
         // Upstream's ShowSelectedFolderAsync: a selected folder or group node shows the files below it.
         if (FileListNodes.SelectedNode(CommitFilesList) is { } node)
@@ -2371,7 +2392,7 @@ public partial class MainWindow : Window
         }
 
         if (RepositoryPath is { } repositoryPath && CommitFilesList.SelectedItem is CommitFile groupItem
-            && GroupFile(groupItem) is { } grouped)
+                                                 && GroupFile(groupItem) is { } grouped)
         {
             Run(() => ShowGroupFileDiffAsync(CommitDiff, repositoryPath, grouped.Group, grouped.File));
             return;

@@ -152,6 +152,8 @@
     </Style>
     <!-- Upstream's PanelBackground (ThemeApplier sets it from the theme) behind every window, as upstream's forms use it. -->
     <Style Selector="Window">
+      <!-- A window without an icon gets a blank one in the taskbar, also a dialog or a plugin's window. -->
+      <Setter Property="Icon" Value="avares://GitExtensions/Assets/git-extensions-logo-256px.png" />
       <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
       <!-- Upstream's application font is bold or italic when the Fonts page says so (FontApplier). -->
       <Setter Property="FontWeight" Value="{DynamicResource ApplicationFontWeight}" />

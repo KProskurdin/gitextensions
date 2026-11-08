@@ -718,6 +718,7 @@ toolbar icons with upstream's `ToolTipText`.
   fixed upstream's color helpers reading the light default theme whatever the theme was. See the FileViewer note in
   `PORTING-MAP.md`.
 - 2026-11-08, submodules in the viewer (upstream's status text, "Open Submodule Diff in separate window"), "Show blame in diff viewer" and the File tree tab's submodule items. See the FileViewer and RevisionDiffControl notes in `PORTING-MAP.md`.
+- 2026-11-08, the app icon on every window: only the browse window set one, so all others had a blank taskbar button. It now comes from the application's `Window` style, which plugin windows get too.
 
 ## Risks
 
