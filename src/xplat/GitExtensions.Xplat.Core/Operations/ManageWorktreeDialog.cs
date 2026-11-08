@@ -1,4 +1,5 @@
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.Core.Operations;
@@ -44,6 +45,8 @@ public static class ManageWorktreeDialog
 
     /// <summary>
     ///  Upstream's <c>IsCurrentlyOpenedWorktree</c>; the trailing separator trimmed is the OS's, where upstream trims '\'.
+    ///  Links are followed: git prints the real folder, and a repository opened through a link must still count as open,
+    ///  or <see cref="CanDelete"/> would offer to delete it.
     /// </summary>
     public static bool IsCurrent(WorktreeInfo worktree, string workingDirectory)
         => string.Equals(FullPath(worktree.Path), FullPath(workingDirectory),
@@ -62,5 +65,5 @@ public static class ManageWorktreeDialog
     public static string MainWorktreePath(IReadOnlyList<WorktreeInfo> worktrees, string workingDirectory)
         => worktrees.Count > 0 ? worktrees[0].Path : workingDirectory;
 
-    private static string FullPath(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+    private static string FullPath(string path) => Path.TrimEndingDirectorySeparator(RealPath.Resolve(path));
 }

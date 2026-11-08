@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Reports upstream test classes that changed since the fork base and are mirrored by the fork, in every shadow test
 # project (each fork test directory is paired with the upstream one it compiles):
-#   - the XplatLinux*.cs counterparts (from each file's "// Mirrors: <class>" line);
+#   - the XplatLinux*.cs and XplatMac*.cs counterparts (from each file's "// Mirrors: <class>" line);
 #   - the classes named in the XplatPlatformSkips.cs entries (a method entry names its class; a class entry is the class).
 # A mirrored upstream file that changed since the fork base, or that no longer exists, needs its mirror reviewed.
 # Exit codes:
@@ -64,7 +64,7 @@ for project in "${PROJECTS[@]}"; do
     upstream_tests="${project#*|}"
     [[ -d "$test_dir" ]] || continue
 
-    for file in "$test_dir"/XplatLinux*.cs; do
+    for file in "$test_dir"/XplatLinux*.cs "$test_dir"/XplatMac*.cs; do
         [[ -e "$file" ]] || continue
         source="${project%%|*}/$(basename "$file")"
         marker="$(grep -oE '^// Mirrors: .*' "$file" | head -n 1 | sed 's#^// Mirrors: ##' | tr -d '\r' || true)"

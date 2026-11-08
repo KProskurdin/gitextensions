@@ -13,7 +13,9 @@ internal sealed class CleanupDialogTests
     {
         CleanupDialog.IncludePaths(enabled: false, "a").Should().BeNull();
         CleanupDialog.IncludePaths(enabled: true, "a\r\n\nb c").Should().Be("\"a\" \"b c\"");
-        CleanupDialog.ExcludePaths(enabled: true, "x y.txt\nsub\\z.txt").Should().Be("--exclude=x?y.txt --exclude=sub/z.txt");
+
+        // The native separator: upstream's ToPosixPath converts '\' only on Windows, where it cannot be part of a file name.
+        CleanupDialog.ExcludePaths(enabled: true, $"x y.txt\n{Path.Combine("sub", "z.txt")}").Should().Be("--exclude=x?y.txt --exclude=sub/z.txt");
     }
 
     [Test]

@@ -90,7 +90,7 @@ internal sealed class CommitInfoTests
             WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
             Find<MenuItem>(window, "addNoteToolStripMenuItem").InputGesture.Should()
                 .Be(new Avalonia.Input.KeyGesture(Avalonia.Input.Key.N,
-                    Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift));
+                    Hotkeys.CommandModifier | Avalonia.Input.KeyModifiers.Shift));
 
             Click(window, "addNoteToolStripMenuItem");
 

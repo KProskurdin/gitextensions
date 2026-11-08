@@ -10,11 +10,11 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
 | Item | Value |
 |---|---|
 | Fork base (last upstream commit the fork contains) | `0174ba1cc` fix(diff): do not run git after repo closed |
-| Upstream `master` at last check | `52d08e996` fix: do not offer to delete new files when nothing can be deleted |
-| Upstream commits not yet in the fork | 17 |
-| Upstream files changed since fork base | 38 |
+| Upstream `master` at last check | `c584b9740` fix(RevisionGrid): draw bisect ref labels (2026-11-08) |
+| Upstream commits not yet in the fork | 55 |
+| Upstream files changed since fork base | 157 |
 | Fork changes in upstream folders (`src/app`, `src/plugins`, `tests/app`, `setup`, `eng`) | 0 |
-| Seams (PLAN.md section 5) | 7 |
+| Seams (PLAN.md section 5) | 8 |
 | Next sync due | 2026-10-17 (every 2 weeks while development is active) |
 | Maintainer | not yet named (PLAN.md section 9, question 9) |
 
@@ -92,3 +92,21 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
 - Fork tests the same day: 384 core and 276 app on Windows; 384 core on Linux (WSL). The Linux app run was stopped by the
   host for lack of memory and has to be repeated.
 - No merge. Local `master` is not moved.
+
+### 2026-11-08: first full test run on macOS, no merge
+
+- Machine: MacBook Air, Apple Silicon, macOS 27.2, Apple git 2.54, Homebrew .NET SDK 10.0.401.
+- Results on macOS, all from one tree: core 900 of 900; app 704 of 704; shadow projects 3821 pass, 0 fail, 201 ignored with
+  reasons. Windows and Linux were not run for this: the first CI run will be their check. Details in `MACOS.md`, MAC2.
+- **Found: `run-tests.sh` deleted the user's real settings file on every run off Windows** (the test attribute, and the shim's
+  data folder). The user's settings on this Mac were lost on 2026-11-08, and the scratch repository of a smoke run was then
+  written into the recent list, which was corrected by hand to this repository. Fixed, and checked by hash on every suite.
+- Found: the open worktree was not recognized when the repository's path goes through a link, so it could be deleted. Fixed.
+- Upstream checked: `c584b9740`, 55 commits ahead of the fork base. `tests/xplat/verify-upstream.sh` on macOS: 3902 passed,
+  0 failed, 222 ignored. That is after adding the 8 new `RecentRepoSplitterTests` methods (21 cases, Windows path inputs only)
+  to the skip list, and fixing the script for macOS's linked temporary folder. Windows and Linux were not run for this check.
+- `port-drift.sh`: 132 rows, 12 with upstream changes since their base, 0 stale; none reviewed yet. `xplat-drift.sh` not run:
+  it needs bash 4 or newer.
+- Measures (PLAN.md 11.2): upstream files modified 0; seam count 8, all in the section 5 table, no new one; anchors intact yes;
+  shadow build and tests pass yes; ported forms out of date: the 12 rows above.
+- Local changes only; `master` is not moved. The `upstream` remote was added, as `MACOS.md` section 3 says.

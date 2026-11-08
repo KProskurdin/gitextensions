@@ -466,7 +466,7 @@ internal sealed class GridMultiSelectionTests
             WaitUntil(() => files.ContainerFromItem(file) is not null);
             files.ContainerFromItem(file)!.Focus();
 
-            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+            window.KeyPress(Key.A, TestKeys.Command, PhysicalKey.A, keySymbol: null);
 
             files.SelectedItems!.Cast<object>().Should().AllBeOfType<CommitFile>()
                 .And.Subject.Cast<CommitFile>().Should().HaveCount(2)

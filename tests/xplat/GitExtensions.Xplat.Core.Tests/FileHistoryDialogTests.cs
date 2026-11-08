@@ -19,7 +19,8 @@ internal sealed class FileHistoryDialogTests
     [Test]
     public void The_title_names_the_file_its_name_in_the_commit_and_the_repository()
     {
-        FileHistoryDialog dialog = new("\"src\\a.txt\"");
+        // The native separator: upstream's ToPosixPath converts '\' only on Windows, where it cannot be part of a file name.
+        FileHistoryDialog dialog = new($"\"{Path.Combine("src", "a.txt")}\"");
 
         dialog.FileName.Should().Be("src/a.txt");
         dialog.Title("~/repo").Should().Be("File History - src/a.txt - ~/repo");

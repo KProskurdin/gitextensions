@@ -25,7 +25,7 @@ internal sealed class DiffViewFindTests
         (Window window, DiffView diff) = Show("alpha\nbeta foo\ngamma\nfoo delta");
         ListBox lines = diff.FindControl<ListBox>("DiffList")!;
 
-        Press(lines, Key.F, KeyModifiers.Control);
+        Press(lines, Key.F, Hotkeys.CommandModifier);
 
         FindWindow find = diff.FindWindow!;
         find.IsVisible.Should().BeTrue();
@@ -93,7 +93,7 @@ internal sealed class DiffViewFindTests
         ListBox lines = diff.FindControl<ListBox>("DiffList")!;
         diff.MaxLineNumber.Should().Be(5);
 
-        Press(lines, Key.G, KeyModifiers.Control);
+        Press(lines, Key.G, Hotkeys.CommandModifier);
         WaitUntil(() => window.OwnedWindows.OfType<GoToLineWindow>().Any());
         GoToLineWindow goTo = window.OwnedWindows.OfType<GoToLineWindow>().Single();
         goTo.FindControl<Label>("lineLabel")!.Content.Should().Be("Line number (1 - 5):");

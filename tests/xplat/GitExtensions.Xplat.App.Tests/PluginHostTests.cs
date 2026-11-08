@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
@@ -224,10 +225,28 @@ internal sealed class PluginHostTests
     {
         // The plugins built for the new shell are copied into Plugins next to the app, and so next to these tests.
         string[] names = ["GitExtensions.Plugins.BackgroundFetch", "GitExtensions.Plugins.AutoCompileSubmodules"];
-        ManagedExtensibility.Initialise([
+        Assembly[] assemblies =
+        [
             .. names.Select(name =>
                 Assembly.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Plugins", name, name + ".dll")))
-        ]);
+        ];
+
+        // With assemblies, Initialise looks up a resource while upstream's handler is subscribed and not yet guarded. Off
+        // Windows, under any culture that asks for a satellite (en-NL does), that overflows the stack (seam S8). The app
+        // never passes assemblies, so it is only this test that has to avoid the satellite request.
+        ResolveEventHandler upstreamResolve = PluginAssemblyResolve.UpstreamHandler();
+        CultureInfo uiCulture = CultureInfo.CurrentUICulture;
+        CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+        try
+        {
+            ManagedExtensibility.Initialise(assemblies);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = uiCulture;
+        }
+
+        PluginAssemblyResolve.Replace(upstreamResolve);
 
         IReadOnlyList<IGitPlugin> plugins = PluginLoader.Load(ManagedExtensibility.GetExports<IGitPlugin>());
 

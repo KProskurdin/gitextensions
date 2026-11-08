@@ -75,13 +75,13 @@ internal sealed class DiffViewOptionsTests
         DiffView diff = Show();
         ListBox list = diff.FindControl<ListBox>("DiffList")!;
 
-        Press(list, Key.E, KeyModifiers.Control);
-        Press(list, Key.W, KeyModifiers.Control | KeyModifiers.Shift);
+        Press(list, Key.E, Hotkeys.CommandModifier);
+        Press(list, Key.W, Hotkeys.CommandModifier | KeyModifiers.Shift);
         diff.Options.Should().Be(new DiffOptions(IgnoreWhitespaceKind.AllSpace, ShowEntireFile: true));
 
-        Press(list, Key.E, KeyModifiers.Control);
-        Press(list, Key.OemMinus, KeyModifiers.Control);
-        Press(list, Key.OemMinus, KeyModifiers.Control);
+        Press(list, Key.E, Hotkeys.CommandModifier);
+        Press(list, Key.OemMinus, Hotkeys.CommandModifier);
+        Press(list, Key.OemMinus, Hotkeys.CommandModifier);
         diff.Options.ContextLines.Should().Be(1);
     }
 

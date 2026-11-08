@@ -23,13 +23,13 @@ criterion, and the milestones beyond M4 are estimates only.
 | Area | State | Evidence |
 |---|---|---|
 | Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) compiles as `net10.0` | Done | `src/xplat/*` shadow projects, 0 errors on Windows and Linux |
-| Shared core tests | Done with a gap | Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03). Since 2026-11-02 every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8), and `run-tests.sh` runs them all; the analyzer project is in the solution as it is (netstandard2.0) |
+| Shared core tests | Done with a gap | macOS 3381 pass, 0 fail, 149 ignored with reasons (`GitCommands.Tests`, 2026-11-08). Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03, in WSL; `MACOS.md`, MAC2, explains why plain Linux may differ). Since 2026-11-02 every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8), and `run-tests.sh` runs them all; the analyzer project is in the solution as it is (netstandard2.0) |
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
-| Settings persistence | Linux done 2026-10-03; macOS by CI only | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 on Windows: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11. **Never started on macOS**: on 2026-11-08 it was only compiled for `osx-arm64`, and the bundle's layout was checked (`MACOS.md`, section 1) |
-| Fork workflow | Partly set up | `upstream` remote added and fetched (upstream/master afc512395, verified 2026-10-11). Local `master` NOT moved (user decision). Verify script `tests/xplat/verify-upstream.sh` passed on that upstream |
-| CI | **Written, has never run** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS: shadow and app tests, screenshot, benchmark, packages, nightly upstream check. It triggers on `xplat/**` while the work is on `feature/cross-os-ui`, and `origin/master` lacks the file, so no scheduled or manual run is possible. Two jobs also lack the submodules they need. Fix in `MACOS.md`, MAC1 |
+| Settings persistence | Linux done 2026-10-03; macOS seen working 2026-11-08 (`MACOS.md`, MAC2) | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
+| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 900 core and 704 app, all passing, and a bundle that starts through `open` (`MACOS.md`, MAC2; the smoke list is open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
+| Fork workflow | Partly set up | `upstream` remote added on the Mac and fetched. `tests/xplat/verify-upstream.sh` passed on `c584b9740` on macOS, 2026-11-08 (`SYNC-LOG.md`). Local `master` NOT moved (user decision) |
+| CI | **Written, has never run** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS: shadow and app tests, screenshot, benchmark, packages, nightly upstream check. Fixed 2026-11-08 to trigger on `feature/**` and with the missing submodules; it runs on the user's next push (`MACOS.md`, MAC1). `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
 
 Upstream size, for scale (measured 2026-10-03):
@@ -122,7 +122,7 @@ by an additive file.
 | S5 | `GitExtUtils` | `InternalsVisibleTo("GitExtensions")` in `XplatFriends.cs` | `ThreadHelper.JoinableTaskContext` setter is internal | Maybe, a public initializer would be cleaner |
 | S6 | `CommonAssemblyInfo.cs` | `SupportedOSPlatform` for linux and macos added alongside `windows7.0` | NUnit 4.3 refuses an assembly whose platform list excludes the running OS | Maybe |
 | S7 | `TestAppSettingsAttribute` (test side) | Replaced with a file-lock version | Named `Semaphore` is unsupported on Unix | No, test-only |
-| S8 | `ManagedExtensibility.CurrentDomain_AssemblyResolve` (additive, `PluginAssemblyResolve.cs`) | After `Initialise`, the private handler is unsubscribed by reflection and re-subscribed behind a guard that skips satellite (`*.resources`) requests and re-entry. Anchor-only `XplatPatch` items (Old equals New) in the shadow `GitUIPluginInterfaces.csproj` pin the handler's signature and its method-group subscription, so the build fails if upstream changes either; a missing handler also throws at runtime, and `PluginAssemblyResolveTests` pins the name | Off Windows `FileVersionInfo` parses every file as PE, and for any other file builds a `BadImageFormatException` (caught inside `FileVersionInfo`); under a non-English UI culture its localized message asks for a satellite, raising the handler again until the stack overflows at startup | Yes, real bug on Linux and macOS |
+| S8 | `ManagedExtensibility.CurrentDomain_AssemblyResolve` (additive, `PluginAssemblyResolve.cs`) | After `Initialise`, the private handler is unsubscribed by reflection and re-subscribed behind a guard that skips satellite (`*.resources`) requests and re-entry. Anchor-only `XplatPatch` items (Old equals New) in the shadow `GitUIPluginInterfaces.csproj` pin the handler's signature and its method-group subscription, so the build fails if upstream changes either; a missing handler also throws at runtime, and `PluginAssemblyResolveTests` pins the name | Off Windows `FileVersionInfo` parses every file as PE, and for any other file builds a `BadImageFormatException` (caught inside `FileVersionInfo`); under any UI culture that asks for a satellite (`en-NL` does, not only non-English ones) its localized message asks for one, raising the handler again until the stack overflows at startup | Yes, real bug on Linux and macOS |
 
 Rule: a new seam needs a line in this table, a reason, and a note on whether it is an upstream
 candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on Linux too.
@@ -1007,8 +1007,8 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
 1. Done (checked 2026-11-08, neither is left): remove the two leftovers of a failed test run (see `SYNC-LOG.md` 2026-10-11):
    `git config --unset http.proxy` and `git branch -D pr/n7_ann/feature`.
 2. Done: the work is committed and pushed by the user, up to `4e556130c`.
-3. Decide whether to merge `upstream/master` (`afc512395`, 18 commits ahead of the fork base) and move `master` (M0's open
-   item). Record the merge in `SYNC-LOG.md`.
+3. Decide whether to merge `upstream/master` (`c584b9740`, 55 commits ahead of the fork base on 2026-11-08) and move `master`
+   (M0's open item). Record the merge in `SYNC-LOG.md`.
 
 ### 12.2 Checks not run yet
 
@@ -1016,8 +1016,8 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
    (384). Repeat the app run and record it.
 2. CI on GitHub: `.github/workflows/xplat.yml` has not run there yet and cannot from this branch (section 2; MAC1). The evidence for M1 to M6 on macOS depends on it
    (section 9, question 11), and so do the screenshot (`app-screenshot`) and package (`app-packages`) jobs.
-3. macOS on hardware: nothing has run on a Mac yet. This is `MACOS.md` phase MAC2 now (section 9, question 4)
-   and the run is recorded in `SYNC-LOG.md`.
+3. macOS on hardware: done for the test suites on 2026-11-08 (all pass, `SYNC-LOG.md`). The smoke items that need a person at
+   the screen are still open (`MACOS.md`, MAC2).
 
 ### 12.3 M7, packaging and distribution (started)
 

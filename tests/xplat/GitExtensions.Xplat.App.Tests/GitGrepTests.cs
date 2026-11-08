@@ -98,7 +98,7 @@ internal sealed class GitGrepTests
         WaitUntil(() => files.ContainerFromItem(files.SelectedItem!) is not null);
         files.ContainerFromItem(files.SelectedItem!)!.Focus();
 
-        window.KeyPress(Key.F, RawInputModifiers.Control | RawInputModifiers.Shift, PhysicalKey.F, keySymbol: null);
+        window.KeyPress(Key.F, TestKeys.Command | RawInputModifiers.Shift, PhysicalKey.F, keySymbol: null);
 
         WaitUntil(() => window.DiffGitGrep!.Window is not null);
         FindInCommitFilesGitGrepWindow grep = window.DiffGitGrep!.Window!;

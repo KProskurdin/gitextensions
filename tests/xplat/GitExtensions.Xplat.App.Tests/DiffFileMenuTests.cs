@@ -424,7 +424,7 @@ internal sealed class DiffFileMenuTests
             WaitUntil(() => files.ContainerFromItem(last) is not null);
             files.ContainerFromItem(last)!.Focus();
 
-            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+            window.KeyPress(Key.A, TestKeys.Command, PhysicalKey.A, keySymbol: null);
 
             files.SelectedItems!.Cast<object>().Should().AllBeOfType<CommitFile>("upstream selects files only")
                 .And.Subject.Cast<CommitFile>().Select(file => file.Path).Should()
@@ -455,7 +455,7 @@ internal sealed class DiffFileMenuTests
 
         files.SelectedItems!.Clear();
         files.ContainerFromIndex(0)!.Focus();
-        diff.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+        diff.KeyPress(Key.A, TestKeys.Command, PhysicalKey.A, keySymbol: null);
         files.SelectedItems.Cast<RevisionDiffFile>().Select(file => file.Path).Should().Equal("z.md");
         diff.Close();
         window.Close();

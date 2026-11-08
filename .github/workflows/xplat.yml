@@ -4,9 +4,9 @@ name: xplat
 
 on:
   push:
-    branches: [ "xplat/**" ]
+    branches: [ "xplat/**", "feature/**" ]
   pull_request:
-    branches: [ "xplat/**" ]
+    branches: [ "xplat/**", "feature/**" ]
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
@@ -34,13 +34,28 @@ jobs:
           global-json-file: global.json
 
       - name: Build and test shadow projects
+        env:
+          XPLAT_ARTIFACTS: ${{ runner.temp }}/xplat-shadow
         run: bash tests/xplat/run-tests.sh
 
+      # Each suite runs even if an earlier one failed, so one run shows every failure on this OS.
       - name: Test app core (no UI)
+        if: ${{ !cancelled() }}
         run: dotnet test tests/xplat/GitExtensions.Xplat.Core.Tests -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-core/"
 
       - name: Test app (headless)
+        if: ${{ !cancelled() }}
         run: dotnet test tests/xplat/GitExtensions.Xplat.App.Tests -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-app/"
+
+      # The logs are long; the .trx files are what a failure is read from. Windows shadow runs write to artifacts/.
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/xplat-*/**/*.trx
+            artifacts/**/*.trx
 
   app-screenshot:
     strategy:
@@ -53,6 +68,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -114,6 +131,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-dotnet@v4
         with:

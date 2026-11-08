@@ -325,6 +325,12 @@ public static class Clipboard
 
 public static class Application
 {
+    /// <summary>
+    ///  Names the environment variable that holds a folder to use instead of the user's application data folder. Setting it
+    ///  in the process's environment is enough: on macOS HOME does not move that folder, because the OS looks it up by user.
+    /// </summary>
+    public const string UserDataFolderVariable = "GITEXTENSIONS_XPLAT_USER_DATA";
+
     public static string ExecutablePath => Environment.ProcessPath ?? string.Empty;
 
     public static string ProductName => "Git Extensions";
@@ -339,13 +345,15 @@ public static class Application
     /// <summary>
     ///  Like WinForms, creates the directory: upstream relies on it existing (e.g. before writing GitExtensions.settings).
     ///  ApplicationData is ~/.config on Linux, ~/Library/Application Support on macOS.
+    ///  <see cref="UserDataFolderVariable"/> replaces the folder, so a test run or a trial run leaves the user's settings alone.
     /// </summary>
     public static string UserAppDataPath
     {
         get
         {
-            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "GitExtensions");
+            string path = Environment.GetEnvironmentVariable(UserDataFolderVariable) is { Length: > 0 } folder
+                ? folder
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitExtensions");
             Directory.CreateDirectory(path);
             return path;
         }

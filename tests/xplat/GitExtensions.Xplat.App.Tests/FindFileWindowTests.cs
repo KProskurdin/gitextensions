@@ -102,7 +102,7 @@ internal sealed class FindFileWindowTests
         ListBox commits = Find<ListBox>(window, "CommitList");
         commits.Focus();
 
-        window.KeyPress(Key.F, RawInputModifiers.Control | RawInputModifiers.Shift, PhysicalKey.F, keySymbol: null);
+        window.KeyPress(Key.F, TestKeys.Command | RawInputModifiers.Shift, PhysicalKey.F, keySymbol: null);
 
         SearchWindow search = WaitForSearchWindow(window);
         Find<TabControl>(window, "DetailTabs").SelectedItem.Should().Be(Find<TabItem>(window, "FileTreeTab"));

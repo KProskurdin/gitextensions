@@ -315,7 +315,7 @@ internal sealed class MainWindowTests
         Find<TreeView>(window, "FileTreeView").SelectedItem.Should().BeOfType<FileTreeNode>().Which.Path.Should().Be(file);
         Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
 
-        PressIn(files, Key.Left, KeyModifiers.Control);
+        PressIn(files, Key.Left, Hotkeys.CommandModifier);
         ((CommitListItem)commits.SelectedItem!).Row.Subject.Should().Be("first");
     }
 

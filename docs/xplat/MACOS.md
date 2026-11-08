@@ -6,19 +6,22 @@ other plans stay valid: `PLAN.md` for the milestones and `UI-PARITY.md` for the 
 
 ## 1. What is known
 
-**Nothing has run on a Mac yet**, and neither has any CI job, so every "works on macOS" claim so far is unproven. Items
-marked *predicted* below come from reading the code. Delete or correct them as the real results come in.
+*Updated 2026-11-08 from the first full run on a Mac (MacBook Air, Apple Silicon, macOS 27.2, Apple git 2.54, Homebrew .NET
+SDK 10.0.401).* Every suite passes there; section 8, MAC2, has the results and what is still open. **No CI job has run yet**,
+so Windows and Linux have no result from this code. The rest of this section and the predictions below were written on
+Windows; each is corrected where a real result exists.
 
 | Check | Result | How |
 |---|---|---|
-| Compiles for Apple Silicon | Yes | `publish-app.sh osx-arm64` on Windows, 2026-11-08, 0 errors |
+| Runs on a Mac | Yes | Core 900, app 704 and shadow projects 3821 pass, 0 fail, and the bundle starts through `open` (MAC2). Earlier partial runs: a test run on 2026-10-16, and commits `da72971a1`, `735c6ae4d` |
+| Compiles for Apple Silicon | Yes | `publish-app.sh osx-arm64` on Windows, 2026-11-08, 0 errors; on the Mac too, and there it packs a working zip |
 | Bundle layout | Right | `Contents/MacOS/GitExtensions` is an arm64 Mach-O file. `libAvaloniaNative`, `libSkiaSharp` and `libHarfBuzzSharp` are there, as are the Plugins (17 entries) and Themes folders. Not started |
 | Packing the bundle on Windows | **Fails, and the script still prints the zip's path** | `Compress-Archive` threw and no zip was written. Files from NTFS also have no executable bit. Pack only on a Mac or CI |
 | Repository on a case-insensitive disk | No conflict | `git ls-files`: no paths differ only by case, none are non-ASCII, no symlinks |
 | Windows-only project types in `GitExtensions.xplat.slnx` | None | No `net10.0-windows` or `UseWindowsForms=true` under `src/xplat` or `tests/xplat` |
 | Windows calls in the new code | Guarded by platform | Only `XplatRegistryKey.cs` and `VisualStudio.cs` use Windows APIs. Check them on the first Mac run |
 | CI has ever run | **No, it cannot have from this branch** | `xplat.yml` triggers on `xplat/**`, the work is on `feature/cross-os-ui`, and `origin/master` lacks the file, so the schedule and manual runs are unavailable too (MAC1) |
-| Linux app tests | **Stale** | Last attempted 2026-10-11, and that run was killed for lack of memory. The app has grown a lot since, so POSIX failures are unknown too |
+| Linux app tests | **Stale**; will fail differently than thought: see the Windows programs in MAC2 | Last attempted 2026-10-11, and that run was killed for lack of memory. The app has grown a lot since, so POSIX failures are unknown too |
 
 ### Assumptions
 
@@ -68,6 +71,9 @@ brew install git                       # optional, see below
 # The .NET 10 SDK: the Arm64 or x64 installer from dotnet.microsoft.com. global.json allows only 10.0.x, and Homebrew's
 # dotnet-sdk cask may have moved on to a newer version.
 dotnet --version                       # must print 10.0.x
+# With Homebrew's dotnet instead (it works, and has been used): the built app host does not look in Homebrew's folder, so it
+# stops with "You must install .NET". Run it with DOTNET_ROOT, here for SDK 10.0.401; a published bundle does not need it:
+# export DOTNET_ROOT=/opt/homebrew/Cellar/dotnet/10.0.401/libexec
 
 git clone --recurse-submodules git@github.com:KProskurdin/gitextensions.git
 cd gitextensions
@@ -133,6 +139,11 @@ These live in the repository so they survive even if memory is not copied.
   `GIT_CEILING_DIRECTORIES` for this, after a failed run left a proxy setting and a branch here. After any crashed run, check
   that `git config --get http.proxy` and `git branch --list 'pr/*'` print nothing.
 - Say which platform a result comes from in every status report. From now on, "passes" means on macOS unless stated.
+- **A real run of the app uses the user's settings**, and on macOS `HOME` does not move them. Start every trial run with
+  `GITEXTENSIONS_XPLAT_USER_DATA=<scratch folder>` (through `open`: `open -n -W --env GITEXTENSIONS_XPLAT_USER_DATA=<folder>`).
+  Tests set it themselves (`tests/xplat/XplatTestUserData.cs`). See MAC2 for what happened without it.
+- `--no-build` after a failed build shows old results, also when the commands are joined by `;` instead of `&&`. It happened
+  again here.
 
 ## 6. Comparing with the WinForms app from a Mac
 
@@ -188,6 +199,10 @@ CI is the only guard for Windows and Linux after the move. All changes are in th
 Exit: all three OSes have completed a run, and their failures are understood. This also gives the first macOS and Linux app
 test results, ideally before the first Mac run.
 
+Status 2026-11-08: items 1, 2 and the `.trx` artifact are in the workflow, and each test suite now runs even if an earlier one
+failed. **Not run, so the workflow itself is unchecked:** it runs when the user pushes. Item 3 is also the user's. On Windows CI
+this is the first check of what changed for the Mac (`RealPath`, the data folder, the tests' keys).
+
 ### MAC2. First real results on the Mac (1 to 3 days, the least certain)
 
 Run in this order, from fast to slow: core, shadow projects, then the app. Treat each failure as one of:
@@ -199,14 +214,48 @@ Run in this order, from fast to slow: core, shadow projects, then the app. Treat
 
 No group of tests is skipped without looking at each one.
 
-**Test tooling needed first:**
+**Results, 2026-11-08, on macOS, all from one tree:**
 
-- `XplatSkipOnNonWindowsAttributeBase` can only skip for "not Windows". Add a macOS-only skip list, so a test that still
-  passes on Linux keeps running there.
-- macOS-only expectations go in `XplatMac*.cs` with `[Platform(Include = "MacOsX")]` and a `// Mirrors:` line. `xplat-drift.sh`
-  reads only `XplatLinux*.cs` today (its line 67), so add the new pattern too.
+| Suite | Result |
+|---|---|
+| Core | 900 of 900 |
+| App | 704 of 704, about 17 minutes. One more is not run: `Another_HOME...`, Windows only |
+| Shadow projects | 3821 pass, 0 fail, 201 ignored with reasons, of 4022 |
 
-**Predicted failures:**
+Only Apple's git has been used. There were 25 failures and one crash at first. Nothing needed a macOS-only skip or an
+`XplatMac*.cs` test, so the macOS skip list is not added; `xplat-drift.sh` already reads `XplatMac*.cs` for the day one exists.
+
+| What | Tests | Kind | Fix |
+|---|---|---|---|
+| **The shadow tests deleted the user's settings** | `TestAppSettingsAttribute` | Bug in the test setup, **data loss** | See below |
+| Temporary folder is a link, and the check for the open worktree compared text | `Worktrees_menu...`, and through it `CanDelete` | **Product bug**, also on Linux with a link: the open worktree could be deleted | `RealPath` in the core, used by `ManageWorktreeDialog.IsCurrent`; `RealPathTests`, `SymlinkedRepositoryTests` |
+| Temporary folder is a link | `Stash_on_a_submodule...`, `Open_selected...`, `The_window_creates...` | Fork test | `TestTemporaryFolder` sets `TMPDIR` to the real folder. Only 3 of about 70 uses cared |
+| Tests pressed Ctrl where the app uses Cmd | 12 tests | Fork test | `Hotkeys.CommandModifier`, and `TestKeys.Command` for raw input |
+| Windows programs: `ping.exe`, `cmd.exe`, `notepad.exe` | 4 upstream tests, 5 cases | Upstream test. They name Windows programs, so plain Linux should fail them too; WSL, the only Linux so far, finds Windows programs on its PATH, which would explain why they passed there (not checked: no WSL here) | Skipped with a reason; POSIX counterparts in `XplatLinuxExecutableTests` and `XplatLinuxDiffMergeToolConfigurationTests` |
+| `\` as a separator | `FileHistoryDialogTests`, `CleanupDialogTests` | Fork test | The native separator: `ToPosixPath` converts on Windows only |
+| Host crash, a stack overflow, ended the run at 551 tests | `Upstreams_plugins_load...` | Fork test | It passed assemblies to `Initialise`, which looks up a resource before seam S8's guard exists. The app passes none, so it is not affected. **S8's cause is wider than its note said:** `en-NL` is enough, not only a non-English culture |
+| Result reached the grid before the type was recorded | `The_grid_shows_the_build_status...` | Fork test, a race seen on a faster machine | It waits for the type too |
+
+Predictions that did not happen: FSEvents timing, `core.ignorecase` and `precomposeunicode`, the global git config, Apple's
+version text. They may still appear with another git or configuration. Avalonia's headless platform does keep Ctrl for its own
+list keys, as predicted, so the headless tests cannot show what Cmd+A does in a real list: try it by hand (MAC3).
+
+**Against upstream:** `verify-upstream.sh` passes on `c584b9740`, 55 commits past the fork base (3902 pass, 0 fail, 222 ignored).
+Every seam still applies, through upstream's rework of `AppSettings`. It needed two things: the script now uses the real
+temporary path (MSBuild found no references from the `/var` link), and upstream's 8 new `RecentRepoSplitterTests` methods with
+Windows path inputs are in the skip list. `port-drift.sh` lists 12 of 132 rows with upstream changes to review at the next merge.
+`xplat-drift.sh` was not run: it needs a newer bash (section 4).
+
+**The settings loss.** Upstream's `TestAppSettingsAttribute` deletes the settings file because a test host has its own folder
+on Windows. The shim's `UserAppDataPath` has one folder per user, so off Windows `run-tests.sh` deleted the real
+`GitExtensions.settings` and wrote test values there. Both parts date from the shadow projects' first commit, so by the code it hit every Linux and
+macOS run of these tests. It did hit the user's settings on this Mac on 2026-11-08, and possibly earlier (nothing older could be
+recovered: no local snapshots, Time Machine's disk not mounted). The Windows file is a different one, by reading the code; not
+checked. Now `GITEXTENSIONS_XPLAT_USER_DATA` moves the folder, every test assembly sets it when loaded, and the attribute
+refuses to delete outside that folder. Checked by hashing the settings folder and `~/.gitconfig` before and after every suite:
+unchanged. Do a run like this after changing the test setup. Tests still leave `xplat-*` litter in the temporary folder.
+
+**The predictions, written on Windows (kept for what has not been seen):**
 
 | Cause | Where | Likely fix |
 |---|---|---|
@@ -233,8 +282,24 @@ No group of tests is skipped without looking at each one.
 9. **Paths with a space:** the bundle is at `.../Git Extensions.app/...`, unlike every earlier run. The editor, askpass and
    "new instance" commands all build on `Environment.ProcessPath`.
 
-Exit: every test passes or has a recorded reason. The smoke list is done with its failures fixed or listed. Results are in
-`SYNC-LOG.md`, and `PLAN.md` section 2 and section 12.2 are updated.
+**Smoke results so far, 2026-11-08, all from the published bundle at a path with a space, on a scratch repository, with no
+person at the screen:**
+
+| Item | Result |
+|---|---|
+| 1 | Grid, graph and details: yes, screenshot. Diff with git colors, image, binary file: **not looked at** |
+| 2 | Restart keeps the recent list, which the second start shows, in the data folder. Window placement and the other settings: **not checked** |
+| 3 | `git rebase -i` and `git commit --amend` with the bundle as both editors: complete, the windows open. Editing them, and starting these from the app's own menus: **not done** |
+| 4 | The prompt window opens when git runs the bundle as `SSH_ASKPASS`, with the path's space. A typed answer, a passphrase, real ssh and `osxkeychain`: **not done** |
+| 5, 6, 7 | **Not done:** they need a person, except that plugins load |
+| 8 | Through `open`, and with `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and no `DOTNET_ROOT`: git is found. Tools through `PATH`: **not done** |
+| 9 | Editor and askpass: yes. "New instance": **not done** |
+
+The bundle's executable is ad-hoc signed by the SDK, so MAC5's item 4 has its minimum already, without a step in the script.
+
+Exit: every test passes or has a recorded reason (**met**). The smoke list is done with its failures fixed or listed (**open:
+the items above need a person at the screen**). Results are in `SYNC-LOG.md`, and `PLAN.md` section 2 and section 12.2 are
+updated (**done**).
 
 ### MAC3. Keys and pointer (1 to 2 days)
 

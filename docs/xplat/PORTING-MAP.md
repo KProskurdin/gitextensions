@@ -2085,7 +2085,9 @@ unchecked filter's text is not kept for the next time the window opens, as upstr
 dates are days (Until the whole day), where upstream's pickers start at midnight. Upstream's `--parents` with a revision
 filter is not added, as the new shell's log format always reads the parents.
 
-**FormManageWorktree / FormCreateWorktree** (`ported`). Ported: the worktrees as git lists them (upstream's
+**FormManageWorktree / FormCreateWorktree** (`ported`). macOS note 2026-11-08: `ManageWorktreeDialog.IsCurrent` follows links
+(`RealPath`), where upstream compares the text. git prints the real folder, so a repository opened through a link did not count
+as open and could be deleted. Windows keeps upstream's comparison. Ported: the worktrees as git lists them (upstream's
 `GitModule.GetWorktrees`, used as is), open one in the browse window, add one at a folder starting at the current commit
 (on a new branch when a name is given, detached otherwise), remove one after a confirmation, and prune. As upstream
 `065da3680` does, the first worktree is the main one and is never offered for removal. Not ported: creating from another

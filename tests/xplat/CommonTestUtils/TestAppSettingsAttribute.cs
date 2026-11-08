@@ -29,7 +29,15 @@ public sealed class TestAppSettingsAttribute : Attribute, ITestAction
         // dotnet install directory instead of the test output. Pin the path to the test's own directory.
         AppSettings.GetTestAccessor().ApplicationExecutablePath = Path.Combine(AppContext.BaseDirectory, "GitExtensions.exe");
 
-        File.Delete(AppSettings.SettingsContainer.SettingsCache.SettingsFilePath);
+        // Upstream's attribute deletes the file because a test host has its own settings folder on Windows. The stand-in's
+        // folder is the user's, so this once deleted the user's settings on macOS; XplatTestUserData moves it, and this checks.
+        string settingsFile = AppSettings.SettingsContainer.SettingsCache.SettingsFilePath;
+        if (!XplatTestUserData.Contains(settingsFile))
+        {
+            throw new InvalidOperationException($"Refusing to delete a settings file outside the tests' own folder: {settingsFile}");
+        }
+
+        File.Delete(settingsFile);
         AppSettings.SettingsContainer.SettingsCache.Load();
 
         AppSettings.CheckForUpdates = false;

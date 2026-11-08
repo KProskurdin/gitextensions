@@ -205,7 +205,7 @@ internal sealed class FileTreeMenuTests
         WaitUntil(() => tree.TreeContainerFromItem(notes) is not null);
         tree.TreeContainerFromItem(notes)!.Focus();
 
-        window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, keySymbol: null);
+        window.KeyPress(Key.A, TestKeys.Command, PhysicalKey.A, keySymbol: null);
 
         List<FileTreeNode> files = [.. ((IReadOnlyList<FileTreeNode>)tree.ItemsSource!).SelectMany(root => root.Descendants())
             .Where(node => !node.IsFolder)];

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace GitCommands;
@@ -10,8 +11,7 @@ namespace GitCommands;
 /// </summary>
 internal sealed class XplatRegistryKey
 {
-    private static readonly Lazy<EmulatedRegistryStore> _emulatedStore = new(() => new EmulatedRegistryStore(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitExtensions")));
+    private static readonly Lazy<EmulatedRegistryStore> _emulatedStore = new(() => new EmulatedRegistryStore(Application.UserAppDataPath));
 
     private readonly RegistryKey? _key;
 

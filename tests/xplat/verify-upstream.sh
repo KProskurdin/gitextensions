@@ -11,7 +11,9 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-WORKTREE="$(mktemp -d)/upstream-verify"
+# The real path: on macOS mktemp answers below /var, a link to /private/var. MSBuild resolves references to the real path but
+# not the project given to it, so a build started from the link does not find its references.
+WORKTREE="$(cd "$(mktemp -d)" && pwd -P)/upstream-verify"
 
 export XPLAT_ARTIFACTS="${XPLAT_ARTIFACTS:-$HOME/xplat-artifacts}-upstream"
 

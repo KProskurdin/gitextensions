@@ -76,6 +76,8 @@ internal sealed class BuildServerUiTests
         MainWindow window = OpenWindow();
         WaitUntil(() => HeadBuild(window).Symbol == "✔");
 
+        // The first results can reach the grid before the launch finishes and the window records the type.
+        WaitUntil(() => window.BuildServerType is not null);
         window.BuildServerType.Should().Be(GitHubActions);
         HeadBuild(window).Status.Should().Be(BuildStatus.Success);
         HeadBuild(window).Url.Should().Be("https://github.com/owner/repo/actions/runs/7");

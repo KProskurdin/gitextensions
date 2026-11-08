@@ -211,10 +211,10 @@ internal sealed class LeftPanelTests
         TreeView tree = Find<TreeView>(window, "BranchTreeView");
         tree.SelectedItem = BranchNode(tree, "older");
         FocusItem(tree, BranchNode(tree, "older")!);
-        window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, keySymbol: null);
+        window.KeyPress(Key.Space, TestKeys.Command, PhysicalKey.Space, keySymbol: null);
         tree.SelectedItem = TagNode(tree, "v1");
         FocusItem(tree, TagNode(tree, "v1")!);
-        window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, keySymbol: null);
+        window.KeyPress(Key.Space, TestKeys.Command, PhysicalKey.Space, keySymbol: null);
 
         BranchNode(tree, "older")!.IsMultiSelected.Should().BeTrue();
         TagNode(tree, "v1")!.IsMultiSelected.Should().BeTrue();
@@ -241,7 +241,7 @@ internal sealed class LeftPanelTests
         TreeView tree = Find<TreeView>(window, "BranchTreeView");
 
         ClickItem(window, tree, BranchNode(tree, "older")!, RawInputModifiers.None);
-        ClickItem(window, tree, BranchNode(tree, current)!, RawInputModifiers.Control);
+        ClickItem(window, tree, BranchNode(tree, current)!, TestKeys.Command);
 
         RepoObjectSelection.Selected(Roots(tree)).Select(node => node.Branch?.Name).Should().BeEquivalentTo("older", current);
 

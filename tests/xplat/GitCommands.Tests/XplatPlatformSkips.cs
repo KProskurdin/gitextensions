@@ -14,13 +14,18 @@ public sealed class XplatSkipOnNonWindowsAttribute : Attribute, ITestAction
     private const string WindowsPathInput = "Windows path syntax as input (drive letters, backslashes, UNC); '\\' is an ordinary filename character on this OS";
     private const string WindowsOnlyFeature = "Windows-only feature (WSL, Cygwin, cmd.exe batch limits, CreateProcess errors)";
     private const string PlatformNativeExpectation = "Expects Windows line endings or Windows path separators; Linux behavior is covered in XplatLinuxExpectations";
+    private const string WindowsProgram = "Starts or looks for a Windows program (ping.exe, cmd.exe, notepad.exe), which a WSL session finds through its Windows PATH but macOS and plain Linux do not; POSIX programs are used in XplatLinuxExecutableTests and XplatLinuxDiffMergeToolConfigurationTests";
 
     // Method-level so passing cases of the same method stay excluded too. Each entry needs a per-test decision before
     // it counts as Linux coverage.
     private static readonly (string Method, string Reason)[] _skips =
     [
         ("GitCommandsTests.CommitMessageManagerTests.WriteCommitMessageToFileAsync_no_bom", PlatformNativeExpectation),
+        ("GitCommandsTests.DiffMergeTools.DiffMergeToolConfigurationManagerTests.LoadDiffMergeToolConfig_should_create_tool_config_if_tool_unregistered_but_exists_path", WindowsProgram),
         ("GitCommandsTests.DiffMergeTools.DiffMergeToolConfigurationManagerTests.LoadDiffMergeToolConfig_should_create_tool_config_with_userSuppliedPath_if_tool_unregistered", WindowsPathInput),
+        ("GitCommandsTests.ExecutableTests.ExecuteAsync_shall_return_latest_after_timeout", WindowsProgram),
+        ("GitCommandsTests.ExecutableTests.Process_shall_be_killed_on_cancellation", WindowsProgram),
+        ("GitCommandsTests.ExecutableTests.WaitForProcessExitAsync_shall_return_latest_after_timeout", WindowsProgram),
         ("GitCommandsTests.FullPathResolverTests.Resolve_combines_paths", WindowsPathInput),
         ("GitCommandsTests.FullPathResolverTests.Resolve_does_not_throw_on_invalid_workingDir", WindowsPathInput),
         ("GitCommandsTests.FullPathResolverTests.Resolve_handles_system_filenames", WindowsPathInput),
@@ -53,6 +58,14 @@ public sealed class XplatSkipOnNonWindowsAttribute : Attribute, ITestAction
         ("GitCommandsTests.UserRepositoryHistory.LocalRepositoryManagerTests.AddAsMostRecentAsync_should_move_existing_path_as_top_entry", WindowsPathInput),
         ("GitCommandsTests.UserRepositoryHistory.LocalRepositoryManagerTests.AddAsMostRecentAsync_should_move_only_first_existing_path_as_top_entry", WindowsPathInput),
         ("GitCommandsTests.UserRepositoryHistory.LocalRepositoryManagerTests.AddAsMostRecentAsync_should_not_move_if_path_already_as_top_entry", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_distinguish_wsl_distributions_by_path", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_extend_unc_labels_until_unique", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_label_drive_and_unc_with_same_suffix", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_mark_colliding_drives", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_mark_colliding_filesystems", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_not_mark_filesystems_with_distinct_path_suffixes", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_not_mark_unique_wsl_captions", WindowsPathInput),
+        ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_should_omit_common_server_parts_of_unc_labels", WindowsPathInput),
         ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_Should_display_middle_dots_in_caption", WindowsPathInput),
         ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_Should_not_shorten_but_handle_user_folder_as_caption", WindowsPathInput),
         ("GitCommandsTests.UserRepositoryHistory.RecentRepoSplitterTests.SplitRecentRepos_Should_split_depending_anchor", WindowsPathInput),

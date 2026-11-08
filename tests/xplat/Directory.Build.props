@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <Using Include="AwesomeAssertions" />
+    <Compile Include="$(MSBuildThisFileDirectory)XplatTestUserData.cs" Link="XplatTestUserData.cs" />
   </ItemGroup>
 </Project>
