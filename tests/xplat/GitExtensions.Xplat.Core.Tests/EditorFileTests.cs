@@ -16,6 +16,43 @@ internal sealed class EditorFileTests
     public void TearDown() => File.Delete(_path);
 
     [Test]
+    public async Task ReadAsync_should_use_the_files_encoding_and_write_it_back()
+    {
+        byte[] latin1 = [0x63, 0x61, 0x66, 0xE9, (byte)'\n'];
+        await File.WriteAllBytesAsync(_path, latin1);
+
+        EditorFile file = await EditorFile.ReadAsync(_path, Encoding.Latin1);
+
+        file.Text.Should().Be("caf\u00E9\n");
+        await file.WriteAsync(_path, "caf\u00E9 au lait\n");
+        (await File.ReadAllBytesAsync(_path)).Should().Equal([.. Encoding.Latin1.GetBytes("caf\u00E9 au lait\n")]);
+    }
+
+    [Test]
+    public async Task ReadAsync_should_let_a_byte_order_mark_decide_over_the_files_encoding_and_keep_it()
+    {
+        await File.WriteAllBytesAsync(_path, [.. Encoding.Unicode.GetPreamble(), .. Encoding.Unicode.GetBytes("\u20AC\n")]);
+
+        EditorFile file = await EditorFile.ReadAsync(_path, Encoding.Latin1);
+
+        file.Text.Should().Be("\u20AC\n");
+        file.HasByteOrderMark.Should().BeTrue();
+        await file.WriteAsync(_path, "\u20AC2\n");
+        (await File.ReadAllBytesAsync(_path)).Should().Equal([.. Encoding.Unicode.GetPreamble(), .. Encoding.Unicode.GetBytes("\u20AC2\n")]);
+    }
+
+    [Test]
+    public async Task ReadAsync_should_not_add_a_byte_order_mark_for_an_encoding_that_has_one()
+    {
+        await File.WriteAllBytesAsync(_path, Encoding.UTF8.GetBytes("a\n"));
+
+        EditorFile file = await EditorFile.ReadAsync(_path, Encoding.UTF8);
+        await file.WriteAsync(_path, "b\n");
+
+        (await File.ReadAllBytesAsync(_path)).Should().Equal(Encoding.UTF8.GetBytes("b\n"));
+    }
+
+    [Test]
     public async Task ReadAsync_should_keep_lf_files_as_lf()
     {
         await File.WriteAllTextAsync(_path, "pick 1 one\npick 2 two\n");

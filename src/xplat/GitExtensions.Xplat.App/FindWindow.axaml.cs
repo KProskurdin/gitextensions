@@ -20,6 +20,7 @@ public partial class FindWindow : Window
 
     private string? _fileName;
     private bool _selectionOnly;
+    private bool _canHighlightAll = true;
 
     public FindWindow()
     {
@@ -101,7 +102,15 @@ public partial class FindWindow : Window
     /// <summary>
     ///  Whether the window's owner can mark every occurrence; a plain text box cannot.
     /// </summary>
-    public bool CanHighlightAll { get; set; } = true;
+    public bool CanHighlightAll
+    {
+        get => _canHighlightAll;
+        set
+        {
+            _canHighlightAll = value;
+            btnHighlightAll.IsVisible = value && !ReplaceMode;
+        }
+    }
 
     /// <summary>
     ///  Upstream's <c>txtReplaceWith</c>.

@@ -121,6 +121,8 @@ public sealed class HelpImageView : StackPanel
         _hide.IsVisible = IsExpanded;
         _picture.IsVisible = IsExpanded;
         _hoverText.IsVisible = IsExpanded && _isOnHoverShowImage2;
-        _picture.Source = _isHovering && _image2 is not null ? _image2 : _image1;
+
+        // Upstream's dialogs give every help picture through AdaptLightness.
+        _picture.Source = ThemedImages.AdaptLightness(_isHovering && _image2 is not null ? _image2 : _image1);
     }
 }

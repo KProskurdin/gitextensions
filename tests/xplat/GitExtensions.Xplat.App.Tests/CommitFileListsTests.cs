@@ -337,6 +337,43 @@ internal sealed class CommitFileListsTests
         => Item(list, name).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     // The menu updates itself for the selection when it opens, as upstream's ItemContextMenu_Opening.
+    [AvaloniaTest]
+    public void Staging_shows_the_progress_bar_only_while_git_runs()
+    {
+        // A clean filter that takes its time, so that the bar can be seen.
+        _repo.Run("config", "filter.slow.clean", "sleep 2; cat");
+        File.WriteAllText(Path.Combine(_repo.Path, ".gitattributes"), "*.slow filter=slow\n");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.slow"), "content");
+        CommitWindow commit = OpenCommitWindow();
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        WaitUntil(() => unstaged.ItemCount == 2);
+        ProgressBar progress = Find<ProgressBar>(commit, "StageProgress");
+        progress.IsVisible.Should().BeFalse();
+
+        Click(commit, "StageAllButton");
+
+        WaitUntil(() => progress.IsVisible);
+        progress.Maximum.Should().Be(2);
+        WaitUntil(() => !progress.IsVisible);
+        WaitUntil(() => Find<ListBox>(commit, "StagedList").ItemCount == 2);
+        commit.Close();
+    }
+
+    [AvaloniaTest]
+    public void Unstaging_a_rename_also_takes_its_old_name_out_of_the_index()
+    {
+        _repo.Run("mv", "a.txt", "renamed.txt");
+        CommitWindow commit = OpenCommitWindow();
+        ListBox staged = Find<ListBox>(commit, "StagedList");
+        WaitUntil(() => Paths(staged).SequenceEqual(["renamed.txt"]));
+
+        Click(commit, "UnstageAllButton");
+
+        WaitUntil(() => staged.ItemCount == 0);
+        _repo.Run("diff", "--cached", "--name-only").Trim().Should().BeEmpty("the removal of the old name must not stay staged");
+        commit.Close();
+    }
+
     private static void OpenMenu(ListBox list)
     {
         list.RaiseEvent(new ContextRequestedEventArgs());

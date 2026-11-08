@@ -61,7 +61,9 @@ internal sealed class StashWindowTests
 
         Find<ComboBox>(window, "StashesBox").SelectedIndex = 0;
 
+        Find<ProgressBar>(window, "Loading").IsVisible.Should().BeTrue("the files are being read");
         WaitUntil(() => !window.IsLoadingFiles && Rows(window).Count > 1);
+        Find<ProgressBar>(window, "Loading").IsVisible.Should().BeFalse();
         Rows(window).Select(row => row.Text).Should().Equal("Commit index", "a.txt", "Working directory", "c.txt");
         Find<Button>(window, "DropButton").IsEnabled.Should().BeFalse();
         Find<TextBox>(window, "MessageBox").IsReadOnly.Should().BeFalse();

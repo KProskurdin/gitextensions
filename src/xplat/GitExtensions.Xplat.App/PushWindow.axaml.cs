@@ -27,7 +27,8 @@ public partial class PushWindow : Window
     private readonly Func<string, Task<IReadOnlyList<IGitRef>?>>? _readRemoteHeads;
     private string? _rowsRemote;
 
-    /// <param name="canCreatePullRequest">True when a repository host plugin knows the repository.</param>
+    /// <param name="canCreatePullRequest">True when a repository host plugin knows the repository; a remote on Azure DevOps
+    ///  enables the choice too, as upstream's.</param>
     /// <param name="openPull">Opens the pull dialog over this window (upstream's Pull button).</param>
     /// <param name="manageRemotes">Opens the remotes window over this window with a remote chosen, and reads the
     ///  repository again (upstream's Manage remotes).</param>
@@ -49,7 +50,7 @@ public partial class PushWindow : Window
         TagBox.ItemsSource = dialog.Tags;
         RecursiveSubmodulesBox.ItemsSource = PushDialog.RecursiveSubmoduleChoices;
         ToolTip.SetTip(ForceWithLeaseCheck, UpstreamTranslation.ByText(PushDialog.ForceWithLeaseTooltip));
-        CreatePullRequestCheck.IsEnabled = canCreatePullRequest;
+        CreatePullRequestCheck.IsEnabled = canCreatePullRequest || dialog.HasAzureDevOpsRemote;
 
         AddRemoteButton.IsEnabled = manageRemotes is not null;
         AddRemoteButton.Click += (_, _) => UiActions.Run(() => ManageRemotesAsync(_dialog.Remote), _ => { });

@@ -69,6 +69,10 @@ public partial class BlameView : UserControl
                 e.Handled = true;
                 RequestSelectedLineCommit();
             }
+            else if (RunFindHotkey(e))
+            {
+                e.Handled = true;
+            }
         };
 
         Toggle(IgnoreWhitespaceMenuItem, options => options with { IgnoreWhitespace = !options.IgnoreWhitespace });
@@ -371,7 +375,8 @@ public partial class BlameView : UserControl
     private void ShowRows(int line)
     {
         _highlightedHash = null;
-        BlameList.ItemsSource = _preferences.BlameOptions.Rows(_lines, _filePath, CultureInfo.CurrentCulture);
+        BlameList.ItemsSource = BlameRow.WithSyntax(_preferences.BlameOptions.Rows(_lines, _filePath, CultureInfo.CurrentCulture), _filePath);
+        _found = null;
         GoToLine(line);
     }
 

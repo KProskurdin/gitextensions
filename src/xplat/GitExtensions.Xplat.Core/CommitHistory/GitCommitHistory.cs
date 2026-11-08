@@ -311,7 +311,8 @@ public sealed class GitCommitHistory : ICommitHistory
     private static IReadOnlyList<BlameLine> LoadBlame(string path, string hash, string filePath,
         IReadOnlyList<string> flags)
     {
-        ExecutionResult result = CreateModule(path).GitExecutable.Execute(
+        GitModule module = CreateModule(path);
+        ExecutionResult result = module.GitExecutable.Execute(
             new GitArgumentBuilder("blame")
             {
                 "--line-porcelain",
@@ -320,13 +321,14 @@ public sealed class GitCommitHistory : ICommitHistory
                 "--",
                 filePath.Quote()
             },
+            outputEncoding: GitModule.LosslessEncoding,
             throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
         {
             throw new GitOperationException(result.StandardError.Trim());
         }
 
-        return BlameParser.Parse(result.StandardOutput);
+        return BlameParser.Parse(result.StandardOutput, module.FilesEncoding, module.LogOutputEncoding);
     }
 
     private static IReadOnlyList<CommitFile> LoadFiles(string path, string hash)

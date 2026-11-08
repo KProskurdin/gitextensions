@@ -57,6 +57,13 @@ jobs:
             ${{ runner.temp }}/xplat-*/**/*.trx
             artifacts/**/*.trx
 
+      # Annotations, unlike job logs and artifacts, can be read without signing in.
+      - name: Report failed tests
+        if: ${{ !cancelled() }}
+        run: |
+          if python3 --version >/dev/null 2>&1; then PYTHON=python3; else PYTHON=python; fi
+          "$PYTHON" tests/xplat/ci-report.py failures "$RUNNER_TEMP" artifacts
+
   app-screenshot:
     strategy:
       fail-fast: false
@@ -79,16 +86,28 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
+      # Apart from running it, so that the step times show which of the two a hang is in.
+      - name: Build app
+        run: dotnet build src/xplat/GitExtensions.Xplat.App -nologo -v:m -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/"
+
+      - name: Install dotnet-stack
+        run: dotnet tool install dotnet-stack --tool-path "$RUNNER_TEMP/tools"
+
+      # A window waiting for someone must not hold a runner for hours; the first run sat here for over 40 minutes. The
+      # watchdog reports what the app is doing, in annotations; the time limit is for a hang the watchdog does not end.
       - name: Launch app on the repository and save a screenshot
+        timeout-minutes: 10
         env:
           XPLAT_SCREENSHOT: ${{ runner.temp }}/app-screenshot.png
         run: |
+          export DOTNET_STACK="$RUNNER_TEMP/tools/dotnet-stack"
           run_app() {
-            dotnet run --project src/xplat/GitExtensions.Xplat.App -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/" -- "$GITHUB_WORKSPACE"
+            bash tests/xplat/run-with-watchdog.sh 300 dotnet run --no-build --project src/xplat/GitExtensions.Xplat.App -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/" -- "$GITHUB_WORKSPACE"
           }
           if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a bash -c "$(declare -f run_app); run_app"; else run_app; fi
 
       - name: Upload screenshot
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: app-screenshot-${{ matrix.os }}
@@ -97,12 +116,14 @@ jobs:
       # Revision graph target (PLAN.md M3.5): load 5000 commits and scroll them; the frame times go to an artifact.
       # CI runners have no GPU and Linux uses xvfb, so the numbers are a lower bound, not the desktop figure.
       - name: Revision graph benchmark
+        timeout-minutes: 15
         env:
           XPLAT_BENCHMARK: ${{ runner.temp }}/graph-benchmark.txt
         run: |
+          export DOTNET_STACK="$RUNNER_TEMP/tools/dotnet-stack"
           bash tests/xplat/make-bench-repo.sh "$RUNNER_TEMP/bench-repo"
           run_bench() {
-            dotnet run --project src/xplat/GitExtensions.Xplat.App -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/" -- "$RUNNER_TEMP/bench-repo"
+            bash tests/xplat/run-with-watchdog.sh 600 dotnet run --no-build --project src/xplat/GitExtensions.Xplat.App -p:ArtifactsDir="$RUNNER_TEMP/xplat-app-run/" -- "$RUNNER_TEMP/bench-repo"
           }
           if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a bash -c "$(declare -f run_bench); run_bench"; else run_bench; fi
           cat "$XPLAT_BENCHMARK"

@@ -101,7 +101,7 @@ public partial class MainWindow : Window
         _actions.EditorCommand = AppServices.EditorCommand;
         _fileManager = new SystemFileManager(_launcher, HostPlatform.Current);
         _plugins = new PluginHost(this, _actions, plugin => Run(() => ShowSettingsAsync(plugin, pluginsPage: true)),
-            ShowCommitWindow);
+            ShowCommitWindow) { NewCloneWindow = NewCloneWindow };
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
 
@@ -461,6 +461,25 @@ public partial class MainWindow : Window
 
         Run(ShowPluginsAsync);
         await _recent.LoadAsync();
+
+        // As upstream's command line: the clone verb or a URL. Upstream shows the dialog alone; here it is over the dashboard.
+        if (Program.StartsWithClone)
+        {
+            CloneWindow clone = NewCloneWindow(Program.CloneUrl);
+            Task shown = clone.ShowDialog<bool>(this);
+            if (Screenshot.RequestedFile is { } cloneScreenshot)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(1000));
+                await Screenshot.SaveAsync(clone, cloneScreenshot);
+                clone.Close();
+                await shown;
+                Close();
+                return;
+            }
+
+            await shown;
+            return;
+        }
 
         // As upstream's Program: without a repository argument, the one used last when the setting asks for it.
         string? initial = Program.InitialRepository ??
@@ -1008,9 +1027,14 @@ public partial class MainWindow : Window
     // Upstream's StartCloneDialog from the browse window: the clone window asks whether to open the clone here.
     private Task CloneAsync() => NewCloneWindow().ShowDialog<bool>(this);
 
-    private CloneWindow NewCloneWindow()
+    private CloneWindow NewCloneWindow(string? url = null, EventHandler<GitModuleEventArgs>? gitModuleChanged = null)
         => new(RepositoryPath, _actions, _preferences, [.. _recent.Items.Select(item => item.Path)], _recent.AddAsync,
-            OpenRepositoryAsync);
+            async path =>
+            {
+                await OpenRepositoryAsync(path);
+                gitModuleChanged?.Invoke(this, new GitModuleEventArgs(GitModules.Open(path)));
+            },
+            url);
 
     // Pull and push use the remote the branch tracks, falling back to origin for a branch without one.
     private string TrackingRemote() => _repository.TrackingRemote ?? RemoteName;
@@ -1251,8 +1275,20 @@ public partial class MainWindow : Window
                         window.Dialog.ToUrl)))
             && window.CreatePullRequestAfterPush)
         {
-            // As upstream: the repository host's pull request window after the push.
+            CreatePullRequestAfterPush(window.Dialog);
+        }
+    }
+
+    // As upstream: the repository host's pull request window after the push, else the page of an Azure DevOps remote.
+    public void CreatePullRequestAfterPush(PushDialog dialog)
+    {
+        if (_plugins.HasRepositoryHost)
+        {
             _plugins.StartCreatePullRequest(_plugins.Owner);
+        }
+        else if (dialog.AzureDevOpsPullRequestUrl is { } page)
+        {
+            DialogHelp.Open(page);
         }
     }
 

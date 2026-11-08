@@ -206,6 +206,24 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
+    public void A_plugin_can_open_the_clone_dialog_on_a_url()
+    {
+        const string url = "https://example.com/owner/project.git";
+        MainWindow window = NewWindow();
+        window.Show();
+        MenuItem item = WaitForPluginItem(window);
+        Open(window, _repo.Path);
+        _plugin.OnExecute = args => args.GitUICommands.StartCloneDialog(args.OwnerForm, url);
+
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => window.OwnedWindows.OfType<CloneWindow>().Any());
+        CloneWindow clone = window.OwnedWindows.OfType<CloneWindow>().Single();
+        WaitUntil(() => clone.FindControl<ComboBox>("FromBox")!.Text == url);
+        clone.Close();
+    }
+
+    [AvaloniaTest]
     public void A_change_notice_from_a_background_thread_reaches_the_plugins_on_the_UI_thread()
     {
         MainWindow window = NewWindow();

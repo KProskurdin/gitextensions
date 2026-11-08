@@ -122,11 +122,11 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
     public void Cancel() => _cancellation?.Cancel();
 
-    public Task<bool> StageAsync(string repositoryPath, IReadOnlyList<string> paths)
-        => RunAsync("Staged", repositoryPath, () => _operations.StageAsync(repositoryPath, paths));
+    public Task<bool> StageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null)
+        => RunAsync("Staged", repositoryPath, () => _operations.StageAsync(repositoryPath, paths, processed));
 
-    public Task<bool> UnstageAsync(string repositoryPath, IReadOnlyList<string> paths)
-        => RunAsync("Unstaged", repositoryPath, () => _operations.UnstageAsync(repositoryPath, paths));
+    public Task<bool> UnstageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null)
+        => RunAsync("Unstaged", repositoryPath, () => _operations.UnstageAsync(repositoryPath, paths, processed));
 
     /// <summary>
     ///  Stages or unstages the lines selected in a file's diff (see <see cref="IGitOperations.StageLinesAsync"/>).

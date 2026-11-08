@@ -89,6 +89,9 @@
             </DataTemplate>
           </ListBox.DataTemplates>
         </ListBox>
+        <!-- Upstream's Loading control, over the list while the files are read. -->
+        <ProgressBar x:Name="Loading" IsIndeterminate="True" IsVisible="False" Width="120" MinWidth="120"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
       </DockPanel>
       <AccessText Grid.Row="2" Text="_Message:" Margin="0,6,0,3" />

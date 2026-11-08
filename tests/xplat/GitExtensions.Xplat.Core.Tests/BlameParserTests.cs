@@ -68,4 +68,26 @@ internal sealed class BlameParserTests
 
         BlameParser.Parse(text).Should().ContainSingle().Which.Content.Should().Be("col1\tcol2");
     }
+
+    [Test]
+    public void Parse_should_decode_the_files_lines_and_the_commit_headers_each_in_their_own_encoding()
+    {
+        string author = System.Text.Encoding.Latin1.GetString(System.Text.Encoding.UTF8.GetBytes("Zoë"));
+        string porcelain = $"0123456789012345678901234567890123456789 1 1 1\nauthor {author}\nauthor-time 1\nsummary s\nfilename a.txt\n\tcafé\n";
+
+        BlameLine line = BlameParser.Parse(porcelain, System.Text.Encoding.Latin1, System.Text.Encoding.UTF8).Single();
+
+        line.Author.Should().Be("Zoë");
+        line.Content.Should().Be("café");
+    }
+
+    [Test]
+    public void WithSyntax_should_color_a_known_file_type_and_leave_others_alone()
+    {
+        const string porcelain = "0123456789012345678901234567890123456789 1 1 1\nauthor A\nauthor-time 1\nsummary s\nfilename a\n\tpublic class X\n";
+        IReadOnlyList<BlameRow> rows = new BlameOptions().Rows(BlameParser.Parse(porcelain), "a", System.Globalization.CultureInfo.InvariantCulture);
+
+        BlameRow.WithSyntax(rows, "a.cs").Single().Syntax.Should().Contain(run => run.Style != null);
+        BlameRow.WithSyntax(rows, "a.no-such-type").Single().Syntax.Should().BeNull();
+    }
 }

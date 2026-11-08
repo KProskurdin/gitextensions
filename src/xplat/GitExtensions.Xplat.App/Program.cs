@@ -16,6 +16,17 @@ internal static class Program
     public static string? InitialRepository { get; private set; }
 
     /// <summary>
+    ///  True when the command line asks for upstream's clone dialog (<see cref="CloneArguments"/>), which then opens at startup
+    ///  with <see cref="CloneUrl"/>.
+    /// </summary>
+    public static bool StartsWithClone { get; private set; }
+
+    /// <summary>
+    ///  The URL the clone dialog starts with.
+    /// </summary>
+    public static string? CloneUrl { get; private set; }
+
+    /// <summary>
     ///  The file given with upstream's <c>fileeditor</c> verb. The app then shows only the editor window, as git expects of
     ///  the editor it starts for a rebase todo list or a commit message.
     /// </summary>
@@ -46,7 +57,9 @@ internal static class Program
         }
         else
         {
-            InitialRepository = args.Length > 0 ? args[0] : null;
+            StartsWithClone = CloneArguments.AsksForClone(args);
+            CloneUrl = CloneArguments.Url(args);
+            InitialRepository = !StartsWithClone && args.Length > 0 ? args[0] : null;
 
             // Not for the prompt and editor runs above: git started those, and they start nothing themselves.
             LoginShellPath.Apply();

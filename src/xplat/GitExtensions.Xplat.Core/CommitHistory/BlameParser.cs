@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text;
+using GitCommands;
 using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
@@ -33,7 +35,11 @@ public static class BlameParser
     private const int FullHashLength = 40;
     private const int ShortHashLength = 8;
 
-    public static IReadOnlyList<BlameLine> Parse(string porcelain)
+    /// <summary>
+    ///  Reads <paramref name="porcelain"/>. With encodings it is git's output read losslessly (<see cref="GitModule.LosslessEncoding"/>),
+    ///  as upstream reads blame: a file's lines are in the file's encoding and the commit headers in the log's, which can differ.
+    /// </summary>
+    public static IReadOnlyList<BlameLine> Parse(string porcelain, Encoding? filesEncoding = null, Encoding? logEncoding = null)
     {
         List<BlameLine> lines = [];
         ObjectId? objectId = null;
@@ -55,7 +61,7 @@ public static class BlameParser
 
         foreach (string raw in porcelain.Split('\n'))
         {
-            string line = raw.TrimEnd('\r');
+            string line = Decode(raw.TrimEnd('\r'), raw.StartsWith('\t') ? filesEncoding : logEncoding);
             if (line.StartsWith('\t'))
             {
                 lines.Add(new BlameLine(lineNumber, hash, author, date, line[1..], time, fileName, email)
@@ -126,4 +132,7 @@ public static class BlameParser
 
     private static bool IsGroupHeader(string line)
         => line.Length > FullHashLength && line[FullHashLength] == ' ' && line[..FullHashLength].All(Uri.IsHexDigit);
+
+    private static string Decode(string line, Encoding? encoding)
+        => encoding is null ? line : encoding.GetString(GitModule.LosslessEncoding.GetBytes(line));
 }

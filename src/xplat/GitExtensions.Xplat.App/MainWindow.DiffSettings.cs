@@ -28,6 +28,7 @@ public partial class MainWindow
 
     private void WireDiffFileSettings()
     {
+        FileListToolbar.Attach(DiffFilesSettingsButton, _preferences, (MenuFlyout)DiffFilesSettingsButton.Flyout!);
         DiffFilesShowUntrackedMenuItem.Click += (_, _) => RefreshDiffFilesFromSettings();
         DiffFilesShowSkipWorktreeMenuItem.Click += (_, _) => RefreshDiffFilesFromSettings();
         DiffFilesEditGitIgnoreMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: false));

@@ -56,6 +56,9 @@ public partial class RevisionDiffWindow : Window
         _secondDisplay = secondDisplay;
         InitializeComponent();
         UpstreamTranslation.Apply(this, "FormDiff");
+
+        // This window has no settings menu, but upstream's choice holds for every file list.
+        FileListToolbar.Attach(DiffFilesByPathButton, preferences);
         _files = new RevisionFileList<RevisionDiffFile>(DiffFiles, DiffFilesFilterBox, DiffFilesByPathButton,
             DiffFilesByExtensionButton, DiffFilesByStatusButton, DiffFilesNoFilesText, preferences, file => file.Path,
             file => file.Status, treeButtons: new FileListTreeButtons(DiffFilesCollapseGroupsButton, DiffFilesAsTreeButton,
@@ -272,7 +275,7 @@ public partial class RevisionDiffWindow : Window
     private async Task PickAnotherCommitAsync(bool first)
     {
         ObjectId? current = first ? _first : _second;
-        if (await new ChooseCommitWindow(_repositoryPath, current?.ToString(), _preferences)
+        if (await new ChooseCommitWindow(_repositoryPath, current?.ToString(), _preferences, showArtificial: true)
                 .ShowDialog<CommitRow?>(this) is not { } row)
         {
             return;

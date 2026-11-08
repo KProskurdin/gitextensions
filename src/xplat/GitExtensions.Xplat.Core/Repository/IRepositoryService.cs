@@ -88,6 +88,17 @@ public enum ChangeKind
 public sealed record FileChange(string Path, ChangeKind Kind, bool Staged)
 {
     /// <summary>
+    ///  Upstream's <c>GitItemStatus.OldName</c>: the name a renamed file had.
+    /// </summary>
+    public string? OldPath { get; init; }
+
+    /// <summary>
+    ///  The paths upstream's <c>BatchUnstageFiles</c> takes out of the index for this file: a rename is also the removal of its
+    ///  old name, which would otherwise stay staged.
+    /// </summary>
+    public IEnumerable<string> IndexPaths => Kind == ChangeKind.Renamed && OldPath is { } oldPath ? [Path, oldPath] : [Path];
+
+    /// <summary>
     ///  Upstream's <c>GitItemStatus.IsSkipWorktree</c>: git's skip-worktree flag of the file in the index.
     /// </summary>
     public bool IsSkipWorktree { get; init; }

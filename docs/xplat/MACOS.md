@@ -13,15 +13,15 @@ Windows; each is corrected where a real result exists.
 
 | Check | Result | How |
 |---|---|---|
-| Runs on a Mac | Yes | Latest: core 912, app 718 and shadow projects 3821 pass, 0 fail, and the packaged bundle starts through `open` (MAC2 to MAC5). Earlier partial runs: a test run on 2026-10-16, and commits `da72971a1`, `735c6ae4d` |
+| Runs on a Mac | Yes | Latest: core 956, app 752 and shadow projects 3821 pass, 0 fail, and the packaged bundle starts through `open` (MAC2 to MAC5). Earlier partial runs: a test run on 2026-10-16, and commits `da72971a1`, `735c6ae4d` |
 | Compiles for Apple Silicon | Yes | `publish-app.sh osx-arm64` on Windows, 2026-11-08, 0 errors; on the Mac too, and there it packs a working zip |
 | Bundle layout | Right | `Contents/MacOS/GitExtensions` is an arm64 Mach-O file. `libAvaloniaNative`, `libSkiaSharp` and `libHarfBuzzSharp` are there, as are the Plugins (17 entries) and Themes folders. Not started |
 | Packing the bundle on Windows | **Fails, and the script still prints the zip's path** | `Compress-Archive` threw and no zip was written. Files from NTFS also have no executable bit. Pack only on a Mac or CI |
 | Repository on a case-insensitive disk | No conflict | `git ls-files`: no paths differ only by case, none are non-ASCII, no symlinks |
 | Windows-only project types in `GitExtensions.xplat.slnx` | None | No `net10.0-windows` or `UseWindowsForms=true` under `src/xplat` or `tests/xplat` |
 | Windows calls in the new code | Guarded by platform | Only `XplatRegistryKey.cs` and `VisualStudio.cs` use Windows APIs. Check them on the first Mac run |
-| CI has ever run | **No, it cannot have from this branch** | `xplat.yml` triggers on `xplat/**`, the work is on `feature/cross-os-ui`, and `origin/master` lacks the file, so the schedule and manual runs are unavailable too (MAC1) |
-| Linux app tests | **Stale**; will fail differently than thought: see the Windows programs in MAC2 | Last attempted 2026-10-11, and that run was killed for lack of memory. The app has grown a lot since, so POSIX failures are unknown too |
+| CI has ever run | Once, with failures | Run `42521621315` on 2026-11-08: see the status under MAC1. The schedule and manual runs stay unavailable while `origin/master` lacks the file |
+| Linux app tests | Pass | In that run, on Ubuntu. Before it, last attempted on 2026-10-11, and killed for lack of memory |
 
 ### Assumptions
 
@@ -199,9 +199,22 @@ CI is the only guard for Windows and Linux after the move. All changes are in th
 Exit: all three OSes have completed a run, and their failures are understood. This also gives the first macOS and Linux app
 test results, ideally before the first Mac run.
 
-Status 2026-11-08: items 1, 2 and the `.trx` artifact are in the workflow, and each test suite now runs even if an earlier one
-failed. **Not run, so the workflow itself is unchecked:** it runs when the user pushes. Item 3 is also the user's. On Windows CI
-this is the first check of what changed for the Mac (`RealPath`, the data folder, the tests' keys).
+Status 2026-11-08: the first run happened (`42521621315`, on `5ea555567`). Packages built on all three OSes. Ubuntu's and macOS's shadow, core and app
+tests passed, Ubuntu's being the first Linux app result since 2026-10-11. **Open:**
+
+- `shadow-tests (windows-latest)` failed in its shadow and core steps; its app step passed. **Core, one cause found:** `InteractivePatch.MacScript`
+  takes its line endings from the source file, and a Windows checkout gives it CRLF. Reproduced on the Mac with a clone made with
+  `core.autocrlf=true`: two failures, none after the fix. There may be others on Windows. **Shadow, not understood:** all 12 projects pass on that
+  clone, so it is not the line endings.
+- `app-screenshot` hung in its launch step on **all three OSes** for over 40 minutes, so the exit of MAC1 is not met. This was the workflow's first run
+  ever, so the step has never passed on CI. The same clone and `dotnet run` take 21 seconds on the Mac, with no terminal and stdin closed. Having no
+  real display is a guess; nothing shows it yet.
+- The nightly `upstream-merge-check` stays skipped on pushes, and needs the workflow on the default branch (item 3).
+
+Job logs and artifacts need a sign-in, but a job's annotations do not, so the workflow now reports through them, for the next run:
+`tests/xplat/ci-report.py` gives each suite's counts and the failed tests, and `tests/xplat/run-with-watchdog.sh` gives the processes and the app's
+managed stacks when the app outlives its limit. The app's build is a step of its own, so the step times show which of the two a hang is in. To read them:
+GET a job's `check_run_url` + `/annotations` (60 requests an hour without a sign-in).
 
 ### MAC2. First real results on the Mac (1 to 3 days, the least certain)
 

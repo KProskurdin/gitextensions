@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using GitExtensions.Xplat.Core.Diff;
 
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
@@ -140,6 +141,26 @@ public sealed record BlameRow(BlameLine Line, string Hash, string AuthorLine, st
     private static readonly GitCommands.GitRevisionSummaryBuilder _summaryBuilder = new();
 
     public string Content => Line.Content;
+
+    /// <summary>
+    ///  The line's syntax colors, when the file's type has them (see <see cref="WithSyntax"/>).
+    /// </summary>
+    public IReadOnlyList<SyntaxRun>? Syntax { get; init; }
+
+    /// <summary>
+    ///  Upstream's blame text is a viewer, which colors the file's syntax: the rows in order, as a line's colors can depend on
+    ///  the lines above it. Rows of a file type with no definition stay as they are.
+    /// </summary>
+    public static IReadOnlyList<BlameRow> WithSyntax(IReadOnlyList<BlameRow> rows, string filePath)
+    {
+        if (SyntaxDefinitions.ForFile(filePath) is not { } syntax)
+        {
+            return rows;
+        }
+
+        SyntaxHighlighter highlighter = new(syntax);
+        return [.. rows.Select(row => row with { Syntax = highlighter.HighlightLine(row.Content) })];
+    }
 
     /// <summary>
     ///  Upstream's tooltip over the gutter: the commit's author, dates, hash, summary and file name.

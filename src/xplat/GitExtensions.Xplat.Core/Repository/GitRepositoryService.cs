@@ -201,6 +201,7 @@ public sealed class GitRepositoryService : IRepositoryService
 
         return new FileChange(status.Name, kind, Staged: status.Staged == StagedStatus.Index)
         {
+            OldPath = status.IsRenamed ? status.OldName : null,
             IsSkipWorktree = status.IsSkipWorktree,
             IsAssumeUnchanged = status.IsAssumeUnchanged,
             IsSubmodule = status.IsSubmodule,

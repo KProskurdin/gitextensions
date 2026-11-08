@@ -3,6 +3,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using GitCommands;
 using GitCommands.Git;
 using GitCommands.Remotes;
 using GitExtensions.Extensibility.Git;
@@ -132,6 +133,42 @@ internal sealed class PushWindowTests
         loaded.Should().Equal("keyed");
         owner.Close();
     }
+
+    [AvaloniaTest]
+    public void An_Azure_DevOps_remote_enables_the_pull_request_choice_without_a_host_plugin()
+    {
+        PushWindow plain = NewWindow();
+        Find<CheckBox>(plain, "CreatePullRequestCheck").IsEnabled.Should().BeFalse();
+
+        PushWindow azure = new(AzureDialog(), TestAppBuilder.Preferences, "C:/repo/");
+        Find<CheckBox>(azure, "CreatePullRequestCheck").IsEnabled.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void After_the_push_an_Azure_DevOps_remote_opens_its_create_page_when_no_host_plugin_knows_the_repository()
+    {
+        List<string> opened = [];
+        Action<string> open = DialogHelp.Open;
+        DialogHelp.Open = opened.Add;
+        try
+        {
+            MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+
+            window.CreatePullRequestAfterPush(AzureDialog());
+
+            opened.Should().Equal("https://dev.azure.com/org/project/_git/repo/pullrequestcreate?sourceRef=main");
+        }
+        finally
+        {
+            DialogHelp.Open = open;
+        }
+    }
+
+    private static PushDialog AzureDialog()
+        => new(new PushRepository("main",
+            [new ConfigFileRemote { Name = "origin", Url = "git@ssh.dev.azure.com:v3/org/project/repo" }],
+            [new LocalBranch("main")], [], [], "origin", null, IsBare: false, AutoSetupMerge: null,
+            (_, _) => null));
 
     private static PushWindow NewWindow()
         => new(new PushDialog(new PushRepository("main",

@@ -32,32 +32,11 @@ public sealed class GitOperations : IGitOperations
         _remoteEnvironment = askPassExecutable is null ? null : GitAskPass.Environment(askPassExecutable);
     }
 
-    public Task StageAsync(string repositoryPath, IReadOnlyList<string> paths)
-    {
-        ArgumentString options = _showStagingErrors() ? default : _noSafeCrlf;
-        return RunAsync(repositoryPath, _ =>
-        {
-            GitArgumentBuilder arguments = new("add", gitOptions: options) { "--" };
-            foreach (string path in paths)
-            {
-                arguments.Add(path.Quote());
-            }
+    public Task StageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null)
+        => RunForFilesAsync(repositoryPath, new GitArgumentBuilder("add", gitOptions: _showStagingErrors() ? default : _noSafeCrlf) { "--" }, paths, processed);
 
-            return arguments;
-        });
-    }
-
-    public Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths)
-        => RunAsync(repositoryPath, _ =>
-        {
-            GitArgumentBuilder arguments = new("reset") { "-q", "--" };
-            foreach (string path in paths)
-            {
-                arguments.Add(path.Quote());
-            }
-
-            return arguments;
-        });
+    public Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null)
+        => RunForFilesAsync(repositoryPath, new GitArgumentBuilder("reset") { "-q", "--" }, paths, processed);
 
     // Upstream's FileViewer builds the patch with PatchManager and applies it to the index the same way.
     // As upstream's FileViewer.StageSelectedLines. Upstream stages lines of an untracked file from the file's text
@@ -690,6 +669,19 @@ public sealed class GitOperations : IGitOperations
         {
             GitModule module = CreateModule(repositoryPath);
             Execute(module.GitExecutable, build(module));
+        });
+
+    // As upstream's BatchUnstageFiles: split by the length of a command line, which on Windows only a few hundred paths reach.
+    // The first batch git refuses ends the operation, with git's message.
+    private static Task RunForFilesAsync(string repositoryPath, ArgumentString command, IReadOnlyList<string> paths, Action<int>? processed)
+        => Task.Run(() =>
+        {
+            IExecutable git = CreateModule(repositoryPath).GitExecutable;
+            foreach (BatchArgumentItem batch in new ArgumentBuilder { command }.BuildBatchArgumentsForFiles(paths))
+            {
+                Execute(git, batch.Argument);
+                processed?.Invoke(batch.BatchItemsCount);
+            }
         });
 
     private static void Execute(IExecutable executable, ArgumentString arguments)

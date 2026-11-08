@@ -12,9 +12,11 @@ namespace GitExtensions.Xplat.Core.Operations;
 /// </summary>
 public interface IGitOperations
 {
-    Task StageAsync(string repositoryPath, IReadOnlyList<string> paths);
+    /// <param name="processed">Told, off the UI thread, how many more paths are done after each batch.</param>
+    Task StageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null);
 
-    Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths);
+    /// <param name="processed">Told, off the UI thread, how many more paths are done after each batch.</param>
+    Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null);
 
     /// <summary>
     ///  Stages only the lines selected in the diff of one file, or with <paramref name="unstage"/> removes them from the

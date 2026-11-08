@@ -723,6 +723,9 @@ toolbar icons with upstream's `ToolTipText`.
 - 2026-11-08, the app icon on every window: only the browse window set one, so all others had a blank taskbar button. It now comes from the application's `Window` style, which plugin windows get too.
 - 2026-11-08, plan for moving development to macOS: `MACOS.md`, and the section below. No code changed.
 - 2026-11-08, first real results on a Mac, then the Cmd keys and macOS's own defaults, and the fit into macOS: `MACOS.md`, MAC2 to MAC5.
+- 2026-11-08, on macOS: the file lists' toolbar submenu (upstream's `tsmiToolbar`, its settings shared with the WinForms app) in the
+  browse and commit windows, and the choice applied in the stash and diff windows. The blame text's find, go to line, syntax colors
+  and encoding. See the notes in `PORTING-MAP.md`.
 - 2026-11-08, on macOS: find, replace and go to line in the editor window (upstream's FormEditor is an editable viewer; here it was
   a text box without them), with upstream's FindAndReplaceForm in replace mode. Next and previous match in git-grep's view, whose
   buttons showed but did nothing. See the notes in `PORTING-MAP.md`.
@@ -741,14 +744,17 @@ results so far come from Windows: nothing in this list or the Progress above has
 
 1. ~~Settings: the tool path and command fields, the files encoding, the warning without git, validating the git command.~~
    Done 2026-11-08 on macOS (see the GitConfigSettingsPage note in `PORTING-MAP.md`).
-2. Viewer and tabs: ~~replace~~; the settings menu's toolbar submenu; ~~the git-grep window's "Treat all files as text" and
-   next/previous match~~; the blame text pane's find, syntax colors and encoding. Done 2026-11-08 on macOS as struck through. The
+2. ~~Viewer and tabs: replace; the settings menu's toolbar submenu; the git-grep window's "Treat all files as text" and
+   next/previous match; the blame text pane's find, syntax colors and encoding.~~ Done 2026-11-08 on macOS. The
    git-grep window's selected text is **not doable as it stands**: the viewer selects whole lines and has no text selection, so upstream's
    `getSelectedText` has nothing to read. The same holds for "next and previous occurrence" (Alt+Right, Alt+Left). Both wait for
    a viewer with real text selection, which is a larger change than either.
-3. Dialogs: FormCommit's progress bar, FormPush's Azure DevOps link, the help pictures in dark themes,
+3. ~~Dialogs: FormCommit's progress bar, FormPush's Azure DevOps link, the help pictures in dark themes,
    `StartCloneDialog`, FormDiff's choose commit artificial commits, FormStash's loading animation, the editor's
-   `i18n.filesEncoding` and todo highlighting.
+   `i18n.filesEncoding`.~~ Done 2026-11-08 on macOS. The editor's todo highlighting is **not doable as it stands**: a `TextBox` has one
+   color, so it waits for an editor control, as its line numbers do. Found on the way: staging was not split by command line length,
+   unstaging a rename left its old name staged, and dark themes used light system colors (see `PORTING-MAP.md`). New from the dark
+   render: most icons are not adapted to a dark theme yet, which upstream does with `AdaptLightness`; that belongs to item 6.
 4. Revision grid: session refs, the superproject's labels and refs.
 5. Plugins and the rest: the repository hosts menu, a load error's clipboard copy, `RunCommand`, `GetService`, `BrowseRepo`,
    the `searchfile` verb, bisect toolbar icons, the pull request window's status icons, `commit.template`, plugin template

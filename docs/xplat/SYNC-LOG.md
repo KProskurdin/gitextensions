@@ -118,3 +118,17 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   commit window's completion and app tests. The settings folder and `~/.gitconfig` were unchanged by hash in each run. Windows and
   Linux were not run.
 
+### 2026-11-08: after the Settings, editor, git-grep, toolbar and blame slices of `UI-PARITY.md`'s Mac list, no merge
+
+- On macOS, from one tree: core 929 of 929; app 738 of 738 (one more is Windows only); shadow projects 3821 pass, 201 ignored. The settings
+  folder and `~/.gitconfig` were unchanged by hash through each suite.
+- `verify-upstream.sh` on `c584b9740` last ran before the toolbar and blame slices, which changed only `GitExtensions.Xplat.App` and
+  `GitExtensions.Xplat.Core` and their tests, none of which that script builds: 3902 passed, 0 failed, 222 ignored. `port-drift.sh`: 133 rows, 12
+  with upstream changes. Windows and Linux were not run.
+
+### 2026-11-08: after the dialogs of `UI-PARITY.md`'s Mac list and the first CI results, no merge
+
+- On macOS, from one tree: core 956 of 956; app 752 of 752 (one more is Windows only). The settings folder and `~/.gitconfig` were unchanged by hash
+  through the app run. Shadow projects were not run again: nothing they build changed since 3821 passed, 201 ignored. All 12 also pass on a clone with
+  Windows line endings of `5ea555567`, on macOS. `verify-upstream.sh` was not run again, for the same reason. `port-drift.sh`: 134 rows, 12 with upstream
+  changes. Windows and Linux were not run locally; CI's first run is in `MACOS.md`, MAC1.

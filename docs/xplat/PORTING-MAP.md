@@ -27,9 +27,10 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.Designer.cs` (mainContextMenu), `RevisionGridControl.cs` (`_contextMenuItems`, `ContextMenuOpening`, `GetRefUnambiguousName`, the compare items), `RevisionGridMenuCommands.cs` (View), `GitRefListsForRevision.cs`, `CopyContextMenuItem.cs`; `CommandsDialogs/FormBrowse.InitRevisionGrid.cs` (`SelectInLeftPanel`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`CommitContextMenu`), `MainWindow.GridMenu.cs`, `MainWindow.Compare.cs`, `RefLabelView.cs` (`LabelAt`), `Hotkeys.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridMenus.cs`, `ICommitHistory.cs` (`CommitRow` dates) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` | `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (commit), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
 | `src/app/GitUI/UserControls/FileStatusList*.cs` (toolbar, filter, NoFiles, item menu, `GetItemImageKey`); `src/app/GitUI/CommandsDialogs/RevisionDiffController.cs` (menu rules); `CommandsDialogs/Menus/CopyPathsToolStripMenuItem.cs`; `FormCommit.Designer.cs` (`toolbarStaged`, `SolveMergeconflicts`); `GitIgnoreDialog/GitLocalExcludeModel.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FileStatusList.cs` (`FileStatusList`, `FileMenuState`), `GitIgnoreFile.cs`, `Operations/GitOperations.cs` (reset files to, stop tracking); `src/xplat/GitExtensions.Xplat.App/CommitWindow.FileLists.cs`, `CommitWindow.axaml`, `GitIgnoreWindow.axaml.cs`, `FileStatusListMenu.axaml(.cs)` (the item menu of a list of the files between two revisions) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PushDialog.cs`, `PushRejection.cs`, `GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PushWindow.axaml(.cs)`, `PushRejectedFlow.cs`, `MainWindow.axaml(.cs)` (Push), `CommitWindow.axaml.cs` (Commit & push) | `52d08e996` | partial |
-| `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | partial |
-| `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormPush.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PushDialog.cs`, `PushRejection.cs`, `GitOperations.cs` (push), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PushWindow.axaml(.cs)`, `PushRejectedFlow.cs`, `MainWindow.axaml(.cs)` (Push), `CommitWindow.axaml.cs` (Commit & push) | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/FormPull.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/PullDialog.cs`, `GitOperations.cs` (pull, `RebasesMergeCommitAsync`), `RepositoryOperationsViewModel.cs`, `RemoteRequests.cs`; `src/xplat/GitExtensions.Xplat.App/PullWindow.axaml(.cs)`, `HelpImageView.cs`, `MainWindow.axaml(.cs)` (Pull) | `52d08e996` | ported |
+| `src/app/GitUI/UserControls/HelpImageDisplayUserControl.cs`; `src/app/GitUI/GitExtensionsDialog.cs` (button strip colors and line); WinForms `GroupBox` | `src/xplat/GitExtensions.Xplat.App/HelpImageView.cs`; `App.axaml` (`Border.dialogFooter`, `HeaderedContentControl.groupBox`), `ThemeApplier.cs` (`DialogFooterBrush`, `DialogFooterLineBrush`) | `52d08e996` | ported |
+| `src/app/GitExtUtils/GitUI/Theming/LightnessCorrection.cs`; `ColorHelper.AdaptLightness`; `SystemColorMode.Dark` of WinForms (as `src/app/GitUI/Themes/dark.css` lists it) | `src/xplat/GitExtensions.Xplat.Core/Settings/ImageLightness.cs`, `AppTheme.cs` (`GetNonEmpty`); `src/xplat/GitExtensions.Xplat.App/ThemedImages.cs` | `0174ba1cc` | ported |
 | `src/app/GitUI/CommandsDialogs/FormClone.cs`; `src/app/GitUI/BrowseForPrivateKey.cs` (browse only) | `src/xplat/GitExtensions.Xplat.Core/Operations/CloneDialog.cs`, `GitOperations.cs` (clone, `RunCloneAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RemoteUrlHistory.cs` (`AddAsMostRecentAsync`); `src/xplat/GitExtensions.Xplat.App/CloneWindow.axaml(.cs)`, `ThemeApplier.cs` (info label colors) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormCreateBranch.cs`; `src/app/GitUI/UserControls/CommitPickerSmallControl.cs`, `CommitSummaryUserControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CreateBranchDialog.cs`, `GitOperations.cs` (create, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CreateBranchWindow.axaml(.cs)`, `MainWindow.axaml.cs`, `MainWindow.LeftPanel.cs`, `CommitWindow.Bottom.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCheckoutBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CheckoutBranchDialog.cs`, `GitOperations.cs` (checkout, `RunCommandsAsync`), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/CheckoutBranchWindow.axaml(.cs)`, `CheckoutBranchFlow.cs`, `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs` | `52d08e996` | ported |
@@ -40,7 +41,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormFileHistory.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`BuildPathFilter`, `FilePathByObjectId`), `FilterInfo.cs` (full history); `src/app/GitUI/CustomDiffMergeToolProvider.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/FileHistoryDialog.cs`, `FileBrowserViewModel.cs`, `GitCommitHistory.cs` (`LoadTreeAsync`, `LoadFileHistoryAsync`, `PathFilter`), `CommitListViewModel.FilePaths`, `RevisionFilter.cs` (`FullHistory`, `SimplifyMerges`); `src/xplat/GitExtensions.Xplat.App/FileHistoryWindow.axaml(.cs)`, `FileHistoryWindow.Filter.cs`, `FileHistoryWindow.GridMenus.cs`, `FileHistoryWindow.BuildServer.cs`, `CustomDiffTools.cs`, `RevisionGrid.axaml`, `FileBrowserWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormBlame.cs`; `src/app/GitUI/UserControls/BlameControl.cs`, `GitBlameParser.cs` | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/BlameParser.cs`, `BlameMenu.cs`, `GitCommitHistory.cs` (`LoadBlameAsync`); `src/xplat/GitExtensions.Xplat.App/BlameView.axaml(.cs)`, `BlameWindow.axaml(.cs)` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormMergeBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/MergeBranchDialog.cs`, `GitOperations.cs` (merge, `RunCommandsAsync`, `AbortMergeAsync`), `RepositoryOperationsViewModel.cs`, `RepositoryViewModel.IsMerging`, `Settings/Confirmations.cs` (resolve conflicts); `src/xplat/GitExtensions.Xplat.App/MergeBranchWindow.axaml(.cs)`, `MainWindow.axaml(.cs)` (Merge branches, Abort merge), `MainWindow.LeftPanel.cs` | `52d08e996` | ported |
-| `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormStash.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/StashDialog.cs`, `GitOperations.cs` (save, apply, pop, drop by name), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/GitRepositoryService.cs` (stash list); `src/xplat/GitExtensions.Xplat.App/StashWindow.axaml(.cs)`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `MainWindow.axaml(.cs)`, `MainWindow.Toolbar.cs`, `MainWindow.LeftPanel.cs`, `PullWindow.axaml.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCreateTag.cs`; `src/app/GitCommands/Git/Tag/GitTagController.cs` (`CreateTag`) | `src/xplat/GitExtensions.Xplat.App/CreateTagWindow.axaml(.cs)`, `MainWindow.axaml.cs` (`ShowCreateTagAsync`); `src/xplat/GitExtensions.Xplat.Core/Operations/CreateTagDialog.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormDeleteTag.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (delete), `RepositoryOperationsViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (Delete), `DeleteTagWindow.axaml(.cs)`, `MainWindow.DeleteRefs.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCherryPick.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (cherry-pick), `RepositoryOperationsViewModel.cs`, `CherryPickDialog.cs`, `Settings/AppPreferences.cs` (`CommitAutomaticallyAfterCherryPick`, `AddCommitReferenceToCherryPick`); `src/xplat/GitExtensions.Xplat.App/CherryPickWindow.axaml(.cs)`, `MainWindow.CommandsMenu.cs`, `MainWindow.axaml` | `52d08e996` | ported |
@@ -51,7 +52,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/FormRemotes.cs`; `src/app/GitUI/LeftPanel/RemoteBranchTree.cs`, `RemoteRepoNode.cs`, `RemoteRepoFolderNode.cs` (inactive remotes) | `src/xplat/GitExtensions.Xplat.Core/Operations/RemotesDialog.cs`, `Repository/RemoteUrlHistory.cs`, `Repository/GitRepositoryService.cs` (remote list, inactive remotes), `Repository/RepoObjectsTree.cs`; `src/xplat/GitExtensions.Xplat.App/RemotesWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs`, `MainWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormReflog.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/Reflog.cs` (references, a reference's reflog); `src/xplat/GitExtensions.Xplat.App/ReflogWindow.axaml(.cs)`; `MainWindow.axaml(.cs)` (Reflog...) | `52d08e996` | ported |
 | `src/app/GitUI/HelperDialogs/FormResetCurrentBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/ResetCurrentBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/ResetCurrentBranchWindow.axaml(.cs)`, `CommitSummaryView.axaml(.cs)`; `MainWindow.axaml(.cs)`, `MainWindow.LeftPanel.cs` (its callers) | `52d08e996` | ported |
-| `src/app/GitUI/CommandsDialogs/FormDiff.cs` | `src/xplat/GitExtensions.Xplat.App/RevisionDiffWindow.axaml(.cs)`, `MainWindow.Compare.cs`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `DiffView.axaml.cs` (`ShowDiffAsync`); `src/xplat/GitExtensions.Xplat.Core/Diff/RevisionDiff.cs`, `DiffViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormDiff.cs` | `src/xplat/GitExtensions.Xplat.App/RevisionDiffWindow.axaml(.cs)`, `MainWindow.Compare.cs`, `FileStatusListMenu.axaml(.cs)` (the file list's menu), `DiffView.axaml.cs` (`ShowDiffAsync`); `src/xplat/GitExtensions.Xplat.Core/Diff/RevisionDiff.cs`, `DiffViewModel.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCompareToBranch.cs`; `UserControls/BranchSelector.cs` | `src/xplat/GitExtensions.Xplat.App/CompareToBranchWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (`LaunchRebase`, fixup, squash and amend items); `src/app/GitUI/CommandsDialogs/FormCommit.cs` (`CommitKind`, `modifyCommitMessageButton`) | `src/xplat/GitExtensions.Xplat.Core/Operations/RewriteCommit.cs`, `Repository/CommitKinds.cs`, `GitOperations.cs` (`RunRebaseAsync` sequence editor); `src/xplat/GitExtensions.Xplat.App/MainWindow.GridMenu.cs`, `CommitWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/HelperDialogs/FormResetAnotherBranch.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/ResetAnotherBranchDialog.cs`; `src/xplat/GitExtensions.Xplat.App/ResetAnotherBranchWindow.axaml(.cs)`, `MainWindow.GridMenu.cs` (`ShowResetAnotherBranchAsync`) | `52d08e996` | ported |
@@ -228,7 +229,7 @@ Corrected 2026-11-08: that audit line misread upstream, whose `ProcessRevisionSe
 is while several commits are selected, and the shell followed the latest selected one. It now does as upstream, so nothing
 is left and the row is `ported`.
 
-**FormStash** (`partial`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
+**FormStash** (`ported`). Ported: save with an optional message, a stash list, and apply, pop and drop of the selected
 stash by its name. Also ported: including untracked files. Also ported: stashing only the selected files (Stash selected). Also ported: keeping the index (Keep index). Also ported: the whole stash as a diff (Show diff, first parent only). Changed 2026-10-13: the left panel's stash
 boxes went with the left panel rebuild (see RepoObjectsTree); stashing from the toolbar, menu and left panel is upstream's
 `StashSave` (no message, untracked files as `includeUntrackedFilesInManualStash` says), and the stash message and keep
@@ -264,6 +265,7 @@ button collapses the extension and status groups only. Not ported from the toolb
 settings menu (see RevisionDiffControl).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the loading animation while a
 stash is read.
+Added 2026-11-08: the loading animation, as an indeterminate progress bar over the list where upstream has its `LoadingControl`. Nothing is left.
 
 **FormCreateTag** (`ported`). First a prompt for a name and an optional message. Since 2026-10-31 (UI-PARITY, after
 U6) upstream's form as `CreateTagWindow` (core `CreateTagDialog`), opened by Commands > Create tag..., the grid's
@@ -359,6 +361,7 @@ Repository > Git maintenance > Edit .git/config opens it.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the rebase todo syntax
 highlighting and line numbers (no editor control for Avalonia 12, PLAN.md M3) and `i18n.filesEncoding` (files are read
 and written as UTF-8). Stale above: the read-only option is ported.
+Added 2026-11-08: `i18n.filesEncoding`: read and written in the file's repository's `FilesEncoding`, unless a byte order mark says otherwise (`EditorFile`). Left: the todo highlighting and line numbers, which need an editor control; a `TextBox` has one color.
 
 **FormRevertCommit** (`ported`). First a direct revert. Since 2026-10-31 (UI-PARITY, after U6) the grid's
 "Re_vert this commit..." (upstream's text and icon) opens upstream's form as `RevertCommitWindow` (core
@@ -380,7 +383,7 @@ for a listed branch when forced or when `git merge-base --is-ancestor` says the 
 coral), runs upstream's `Commands.UpdateRef` with its output, then opens the checkout window on the branch when asked.
 Screenshot `XPLAT_SCREENSHOT_WINDOW=resetanotherbranch`.
 
-**FormDiff** (`partial`). 2026-11-02 (UI-PARITY, after U6), for the grid's Compare submenu: `RevisionDiffWindow` (core
+**FormDiff** (`ported`). 2026-11-02 (UI-PARITY, after U6), for the grid's Compare submenu: `RevisionDiffWindow` (core
 `Diff/RevisionDiff.cs`) with upstream's control names. BASE (red) and Compare (green) with their pickers (another
 branch through the compare to branch window, another commit through the choose commit window), the swap button,
 "Compare to merge base (hash)" (the merge base found once, an artificial side counting as HEAD; off without one), "Open
@@ -399,6 +402,7 @@ options. Not ported: the choose commit window's artificial commits (moving to th
 added 2026-11-06, see FileViewer). Screenshot `XPLAT_SCREENSHOT_WINDOW=revisiondiff`.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the choose commit window's
 artificial commits (FormDiff's pickers list commits only).
+Added 2026-11-08: the pickers' choose commit window lists the artificial commits (`ChooseCommitWindow`'s `showArtificial`), following the grid's setting as upstream. Nothing is left.
 
 **FormCompareToBranch** (`ported`). 2026-11-02: `CompareToBranchWindow` with upstream's `BranchSelector` in it
 (remote branches first, as upstream's `Initialize(remote: true)`, or local ones; the count of commits between the
@@ -589,9 +593,13 @@ FileStatusList menu (2026-11-07), and the lists have upstream's tree. The FileSt
 settings menu's toolbar submenu (see RevisionDiffControl).
 Added 2026-11-08: "Stage in Superproject" (shown in a submodule, `StageInSuperprojectAfterCommit`, the submodule staged
 after a commit and any push that went through) and no "Stash staged" for a git without `stash --staged` (not covered by a
-test, as it takes an old git). Left: the progress bar and the spelling checker.
+test, as it takes an old git). Left: the spelling checker.
+Added 2026-11-08: the progress bar (`StageProgress`). Its numbers are real, by batch: upstream splits long command lines only when unstaging, and the new shell
+does so for both (`GitOperations.RunForFilesAsync`), since it stages with `git add` where upstream feeds `update-index` through standard input. Before this, staging a few
+hundred files would have passed Windows' limit of 32767 characters. Found with it: unstaging a rename left the removal of its old name staged, in the commit window and the
+file list menu; now both names go, as upstream's `BatchUnstageFiles` (`FileChange.IndexPaths`, `FileStatusListMenu.FilesShownAt`).
 
-**FormPush** (`partial`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
+**FormPush** (`ported`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
 FormRemoteProcess); Push tags uses the upstream `Commands.PushTag` builder; a push dialog (`PushWindow`, Commands > Push...,
 Ctrl+Up as upstream) with the remote, the local and remote branch, force or force with lease, and tracking, built with
@@ -634,6 +642,7 @@ handling of a "Push multiple branches" push, as upstream's (`PushRejection.WithF
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the Azure DevOps pull request
 link. Stale above: recursive submodules, pushing several branches, the tags tab, the URL history, Load SSH key and
 `GetRemoteBranchesDirectlyFromRemote` are ported.
+Added 2026-11-08: the Azure DevOps pull request link (`PushDialog.HasAzureDevOpsRemote`, `AzureDevOpsPullRequestUrl`, `MainWindow.CreatePullRequestAfterPush`). Nothing is left.
 
 **FormPull** (`partial`). Ported: pull of the current branch from the remote it tracks (origin when it tracks none), merge or rebase. Also ported: prune of remote-tracking branches on fetch (the Prune checkbox, next to Fetch). Not ported:
 fetch tags, unshallow, fetch all remotes, and the merge-commit message options. Added 2026-10-06: the progress dialog
@@ -695,6 +704,7 @@ the PuTTY host key and authentication prompts while the branches are read, the h
 plugins and the protocol handler.
 Added 2026-11-08: the chosen key goes to Pageant and is used only when that worked (tests replace `GiveKeyToPageant`, so the real Pageant call is not covered). Stale above: the help button came on
 2026-11-04. Left: the PuTTY prompts and `StartCloneDialog`.
+Added 2026-11-08: `StartCloneDialog` for plugins (`PluginHost.NewCloneWindow`) and the command line (`CloneArguments`, upstream's `clone` verb and its URL and `github-*://openRepo/` arguments). Changed: upstream shows the dialog alone from the command line; here it opens over the dashboard. No protocol is registered with the OS, so a browser link does not reach it yet; upstream's installer does that on Windows. Left: the PuTTY host key and authentication prompts while the branches are read (Windows).
 
 **FormCreateBranch** (`ported`). Ported: create a branch at HEAD and check it out. Not ported: creating from a
 specific revision, the branch name rules shown in the form, and the no-checkout option.
@@ -1137,6 +1147,9 @@ git-grep window the viewer's selected text, "Treat all files as text" and next a
 items listed as missing in the earlier lines are ported (2026-11-06 and 2026-11-07). Since then: next and previous match done
 2026-11-08 (`GitGrep.FindMatch`, a group of matching lines is one stop, as upstream's); "Treat all files as text" was already done on
 2026-11-07 for the grep view too. The selected text stays out: the viewer has no text selection.
+The settings menu's toolbar submenu done 2026-11-08 (`FileListToolbar`): upstream's `FileStatusList.Toolbar.Visibility.<item>` settings, which
+a test checks against upstream's designer, so the choice is shared with the WinForms app. An item hidden stays hidden whatever the
+toolbar's own rules set, through a style class. The stash and diff windows have no settings menu, so they only follow the choice.
 
 **FormFileHistory** (`ported`). Ported: the files at a commit (or HEAD), the commits that changed a selected file,
 and a diff of that file in a chosen commit. Added 2026-10-10: the history follows renames as upstream's
@@ -1373,6 +1386,14 @@ All three done 2026-11-08 on macOS (core `Settings/DiffMergeToolSettings.cs`, `S
 which turns what it found on this computer into the user's setting; here a tool that stayed writes only what was edited, and a newly
 chosen tool writes both as upstream. The file dialog has no `.exe` filter off Windows. What is typed as the git command is tried and
 the page follows it, but it is stored on OK or Apply, where upstream stores it at once, as this window can still be cancelled.
+
+**LightnessCorrection and the dark system colors** (`ported`, 2026-11-08). Upstream's class works on a GDI+ bitmap, which .NET supports only on Windows, so `ImageLightness`
+does its arithmetic on a row of pixels and `ThemedImages` gives it Avalonia's. The help pictures (`HelpImageView`) and the settings pages upstream marks go through it. Found with
+it, and wider: upstream's dark themes do not list the system colors; WinForms switches `SystemColorMode.Dark` on and .NET's `SystemColors` then answer with dark values. Without
+WinForms they answer with the light ones on every OS, so the dialog footer, the grid's selection and gray text and the commit info background used light colors in a dark
+theme. `AppThemeColors.GetNonEmpty` answers from the table in `dark.css`, which a test compares with the file. Checked in a real render of the pull window in the dark theme
+on macOS; the headless platform's bitmaps keep no pixels. Not covered: icons elsewhere are not adapted yet, and upstream adapts many of them (`AdaptLightness` on menu and toolbar
+images).
 
 **FormAvailableEncodings** (`ported`, 2026-11-08). `AvailableEncodingsWindow`, rules in core `AvailableEncodingsDialog`. As upstream, except
 `CanRemove`: upstream compares exact types, which today's `Encoding.ASCII` and `Encoding.UTF8` do not have, so its button wrongly stays
@@ -1928,6 +1949,11 @@ upstream adapts them) and the author's avatar on the first line of a commit's ru
 on the page; see the Avatars row). Not ported: blaming the line's commit or its parent from the menu.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: blaming the line's commit or
 its parent from the menu (see FormBlame). Ported 2026-11-08, so the row is `ported`.
+
+Added 2026-11-08, the blame text as upstream's viewer has it (`BlameView.Find.cs`, `BlameRow.WithSyntax`, `BlameParser`): find, F3, Shift+F3 and go
+to line; the file's syntax colors; and the encoding, read as upstream reads blame (losslessly, then the file's lines in `FilesEncoding` and
+the commit headers in `LogOutputEncoding`). Before, a Latin-1 file's lines were decoded wrongly. Differences: an occurrence found selects its
+line with no mark in it, and "Find & highlight all" is left out, as the rows select whole lines.
 
 **GraphRenderer / SegmentRenderer / DetailedSettingsPage** (`ported`). Ported 2026-10-07: upstream's graph model is linked
 unchanged; its renderer is ported line by line from WinForms' Graphics to shapes (`GraphPainter`): lanes, shared lanes,

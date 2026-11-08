@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using GitCommands.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
@@ -475,14 +476,33 @@ public partial class CommitWindow : Window
         [
             .. SelectedChanges(staged ? StagedList : UnstagedList)
                 .Where(change => change.Kind != ChangeKind.Conflict)
-                .Select(change => change.Path)
+                .SelectMany(change => change.IndexPaths)
         ];
         if (paths.Count > 0)
         {
-            Run(() => staged
-                ? _actions.UnstageAsync(_repositoryPath, paths)
-                : _actions.StageAsync(_repositoryPath, paths));
+            Run(() => StageFilesAsync(staged, paths));
         }
+    }
+
+    // Upstream's toolStripProgressBar1: shown while git runs, and full only at the end, since refreshing the lists follows.
+    private async Task StageFilesAsync(bool staged, IReadOnlyList<string> paths)
+    {
+        StageProgress.Maximum = paths.Count;
+        StageProgress.Value = 0;
+        StageProgress.IsVisible = true;
+        try
+        {
+            await (staged
+                ? _actions.UnstageAsync(_repositoryPath, paths, Processed)
+                : _actions.StageAsync(_repositoryPath, paths, Processed));
+        }
+        finally
+        {
+            StageProgress.IsVisible = false;
+        }
+
+        void Processed(int count)
+            => Dispatcher.UIThread.Post(() => StageProgress.Value = Math.Min(StageProgress.Maximum - 1, StageProgress.Value + count));
     }
 
     // Upstream's StageAllAccordingToFilter and UnstageAllFiles: a filtered list stages or unstages the files it shows and
@@ -497,14 +517,12 @@ public partial class CommitWindow : Window
         [
             .. changes
                 .Where(change => change.Kind != ChangeKind.Conflict)
-                .Select(change => change.Path)
+                .SelectMany(change => change.IndexPaths)
         ];
         parts.Filter.Text = "";
         if (paths.Count > 0)
         {
-            Run(() => staged
-                ? _actions.UnstageAsync(_repositoryPath, paths)
-                : _actions.StageAsync(_repositoryPath, paths));
+            Run(() => StageFilesAsync(staged, paths));
         }
     }
 

@@ -164,7 +164,11 @@ public partial class StashWindow : Window
     /// <summary>
     ///  True while the selected stash's files are read, for tests.
     /// </summary>
-    public bool IsLoadingFiles { get; private set; }
+    public bool IsLoadingFiles
+    {
+        get => Loading.IsVisible;
+        private set => Loading.IsVisible = value;
+    }
 
     /// <summary>
     ///  The browse window's git actions and windows for the file list's menu; without them the menu uses the window's
@@ -329,6 +333,8 @@ public partial class StashWindow : Window
     // headers stay).
     private void WireFileListToolbar()
     {
+        // This window has no settings menu, but upstream's choice holds for every file list.
+        FileListToolbar.Attach(FilesByExtensionButton, _preferences);
         FileListTreeButtons buttons = new(FilesCollapseGroupsButton, FilesAsTreeButton,
             [
                 (FilesPathTreeMenuItem, DiffListSortType.FilePath), (FilesPathFlatMenuItem, DiffListSortType.FilePathFlat),

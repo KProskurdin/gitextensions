@@ -516,7 +516,7 @@ public partial class FileStatusListMenu : ContextMenu
     private IEnumerable<string> FilesShownAt(ObjectId second)
         => SelectedFiles() is { } selection
             ? selection.Files.Where(file => DiffFileMenu.RevisionsOf(selection, file).Second == second)
-                .Select(file => file.Path)
+                .SelectMany(file => second == ObjectId.IndexId && file.OldPath is { } oldPath ? [file.Path, oldPath] : new[] { file.Path })
             : [];
 
     private Window? Owner => _binding?.Owner;

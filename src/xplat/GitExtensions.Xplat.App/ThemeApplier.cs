@@ -11,7 +11,7 @@ namespace GitExtensions.Xplat.App;
 ///  hands them to <see cref="ThemeBrushes"/>, and sets Avalonia's light or dark variant to match the theme. With
 ///  "follow the operating system" the colors are loaded again whenever the system switches between light and dark.
 /// </summary>
-internal static class ThemeApplier
+public static class ThemeApplier
 {
     private static bool _followsSystem;
     private static bool _listening;
@@ -91,11 +91,7 @@ internal static class ThemeApplier
         SetBrush(app, GridBodyKey, SystemColor(colors, System.Drawing.KnownColor.GrayText));
 
         // Upstream's MultilineIndicator: the window text color at an alpha of 32 behind three dots at 128.
-        System.Drawing.Color windowText = colors.Get(System.Drawing.KnownColor.WindowText) is { IsEmpty: false } themedText
-            ? themedText
-            : colors.IsDark
-                ? System.Drawing.Color.White
-                : System.Drawing.Color.Black;
+        System.Drawing.Color windowText = SystemColor(colors, System.Drawing.KnownColor.WindowText);
         SetBrush(app, GridMultilineIndicatorKey, System.Drawing.Color.FromArgb(32, windowText));
         SetBrush(app, GridMultilineIndicatorDotKey, System.Drawing.Color.FromArgb(128, windowText));
 
@@ -114,11 +110,7 @@ internal static class ThemeApplier
             : System.Drawing.Color.FromArgb(161, 161, 161));
 
         // Upstream's commit info (CommitInfo): on the window color, the message on a panel 4% darker.
-        System.Drawing.Color window = colors.Get(System.Drawing.KnownColor.Window) is { IsEmpty: false } themedWindow
-            ? themedWindow
-            : colors.IsDark
-                ? panel
-                : System.Drawing.SystemColors.Window;
+        System.Drawing.Color window = SystemColor(colors, System.Drawing.KnownColor.Window);
         SetBrush(app, CommitInfoBackgroundKey, window);
         SetBrush(app, CommitMessageBackgroundKey, window.MakeDarkerBy(0.04));
 
@@ -186,7 +178,7 @@ internal static class ThemeApplier
 
     // A system color as the theme sets it, else the system's (on Windows the user's, elsewhere .NET's Windows defaults).
     private static System.Drawing.Color SystemColor(AppThemeColors colors, System.Drawing.KnownColor name)
-        => colors.Get(name) is { IsEmpty: false } themed ? themed : System.Drawing.Color.FromKnownColor(name);
+        => colors.GetNonEmpty(name);
 
     // The app's values of the keys a theme overrides now (Avalonia keeps the platform's accent there), put back when a theme
     // without the override is applied. A key no theme overrides is left as it is.

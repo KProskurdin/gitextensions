@@ -31,8 +31,11 @@ public partial class ChooseCommitWindow : Window
     /// <param name="lastRevisionToDisplayHash">
     ///  Upstream's <c>lastRevisionToDisplayHash</c>: the history stops at this commit; null for the whole history.
     /// </param>
+    /// <param name="showArtificial">
+    ///  Upstream's <c>showArtificial</c>: the working directory and index rows too, where the grid setting shows them.
+    /// </param>
     public ChooseCommitWindow(string repositoryPath, string? preselect, IAppPreferences preferences,
-        bool showCurrentBranchOnly = false, string? lastRevisionToDisplayHash = null)
+        bool showCurrentBranchOnly = false, string? lastRevisionToDisplayHash = null, bool showArtificial = false)
     {
         _repositoryPath = repositoryPath;
         _preselect = preselect;
@@ -40,7 +43,9 @@ public partial class ChooseCommitWindow : Window
             LastRevisionToDisplayHash: lastRevisionToDisplayHash ?? "");
         _commits = new CommitListViewModel(new GitCommitHistory(
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
-            () => preferences.RevisionSortOrder, gridView: () => preferences.GridViewOptions));
+            () => preferences.RevisionSortOrder,
+            showArtificialCommits: () => showArtificial && preferences.RevisionGraphShowArtificialCommits,
+            gridView: () => preferences.GridViewOptions));
         InitializeComponent();
         UpstreamTranslation.Apply(this, "FormChooseCommit");
         RevisionGridColumns.ShowAsSettingsSay(this, revisionGrid, preferences, _commits);
@@ -70,11 +75,14 @@ public partial class ChooseCommitWindow : Window
         await _commits.ApplyFilterAsync(_filter);
         await _commits.OpenAsync(_repositoryPath);
         revisionGrid.ItemsSource = _commits.VisibleRows;
+        // An artificial commit is no revision for git to resolve.
         string? hash = string.IsNullOrEmpty(_preselect)
             ? null
-            : await Task.Run(() => GoToCommit.Resolve(GitModules.Open(_repositoryPath), _preselect)) is { IsZero: false } id
-                ? id.ToString()
-                : null;
+            : ObjectId.TryParse(_preselect, out ObjectId given) && given.IsArtificial
+                ? _preselect
+                : await Task.Run(() => GoToCommit.Resolve(GitModules.Open(_repositoryPath), _preselect)) is { IsZero: false } id
+                    ? id.ToString()
+                    : null;
         if (hash is null || !Select(hash))
         {
             revisionGrid.SelectedIndex = _commits.VisibleRows.Count > 0 ? 0 : -1;

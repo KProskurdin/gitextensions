@@ -27,9 +27,9 @@ criterion, and the milestones beyond M4 are estimates only.
 | Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
 | Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS seen working 2026-11-08 (`MACOS.md`, MAC2) | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 912 core and 718 app, all passing, and a signed zip and dmg that start through `open` (`MACOS.md`, MAC2 to MAC5; the checks at the screen are open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
+| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 929 core and 738 app, all passing, and a signed zip and dmg that start through `open` (`MACOS.md`, MAC2 to MAC5; the checks at the screen are open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
 | Fork workflow | Partly set up | `upstream` remote added on the Mac and fetched. `tests/xplat/verify-upstream.sh` passed on `c584b9740` on macOS, 2026-11-08 (`SYNC-LOG.md`). Local `master` NOT moved (user decision) |
-| CI | **Written, has never run** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS: shadow and app tests, screenshot, benchmark, packages, nightly upstream check. Fixed 2026-11-08 to trigger on `feature/**` and with the missing submodules; it runs on the user's next push (`MACOS.md`, MAC1). `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
+| CI | **First run 2026-11-08, with failures** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS. Packages and Ubuntu's tests pass; Windows' shadow tests fail and the screenshot job hangs on every OS, both not understood yet (`MACOS.md`, MAC1). `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
 
 Upstream size, for scale (measured 2026-10-03):
@@ -1012,10 +1012,9 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
 
 ### 12.2 Checks not run yet
 
-1. Linux app tests: the run of 2026-10-11 in WSL was stopped by the host for lack of memory, and CI now replaces it (MAC1). The Linux core tests passed then
-   (384). Repeat the app run and record it.
-2. CI on GitHub: `.github/workflows/xplat.yml` has not run there yet and cannot from this branch (section 2; MAC1). The evidence for M1 to M6 on macOS depends on it
-   (section 9, question 11), and so do the screenshot (`app-screenshot`) and package (`app-packages`) jobs.
+1. Linux app tests: passed in CI's first run on 2026-11-08 (`42521621315`).
+2. CI on GitHub: ran on 2026-11-08 with failures on Windows and a hang in the screenshot job (section 2; MAC1). One cause of the core
+   failure is fixed; the rest needs the next run, whose annotations report the failed tests and what a hung app is doing.
 3. macOS on hardware: done for the test suites on 2026-11-08 (all pass, `SYNC-LOG.md`). The smoke items that need a person at
    the screen are still open (`MACOS.md`, MAC2).
 

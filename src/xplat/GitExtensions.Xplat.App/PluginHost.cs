@@ -268,7 +268,7 @@ internal sealed class PluginHost : IGitUICommands
         => StartCommandLineProcessDialog(owner, AppSettings.GitCommand, arguments);
 
     public IGitUICommands WithGitModule(IGitModule module)
-        => new PluginHost(_owner, _actions, _showSettings, _showCommit, module);
+        => new PluginHost(_owner, _actions, _showSettings, _showCommit, module) { NewCloneWindow = NewCloneWindow };
 
     public IGitUICommands WithWorkingDirectory(string? workingDirectory)
         => WithGitModule(CreateModule(workingDirectory ?? ""));
@@ -366,11 +366,25 @@ internal sealed class PluginHost : IGitUICommands
 
     public bool StartCleanupRepositoryDialog(IWin32Window? owner = null, string? path = null) => throw NotAvailable();
 
+    /// <summary>
+    ///  Makes the browse window's clone window for a URL and who hears of the opened clone; set by the browse window.
+    /// </summary>
+    public Func<string?, EventHandler<GitModuleEventArgs>?, CloneWindow>? NewCloneWindow { get; set; }
+
     public bool StartCloneDialog(IWin32Window? owner, string url, EventHandler<GitModuleEventArgs> gitModuleChanged)
-        => throw NotAvailable();
+        => StartCloneDialog(owner, url, openedFromProtocolHandler: false, gitModuleChanged);
 
     public bool StartCloneDialog(IWin32Window? owner, string? url = null, bool openedFromProtocolHandler = false,
-        EventHandler<GitModuleEventArgs>? gitModuleChanged = null) => throw NotAvailable();
+        EventHandler<GitModuleEventArgs>? gitModuleChanged = null)
+    {
+        if (NewCloneWindow is not { } newWindow)
+        {
+            throw NotAvailable();
+        }
+
+        _ = newWindow(url, gitModuleChanged).ShowDialog<bool>(OwnerOf(owner));
+        return true;
+    }
 
     // Upstream's StartCloneForkFromHoster. The clone opens in the window, as every clone does; gitModuleChanged hears of it
     // too, as upstream calls it.

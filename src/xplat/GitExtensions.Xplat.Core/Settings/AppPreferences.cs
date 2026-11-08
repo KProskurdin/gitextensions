@@ -357,6 +357,16 @@ public interface IAppPreferences
 
     void SetHelpExpanded(string dialog, bool expanded);
 
+    /// <summary>
+    ///  Upstream's setting of whether a file list's toolbar shows the item of that name, on by default.
+    /// </summary>
+    bool IsFileListToolbarItemVisible(string itemName);
+
+    /// <summary>
+    ///  Stores <see cref="IsFileListToolbarItemVisible"/>; as upstream, only a hidden item is written.
+    /// </summary>
+    void SetFileListToolbarItemVisible(string itemName, bool visible);
+
     bool CheckForUncommittedChangesInCheckoutBranch { get; set; }
 
     /// <summary>
@@ -788,6 +798,9 @@ public interface IAppPreferences
 public sealed class SettingsAppPreferences : IAppPreferences
 {
     private const string HelpIsExpandedKey = "HelpIsExpanded";
+
+    // Upstream's FileStatusList.UpdateToolbar builds this from its class and control names.
+    private const string FileListToolbarVisibilityKey = "FileStatusList.Toolbar.Visibility.";
 
     public bool CloseCommitDialogAfterCommit
     {
@@ -1229,6 +1242,11 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public void SetHelpExpanded(string dialog, bool expanded) =>
         AppSettings.SetBool(HelpIsExpandedKey + dialog, expanded);
+
+    public bool IsFileListToolbarItemVisible(string itemName) => AppSettings.GetBool(FileListToolbarVisibilityKey + itemName, true);
+
+    public void SetFileListToolbarItemVisible(string itemName, bool visible) =>
+        AppSettings.SetBool(FileListToolbarVisibilityKey + itemName, visible ? null : false);
 
     public bool CheckForUncommittedChangesInCheckoutBranch
     {
@@ -2034,10 +2052,25 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool DontShowHelpImages { get; set; }
 
     private readonly Dictionary<string, bool> _helpExpanded = [];
+    private readonly HashSet<string> _hiddenFileListToolbarItems = [];
 
     public bool IsHelpExpanded(string dialog) => _helpExpanded.GetValueOrDefault(dialog, true);
 
     public void SetHelpExpanded(string dialog, bool expanded) => _helpExpanded[dialog] = expanded;
+
+    public bool IsFileListToolbarItemVisible(string itemName) => !_hiddenFileListToolbarItems.Contains(itemName);
+
+    public void SetFileListToolbarItemVisible(string itemName, bool visible)
+    {
+        if (visible)
+        {
+            _hiddenFileListToolbarItems.Remove(itemName);
+        }
+        else
+        {
+            _hiddenFileListToolbarItems.Add(itemName);
+        }
+    }
 
     public bool CheckForUncommittedChangesInCheckoutBranch { get; set; } = true;
 

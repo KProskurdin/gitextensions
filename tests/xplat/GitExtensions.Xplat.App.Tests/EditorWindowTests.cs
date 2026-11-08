@@ -41,6 +41,24 @@ internal sealed class EditorWindowTests
     }
 
     [AvaloniaTest]
+    public void A_file_in_a_repository_is_read_and_saved_in_its_files_encoding()
+    {
+        using TestRepository repo = new();
+        repo.Run("config", "i18n.filesEncoding", "iso-8859-1");
+        string file = Path.Combine(repo.Path, "latin1.txt");
+        File.WriteAllBytes(file, [0x63, 0x61, 0x66, 0xE9, (byte)'\n']);
+
+        EditorWindow editor = OpenEditor(file);
+
+        Find<TextBox>(editor, "ContentBox").Text.Should().Be("caf\u00E9\n");
+        Find<TextBox>(editor, "ContentBox").Text = "caf\u00E9 noir\n";
+        Click(editor, "SaveButton");
+        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEnabled);
+        File.ReadAllBytes(file).Should().Equal(System.Text.Encoding.Latin1.GetBytes("caf\u00E9 noir\n"));
+        editor.Close();
+    }
+
+    [AvaloniaTest]
     public void Save_writes_the_edited_text_and_closing_then_accepts_it()
     {
         EditorWindow editor = OpenEditor();

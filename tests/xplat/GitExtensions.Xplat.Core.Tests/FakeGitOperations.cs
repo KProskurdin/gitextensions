@@ -17,10 +17,10 @@ internal sealed class FakeGitOperations : IGitOperations
 
     public string ArgumentsAt(int index) => _calls[index].Arguments;
 
-    public Task StageAsync(string repositoryPath, IReadOnlyList<string> paths) =>
+    public Task StageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null) =>
         Record("Stage", $"{repositoryPath} {string.Join(",", paths)}");
 
-    public Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths) =>
+    public Task UnstageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null) =>
         Record("Unstage", $"{repositoryPath} {string.Join(",", paths)}");
 
     public Task StageLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,

@@ -163,6 +163,49 @@ internal sealed class PushDialogTests
 
     private static PushDialog Repository(string? branchRemote) => new(Data(branchRemote));
 
+    [TestCase("https://org@dev.azure.com/org/project/_git/repo", "https://dev.azure.com/org/project/_git/repo")]
+    [TestCase("git@ssh.dev.azure.com:v3/org/project/repo", "https://dev.azure.com/org/project/_git/repo")]
+    [TestCase("https://org.visualstudio.com/project/_git/repo", "https://org.visualstudio.com/project/_git/repo")]
+    public void AzureDevOpsPullRequestUrl_should_be_the_create_page_of_the_chosen_remotes_repository(string remoteUrl, string repository)
+    {
+        PushDialog dialog = new(Data(null) with { Remotes = [new ConfigFileRemote { Name = "origin", Url = remoteUrl }] });
+
+        dialog.HasAzureDevOpsRemote.Should().BeTrue();
+        dialog.AzureDevOpsPullRequestUrl.Should().Be($"{repository}/pullrequestcreate?sourceRef=main");
+    }
+
+    [Test]
+    public void AzureDevOpsPullRequestUrl_should_name_the_chosen_branch_or_else_the_current_one()
+    {
+        PushDialog dialog = new(Data(null) with { Remotes = [new ConfigFileRemote { Name = "origin", Url = "git@ssh.dev.azure.com:v3/o/p/r" }] })
+        {
+            Branch = "feature/a b",
+        };
+        dialog.AzureDevOpsPullRequestUrl.Should().EndWith("?sourceRef=feature%2Fa%20b");
+
+        dialog.Branch = PushDialog.HeadText;
+        dialog.AzureDevOpsPullRequestUrl.Should().EndWith("?sourceRef=main");
+
+        dialog.Branch = PushDialog.AllRefs;
+        dialog.AzureDevOpsPullRequestUrl.Should().EndWith("?sourceRef=main");
+    }
+
+    [Test]
+    public void AzureDevOpsPullRequestUrl_should_follow_the_chosen_remote_and_not_any_remote()
+    {
+        ConfigFileRemote azure = new() { Name = "azure", Url = "git@ssh.dev.azure.com:v3/o/p/r" };
+        PushDialog dialog = new(Data(null) with { Remotes = [Remote("origin"), azure] });
+
+        dialog.Remote.Should().Be("origin");
+        dialog.HasAzureDevOpsRemote.Should().BeTrue();
+        dialog.AzureDevOpsPullRequestUrl.Should().BeNull();
+
+        dialog.Remote = "azure";
+        dialog.AzureDevOpsPullRequestUrl.Should().Contain("dev.azure.com");
+
+        Repository("origin").HasAzureDevOpsRemote.Should().BeFalse();
+    }
+
     private static PushRepository Data(string? branchRemote)
         => new("main",
             [Remote("origin", pushUrl: "git@example.com:push.git"), Remote("upstream")],

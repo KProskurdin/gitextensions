@@ -355,9 +355,7 @@ public sealed class RefLabelView : Control
                 Outline(label.Shape, Rect, PointWidth));
 
         private static DrawingColor WindowColor()
-            => ThemeBrushes.Current.Colors.Get(System.Drawing.KnownColor.Window) is { IsEmpty: false } themed
-                ? themed
-                : ThemeBrushes.Current.IsDark ? DrawingColor.FromArgb(0x1E, 0x1E, 0x1E) : DrawingColor.White;
+            => ThemeBrushes.Current.Colors.GetNonEmpty(System.Drawing.KnownColor.Window);
 
         private static Color ToColor(DrawingColor color) => Color.FromArgb(color.A, color.R, color.G, color.B);
 

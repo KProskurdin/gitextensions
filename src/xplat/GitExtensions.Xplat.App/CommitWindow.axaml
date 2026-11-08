@@ -14,6 +14,9 @@
          dialog, follow the committer. -->
     <DockPanel DockPanel.Dock="Bottom" Margin="1,6,11,0" MinHeight="22">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+        <!-- Upstream's toolStripProgressBar1, while files are staged or unstaged. -->
+        <ProgressBar x:Name="StageProgress" IsVisible="False" Width="150" MinWidth="150" Height="15" MinHeight="15" Minimum="0"
+                     VerticalAlignment="Center" Margin="0,0,8,0" />
         <Image Source="{local:UpstreamImage Branch}" Width="16" Height="16" VerticalAlignment="Center" />
         <TextBlock x:Name="BranchNameText" VerticalAlignment="Center" />
         <!-- As upstream, where the branch pushes is a link to the branch's pull behavior in the remotes window. -->

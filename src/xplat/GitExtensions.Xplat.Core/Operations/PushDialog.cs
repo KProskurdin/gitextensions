@@ -188,6 +188,36 @@ public sealed class PushDialog
     public bool RemoteHasPuttyKey => !string.IsNullOrWhiteSpace(_remote?.PuttySshKey);
 
     /// <summary>
+    ///  Upstream's <c>HasAzureDevOpsRemote</c>: a remote points to an Azure DevOps repository, so "Create pull request after
+    ///  push" can open its page without a repository host plugin.
+    /// </summary>
+    public bool HasAzureDevOpsRemote
+        => _repository.Remotes.Any(remote => !string.IsNullOrWhiteSpace(remote.Url) && new AzureDevOpsRemoteParser().IsValidRemoteUrl(remote.Url));
+
+    /// <summary>
+    ///  The page upstream's <c>TryOpenAzureDevOpsPullRequestInBrowser</c> opens for the chosen remote and branch, or null when
+    ///  the chosen remote is not an Azure DevOps repository.
+    /// </summary>
+    public string? AzureDevOpsPullRequestUrl
+    {
+        get
+        {
+            string? remoteUrl = _remote?.Url;
+            if (string.IsNullOrWhiteSpace(remoteUrl)
+                || !new AzureDevOpsRemoteParser().TryExtractAzureDevopsDataFromRemoteUrl(remoteUrl, out string? owner, out string? project, out string? repository)
+                || AzureDevOpsRemoteParser.BuildRepositoryUrl(remoteUrl, owner, project, repository) is not { } repositoryUrl)
+            {
+                return null;
+            }
+
+            string branch = _branch is not (HeadText or AllRefs)
+                ? _branch
+                : _repository.CurrentBranch.Length > 0 ? _repository.CurrentBranch : DetachedHeadParser.DetachedBranch;
+            return $"{repositoryUrl}/pullrequestcreate?sourceRef={Uri.EscapeDataString(branch)}";
+        }
+    }
+
+    /// <summary>
     ///  The chosen remote, or empty when the repository has none.
     /// </summary>
     public string Remote

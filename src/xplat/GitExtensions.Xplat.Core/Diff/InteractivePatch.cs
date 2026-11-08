@@ -34,6 +34,10 @@ public static class InteractivePatch
     private const string ExitCodeFileName = "exit-code";
     private const string ShellInterruptedExitCode = "1";
 
+    // A raw string takes its line endings from the source file, which a Windows checkout gives CRLF: sh would then look for
+    // a program called "sh\r" and fail on every line.
+    private const string ShellLineEnding = "\n";
+
     private static readonly TimeSpan _exitCodePollInterval = TimeSpan.FromMilliseconds(200);
 
     /// <summary>
@@ -69,7 +73,7 @@ public static class InteractivePatch
             echo "$code" > {{ShellQuote(exitCodeFile)}}
             exit "$code"
 
-            """;
+            """.ReplaceLineEndings(ShellLineEnding);
 
     /// <summary>
     ///  Runs git's interactive patch of <paramref name="path"/> in <paramref name="workingDir"/> and waits until its window

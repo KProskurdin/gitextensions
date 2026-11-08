@@ -30,6 +30,7 @@ internal sealed class InteractivePatchTests
         string script = InteractivePatch.MacScript("/work dir", "/usr/bin/git", "a$b 'c'.txt", reset: true, "/tmp/code");
 
         script.Should().StartWith("#!/bin/sh\n");
+        script.Should().NotContain("\r", "a raw string takes its line endings from the checkout, and sh cannot read CRLF");
         script.Should().Contain("cd '/work dir' ||");
         script.Should().Contain(@"'/usr/bin/git' checkout -p 'a$b '\''c'\''.txt'");
         script.Should().Contain("HUP", "closing the window must not leave the app waiting");

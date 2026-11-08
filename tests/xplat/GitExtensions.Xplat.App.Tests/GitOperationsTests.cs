@@ -154,6 +154,39 @@ internal sealed class GitOperationsTests
     }
 
     [AvaloniaTest]
+    public void Stage_and_unstage_of_more_paths_than_one_command_line_holds_run_in_batches()
+    {
+        // Each name takes 201 characters of a command line of 32767.
+        string prefix = new('n', 190);
+        string[] names = [.. Enumerable.Range(0, 400).Select(number => $"{prefix}{number:D5}.txt")];
+        foreach (string name in names)
+        {
+            File.WriteAllText(Path.Combine(_repo.Path, name), "content");
+        }
+
+        List<int> staged = [];
+        Wait(_operations.StageAsync(_repo.Path, names, staged.Add));
+
+        staged.Should().HaveCountGreaterThan(1);
+        staged.Sum().Should().Be(names.Length);
+        _repo.Run("diff", "--cached", "--name-only").Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(names.Length);
+
+        List<int> unstaged = [];
+        Wait(_operations.UnstageAsync(_repo.Path, names, unstaged.Add));
+
+        unstaged.Sum().Should().Be(names.Length);
+        _repo.Run("diff", "--cached", "--name-only").Trim().Should().BeEmpty();
+    }
+
+    [AvaloniaTest]
+    public void Stage_should_report_gits_refusal_of_a_batch()
+    {
+        Action stage = () => Wait(_operations.StageAsync(_repo.Path, ["does-not-exist.txt"]));
+
+        stage.Should().Throw<Exception>().WithMessage("*does-not-exist.txt*");
+    }
+
+    [AvaloniaTest]
     public void CreateBranch_with_checkout_switches_to_the_new_branch()
     {
         Wait(_operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: true));

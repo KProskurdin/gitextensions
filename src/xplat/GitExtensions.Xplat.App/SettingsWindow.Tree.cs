@@ -101,7 +101,7 @@ public partial class SettingsWindow
             if (entry.Parent is null)
             {
                 SettingsPageNode group = new(entry.Page, UpstreamTranslation.ByText(entry.Title),
-                    UpstreamImages.Named(entry.Image), page: null);
+                    PageImage(entry), page: null);
                 roots.Add(group);
                 nodes[entry.Page] = group;
             }
@@ -117,7 +117,7 @@ public partial class SettingsWindow
             else
             {
                 SettingsPageNode node = new(page.Name!, UpstreamTranslation.ByText(entry.Title),
-                    UpstreamImages.Named(entry.Image), page);
+                    PageImage(entry), page);
                 nodes[entry.Parent].Add(node);
                 nodes[entry.Page] = node;
             }
@@ -302,6 +302,9 @@ public partial class SettingsWindow
         ContentControl { Content: string content } => content,
         _ => null,
     };
+
+    private static Bitmap? PageImage(SettingsPageEntry entry)
+        => entry.AdaptLightness ? ThemedImages.AdaptLightness(UpstreamImages.Named(entry.Image)) : UpstreamImages.Named(entry.Image);
 }
 
 /// <summary>

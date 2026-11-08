@@ -256,6 +256,49 @@ internal sealed class BlameMenuTests
         history.Close();
     }
 
+    [AvaloniaTest]
+    public void Find_selects_each_lines_occurrence_around_the_end_and_says_when_there_is_none()
+    {
+        (FileHistoryWindow history, BlameView blame) = OpenHistory();
+        ListBox lines = Lines(blame);
+        lines.SelectedIndex = 0;
+        lines.ContainerFromIndex(0)!.Focus();
+        KeyGesture find = Hotkeys.Diff.GestureFor(DiffCommand.Find)!;
+        history.KeyPress(find.Key, TestKeys.Raw(find.KeyModifiers), PhysicalKey.None, keySymbol: null);
+        Dispatcher.UIThread.RunJobs();
+
+        FindWindow window = blame.FindWindow!;
+        window.IsVisible.Should().BeTrue();
+        window.FindControl<Button>("btnHighlightAll")!.IsVisible.Should().BeFalse("whole lines are selected, nothing can be marked");
+        string wanted = SelectedContent(blame)!;
+        int other = Enumerable.Range(1, lines.ItemCount - 1).First(index => ((BlameRow)lines.Items[index]!).Content != wanted);
+        window.LookFor = ((BlameRow)lines.Items[other]!).Content;
+        window.FindControl<Button>("btnFindNext")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        WaitUntil(() => lines.SelectedIndex == other);
+
+        window.LookFor = "nothing-like-this";
+        window.FindControl<Button>("btnFindNext")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
+        window.OwnedWindows.OfType<MessageBoxWindow>().Single().Close();
+        lines.SelectedIndex.Should().Be(other);
+        history.Close();
+    }
+
+    [Test]
+    public async Task Blame_reads_a_files_lines_in_the_repositorys_encoding_and_the_authors_in_the_logs()
+    {
+        _repo.Run("config", "i18n.filesencoding", "iso-8859-1");
+        _repo.Run("config", "user.name", "Zoë");
+        File.WriteAllBytes(Path.Combine(_repo.Path, "latin.txt"), System.Text.Encoding.Latin1.GetBytes("café\n"));
+        _repo.Run("add", "latin.txt");
+        _repo.Run("commit", "-q", "-m", "latin");
+
+        BlameLine line = (await new GitCommitHistory().LoadBlameAsync(_repo.Path, HashOf("latin"), "latin.txt")).Single();
+
+        line.Content.Should().Be("café");
+        line.Author.Should().Be("Zoë");
+    }
+
     private (FileHistoryWindow History, BlameView Blame) OpenHistory()
     {
         Window owner = new();

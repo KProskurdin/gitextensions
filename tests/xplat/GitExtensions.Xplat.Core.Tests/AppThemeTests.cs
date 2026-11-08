@@ -113,4 +113,37 @@ internal sealed class AppThemeTests
         colors.IsDark.Should().BeFalse();
         colors.Error.Should().Contain("user-defined theme broken").And.Contain("NoSuchColor");
     }
+
+    [Test]
+    public void GetNonEmpty_should_give_what_upstreams_dark_css_lists_for_a_dark_theme_and_the_system_color_for_a_light_one()
+    {
+        string css = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "app", "GitUI", "Themes", "dark.css"));
+        string listed = css[css.IndexOf("SystemColorMode.Dark listed", StringComparison.Ordinal)..css.IndexOf("*/", css.IndexOf("SystemColorMode.Dark listed", StringComparison.Ordinal), StringComparison.Ordinal)];
+        AppThemeColors dark = new(ThemeId.DefaultDark, IsDark: true, new Dictionary<AppColor, Color>());
+        AppThemeColors light = new(ThemeId.DefaultLight, IsDark: false, new Dictionary<AppColor, Color>());
+
+        System.Text.RegularExpressions.MatchCollection rows = System.Text.RegularExpressions.Regex.Matches(listed, @"^(\w+): ff([0-9a-f]{6})\r?$", System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        rows.Should().NotBeEmpty();
+        foreach (System.Text.RegularExpressions.Match row in rows)
+        {
+            KnownColor name = Enum.Parse<KnownColor>(row.Groups[1].Value);
+            dark.GetNonEmpty(name).ToArgb().Should().Be(ColorTranslator.FromHtml("#" + row.Groups[2].Value).ToArgb(), name.ToString());
+            light.GetNonEmpty(name).Should().Be(Color.FromKnownColor(name), name.ToString());
+        }
+    }
+
+    [Test]
+    public void GetNonEmpty_should_prefer_what_the_theme_sets()
+    {
+        Color own = Color.FromArgb(1, 2, 3);
+        AppThemeColors colors = new(ThemeId.DefaultDark, IsDark: true, new Dictionary<AppColor, Color>(),
+            SystemColors: new Dictionary<KnownColor, Color> { [KnownColor.Window] = own });
+
+        colors.GetNonEmpty(KnownColor.Window).Should().Be(own);
+    }
+
+    private static string RepositoryRoot([System.Runtime.CompilerServices.CallerFilePath] string file = "")
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "..", "..", ".."));
+
 }

@@ -179,6 +179,8 @@ public partial class CommitWindow
     // RefreshArtificialCommitOnApplicationActivated.
     private void WireListSettings()
     {
+        FileListToolbar.Attach(UnstagedSettingsButton, _preferences, (MenuFlyout)UnstagedSettingsButton.Flyout!);
+        FileListToolbar.Attach(StagedSettingsButton, _preferences, (MenuFlyout)StagedSettingsButton.Flyout!);
         foreach (MenuItem item in new[]
                  {
                      UnstagedShowIgnoredMenuItem, UnstagedShowSkipWorktreeMenuItem,

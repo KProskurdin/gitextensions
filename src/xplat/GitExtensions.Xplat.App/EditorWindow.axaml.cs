@@ -1,7 +1,9 @@
+using System.Text;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GitExtensions.Xplat.Core.Editing;
+using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
 
@@ -60,9 +62,10 @@ public partial class EditorWindow : Window
     // A file that does not exist yet opens empty and is created on save, so the verb also works for a new file.
     private async Task LoadFileAsync()
     {
+        Encoding encoding = await FilesEncodingAsync();
         _file = File.Exists(_path)
-            ? await EditorFile.ReadAsync(_path)
-            : new EditorFile("", "\n", HasByteOrderMark: false);
+            ? await EditorFile.ReadAsync(_path, encoding)
+            : new EditorFile("", "\n", HasByteOrderMark: false, encoding);
         _savedText = _file.Text;
         ContentBox.Text = _file.Text;
         ContentBox.IsReadOnly = false;
@@ -77,6 +80,12 @@ public partial class EditorWindow : Window
             Close();
         }
     }
+
+    // Upstream's Module.FilesEncoding, of the repository the file is in: git's i18n.filesEncoding, else UTF-8.
+    private Task<Encoding> FilesEncodingAsync()
+        => Task.Run(() => Path.GetDirectoryName(_path) is { } folder && Directory.Exists(folder)
+            ? GitModules.Open(folder).FilesEncoding
+            : new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
     private async Task SaveAsync()
     {

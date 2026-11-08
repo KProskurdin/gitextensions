@@ -17,6 +17,46 @@ public sealed record AppThemeColors(
 {
     private const float DarkBrightness = 0.5f;
 
+    // What Windows' SystemColorMode.Dark gives for the system colors, as upstream's dark.css lists them. Upstream's dark themes
+    // rely on it: WinForms switches the mode on from the panel color, and .NET's SystemColors then answer with these. Without
+    // WinForms the mode stays off on every OS, and they answer with the light values.
+    private static readonly IReadOnlyDictionary<KnownColor, Color> _darkModeSystemColors = new Dictionary<KnownColor, Color>
+    {
+        [KnownColor.ActiveBorder] = Color.FromArgb(0x46, 0x46, 0x46),
+        [KnownColor.ActiveCaption] = Color.FromArgb(0x3c, 0x5f, 0x78),
+        [KnownColor.ActiveCaptionText] = Color.FromArgb(0xff, 0xff, 0xff),
+        [KnownColor.AppWorkspace] = Color.FromArgb(0x3c, 0x3c, 0x3c),
+        [KnownColor.ButtonFace] = Color.FromArgb(0x20, 0x20, 0x20),
+        [KnownColor.ButtonHighlight] = Color.FromArgb(0x10, 0x10, 0x10),
+        [KnownColor.ButtonShadow] = Color.FromArgb(0x46, 0x46, 0x46),
+        [KnownColor.Control] = Color.FromArgb(0x20, 0x20, 0x20),
+        [KnownColor.ControlDark] = Color.FromArgb(0x4a, 0x4a, 0x4a),
+        [KnownColor.ControlDarkDark] = Color.FromArgb(0x5a, 0x5a, 0x5a),
+        [KnownColor.ControlLight] = Color.FromArgb(0x2e, 0x2e, 0x2e),
+        [KnownColor.ControlLightLight] = Color.FromArgb(0x1f, 0x1f, 0x1f),
+        [KnownColor.ControlText] = Color.FromArgb(0xff, 0xff, 0xff),
+        [KnownColor.Desktop] = Color.FromArgb(0x10, 0x10, 0x10),
+        [KnownColor.GradientActiveCaption] = Color.FromArgb(0x41, 0x64, 0x82),
+        [KnownColor.GradientInactiveCaption] = Color.FromArgb(0x55, 0x73, 0x96),
+        [KnownColor.GrayText] = Color.FromArgb(0x96, 0x96, 0x96),
+        [KnownColor.Highlight] = Color.FromArgb(0x28, 0x64, 0xb4),
+        [KnownColor.HighlightText] = Color.FromArgb(0x00, 0x00, 0x00),
+        [KnownColor.HotTrack] = Color.FromArgb(0x2d, 0x5f, 0xaf),
+        [KnownColor.InactiveBorder] = Color.FromArgb(0x3c, 0x3f, 0x41),
+        [KnownColor.InactiveCaption] = Color.FromArgb(0x37, 0x4b, 0x5a),
+        [KnownColor.InactiveCaptionText] = Color.FromArgb(0xbe, 0xbe, 0xbe),
+        [KnownColor.Info] = Color.FromArgb(0x50, 0x50, 0x3c),
+        [KnownColor.InfoText] = Color.FromArgb(0xbe, 0xbe, 0xbe),
+        [KnownColor.Menu] = Color.FromArgb(0x37, 0x37, 0x37),
+        [KnownColor.MenuBar] = Color.FromArgb(0x37, 0x37, 0x37),
+        [KnownColor.MenuHighlight] = Color.FromArgb(0x2a, 0x80, 0xd2),
+        [KnownColor.MenuText] = Color.FromArgb(0xf0, 0xf0, 0xf0),
+        [KnownColor.ScrollBar] = Color.FromArgb(0x50, 0x50, 0x50),
+        [KnownColor.Window] = Color.FromArgb(0x32, 0x32, 0x32),
+        [KnownColor.WindowFrame] = Color.FromArgb(0x28, 0x28, 0x28),
+        [KnownColor.WindowText] = Color.FromArgb(0xf0, 0xf0, 0xf0),
+    };
+
     /// <summary>
     ///  The theme these colors come from, for upstream's color helpers (<see cref="ColorHelper.ThemeSettings"/>).
     /// </summary>
@@ -46,6 +86,15 @@ public sealed record AppThemeColors(
     /// </summary>
     public Color Get(KnownColor name)
         => SystemColors?.TryGetValue(name, out Color color) == true ? color : Color.Empty;
+
+    /// <summary>
+    ///  Upstream's <c>Theme.GetNonEmptyColor</c>: the system color the theme sets, else the one the system has in the theme's
+    ///  light or dark mode.
+    /// </summary>
+    public Color GetNonEmpty(KnownColor name)
+        => Get(name) is { IsEmpty: false } themed ? themed
+            : IsDark && _darkModeSystemColors.TryGetValue(name, out Color dark) ? dark
+            : Color.FromKnownColor(name);
 
     /// <summary>
     ///  The colors of <paramref name="theme"/>. A color the theme does not set comes from upstream's defaults, except the
