@@ -36,6 +36,53 @@ internal sealed class DiffFileMenuTests
         _repo.Run("commit", "-q", "-m", "change z");
     }
 
+    [AvaloniaTest]
+    public void With_the_setting_Blame_shows_in_the_diff_tab_until_clicked_again_or_another_file_is_selected()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "one.txt"), "one\ntwo\nthree\n");
+        File.WriteAllText(Path.Combine(_repo.Path, "other.txt"), "other\n");
+        _repo.Run("add", "-A");
+        _repo.Run("commit", "-q", "-m", "two files");
+        TestAppBuilder.Preferences.UseDiffViewerForBlame = true;
+        try
+        {
+            MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+            window.Show();
+            window.OpenRepository(_repo.Path);
+            WaitUntil(() => !window.IsBusy);
+            Avalonia.Controls.TabControl tabs = Find<Avalonia.Controls.TabControl>(window, "DetailTabs");
+            tabs.SelectedItem = Find<Avalonia.Controls.TabItem>(window, "DiffTab");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Path == "one.txt"));
+            files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Path == "one.txt");
+            DiffView diff = Find<DiffView>(window, "CommitDiff");
+            BlameView blame = Find<BlameView>(window, "DiffTabBlame");
+            WaitUntil(() => diff.Lines.Any(line => line.Text == "+three"));
+            diff.FindControl<ListBox>("DiffList")!.SelectedItem = diff.Lines.Single(line => line.Text == "+three");
+
+            Find<MenuItem>(files.ContextMenu!, "tsmiBlame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            WaitUntil(() => blame.IsVisible && blame.Lines.Count == 3 && blame.CurrentFileLine == 3);
+            diff.IsVisible.Should().BeFalse();
+            tabs.SelectedItem.Should().Be(Find<Avalonia.Controls.TabItem>(window, "DiffTab"), "not the File tree tab");
+
+            Find<MenuItem>(files.ContextMenu!, "tsmiBlame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            WaitUntil(() => diff.IsVisible && !blame.IsVisible && diff.CurrentFileLine == 3);
+
+            Find<MenuItem>(files.ContextMenu!, "tsmiBlame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            WaitUntil(() => blame.IsVisible);
+            files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Path == "other.txt");
+
+            WaitUntil(() => diff.IsVisible && !blame.IsVisible && diff.Lines.Any(line => line.Text == "+other"));
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.UseDiffViewerForBlame = false;
+        }
+    }
+
     [TearDown]
     public void TearDown()
     {

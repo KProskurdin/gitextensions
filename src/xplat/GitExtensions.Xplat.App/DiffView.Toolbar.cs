@@ -38,6 +38,9 @@ public partial class DiffView
     /// </summary>
     public DiffLineAction LineAction { get; set; }
 
+    // Upstream's _difftasticCmdCache.
+    private static readonly Dictionary<string, bool> _difftasticEnabled = [];
+
     private void WireOptions()
     {
         ShowOptions();
@@ -60,6 +63,18 @@ public partial class DiffView
             () => _options.ToggleIgnoreWhitespace(IgnoreWhitespaceKind.AllSpace));
 
         DiffContextMenu.Opening += (_, _) => ShowMenu();
+
+        // Upstream's ResetPatchAppearance and ToggleGitWordColoring: the parent item resets too.
+        DiffAppearanceMenuItem.Click += (_, e) =>
+        {
+            if (e.Source == DiffAppearanceMenuItem)
+            {
+                ChangeAppearance(DiffDisplayAppearance.Patch);
+            }
+        };
+        ShowPatchMenuItem.Click += (_, _) => ChangeAppearance(DiffDisplayAppearance.Patch);
+        ShowGitWordColoringMenuItem.Click += (_, _) => ToggleAppearance(DiffDisplayAppearance.GitWordDiff);
+        ShowDifftasticMenuItem.Click += (_, _) => ToggleAppearance(DiffDisplayAppearance.Difftastic);
         EncodingBox.ItemsSource = AppSettings.AvailableEncodings.Values.Select(encoding => encoding.EncodingName).ToList();
         EncodingBox.SelectionChanged += (_, _) => ChooseEncoding();
 
@@ -176,17 +191,66 @@ public partial class DiffView
         _showingOptions = false;
     }
 
+    // Upstream's SupportLinePatching: a patch with hunks, which a binary file's or a submodule's change has not.
+    private bool CanPatchLines => !IsShowingOtherThanPatch && _viewModel.Lines.Any(line => line.Kind == DiffLineKind.Hunk);
+
+    private bool IsShowingOtherThanPatch
+        => _request is not null && _text is null
+           && AppServices.Preferences.DiffDisplayAppearance != DiffDisplayAppearance.Patch;
+
+    // Upstream's ToggleGitWordColoring and ToggleDifftastic: the one on goes back to the patch.
+    private void ToggleAppearance(DiffDisplayAppearance appearance)
+        => ChangeAppearance(AppServices.Preferences.DiffDisplayAppearance == appearance
+            ? DiffDisplayAppearance.Patch
+            : appearance);
+
+    // Upstream's SetDifftasticEnabled: whether git knows the tool is read once per repository.
+    private void ShowDifftasticEnabled(string repositoryPath)
+    {
+        if (_difftasticEnabled.TryGetValue(repositoryPath, out bool enabled))
+        {
+            ShowDifftasticMenuItem.IsEnabled = enabled;
+            return;
+        }
+
+        UiActions.Run(async () =>
+        {
+            bool found = await Task.Run(() => Difftastic.IsEnabled(GitModules.Open(repositoryPath)));
+            _difftasticEnabled[repositoryPath] = found;
+            ShowDifftasticMenuItem.IsEnabled = found;
+        }, ex => ShowError(ex.Message));
+    }
+
+    // Upstream's OnExtraDiffArgumentsChanged: for every viewer, and this one reads its diff again.
+    private void ChangeAppearance(DiffDisplayAppearance appearance)
+    {
+        AppServices.Preferences.DiffDisplayAppearance = appearance;
+        Reload();
+    }
+
     // Upstream's contextMenu_Opening: the line items only where the window can stage, the options only for a diff.
     private void ShowMenu()
     {
         bool selected = DiffList.Selection.SelectedIndexes.Count > 0 && _request is not null && _text is null;
-        StageLinesMenuItem.IsVisible = LineAction is DiffLineAction.Stage or DiffLineAction.Apply;
+
+        // Upstream's SupportLinePatching and isCopyPatch: a word diff has no + and - to patch with.
+        bool wordDiff = IsShowingOtherThanPatch;
+        bool patchable = CanPatchLines;
+        StageLinesMenuItem.IsVisible = patchable && LineAction is DiffLineAction.Stage or DiffLineAction.Apply;
         StageLinesMenuItem.IsEnabled = selected;
-        UnstageLinesMenuItem.IsVisible = LineAction == DiffLineAction.Unstage;
+        UnstageLinesMenuItem.IsVisible = patchable && LineAction == DiffLineAction.Unstage;
         UnstageLinesMenuItem.IsEnabled = selected;
-        ResetLinesMenuItem.IsVisible = LineAction != DiffLineAction.None;
+        ResetLinesMenuItem.IsVisible = patchable && LineAction != DiffLineAction.None;
         ResetLinesMenuItem.IsEnabled = selected;
-        CopyNewVersionMenuItem.IsVisible = CopyOldVersionMenuItem.IsVisible = _textIsDiff;
+        CopyPatchMenuItem.IsVisible = !wordDiff;
+        CopyNewVersionMenuItem.IsVisible = CopyOldVersionMenuItem.IsVisible = _textIsDiff && !wordDiff;
+
+        // Upstream's isDiffAppearanceVisible: for a diff of a file.
+        DiffAppearanceMenuItem.IsVisible = _hasOptions && _request is { FilePath: not null } && _text is null;
+        DiffDisplayAppearance appearance = AppServices.Preferences.DiffDisplayAppearance;
+        ShowPatchMenuItem.IsChecked = appearance == DiffDisplayAppearance.Patch;
+        ShowGitWordColoringMenuItem.IsChecked = appearance == DiffDisplayAppearance.GitWordDiff;
+        ShowDifftasticMenuItem.IsChecked = appearance == DiffDisplayAppearance.Difftastic;
 
         // Upstream's isPartialTextView: a diff or git-grep's matches, not a file's text.
         TreatAllFilesAsTextSeparator.IsVisible = TreatAllFilesAsTextMenuItem.IsVisible = IsPartialTextView;

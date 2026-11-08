@@ -95,6 +95,22 @@ internal static class ThemeBrushes
             Colors: colors);
     }
 
+    private static readonly Dictionary<DrawingColor, IBrush> _colorBrushes = [];
+
+    /// <summary>
+    ///  A brush of a color git gave a part of a line.
+    /// </summary>
+    public static IBrush OfColor(DrawingColor color)
+    {
+        if (!_colorBrushes.TryGetValue(color, out IBrush? brush))
+        {
+            brush = Brush(color);
+            _colorBrushes[color] = brush;
+        }
+
+        return brush;
+    }
+
     private static IBrush Brush(DrawingColor color)
         => new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B)).ToImmutable();
 

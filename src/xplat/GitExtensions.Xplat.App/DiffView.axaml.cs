@@ -30,6 +30,9 @@ public partial class DiffView : UserControl
     private Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>>? _grepRead;
     private DiffOptions _options;
 
+    // Upstream's line argument of ViewChangesAsync: the line to go to when the next lines are shown.
+    private int? _lineToGoTo;
+
     // The item template's padding and line number columns, before a line's text.
     private const double LinePadding = 4;
     private const double LineNumbersWidth = 88;
@@ -43,9 +46,11 @@ public partial class DiffView : UserControl
         // As upstream's FileViewer, each view starts from the options of this run or the saved defaults; "Treat all files as
         // text" starts off in each.
         _options = AppServices.Preferences.InitialDiffOptions() with { TreatAllFilesAsText = false, Encoding = null };
+        AppServices.Preferences.ReloadDiffDisplayAppearance();
         WireOptions();
         WireContinuousScroll();
         WireFind();
+        WireFileContent();
         DiffList.SizeChanged += (_, _) => ShowVerticalRuler();
         DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
         DiffList.PropertyChanged += (_, e) =>
@@ -88,9 +93,18 @@ public partial class DiffView : UserControl
     ///  Shows the diff of <paramref name="filePath"/> in <paramref name="commitHash"/>, or of the working tree (staged or
     ///  unstaged) when no commit is given. A null file shows the whole commit.
     /// </summary>
-    public Task ShowAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, string title)
+    public async Task ShowAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, string title)
     {
-        _request = new DiffRequest(repositoryPath, commitHash, filePath, staged);
+        int version = ResetContent();
+        FileRevision revision = FileRevision.Of(commitHash, staged);
+        if (filePath is not null && GitCommands.FileHelper.IsImage(filePath)
+            && await ShowImageInsteadOfDiffAsync(version, repositoryPath, revision, filePath, title))
+        {
+            return;
+        }
+
+        DiffRequest request = new(repositoryPath, commitHash, filePath, staged);
+        _request = request;
         _text = null;
         _grep = null;
         _grepRead = null;
@@ -99,17 +113,28 @@ public partial class DiffView : UserControl
         _hasOptions = true;
         ShowToolbar();
         TitleText.Text = title;
-        return LoadAsync(_request);
+        await LoadAsync(request);
+        await ShowNewBinaryFileAsync(version, request, revision, title);
     }
 
     /// <summary>
     ///  Shows the diff <paramref name="read"/> returns for the view's options (upstream's <c>FormDiff</c>, a file between
     ///  two revisions); it is read again when the options change.
     /// </summary>
-    public Task ShowDiffAsync(string repositoryPath, string? filePath, string title,
-        Func<DiffOptions, Task<IReadOnlyList<DiffLine>>> read)
+    /// <param name="revision">The revision the diff goes to, whose image or new binary file is shown instead, as upstream's
+    ///  <c>ViewChangesAsync</c>.</param>
+    public async Task ShowDiffAsync(string repositoryPath, string? filePath, string title,
+        Func<DiffOptions, Task<IReadOnlyList<DiffLine>>> read, FileRevision? revision = null)
     {
-        _request = new DiffRequest(repositoryPath, CommitHash: null, filePath, Staged: false, read);
+        int version = ResetContent();
+        if (revision is not null && filePath is not null && GitCommands.FileHelper.IsImage(filePath)
+            && await ShowImageInsteadOfDiffAsync(version, repositoryPath, revision, filePath, title))
+        {
+            return;
+        }
+
+        DiffRequest request = new(repositoryPath, CommitHash: null, filePath, Staged: false, read);
+        _request = request;
         _text = null;
         _grep = null;
         _grepRead = null;
@@ -118,7 +143,11 @@ public partial class DiffView : UserControl
         _hasOptions = true;
         ShowToolbar();
         TitleText.Text = title;
-        return LoadAsync(_request);
+        await LoadAsync(request);
+        if (revision is not null)
+        {
+            await ShowNewBinaryFileAsync(version, request, revision, title);
+        }
     }
 
     /// <summary>
@@ -127,6 +156,7 @@ public partial class DiffView : UserControl
     /// </summary>
     public void ShowText(string title, string? content)
     {
+        ResetContent();
         _request = null;
         _grep = null;
         _grepRead = null;
@@ -143,8 +173,28 @@ public partial class DiffView : UserControl
     /// <summary>
     ///  Shows a patch that is not in the repository (a pull request's file), as upstream's <c>ViewFixedPatch</c>.
     /// </summary>
+    /// <summary>
+    ///  Shows lines read elsewhere, in their colors, such as a range diff's.
+    /// </summary>
+    public void ShowDiffLines(string title, IReadOnlyList<DiffLine> lines)
+    {
+        ResetContent();
+        _request = null;
+        _grep = null;
+        _grepRead = null;
+        TitleText.Text = title;
+        _hasOptions = false;
+        ShowToolbar();
+        ShowError(null);
+        _syntaxPath = null;
+        _textIsDiff = false;
+        _text = lines;
+        ShowLines();
+    }
+
     public void ShowPatch(string title, string patch)
     {
+        ResetContent();
         _request = null;
         _grep = null;
         _grepRead = null;
@@ -177,7 +227,7 @@ public partial class DiffView : UserControl
     /// </summary>
     public (string Text, int Start, int Length)? WholeRange()
     {
-        if (_request is null || _text is not null || _viewModel.Lines.Count == 0)
+        if (_request is null || _text is not null || _viewModel.Lines.Count == 0 || !CanPatchLines)
         {
             return null;
         }
@@ -190,7 +240,7 @@ public partial class DiffView : UserControl
     {
         IReadOnlyList<int> selected = DiffList.Selection.SelectedIndexes;
         IReadOnlyList<DiffLine> lines = _viewModel.Lines;
-        if (_request is null || _text is not null || selected.Count == 0 || lines.Count == 0)
+        if (_request is null || _text is not null || selected.Count == 0 || lines.Count == 0 || !CanPatchLines)
         {
             return null;
         }
@@ -227,6 +277,7 @@ public partial class DiffView : UserControl
     public Task ShowGrepAsync(string title,
         Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>> read)
     {
+        ResetContent();
         _request = null;
         _text = null;
         _grepRead = read;
@@ -253,6 +304,7 @@ public partial class DiffView : UserControl
 
     public void Clear()
     {
+        ResetContent();
         _request = null;
         _text = null;
         _grep = null;
@@ -281,7 +333,14 @@ public partial class DiffView : UserControl
     private Task LoadAsync(DiffRequest request)
     {
         ShowError(null);
-        DiffOptions options = _options with { Histogram = AppServices.Preferences.UseHistogramDiffAlgorithm };
+        DiffOptions options = _options with
+        {
+            Histogram = AppServices.Preferences.UseHistogramDiffAlgorithm,
+            UseGitColoring = AppServices.Preferences.UseGitColoring,
+            Appearance = AppServices.Preferences.DiffDisplayAppearance,
+            DifftasticWidth = Difftastic.WidthFor(DiffList.Bounds.Width),
+        };
+        ShowDifftasticEnabled(request.RepositoryPath);
         return request.Read is { } read
             ? _viewModel.LoadAsync(() => read(options))
             : _viewModel.LoadAsync(request.RepositoryPath, request.CommitHash, request.FilePath, request.Staged, options);
@@ -324,15 +383,142 @@ public partial class DiffView : UserControl
                 : null;
         Lines =
         [
-            .. (_text ?? _viewModel.Lines).Select(line => new DiffLineItem(DisplayText(line),
-                ThemeBrushes.ForegroundFor(line.Kind), ThemeBrushes.BackgroundFor(line.Kind),
-                line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
-                line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "") { Runs = Highlight(highlighter, line), })
+            .. (_text ?? _viewModel.Lines).Select(line => WithDimmedRuns(line, line.ColorRuns is null
+                ? new DiffLineItem(DisplayText(line),
+                    ThemeBrushes.ForegroundFor(line.Kind), ThemeBrushes.BackgroundFor(line.Kind),
+                    line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
+                    line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "") { Runs = Highlight(highlighter, line), }
+                : ColoredItem(highlighter, line)))
         ];
         ResetFind();
         DiffList.ItemsSource = Lines;
         ShowVerticalRuler();
         ApplyPendingScroll();
+        if (_lineToGoTo is { } lineToGoTo && Lines.Count > 0)
+        {
+            _lineToGoTo = null;
+            GoToLine(lineToGoTo);
+        }
+    }
+
+    // Upstream's AddInlineDifferenceMarkers: what the line shares with the one it replaces goes dimmed over its other colors.
+    private DiffLineItem WithDimmedRuns(DiffLine line, DiffLineItem item)
+    {
+        if (line.DimRuns is not { Count: > 0 } dims)
+        {
+            return item;
+        }
+
+        DiffColorRun?[] dimAt = new DiffColorRun?[item.Text.Length];
+        foreach (DiffColorRun dim in dims)
+        {
+            int start = DisplayOffset(line, dim.Start);
+            int end = Math.Min(DisplayOffset(line, dim.Start + dim.Length), dimAt.Length);
+            for (int i = start; i < end; i++)
+            {
+                dimAt[i] = dim;
+            }
+        }
+
+        IReadOnlyList<DiffTextRun> runs = item.Runs is { } own && string.Concat(own.Select(run => run.Text)) == item.Text
+            ? own
+            : [new DiffTextRun(item.Text, null, false, false)];
+        List<DiffTextRun> result = [];
+        int position = 0;
+        foreach (DiffTextRun run in runs)
+        {
+            int partStart = 0;
+            for (int i = 1; i <= run.Text.Length; i++)
+            {
+                if (i == run.Text.Length || dimAt[position + i] != dimAt[position + partStart])
+                {
+                    DiffColorRun? dim = dimAt[position + partStart];
+                    result.Add(dim is null
+                        ? run with { Text = run.Text[partStart..i] }
+                        : run with
+                        {
+                            Text = run.Text[partStart..i],
+                            Foreground = dim.Foreground is { } fore ? ThemeBrushes.OfColor(fore) : run.Foreground,
+                            Background = dim.Background is { } back ? ThemeBrushes.OfColor(back) : run.Background,
+                        });
+                    partStart = i;
+                }
+            }
+
+            position += run.Text.Length;
+        }
+
+        return item with { Runs = result };
+    }
+
+    // Where a position of a line's text is on show: the non-printing marks put a mark before each tab.
+    private int DisplayOffset(DiffLine line, int offset)
+    {
+        if (!_options.ShowNonPrintingChars)
+        {
+            return offset;
+        }
+
+        int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
+        int tabs = 0;
+        for (int i = prefix; i < offset && i < line.Text.Length; i++)
+        {
+            if (line.Text[i] == '\t')
+            {
+                tabs++;
+            }
+        }
+
+        return offset + tabs;
+    }
+
+    // Upstream's git coloring: the colors are git's, not the line's kind's. The file's syntax colors show where git colored
+    // nothing, such as on a context line, which is where upstream's show through too: a change's foreground overrides them.
+    private DiffLineItem ColoredItem(SyntaxHighlighter? highlighter, DiffLine line)
+    {
+        IReadOnlyList<DiffTextRun>? syntax = Highlight(highlighter, line);
+        return new DiffLineItem(DisplayText(line), ThemeBrushes.ForegroundFor(DiffLineKind.Context), Background: null,
+            line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
+            line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "")
+        {
+            Runs = line.ColorRuns is { Count: > 0 } colors ? GitColorRuns(line, colors) : syntax,
+        };
+    }
+
+    private List<DiffTextRun> GitColorRuns(DiffLine line, IReadOnlyList<DiffColorRun> colors)
+    {
+        bool marks = _options.ShowNonPrintingChars;
+        List<DiffTextRun> runs = [];
+        int position = 0;
+        foreach (DiffColorRun color in colors)
+        {
+            if (color.Start > position)
+            {
+                runs.Add(Run(line.Text[position..color.Start], null, null));
+            }
+
+            runs.Add(Run(line.Text.Substring(color.Start, color.Length), color.Foreground, color.Background));
+            position = color.Start + color.Length;
+        }
+
+        if (position < line.Text.Length)
+        {
+            runs.Add(Run(line.Text[position..], null, null));
+        }
+
+        if (marks)
+        {
+            runs.Add(new DiffTextRun(EndOfLineMark(line), null, false, false));
+        }
+
+        return runs;
+
+        DiffTextRun Run(string text, System.Drawing.Color? foreground, System.Drawing.Color? background)
+            => new(marks ? NonPrintingCharacters.Mark(text) : text,
+                foreground is { } fore ? ThemeBrushes.OfColor(fore) : null, false, false)
+            {
+                Background = background is { } back ? ThemeBrushes.OfColor(back) : null,
+            };
     }
 
     // Upstream's GetDiffLineInfo for grep: a function line and a separator as headers, the matches marked.
@@ -389,8 +575,11 @@ public partial class DiffView : UserControl
         }
 
         int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
-        return line.Text[..prefix] + NonPrintingCharacters.Mark(line.Text[prefix..]) + NonPrintingCharacters.EndOfLine;
+        return line.Text[..prefix] + NonPrintingCharacters.Mark(line.Text[prefix..]) + EndOfLineMark(line);
     }
+
+    private static string EndOfLineMark(DiffLine line)
+        => NonPrintingCharacters.EndOfLineMark(line.Ending, AppServices.Preferences.ShowEolMarkerAsGlyph);
 
     // Upstream's ruler at the column the setting gives, counted from the line's start as upstream's editor counts it.
     private void ShowVerticalRuler()
@@ -441,7 +630,7 @@ public partial class DiffView : UserControl
 
         if (marks)
         {
-            runs.Add(new DiffTextRun(NonPrintingCharacters.EndOfLine.ToString(), null, false, false));
+            runs.Add(new DiffTextRun(EndOfLineMark(line), null, false, false));
         }
 
         return runs;
@@ -528,6 +717,26 @@ public partial class DiffView : UserControl
                 return true;
 
             // Upstream's PerformClickIfAvailable: only while the menu offers the item.
+            case DiffCommand.ShowGitWordColoring:
+                ShowMenu();
+                if (!DiffAppearanceMenuItem.IsVisible)
+                {
+                    return false;
+                }
+
+                ToggleAppearance(DiffDisplayAppearance.GitWordDiff);
+                return true;
+            case DiffCommand.ShowDifftastic:
+                ShowMenu();
+                if (!DiffAppearanceMenuItem.IsVisible || !ShowDifftasticMenuItem.IsEnabled)
+                {
+                    return false;
+                }
+
+                ToggleAppearance(DiffDisplayAppearance.Difftastic);
+                return true;
+
+            // As above.
             case DiffCommand.ShowSyntaxHighlighting:
                 ShowMenu();
                 if (!SyntaxHighlightingMenuItem.IsVisible || !SyntaxHighlightingMenuItem.IsEnabled)

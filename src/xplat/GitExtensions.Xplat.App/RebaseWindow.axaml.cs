@@ -334,7 +334,7 @@ public partial class RebaseWindow : Window
 
     // Upstream's ResolvedClick.
     private Task ContinueAsync()
-        => RunStepAsync(() => _actions.ContinueRebaseAsync(_repositoryPath), rebaseOnly: true, output: false);
+        => RunStepAsync(() => _actions.ContinueRebaseShowingOutputAsync(_repositoryPath), rebaseOnly: true, output: true);
 
     // Upstream's SkipClick: the commit being applied is marked skipped first.
     private Task SkipAsync()

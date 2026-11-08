@@ -19,6 +19,12 @@ public partial class MainWindow
     // after it until Blame is clicked again.
     private bool _fileTreeBlame;
 
+    // The submodules among the tree's entries (upstream's GetTreeFiles marks them).
+    private IReadOnlySet<string> _fileTreeSubmodules = new HashSet<string>();
+
+    // Upstream's _lastExplicitlySelectedItem: the file to select when the tree of the commit asked for is shown.
+    private string? _fileInRevisionToSelect;
+
 
     // The File tree tab's files (the commit's, or a git-grep search's) before the filter.
     private IReadOnlyList<string> _fileTreeFiles = [];
@@ -29,7 +35,8 @@ public partial class MainWindow
     private void ShowFileTreeFiles()
     {
         List<string> shown = [.. _fileTreeFiles.Where(file => FileTreeFilterBox.IsMatch(file))];
-        string? selected = (FileTreeView.SelectedItem as FileTreeNode)?.Path;
+        string? selected = _fileInRevisionToSelect ?? (FileTreeView.SelectedItem as FileTreeNode)?.Path;
+        _fileInRevisionToSelect = null;
         IReadOnlyList<FileTreeNode> roots = FileTree.Build(shown);
         if ((FileTreeFilterBox.Filter is not null || _fileTreeGrep.Length > 0) && shown.Count < MaxExpandedFiles)
         {
@@ -64,6 +71,7 @@ public partial class MainWindow
                 () => [.. TreeFiles().Select(file => (file.Path, (string?)null))],
                 SelectInFileTree),
             Blame = ToggleFileTreeBlame,
+            Submodules = () => DiffFileSubmodules(() => this),
             GitGrep = _fileTreeGitGrep,
             IsFileTreeMode = true,
             BlameChecked = () => _fileTreeBlame,
@@ -77,7 +85,9 @@ public partial class MainWindow
                 AnyRootExpanded: () => TreeRoots().Any(root => root.IsExpanded),
                 CollapseRootFolders: CollapseRootFolders),
         });
-        FileTreeBlame.CommitRequested += (_, hash) => Run(() => GoToRevisionAsync(hash, showNoRevisionMessage: true));
+        FileTreeBlame.HideCommitInfo();
+        FileTreeBlame.GridRevision = hash => _commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == hash)?.Row;
+        FileTreeBlame.CommitRequested += (_, request) => Run(() => GoToBlamedRevisionAsync(request));
         FileTreeBlame.ErrorOccurred += (_, message) => ShowError(message);
         FileTreeBlame.RepositoryHost = RelevantRepositoryHost;
     }
@@ -95,7 +105,12 @@ public partial class MainWindow
 
         IEnumerable<FileTreeNode> files = nodes is [{ } single] ? single.Files() : nodes.Where(node => !node.IsFolder);
         return new DiffMenuSelection(null, second, ParentsOf(second),
-            [.. files.Select(file => new DiffMenuFile("", file.Path, null, IsTracked: true))],
+            [
+                .. files.Select(file => new DiffMenuFile("", file.Path, null, IsTracked: true)
+                {
+                    IsSubmodule = _fileTreeSubmodules.Contains(file.Path),
+                })
+            ],
             Folder: nodes is [{ IsFolder: true } folder] ? folder.Path : null,
             TreeFiles: true);
     }
@@ -163,6 +178,42 @@ public partial class MainWindow
         {
             folder.IsExpanded = false;
         }
+    }
+
+    // Upstream FileStatusList's SelectNextVisibleItem and SelectPreviousVisibleItem in file tree mode: among the files shown,
+    // so not those in collapsed folders.
+    private void SelectNeighbourTreeFile(bool next)
+    {
+        List<FileTreeNode> files = [.. TreeRoots().SelectMany(ShownFiles)];
+        int current = FileTreeView.SelectedItem is FileTreeNode selected ? files.IndexOf(selected) : -1;
+        int target = current < 0 ? 0 : current + (next ? 1 : -1);
+        if (target >= 0 && target < files.Count)
+        {
+            FileTreeView.SelectedItem = files[target];
+        }
+
+        return;
+
+        static IEnumerable<FileTreeNode> ShownFiles(FileTreeNode node)
+            => !node.IsFolder ? [node] : node.IsExpanded ? node.Children.SelectMany(ShownFiles) : [];
+    }
+
+    // Upstream RevisionDiffControl's SelectFileInRevision: the commit is selected in the grid, with the file under the name
+    // it has in that commit, as a blamed line can come from before a rename.
+    private async Task GoToBlamedRevisionAsync(BlameCommitRequest request)
+    {
+        if (request.Hash == _fileTreeHash)
+        {
+            SelectInFileTree(request.FileName);
+            return;
+        }
+
+        if (FileTreeBlame.GridRevision?.Invoke(request.Hash) is not null)
+        {
+            _fileInRevisionToSelect = request.FileName;
+        }
+
+        await GoToRevisionAsync(request.Hash, showNoRevisionMessage: true);
     }
 
     // Upstream RevisionDiffControl's BlameFile in file tree mode: Blame is checked or unchecked and the selected file shown

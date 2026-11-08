@@ -9,6 +9,7 @@ using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
@@ -118,7 +119,12 @@ public partial class FileHistoryWindow : Window
                 new CommitDiffWindow(_repositoryPath, row.Hash).Show(this);
             }
         };
-        Blame.CommitRequested += (_, hash) => Run(() => GoToCommitAsync(hash));
+        Blame.GridRevision = hash => _commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == hash)?.Row;
+
+        // Upstream's SelectFileInRevision: the grid's row knows the file's name in that commit.
+        Blame.CommitRequested += (_, request) => Run(() => GoToCommitAsync(request.Hash));
+        Blame.GridChildren = _commits.ChildrenOf;
+        Blame.Info.RevisionLinkClicked += (_, revision) => Run(() => GoToLinkedRevisionAsync(revision));
         Blame.OptionsChanged += (_, _) => ShowOptionChecks();
         Blame.ErrorOccurred += (_, message) => ShowError(message);
         WireToolbar();
@@ -274,14 +280,15 @@ public partial class FileHistoryWindow : Window
                 await Blame.LoadAsync(_repositoryPath, row.Hash, fileName);
                 break;
             case FileHistoryTab.View when tabs.Visible.Contains(FileHistoryTab.View):
-                View.ShowText(fileName, await new GitCommitHistory().LoadFileTextAsync(_repositoryPath, row.Hash, fileName));
+                await View.ShowFileAsync(_repositoryPath, row.Hash, staged: false, fileName);
                 break;
             case FileHistoryTab.Diff when tabs.Visible.Contains(FileHistoryTab.Diff)
                                           && _selection.Revisions is [_, .., { } first]:
                 // Upstream's FileStatusItem(firstRev: the earliest selected, secondRev: the latest selected).
                 RevisionDiffFile file = new("M", fileName, OldPath: null, IsTracked: true);
                 await Diff.ShowDiffAsync(_repositoryPath, fileName, fileName, options =>
-                    RevisionDiff.DiffAsync(_module, ObjectId.Parse(first.Hash), ObjectId.Parse(row.Hash), file, options));
+                    RevisionDiff.DiffAsync(_module, ObjectId.Parse(first.Hash), ObjectId.Parse(row.Hash), file, options),
+                    FileRevision.Of(row.Hash));
                 break;
             case FileHistoryTab.Diff when tabs.Visible.Contains(FileHistoryTab.Diff):
                 await Diff.ShowAsync(_repositoryPath, hash, fileName, staged, fileName);
@@ -306,6 +313,18 @@ public partial class FileHistoryWindow : Window
         string shortHash = ObjectId.TryParse(hash, out ObjectId id) ? id.ToShortString() : hash;
         await new MessageBoxWindow(string.Format(UpstreamTranslation.ByText(RevisionFiltered), shortHash),
             UpstreamTranslation.ByText(RevisionFilteredCaption), MessageBoxButtons.OK).ShowDialog(this);
+    }
+
+    // Upstream's Blame_CommandClick for "gotocommit", "gotobranch" and "gototag" of the Blame tab's commit information.
+    private async Task GoToLinkedRevisionAsync(string revision)
+    {
+        string? hash = ObjectId.TryParse(revision, out ObjectId id)
+            ? id.ToString()
+            : await RepositoryScriptContext.ResolveCommitAsync(_repositoryPath, revision);
+        if (hash is not null)
+        {
+            await GoToCommitAsync(hash);
+        }
     }
 
     private void WireToolbar()

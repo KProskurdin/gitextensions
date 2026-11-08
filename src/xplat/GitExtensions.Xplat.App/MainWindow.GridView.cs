@@ -84,7 +84,14 @@ public partial class MainWindow
         }
 
         CommitList.ContainerPrepared += (_, e) => ShowAuthoredHighlight(e.Container);
-        CommitList.SelectionChanged += (_, _) => HighlightAuthor(LatestSelectedItem?.Row.AuthorEmail);
+        CommitList.SelectionChanged += (_, _) =>
+        {
+            // Upstream's ProcessRevisionSelectionChange: several selected commits leave the highlight as it is.
+            if (CommitList.SelectedItems is not { Count: > 1 })
+            {
+                HighlightAuthor(LatestSelectedItem?.Row.AuthorEmail);
+            }
+        };
         _repository.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(_repository.UserEmail) && LatestSelectedItem is null)

@@ -113,6 +113,24 @@ internal sealed class GitActionBarTests
     }
 
     [AvaloniaTest]
+    public void The_action_bars_abort_runs_at_once_as_upstreams()
+    {
+        MakeConflictingBranches();
+        GitProcess.RunAllowingFailure(_repo.Path, "merge", "other");
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        WaitUntil(() => Find<Border>(window, "StateBanner").IsVisible);
+
+        Click(window, "AbortActionButton");
+
+        WaitUntil(() => !Find<Border>(window, "StateBanner").IsVisible);
+        window.OwnedWindows.OfType<ConfirmWindow>().Should().BeEmpty();
+        File.Exists(Path.Combine(_repo.Path, ".git", "MERGE_HEAD")).Should().BeFalse();
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void The_action_bar_shows_a_conflicted_merge_and_continues_it_once_resolved()
     {
         MakeConflictingBranches();

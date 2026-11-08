@@ -286,11 +286,23 @@ public partial class MainWindow : Window
         WireGridMenu();
         WireDiffFileMenu();
         WireFileTreeMenu();
+        WireDiffTabBlame();
         WireDiffLinePatching();
         CommitFilesList.SelectionChanged += (_, _) => ShowSelectedCommitFileDiff();
 
         // Upstream's DiffFiles_DoubleClick: the file's history at the selected commit.
-        CommitFilesList.DoubleTapped += (_, _) => RunBrowseDiffHotkey(BrowseDiffCommand.ShowHistory);
+        CommitFilesList.DoubleTapped += (_, _) =>
+        {
+            if (_preferences.OpenSubmoduleDiffInSeparateWindow
+                && CommitFilesList.SelectedItem is CommitFile file && (file.IsSubmodule || file.DiffFile?.IsSubmodule == true))
+            {
+                CommitFilesContextMenu.RunDoubleClick();
+            }
+            else
+            {
+                RunBrowseDiffHotkey(BrowseDiffCommand.ShowHistory);
+            }
+        };
         ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
         CommitDiffToolButton.Click += (_, _) => Run(OpenCommitFileInDiffToolAsync);
         DiffToolChoices.Attach(CommitDiffToolChoiceButton, tool => OpenCommitFileInDiffToolAsync(tool),
@@ -339,8 +351,10 @@ public partial class MainWindow : Window
             IReadOnlyList<string> files = grep.Length > 0
                 ? await GitGrep.FilesAsync(GitModules.Open(path), hash, grep)
                 : await _history.LoadTreeAsync(path, hash);
+            IReadOnlySet<string> submodules = await _history.LoadTreeSubmodulesAsync(path, hash);
             if (version == _fileTreeVersion)
             {
+                _fileTreeSubmodules = submodules;
                 _fileTreeFiles = files;
                 ShowFileTreeFiles();
             }
@@ -379,11 +393,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        string? content = await _history.LoadFileTextAsync(path, hash, file.Path);
-        if (FileTreeView.SelectedItem == file)
-        {
-            FileContentView.ShowText(file.Path, content);
-        }
+        await FileContentView.ShowFileAsync(path, hash, staged: false, file.Path);
     }
 
     private void ShowGitProblem()
@@ -744,6 +754,9 @@ public partial class MainWindow : Window
                 return true;
             case GridCommand.ResetRevisionFilter:
                 ApplyFilter(_commits.Filter.ResetAll());
+                return true;
+            case GridCommand.ResetRevisionPathFilter:
+                ApplyFilter(_commits.Filter with { PathFilter = "" });
                 return true;
             case GridCommand.ShowAllBranches:
                 ShowBranches(currentOnly: false, filtered: false);
@@ -1313,6 +1326,8 @@ public partial class MainWindow : Window
             (Screenshot.FileHistoryWindow, { } path) => NewFileHistoryWindow(path,
                 Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? "", revision: null, showBlame: false),
             (Screenshot.CommitDiffWindow, { } path) => new CommitDiffWindow(path, _commits.Selected?.Hash ?? "HEAD"),
+            (Screenshot.BlameWindow, { } path) => new BlameWindow(path, "HEAD",
+                Environment.GetEnvironmentVariable(Screenshot.FileEnvironmentVariable) ?? ""),
             (Screenshot.RecentRepositoriesSettingsWindow, _) => new RecentRepositoriesSettingsWindow(),
             (Screenshot.GoToCommitWindow, { } path) => new GoToCommitWindow(path),
             (Screenshot.DeleteBranchWindow, { } path) => new DeleteBranchWindow(
@@ -1706,25 +1721,6 @@ public partial class MainWindow : Window
                await _actions.DeleteRemoteTagAsync(path, remote, tag);
     }
 
-    // Aborting drops whatever was resolved by hand, so it is confirmed first.
-    private void AbortAfterConfirm(string operation, Func<string, Task<bool>> abort)
-    {
-        if (RepositoryPath is not { } path)
-        {
-            return;
-        }
-
-        string message =
-            $"Abort the {operation}? Conflicts you resolved by hand are lost and the branch goes back to before the {operation}.";
-        Run(async () =>
-        {
-            if (await new ConfirmWindow(message, $"Abort {operation}").ShowDialog<bool>(this))
-            {
-                await abort(path);
-            }
-        });
-    }
-
     // Upstream's StartFileHistoryDialog: the file history window on <file>, selecting <revision>, on its Blame tab for
     // blame. Upstream starts it in a new process; here it is a window of this one.
     private FileHistoryWindow NewFileHistoryWindow(string path, string file, string? revision, bool showBlame)
@@ -1984,18 +1980,19 @@ public partial class MainWindow : Window
         }
     }
 
+    // Upstream's AbortButton_Click: the command runs at once.
     private void AbortAction()
     {
         switch (_actionBanner?.Action)
         {
             case GitAction.Rebase:
-                AbortAfterConfirm("rebase", _actions.AbortRebaseAsync);
+                RunOnRepository(_actions.AbortRebaseAsync);
                 break;
             case GitAction.Merge:
-                AbortAfterConfirm("merge", _actions.AbortMergeAsync);
+                RunOnRepository(_actions.AbortMergeAsync);
                 break;
             case GitAction.Patch:
-                AbortAfterConfirm("patch", _actions.AbortPatchAsync);
+                RunOnRepository(_actions.AbortPatchAsync);
                 break;
         }
     }
@@ -2355,9 +2352,14 @@ public partial class MainWindow : Window
     private void ShowSelectedCommitFileDiff()
     {
         CommitDiff.LineAction = SelectedFileLineAction();
+        if (ShowDiffTabBlame())
+        {
+            return;
+        }
+
         ShowCommitDiffButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
-        // Upstream has no difftool for the combined diff of a merge.
-        CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile { Group.IsCombinedDiff: not true };
+        // Upstream has no difftool for the combined diff of a merge or the range diff item.
+        CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile { Group: not ({ IsCombinedDiff: true } or { IsRangeDiff: true }) };
 
         // Upstream's ShowSelectedFolderAsync: a selected folder or group node shows the files below it.
         if (FileListNodes.SelectedNode(CommitFilesList) is { } node)

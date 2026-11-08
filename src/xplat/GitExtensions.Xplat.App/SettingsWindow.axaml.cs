@@ -41,6 +41,7 @@ public partial class SettingsWindow : Window
     private readonly HotkeyEditor<BrowseDiffCommand> _browseDiffHotkeys = new(Hotkeys.BrowseDiff);
     private readonly HotkeyEditor<StashCommand> _stashHotkeys = new(Hotkeys.Stash);
     private readonly HotkeyEditor<int> _scriptHotkeys = new(Hotkeys.Scripts);
+    private bool _hotkeysReset;
     private IReadOnlyList<ScriptDefinition> _loadedScripts;
     private readonly ScriptListEditor _scripts;
     private HelpWindow? _scriptHelp;
@@ -80,6 +81,12 @@ public partial class SettingsWindow : Window
         AddPageHeaders();
 
         ShowThemes(preferences.Theme);
+        ShowEolMarkerAsGlyph.IsChecked = preferences.ShowEolMarkerAsGlyph;
+
+        // Upstream's SortingSettingsPage help pictures.
+        RevisionSortOrderHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-author-date")());
+        PrioBranchNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-branches")());
+        PrioRemoteNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-remotes")());
         ColorblindCheck.IsChecked = preferences.ThemeVariations.Contains(ThemeVariations.Colorblind);
         MulticolorBranches.IsChecked = preferences.MulticolorBranches;
         chkDrawAlternateBackColor.IsChecked = preferences.RevisionGraphDrawAlternateBackColor;
@@ -147,6 +154,11 @@ public partial class SettingsWindow : Window
         RememberNonPrintingCheck.IsChecked = preferences.RememberShowNonPrintingCharsPreference;
         RememberSyntaxHighlightingCheck.IsChecked = preferences.RememberShowSyntaxHighlightingInDiff;
         ContScrollToNextFileOnlyWithAltCheck.IsChecked = preferences.AutomaticContinuousScroll;
+        chkUseDiffViewerForBlame.IsChecked = preferences.UseDiffViewerForBlame;
+        chkOpenSubmoduleDiffInSeparateWindow.IsChecked = preferences.OpenSubmoduleDiffInSeparateWindow;
+        chkRememberDiffAppearancePreference.IsChecked = preferences.RememberDiffDisplayAppearance;
+        chkUseGitColoring.IsChecked = preferences.UseGitColoring;
+        chkUseGEThemeGitColoring.IsChecked = preferences.ReverseGitColoring;
         ShowAllDiffToolsCheck.IsChecked = preferences.ShowAvailableDiffTools;
 
         // Upstream's DiffViewerSettingsPage sets its runtime tooltip.
@@ -761,6 +773,23 @@ public partial class SettingsWindow : Window
         _browseDiffHotkeys.AddRows(HotkeysPanel, "Diff tab files");
         _stashHotkeys.AddRows(HotkeysPanel, "Stashes");
         _scriptHotkeys.AddRows(HotkeysPanel, "Scripts");
+        bResetToDefaults.Click += (_, _) => ResetHotkeysToDefaults();
+    }
+
+    // Upstream's bResetToDefaults_Click: nothing stored is kept, not even the hotkeys of what the shell does not have; only
+    // Save stores it, as upstream's page.
+    private void ResetHotkeysToDefaults()
+    {
+        _hotkeysReset = true;
+        _browseHotkeys.ShowDefaults();
+        _commitHotkeys.ShowDefaults();
+        _gridHotkeys.ShowDefaults();
+        _diffHotkeys.ShowDefaults();
+        _leftPanelHotkeys.ShowDefaults();
+        _conflictsHotkeys.ShowDefaults();
+        _browseDiffHotkeys.ShowDefaults();
+        _stashHotkeys.ShowDefaults();
+        _scriptHotkeys.ShowDefaults();
     }
 
     private void ShowScripts()
@@ -1174,6 +1203,11 @@ public partial class SettingsWindow : Window
         _preferences.RememberShowNonPrintingCharsPreference = RememberNonPrintingCheck.IsChecked == true;
         _preferences.RememberShowSyntaxHighlightingInDiff = RememberSyntaxHighlightingCheck.IsChecked == true;
         _preferences.AutomaticContinuousScroll = ContScrollToNextFileOnlyWithAltCheck.IsChecked == true;
+        _preferences.UseDiffViewerForBlame = chkUseDiffViewerForBlame.IsChecked == true;
+        _preferences.OpenSubmoduleDiffInSeparateWindow = chkOpenSubmoduleDiffInSeparateWindow.IsChecked == true;
+        _preferences.RememberDiffDisplayAppearance = chkRememberDiffAppearancePreference.IsChecked == true;
+        _preferences.UseGitColoring = chkUseGitColoring.IsChecked == true;
+        _preferences.ReverseGitColoring = chkUseGEThemeGitColoring.IsChecked == true;
         _preferences.ShowAvailableDiffTools = ShowAllDiffToolsCheck.IsChecked == true;
         _preferences.ShowDiffForAllParents = ShowDiffForAllParentsCheck.IsChecked == true;
         _preferences.DiffVerticalRulerPosition = (int)(VerticalRulerBox.Value ?? 0);
@@ -1197,7 +1231,9 @@ public partial class SettingsWindow : Window
             _preferences.SetAsks(confirmation, check.IsChecked == true);
         }
 
-        string? hotkeys = _preferences.SerializedHotkeys;
+        _preferences.ShowEolMarkerAsGlyph = ShowEolMarkerAsGlyph.IsChecked == true;
+
+        string? hotkeys = _hotkeysReset ? null : _preferences.SerializedHotkeys;
         hotkeys = _browseHotkeys.Apply(hotkeys);
         hotkeys = _commitHotkeys.Apply(hotkeys);
         hotkeys = _gridHotkeys.Apply(hotkeys);

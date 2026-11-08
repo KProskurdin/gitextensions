@@ -320,8 +320,12 @@ public partial class CommitWindow : Window
                 Run(_refresh);
                 return true;
             case CommitCommand.SelectNext:
+            case CommitCommand.SelectNextAlternativeHotkey1:
+            case CommitCommand.SelectNextAlternativeHotkey2:
                 return MoveSelection(1);
             case CommitCommand.SelectPrevious:
+            case CommitCommand.SelectPreviousAlternativeHotkey1:
+            case CommitCommand.SelectPreviousAlternativeHotkey2:
                 return MoveSelection(-1);
             case CommitCommand.ConventionalCommitPrefixMessage:
                 return OpenConventionalCommitMenu(insertScope: false);
@@ -578,6 +582,7 @@ public partial class CommitWindow : Window
         bool unstagedLeft = _repository.Changes.Any(change => !change.Staged);
         if (await CommitChangesAsync())
         {
+            await StageInSuperprojectAsync();
             CloseAfterCommit(unstagedLeft);
         }
     }
@@ -622,6 +627,7 @@ public partial class CommitWindow : Window
         }
         else if (pushed && !pushOnly)
         {
+            await StageInSuperprojectAsync();
             CloseAfterCommit(unstagedLeft);
         }
     }

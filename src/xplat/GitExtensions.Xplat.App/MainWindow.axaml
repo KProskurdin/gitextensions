@@ -774,6 +774,7 @@
                     <local:ToolDropDownButton x:Name="DiffFilesSettingsButton" Image="Settings" ToolTip.Tip="Settings">
                       <local:ToolDropDownButton.Flyout>
                         <MenuFlyout>
+                          <MenuItem x:Name="DiffFilesShowSkipWorktreeMenuItem" Header="Show s_kip-worktree files" ToggleType="CheckBox" />
                           <MenuItem x:Name="DiffFilesShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox"
                                     IsChecked="True" />
                           <Separator />
@@ -844,6 +845,7 @@
                 </DockPanel>
                 <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
                 <local:DiffView x:Name="CommitDiff" Grid.Column="2" EnableAutomaticContinuousScroll="False" />
+                <local:BlameView x:Name="DiffTabBlame" Grid.Column="2" IsVisible="False" />
               </Grid>
             </TabItem>
             <TabItem x:Name="FileTreeTab">

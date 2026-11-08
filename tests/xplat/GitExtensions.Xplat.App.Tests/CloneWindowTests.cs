@@ -192,6 +192,42 @@ internal sealed class CloneWindowTests
         window.Close();
     }
 
+    [AvaloniaTest]
+    public void A_key_that_cannot_go_to_pageant_is_reported_and_not_used()
+    {
+        CloneWindow clone = Open(repositoryPath: null, "");
+        string key = Path.Combine(_parent, "key.ppk");
+        List<string> given = [];
+        clone.GiveKeyToPageant = path =>
+        {
+            given.Add(path);
+            return "Is PuTTY installed?";
+        };
+
+        Task use = clone.UseSshKeyAsync(key);
+
+        WaitUntil(() => clone.OwnedWindows.OfType<MessageBoxWindow>().Any());
+        MessageBoxWindow message = clone.OwnedWindows.OfType<MessageBoxWindow>().Single();
+        message.Title.Should().Be("Browse for key");
+        message.Close();
+        WaitUntil(() => use.IsCompleted);
+        given.Should().Equal(key);
+        clone.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_key_pageant_took_is_used_without_a_message()
+    {
+        CloneWindow clone = Open(repositoryPath: null, "");
+        clone.GiveKeyToPageant = _ => null;
+
+        Task use = clone.UseSshKeyAsync(Path.Combine(_parent, "key.ppk"));
+
+        WaitUntil(() => use.IsCompleted);
+        clone.OwnedWindows.OfType<MessageBoxWindow>().Should().BeEmpty();
+        clone.Close();
+    }
+
     private CloneWindow Open(string? repositoryPath, string clipboard)
     {
         Window owner = new();

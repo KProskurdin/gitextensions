@@ -21,10 +21,24 @@ public partial class ProcessWindow : Window
         InitializeComponent();
         AbortButton.Click += (_, _) => _actions.Cancel();
         CloseButton.Click += (_, _) => Close();
+        KeepDialogOpen.IsChecked = !_preferences.CloseProcessDialog;
+        KeepDialogOpen.IsCheckedChanged += (_, _) => KeepDialogOpenChanged();
         _actions.PropertyChanged += OnActionsChanged;
         Closed += (_, _) => _actions.PropertyChanged -= OnActionsChanged;
         ShowOutput();
         ShowState();
+    }
+
+    // Upstream's KeepDialogOpen_CheckedChanged: turned off when the operation has already succeeded, the dialog closes as it
+    // would have.
+    private void KeepDialogOpenChanged()
+    {
+        _preferences.CloseProcessDialog = KeepDialogOpen.IsChecked != true;
+        _preferences.Save();
+        if (_preferences.CloseProcessDialog && _actions.RemoteState == RemoteOperationState.Succeeded)
+        {
+            Close();
+        }
     }
 
     private void OnActionsChanged(object? sender, PropertyChangedEventArgs e)
@@ -65,6 +79,9 @@ public partial class ProcessWindow : Window
         StateText.Foreground = state == RemoteOperationState.Failed ? ThemeBrushes.Current.Removed : ThemeBrushes.Current.Context;
         AbortButton.IsEnabled = _actions.CanCancel;
         CloseButton.IsEnabled = state != RemoteOperationState.Running;
+
+        // Upstream hides it for a dialog that ignores the setting (useDialogSettings: false).
+        KeepDialogOpen.IsVisible = !_actions.KeepOutputOpen;
 
         if (state == RemoteOperationState.Succeeded && _preferences.CloseProcessDialog && !_actions.KeepOutputOpen)
         {

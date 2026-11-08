@@ -7,6 +7,7 @@ using GitCommands.Config;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
@@ -223,8 +224,29 @@ public partial class CloneWindow : Window
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
         {
-            _puttySshKey = path;
+            await UseSshKeyAsync(path);
         }
+    }
+
+    /// <summary>
+    ///  Gives a key to Pageant, returning the error if any. Tests replace it, so that none starts the user's Pageant.
+    /// </summary>
+    public Func<string, string?> GiveKeyToPageant { get; set; } =
+        path => Putty.StartPageantIfConfigured(path, UpstreamTranslation.ByText);
+
+    /// <summary>
+    ///  Upstream's <c>BrowseAndLoad</c>: the key is given to Pageant, and used only when that worked.
+    /// </summary>
+    public async Task UseSshKeyAsync(string path)
+    {
+        string? error = await Task.Run(() => GiveKeyToPageant(path));
+        if (error is null)
+        {
+            _puttySshKey = path;
+            return;
+        }
+
+        await new MessageBoxWindow(error, SshKeyTitle, MessageBoxButtons.OK).ShowDialog(this);
     }
 
     // Upstream's OkClick: the checks, the new folder, the clone with git's progress, the histories, the SSH key and the

@@ -42,11 +42,6 @@ public interface ICommitHistory
     /// </summary>
     Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath,
         BlameOptions? options = null);
-
-    /// <summary>
-    ///  The content of <paramref name="filePath"/> as of <paramref name="hash"/>, or null when the file is binary.
-    /// </summary>
-    Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath);
 }
 
 /// <param name="FilePaths">For a file history that follows renames: the path the file had in each commit, by commit hash.</param>

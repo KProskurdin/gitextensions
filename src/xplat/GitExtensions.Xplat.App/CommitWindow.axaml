@@ -237,6 +237,8 @@
             </StackPanel.Styles>
             <Button x:Name="CommitButton" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)" />
             <Button x:Name="CommitAndPushButton" />
+            <CheckBox x:Name="StageInSuperprojectCheck" Content="Stage _in Superproject" IsVisible="False"
+                      ToolTip.Tip="Stage current submodule in superproject after commit" />
             <CheckBox x:Name="AmendCheck" Content="_Amend commit" />
             <!-- Upstream's AmendPanel, shown while Amend is checked. -->
             <StackPanel x:Name="AmendPanel" Margin="12,0,0,0" Spacing="6" IsVisible="{Binding #AmendCheck.IsChecked}">

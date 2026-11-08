@@ -54,7 +54,7 @@ internal sealed class FileTreeTests
         IReadOnlyList<DiffLine> lines = DiffParser.ParseText("first\r\nsecond\n");
 
         lines.Should().Equal(
-            new DiffLine("first", DiffLineKind.Context, NewNumber: 1),
+            new DiffLine("first", DiffLineKind.Context, NewNumber: 1) { Ending = LineEnding.CarriageReturnLineFeed },
             new DiffLine("second", DiffLineKind.Context, NewNumber: 2));
     }
 }

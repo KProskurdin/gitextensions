@@ -176,6 +176,11 @@ public partial class DiffView
     }
 
     /// <summary>
+    ///  Upstream's <c>line</c> argument of <c>ViewChangesAsync</c>: the line to go to when the next lines are shown.
+    /// </summary>
+    public void GoToLineWhenShown(int? lineNumber) => _lineToGoTo = lineNumber;
+
+    /// <summary>
     ///  Upstream's <c>GoToLine</c>: the first line at or after <paramref name="lineNumber"/> of the file (the new file's
     ///  number in a diff), selected and scrolled to.
     /// </summary>

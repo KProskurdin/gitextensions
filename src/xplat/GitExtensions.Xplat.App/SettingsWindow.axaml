@@ -128,6 +128,7 @@
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Fonts" FontWeight="SemiBold" />
           <Grid x:Name="FontsGrid" ColumnDefinitions="Auto,8,*,8,Auto,8,Auto,8,Auto" />
+          <CheckBox x:Name="ShowEolMarkerAsGlyph" Content="Show end-of-line markers as glyph instead of &quot;\r\n&quot; etc." />
           <TextBlock Text="Sizes are in points. &quot;(default)&quot; keeps this app's own font." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
@@ -238,6 +239,7 @@
       <TabItem x:Name="BrowseRepositoryTab" Header="Browse repository window">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="General" FontWeight="SemiBold" />
+          <CheckBox x:Name="chkUseDiffViewerForBlame" Content="Show blame in diff viewer" />
           <CheckBox x:Name="chkShowFindInCommitFilesGitGrep" Content="Show 'Find in commit files using git-grep'" />
           <CheckBox x:Name="ShowRevisionTooltipsCheck" Content="Show revision tooltips" />
           <TextBlock Text="Tabs" FontWeight="SemiBold" Margin="0,8,0,0" />
@@ -303,13 +305,21 @@
       <!-- Upstream's "Diff viewer" page: the settings of the diff view's choices, its ruler and the difftool list. -->
       <TabItem x:Name="DiffViewerTab" Header="Diff viewer">
         <StackPanel Spacing="8" Margin="4,8">
+          <TextBlock Text="Diff coloring" FontWeight="SemiBold" />
+          <CheckBox x:Name="chkUseGitColoring" Content="Git coloring" ToolTip.Tip="Use Git coloring engine to show moved code etc." />
+          <CheckBox x:Name="chkUseGEThemeGitColoring" Content="Reverse background color"
+                    ToolTip.Tip="Color the background at changes (invert colors)."
+                    IsEnabled="{Binding #chkUseGitColoring.IsChecked}" />
           <TextBlock Text="General" FontWeight="SemiBold" />
           <CheckBox x:Name="RememberIgnoreWhitespaceCheck" Content="Remember the 'Ignore whitespaces' preference" />
           <CheckBox x:Name="RememberNonPrintingCheck" Content="Remember the 'Show nonprinting characters' preference" />
           <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
           <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
           <CheckBox x:Name="RememberSyntaxHighlightingCheck" Content="Remember the 'Show syntax highlighting' preference" />
+          <CheckBox x:Name="chkRememberDiffAppearancePreference" Content="Remember the 'Diff appearance' preference"
+                    ToolTip.Tip="Diff appearance: patch (default), Git word-diff or Difftastic." />
           <CheckBox x:Name="ContScrollToNextFileOnlyWithAltCheck" Content="Enable automatic continuous scroll (without ALT button)" />
+          <CheckBox x:Name="chkOpenSubmoduleDiffInSeparateWindow" Content="Open Submodule Diff in separate window" />
           <CheckBox x:Name="ShowDiffForAllParentsCheck" Content="Show file differences for all parents in browse dialog" />
           <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools"
                     ToolTip.Tip="Show all configured difftools in a dropdown.&#10;The primary difftool can still be selected by clicking the main menu entry." />
@@ -340,17 +350,23 @@
       </TabItem>
       <!-- Upstream's "Sorting" page: the grid's commit order and the left panel's branch order. -->
       <TabItem x:Name="SortingTab" Header="Sorting">
-        <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto" Margin="4,8">
+        <Grid ColumnDefinitions="Auto,8,*,4,Auto" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto" Margin="4,8">
           <TextBlock Grid.Row="0" Text="Sort revisions by" VerticalAlignment="Center" />
           <ComboBox x:Name="RevisionSortBox" Grid.Row="0" Grid.Column="2" MinWidth="200" />
+          <Button x:Name="RevisionSortOrderHelp" Grid.Row="0" Grid.Column="4" Content="?" Width="24" Padding="0"
+                  HorizontalContentAlignment="Center" />
           <TextBlock Grid.Row="2" Text="Sort branches by" VerticalAlignment="Center" />
           <ComboBox x:Name="BranchesSortByBox" Grid.Row="2" Grid.Column="2" MinWidth="200" />
           <TextBlock Grid.Row="4" Text="Order branches" VerticalAlignment="Center" />
           <ComboBox x:Name="BranchesOrderBox" Grid.Row="4" Grid.Column="2" MinWidth="200" />
           <TextBlock Grid.Row="6" Text="Prioritized branches" VerticalAlignment="Center" />
           <TextBox x:Name="PrioritizedBranchesBox" Grid.Row="6" Grid.Column="2" />
+          <Button x:Name="PrioBranchNamesHelp" Grid.Row="6" Grid.Column="4" Content="?" Width="24" Padding="0"
+                  HorizontalContentAlignment="Center" />
           <TextBlock Grid.Row="8" Text="Prioritized remotes" VerticalAlignment="Center" />
           <TextBox x:Name="PrioritizedRemotesBox" Grid.Row="8" Grid.Column="2" />
+          <Button x:Name="PrioRemoteNamesHelp" Grid.Row="8" Grid.Column="4" Content="?" Width="24" Padding="0"
+                  HorizontalContentAlignment="Center" />
         </Grid>
       </TabItem>
       <!-- Upstream's "Revision links" page: link definitions that turn commit data into links in the commit details. -->
@@ -553,6 +569,7 @@
         <DockPanel Margin="4,8" LastChildFill="True">
           <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8"
                      Text="Click a box and press the new key combination. Shared with Git Extensions for Windows; Ctrl is Cmd on macOS. Script hotkeys list the saved scripts." />
+          <Button x:Name="bResetToDefaults" DockPanel.Dock="Bottom" Margin="0,8,0,0" Content="Reset all Hotkeys to defaults" />
           <ScrollViewer>
             <StackPanel x:Name="HotkeysPanel" Spacing="4" />
           </ScrollViewer>

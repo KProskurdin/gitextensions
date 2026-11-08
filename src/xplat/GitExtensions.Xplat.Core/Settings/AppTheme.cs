@@ -18,6 +18,11 @@ public sealed record AppThemeColors(
     private const float DarkBrightness = 0.5f;
 
     /// <summary>
+    ///  The theme these colors come from, for upstream's color helpers (<see cref="ColorHelper.ThemeSettings"/>).
+    /// </summary>
+    public Theme? Theme { get; init; }
+
+    /// <summary>
     ///  The color, or <see cref="Color.Empty"/> where the theme leaves a slot unused (e.g. dark's GraphBranch8).
     /// </summary>
     public Color Get(AppColor name) => Colors.TryGetValue(name, out Color color) ? color : Color.Empty;
@@ -70,7 +75,7 @@ public sealed record AppThemeColors(
         }
 
         bool isDark = colors[AppColor.PanelBackground].GetBrightness() < DarkBrightness;
-        return new AppThemeColors(theme.Id, isDark, colors, error, systemColors);
+        return new AppThemeColors(theme.Id, isDark, colors, error, systemColors) { Theme = theme };
     }
 
     private static bool IsGraphBranch(AppColor name) => name is >= AppColor.GraphBranch1 and <= AppColor.GraphBranch8;

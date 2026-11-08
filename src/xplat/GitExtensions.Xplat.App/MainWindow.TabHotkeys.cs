@@ -46,7 +46,13 @@ public partial class MainWindow
             return false;
         }
 
-        List<string> files = [.. CommitFilesList.SelectedItems?.OfType<CommitFile>().Select(file => file.Path) ?? []];
+        // Upstream's hotkeys click the menu's items, which offer nothing for the range diff item: it is no file.
+        List<string> files =
+        [
+            .. CommitFilesList.SelectedItems?.OfType<CommitFile>()
+                .Where(file => file.DiffFile?.IsRangeDiff != true)
+                .Select(file => file.Path) ?? []
+        ];
         string? file = files.FirstOrDefault();
         bool workTree = row.Hash == ArtificialCommits.WorkTreeHash;
         bool index = row.Hash == ArtificialCommits.IndexHash;
@@ -68,7 +74,8 @@ public partial class MainWindow
             case BrowseDiffCommand.ShowHistory when file is not null && !workTree && !index:
                 NewFileHistoryWindow(path, file, row.Hash, showBlame: false).Show(this);
                 return true;
-            case BrowseDiffCommand.Blame when file is not null && !workTree && !index:
+            case BrowseDiffCommand.Blame when file is not null
+                                              && (_preferences.UseDiffViewerForBlame || (!workTree && !index)):
                 BlameDiffFile();
                 return true;
             case BrowseDiffCommand.ShowFileTree when file is not null && !workTree && !index:

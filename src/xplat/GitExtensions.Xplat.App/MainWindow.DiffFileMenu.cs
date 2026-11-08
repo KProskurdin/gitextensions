@@ -35,6 +35,7 @@ public partial class MainWindow
             Refresh = RefreshRepository,
             ShowInFileTree = file => Run(() => ShowInFileTreeAsync(file, blame: false)),
             Blame = BlameDiffFile,
+            BlameChecked = () => _diffTabBlameFile is not null,
 
             // The File tree tab shows a commit's files, not the working directory's or the index's.
             CanShowInFileTree = selection => !selection.Second.IsArtificial && SelectedRevisions.Count == 1,
@@ -135,6 +136,12 @@ public partial class MainWindow
             return;
         }
 
+        if (_preferences.UseDiffViewerForBlame)
+        {
+            ToggleDiffTabBlame(file.Path);
+            return;
+        }
+
         ObjectId second = DiffFileMenu.RevisionsOf(selection, file).Second;
         if (!second.IsArtificial && SelectedRevisions.Count == 1)
         {
@@ -169,7 +176,8 @@ public partial class MainWindow
                         ? new DiffMenuFile(file.Status, file.Path, file.DiffFile?.OldPath, file.DiffFile?.IsTracked ?? true,
                             new DiffMenuRevisions(group.First, group.Second, ParentsOf(group.Second)))
                         {
-                            IsSubmodule = file.IsSubmodule || file.DiffFile?.IsSubmodule == true
+                            IsSubmodule = file.IsSubmodule || file.DiffFile?.IsSubmodule == true,
+                            IsRangeDiff = file.DiffFile?.IsRangeDiff == true
                         }
                         : null)
                     .OfType<DiffMenuFile>()

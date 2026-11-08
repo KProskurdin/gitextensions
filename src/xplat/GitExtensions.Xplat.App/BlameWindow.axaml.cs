@@ -28,7 +28,8 @@ public partial class BlameWindow : Window
         Blame.ErrorOccurred += (_, message) => ErrorText.Text = message;
 
         // A line leads to that commit's change to the file.
-        Blame.CommitRequested += (_, hash) => new DiffWindow(_repositoryPath, hash, _filePath, staged: false).Show(this);
+        Blame.CommitRequested += (_, request) =>
+            new DiffWindow(_repositoryPath, request.Hash, request.FileName, staged: false).Show(this);
         Opened += (_, _) => UiActions.Run(() => Blame.LoadAsync(_repositoryPath, _hash, _filePath),
             ex => ErrorText.Text = ex.Message);
     }

@@ -123,6 +123,13 @@ public partial class RevisionDiffWindow : Window
             Submodules = () => Submodules?.Invoke(this),
         });
         DiffFilesMenu.AttachHotkeys(DiffFiles);
+        DiffFiles.DoubleTapped += (_, _) =>
+        {
+            if (DiffFiles.SelectedItem is RevisionDiffFile)
+            {
+                DiffFilesMenu.RunDoubleClick();
+            }
+        };
         Opened += (_, _) => Run(LoadAsync);
     }
 
@@ -230,7 +237,7 @@ public partial class RevisionDiffWindow : Window
             ? DiffLineAction.None
             : DiffLinePatching.For(_repositoryPath, file.Path, file.Status, toId);
         return DiffText.ShowDiffAsync(_repositoryPath, file.Path, file.Path,
-            options => RevisionDiff.DiffAsync(_module, fromId, toId, file, options));
+            options => RevisionDiff.DiffAsync(_module, fromId, toId, file, options), FileRevision.Of(toId));
     }
 
     // Upstream's btnCompareDirectoriesWithDiffTool_Clicked.

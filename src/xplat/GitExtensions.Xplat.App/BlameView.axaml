@@ -3,13 +3,35 @@
              xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
              xmlns:local="using:GitExtensions.Xplat.App"
              x:Class="GitExtensions.Xplat.App.BlameView">
-  <!-- Upstream's BlameControl, shared by the blame window and the file history's Blame tab. Upstream's gutter: the commit's
-       author line on the first line of each run of lines from one commit. -->
-  <ListBox x:Name="BlameList" Grid.IsSharedSizeScope="True"
+  <!-- Upstream's BlameControl, shared by the blame window and the file history's Blame tab: the commit's information above
+       (splitContainer1, its panel 160 pixels), which the File tree tab hides. Upstream's gutter: the commit's author line on
+       the first line of each run of lines from one commit. -->
+  <Grid x:Name="Layout" RowDefinitions="160,5,*">
+  <local:CommitInfoView x:Name="CommitInfo" />
+  <GridSplitter x:Name="CommitInfoSplitter" Grid.Row="1" ResizeDirection="Rows" />
+  <ListBox x:Name="BlameList" Grid.Row="2" Grid.IsSharedSizeScope="True"
            FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}">
+    <ListBox.Styles>
+      <!-- Upstream's HighlightLinesForCommit: the lines of the commit under the mouse. -->
+      <Style Selector="ListBoxItem.sameCommit:not(:selected) /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BlameCommitHighlightBrush}" />
+      </Style>
+    </ListBox.Styles>
     <!-- Upstream's blame settings menu (FormFileHistory); the choices are upstream's Blame viewer settings. -->
     <ListBox.ContextMenu>
       <ContextMenu x:Name="BlameContextMenu">
+        <!-- Upstream BlameControl's menu. -->
+        <MenuItem x:Name="BlameRevisionMenuItem" Header="Blame _this revision" Icon="{local:UpstreamIcon Blame}" />
+        <MenuItem x:Name="BlamePreviousRevisionMenuItem" Header="_Blame previous revision"
+                  Icon="{local:UpstreamIcon RecentRepositories}" />
+        <MenuItem x:Name="ShowChangesMenuItem" Header="_Show changes" Icon="{local:UpstreamIcon information}" />
+        <Separator />
+        <MenuItem x:Name="CopyToClipboardMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
+          <MenuItem x:Name="CommitHashMenuItem" Header="Commit _hash" Icon="{local:UpstreamIcon CommitId}" />
+          <MenuItem x:Name="CommitMessageMenuItem" Header="Commit _message" Icon="{local:UpstreamIcon Message}" />
+          <MenuItem x:Name="AllCommitInfoMenuItem" Header="_All commit info" Icon="{local:UpstreamIcon CommitSummary}" />
+        </MenuItem>
+        <Separator />
         <MenuItem Header="Blame settings:" IsEnabled="False" />
         <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox" />
         <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox" />
@@ -43,11 +65,14 @@
                               Email="{Binding Line.AuthorEmail}" AuthorName="{Binding Line.Author}" />
           </Panel>
           <TextBlock Grid.Column="2" Text="{Binding LineNumberText}" Foreground="Gray" Margin="0,0,8,0" />
-          <TextBlock Grid.Column="3" Text="{Binding Hash}" />
-          <TextBlock Grid.Column="4" Text="{Binding AuthorLine}" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+          <!-- A background, for the tooltip to show on the empty cells below a commit's first line too. -->
+          <TextBlock Grid.Column="3" Text="{Binding Hash}" Background="Transparent" ToolTip.Tip="{Binding CommitTooltip}" />
+          <TextBlock Grid.Column="4" Text="{Binding AuthorLine}" TextTrimming="CharacterEllipsis" Padding="0,0,12,0"
+                     Background="Transparent" ToolTip.Tip="{Binding CommitTooltip}" />
           <TextBlock Grid.Column="5" Text="{Binding Content}" />
         </Grid>
       </DataTemplate>
     </ListBox.ItemTemplate>
   </ListBox>
+  </Grid>
 </UserControl>

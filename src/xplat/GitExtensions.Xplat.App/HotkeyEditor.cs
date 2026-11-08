@@ -53,6 +53,18 @@ internal sealed class HotkeyEditor<TCommand>(HotkeyTable<TCommand> table)
     }
 
     /// <summary>
+    ///  Upstream's <c>bResetToDefaults_Click</c> for these rows: the boxes show the defaults and earlier changes are dropped.
+    /// </summary>
+    public void ShowDefaults()
+    {
+        _changes.Clear();
+        foreach ((TCommand command, TextBox box) in _boxes)
+        {
+            box.Text = table.DefaultGestureFor(command)?.ToString() ?? "";
+        }
+    }
+
+    /// <summary>
     ///  <paramref name="serializedHotkeys"/> with this window's changes written in, or unchanged when there are none.
     /// </summary>
     public string? Apply(string? serializedHotkeys)

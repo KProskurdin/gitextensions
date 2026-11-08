@@ -1812,6 +1812,39 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void Reset_all_hotkeys_shows_the_defaults_and_save_drops_what_was_stored()
+    {
+        TestAppBuilder.Preferences.SerializedHotkeys = Hotkeys.Save(null,
+            new Dictionary<BrowseCommand, KeyGesture?> { [BrowseCommand.Commit] = new KeyGesture(Key.K, Hotkeys.CommandModifier) });
+        Hotkeys.Load(TestAppBuilder.Preferences.SerializedHotkeys);
+        try
+        {
+            MainWindow window = NewWindow();
+            window.Show();
+            Open(window, _repo.Path);
+            Click(window, "SettingsMenuItem");
+            WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+            SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+            WaitUntil(() => settings.IsGitConfigLoaded);
+            settings.HotkeyBoxes[BrowseCommand.Commit].Text.Should().Contain("K");
+
+            Click(settings, "bResetToDefaults");
+
+            settings.HotkeyBoxes[BrowseCommand.Commit].Text.Should().NotContain("K", "the default is upstream's Ctrl+Space");
+            TestAppBuilder.Preferences.SerializedHotkeys.Should().Contain("KeyData=\"K Control\"", "only Save stores it");
+            Click(settings, "SaveButton");
+            WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
+            (TestAppBuilder.Preferences.SerializedHotkeys ?? "").Should().NotContain("KeyData=\"K Control\"");
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.SerializedHotkeys = null;
+            Hotkeys.Load(null);
+        }
+    }
+
+    [AvaloniaTest]
     public void A_commit_window_hotkey_is_stored_in_upstreams_Commit_section_and_used_by_the_commit_window()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");

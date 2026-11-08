@@ -181,6 +181,19 @@ internal sealed class RevisionFileList<T>
             for (int index = 0; index < groups.Count; index++)
             {
                 DiffGroup group = groups[index];
+
+                // Upstream's GetNodes: the range diff item stands alone, and IsFilterMatch always keeps it.
+                if (group.IsRangeDiff)
+                {
+                    foreach (T file in _files.Where(file => ReferenceEquals(_groupOf?.Invoke(file), group)))
+                    {
+                        _tree.AddRow(items, file, _path(file));
+                        fileCount++;
+                    }
+
+                    continue;
+                }
+
                 IReadOnlyList<T> shown = Matching(_files.Where(file => ReferenceEquals(_groupOf?.Invoke(file), group)));
                 bool expanded = _expanded.TryGetValue(group, out bool state)
                     ? state

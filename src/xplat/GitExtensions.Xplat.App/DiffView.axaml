@@ -5,9 +5,15 @@
   <DockPanel LastChildFill="True">
     <TextBlock x:Name="TitleText" DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
     <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />
+    <!-- Upstream's _NO_TRANSLATE_lblShowPreview: a large file waits for a click. -->
+    <HyperlinkButton x:Name="ShowLargeFileLink" DockPanel.Dock="Top" IsVisible="False" />
     <!-- Upstream's EditorBackground behind the lines, LineNumberBackground behind the numbers, Selection on selected lines. -->
     <!-- Upstream's vertical ruler (diffverticalrulerposition) over the lines. -->
     <Panel>
+    <!-- Upstream's PictureBox: zoomed to fit when larger than the viewer, else centered at its size. -->
+    <Border x:Name="PicturePanel" IsVisible="False" Background="{DynamicResource EditorBackgroundBrush}">
+      <Image x:Name="PictureBox" Stretch="Uniform" StretchDirection="DownOnly" />
+    </Border>
     <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
              Background="{DynamicResource EditorBackgroundBrush}">
       <ListBox.Styles>
@@ -45,6 +51,14 @@
           <MenuItem x:Name="IgnoreWhitespaceEolMenuItem" Header="Ignore whitespace changes at end of _line" ToggleType="CheckBox" />
           <MenuItem x:Name="IgnoreWhitespaceChangeMenuItem" Header="Ignore changes in _amount of whitespace" ToggleType="CheckBox" />
           <MenuItem x:Name="IgnoreAllWhitespaceMenuItem" Header="Ignore all _whitespace changes" ToggleType="CheckBox" />
+          <!-- Upstream's diffAppearanceToolStripMenuItem. -->
+          <MenuItem x:Name="DiffAppearanceMenuItem" Header="Diff appea_rance" Icon="{local:UpstreamIcon Diff}">
+            <MenuItem x:Name="ShowPatchMenuItem" Header="_Patch" ToggleType="CheckBox" Icon="{local:UpstreamIcon Diff}" />
+            <MenuItem x:Name="ShowGitWordColoringMenuItem" Header="Git wor_d diff" ToggleType="CheckBox"
+                      Icon="{local:UpstreamIcon EditColor}" />
+            <MenuItem x:Name="ShowDifftasticMenuItem" Header="Diff_tastic" ToggleType="CheckBox" IsEnabled="False"
+                      Icon="{local:UpstreamIcon Difftastic}" />
+          </MenuItem>
           <Separator x:Name="TreatAllFilesAsTextSeparator" />
           <MenuItem x:Name="TreatAllFilesAsTextMenuItem" Header="_Treat all files as text" ToggleType="CheckBox" />
           <MenuItem x:Name="ContinuousScrollMenuItem" ToggleType="CheckBox" />

@@ -21,6 +21,53 @@ public interface IAppPreferences
     bool CloseCommitDialogAfterCommit { get; set; }
 
     /// <summary>
+    ///  Upstream <c>stageinsuperprojectaftercommit</c>: a commit in a submodule stages the submodule in its superproject.
+    /// </summary>
+    bool StageInSuperprojectAfterCommit { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>ShowEolMarkerAsGlyph</c>: the viewer's non-printing marks show a line's end as a glyph, not as "\r\n".
+    /// </summary>
+    bool ShowEolMarkerAsGlyph { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>UseDiffViewerForBlame</c>: Blame in the Diff tab shows there, not in the File tree tab.
+    /// </summary>
+    bool UseDiffViewerForBlame { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>opensubmodulediffinseparatewindow</c>: a double-click on a submodule in a file list opens it, where a file
+    ///  opens its history.
+    /// </summary>
+    bool OpenSubmoduleDiffInSeparateWindow { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>UseGitColoring</c>: the viewer shows a diff in git's colors, which show moved code and more.
+    /// </summary>
+    bool UseGitColoring { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>ReverseGitColoring</c>: git's colors go on the background of the changes.
+    /// </summary>
+    bool ReverseGitColoring { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>DiffDisplayAppearance</c>: patch, git word diff or Difftastic, for every viewer of this run.
+    /// </summary>
+    GitCommands.Settings.DiffDisplayAppearance DiffDisplayAppearance { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>RememberDiffDisplayAppearance</c>: a new viewer keeps the appearance chosen in this run.
+    /// </summary>
+    bool RememberDiffDisplayAppearance { get; set; }
+
+    /// <summary>
+    ///  Upstream FileViewer's constructor: without <see cref="RememberDiffDisplayAppearance"/>, a new viewer starts from the
+    ///  stored appearance.
+    /// </summary>
+    void ReloadDiffDisplayAppearance();
+
+    /// <summary>
     ///  Upstream <c>closeprocessdialog</c>: the output window of a remote operation closes by itself when git succeeds.
     /// </summary>
     bool CloseProcessDialog { get; set; }
@@ -747,6 +794,57 @@ public sealed class SettingsAppPreferences : IAppPreferences
         get => AppSettings.CloseCommitDialogAfterCommit;
         set => AppSettings.CloseCommitDialogAfterCommit = value;
     }
+
+    public bool StageInSuperprojectAfterCommit
+    {
+        get => AppSettings.StageInSuperprojectAfterCommit;
+        set => AppSettings.StageInSuperprojectAfterCommit = value;
+    }
+
+    public bool ShowEolMarkerAsGlyph
+    {
+        get => AppSettings.ShowEolMarkerAsGlyph;
+        set => AppSettings.ShowEolMarkerAsGlyph = value;
+    }
+
+    public bool UseDiffViewerForBlame
+    {
+        get => AppSettings.UseDiffViewerForBlame.Value;
+        set => AppSettings.UseDiffViewerForBlame.Value = value;
+    }
+
+    public bool OpenSubmoduleDiffInSeparateWindow
+    {
+        get => AppSettings.OpenSubmoduleDiffInSeparateWindow;
+        set => AppSettings.OpenSubmoduleDiffInSeparateWindow = value;
+    }
+
+    public bool UseGitColoring
+    {
+        get => AppSettings.UseGitColoring.Value;
+        set => AppSettings.UseGitColoring.Value = value;
+    }
+
+    public bool ReverseGitColoring
+    {
+        get => AppSettings.ReverseGitColoring.Value;
+        set => AppSettings.ReverseGitColoring.Value = value;
+    }
+
+    public GitCommands.Settings.DiffDisplayAppearance DiffDisplayAppearance
+    {
+        get => AppSettings.DiffDisplayAppearance.Value;
+        set => AppSettings.DiffDisplayAppearance.Value = value;
+    }
+
+    public bool RememberDiffDisplayAppearance
+    {
+        get => AppSettings.RememberDiffDisplayAppearance.Value;
+        set => AppSettings.RememberDiffDisplayAppearance.Value = value;
+    }
+
+    public void ReloadDiffDisplayAppearance()
+        => _ = AppSettings.DiffDisplayAppearance.GetValue(reload: !AppSettings.RememberDiffDisplayAppearance.Value);
 
     public bool CloseProcessDialog
     {
@@ -1786,6 +1884,31 @@ public sealed class SettingsAppPreferences : IAppPreferences
 public sealed class InMemoryAppPreferences : IAppPreferences
 {
     public bool CloseCommitDialogAfterCommit { get; set; } = true;
+
+    public bool StageInSuperprojectAfterCommit { get; set; } = true;
+
+    public bool ShowEolMarkerAsGlyph { get; set; }
+
+    public bool UseDiffViewerForBlame { get; set; }
+
+    public bool OpenSubmoduleDiffInSeparateWindow { get; set; }
+
+    // Off here, where upstream's default is on: the tests of the viewer's own colors would otherwise need git's.
+    public bool UseGitColoring { get; set; }
+
+    public bool ReverseGitColoring { get; set; } = true;
+
+    public GitCommands.Settings.DiffDisplayAppearance DiffDisplayAppearance { get; set; }
+
+    public bool RememberDiffDisplayAppearance { get; set; }
+
+    public void ReloadDiffDisplayAppearance()
+    {
+        if (!RememberDiffDisplayAppearance)
+        {
+            DiffDisplayAppearance = GitCommands.Settings.DiffDisplayAppearance.Patch;
+        }
+    }
 
     public bool CloseProcessDialog { get; set; }
 

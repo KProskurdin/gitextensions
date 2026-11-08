@@ -3,10 +3,12 @@
         x:Class="GitExtensions.Xplat.App.ProcessWindow"
         Title="Git Extensions"
         Width="760" Height="420" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream FormRemoteProcess: git's output while it runs, Abort while it runs, Close when it is done. -->
+  <!-- Mirrors upstream FormRemoteProcess: git's output while it runs, "Keep dialog open", Abort while it runs, Close when it
+       is done. -->
   <DockPanel Margin="10" LastChildFill="True">
     <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="True">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+        <CheckBox x:Name="KeepDialogOpen" Content="_Keep dialog open" Margin="0,0,6,0" />
         <Button x:Name="AbortButton" Content="Abort" />
         <Button x:Name="CloseButton" Content="Close" IsDefault="True" />
       </StackPanel>

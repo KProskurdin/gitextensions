@@ -137,5 +137,12 @@ public sealed record BlameOptions(
 public sealed record BlameRow(BlameLine Line, string Hash, string AuthorLine, string LineNumberText, int AgeBucket = 0,
     bool AvatarColumn = false, bool ShowAvatar = false)
 {
+    private static readonly GitCommands.GitRevisionSummaryBuilder _summaryBuilder = new();
+
     public string Content => Line.Content;
+
+    /// <summary>
+    ///  Upstream's tooltip over the gutter: the commit's author, dates, hash, summary and file name.
+    /// </summary>
+    public string? CommitTooltip => Line.Commit?.ToString(_summaryBuilder.BuildSummary);
 }

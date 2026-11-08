@@ -32,7 +32,14 @@ public sealed record RevisionDiffFile(string Status, string Path, string? OldPat
     /// <summary>
     ///  Upstream's status image for the file, its side's variant in a BASE group.
     /// </summary>
-    public string Image => Repository.FileStatusList.ImageForStatus(Status, DiffStatus);
+    public string Image => IsRangeDiff
+        ? DiffGroup.RangeDiffIcon
+        : Repository.FileStatusList.ImageForStatus(Status, DiffStatus);
+
+    /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsRangeDiff</c>: not a file but the range diff item, for display only.
+    /// </summary>
+    public bool IsRangeDiff { get; init; }
 }
 
 /// <summary>
@@ -100,15 +107,32 @@ public static class RevisionDiff
     public static async Task<IReadOnlyList<DiffLine>> DiffAsync(GitModule module, ObjectId first, ObjectId second,
         RevisionDiffFile file, DiffOptions options, CancellationToken cancellationToken = default)
     {
+        if (file.IsSubmodule)
+        {
+            return await SubmoduleDiff.LinesAsync(module, file.Path, file.OldPath, first, second, cancellationToken);
+        }
+
+        if (options.Appearance == GitCommands.Settings.DiffDisplayAppearance.Difftastic && Difftastic.IsEnabled(module))
+        {
+            return await Difftastic.DiffAsync(module, first, second, file.Path, file.OldPath, file.IsTracked, options,
+                cancellationToken);
+        }
+
+        // Upstream's PatchHighlightService.GetGitCommandConfiguration.
+        IGitCommandConfiguration configuration = options.UsesGitColors
+            ? GitColoring.Configuration(module, "diff")
+            : GitCommandConfiguration.Default;
         (Patch? patch, string? error) = await module.GetSingleDiffAsync(first, second, file.Path, file.OldPath,
             string.Join(" ", options.Arguments), options.EncodingFor(module), cacheResult: false, file.IsTracked,
-            useGitColoring: false, GitCommandConfiguration.Default, cancellationToken);
+            options.UsesGitColors, configuration, cancellationToken);
         if (patch is null && error is { Length: > 0 })
         {
             throw new GitOperationException(error.Trim());
         }
 
-        return DiffParser.Parse(patch?.Text ?? "");
+        return InlineDifferences.Add(options.UsesGitColors
+            ? GitColoring.ParseDiff(patch?.Text ?? "", isGitWordDiff: options.IsGitWordDiff)
+            : DiffParser.Parse(patch?.Text ?? ""), options);
     }
 
     /// <summary>

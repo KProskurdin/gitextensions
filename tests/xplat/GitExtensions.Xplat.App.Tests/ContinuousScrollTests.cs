@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
 using NUnit.Framework;
 
@@ -76,6 +77,75 @@ internal sealed class ContinuousScrollTests
     private static string? Selected(ListBox list) => (list.SelectedItem as FileChange)?.Path;
 
     // A wheel turn over the diff's lines, which are all shown, so the diff is at its top and its bottom.
+    [AvaloniaTest]
+    public void A_wheel_turn_past_the_diffs_end_with_Alt_shows_the_next_or_previous_file_of_the_diff_tab()
+    {
+        MainWindow window = OpenBrowseWindow();
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+        ListBox files = Find<ListBox>(window, "CommitFilesList");
+        WaitUntil(() => files.Items.OfType<CommitFile>().Count() == 2);
+        files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Path == "first.txt");
+        DiffView diff = Find<DiffView>(window, "CommitDiff");
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+one"));
+
+        Wheel(window, diff, down: true, RawInputModifiers.Alt);
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+two"));
+        files.SelectedItem.Should().BeOfType<CommitFile>().Which.Path.Should().Be("second.txt");
+
+        Wheel(window, diff, down: false, RawInputModifiers.Alt);
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+one"));
+        files.SelectedItem.Should().BeOfType<CommitFile>().Which.Path.Should().Be("first.txt");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_wheel_turn_past_the_files_end_with_Alt_shows_the_next_or_previous_file_of_the_file_tree_tab()
+    {
+        MainWindow window = OpenBrowseWindow();
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "FileTreeTab");
+        TreeView tree = Find<TreeView>(window, "FileTreeView");
+        WaitUntil(() => tree.Items.OfType<FileTreeNode>().Any(node => node.Path == "first.txt"));
+        tree.SelectedItem = tree.Items.OfType<FileTreeNode>().Single(node => node.Path == "first.txt");
+        DiffView content = Find<DiffView>(window, "FileContentView");
+        WaitUntil(() => content.Lines.Any(line => line.Text.Contains("one", StringComparison.Ordinal)));
+
+        Wheel(window, content, down: true, RawInputModifiers.Alt);
+        WaitUntil(() => content.Lines.Any(line => line.Text.Contains("two", StringComparison.Ordinal)));
+        tree.SelectedItem.Should().BeOfType<FileTreeNode>().Which.Path.Should().Be("second.txt");
+
+        Wheel(window, content, down: false, RawInputModifiers.Alt);
+        WaitUntil(() => content.Lines.Any(line => line.Text.Contains("one", StringComparison.Ordinal)));
+        tree.SelectedItem.Should().BeOfType<FileTreeNode>().Which.Path.Should().Be("first.txt");
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_wheel_turn_past_the_diffs_end_with_Alt_shows_the_next_file_of_the_commit_diff_window()
+    {
+        CommitDiffWindow window = new(_repo.Path, _repo.Run("rev-parse", "HEAD").Trim());
+        window.Show();
+        ListBox files = Find<ListBox>(window, "DiffFiles");
+        WaitUntil(() => files.Items.OfType<CommitFile>().Count() == 2);
+        DiffView diff = Find<DiffView>(window, "DiffText");
+        files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Path == "first.txt");
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+one"));
+
+        Wheel(window, diff, down: true, RawInputModifiers.Alt);
+
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+two"));
+        files.SelectedItem.Should().BeOfType<CommitFile>().Which.Path.Should().Be("second.txt");
+        window.Close();
+    }
+
+    private MainWindow OpenBrowseWindow()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
+        return window;
+    }
+
     private static void Wheel(Window window, DiffView diff, bool down, RawInputModifiers modifiers)
     {
         ListBox lines = diff.FindControl<ListBox>("DiffList")!;

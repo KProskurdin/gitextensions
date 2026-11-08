@@ -27,6 +27,18 @@ public partial class CommitDiffView : UserControl
             links: AppServices.RevisionLinks);
         InitializeComponent();
         DiffFiles.SelectionChanged += (_, _) => UiActions.Run(ViewSelectedDiffAsync, ShowError);
+
+        // Upstream CommitDiff's FileViewer_TopScrollReached and FileViewer_BottomScrollReached.
+        DiffText.TopScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(DiffFiles, next: false, item => item is CommitFile);
+            DiffText.ScrollToBottom();
+        };
+        DiffText.BottomScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(DiffFiles, next: true, item => item is CommitFile);
+            DiffText.ScrollToTop();
+        };
     }
 
     /// <summary>

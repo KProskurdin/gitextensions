@@ -50,6 +50,16 @@ internal static class ThemeApplier
             AppServices.Themes.Load(preferences.Theme, preferences.ThemeVariations, SystemIsDark(app));
         LastError = colors.Error;
         ThemeBrushes.Use(colors);
+        GitUI.Theming.AppColorExtension.ThemeColors = colors.Get;
+        GitUI.Theming.AppColorExtension.IsDark = colors.IsDark;
+
+        // Upstream's color helpers read the theme from here: DimColor blends with its editor background, GetTextColor starts
+        // from its text color. Without this they use the light default theme, whatever the theme is.
+        if (colors.Theme is { } theme)
+        {
+            ColorHelper.ThemeSettings = new ThemeSettings(theme, Theme.Default, [.. preferences.ThemeVariations],
+                useSystemVisualStyle: false);
+        }
         app.RequestedThemeVariant = colors.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
 
         // Upstream's panel, editor, line number and selection colors: windows and panels, the diff and file views, their
@@ -117,6 +127,11 @@ internal static class ThemeApplier
         SetBrush(app, DialogFooterKey, controlLight.MakeDarkerBy(-0.04));
         SetBrush(app, DialogFooterLineKey, controlLight.MakeDarkerBy(0.04));
 
+        // Upstream BlameControl's _commitHighlightColor, behind the lines of the commit under the mouse.
+        SetBrush(app, BlameCommitHighlightKey, colors.IsDark
+            ? (colors.Get(AppColor.EditorBackground) is { IsEmpty: false } editor ? editor : panel).MakeDarkerBy(-0.06)
+            : controlLight);
+
         // Upstream's info labels (FormClone's location line): on the Info color, in the control text color, or in red made
         // readable on it for a problem (ColorHelper.AdaptForeColor).
         System.Drawing.Color info = SystemColor(colors, System.Drawing.KnownColor.Info);
@@ -159,6 +174,7 @@ internal static class ThemeApplier
     public const string GridNonRelativeSelectedBodyKey = "GridNonRelativeSelectedBodyBrush";
     public const string CommitInfoBackgroundKey = "CommitInfoBackgroundBrush";
     public const string CommitMessageBackgroundKey = "CommitMessageBackgroundBrush";
+    public const string BlameCommitHighlightKey = "BlameCommitHighlightBrush";
     public const string DialogFooterKey = "DialogFooterBrush";
     public const string DialogFooterLineKey = "DialogFooterLineBrush";
     public const string InfoBackgroundKey = "InfoBackgroundBrush";

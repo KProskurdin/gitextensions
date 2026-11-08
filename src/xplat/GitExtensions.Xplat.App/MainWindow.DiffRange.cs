@@ -45,7 +45,10 @@ public partial class MainWindow
         int version = ++_diffGroupsVersion;
         IReadOnlyList<CommitRow> selected = SelectedRevisions;
         string grep = _gitGrep;
-        if (RepositoryPath is not { } path || !(UsesDiffGroups(selected) || (grep.Length > 0 && selected.Count > 0)))
+        bool showSkipWorktree = DiffFilesShowSkipWorktreeMenuItem.IsChecked;
+        bool showUntracked = DiffFilesShowUntrackedMenuItem.IsChecked;
+        if (RepositoryPath is not { } path || !(UsesDiffGroups(selected) || (grep.Length > 0 && selected.Count > 0)
+                || (showSkipWorktree && selected.Any(row => row.Hash == ArtificialCommits.WorkTreeHash))))
         {
             if (_diffGroups is not null)
             {
@@ -65,7 +68,8 @@ public partial class MainWindow
             IReadOnlyList<DiffGroup> groups = await Task.Run(() =>
             {
                 GitModule module = GitModules.Open(path);
-                return DiffGroups.Calculate(module, revisions, module.GetCurrentCheckout(), describe, grep: grep);
+                return DiffGroups.Calculate(module, revisions, module.GetCurrentCheckout(), describe, grep: grep,
+                    showSkipWorktreeFiles: showSkipWorktree, showUntrackedFiles: showUntracked);
             });
             if (version != _diffGroupsVersion)
             {
@@ -79,6 +83,33 @@ public partial class MainWindow
                     new CommitFile(file.Status, file.Path) { Group = group, DiffFile = file }))
             ];
         });
+    }
+
+    // Upstream's ViewChangesAsync: range-diff has cubic runtime and can be slow, so the view says what is going on, and
+    // selecting something else cancels it.
+    private async Task ShowRangeDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
+    {
+        _rangeDiffCancellation?.Cancel();
+        using CancellationTokenSource cancellation = new();
+        _rangeDiffCancellation = cancellation;
+        string filter = _commits.Filter.PathFilter;
+        view.ShowText(file.Path, $"git range-diff {group.First}...{group.Second} -- {filter}");
+        try
+        {
+            IReadOnlyList<DiffLine> lines = await Task.Run(() =>
+                DiffGroups.RangeDiffAsync(GitModules.Open(path), group, view.Options, filter, cancellation.Token));
+            if (!cancellation.IsCancellationRequested)
+            {
+                view.ShowDiffLines(file.Path, lines);
+            }
+        }
+        finally
+        {
+            if (_rangeDiffCancellation == cancellation)
+            {
+                _rangeDiffCancellation = null;
+            }
+        }
     }
 
     // Upstream's calculator decides the groups for several commits and for a merge (a stash included); one commit with a
@@ -103,8 +134,14 @@ public partial class MainWindow
         => file is { Group: { } group, DiffFile: { } diffFile } ? (group, diffFile) : null;
 
     // A file of the "grep" group shows its matches (upstream's ViewGrepAsync), any other file its diff.
-    private static async Task ShowGroupFileDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
+    private async Task ShowGroupFileDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
     {
+        if (group.IsRangeDiff)
+        {
+            await ShowRangeDiffAsync(view, path, group, file);
+            return;
+        }
+
         if (file.GrepString is { } grep)
         {
             await view.ShowGrepAsync(file.Path, options => Task.Run(() =>
@@ -113,7 +150,7 @@ public partial class MainWindow
         }
 
         await view.ShowDiffAsync(path, file.Path, file.Path,
-            options => DiffGroups.DiffAsync(GitModules.Open(path), group, file, options));
+            options => DiffGroups.DiffAsync(GitModules.Open(path), group, file, options), FileRevision.Of(group.Second));
     }
 
     // Upstream's difftool for a file of a group: between its group's revisions (none for the combined diff).

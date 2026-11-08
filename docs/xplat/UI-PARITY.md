@@ -672,32 +672,52 @@ toolbar icons with upstream's `ToolTipText`.
   each note ends with an "Audit 2026-11-07" line naming what is really missing and which earlier lines are stale. Ten
   rows had nothing left and are `ported` (FormRemotes, FormResolveConflicts, Dashboard, the Scripts, Revision links,
   Detailed and Plugins pages, the askpass helper, FormGitStatistics, Avatars); 46 stay `partial`. What is left, by area:
-  - Revision grid: the authors of several selected commits highlighted; session refs; the superproject's labels and refs.
-  - Viewer (FileViewer): diff appearance (git word diff, difftastic), git's coloring, combined diff of merges, the
-    submodule diff window, images and binary content, replace; continuous scroll in the Diff tab and in FormCommitDiff.
-  - Diff and File tree tabs: the range diff item, "Show skip-worktree files" and the settings menu's toolbar submenu,
-    renaming a folder, the File tree tab's submodule items, "Show blame in diff viewer", and the git-grep window's
-    selected text, "Treat all files as text" and next/previous match.
-  - Blame: the blame menu's commit items (blame this or the previous revision, show changes, copy hash, message or all)
-    and selecting the commit in the grid.
-  - Dialogs: FormCommit's "Stage in superproject", hiding "Stash staged" for an old git and the progress bar; FormPush's
-    Azure DevOps link; the help pictures' dark theme adaptation; FormClone's Pageant and PuTTY prompts, help button and
-    `StartCloneDialog`; FormRebase's rerere check after Continue; FormDiff's choose commit artificial commits; the
-    process dialog's "Keep dialog open" and PuTTY retry; FormStash's loading animation; the action bar's Abort without
-    asking; the editor's `i18n.filesEncoding` and todo syntax highlighting (no editor control).
+  - Revision grid: session refs; the superproject's labels and refs.
+  - Viewer (FileViewer): replace.
+  - Diff and File tree tabs: the settings menu's toolbar submenu, and the git-grep window's selected text, "Treat all files as text" and next/previous match.
+  - Blame: the text pane is a list, not upstream's FileViewer (syntax highlighting, find, the encoding).
+  - Dialogs: FormCommit's progress bar; FormPush's Azure DevOps link; the help pictures' dark theme adaptation; FormClone's
+    PuTTY prompts and `StartCloneDialog`; FormDiff's choose commit artificial commits; the process dialog's PuTTY retry;
+    FormStash's loading animation; the editor's `i18n.filesEncoding` and todo syntax highlighting (no editor control).
   - Settings: the tool path and command fields and rows, the files encoding, the warning without git; "Download Git",
-    validating the git command, the HOME check and FormFixHome's search; "Show end-of-line markers as glyph"; the help
-    links of the sorting page; the theme editor; the pages and settings of features the shell lacks (Console, Shell
+    validating the git command, the HOME check and FormFixHome's search; the theme editor; the pages and settings of
+    features the shell lacks (Console, Shell
     extension, Git > Advanced, help images, spelling dictionary); the checklist's installer rows and startup check; the
     confirmations of features the shell lacks.
-  - Hotkeys: FormCommit's alternative next and previous keys, the reset-to-defaults button, the commands of missing
-    features.
+  - Hotkeys: the commands of missing features.
   - Plugins and the rest: the repository hosts menu, a load error's clipboard copy, `RunCommand`, `GetService` and
-    `BrowseRepo`; Gource's author pictures (now possible, the shell has an avatar service); the `searchfile` verb; the
+    `BrowseRepo`; the `searchfile` verb; the
     bisect toolbar icons; the pull request window's status icons; `commit.template` and plugin template icons; the
-    spelling checker and its "Mark ill formed lines"; the filter toolbar's shortcut texts, "No results found" and
-    drop-down width; the PuTTY menu items (Windows); the Console and Output history tabs (ConEmu, Windows only); the
+    spelling checker and its "Mark ill formed lines"; the filter toolbar's drop-down width; the PuTTY menu items
+    (Windows); the Console and Output history tabs (ConEmu, Windows only); the
     commit info texts' translations.
+- 2026-11-08, the audit's quick wins, each struck from the list above. The blame view is upstream's whole BlameControl but
+  its text pane: the menu's commit items, the line kept and followed between commits, the commit information above, the
+  gutter's tooltip and the hovered commit's highlight. This also fixed a bug: a blame line carried only a short hash, so
+  going to its commit in the file history failed and the repository host's items never showed. FormRebase's Continue reads
+  git's output, so recorded resolutions (rerere) go on by themselves. The action bar's Abort runs at once. Continuous
+  scroll in the Diff tab, the File tree tab and FormCommitDiff. Gource's author pictures through `$(AVATARS)`. See the
+  FormBlame, FormRebase, InteractiveGitActionControl, RevisionDiffControl, FormCommitDiff and GourceStart notes in
+  `PORTING-MAP.md`.
+- 2026-11-08, more of the list above, each struck from it. The Diff tab's range diff item and "Show skip-worktree files".
+  FormCommit's "Stage in Superproject" and no "Stash staged" for an old git. The process dialog's "Keep dialog open". The
+  hotkeys' alternative next and previous keys, the path filter's reset and "Reset all Hotkeys to defaults". The sorting
+  page's help links. "Show end-of-line markers as glyph", with upstream's text marks as the default. The filter toolbar's
+  shortcut texts and "No results found". FormClone giving its key to Pageant. The audit's "authors of several selected
+  commits" was a misreading: upstream keeps the highlight, and now so does the shell. See the RevisionGridControl,
+  RevisionDiffControl, FormCommit, FormRemoteProcess, HotkeySettingsManager, SortingSettingsPage,
+  AppearanceFontsSettingsPage, FilterToolBar and FormClone notes in `PORTING-MAP.md`; 39 rows stay `partial`.
+- 2026-11-08, the viewer's images and binary content: every window with a viewer shows an image of the file's revision as a
+  picture instead of its diff, a new binary file (and any binary file in the File tree tab and the file history's View tab)
+  as upstream's hex dump, and asks before showing a file over 5 MB. See the FileViewer note in `PORTING-MAP.md`.
+- 2026-11-08, git's coloring and the diff appearances: the viewer reads git's colored output with upstream's parser (linked),
+  which is upstream's default, so real diffs now show git's colors, moved code included; "Git coloring" and "Reverse
+  background color" on the Diff viewer page; "Diff appearance" with Patch, Git word diff and Difftastic, with their hotkeys;
+  the combined diff of merges and the range diff in git's colors too. See the FileViewer note in `PORTING-MAP.md`.
+- 2026-11-08, the viewer's inline differences: what a changed line shares with the one it replaces is dimmed, as upstream. Also
+  fixed upstream's color helpers reading the light default theme whatever the theme was. See the FileViewer note in
+  `PORTING-MAP.md`.
+- 2026-11-08, submodules in the viewer (upstream's status text, "Open Submodule Diff in separate window"), "Show blame in diff viewer" and the File tree tab's submodule items. See the FileViewer and RevisionDiffControl notes in `PORTING-MAP.md`.
 
 ## Risks
 

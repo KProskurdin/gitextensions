@@ -139,6 +139,21 @@ internal sealed class RebaseWindowTests
     }
 
     [AvaloniaTest]
+    public void Recorded_resolutions_continue_the_rebase_by_itself_until_it_is_done()
+    {
+        string work = MakeBranchesWithTwoConflictingCommits();
+        RecordResolutions(work);
+
+        RebaseWindow rebase = Open(onto: "other");
+        Click(rebase, "RebaseButton");
+
+        WaitUntil(() => !rebase.IsVisible);
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("resolved a");
+        File.ReadAllText(Path.Combine(_repo.Path, "c.txt")).Should().Be("resolved c");
+        Directory.Exists(Path.Combine(_repo.Path, ".git", "rebase-merge")).Should().BeFalse();
+    }
+
+    [AvaloniaTest]
     public void The_grids_selected_commit_rebases_at_once()
     {
         _repo.Run("checkout", "-q", "-b", "other", "HEAD~1");
@@ -243,6 +258,41 @@ internal sealed class RebaseWindowTests
         _repo.Run("checkout", "-q", _base);
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "ours");
         _repo.Run("commit", "-q", "-am", "ours");
+    }
+
+    // Two commits on the current branch that conflict with "other", which stop a rebase twice. The texts differ, as rerere
+    // takes conflicts with the same text for one.
+    private string MakeBranchesWithTwoConflictingCommits()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "base");
+        _repo.Run("add", "c.txt");
+        _repo.Run("commit", "-q", "-m", "add c");
+        _repo.Run("checkout", "-q", "-b", "other");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "theirs a");
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "theirs c");
+        _repo.Run("commit", "-q", "-am", "theirs");
+        _repo.Run("checkout", "-q", _base);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "ours a");
+        _repo.Run("commit", "-q", "-am", "ours a");
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "ours c");
+        _repo.Run("commit", "-q", "-am", "ours c");
+        return _repo.Run("rev-parse", "HEAD").Trim();
+    }
+
+    // Git's rerere records the two resolutions of a rebase done by hand, and stages them when they are reused.
+    private void RecordResolutions(string work)
+    {
+        _repo.Run("config", "rerere.enabled", "true");
+        _repo.Run("config", "rerere.autoupdate", "true");
+        GitProcess.RunAllowingFailure(_repo.Path, "rebase", "other");
+        foreach (string file in new[] { "a.txt", "c.txt" })
+        {
+            File.WriteAllText(Path.Combine(_repo.Path, file), $"resolved {file[0]}");
+            _repo.Run("add", file);
+            GitProcess.RunAllowingFailure(_repo.Path, "-c", "core.editor=true", "rebase", "--continue");
+        }
+
+        _repo.Run("reset", "-q", "--hard", work);
     }
 
     private RebaseWindow Open(string? onto, bool immediately = false, Func<string, Task<bool>>? runGit = null)

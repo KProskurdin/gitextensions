@@ -75,6 +75,11 @@ public partial class FilterToolBar : UserControl
     private bool _offerRemoteBranches;
     private bool _offerTags;
 
+    // The refs the branch filter box offers; its items are these and upstream's "no results" item.
+    private IReadOnlyList<string> _branchFilterItems = [];
+
+    private static string BranchFilterNoResults => UpstreamTranslation.Text("TranslatedStrings", "_noResultsFound", "<No results found>");
+
     public FilterToolBar()
     {
         InitializeComponent();
@@ -115,7 +120,17 @@ public partial class FilterToolBar : UserControl
         ShowBranchesCurrentMenuItem.Click += (_, _) => ShowBranches(currentOnly: true, filtered: false);
         ShowBranchesFilteredMenuItem.Click += (_, _) => ShowBranches(currentOnly: false, filtered: true);
 
+        BranchFilterBox.ItemFilter = (search, item) =>
+            IsBranchFilterItemShown(search, item as string, _branchFilterItems, BranchFilterNoResults);
         BranchFilterBox.GotFocus += (_, _) => Run(FillBranchFilterItemsAsync);
+
+        // Upstream's SetShortcutKeys, as the Settings may have changed them.
+        ((MenuFlyout)AdvancedFilterButton.Flyout!).Opening += (_, _) =>
+        {
+            ResetPathFilterMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ResetRevisionPathFilter);
+            ResetRevisionFiltersMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ResetRevisionFilter);
+            AdvancedFilterMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.RevisionFilter);
+        };
         BranchFilterBox.AddHandler(KeyUpEvent, (_, e) =>
         {
             if (e.Key == Key.Enter)
@@ -296,6 +311,12 @@ public partial class FilterToolBar : UserControl
             return;
         }
 
+        // Upstream's ApplyCustomBranchFilter takes its "no results" item for no filter.
+        if (BranchFilterBox.Text == BranchFilterNoResults)
+        {
+            BranchFilterBox.Text = "";
+        }
+
         (IReadOnlyList<BranchInfo> branches, IReadOnlyList<string> tags) = await Grid.RefsAsync();
         HashSet<string> refs = [.. branches.Select(branch => branch.Name), .. tags];
         List<string> words = [];
@@ -333,11 +354,24 @@ public partial class FilterToolBar : UserControl
     {
         (IReadOnlyList<BranchInfo> branches, IReadOnlyList<string> tags) = await Grid.RefsAsync();
         bool all = !_offerLocalBranches && !_offerRemoteBranches && !_offerTags;
-        BranchFilterBox.ItemsSource = branches
+        _branchFilterItems = branches
             .Where(branch => all || (branch.IsRemote ? _offerRemoteBranches : _offerLocalBranches))
             .Select(branch => branch.Name)
             .Concat(all || _offerTags ? tags : [])
             .ToList();
+        BranchFilterBox.ItemsSource = _branchFilterItems.Append(BranchFilterNoResults).ToList();
+    }
+
+    /// <summary>
+    ///  Upstream's <c>BindBranches</c>: a ref whose name contains the text, whatever its case, and the "no results" item only
+    ///  when there is none.
+    /// </summary>
+    public static bool IsBranchFilterItemShown(string? search, string? item, IReadOnlyList<string> branches, string noResults)
+    {
+        string text = search ?? "";
+        return item == noResults
+            ? !branches.Any(branch => branch.Contains(text, StringComparison.InvariantCultureIgnoreCase))
+            : item?.Contains(text, StringComparison.InvariantCultureIgnoreCase) == true;
     }
 
     // Upstream adds an applied text to the top of the box's list and to its settings, once.

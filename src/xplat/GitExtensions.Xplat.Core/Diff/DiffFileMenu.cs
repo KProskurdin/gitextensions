@@ -24,6 +24,11 @@ public sealed record DiffMenuFile(
     DiffMenuRevisions? Revisions = null)
 {
     /// <summary>
+    ///  Upstream's <c>GitItemStatus.IsRangeDiff</c>: the range diff item, for which the menu offers nothing that changes files.
+    /// </summary>
+    public bool IsRangeDiff { get; init; }
+
+    /// <summary>
     ///  Upstream's <c>GitItemStatus.IsSubmodule</c>.
     /// </summary>
     public bool IsSubmodule { get; init; }
@@ -484,6 +489,7 @@ public static class DiffFileMenu
         => new(file.Path)
         {
             IsTracked = true,
+            IsSubmodule = file.IsSubmodule,
             IsNew = false,
             IsChanged = false,
             IsDeleted = false,
@@ -499,7 +505,8 @@ public static class DiffFileMenu
             IsTracked = file.IsTracked,
             IsSubmodule = file.IsSubmodule,
             IsSkipWorktree = file.IsSkipWorktree,
-            IsAssumeUnchanged = file.IsAssumeUnchanged
+            IsAssumeUnchanged = file.IsAssumeUnchanged,
+            IsRangeDiff = file.IsRangeDiff
         };
         switch (file.Status.FirstOrDefault())
         {

@@ -81,6 +81,181 @@ internal sealed class SubmoduleFileMenuTests
     }
 
     [AvaloniaTest]
+    public void The_viewer_shows_a_dirty_submodule_as_upstreams_status_not_gits_lines()
+    {
+        DiffView diff = new();
+        Window host = new() { Content = diff };
+        host.Show();
+
+        Task show = diff.ShowAsync(_repo.Path, commitHash: null, "lib", staged: false, "lib");
+        WaitUntil(() => show.IsCompleted && diff.Lines.Count > 0);
+
+        diff.Lines.Select(line => line.Text).Should().Contain("Submodule lib");
+        diff.Lines.Should().NotContain(line => line.Text.Contains("Subproject commit", StringComparison.Ordinal));
+        diff.Lines.Should().Contain(line => line.Text.Contains("dirty", StringComparison.OrdinalIgnoreCase));
+        diff.SelectedRange().Should().BeNull("no hunks, so no line patching");
+        host.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_viewer_shows_a_submodule_moved_by_a_commit_with_its_two_commits()
+    {
+        string library = Path.Combine(_repo.Path, "lib");
+        string before = GitProcess.Run(library, "rev-parse", "HEAD").Trim();
+        GitProcess.Run(library, "config", "user.name", "Test");
+        GitProcess.Run(library, "config", "user.email", "test@example.com");
+        GitProcess.Run(library, "commit", "-q", "-am", "moved on");
+        string after = GitProcess.Run(library, "rev-parse", "HEAD").Trim();
+        _repo.Run("add", "lib");
+        _repo.Run("commit", "-q", "-m", "move the submodule");
+        DiffView diff = new();
+        Window host = new() { Content = diff };
+        host.Show();
+
+        Task show = diff.ShowAsync(_repo.Path, "HEAD", "lib", staged: false, "lib");
+        WaitUntil(() => show.IsCompleted && diff.Lines.Count > 0);
+
+        diff.Lines.Should().Contain(line => line.Text == $"From:\t{before}");
+        diff.Lines.Should().Contain(line => line.Text.Contains(after, StringComparison.Ordinal));
+        diff.Lines.Should().Contain(line => line.Text.Contains("moved on", StringComparison.Ordinal));
+
+        Task entry = diff.ShowFileAsync(_repo.Path, "HEAD", staged: false, "lib");
+        WaitUntil(() => entry.IsCompleted);
+        diff.Lines.Select(line => line.Text).Should().Contain("Submodule lib");
+        diff.Lines.Should().Contain(line => line.Text.Contains(after, StringComparison.Ordinal),
+            "a tree's entry names the commit");
+
+        Task folder = diff.ShowFileAsync(_repo.Path, commitHash: null, staged: false, "lib");
+        WaitUntil(() => folder.IsCompleted);
+        diff.Lines.Select(line => line.Text).Should().Contain("Submodule lib");
+        host.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_file_tree_tab_offers_the_submodule_items_for_a_submodule_only()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "FileTreeTab");
+        TreeView tree = Find<TreeView>(window, "FileTreeView");
+        WaitUntil(() => tree.Items.OfType<FileTreeNode>().Any(node => node.Path == "lib"));
+
+        tree.SelectedItem = tree.Items.OfType<FileTreeNode>().Single(node => node.Path == "lib");
+        Dispatcher.UIThread.RunJobs();
+        tree.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        tree.ContextMenu!.Close();
+        Find<MenuItem>(tree.ContextMenu!, "openSubmoduleMenuItem").IsVisible.Should().BeTrue();
+
+        tree.SelectedItem = tree.Items.OfType<FileTreeNode>().Single(node => node.Path == "a.txt");
+        Dispatcher.UIThread.RunJobs();
+        tree.RaiseEvent(new ContextRequestedEventArgs());
+        Dispatcher.UIThread.RunJobs();
+        tree.ContextMenu!.Close();
+        Find<MenuItem>(tree.ContextMenu!, "openSubmoduleMenuItem").IsVisible.Should().BeFalse();
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void With_the_setting_a_double_click_opens_the_submodule_and_its_item_is_bold()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "lib", "a.txt"), "moved");
+        string library = Path.Combine(_repo.Path, "lib");
+        GitProcess.Run(library, "config", "user.name", "Test");
+        GitProcess.Run(library, "config", "user.email", "test@example.com");
+        GitProcess.Run(library, "commit", "-q", "-am", "moved on");
+        _repo.Run("add", "lib");
+        _repo.Run("commit", "-q", "-m", "move the submodule");
+        TestAppBuilder.Preferences.OpenSubmoduleDiffInSeparateWindow = true;
+        try
+        {
+            MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+            window.Show();
+            window.OpenRepository(_repo.Path);
+            WaitUntil(() => !window.IsBusy);
+            Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Path == "lib"));
+            files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Path == "lib");
+            Dispatcher.UIThread.RunJobs();
+            files.RaiseEvent(new ContextRequestedEventArgs());
+            Dispatcher.UIThread.RunJobs();
+            files.ContextMenu!.Close();
+            Find<MenuItem>(files.ContextMenu!, "openSubmoduleMenuItem").FontWeight.Should().Be(Avalonia.Media.FontWeight.Bold);
+            Find<MenuItem>(files.ContextMenu!, "tsmiFileHistory").FontWeight.Should().Be(Avalonia.Media.FontWeight.Normal);
+
+            // With the folder gone, opening it gives upstream's message, rather than starting another app.
+            GitProcess.DeleteFolder(library);
+            files.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+            WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
+            window.OwnedWindows.OfType<MessageBoxWindow>().Single().Close();
+            window.OwnedWindows.OfType<FileHistoryWindow>().Should().BeEmpty();
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.OpenSubmoduleDiffInSeparateWindow = false;
+        }
+    }
+
+    [AvaloniaTest]
+    public void A_commit_in_a_submodule_stages_it_in_the_superproject_as_stage_in_superproject_says()
+    {
+        string library = Path.Combine(_repo.Path, "lib");
+        GitProcess.Run(library, "config", "user.name", "Test");
+        GitProcess.Run(library, "config", "user.email", "test@example.com");
+        bool stage = TestAppBuilder.Preferences.StageInSuperprojectAfterCommit;
+        bool close = TestAppBuilder.Preferences.CloseCommitDialogAfterCommit;
+        TestAppBuilder.Preferences.CloseCommitDialogAfterCommit = false;
+        try
+        {
+            MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+            window.Show();
+            window.OpenRepository(library);
+            WaitUntil(() => !window.IsBusy);
+            WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
+
+            // Off: the superproject's index stays as it is.
+            TestAppBuilder.Preferences.StageInSuperprojectAfterCommit = false;
+            CommitInSubmodule(window, library, "not staged");
+            _repo.Run("diff", "--cached", "--name-only").Trim().Should().BeEmpty();
+
+            TestAppBuilder.Preferences.StageInSuperprojectAfterCommit = true;
+            CommitInSubmodule(window, library, "staged");
+            WaitUntil(() => _repo.Run("diff", "--cached", "--name-only").Trim() == "lib");
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.StageInSuperprojectAfterCommit = stage;
+            TestAppBuilder.Preferences.CloseCommitDialogAfterCommit = close;
+        }
+
+        static void CommitInSubmodule(MainWindow window, string library, string message)
+        {
+            File.WriteAllText(Path.Combine(library, "a.txt"), message);
+            GitProcess.Run(library, "add", "a.txt");
+            Find<Button>(window, "RefreshButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            WaitUntil(() => !window.IsBusy && Find<Button>(window, "CommitDialogButton").IsEnabled);
+            Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
+            CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
+            CheckBox check = Find<CheckBox>(commit, "StageInSuperprojectCheck");
+            WaitUntil(() => check.IsVisible);
+            WaitUntil(() => Find<ListBox>(commit, "StagedList").Items.OfType<Core.Repository.FileChange>().Any());
+            Find<TextBox>(commit, "CommitMessageBox").Text = message;
+            Find<Button>(commit, "CommitButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            WaitUntil(() => GitProcess.Run(library, "log", "-1", "--format=%s").Trim() == message);
+
+            // The window closes after the commit that leaves no unstaged changes, once it has staged in the superproject.
+            WaitUntil(() => !window.OwnedWindows.OfType<CommitWindow>().Any() && !window.IsBusy);
+        }
+    }
+
+    [AvaloniaTest]
     public void The_commit_windows_working_directory_list_has_upstreams_submodule_items()
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));

@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GitCommands;
 using GitExtensions.Xplat.Core.Settings;
+using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
@@ -28,6 +29,7 @@ public partial class App : Application
             _documentationBaseUrlSet = true;
         }
 
+        PluginAvatars.GetImage = (email, name, size) => AppServices.Avatars.GetImageAsync(email, name, size);
         ThemeApplier.Apply(AppServices.Preferences);
         FontApplier.Apply(AppServices.Preferences);
         FilePathTrimming.Apply(AppServices.Preferences);

@@ -94,9 +94,11 @@ internal sealed class SettingsTreeUiTests
         search.Text = "viewer";
         Dispatcher.UIThread.RunJobs();
         Descendants(settings.PageTree).Where(node => node.IsFound).Select(node => node.Title).Should()
-            .Equal("Hotkeys", "Diff viewer", "Blame viewer");
+            .Equal("Hotkeys", "Browse repository window", "Diff viewer", "Blame viewer");
         PressEnter(search);
         settings.SelectedPage!.Title.Should().Be("Hotkeys");
+        PressEnter(search);
+        settings.SelectedPage!.Title.Should().Be("Browse repository window");
         PressEnter(search);
         settings.SelectedPage!.Title.Should().Be("Diff viewer");
         PressEnter(search);

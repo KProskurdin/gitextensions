@@ -28,6 +28,28 @@ public partial class MainWindow
         // file, around at its ends.
         CommitDiff.NextFile = backward =>
             FileListNodes.SelectNextFile(CommitFilesList, backward, loop: true, item => item is CommitFile);
+
+        // Upstream RevisionDiffControl's FileViewer_TopScrollReached and FileViewer_BottomScrollReached.
+        CommitDiff.TopScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(CommitFilesList, next: false, item => item is CommitFile);
+            CommitDiff.ScrollToBottom();
+        };
+        CommitDiff.BottomScrollReached += (_, _) =>
+        {
+            FileListNodes.SelectNeighbourFile(CommitFilesList, next: true, item => item is CommitFile);
+            CommitDiff.ScrollToTop();
+        };
+        FileContentView.TopScrollReached += (_, _) =>
+        {
+            SelectNeighbourTreeFile(next: false);
+            FileContentView.ScrollToBottom();
+        };
+        FileContentView.BottomScrollReached += (_, _) =>
+        {
+            SelectNeighbourTreeFile(next: true);
+            FileContentView.ScrollToTop();
+        };
     }
 
     // Upstream's SupportLinePatching for the Diff tab's selected file: none for a folder, a grep match or a combined diff.

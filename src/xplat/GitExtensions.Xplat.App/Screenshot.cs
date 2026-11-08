@@ -66,6 +66,8 @@ internal static class Screenshot
 
     public const string CommitDiffWindow = "commitdiff";
 
+    public const string BlameWindow = "blame";
+
     public const string RecentRepositoriesSettingsWindow = "recentrepos";
 
     public const string GoToCommitWindow = "gotocommit";

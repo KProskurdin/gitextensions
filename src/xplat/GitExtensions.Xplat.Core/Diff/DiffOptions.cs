@@ -19,6 +19,33 @@ public sealed record DiffOptions(
     bool TreatAllFilesAsText = false,
     Encoding? Encoding = null)
 {
+    private const string GitWordDiffArgument = "--word-diff=color";
+
+    /// <summary>
+    ///  Upstream's <c>UseGitColoring</c>, which the viewer sets as it reads a diff, for git's own colors.
+    /// </summary>
+    public bool UseGitColoring { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>DiffDisplayAppearance</c>, which the viewer sets as it reads a diff.
+    /// </summary>
+    public DiffDisplayAppearance Appearance { get; init; }
+
+    /// <summary>
+    ///  The width Difftastic gets, from the viewer's (upstream's <c>DFT_WIDTH</c>).
+    /// </summary>
+    public int DifftasticWidth { get; init; } = Difftastic.WidthFor(0);
+
+    /// <summary>
+    ///  Upstream's "Git word diff", which takes git's colors whatever the setting says.
+    /// </summary>
+    public bool IsGitWordDiff => Appearance == DiffDisplayAppearance.GitWordDiff;
+
+    /// <summary>
+    ///  Upstream FileViewer's <c>PatchUseGitColoring</c>.
+    /// </summary>
+    public bool UsesGitColors => UseGitColoring || IsGitWordDiff;
+
     /// <summary>
     ///  Upstream FileViewer's <c>Encoding</c>: the viewer's choice, else the repository's files encoding
     ///  (<c>Module.FilesEncoding</c>).
@@ -89,6 +116,11 @@ public sealed record DiffOptions(
             if (TreatAllFilesAsText)
             {
                 arguments.Add(TextArgument);
+            }
+
+            if (IsGitWordDiff)
+            {
+                arguments.Add(GitWordDiffArgument);
             }
 
             return arguments;

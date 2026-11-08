@@ -36,8 +36,40 @@ public partial class CommitWindow
     private static readonly TimeSpan _activationRefreshInterval = TimeSpan.FromSeconds(2);
     private DateTime _lastActivationRefresh;
 
+    // Upstream's constructor: the check box only in a submodule, and no "Stash staged" for a git without stash --staged.
+    private async Task ShowModuleDependentButtonsAsync()
+    {
+        (bool inSubmodule, bool supportsStashStaged) = await Task.Run(() =>
+        {
+            GitModule module = GitModules.Open(_repositoryPath);
+            return (module.SuperprojectModule is not null, module.GitVersion.SupportStashStaged);
+        });
+        StageInSuperprojectCheck.IsVisible = inSubmodule;
+        StashStagedButton.IsVisible = supportsStashStaged;
+    }
+
+    // Upstream's DoCommit: the submodule's new commit is staged in its superproject.
+    private async Task StageInSuperprojectAsync()
+    {
+        if (_preferences.StageInSuperprojectAfterCommit)
+        {
+            await Task.Run(() =>
+            {
+                GitModule module = GitModules.Open(_repositoryPath);
+                if (module.SuperprojectModule is { } superproject && !string.IsNullOrWhiteSpace(module.SubmodulePath))
+                {
+                    superproject.StageFile(module.SubmodulePath);
+                }
+            });
+        }
+    }
+
     private void WireBottomPanel()
     {
+        StageInSuperprojectCheck.IsChecked = _preferences.StageInSuperprojectAfterCommit;
+        StageInSuperprojectCheck.IsCheckedChanged += (_, _) =>
+            SavePreference(() => _preferences.StageInSuperprojectAfterCommit = StageInSuperprojectCheck.IsChecked == true);
+        Run(ShowModuleDependentButtonsAsync);
         ShowCommitButtonImage();
         CommitAndPushButton.Content = ToolStripContent.Build("ArrowUp", CommitAndPushText);
         ResetSoftButton.Content = ToolStripContent.Build("ResetCurrentBranchToHere", ResetSoftText);

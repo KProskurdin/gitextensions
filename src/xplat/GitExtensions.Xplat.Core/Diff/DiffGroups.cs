@@ -1,4 +1,6 @@
 using GitCommands;
+using GitCommands.Settings;
+using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtUtils;
 using GitUI;
@@ -31,6 +33,16 @@ public sealed record DiffGroup(ObjectId? First, ObjectId Second, string Summary,
     public const string GrepIcon = "ViewFile";
 
     /// <summary>
+    ///  Upstream's image of the range diff item and its group (<c>Images.DiffR</c>).
+    /// </summary>
+    public const string RangeDiffIcon = "DiffR";
+
+    /// <summary>
+    ///  Upstream's range diff group, whose one item the list shows without a group node (<c>GetNodes</c>).
+    /// </summary>
+    public bool IsRangeDiff => Icon == RangeDiffIcon;
+
+    /// <summary>
     ///  Upstream's <c>GetGroupName</c>: the shown and the total count (only the total when all are shown) and the summary.
     /// </summary>
     public string Header(int shown) => $"({(shown >= Files.Count ? "" : $"{shown}/")}{Files.Count}) {Summary}";
@@ -54,15 +66,22 @@ public sealed record DiffGroup(ObjectId? First, ObjectId Second, string Summary,
 /// </summary>
 public static class DiffGroups
 {
+    private const string NoPatchArgument = "--no-patch";
+
+    // Upstream's CombinedDiffHighlightService.GetGitCommandConfiguration.
+    private const string CombinedDiffCommand = "diff-tree";
+
     /// <summary>
     ///  The groups of <paramref name="revisions"/> (the latest selected first, as upstream's <c>GetSelectedRevisions</c>),
-    ///  each as <paramref name="describe"/> names its revision. Upstream's range diff item is left out: the new shell has no
-    ///  view for <c>git range-diff</c>.
+    ///  each as <paramref name="describe"/> names its revision.
     /// </summary>
     /// <param name="grep">Upstream's git-grep argument (<see cref="GitGrep.SearchArgument"/>); with one, the last group is
     /// upstream's "grep" group of the latest selected revision's matching files.</param>
+    /// <param name="showSkipWorktreeFiles">Upstream's "Show skip-worktree files".</param>
+    /// <param name="showUntrackedFiles">Upstream's "Show untracked files".</param>
     public static IReadOnlyList<DiffGroup> Calculate(GitModule module, IReadOnlyList<GitRevision> revisions,
-        ObjectId headId, Func<ObjectId, string> describe, CancellationToken cancellationToken = default, string grep = "")
+        ObjectId headId, Func<ObjectId, string> describe, CancellationToken cancellationToken = default, string grep = "",
+        bool showSkipWorktreeFiles = false, bool showUntrackedFiles = true)
     {
         FileStatusDiffCalculator calculator = new(() => module)
         {
@@ -73,12 +92,11 @@ public static class DiffGroups
                 ? revision
                 : module.GetRevision(revision.ObjectId, shortFormat: true),
         };
-        calculator.SetDiff(revisions, headId, allowMultiDiff: true);
+        calculator.SetDiff(revisions, headId, allowMultiDiff: true, showSkipWorktreeFiles, showUntrackedFiles);
         calculator.SetGrep(grep, fileTreeMode: false);
         return
         [
             .. calculator.Calculate([], refreshDiff: true, refreshGrep: grep.Length > 0, cancellationToken)
-                .Where(group => !group.Statuses.Any(item => item.IsRangeDiff))
                 .Select(group => new DiffGroup(group.FirstRev?.ObjectId, group.SecondRev.ObjectId, group.Summary,
                     FileStatusDiffCalculator.IsGrepItemStatuses(group) ? DiffGroup.GrepIcon : group.IconName,
                     [.. group.Statuses.Where(item => !item.IsStatusOnly).Select(item => File(item, group))]))
@@ -99,11 +117,39 @@ public static class DiffGroups
 
         return Task.Run<IReadOnlyList<DiffLine>>(() =>
         {
-            module.GetCombinedDiffContent(group.Second, file.Path, string.Join(" ", options.Arguments),
-                options.EncodingFor(module), out string diff, useGitColoring: false, GitCommandConfiguration.Default,
+            // Upstream's isCombinedDiff: no word diff; CombinedDiffHighlightService's colors.
+            DiffOptions combined = options with { Appearance = DiffDisplayAppearance.Patch };
+            module.GetCombinedDiffContent(group.Second, file.Path, string.Join(" ", combined.Arguments),
+                combined.EncodingFor(module), out string diff, combined.UsesGitColors,
+                combined.UsesGitColors ? GitColoring.Configuration(module, CombinedDiffCommand) : GitCommandConfiguration.Default,
                 cancellationToken);
-            return DiffParser.ParseCombined(diff);
+            return InlineDifferences.Add(
+                combined.UsesGitColors ? GitColoring.ParseDiff(diff, isCombinedDiff: true) : DiffParser.ParseCombined(diff),
+                combined);
         }, cancellationToken);
+    }
+
+    /// <summary>
+    ///  Upstream's <c>ViewChangesAsync</c> for the range diff item: what <c>git range-diff</c> says about the two revisions
+    ///  of <paramref name="group"/>, in git's colors, or its error.
+    /// </summary>
+    /// <param name="pathFilter">Upstream's <c>_pathFilter</c>: the grid's path filter, where git supports it.</param>
+    public static async Task<IReadOnlyList<DiffLine>> RangeDiffAsync(GitModule module, DiffGroup group, DiffOptions options,
+        string pathFilter, CancellationToken cancellationToken = default)
+    {
+        // Upstream's GetExtraDiffArguments(isRangeDiff: true): no context lines means only the summary.
+        IEnumerable<string> arguments = options.ContextLines == 0
+            ? [.. options.Arguments, NoPatchArgument]
+            : options.Arguments;
+        ExecutionResult result = await module.GetRangeDiffAsync(group.First ?? default, group.Second, firstBase: default,
+            secondBase: default, string.Join(" ", arguments), module.GitVersion.SupportRangeDiffPath ? pathFilter : "",
+            useGitColoring: true, GitColoring.Configuration(module, GitColoring.RangeDiffCommand), cancellationToken);
+        if (!result.ExitedSuccessfully)
+        {
+            return DiffParser.ParseText($"{result.StandardError}{Environment.NewLine}Git output (exit code: {result.ExitCodeDisplay}): {Environment.NewLine}{result.StandardOutput}");
+        }
+
+        return GitColoring.ParseRangeDiff(GitModule.ReEncodeStringFromLossless(result.StandardOutput, options.EncodingFor(module)) ?? "");
     }
 
     private static RevisionDiffFile File(GitItemStatus item, FileStatusWithDescription group)
@@ -118,5 +164,6 @@ public static class DiffGroups
             DiffStatus = item.DiffStatus,
             GrepString = string.IsNullOrWhiteSpace(item.GrepString) ? null : item.GrepString,
             IsSubmodule = item.IsSubmodule,
+            IsRangeDiff = item.IsRangeDiff,
         };
 }

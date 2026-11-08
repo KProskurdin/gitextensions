@@ -69,6 +69,18 @@
          (System.Drawing.Graphics); CommitHistory/GraphPainter.cs ports it, and Settings/UpstreamGraphLaneColor.cs stands in
          for the lane colors, which upstream reads from the WinForms theme. -->
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraph.cs" Link="Upstream\Graph\RevisionGraph.cs" />
+    <!-- The line a blamed line had in the commit before, for the blame menu's "Blame previous revision". -->
+    <Compile Include="..\..\app\GitUI\UserControls\GitBlameParser.cs" Link="Upstream\Blame\GitBlameParser.cs" />
+    <!-- Upstream's reading of git's colored output, unchanged; Diff/UpstreamTextEditorMarkers.cs stands in for the WinForms text
+         editor's markers and the theme module, and Diff/GitColoring.cs takes the place of its highlight services. -->
+    <Compile Include="..\..\app\GitUI\Editor\Diff\AnsiEscapeUtilities.cs" Link="Upstream\Diff\AnsiEscapeUtilities.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\DiffLineNumAnalyzer.cs" Link="Upstream\Diff\DiffLineNumAnalyzer.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\LinesMatcher.cs" Link="Upstream\Diff\LinesMatcher.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\DiffLineInfo.cs" Link="Upstream\Diff\DiffLineInfo.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\DiffLinesInfo.cs" Link="Upstream\Diff\DiffLinesInfo.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\DiffLineType.cs" Link="Upstream\Diff\DiffLineType.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\HighlightInfo.cs" Link="Upstream\Diff\HighlightInfo.cs" />
+    <Compile Include="..\..\app\GitUI\Editor\Diff\Segment.cs" Link="Upstream\Diff\Segment.cs" />
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphRow.cs" Link="Upstream\Graph\RevisionGraphRow.cs" />
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphRevision.cs" Link="Upstream\Graph\RevisionGraphRevision.cs" />
     <Compile Include="..\..\app\GitUI\UserControls\RevisionGrid\Graph\RevisionGraphSegment.cs" Link="Upstream\Graph\RevisionGraphSegment.cs" />

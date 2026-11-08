@@ -441,6 +441,18 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         => RunAsync("Rebase continued", repositoryPath,
             () => _operations.ContinueRebaseAsync(repositoryPath, EditorCommand));
 
+    /// <summary>
+    ///  Upstream's <c>FormRebase.ResolvedClick</c>: continues the rebase showing git's output, which tells whether git reused
+    ///  a recorded resolution (<see cref="RebaseDialog.CanContinue"/>).
+    /// </summary>
+    public Task<bool> ContinueRebaseShowingOutputAsync(string repositoryPath)
+    {
+        string? editor = EditorCommand;
+        return RunRemoteAsync("Continue rebase", "Rebase continued", repositoryPath,
+            (output, cancellation) =>
+                _operations.RunRebaseAsync(repositoryPath, Commands.ContinueRebase(), editor, output, cancellation));
+    }
+
     public Task<bool> SkipRebaseAsync(string repositoryPath)
         => RunAsync("Commit skipped", repositoryPath, () => _operations.SkipRebaseAsync(repositoryPath, EditorCommand));
 

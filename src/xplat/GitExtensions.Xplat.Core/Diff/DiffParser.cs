@@ -16,7 +16,45 @@ public enum DiffLineKind
 ///  One line of a diff. <see cref="OldNumber"/> and <see cref="NewNumber"/> are the line's numbers in the old and new file;
 ///  an added line has no old number, a removed line no new number, and header lines have neither.
 /// </summary>
-public sealed record DiffLine(string Text, DiffLineKind Kind, int? OldNumber = null, int? NewNumber = null);
+public sealed record DiffLine(string Text, DiffLineKind Kind, int? OldNumber = null, int? NewNumber = null)
+{
+    /// <summary>
+    ///  How the line ended in git's text, which <see cref="Text"/> leaves out, for the viewer's non-printing marks.
+    /// </summary>
+    public LineEnding Ending { get; init; } = LineEnding.LineFeed;
+
+    /// <summary>
+    ///  The line's parts in git's colors (<see cref="GitColoring"/>); null when git's colors were not asked for, and then the
+    ///  viewer colors the line by its kind.
+    /// </summary>
+    public IReadOnlyList<DiffColorRun>? ColorRuns { get; init; }
+
+    /// <summary>
+    ///  The parts this changed line shares with the one it replaces, in upstream's dimmed colors (<see cref="InlineDifferences"/>).
+    /// </summary>
+    public IReadOnlyList<DiffColorRun>? DimRuns { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>IsMovedLine</c>: git's colors say the line was moved, so it has no line that it replaces.
+    /// </summary>
+    public bool IsMovedLine { get; init; }
+
+    /// <summary>
+    ///  <see cref="Ending"/> of the raw line <paramref name="raw"/> that a newline followed.
+    /// </summary>
+    public static LineEnding EndingOf(string raw)
+        => raw.EndsWith('\r') ? LineEnding.CarriageReturnLineFeed : LineEnding.LineFeed;
+}
+
+/// <summary>
+///  How a line of text ended (upstream's text editor's <c>EolMarker</c>).
+/// </summary>
+public enum LineEnding
+{
+    LineFeed,
+    CarriageReturnLineFeed,
+    None,
+}
 
 /// <summary>
 ///  Classifies the lines of a unified diff so a view can color them, and numbers the lines of each hunk.
@@ -58,15 +96,15 @@ public static partial class DiffParser
                 switch (line.Length == 0 ? ' ' : line[0])
                 {
                     case '+':
-                        lines.Add(new DiffLine(line, DiffLineKind.Added, NewNumber: newNumber++));
+                        lines.Add(new DiffLine(line, DiffLineKind.Added, NewNumber: newNumber++) { Ending = DiffLine.EndingOf(text) });
                         newLeft--;
                         continue;
                     case '-':
-                        lines.Add(new DiffLine(line, DiffLineKind.Removed, OldNumber: oldNumber++));
+                        lines.Add(new DiffLine(line, DiffLineKind.Removed, OldNumber: oldNumber++) { Ending = DiffLine.EndingOf(text) });
                         oldLeft--;
                         continue;
                     case ' ':
-                        lines.Add(new DiffLine(line, DiffLineKind.Context, oldNumber++, newNumber++));
+                        lines.Add(new DiffLine(line, DiffLineKind.Context, oldNumber++, newNumber++) { Ending = DiffLine.EndingOf(text) });
                         oldLeft--;
                         newLeft--;
                         continue;
@@ -166,7 +204,11 @@ public static partial class DiffParser
         List<DiffLine> lines = new(count);
         for (int i = 0; i < count; i++)
         {
-            lines.Add(new DiffLine(texts[i].TrimEnd('\r'), DiffLineKind.Context, NewNumber: i + 1));
+            lines.Add(new DiffLine(texts[i].TrimEnd('\r'), DiffLineKind.Context, NewNumber: i + 1)
+            {
+                // The text after the last newline, when there is any, ends with nothing.
+                Ending = i == texts.Length - 1 ? LineEnding.None : DiffLine.EndingOf(texts[i])
+            });
         }
 
         return lines;

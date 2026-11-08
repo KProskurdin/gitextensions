@@ -28,7 +28,7 @@
     </local:ToolSplitButton>
     <Label x:Name="BranchFilterLabel" Content="_Branches:" Target="{Binding #BranchFilterBox}" ToolTip.Tip="Branch filter"
            VerticalAlignment="Center" Padding="4,0,2,0" />
-    <AutoCompleteBox x:Name="BranchFilterBox" Width="100" MinimumPrefixLength="0" FilterMode="ContainsOrdinal"
+    <AutoCompleteBox x:Name="BranchFilterBox" Width="100" MinimumPrefixLength="0"
                      VerticalAlignment="Center" />
     <local:ToolDropDownButton x:Name="BranchTypeButton" Image="EditFilter" ToolTip.Tip="Branch type">
       <local:ToolDropDownButton.Flyout>

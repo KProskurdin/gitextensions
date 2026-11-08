@@ -91,6 +91,22 @@ public sealed class GitCommitHistory : ICommitHistory
     public Task<IReadOnlyList<string>> LoadTreeAsync(string repositoryPath, string hash)
         => Task.Run(() => LoadTree(repositoryPath, hash));
 
+    /// <summary>
+    ///  The submodules among a commit's tree entries (git's mode 160000), which upstream's <c>GetTreeFiles</c> marks.
+    /// </summary>
+    public Task<IReadOnlySet<string>> LoadTreeSubmodulesAsync(string repositoryPath, string hash)
+        => Task.Run<IReadOnlySet<string>>(() =>
+        {
+            ExecutionResult result = CreateModule(repositoryPath).GitExecutable.Execute(
+                new GitArgumentBuilder("ls-tree") { "-r", "-z", hash }, throwOnErrorExit: false);
+            return result.ExitedSuccessfully
+                ? result.StandardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(entry => entry.StartsWith("160000 ", StringComparison.Ordinal))
+                    .Select(entry => entry[(entry.IndexOf('\t') + 1)..])
+                    .ToHashSet()
+                : [];
+        });
+
     public Task<CommitPage> LoadFileHistoryAsync(string repositoryPath, string hash, string filePath, int limit)
     {
         CommitDateStyle style = _dateStyle();
@@ -265,21 +281,32 @@ public sealed class GitCommitHistory : ICommitHistory
         return Task.Run(() => LoadBlame(repositoryPath, hash, filePath, flags));
     }
 
-    public Task<string?> LoadFileTextAsync(string repositoryPath, string hash, string filePath)
-        => Task.Run(() => LoadFileText(repositoryPath, hash, filePath));
-
-    // A NUL character marks a binary file, as git itself decides for diffs.
-    private static string? LoadFileText(string path, string hash, string filePath)
-    {
-        ExecutionResult result = CreateModule(path).GitExecutable.Execute(
-            new GitArgumentBuilder("show") { $"{hash}:{filePath}".Quote() }, throwOnErrorExit: false);
-        if (!result.ExitedSuccessfully)
+    /// <summary>
+    ///  The commit's real parents, as upstream's <c>GetActualRevision</c> reads them: a path filtered grid rewrites the ones
+    ///  its rows have.
+    /// </summary>
+    public Task<IReadOnlyList<string>> LoadParentsAsync(string repositoryPath, string hash)
+        => Task.Run<IReadOnlyList<string>>(() =>
         {
-            throw new GitOperationException(result.StandardError.Trim());
-        }
+            ExecutionResult result = CreateModule(repositoryPath).GitExecutable.Execute(
+                new GitArgumentBuilder("rev-list") { "--parents", "-n", "1", hash }, throwOnErrorExit: false);
+            return result.ExitedSuccessfully
+                ? result.StandardOutput.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)[1..]
+                : [];
+        });
 
-        return result.StandardOutput.Contains('\0') ? null : result.StandardOutput;
-    }
+    /// <summary>
+    ///  Upstream's <c>GitBlameParser.GetOriginalLineInPreviousCommit</c>: where a line of <paramref name="hash"/> was in the
+    ///  first of <paramref name="parents"/>.
+    /// </summary>
+    public Task<int> OriginalLineInPreviousCommitAsync(string repositoryPath, string hash,
+        IReadOnlyList<string> parents, string filePath, int line)
+        => Task.Run(() =>
+        {
+            GitRevision revision = new(ObjectId.Parse(hash)) { ParentIds = [.. parents.Select(ObjectId.Parse)] };
+            return new GitUI.UserControls.GitBlameParser(() => CreateModule(repositoryPath))
+                .GetOriginalLineInPreviousCommit(revision, filePath, line);
+        });
 
     private static IReadOnlyList<BlameLine> LoadBlame(string path, string hash, string filePath,
         IReadOnlyList<string> flags)

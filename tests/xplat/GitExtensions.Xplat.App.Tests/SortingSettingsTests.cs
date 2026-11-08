@@ -32,6 +32,38 @@ internal sealed class SortingSettingsTests
     }
 
     [AvaloniaTest]
+    public void The_help_buttons_open_upstreams_manual_sections()
+    {
+        Action<string> open = DialogHelp.Open;
+        List<string> opened = [];
+        DialogHelp.Open = opened.Add;
+        try
+        {
+            MainWindow window = NewWindow();
+            window.Show();
+            Click(window, "SettingsMenuItem");
+            WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
+            SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
+            WaitUntil(() => settings.IsGitConfigLoaded);
+
+            Click(settings, "RevisionSortOrderHelp");
+            Click(settings, "PrioBranchNamesHelp");
+            Click(settings, "PrioRemoteNamesHelp");
+
+            opened.Should().HaveCount(3);
+            opened[0].Should().EndWith("#sorting-sort-author-date");
+            opened[1].Should().EndWith("#sorting-sort-prioritized-branches");
+            opened[2].Should().EndWith("#sorting-sort-prioritized-remotes");
+            settings.Close();
+            window.Close();
+        }
+        finally
+        {
+            DialogHelp.Open = open;
+        }
+    }
+
+    [AvaloniaTest]
     public void The_sorting_tab_lists_upstreams_choices_and_saves_them()
     {
         MainWindow window = NewWindow();

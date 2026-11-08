@@ -340,6 +340,109 @@ internal sealed class GridMultiSelectionTests
     }
 
     [AvaloniaTest]
+    public void Two_commits_on_separate_branches_list_the_range_diff_item_without_a_group_and_show_git_range_diff()
+    {
+        _repo.Run("checkout", "-q", "-b", "side", "HEAD~1");
+        File.WriteAllText(Path.Combine(_repo.Path, "c.txt"), "c");
+        _repo.Run("add", "c.txt");
+        _repo.Run("commit", "-q", "-m", "side");
+        bool allParents = AppSettings.ShowDiffForAllParents;
+        AppSettings.ShowDiffForAllParents = true;
+        try
+        {
+            MainWindow window = OpenWindow();
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            Select(commits, "side");
+            commits.SelectedItems!.Add(Item(commits, "third"));
+            WaitUntil(() => files.Items.OfType<DiffGroupHeader>().Count() == 3);
+            CommitFile range = files.Items.OfType<CommitFile>().Single(file => file.DiffFile?.IsRangeDiff == true);
+
+            range.Image.Should().Be("DiffR");
+            range.Path.Should().StartWith("Range diff 1").And.Contain(" BASE ");
+            files.Items.OfType<object>().ElementAt(files.Items.OfType<object>().ToList().IndexOf(range) + 1)
+                .Should().BeOfType<DiffGroupHeader>().Which.Group.Icon.Should().Be("DiffB", "it stands between the groups");
+
+            files.SelectedItem = range;
+            DiffView diff = Find<DiffView>(window, "CommitDiff");
+            WaitUntil(() => diff.Lines.Any(line => line.Text.Contains("side", StringComparison.Ordinal)
+                                                   && !line.Text.StartsWith("git range-diff", StringComparison.Ordinal)));
+            diff.Lines.Should().Contain(line => line.Text.Contains("third", StringComparison.Ordinal));
+            Find<Button>(window, "CommitDiffToolButton").IsEnabled.Should().BeFalse();
+            window.Close();
+        }
+        finally
+        {
+            AppSettings.ShowDiffForAllParents = allParents;
+        }
+    }
+
+    [AvaloniaTest]
+    public void Show_skip_worktree_files_lists_the_working_directorys_skip_worktree_files()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed but skipped");
+        _repo.Run("update-index", "--skip-worktree", "a.txt");
+        File.WriteAllText(Path.Combine(_repo.Path, "b.txt"), "changed");
+        bool artificial = TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits;
+        TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = true;
+        try
+        {
+            MainWindow window = OpenWindow();
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            WaitUntil(() => commits.Items.Cast<CommitListItem>().Any(item => item.Row.Hash == ArtificialCommits.WorkTreeHash));
+            commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Hash == ArtificialCommits.WorkTreeHash);
+            WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Path == "b.txt"));
+            files.Items.OfType<CommitFile>().Should().NotContain(file => file.Path == "a.txt");
+            MenuItem show = Find<MenuItem>(window, "DiffFilesShowSkipWorktreeMenuItem");
+
+            show.IsChecked = true;
+            show.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Path == "a.txt"));
+            files.Items.OfType<CommitFile>().Should().Contain(file => file.Path == "b.txt");
+            files.Items.OfType<DiffGroupHeader>().Should().BeEmpty("one group has no node");
+
+            show.IsChecked = false;
+            show.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            WaitUntil(() => !files.Items.OfType<CommitFile>().Any(file => file.Path == "a.txt"));
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = artificial;
+        }
+    }
+
+    [AvaloniaTest]
+    public void Several_selected_commits_leave_the_authors_highlight_as_upstream()
+    {
+        _repo.Run("-c", "user.name=Ann", "-c", "user.email=ann@example.com", "commit", "-q", "--allow-empty", "-m", "by ann");
+        bool highlight = TestAppBuilder.Preferences.HighlightAuthoredRevisions;
+        TestAppBuilder.Preferences.HighlightAuthoredRevisions = true;
+        try
+        {
+            MainWindow window = OpenWindow();
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            Select(commits, "third");
+            Dispatcher.UIThread.RunJobs();
+            IReadOnlyList<string> Authored() => [.. commits.GetRealizedContainers()
+                .Where(container => container.Classes.Contains("authored"))
+                .Select(container => ((CommitListItem)container.DataContext!).Row.Subject)];
+            Authored().Should().Contain("third").And.NotContain("by ann");
+
+            commits.SelectedItems!.Add(Item(commits, "by ann"));
+            Dispatcher.UIThread.RunJobs();
+
+            Authored().Should().Contain("third").And.NotContain("by ann", "the highlight stays the single selection's");
+            window.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.HighlightAuthoredRevisions = highlight;
+        }
+    }
+
+    [AvaloniaTest]
     public void Ctrl_A_in_the_diff_tab_selects_the_files_of_the_first_diff_group_as_upstreams_hotkey()
     {
         _repo.Run("checkout", "-q", "-b", "side", "HEAD~1");

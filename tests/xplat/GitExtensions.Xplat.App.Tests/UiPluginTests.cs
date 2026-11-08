@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
+using GitExtensions.Xplat.Ui;
 using GitUI;
 using NUnit.Framework;
 using DialogResult = System.Windows.Forms.DialogResult;
@@ -379,6 +380,16 @@ internal sealed class UiPluginTests
         string folder = NewFolder();
         string recorded = Path.Combine(folder, "arguments.txt");
         string gource = FakeGource(folder, recorded);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "by ann");
+        _repo.Run("-c", "user.name=Ann", "-c", "user.email=ann@example.com", "commit", "-q", "-am", "by ann");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "by bob");
+        _repo.Run("-c", "user.name=Bob", "-c", "user.email=bob@example.com", "commit", "-q", "-am", "by bob");
+        List<(string Email, string? Name, int Size)> asked = [];
+        PluginAvatars.GetImage = (email, name, size) =>
+        {
+            asked.Add((email, name, size));
+            return Task.FromResult(name == "Ann" ? Convert.FromBase64String(OnePixelPng) : null);
+        };
         IGitPlugin plugin = LoadPlugin("Gource");
         MainWindow window = OpenWindow(plugin);
         SettingsSource settings = TestSettings(plugin);
@@ -402,6 +413,13 @@ internal sealed class UiPluginTests
         settings.GetString("Arguments", null).Should().EndWith("--seconds-per-day 1");
         settings.GetString("Path to Gource", null).Should().Be(gource);
         _messages.Should().BeEmpty();
+
+        // Upstream's LoadAvatarsAsync: a picture per author at upstream's size, and none where the settings find none.
+        asked.Should().Contain(("ann@example.com", "Ann", 90)).And.Contain(("bob@example.com", "Bob", 90));
+        string avatars = Path.Combine(Path.GetTempPath(), "GitAvatars");
+        File.Exists(Path.Combine(avatars, "Ann.png")).Should().BeTrue();
+        File.ReadAllBytes(Path.Combine(avatars, "Ann.png")).Take(4).Should().Equal(0x89, (byte)'P', (byte)'N', (byte)'G');
+        File.Exists(Path.Combine(avatars, "Bob.png")).Should().BeFalse();
 
         // A program that writes its arguments to a file, in the platform's script language.
         static string FakeGource(string folder, string output)
@@ -564,6 +582,10 @@ internal sealed class UiPluginTests
     // Runs the plugin from the Plugins menu. Its window is modal and the click returns only when it closes, so the test drives
     // it from a timer: step gets the window on each tick until it returns true, and the window is then closed if the step
     // left it open. A window still open at the timeout is closed, so a failure cannot hang the run.
+    // A 1x1 PNG.
+    private const string OnePixelPng =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
     private static void RunPlugin(MainWindow window, IGitPlugin plugin, Func<Window, bool> step)
     {
         DateTime deadline = DateTime.UtcNow + _timeout;

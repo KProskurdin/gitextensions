@@ -224,6 +224,15 @@ internal sealed class FileTreeRows<T>
         => AddNodes(items, Tree(files), depth, keyPrefix);
 
     /// <summary>
+    ///  Adds an item that is no file path (upstream's range diff item) as a row of its own, out of the tree.
+    /// </summary>
+    public void AddRow(List<object> items, T file, string text)
+    {
+        items.Add(file);
+        _fileRows[file] = (text, 0);
+    }
+
+    /// <summary>
     ///  Upstream's <c>CollapseGroups_Click</c> for the extension and status groups among <paramref name="rows"/>; false
     ///  when none was expanded.
     /// </summary>

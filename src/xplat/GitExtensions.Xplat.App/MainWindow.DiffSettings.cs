@@ -6,8 +6,8 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Upstream FileStatusList's settings menu over the Diff tab's files, as <c>RevisionDiffControl</c> binds it
-///  (<c>canAutoRefresh</c>): "Show untracked files" for the working directory's row (at first as git's
-///  <c>status.showuntrackedfiles</c> says), the ignored files' editors, "Refresh artificial commits on form focus" and
+///  (<c>canAutoRefresh</c>): "Show skip-worktree files" and "Show untracked files" for the working directory's row (the
+///  latter at first as git's <c>status.showuntrackedfiles</c> says), the ignored files' editors, "Refresh artificial commits on form focus" and
 ///  "Show file differences for all parents".
 /// </summary>
 public partial class MainWindow
@@ -19,19 +19,24 @@ public partial class MainWindow
     // Git's status letter of an untracked file in the Diff tab's list.
     private const string UntrackedStatus = "?";
 
+    // The running git range-diff of the Diff tab, cancelled when another one starts.
+    private CancellationTokenSource? _rangeDiffCancellation;
+
     // The repository whose status.showuntrackedfiles set "Show untracked files" (read once per repository, as upstream
     // reads it once per window).
     private string? _showUntrackedReadFor;
 
     private void WireDiffFileSettings()
     {
-        DiffFilesShowUntrackedMenuItem.Click += (_, _) => ShowSelectedCommitFiles();
+        DiffFilesShowUntrackedMenuItem.Click += (_, _) => RefreshDiffFilesFromSettings();
+        DiffFilesShowSkipWorktreeMenuItem.Click += (_, _) => RefreshDiffFilesFromSettings();
         DiffFilesEditGitIgnoreMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: false));
         DiffFilesEditLocallyIgnoredMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: true));
         ((MenuFlyout)DiffFilesSettingsButton.Flyout!).Opening += (_, _) =>
         {
             // Upstream's UpdateToolbar(revisions): untracked files only for the working directory.
             DiffFilesShowUntrackedMenuItem.IsEnabled = SelectedRevisions.Any(row => row.Hash == ArtificialCommits.WorkTreeHash);
+            DiffFilesShowSkipWorktreeMenuItem.IsEnabled = DiffFilesShowUntrackedMenuItem.IsEnabled;
             DiffFilesRefreshOnFormFocusMenuItem.IsChecked = _preferences.RefreshCommitDialogOnFocus;
             DiffFilesShowDiffForAllParentsMenuItem.IsChecked = _preferences.ShowDiffForAllParents;
             ToolTip.SetTip(DiffFilesShowDiffForAllParentsMenuItem,
@@ -67,6 +72,13 @@ public partial class MainWindow
             : DiffFilesShowUntrackedMenuItem.IsChecked
                 ? _commits.CommitFiles
                 : [.. _commits.CommitFiles.Where(file => file.Status != UntrackedStatus)];
+
+    // Upstream's RequestRefresh for the two show items: skip-worktree files come only from the calculator's groups.
+    private void RefreshDiffFilesFromSettings()
+    {
+        ShowSelectionDiff();
+        ShowSelectedCommitFiles();
+    }
 
     private void ShowSelectedCommitFiles()
     {

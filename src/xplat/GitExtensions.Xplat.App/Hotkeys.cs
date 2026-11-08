@@ -50,7 +50,11 @@ public enum CommitCommand
     OpenWithDifftool,
     Refresh,
     SelectNext,
+    SelectNextAlternativeHotkey1,
+    SelectNextAlternativeHotkey2,
     SelectPrevious,
+    SelectPreviousAlternativeHotkey1,
+    SelectPreviousAlternativeHotkey2,
     ConventionalCommitPrefixMessage,
     ConventionalCommitPrefixMessageWithScope,
 }
@@ -66,6 +70,7 @@ public enum GridCommand
     SelectCurrentRevision,
     RevisionFilter,
     ResetRevisionFilter,
+    ResetRevisionPathFilter,
     ShowAllBranches,
     ShowCurrentBranchOnly,
     ToggleHideMergeCommits,
@@ -111,6 +116,8 @@ public enum DiffCommand
     FindPrevious,
     GoToLine,
     ShowSyntaxHighlighting,
+    ShowGitWordColoring,
+    ShowDifftastic,
     TreatFileAsText,
 }
 
@@ -264,6 +271,12 @@ public sealed class HotkeyTable<TCommand>
                     change.Value is { } gesture ? Hotkeys.ToWinFormsKeys(gesture) : WinFormsKeys.None)));
 
     /// <summary>
+    ///  Upstream's default hotkey of the command, or null when it has none.
+    /// </summary>
+    public KeyGesture? DefaultGestureFor(TCommand command)
+        => _defaults.TryGetValue(command, out WinFormsKeys keys) ? Hotkeys.ToGesture(keys) : null;
+
+    /// <summary>
     ///  The command's hotkey, or null when it has none.
     /// </summary>
     public KeyGesture? GestureFor(TCommand command)
@@ -364,7 +377,11 @@ public static class Hotkeys
             [CommitCommand.OpenWithDifftool] = (12, "OpenWithDifftool"),
             [CommitCommand.Refresh] = (18, "Refresh"),
             [CommitCommand.SelectNext] = (19, "SelectNext"),
+            [CommitCommand.SelectNextAlternativeHotkey1] = (20, "SelectNext_AlternativeHotkey1"),
+            [CommitCommand.SelectNextAlternativeHotkey2] = (21, "SelectNext_AlternativeHotkey2"),
             [CommitCommand.SelectPrevious] = (22, "SelectPrevious"),
+            [CommitCommand.SelectPreviousAlternativeHotkey1] = (23, "SelectPrevious_AlternativeHotkey1"),
+            [CommitCommand.SelectPreviousAlternativeHotkey2] = (24, "SelectPrevious_AlternativeHotkey2"),
             [CommitCommand.ConventionalCommitPrefixMessage] = (25, "ConventionalCommit_PrefixMessage"),
             [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
                 (26, "ConventionalCommit_PrefixMessageWithScope"),
@@ -379,7 +396,11 @@ public static class Hotkeys
             [CommitCommand.OpenWithDifftool] = WinFormsKeys.F3,
             [CommitCommand.Refresh] = WinFormsKeys.F5,
             [CommitCommand.SelectNext] = WinFormsKeys.Control | WinFormsKeys.N,
+            [CommitCommand.SelectNextAlternativeHotkey1] = WinFormsKeys.Alt | WinFormsKeys.Down,
+            [CommitCommand.SelectNextAlternativeHotkey2] = WinFormsKeys.Alt | WinFormsKeys.Right,
             [CommitCommand.SelectPrevious] = WinFormsKeys.Control | WinFormsKeys.P,
+            [CommitCommand.SelectPreviousAlternativeHotkey1] = WinFormsKeys.Alt | WinFormsKeys.Up,
+            [CommitCommand.SelectPreviousAlternativeHotkey2] = WinFormsKeys.Alt | WinFormsKeys.Left,
             [CommitCommand.ConventionalCommitPrefixMessage] = WinFormsKeys.Control | WinFormsKeys.T,
             [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
                 WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.T,
@@ -396,6 +417,7 @@ public static class Hotkeys
             [GridCommand.SelectCurrentRevision] = (19, "SelectCurrentRevision"),
             [GridCommand.RevisionFilter] = (1, "RevisionFilter"),
             [GridCommand.ResetRevisionFilter] = (36, "ResetRevisionFilter"),
+            [GridCommand.ResetRevisionPathFilter] = (37, "ResetRevisionPathFilter"),
             [GridCommand.ShowAllBranches] = (9, "ShowAllBranches"),
             [GridCommand.ShowCurrentBranchOnly] = (10, "ShowCurrentBranchOnly"),
             [GridCommand.ToggleHideMergeCommits] = (8, "ToggleHideMergeCommits"),
@@ -427,6 +449,7 @@ public static class Hotkeys
             [GridCommand.GoToChild] = WinFormsKeys.Control | WinFormsKeys.N,
             [GridCommand.SelectCurrentRevision] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.C,
             [GridCommand.RevisionFilter] = WinFormsKeys.Control | WinFormsKeys.I,
+            [GridCommand.ResetRevisionPathFilter] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.H,
             [GridCommand.ResetRevisionFilter] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.I,
             [GridCommand.ShowAllBranches] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.A,
             [GridCommand.ShowCurrentBranchOnly] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.U,
@@ -469,6 +492,8 @@ public static class Hotkeys
             [DiffCommand.FindPrevious] = (9, "FindPrevious"),
             [DiffCommand.GoToLine] = (1, "GoToLine"),
             [DiffCommand.ShowSyntaxHighlighting] = (17, "ShowSyntaxHighlighting"),
+            [DiffCommand.ShowGitWordColoring] = (18, "ShowGitWordColoring"),
+            [DiffCommand.ShowDifftastic] = (19, "ShowDifftastic"),
             [DiffCommand.TreatFileAsText] = (5, "TreatFileAsText"),
         },
         new Dictionary<DiffCommand, WinFormsKeys>
@@ -487,6 +512,8 @@ public static class Hotkeys
             [DiffCommand.FindPrevious] = WinFormsKeys.Shift | WinFormsKeys.F3,
             [DiffCommand.GoToLine] = WinFormsKeys.Control | WinFormsKeys.G,
             [DiffCommand.ShowSyntaxHighlighting] = WinFormsKeys.X,
+            [DiffCommand.ShowGitWordColoring] = WinFormsKeys.Control | WinFormsKeys.D,
+            [DiffCommand.ShowDifftastic] = WinFormsKeys.Control | WinFormsKeys.T,
         });
 
     /// <summary>

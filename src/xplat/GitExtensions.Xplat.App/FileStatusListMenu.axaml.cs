@@ -327,6 +327,10 @@ public partial class FileStatusListMenu : ContextMenu
             supportLinePatching: SupportLinePatching());
         bool submodules = binding.Submodules() is not null;
         openSubmoduleMenuItem.IsVisible = submodules && state.OpenSubmodule;
+
+        // Upstream's DisableSubmoduleMenuItemBold in the commit window, where a double-click stages.
+        bool opensSubmodule = state.OpenSubmodule && AppServices.Preferences.OpenSubmoduleDiffInSeparateWindow;
+        openSubmoduleMenuItem.FontWeight = opensSubmodule && binding.Stage is null ? FontWeight.Bold : FontWeight.Normal;
         tsmiUpdateSubmodule.IsVisible = tsmiResetSubmoduleChanges.IsVisible = tsmiStashSubmoduleChanges.IsVisible
             = tsmiCommitSubmoduleChanges.IsVisible = sepSubmodule.IsVisible = submodules && state.Submodule;
         tsmiStageFile.IsVisible = state.Stage;
@@ -379,7 +383,7 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiFilterFileInGrid.IsEnabled = state.FilterFileInGrid;
         tsmiFileHistory.IsVisible = true;
         tsmiFileHistory.IsEnabled = state.FileHistory && binding.Services()?.FileHistory is not null;
-        tsmiFileHistory.FontWeight = binding.ShowInFileTree is null ? FontWeight.Normal : FontWeight.Bold;
+        tsmiFileHistory.FontWeight = binding.ShowInFileTree is null || opensSubmodule ? FontWeight.Normal : FontWeight.Bold;
         tsmiBlame.IsVisible = true;
         tsmiBlame.IsEnabled = state.Blame && (binding.Blame is not null || binding.Services()?.FileHistory is not null);
         tsmiBlame.ToggleType = binding.BlameChecked is null ? MenuItemToggleType.None : MenuItemToggleType.CheckBox;
@@ -413,6 +417,28 @@ public partial class FileStatusListMenu : ContextMenu
            || item == _collapseRootFolders;
 
     // Upstream's submodule items: each acts on the selected submodules' paths (Distinct, as upstream's).
+    /// <summary>
+    ///  Upstream FileStatusList's <c>FileStatusListView_DoubleClick</c>: a submodule opens where
+    ///  <c>OpenSubmoduleDiffInSeparateWindow</c> says so, anything else shows its history. True when something was done.
+    /// </summary>
+    public bool RunDoubleClick()
+    {
+        UpdateStatusOfMenuItems();
+        if (openSubmoduleMenuItem.IsVisible && AppServices.Preferences.OpenSubmoduleDiffInSeparateWindow)
+        {
+            WithSubmodules((submodules, paths) => submodules.Open(paths[0]));
+            return true;
+        }
+
+        if (tsmiFileHistory.IsEnabled)
+        {
+            StartFileHistory(showBlame: false);
+            return true;
+        }
+
+        return false;
+    }
+
     private void WithSubmodules(Func<FileListSubmodules, IReadOnlyList<string>, Task> action)
     {
         if (_binding?.Submodules() is { } submodules && SelectedFiles() is { } selection

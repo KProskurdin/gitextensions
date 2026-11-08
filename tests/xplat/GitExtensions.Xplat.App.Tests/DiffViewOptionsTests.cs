@@ -162,8 +162,8 @@ internal sealed class DiffViewOptionsTests
         // As upstream: the markers for spaces, tabs and line ends, not on the diff's own + or space; no new git diff.
         diff.FindControl<ToggleButton>("NonPrintingToggle")!.IsChecked = true;
         DiffLineItem added = diff.Lines.Single(line => line.Text.StartsWith("+»", StringComparison.Ordinal));
-        string.Concat(added.Runs!.Select(run => run.Text)).Should().Be("+»\tint·y;¶");
-        diff.Lines.Single(line => line.Text.StartsWith(' ')).Text.Should().Be(" int·x·=·1;¶");
+        string.Concat(added.Runs!.Select(run => run.Text)).Should().Be("+»\tint·y;\\n", "upstream's default is the text");
+        diff.Lines.Single(line => line.Text.StartsWith(' ')).Text.Should().Be(" int·x·=·1;\\n");
         TestAppBuilder.Preferences.InitialDiffOptions().ShowNonPrintingChars.Should().BeFalse(
             "not remembered by default, so a new view starts without them");
 
@@ -305,6 +305,30 @@ internal sealed class DiffViewOptionsTests
             {
                 AppSettings.AvailableEncodings.Remove(ascii.WebName);
             }
+        }
+    }
+
+    [AvaloniaTest]
+    public void The_end_of_line_marks_follow_show_eol_marker_as_glyph()
+    {
+        DiffView diff = new();
+        Window window = new() { Content = diff };
+        window.Show();
+        diff.FindControl<ToggleButton>("NonPrintingToggle")!.IsChecked = true;
+        try
+        {
+            diff.ShowText("a.txt", "one\r\ntwo\n");
+            diff.Lines.Select(line => line.Text).Should().Equal(@"one\r\n", @"two\n");
+
+            TestAppBuilder.Preferences.ShowEolMarkerAsGlyph = true;
+            diff.ShowText("a.txt", "one\r\ntwo\nlast");
+            diff.Lines.Select(line => line.Text).Should().Equal("one¤", "two¶", "last");
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.ShowEolMarkerAsGlyph = false;
+            diff.FindControl<ToggleButton>("NonPrintingToggle")!.IsChecked = false;
+            window.Close();
         }
     }
 
