@@ -307,6 +307,8 @@ public partial class FileHistoryWindow
         ShowArtificialCommitsMenuItem.Click += (_, _) => ChangePreference(() =>
             _preferences.RevisionGraphShowArtificialCommits = !_preferences.RevisionGraphShowArtificialCommits);
         ShowStashesMenuItem.Click += (_, _) => ChangePreference(() => _preferences.ShowStashes = !_preferences.ShowStashes);
+        ShowSessionCheckpointsMenuItem.Click += (_, _) =>
+            ChangePreference(() => _preferences.ShowSessionRefs = !_preferences.ShowSessionRefs);
         ShowRemoteBranchesMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
         {
             ShowRemoteBranches = !_preferences.GridViewOptions.ShowRemoteBranches,
@@ -366,6 +368,7 @@ public partial class FileHistoryWindow
         DrawNonRelativesGrayMenuItem.IsChecked = _preferences.RevisionGraphDrawNonRelativesGray;
         ShowArtificialCommitsMenuItem.IsChecked = _preferences.RevisionGraphShowArtificialCommits;
         ShowStashesMenuItem.IsChecked = _preferences.ShowStashes;
+        ShowSessionCheckpointsMenuItem.IsChecked = _preferences.ShowSessionRefs;
         GridViewOptions options = _preferences.GridViewOptions;
         ShowRemoteBranchesMenuItem.IsChecked = options.ShowRemoteBranches;
         ShowTagsMenuItem.IsChecked = options.ShowTags;

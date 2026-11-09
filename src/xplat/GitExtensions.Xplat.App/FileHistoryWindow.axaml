@@ -115,6 +115,7 @@
             <MenuItem Classes="groupHeader" Header="Commits" IsEnabled="False" />
             <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
             <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowSessionCheckpointsMenuItem" Header="Show session checkpoints" ToggleType="CheckBox" />
             <Separator />
             <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
             <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />

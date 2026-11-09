@@ -617,6 +617,45 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
+    public void The_filter_boxes_drop_downs_fit_their_longest_item_within_upstreams_bounds()
+    {
+        string longName = "feature/" + new string('x', 16);
+        _repo.Run("branch", longName);
+        // Longer than 600 pixels in folders, as a single name can be at most 255 bytes on disk.
+        _repo.Run("branch", "feature/" + string.Join('/', Enumerable.Repeat(new string('y', 60), 5)));
+        MainWindow window = NewWindow();
+        window.Show();
+        Open(window, _repo.Path);
+        AutoCompleteBox branches = Find<AutoCompleteBox>(window, "BranchFilterBox");
+        ComboBox revisions = Find<ComboBox>(window, "RevisionFilterBox");
+
+        // The box reads the refs when it gets the focus, as upstream's.
+        branches.Focus();
+        WaitUntil(() => branches.ItemsSource?.Cast<object>().Count() > 2);
+        branches.Text = "xxxx";
+        branches.IsDropDownOpen = true;
+
+        Control list = PopupContent(branches);
+        double fitted = DropDownWidth.For(branches, new[] { longName });
+        fitted.Should().BeInRange(DropDownWidth.MinWidth + 1, DropDownWidth.MaxWidth - 1);
+        WaitUntil(() => list.Width == fitted);
+        branches.IsDropDownOpen = false;
+
+        branches.Text = "feature";
+        branches.IsDropDownOpen = true;
+        WaitUntil(() => list.Width == DropDownWidth.MaxWidth);
+        branches.IsDropDownOpen = false;
+
+        revisions.IsDropDownOpen = true;
+        WaitUntil(() => PopupContent(revisions).Width >= DropDownWidth.MinWidth);
+        PopupContent(revisions).Width.Should().BeGreaterThan(revisions.Bounds.Width);
+        revisions.IsDropDownOpen = false;
+    }
+
+    private static Control PopupContent(TemplatedControl box)
+        => (Control)box.GetVisualDescendants().OfType<Popup>().Single(popup => popup.Name == "PART_Popup").Child!;
+
+    [AvaloniaTest]
     public void First_parent_and_reflog_buttons_toggle_their_filters()
     {
         MainWindow window = NewWindow();
@@ -2367,6 +2406,84 @@ internal sealed class MainWindowTests
             _ => Button.ClickEvent,
         };
         control.RaiseEvent(new RoutedEventArgs(click));
+    }
+
+    [AvaloniaTest]
+    public void Open_theme_folder_shows_the_application_or_the_user_folder_making_the_user_one_first()
+    {
+        string appFolder = Path.Combine(Path.GetTempPath(), "xplat-themes-app-" + Guid.NewGuid().ToString("N"));
+        string userFolder = Path.Combine(Path.GetTempPath(), "xplat-themes-user-" + Guid.NewGuid().ToString("N"));
+        GitUI.Theming.IThemePathProvider paths = AppServices.ThemePaths;
+        Core.Platform.IFileManager fileManager = AppServices.FileManager;
+        RecordingFileManager opened = new();
+        try
+        {
+            AppServices.ThemePaths = new AppThemePaths(appFolder, userFolder);
+            AppServices.FileManager = opened;
+            MainWindow window = NewWindow();
+            window.Show();
+            SettingsWindow settings = OpenSettings(window);
+
+            Click(settings, "tsmiApplicationFolder");
+            Click(settings, "tsmiUserFolder");
+
+            opened.Folders.Should().Equal(appFolder, userFolder);
+            Directory.Exists(userFolder).Should().BeTrue("upstream makes the user's folder before it shows it");
+            settings.Close();
+
+            AppServices.ThemePaths = new AppThemePaths(appFolder, userThemesDirectory: null);
+            settings = OpenSettings(window);
+            Find<MenuItem>(settings, "tsmiUserFolder").IsEnabled.Should().BeFalse("a portable app has no user folder");
+            settings.Close();
+        }
+        finally
+        {
+            AppServices.ThemePaths = paths;
+            AppServices.FileManager = fileManager;
+            if (Directory.Exists(userFolder))
+            {
+                Directory.Delete(userFolder);
+            }
+        }
+    }
+
+    [AvaloniaTest]
+    public void The_spelling_dictionary_setting_lists_None_and_the_dictionaries_and_stores_upstreams_values()
+    {
+        string dictionary = TestAppBuilder.Preferences.Dictionary;
+        try
+        {
+            TestAppBuilder.Preferences.Dictionary = "xx-XX";
+            MainWindow window = NewWindow();
+            window.Show();
+            SettingsWindow settings = OpenSettings(window);
+            ComboBox dictionaries = Find<ComboBox>(settings, "Dictionary");
+
+            dictionaries.Items.Cast<string>().Should().StartWith("None").And.Contain(["de-DE", "en-US"]);
+            dictionaries.SelectedItem.Should().Be("None", "upstream shows a dictionary whose file is missing as None");
+            dictionaries.SelectedItem = "de-DE";
+            Click(settings, "SaveButton");
+
+            WaitUntil(() => TestAppBuilder.Preferences.Dictionary == "de-DE");
+            settings = OpenSettings(window);
+            dictionaries = Find<ComboBox>(settings, "Dictionary");
+            dictionaries.SelectedItem.Should().Be("de-DE");
+            dictionaries.SelectedIndex = 0;
+            Click(settings, "SaveButton");
+
+            WaitUntil(() => TestAppBuilder.Preferences.Dictionary == "none");
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.Dictionary = dictionary;
+        }
+    }
+
+    private sealed class RecordingFileManager : Core.Platform.IFileManager
+    {
+        public List<string> Folders { get; } = [];
+
+        public void OpenFolder(string folder) => Folders.Add(folder);
     }
 
     private static SettingsWindow OpenSettings(MainWindow window)

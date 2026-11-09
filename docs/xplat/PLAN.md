@@ -1032,8 +1032,9 @@ with an `.icns`, as a zip and a `.dmg`, ad-hoc signed; built on a Mac 2026-11-08
 In the order users would notice them:
 1. The diffs of merge commits against each parent and the combined diff ("Show file differences for all parents",
    "Omit uninteresting changes from combined diff").
-2. The spelling checker of the commit message (upstream's NetSpell is a WinForms component), with the dictionary setting
-   and "Mark ill formed lines".
+2. ~~The spelling checker of the commit message (upstream's NetSpell is a WinForms component), with the dictionary setting
+   and "Mark ill formed lines".~~ Done 2026-11-09 on macOS: NetSpell turned out to need no WinForms, so it is compiled
+   unchanged by the shadow project `src/xplat/NetSpell.SpellChecker` (see the EditNetSpell row of `PORTING-MAP.md`).
 3. Diff viewer: diff appearance (git word diff, difftastic), git coloring, continuous scroll to the next file, the
    submodule diff window, end-of-line glyphs.
 4. Browse window: the GPG, Console and output history tabs (with the default shell and output history depth), git-grep

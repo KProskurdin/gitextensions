@@ -80,7 +80,23 @@
           <CheckBox x:Name="chkHighlightAuthored" Content="Highlight authored revisions" />
           <CheckBox x:Name="chkFillRefLabels" Content="Fill git ref labels" />
           <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <ComboBox x:Name="ThemeBox" MinWidth="260" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <ComboBox x:Name="ThemeBox" MinWidth="260" />
+            <!-- Upstream's sbOpenThemeFolder: the whole button drops down the two theme folders, where the user adds a theme
+                 (upstream has no theme editor since 2019). -->
+            <DropDownButton x:Name="sbOpenThemeFolder">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+                <TextBlock Text="Open theme folder" VerticalAlignment="Center" />
+              </StackPanel>
+              <DropDownButton.Flyout>
+                <MenuFlyout>
+                  <MenuItem x:Name="tsmiApplicationFolder" Header="Application folder" />
+                  <MenuItem x:Name="tsmiUserFolder" Header="User folder" />
+                </MenuFlyout>
+              </DropDownButton.Flyout>
+            </DropDownButton>
+          </StackPanel>
           <CheckBox x:Name="ColorblindCheck" Content="Colorblind" />
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
@@ -118,6 +134,13 @@
             <TextBlock Text="Language (restart required)" VerticalAlignment="Center" />
             <ComboBox x:Name="LanguageBox" MinWidth="200" />
             <HyperlinkButton x:Name="HelpTranslateButton" Content="Help translate" NavigateUri="https://github.com/gitextensions/gitextensions/wiki/Translations" />
+          </StackPanel>
+          <!-- Upstream's spelling dictionary of every repository that does not choose its own (the commit message box's menu
+               chooses one for a repository). -->
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock x:Name="lblSpellingDictionary" Text="Dictionary for spelling checker" VerticalAlignment="Center" />
+            <ComboBox x:Name="Dictionary" MinWidth="200" />
+            <HyperlinkButton x:Name="downloadDictionary" Content="Download dictionary" NavigateUri="https://github.com/gitextensions/gitextensions/wiki/Spelling" />
           </StackPanel>
           <TextBlock Text="Upstream's translations of Git Extensions. Texts this app has that Git Extensions for Windows does not have stay English." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
@@ -244,6 +267,12 @@
           <CheckBox x:Name="ShowRevisionTooltipsCheck" Content="Show revision tooltips" />
           <TextBlock Text="Tabs" FontWeight="SemiBold" Margin="0,8,0,0" />
           <CheckBox x:Name="chkShowGpgInformation" Content="Show GPG information" />
+          <!-- Upstream's output history settings, read when the browse window opens and the app starts. -->
+          <CheckBox x:Name="chkShowOutputHistoryAsTab" Content="Show output history as tab (otherwise as panel)" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock x:Name="lblOutputHistoryDepth" Text="Output history depth (0 to disable):" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="OutputHistoryDepthBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
+          </StackPanel>
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Detailed" page: the revision graph group (the user's settings, global level only), and the push and

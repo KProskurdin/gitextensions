@@ -49,7 +49,17 @@
     <TabControl x:Name="DetailTabs" Grid.Row="3">
       <TabItem x:Name="tabPage1" Header="Diffs">
         <Grid ColumnDefinitions="260,5,*">
-          <ListBox x:Name="_fileStatusList" />
+          <!-- Upstream lists every file of the patch as changed (IsChanged), so FileStatusList gives each its modified icon. -->
+          <ListBox x:Name="_fileStatusList">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <Image Classes="fileStatusIcon" Source="{app:UpstreamImage FileStatusModified}" Width="16" Height="16" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding}" VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
           <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
           <app:DiffView x:Name="_diffViewer" Grid.Column="2" />
         </Grid>

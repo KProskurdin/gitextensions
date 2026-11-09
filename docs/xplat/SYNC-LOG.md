@@ -132,3 +132,33 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   through the app run. Shadow projects were not run again: nothing they build changed since 3821 passed, 201 ignored. All 12 also pass on a clone with
   Windows line endings of `5ea555567`, on macOS. `verify-upstream.sh` was not run again, for the same reason. `port-drift.sh`: 134 rows, 12 with upstream
   changes. Windows and Linux were not run locally; CI's first run is in `MACOS.md`, MAC1.
+
+### 2026-11-09: after the revision grid slice of `UI-PARITY.md`'s Mac list, no merge
+
+- The grid's session refs ("Show session checkpoints") and the superproject's labels and refs in a submodule; the "Revision grid rows and
+  View menu" row of `PORTING-MAP.md` is now `ported`.
+- On macOS, from one tree: core 961 of 961; app 755 of 755 (one more is Windows only), then 22 grid tests again after a last cleanup in
+  `CommitListViewModel`. The settings folder and `~/.gitconfig` were unchanged by hash through the app run. Shadow projects and
+  `verify-upstream.sh` were not run again: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed. Upstream files
+  modified 0, seam count 8. Windows and Linux were not run.
+
+### 2026-11-09: after most of item 5 of `UI-PARITY.md`'s Mac list, no merge
+
+- Git's `commit.template`, the plugin templates' icons, the action bars' icon, the pull request files' icons, the filter boxes'
+  drop-down width, the plugin load error's copy, `GetService` and `BrowseRepo` for plugins, and the commit info translations. Rows
+  now `ported`: Commit templates, FormBisect, ViewPullRequestsForm, FilterToolBar, PluginRegistry. Left of item 5: `RunCommand` and
+  the command line verbs, to be decided.
+- On macOS, from one tree: core 972 of 972; app 763 of 763 (one more is Windows only). The settings folder and `~/.gitconfig` were
+  unchanged by hash through the app run. Shadow projects and `verify-upstream.sh` were not run again: only `GitExtensions.Xplat.App`
+  and `GitExtensions.Xplat.Core` and their tests changed. Upstream files modified 0, seam count 8. Windows and Linux were not run.
+
+### 2026-11-09 and 10: after item 6 of `UI-PARITY.md`'s Mac list, no merge
+
+- The command line verbs and `RunCommand` are recorded as not ported for now (decided 2026-11-09). Item 6: the Colors page's "Open theme
+  folder" (upstream has no theme editor since 2019), the spelling checker with "Mark ill formed lines" and the dictionary setting, and the
+  output history. New shadow project: `src/xplat/NetSpell.SpellChecker` compiles `externals/NetSpell.SpellChecker` unchanged; upstream's
+  `.dic` files are copied next to the app. Rows now `ported`: ThemeModule, OutputHistory (new).
+- On macOS, from one tree: core 994 of 994; app 772 of 772 (one more is Windows only); shadow projects 3821 pass, 0 fail, 201 ignored, of
+  4022. The settings folder and `~/.gitconfig` were unchanged by hash through the app and shadow runs, and the tests wrote no NetSpell user
+  word list. The whole `GitExtensions.xplat.slnx` builds. `verify-upstream.sh` was not run again. Upstream files modified 0, seam count 8.
+  `port-drift.sh`: 135 rows, 12 with upstream changes. Windows and Linux were not run.

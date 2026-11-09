@@ -30,6 +30,9 @@ public partial class CommitWindow : Window
     private readonly Func<Window, string, Task>? _showSettings;
     private string _messageBeforeAmend = "";
 
+    // Upstream's _commitTemplate: git's commit.template the message started from; empty when it did not.
+    private string _commitTemplate = "";
+
     // True while the remembered Amend state is put back; the draft is then the amend message already.
     private bool _restoringAmend;
 
@@ -198,13 +201,21 @@ public partial class CommitWindow : Window
     public Task SavedDraft { get; private set; } = Task.CompletedTask;
 
     // Like upstream, the window starts from the prepared message: git's merge message while a merge is stopped, otherwise the
-    // draft left last time (in this app or the WinForms one). A message typed before the read finished is kept.
+    // draft left last time (in this app or the WinForms one), otherwise git's commit.template. A message typed before the
+    // read finished is kept.
     private async Task LoadMessageAsync()
     {
         string message = await _messages.LoadAsync(_repositoryPath);
         if (_useFormCommitMessage && string.IsNullOrEmpty(CommitMessageBox.Text))
         {
-            CommitMessageBox.Text = message.TrimEnd();
+            if (message.Length > 0)
+            {
+                CommitMessageBox.Text = message.TrimEnd();
+            }
+            else
+            {
+                await LoadCommitTemplateAsync();
+            }
         }
 
         // As upstream: Amend comes back checked, not while a merge is stopped, and the draft stays as it was left.
@@ -214,6 +225,22 @@ public partial class CommitWindow : Window
             _restoringAmend = true;
             AmendCheck.IsChecked = true;
             _restoringAmend = false;
+        }
+    }
+
+    // Upstream's AssignCommitMessageFromTemplate, with its error messages.
+    private async Task LoadCommitTemplateAsync()
+    {
+        CommitTemplateResult result = await GitCommitTemplate.LoadAsync(_repositoryPath);
+        if (result.Error is { } error)
+        {
+            _ = new ErrorWindow(error) { Title = result.ErrorCaption }.ShowDialog(this);
+        }
+
+        if (result.Template is { Length: > 0 } template && string.IsNullOrEmpty(CommitMessageBox.Text))
+        {
+            CommitMessageBox.Text = template;
+            _commitTemplate = template;
         }
     }
 
@@ -570,8 +597,12 @@ public partial class CommitWindow : Window
             // As upstream: the typed message is kept in the settings, so the "Commit message" menu of any repository
             // offers it.
             _preferences.LastCommitMessage = CommitMessageBox.Text ?? "";
-            string message = CommitMessageFormat.Format(CommitMessageBox.Text ?? "",
-                _preferences.EnsureCommitMessageSecondLineEmpty);
+
+            // As upstream: the template left as it was is no message, and its '#' lines are comments.
+            string message = CommitMessageBox.Text == _commitTemplate
+                ? ""
+                : CommitMessageFormat.Format(CommitMessageBox.Text ?? "", _preferences.EnsureCommitMessageSecondLineEmpty,
+                    usingCommitTemplate: _commitTemplate.Length > 0);
             committed = await _actions.CommitAsync(_repositoryPath, message, AmendCheck.IsChecked == true,
                 SignOff, CommitAuthorBox.Text ?? "", Extras);
         }
@@ -776,7 +807,7 @@ public partial class CommitWindow : Window
             foreach (CommitTemplate template in templates)
             {
                 // The name as it is: a template named after an issue may have underscores, which are not access keys here.
-                MenuItem item = new() { Header = new TextBlock { Text = template.Name } };
+                MenuItem item = new() { Header = new TextBlock { Text = template.Name }, Icon = IconOf(template) };
                 item.Click += (_, _) =>
                 {
                     CommitMessageBox.Text = CommitTemplates.Apply(template, _repository.CurrentBranch);
@@ -790,6 +821,18 @@ public partial class CommitWindow : Window
                 CommitTemplatesFlyout.Items.Add(new Separator());
             }
         }
+    }
+
+    // Upstream's template item image, 16 pixels as the menu's other icons.
+    private static Image? IconOf(CommitTemplate template)
+    {
+        if (template.Icon is not { } png)
+        {
+            return null;
+        }
+
+        using MemoryStream stream = new(png);
+        return new Image { Source = new Avalonia.Media.Imaging.Bitmap(stream), Width = 16, Height = 16 };
     }
 
     // Upstream's AddConventionalCommitsItems: the commit types, the footers and the documentation link.
@@ -885,29 +928,12 @@ public partial class CommitWindow : Window
         _formatting = false;
     }
 
-    // Upstream's message box menu: its "Word wrap (except subject line)" item before the editing items.
+    // Upstream's message box menu, made each time it opens (see FillMessageMenu).
     private void AddMessageMenu()
     {
-        MenuItem wordWrap = new() { Header = WordWrapBodyText };
-        wordWrap.Click += (_, _) => CommitMessageBox.Text =
-            CommitMessageValidation.WrapBody(CommitMessageBox.Text ?? "", _preferences.CommitValidation.MaxLineLength);
-        MenuItem cut = new() { Header = "Cut", InputGesture = new KeyGesture(Key.X, Hotkeys.CommandModifier) };
-        cut.Click += (_, _) => CommitMessageBox.Cut();
-        MenuItem copy = new() { Header = "Copy", InputGesture = new KeyGesture(Key.C, Hotkeys.CommandModifier) };
-        copy.Click += (_, _) => CommitMessageBox.Copy();
-        MenuItem paste = new() { Header = "Paste", InputGesture = new KeyGesture(Key.V, Hotkeys.CommandModifier) };
-        paste.Click += (_, _) => CommitMessageBox.Paste();
-        CommitMessageBox.ContextFlyout = new MenuFlyout
-        {
-            Items =
-            {
-                wordWrap,
-                AutoCompletionMenuItem(),
-                new Separator(),
-                cut,
-                copy,
-                paste
-            }
-        };
+        MenuFlyout menu = new();
+        menu.Opening += (_, _) => FillMessageMenu(menu);
+        CommitMessageBox.ContextFlyout = menu;
+        InitializeSpelling();
     }
 }

@@ -129,6 +129,35 @@ public interface IAppPreferences
     bool ProvideAutocompletion { get; set; }
 
     /// <summary>
+    ///  Upstream's <c>markillformedlinesincommitmsg</c> (on by default): the commit message marks the text past upstream's
+    ///  line lengths.
+    /// </summary>
+    bool MarkIllFormedLinesInCommitMsg { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>AppSettings.Dictionary</c>, the spelling dictionary of every repository that does not set its own
+    ///  (Settings > Appearance): a <c>.dic</c> file's name without the extension, or "none".
+    /// </summary>
+    string Dictionary { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>OutputHistoryDepth</c> (20): how many outputs the browse window's output history keeps; 0 turns it off.
+    ///  Read when the app starts.
+    /// </summary>
+    int OutputHistoryDepth { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>ShowOutputHistoryAsTab</c> (on): the output history is a tab of the browse window's lower pane, else a
+    ///  panel below the left panel. Read when a browse window opens.
+    /// </summary>
+    bool ShowOutputHistoryAsTab { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>OutputHistoryPanelVisible</c> (off): the output history panel is shown.
+    /// </summary>
+    bool OutputHistoryPanelVisible { get; set; }
+
+    /// <summary>
     ///  Upstream <c>UseFormCommitMessage</c>: the message is typed in the commit window; otherwise git asks for it in its
     ///  editor during the commit.
     /// </summary>
@@ -236,6 +265,25 @@ public interface IAppPreferences
     ///  on.
     /// </summary>
     bool ShowStashes { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>showSessionRefs</c> ("Show session checkpoints", off by default): the grid's all-branches view lists
+    ///  the commits of the refs coding agents keep (refs/agents, refs/sessions, refs/copilot/checkpoints) too.
+    /// </summary>
+    bool ShowSessionRefs { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>showSuperprojectBranches</c> (on by default), <c>showSuperprojectRemoteBranches</c> and
+    ///  <c>showSuperprojectTags</c>: in a submodule, the grid labels the commits the superproject's refs of each kind
+    ///  record.
+    /// </summary>
+    bool ShowSuperprojectBranches { get; set; }
+
+    /// <inheritdoc cref="ShowSuperprojectBranches"/>
+    bool ShowSuperprojectRemoteBranches { get; set; }
+
+    /// <inheritdoc cref="ShowSuperprojectBranches"/>
+    bool ShowSuperprojectTags { get; set; }
 
     /// <summary>
     ///  Upstream's General page: <c>usepatiencediffalgorithm</c> (the histogram algorithm, despite the key's name),
@@ -941,6 +989,36 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.ProvideAutocompletion = value;
     }
 
+    public bool MarkIllFormedLinesInCommitMsg
+    {
+        get => AppSettings.MarkIllFormedLinesInCommitMsg;
+        set => AppSettings.MarkIllFormedLinesInCommitMsg = value;
+    }
+
+    public string Dictionary
+    {
+        get => AppSettings.Dictionary;
+        set => AppSettings.Dictionary = value;
+    }
+
+    public int OutputHistoryDepth
+    {
+        get => AppSettings.OutputHistoryDepth.Value;
+        set => AppSettings.OutputHistoryDepth.Value = value;
+    }
+
+    public bool ShowOutputHistoryAsTab
+    {
+        get => AppSettings.ShowOutputHistoryAsTab.Value;
+        set => AppSettings.ShowOutputHistoryAsTab.Value = value;
+    }
+
+    public bool OutputHistoryPanelVisible
+    {
+        get => AppSettings.OutputHistoryPanelVisible.Value;
+        set => AppSettings.OutputHistoryPanelVisible.Value = value;
+    }
+
     public bool UseFormCommitMessage
     {
         get => AppSettings.UseFormCommitMessage;
@@ -1073,6 +1151,30 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ShowStashes;
         set => AppSettings.ShowStashes = value;
+    }
+
+    public bool ShowSessionRefs
+    {
+        get => AppSettings.ShowSessionRefs;
+        set => AppSettings.ShowSessionRefs = value;
+    }
+
+    public bool ShowSuperprojectBranches
+    {
+        get => AppSettings.ShowSuperprojectBranches;
+        set => AppSettings.ShowSuperprojectBranches = value;
+    }
+
+    public bool ShowSuperprojectRemoteBranches
+    {
+        get => AppSettings.ShowSuperprojectRemoteBranches;
+        set => AppSettings.ShowSuperprojectRemoteBranches = value;
+    }
+
+    public bool ShowSuperprojectTags
+    {
+        get => AppSettings.ShowSuperprojectTags;
+        set => AppSettings.ShowSuperprojectTags = value;
     }
 
     public bool UseHistogramDiffAlgorithm
@@ -1953,6 +2055,16 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool ProvideAutocompletion { get; set; } = true;
 
+    public bool MarkIllFormedLinesInCommitMsg { get; set; } = true;
+
+    public string Dictionary { get; set; } = "en-US";
+
+    public int OutputHistoryDepth { get; set; } = 20;
+
+    public bool ShowOutputHistoryAsTab { get; set; } = true;
+
+    public bool OutputHistoryPanelVisible { get; set; }
+
     public bool UseFormCommitMessage { get; set; } = true;
 
     public AvatarOptions Avatars { get; set; } = new();
@@ -1995,6 +2107,14 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     // Off, unlike upstream, for the same reason; the tests about the stash rows turn it on.
     public bool ShowStashes { get; set; }
+
+    public bool ShowSessionRefs { get; set; }
+
+    public bool ShowSuperprojectBranches { get; set; } = true;
+
+    public bool ShowSuperprojectRemoteBranches { get; set; }
+
+    public bool ShowSuperprojectTags { get; set; }
 
     // Upstream's defaults of the General page.
     public bool UseHistogramDiffAlgorithm { get; set; }

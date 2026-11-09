@@ -83,6 +83,10 @@ public partial class FilterToolBar : UserControl
     public FilterToolBar()
     {
         InitializeComponent();
+
+        // Upstream's ResizeDropDownWidth on both boxes' lists.
+        DropDownWidth.FitToItems(BranchFilterBox);
+        DropDownWidth.FitToItems(RevisionFilterBox);
     }
 
     private IFilterToolBarGrid Grid

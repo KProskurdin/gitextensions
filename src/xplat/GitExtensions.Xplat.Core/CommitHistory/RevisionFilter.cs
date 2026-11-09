@@ -92,9 +92,10 @@ public sealed record RevisionFilter(
     ///  filters, branch filters. The commit limit is not one of them: the list stops reading at it (see
     ///  <see cref="CommitListViewModel.MaxCommits"/>), as git's <c>--max-count</c> would also limit each page.
     ///  With <paramref name="showStashes"/> (upstream's <c>ShowStashes</c>) the latest stash is listed too: all refs then
-    ///  include refs/stash, and a branch choice gets upstream's <c>AddFirstStashRef</c>.
+    ///  include refs/stash, and a branch choice gets upstream's <c>AddFirstStashRef</c>. Without
+    ///  <paramref name="showSessionRefs"/> (upstream's <c>ShowSessionRefs</c>) all refs leave out the ones coding agents keep.
     /// </summary>
-    public string ToRevisionArguments(bool showStashes = false, bool showGitNotes = false)
+    public string ToRevisionArguments(bool showStashes = false, bool showGitNotes = false, bool showSessionRefs = false)
     {
         List<string> arguments = [];
 
@@ -192,9 +193,9 @@ public sealed record RevisionFilter(
         }
         else
         {
-            // As upstream with its default settings: every ref except notes (unless ShowGitNotes), the stash and the refs
-            // coding agents keep (upstream c16194306; literal prefixes, as GitRefName.RefsAgentsPrefix is newer than the
-            // fork base).
+            // As upstream: every ref except notes (unless ShowGitNotes), the stash (unless ShowStashes) and the refs coding
+            // agents keep (unless ShowSessionRefs; upstream c16194306, with literal prefixes, as GitRefName.RefsAgentsPrefix
+            // is newer than the fork base).
             if (!showGitNotes)
             {
                 arguments.Add("--exclude=refs/notes/");
@@ -205,9 +206,13 @@ public sealed record RevisionFilter(
                 arguments.Add("--exclude=refs/stash");
             }
 
-            arguments.Add("--exclude=refs/agents/**");
-            arguments.Add("--exclude=refs/sessions/**");
-            arguments.Add("--exclude=refs/copilot/checkpoints/**");
+            if (!showSessionRefs)
+            {
+                arguments.Add("--exclude=refs/agents/**");
+                arguments.Add("--exclude=refs/sessions/**");
+                arguments.Add("--exclude=refs/copilot/checkpoints/**");
+            }
+
             arguments.Add("--all");
 
             // Upstream: "the inclusion of boundary parents to matches is historical".

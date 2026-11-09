@@ -35,7 +35,8 @@ public partial class FormatPatchWindow : Window
         _module = GitModules.Open(repositoryPath);
         _commits = new CommitListViewModel(new GitCommitHistory(
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
-            () => preferences.RevisionSortOrder, gridView: () => preferences.GridViewOptions));
+            () => preferences.RevisionSortOrder, gridView: () => preferences.GridViewOptions,
+            showSessionRefs: () => preferences.ShowSessionRefs));
         InitializeComponent();
         UpstreamTranslation.Apply(this, "FormFormatPatch");
         RevisionGridColumns.ShowAsSettingsSay(this, RevisionGrid, preferences, _commits);

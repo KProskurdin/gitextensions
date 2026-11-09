@@ -64,7 +64,7 @@ public partial class FileHistoryWindow : Window
         _commits = new CommitListViewModel(new GitCommitHistory(
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
             () => preferences.RevisionSortOrder, fileHistory: () => preferences.FileHistory,
-            gridView: () => preferences.GridViewOptions));
+            gridView: () => preferences.GridViewOptions, showSessionRefs: () => preferences.ShowSessionRefs));
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.FileHistoryWindow");
         ShowGridColumns();

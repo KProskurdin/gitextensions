@@ -149,6 +149,18 @@ internal sealed class RepositoryOperationsViewModelTests
     }
 
     [Test]
+    public async Task A_remote_operation_should_be_recorded_in_the_output_history_with_its_title()
+    {
+        _viewModel.History = new OutputHistory(20);
+
+        Task fetch = _viewModel.FetchAsync(RepositoryPath, "origin", prune: false);
+        _git.Complete(0);
+        await fetch;
+
+        _viewModel.History.History.Should().Contain(_viewModel.OutputTitle);
+    }
+
+    [Test]
     public async Task CloneAsync_reports_the_target_path_so_a_view_can_open_it()
     {
         Task<bool> clone = _viewModel.CloneAsync("https://example.com/repo.git", "/work/clone");

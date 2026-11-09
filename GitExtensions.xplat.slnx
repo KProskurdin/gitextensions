@@ -18,6 +18,7 @@
     <Project Path="src/xplat/GitExtensions.Xplat.App/GitExtensions.Xplat.App.csproj" />
     <Project Path="src/xplat/GitExtensions.Xplat.Ui/GitExtensions.Xplat.Ui.csproj" />
     <Project Path="src/xplat/Git.hub/Git.hub.csproj" />
+    <Project Path="src/xplat/NetSpell.SpellChecker/NetSpell.SpellChecker.csproj" />
   </Folder>
   <Folder Name="/src/xplat/plugins/">
     <Project Path="src/xplat/plugins/AutoCompileSubmodules/GitExtensions.Plugins.AutoCompileSubmodules.csproj" />

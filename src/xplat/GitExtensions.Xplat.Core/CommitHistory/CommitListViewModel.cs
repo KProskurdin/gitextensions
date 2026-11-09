@@ -224,6 +224,7 @@ public sealed class CommitListViewModel : ObservableObject
     private bool _drawNonRelativesTextGray;
     private Dictionary<string, ArtificialChanges> _artificialChanges = new(StringComparer.Ordinal);
     private GridViewOptions _viewOptions = new();
+    private SuperprojectLabels? _superproject;
     private IReadOnlyList<CommitRow>? _graphRows;
     private IReadOnlyList<CommitListItem> _visibleRows = [];
     private string _filterText = "";
@@ -407,6 +408,24 @@ public sealed class CommitListViewModel : ObservableObject
     }
 
     /// <summary>
+    ///  Upstream's superproject labels of a submodule's grid (<c>TryGetSuperProjectInfo</c>), read after the commits as
+    ///  upstream reads them; null outside a submodule. Opening another repository forgets them.
+    /// </summary>
+    public void SetSuperprojectLabels(SuperprojectLabels? labels)
+    {
+        if (labels == _superproject)
+        {
+            return;
+        }
+
+        _superproject = labels;
+        if (_rows.Count > 0)
+        {
+            RefreshVisibleRows();
+        }
+    }
+
+    /// <summary>
     ///  Upstream's View menu choices for the rows: which labels show and whether the body follows the subject.
     /// </summary>
     public GridViewOptions ViewOptions
@@ -525,19 +544,27 @@ public sealed class CommitListViewModel : ObservableObject
                     IsNonRelativeText = _drawNonRelativesTextGray && !graphRow.IsRelative,
                     Changes = _artificialChanges.GetValueOrDefault(row.Hash),
 
-                    // Upstream draws an artificial row's subject as a label of its own, and a stash's selector after the
-                    // refs (both in OtherTag's color).
-                    GridLabels = ArtificialCommits.IsArtificial(row.Hash)
-                        ? [new GridLabel(row.Subject, RefKind.Head)]
-                        : row.StashLabel is { } stash
-                            ? [.. GridLabels.Layout(row.Labels ?? [], _viewOptions), new GridLabel(stash, RefKind.Head)]
-                            : GridLabels.Layout(row.Labels ?? [], _viewOptions),
+                    GridLabels = LabelsOf(row),
                     BodyText = _viewOptions.ShowCommitBody ? BodyOf(row, _viewOptions) : "",
                 });
             }
         }
 
         VisibleRows = items;
+    }
+
+    // Upstream's OnCellPainting: a submodule's superproject marks, the refs, the superproject's other refs, then a stash's
+    // selector. An artificial row's subject is a label of its own; it and the selector are in OtherTag's color.
+    private IReadOnlyList<GridLabel> LabelsOf(CommitRow row)
+    {
+        if (ArtificialCommits.IsArtificial(row.Hash))
+        {
+            return [new GridLabel(row.Subject, RefKind.Head)];
+        }
+
+        IReadOnlyList<GridLabel> marks = _superproject?.Marks(row.Hash) ?? [];
+        IReadOnlyList<GridLabel> refs = GridLabels.Layout(row.Labels ?? [], _viewOptions, _superproject?.RefsOf(row.Hash));
+        return row.StashLabel is { } stash ? [.. marks, .. refs, new GridLabel(stash, RefKind.Head)] : [.. marks, .. refs];
     }
 
     // Upstream's DrawCommitMessage: the message's non-empty lines after the subject, each after a space; with "Show git
@@ -918,6 +945,11 @@ public sealed class CommitListViewModel : ObservableObject
             if (!await PrepareGraphAsync(page.Rows, version))
             {
                 return;
+            }
+
+            if (!string.Equals(_repositoryPath, repositoryPath, StringComparison.Ordinal))
+            {
+                _superproject = null;
             }
 
             _repositoryPath = repositoryPath;

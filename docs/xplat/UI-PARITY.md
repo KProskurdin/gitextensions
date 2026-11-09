@@ -755,13 +755,22 @@ results so far come from Windows: nothing in this list or the Progress above has
    color, so it waits for an editor control, as its line numbers do. Found on the way: staging was not split by command line length,
    unstaging a rename left its old name staged, and dark themes used light system colors (see `PORTING-MAP.md`). New from the dark
    render: most icons are not adapted to a dark theme yet, which upstream does with `AdaptLightness`; that belongs to item 6.
-4. Revision grid: session refs, the superproject's labels and refs.
-5. Plugins and the rest: the repository hosts menu, a load error's clipboard copy, `RunCommand`, `GetService`, `BrowseRepo`,
-   the `searchfile` verb, bisect toolbar icons, the pull request window's status icons, `commit.template`, plugin template
-   icons, the filter toolbar's drop-down width, the commit info translations.
-6. The larger ones: the theme editor, then the spelling checker with "Mark ill formed lines" and its dictionary setting.
-   The hotkeys and settings pages of a feature come with that feature. Output history can be done too; only its Console half
-   is ConEmu.
+4. ~~Revision grid: session refs, the superproject's labels and refs.~~ Done 2026-11-09 on macOS (see the Revision grid
+   rows and View menu note in `PORTING-MAP.md`). Only the browse window's grid shows the superproject labels.
+5. Plugins and the rest: ~~the repository hosts menu, a load error's clipboard copy, `GetService`, `BrowseRepo`, bisect
+   toolbar icons, the pull request window's status icons, `commit.template`, plugin template icons, the filter toolbar's
+   drop-down width, the commit info translations~~ done 2026-11-09 on macOS (the hosts menu was already there; see each row
+   in `PORTING-MAP.md`). **Left: `RunCommand` and the `searchfile` verb**, which turned out to be one larger piece: upstream's
+   command line has about 40 verbs (`GitUICommands.RunCommand`), of which the new shell has `fileeditor`, `clone` and a
+   repository path, and the plugin API's `Start...Dialog` methods mostly throw `NotSupportedException`. Both need the same
+   dispatcher from a verb or call to the shell's windows, each opened on its own as upstream's are. **Decided 2026-11-09: not
+   ported for now**; the work goes on with item 6. Recorded in the GitUICommands (plugin side) and SearchWindow notes of
+   `PORTING-MAP.md`.
+6. The larger ones: ~~the theme editor, then the spelling checker with "Mark ill formed lines" and its dictionary setting~~
+   done 2026-11-09 on macOS. Upstream has had no theme editor since 2019; its Colors page's "Open theme folder" is ported
+   instead. See the ThemeModule and EditNetSpell rows of `PORTING-MAP.md`.
+   The hotkeys and settings pages of a feature come with that feature. ~~Output history can be done too~~ done 2026-11-09 (see
+   the OutputHistory note of `PORTING-MAP.md`); only the Console tab is ConEmu.
 
 **Windows only: do not start from the Mac** (`MACOS.md`, section 7): FormClone's PuTTY prompts, the process dialog's PuTTY
 retry, the PuTTY menu items, "Download Git", the HOME check and FormFixHome's search, the checklist's installer rows and

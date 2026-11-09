@@ -9,7 +9,13 @@ namespace GitExtensions.Xplat.Core.Repository;
 /// </summary>
 /// <param name="IsRegex">Upstream's regex templates: each <c>{{pattern}}[index]</c> is replaced by that group of the
 ///  pattern's match in the current branch name.</param>
-public sealed record CommitTemplate(string Name, string Text, bool IsRegex);
+public sealed record CommitTemplate(string Name, string Text, bool IsRegex)
+{
+    /// <summary>
+    ///  Upstream's <c>CommitTemplateItem.Icon</c> of a plugin's template, as PNG data; null for none.
+    /// </summary>
+    public byte[]? Icon { get; init; }
+}
 
 /// <summary>
 ///  Upstream's commit templates: those plugins register (upstream's <see cref="CommitTemplateManager"/>, whose registry
@@ -21,23 +27,54 @@ public static partial class CommitTemplates
     // The registry is static upstream; the module is only needed for git's commit.template, which is not read here.
     private static readonly CommitTemplateManager _manager = new(() => GitModules.Open(""));
 
+    // The plugins' icons by template key: upstream's registry keeps System.Drawing images, which the new shell cannot draw.
+    private static readonly Dictionary<string, byte[]> _icons = [];
+
     [GeneratedRegex(@"\{\{(?<pattern>.*?)\}\}(?:\[(?<index>\d+)\])?", RegexOptions.ExplicitCapture)]
     private static partial Regex ReplaceMessageRegex { get; }
 
     /// <summary>
-    ///  Upstream's <c>GitUICommands.AddCommitTemplate</c>: a plugin's template, by its key; a key registered already is
-    ///  kept as it is.
+    ///  Upstream's <c>GitUICommands.AddCommitTemplate</c>: a plugin's template, by its key, with its <paramref name="icon"/>
+    ///  (PNG data); a key registered already is kept as it is.
     /// </summary>
-    public static void Register(string key, Func<string> text, bool isRegex = false) =>
-        _manager.Register(key, text, icon: null, isRegex);
+    public static void Register(string key, Func<string> text, bool isRegex = false, byte[]? icon = null)
+    {
+        lock (_icons)
+        {
+            bool isNew = _manager.RegisteredTemplates.All(item => item.Name != key);
+            _manager.Register(key, text, icon: null, isRegex);
+            if (isNew && icon is not null)
+            {
+                _icons[key] = icon;
+            }
+        }
+    }
 
-    public static void Unregister(string key) => _manager.Unregister(key);
+    public static void Unregister(string key)
+    {
+        lock (_icons)
+        {
+            _manager.Unregister(key);
+            _icons.Remove(key);
+        }
+    }
 
     /// <summary>
     ///  The plugins' templates, with their text as it is now.
     /// </summary>
     public static IReadOnlyList<CommitTemplate> Registered()
-        => [.. _manager.RegisteredTemplates.Select(item => new CommitTemplate(item.Name, item.Text, item.IsRegex))];
+    {
+        lock (_icons)
+        {
+            return
+            [
+                .. _manager.RegisteredTemplates.Select(item => new CommitTemplate(item.Name, item.Text, item.IsRegex)
+                {
+                    Icon = _icons.GetValueOrDefault(item.Name),
+                })
+            ];
+        }
+    }
 
     /// <summary>
     ///  The user's templates from upstream's setting (<paramref name="serialized"/>, upstream's <c>CommitTemplates</c>),

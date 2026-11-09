@@ -45,7 +45,7 @@ public partial class ChooseCommitWindow : Window
             () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
             () => preferences.RevisionSortOrder,
             showArtificialCommits: () => showArtificial && preferences.RevisionGraphShowArtificialCommits,
-            gridView: () => preferences.GridViewOptions));
+            gridView: () => preferences.GridViewOptions, showSessionRefs: () => preferences.ShowSessionRefs));
         InitializeComponent();
         UpstreamTranslation.Apply(this, "FormChooseCommit");
         RevisionGridColumns.ShowAsSettingsSay(this, revisionGrid, preferences, _commits);

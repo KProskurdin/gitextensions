@@ -5,6 +5,8 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using NUnit.Framework;
 
@@ -29,6 +31,20 @@ internal sealed class CommitInfoTests
     {
         TestAppBuilder.Preferences.CommitInfoOptions = new CommitInfoOptions();
         _repo.Dispose();
+    }
+
+    [Test]
+    public async Task The_commit_info_texts_go_through_the_translation()
+    {
+        _repo.Run("tag", "-a", "v1", "-m", "release one");
+        string head = _repo.Run("rev-parse", "HEAD").Trim();
+
+        IReadOnlyList<IReadOnlyList<InfoSpan>> lines = await new CommitInfoReader(text => $"<{text}>")
+            .LoadAsync(new CommitInfoRequest(_repo.Path, head, new CommitInfoOptions(), new RefSorting(), []));
+
+        string text = string.Join("\n", lines.Select(line => string.Concat(line.Select(span => span.Text))));
+        text.Should().Contain("<Contained in branches:>").And.Contain("<Contained in tags:>")
+            .And.Contain("<Derives from tag:> v1", "upstream's describe of a tagged commit names it");
     }
 
     [AvaloniaTest]

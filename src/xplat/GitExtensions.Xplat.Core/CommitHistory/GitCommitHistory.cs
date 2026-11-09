@@ -30,6 +30,7 @@ public sealed class GitCommitHistory : ICommitHistory
     private readonly Func<FileHistoryOptions> _fileHistory;
     private readonly Func<bool> _showArtificialCommits;
     private readonly Func<bool> _showStashes;
+    private readonly Func<bool> _showSessionRefs;
     private readonly Func<GridViewOptions> _gridView;
 
     /// <summary>
@@ -39,11 +40,15 @@ public sealed class GitCommitHistory : ICommitHistory
     ///  With <paramref name="showArtificialCommits"/> the first page has upstream's working directory and index rows, and
     ///  with <paramref name="showStashes"/> the stashes are rows of their own (upstream's <c>ShowStashes</c>). The rows get
     ///  their git notes while <paramref name="gridView"/> shows them, and "Show git notes" lists the notes refs' commits too.
+    ///  With <paramref name="showSessionRefs"/> all branches include the refs coding agents keep (upstream's
+    ///  <c>ShowSessionRefs</c>).
     /// </summary>
     public GitCommitHistory(Func<CommitDateStyle>? dateStyle = null, Func<RevisionSortOrder>? sortOrder = null,
         IRevisionLinkStore? links = null, Func<FileHistoryOptions>? fileHistory = null,
-        Func<bool>? showArtificialCommits = null, Func<bool>? showStashes = null, Func<GridViewOptions>? gridView = null)
+        Func<bool>? showArtificialCommits = null, Func<bool>? showStashes = null, Func<GridViewOptions>? gridView = null,
+        Func<bool>? showSessionRefs = null)
     {
+        _showSessionRefs = showSessionRefs ?? (() => false);
         _showArtificialCommits = showArtificialCommits ?? (() => false);
         _showStashes = showStashes ?? (() => false);
         _gridView = gridView ?? (() => new GridViewOptions());
@@ -60,7 +65,7 @@ public sealed class GitCommitHistory : ICommitHistory
         // git applies --skip after the order and the filters, so the next page continues where the loaded ones end.
         bool showStashes = _showStashes();
         GridViewOptions gridView = _gridView();
-        string revision = Sorted(filter?.ToRevisionArguments(showStashes, gridView.ShowGitNotes) ?? "HEAD");
+        string revision = Sorted(filter?.ToRevisionArguments(showStashes, gridView.ShowGitNotes, _showSessionRefs()) ?? "HEAD");
         if (skip > 0)
         {
             revision = $"--skip={skip.ToString(System.Globalization.CultureInfo.InvariantCulture)} {revision}";

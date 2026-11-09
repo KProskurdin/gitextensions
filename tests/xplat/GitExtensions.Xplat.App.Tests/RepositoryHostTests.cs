@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
@@ -137,6 +138,10 @@ internal sealed class RepositoryHostTests
         ItemsControl discussion = Find<ItemsControl>(pulls, "_discussionWB");
         WaitUntil(() => files.ItemCount == 2 && discussion.ItemCount == 2);
         files.Items.Should().Equal("a.txt", "b.txt");
+        WaitUntil(() => files.GetRealizedContainers().Any());
+        files.GetRealizedContainers().SelectMany(container => container.GetVisualDescendants().OfType<Image>())
+            .Select(image => image.Source).Should().HaveCount(2).And.AllSatisfy(source =>
+                source.Should().BeSameAs(UpstreamImages.Named("FileStatusModified")));
         discussion.Items.OfType<DiscussionEntryRow>().Select(entry => entry.Commit)
             .Should().Equal(null, "Commit:  0123456789abcdef0123456789abcdef01234567");
 
@@ -230,7 +235,11 @@ internal sealed class RepositoryHostTests
         CommitWindow commit = WaitForWindow<CommitWindow>(window);
         try
         {
-            CommitTemplates.Registered().Select(template => template.Name).Should().Contain("No GitHub personal access token (PAT) defined");
+            CommitTemplate noToken = CommitTemplates.Registered().Should()
+                .ContainSingle(template => template.Name == "No GitHub personal access token (PAT) defined").Which;
+
+            // The plugin's embedded icon stands in for its System.Drawing one, as a PNG.
+            noToken.Icon.Should().NotBeNull().And.StartWith(new byte[] { 0x89, (byte)'P', (byte)'N', (byte)'G' });
         }
         finally
         {

@@ -87,6 +87,23 @@ internal sealed class GridViewTests
     }
 
     [AvaloniaTest]
+    public void Show_session_checkpoints_lists_the_commits_only_agent_refs_reach()
+    {
+        string checkpoint = _repo.Run("commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "checkpoint").Trim();
+        _repo.Run("update-ref", "refs/sessions/s1", checkpoint);
+        MainWindow window = OpenWindow();
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        WaitUntil(() => Rows(commits).Any(item => item.Row.Subject == "second"));
+        Rows(commits).Should().NotContain(item => item.Row.Subject == "checkpoint");
+
+        Click(window, "ShowSessionCheckpointsMenuItem");
+
+        WaitUntil(() => Rows(commits).Any(item => item.Row.Subject == "checkpoint"));
+        TestAppBuilder.Preferences.ShowSessionRefs.Should().BeTrue();
+        Find<MenuItem>(window, "ShowSessionCheckpointsMenuItem").IsChecked.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
     public void The_rows_of_the_selected_commits_author_are_tinted()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "o.txt"), "x");
@@ -282,6 +299,7 @@ internal sealed class GridViewTests
         TestAppBuilder.Preferences.RevisionGraphDrawNonRelativesGray = true;
         TestAppBuilder.Preferences.FillRefLabels = false;
         TestAppBuilder.Preferences.MulticolorBranches = true;
+        TestAppBuilder.Preferences.ShowSessionRefs = false;
     }
 
     private static MainWindow NewWindow() =>

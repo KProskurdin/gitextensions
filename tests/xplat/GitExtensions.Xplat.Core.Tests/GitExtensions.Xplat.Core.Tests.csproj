@@ -12,6 +12,10 @@
     <Content Include="..\..\..\src\app\GitUI\Themes\*.css" Link="Themes\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Upstream's spelling dictionaries, which the spelling checker tests read. -->
+    <Content Include="..\..\..\setup\assets\Dictionaries\en-US.dic;..\..\..\setup\assets\Dictionaries\de-DE.dic" Link="Dictionaries\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

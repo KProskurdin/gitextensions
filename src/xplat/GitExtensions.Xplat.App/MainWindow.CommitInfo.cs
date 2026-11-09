@@ -119,7 +119,7 @@ public partial class MainWindow
 
     private async Task LoadGpgAsync(string hash)
     {
-        if (RepositoryPath is not { } path || await CommitInfoReader.LoadGpgAsync(path, hash) is not { } display
+        if (RepositoryPath is not { } path || await CommitInfoReader.LoadGpgAsync(path, hash, UpstreamTranslation.ByText) is not { } display
                                            || hash != _gpgHash)
         {
             return;

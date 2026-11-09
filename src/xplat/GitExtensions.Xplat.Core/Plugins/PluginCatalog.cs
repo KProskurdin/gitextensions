@@ -142,6 +142,13 @@ public sealed class FailedPlugin : IGitPlugin
     /// </summary>
     public const string FailedToLoadPlugin = "Plugin loading failure";
 
+    /// <summary>
+    ///  Upstream's <c>FailedToLoadPluginPopupText</c>, with the error for {0}.
+    /// </summary>
+    public static string PopupTextFormat { get; } =
+        $"Fail to load a plugin. Error:{Environment.NewLine}{Environment.NewLine}{{0}}{Environment.NewLine}{Environment.NewLine}"
+        + "Copy error details to clipboard?";
+
     public FailedPlugin(Exception loadingException)
     {
         Error = loadingException.ToString();
@@ -175,6 +182,7 @@ public sealed class FailedPlugin : IGitPlugin
     {
     }
 
-    // The host shows Error itself; upstream's message box and clipboard copy are WinForms calls.
+    // The host shows Error itself, with upstream's question whether to copy it; upstream's message box and clipboard copy
+    // are WinForms calls.
     public bool Execute(GitUIEventArgs args) => false;
 }

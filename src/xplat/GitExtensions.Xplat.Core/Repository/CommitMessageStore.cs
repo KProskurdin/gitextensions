@@ -36,11 +36,12 @@ public static class CommitMessageFormat
     /// <summary>
     ///  Upstream's <c>CommitMessageManager.FormatCommitMessage</c>, used as is: every line ends with the platform's newline,
     ///  and with <paramref name="ensureSecondLineEmpty"/> a second line of text gets an empty line before it. The text box's
-    ///  own line breaks are made plain first, as upstream's text box gives them. Commit templates are not supported yet, so
-    ///  lines starting with '#' are kept.
+    ///  own line breaks are made plain first, as upstream's text box gives them. With <paramref name="usingCommitTemplate"/>
+    ///  (the window started from git's <c>commit.template</c>) the lines starting with '#' are the template's comments and
+    ///  are left out; otherwise '#' may start an issue number and is kept.
     /// </summary>
-    public static string Format(string message, bool ensureSecondLineEmpty)
-        => CommitMessageManager.FormatCommitMessage(message.ReplaceLineEndings("\n"), usingCommitTemplate: false,
+    public static string Format(string message, bool ensureSecondLineEmpty, bool usingCommitTemplate = false)
+        => CommitMessageManager.FormatCommitMessage(message.ReplaceLineEndings("\n"), usingCommitTemplate,
             ensureSecondLineEmpty);
 }
 

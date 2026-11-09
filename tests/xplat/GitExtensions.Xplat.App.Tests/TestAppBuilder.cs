@@ -10,6 +10,7 @@ using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
+using GitExtensions.Xplat.Core.Spelling;
 
 [assembly: AvaloniaTestApplication(typeof(GitExtensions.Xplat.App.Tests.TestAppBuilder))]
 
@@ -142,6 +143,11 @@ public static class TestAppBuilder
 
         // Upstream's English texts, whatever language the user's settings file has; a test may choose one and reset it.
         GitCommands.AppSettings.CurrentTranslation = "";
+
+        // Upstream's dictionaries are copied next to the app; words added to a dictionary are not written to the user's word
+        // list, which lives in the user's application data folder.
+        AppServices.DictionaryFolder = Path.Combine(AppContext.BaseDirectory, "Dictionaries");
+        AppServices.NewSpellChecker = () => new CommitSpellChecker(AppServices.DictionaryFolder, enableUserFile: false);
 
         // Upstream's theme files are copied next to the app; no user themes, so the user's own never change a test.
         AppServices.Themes = new UpstreamThemeService(new AppThemePaths(

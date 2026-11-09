@@ -94,7 +94,8 @@ public partial class MainWindow : Window
             () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
             () => _preferences.RevisionSortOrder, AppServices.RevisionLinks,
             showArtificialCommits: () => _preferences.RevisionGraphShowArtificialCommits,
-            showStashes: () => _preferences.ShowStashes, gridView: () => _preferences.GridViewOptions);
+            showStashes: () => _preferences.ShowStashes, gridView: () => _preferences.GridViewOptions,
+            showSessionRefs: () => _preferences.ShowSessionRefs);
         _repositoryService = new GitRepositoryService(RefSorting);
         _commits = new CommitListViewModel(_history);
         _repository = new RepositoryViewModel(_repositoryService);
@@ -102,6 +103,7 @@ public partial class MainWindow : Window
         _fileManager = new SystemFileManager(_launcher, HostPlatform.Current);
         _plugins = new PluginHost(this, _actions, plugin => Run(() => ShowSettingsAsync(plugin, pluginsPage: true)),
             ShowCommitWindow) { NewCloneWindow = NewCloneWindow };
+        _plugins.BrowseRepo = this;
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
 
@@ -239,6 +241,8 @@ public partial class MainWindow : Window
             RefreshRepository();
         };
         WireGraphStyles();
+        WireSuperprojectLabels();
+        WireOutputHistory();
         WireQuickSearch();
         WireMouseNavigation();
         AboutMenuItem.Click += (_, _) => ShowAbout();
@@ -515,6 +519,12 @@ public partial class MainWindow : Window
             // XPLAT_SCREENSHOT_WINDOW=commit: the commit window instead of the browse window.
             if (Screenshot.RequestedWindow == Screenshot.CommitWindow)
             {
+                // The repository's status may still be read, which keeps the commit button off for a moment.
+                for (int wait = 0; wait < 100 && !CommitDialogButton.IsEnabled; wait++)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
+                }
+
                 ShowCommitWindow();
                 await Task.Delay(TimeSpan.FromMilliseconds(1500));
                 if (_commitWindow is { } commit)
@@ -709,6 +719,9 @@ public partial class MainWindow : Window
                 break;
             case BrowseCommand.FocusLeftPanel:
                 BranchTreeView.Focus();
+                break;
+            case BrowseCommand.FocusOutputHistoryAndToggleIfPanel:
+                FocusOutputHistoryAndToggleIfPanel();
                 break;
             case BrowseCommand.CreateBranch:
                 Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
@@ -918,6 +931,7 @@ public partial class MainWindow : Window
             await _commits.OpenAsync(path);
             if (RepositoryPath is { } repositoryPath)
             {
+                Run(() => ShowSuperprojectLabelsAsync(repositoryPath));
                 ShowRepositoryPanels();
                 await _repository.RefreshAsync(repositoryPath);
                 await _recent.AddAsync(repositoryPath);
@@ -1627,11 +1641,24 @@ public partial class MainWindow : Window
         }
     }
 
+    // Upstream's FailedPluginWrapper.Execute: the error, and OK copies it to the clipboard.
+    private async Task ShowPluginLoadErrorAsync(FailedPlugin failed)
+    {
+        MessageBoxWindow box = new(
+            string.Format(GitExtensions.Xplat.Ui.UpstreamTranslation.ByText(FailedPlugin.PopupTextFormat), failed.Error),
+            GitExtensions.Xplat.Ui.UpstreamTranslation.ByText(FailedPlugin.FailedToLoadPlugin), MessageBoxButtons.OKCancel);
+        await box.ShowDialog(this);
+        if (box.Result == DialogResult.OK)
+        {
+            await CopyTextAsync(failed.Error);
+        }
+    }
+
     private void ExecutePlugin(IGitPlugin plugin)
     {
         if (plugin is FailedPlugin failed)
         {
-            ShowError($"Fail to load a plugin. Error:{Environment.NewLine}{Environment.NewLine}{failed.Error}");
+            Run(() => ShowPluginLoadErrorAsync(failed));
             return;
         }
 
@@ -1984,14 +2011,14 @@ public partial class MainWindow : Window
         bool conflicts = _repository.Changes.Any(change => change.Kind == ChangeKind.Conflict);
         _actionBanner = GitActionBanner.ForRepository(_repository.IsRebasing, _repository.IsMerging,
             _repository.IsApplyingPatch, conflicts);
-        ShowBanner(StateBanner, StateBannerText, _actionBanner);
+        ShowBanner(StateBanner, StateBannerText, StateBannerIcon, _actionBanner);
         IReadOnlyList<GitActionButton> buttons = _actionBanner?.Buttons ?? [];
         ResolveConflictsButton.IsVisible = buttons.Contains(GitActionButton.Resolve);
         ContinueActionButton.IsVisible = buttons.Contains(GitActionButton.Continue);
         AbortActionButton.IsVisible = buttons.Contains(GitActionButton.Abort);
         MoreActionButton.IsVisible = buttons.Contains(GitActionButton.More);
 
-        ShowBanner(BisectBanner, BisectBannerText, GitActionBanner.ForBisect(_repository.IsBisecting));
+        ShowBanner(BisectBanner, BisectBannerText, BisectBannerIcon, GitActionBanner.ForBisect(_repository.IsBisecting));
         foreach (Control item in new Control[]
                  {
                      MarkBadMenuItem, MarkGoodMenuItem, BisectSkipMenuItem, StopBisectMenuItem, BisectSeparator,
@@ -2001,7 +2028,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void ShowBanner(Border banner, TextBlock text, GitActionBanner? state)
+    // Upstream's IconBox: the information picture, or the solve merge one while there are conflicts.
+    private static void ShowBanner(Border banner, TextBlock text, Image icon, GitActionBanner? state)
     {
         banner.IsVisible = state is not null;
         if (state is null)
@@ -2011,6 +2039,7 @@ public partial class MainWindow : Window
 
         text.Text = state.Text;
         text.Foreground = ThemeBrushes.Current.Context;
+        icon.Source = UpstreamImages.Named(state.HasConflicts ? "SolveMerge" : "information");
         banner.Background = state.HasConflicts ? ThemeBrushes.Current.ConflictBanner : ThemeBrushes.Current.InfoBanner;
     }
 

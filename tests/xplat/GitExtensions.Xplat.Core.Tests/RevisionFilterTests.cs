@@ -22,6 +22,15 @@ internal sealed class RevisionFilterTests
     }
 
     [Test]
+    public void Show_session_checkpoints_should_list_the_agent_refs_commits_too()
+    {
+        RevisionFilter.AllBranches.ToRevisionArguments(showSessionRefs: true).Should().Be(
+            "--exclude=refs/notes/ --exclude=refs/stash --all");
+        new RevisionFilter(CurrentBranchOnly: true).ToRevisionArguments(showSessionRefs: true).Should().Be("HEAD",
+            "as upstream, the exclusions only apply to all branches");
+    }
+
+    [Test]
     public void Current_branch_only_should_read_from_HEAD()
     {
         new RevisionFilter(CurrentBranchOnly: true).ToRevisionArguments().Should().Be("HEAD");

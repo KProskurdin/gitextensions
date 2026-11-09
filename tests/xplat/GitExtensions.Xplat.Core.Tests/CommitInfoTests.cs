@@ -103,4 +103,14 @@ internal sealed class CommitInfoTests
         CommitInfoReader.Display(new GpgInfo(CommitStatus.MissingPublicKey, "no key", TagStatus.Many, "a\nb"))
             .Should().Be(new GpgDisplay("CommitSignatureWarning", "no key", "TagMany", "a\nb"));
     }
+
+    [Test]
+    public void Display_should_translate_upstreams_texts_but_not_gits_messages()
+    {
+        static string Translate(string text) => $"<{text}>";
+
+        CommitInfoReader.Display(null, Translate).CommitText.Should().Be("<Commit is not signed>");
+        CommitInfoReader.Display(new GpgInfo(CommitStatus.GoodSignature, "gpg: Good", TagStatus.TagNotSigned, null), Translate)
+            .Should().Be(new GpgDisplay("CommitSignatureOk", "gpg: Good", null, "<Tag is not signed>"));
+    }
 }

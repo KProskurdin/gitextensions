@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Layout;
@@ -15,6 +16,7 @@ using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
+using GitExtensions.Xplat.Core.Spelling;
 using GitExtensions.Xplat.Ui;
 using GitExtUtils.GitUI.Theming;
 using GitUI.CommandsDialogs.SettingsDialog.RevisionLinks;
@@ -28,6 +30,16 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class SettingsWindow : Window
 {
+    // Upstream's _outputHistoryTooltip.
+    private const string OutputHistoryTooltip = """
+        The output displayed in the process dialog and some trace output is retained and shown in the output history.
+
+        - With this set, the output history is displayed in a tab in the lower pane of the Browse Repository window.
+        - With this unset, the output history is displayed in a panel docked to the lower left corner of the Browse Repository window.
+
+        Focus the output history and (when displayed as panel) toggle its visibility using the hotkey {0}.
+        """;
+
     private readonly IAppPreferences _preferences;
     private readonly IGitConfigService _gitConfig;
     private readonly string? _repositoryPath;
@@ -88,6 +100,19 @@ public partial class SettingsWindow : Window
         PrioBranchNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-branches")());
         PrioRemoteNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-remotes")());
         ColorblindCheck.IsChecked = preferences.ThemeVariations.Contains(ThemeVariations.Colorblind);
+
+        // Upstream's ShowAppThemesDirectory and ShowUserThemesDirectory; the user folder is made first, as upstream makes it.
+        // A portable app has no user folder, where upstream's item does nothing; here it is off.
+        tsmiApplicationFolder.Click += (_, _) => AppServices.FileManager.OpenFolder(AppServices.ThemePaths.AppThemesDirectory);
+        tsmiUserFolder.IsEnabled = AppServices.ThemePaths.UserThemesDirectory is not null;
+        tsmiUserFolder.Click += (_, _) =>
+        {
+            if (AppServices.ThemePaths.UserThemesDirectory is { } folder)
+            {
+                Directory.CreateDirectory(folder);
+                AppServices.FileManager.OpenFolder(folder);
+            }
+        };
         MulticolorBranches.IsChecked = preferences.MulticolorBranches;
         chkDrawAlternateBackColor.IsChecked = preferences.RevisionGraphDrawAlternateBackColor;
         DrawNonRelativesGray.IsChecked = preferences.RevisionGraphDrawNonRelativesGray;
@@ -128,12 +153,17 @@ public partial class SettingsWindow : Window
         ShowRevisionTooltipsCheck.IsChecked = preferences.ShowRevisionGridTooltips;
         chkShowFindInCommitFilesGitGrep.IsChecked = preferences.ShowFindInCommitFilesGitGrep;
         chkShowGpgInformation.IsChecked = preferences.ShowGpgInformation;
+        chkShowOutputHistoryAsTab.IsChecked = preferences.ShowOutputHistoryAsTab;
+        OutputHistoryDepthBox.Value = Math.Clamp(preferences.OutputHistoryDepth, 0, 1000);
+        ToolTip.SetTip(chkShowOutputHistoryAsTab, string.Format(CultureInfo.CurrentCulture, OutputHistoryTooltip,
+            Hotkeys.GestureFor(BrowseCommand.FocusOutputHistoryAndToggleIfPanel)?.ToString() ?? ""));
         MergeGraphLanesCheck.IsChecked = preferences.MergeGraphLanesHavingCommonParent;
         GraphDiagonalsCheck.IsChecked = preferences.RenderGraphWithDiagonals;
         StraightenDiagonalsCheck.IsChecked = preferences.StraightenGraphDiagonals;
         DefaultCloneDestinationBox.Text = preferences.DefaultCloneDestinationPath;
         RelativeDateCheck.IsChecked = preferences.RelativeDate;
         ShowLanguages(preferences.Translation);
+        ShowDictionaries(preferences.Dictionary);
         AlwaysShowCheckoutDlgCheck.IsChecked = preferences.AlwaysShowCheckoutBranchDlg;
         UseLocalChangesActionCheck.IsChecked = preferences.UseDefaultCheckoutBranchAction;
         AutoNormaliseCheck.IsChecked = preferences.AutoNormaliseBranchName;
@@ -1101,6 +1131,16 @@ public partial class SettingsWindow : Window
         ShowSelectedPlugin();
     }
 
+    // Upstream's appearance page: "None", then the dictionaries next to the app; a dictionary whose file is missing shows as
+    // "None", as upstream's.
+    private void ShowDictionaries(string current)
+    {
+        List<string> dictionaries = [CommitSpellChecker.NoDictionary, .. CommitSpellChecker.Dictionaries(AppServices.DictionaryFolder)];
+        Dictionary.ItemsSource = dictionaries;
+        Dictionary.SelectedItem = dictionaries.Skip(1)
+            .FirstOrDefault(name => string.Equals(name, current, StringComparison.OrdinalIgnoreCase)) ?? dictionaries[0];
+    }
+
     // As upstream's appearance page: English, then the translations in the Translation folder; the current one stays
     // selected even when its file is missing.
     private void ShowLanguages(string current)
@@ -1168,6 +1208,16 @@ public partial class SettingsWindow : Window
         _preferences.ShowRevisionGridTooltips = ShowRevisionTooltipsCheck.IsChecked == true;
         _preferences.ShowFindInCommitFilesGitGrep = chkShowFindInCommitFilesGitGrep.IsChecked == true;
         _preferences.ShowGpgInformation = chkShowGpgInformation.IsChecked == true;
+
+        // Upstream's FormBrowseRepoSettingsPage: a changed choice also shows the panel when the history is a panel.
+        int outputHistoryDepth = (int)(OutputHistoryDepthBox.Value ?? 0);
+        bool asTab = chkShowOutputHistoryAsTab.IsChecked == true;
+        if (_preferences.ShowOutputHistoryAsTab != asTab || _preferences.OutputHistoryDepth != outputHistoryDepth)
+        {
+            _preferences.ShowOutputHistoryAsTab = asTab;
+            _preferences.OutputHistoryDepth = outputHistoryDepth;
+            _preferences.OutputHistoryPanelVisible = !asTab && outputHistoryDepth > 0;
+        }
         _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
         _preferences.RenderGraphWithDiagonals = GraphDiagonalsCheck.IsChecked == true;
         _preferences.StraightenGraphDiagonals = StraightenDiagonalsCheck.IsChecked == true;
@@ -1176,6 +1226,12 @@ public partial class SettingsWindow : Window
         if (LanguageBox.SelectedItem is string language)
         {
             _preferences.Translation = language;
+        }
+
+        // Upstream stores "none" for its first item.
+        if (Dictionary.SelectedItem is string dictionary)
+        {
+            _preferences.Dictionary = Dictionary.SelectedIndex == 0 ? "none" : dictionary;
         }
 
         _preferences.AlwaysShowCheckoutBranchDlg = AlwaysShowCheckoutDlgCheck.IsChecked == true;

@@ -85,6 +85,11 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     }
 
     /// <summary>
+    ///  Upstream's output history recorder (<c>FormStatus.Done</c> records every process dialog's run); null records nothing.
+    /// </summary>
+    public OutputHistory? History { get; set; }
+
+    /// <summary>
     ///  What the last remote operation does, e.g. "Push to origin".
     /// </summary>
     public string OutputTitle
@@ -719,6 +724,10 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         {
             _cancellation = null;
             IsBusy = false;
+
+            // Upstream records the run's command line; an operation here may run several commands, so its title stands
+            // for them.
+            History?.RecordRun(title, OutputLines, DateTime.Now);
         }
     }
 

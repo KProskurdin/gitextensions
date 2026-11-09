@@ -205,6 +205,16 @@ public sealed class CommitInfoReader
     private const string TagNotSigned = "Tag is not signed";
 
     private readonly LinkFactory _linkFactory = new();
+    private readonly Func<string, string> _translate;
+
+    /// <summary>
+    ///  A reader whose texts (upstream's English) go through <paramref name="translate"/>, the current language's
+    ///  translation of upstream's texts; English without it.
+    /// </summary>
+    public CommitInfoReader(Func<string, string>? translate = null)
+    {
+        _translate = translate ?? (text => text);
+    }
 
     /// <summary>
     ///  The annotated tags' messages, the related links, the branches and tags that contain the commit, and the tag it
@@ -217,7 +227,7 @@ public sealed class CommitInfoReader
     /// <summary>
     ///  Upstream's GPG tab (<c>GpgInfoProvider</c> and <c>RevisionGpgInfoControl</c>), or null for an artificial commit.
     /// </summary>
-    public static Task<GpgDisplay?> LoadGpgAsync(string repositoryPath, string hash)
+    public static Task<GpgDisplay?> LoadGpgAsync(string repositoryPath, string hash, Func<string, string>? translate = null)
         => Task.Run(async () =>
         {
             if (ArtificialCommits.IsArtificial(hash))
@@ -229,17 +239,18 @@ public sealed class CommitInfoReader
             ObjectId objectId = ObjectId.Parse(hash);
             GitRevision revision = new(objectId) { Refs = TagsAt(module, objectId) };
             GpgInfo? info = await new GpgInfoProvider(new GitGpgController(() => module)).LoadGpgInfoAsync(revision);
-            return Display(info);
+            return Display(info, translate);
         });
 
     /// <summary>
-    ///  Upstream's <c>RevisionGpgInfoControl.DisplayGpgInfo</c>.
+    ///  Upstream's <c>RevisionGpgInfoControl.DisplayGpgInfo</c>, its texts through <paramref name="translate"/>.
     /// </summary>
-    public static GpgDisplay Display(GpgInfo? info)
+    public static GpgDisplay Display(GpgInfo? info, Func<string, string>? translate = null)
     {
+        string commitNotSigned = translate?.Invoke(CommitNotSigned) ?? CommitNotSigned;
         if (info is null)
         {
-            return new GpgDisplay(null, CommitNotSigned, null, null);
+            return new GpgDisplay(null, commitNotSigned, null, null);
         }
 
         string? commitImage = info.CommitStatus switch
@@ -251,7 +262,7 @@ public sealed class CommitInfoReader
         };
         string commitText = info.CommitStatus != CommitStatus.NoSignature
             ? Lines(info.CommitVerificationMessage)
-            : CommitNotSigned;
+            : commitNotSigned;
         string? tagImage = info.TagStatus switch
         {
             TagStatus.OneGood => "TagOk",
@@ -263,7 +274,7 @@ public sealed class CommitInfoReader
         string? tagText = info.TagStatus switch
         {
             TagStatus.NoTag => null,
-            TagStatus.TagNotSigned => TagNotSigned,
+            TagStatus.TagNotSigned => translate?.Invoke(TagNotSigned) ?? TagNotSigned,
             _ => Lines(info.TagVerificationMessage ?? ""),
         };
         return new GpgDisplay(commitImage, commitText, tagImage, tagText);
@@ -339,7 +350,7 @@ public sealed class CommitInfoReader
     private string LinksInfo(IReadOnlyList<RevisionLink> links)
         => links.Count == 0
             ? ""
-            : $"{WebUtility.HtmlEncode(RelatedLinks)} {string.Join(", ", links.Select(link => _linkFactory.CreateLink(link.Caption, link.Uri)))}";
+            : $"{WebUtility.HtmlEncode(_translate(RelatedLinks))} {string.Join(", ", links.Select(link => _linkFactory.CreateLink(link.Caption, link.Uri)))}";
 
     private string DescribeInfo(GitModule module, ObjectId objectId, CancellationToken cancellationToken)
     {
@@ -347,13 +358,13 @@ public sealed class CommitInfoReader
             new GitDescribeProvider(() => module).Get(objectId, cancellationToken);
         if (string.IsNullOrEmpty(precedingTag))
         {
-            return WebUtility.HtmlEncode(DerivesFromNoTag);
+            return WebUtility.HtmlEncode(_translate(DerivesFromNoTag));
         }
 
-        string info = $"{WebUtility.HtmlEncode(DerivesFromTag)} {_linkFactory.CreateTagLink(precedingTag)}";
+        string info = $"{WebUtility.HtmlEncode(_translate(DerivesFromTag))} {_linkFactory.CreateTagLink(precedingTag)}";
         return string.IsNullOrEmpty(commitCount)
             ? info
-            : $"{info} + {commitCount} {WebUtility.HtmlEncode(PlusCommits)}";
+            : $"{info} + {commitCount} {WebUtility.HtmlEncode(_translate(PlusCommits))}";
     }
 
     // Upstream's RefsFormatter.FilterAndFormatBranches: "git branch -a" names remote branches "remotes/<remote>/<name>";
@@ -416,10 +427,10 @@ public sealed class CommitInfoReader
     {
         if (links.Count == 0)
         {
-            return WebUtility.HtmlEncode(textIfEmpty);
+            return WebUtility.HtmlEncode(_translate(textIfEmpty));
         }
 
-        string text = $"{WebUtility.HtmlEncode(prefix)}\n{string.Join("\n", links)}";
+        string text = $"{WebUtility.HtmlEncode(_translate(prefix))}\n{string.Join("\n", links)}";
         return truncated ? $"{text}\n{_linkFactory.CreateShowAllLink(what)}" : text;
     }
 

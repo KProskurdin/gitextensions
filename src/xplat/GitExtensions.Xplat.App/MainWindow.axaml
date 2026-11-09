@@ -101,10 +101,14 @@
         <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowGitNotesMenuItem" Header="Show git _notes" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowSessionCheckpointsMenuItem" Header="Show session checkpoints" ToggleType="CheckBox" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
         <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />
         <MenuItem x:Name="ShowTagsMenuItem" Header="Show _tags" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowSuperprojectTagsMenuItem" Header="Show su_perproject tags" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowSuperprojectRemoteBranchesMenuItem" Header="Show superpro_ject remote branches" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowSuperprojectBranchesMenuItem" Header="Show sup_erproject branches" ToggleType="CheckBox" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Grid info" IsEnabled="False" />
         <MenuItem x:Name="ShowBuildStatusIconMenuItem" Header="Show build status _icon" ToggleType="CheckBox" />
@@ -305,6 +309,8 @@
     <Border x:Name="BisectBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
       <DockPanel>
         <Button x:Name="BisectMoreButton" DockPanel.Dock="Right" Content="M_ore..." />
+        <!-- Upstream's IconBox: 28 pixels wide, the picture centered. -->
+        <Image x:Name="BisectBannerIcon" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
         <TextBlock x:Name="BisectBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
@@ -317,6 +323,7 @@
           <!-- Upstream's More... opens FormRebase (the rebase window here) or FormApplyPatch, whose extra step the new shell offers here. -->
           <Button x:Name="MoreActionButton" Content="M_ore..." />
         </StackPanel>
+        <Image x:Name="StateBannerIcon" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
         <TextBlock x:Name="StateBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
@@ -339,6 +346,10 @@
           <local:ToolButton x:Name="LeftPanelSearchButton" DockPanel.Dock="Right" Image="Preview" ToolTip.Tip="Search" />
           <AutoCompleteBox x:Name="LeftPanelSearchBox" FilterMode="ContainsOrdinal" MinimumPrefixLength="1" />
         </DockPanel>
+        <!-- Upstream's output history as a panel below the left panel (OutputHistoryPanelController), with
+             ShowOutputHistoryAsTab off; its hotkey shows and hides it. -->
+        <Border x:Name="OutputHistoryPanel" DockPanel.Dock="Bottom" Height="200" IsVisible="False"
+                BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" />
         <TreeView x:Name="BranchTreeView">
           <TreeView.ContextMenu>
             <!-- Upstream's menuMain in its order; MainWindow.LeftPanel shows the items that apply to the node. -->
@@ -910,6 +921,16 @@
                 <TextBox x:Name="TagGpgText" Grid.Row="1" Grid.Column="1" IsReadOnly="True" TextWrapping="Wrap"
                          AcceptsReturn="True" BorderThickness="0" Background="Transparent" />
               </Grid>
+            </TabItem>
+            <!-- Upstream's output history as a tab (OutputHistoryTabController, ShowOutputHistoryAsTab): the process window's
+                 outputs and some trace output; shown while the history is on (OutputHistoryDepth above 0). -->
+            <TabItem x:Name="OutputHistoryTab" IsVisible="False">
+              <TabItem.Header>
+                <StackPanel Classes="tabHeader">
+                  <Image Source="{local:UpstreamImage GitCommandLog}" />
+                  <TextBlock Text="Output" />
+                </StackPanel>
+              </TabItem.Header>
             </TabItem>
             <!-- Upstream's build report tab (BuildReportTabPageExtension), shown when the repository's "Show build result
                  page" is on and the selected commit's build has a report. Upstream embeds a browser for some servers; the

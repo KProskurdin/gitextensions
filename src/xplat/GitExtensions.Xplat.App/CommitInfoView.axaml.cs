@@ -199,7 +199,7 @@ public partial class CommitInfoView : UserControl
         IReadOnlyList<IReadOnlyList<InfoSpan>> lines;
         try
         {
-            lines = await new CommitInfoReader().LoadAsync(request, load.Token);
+            lines = await new CommitInfoReader(UpstreamTranslation.ByText).LoadAsync(request, load.Token);
         }
         catch (OperationCanceledException)
         {

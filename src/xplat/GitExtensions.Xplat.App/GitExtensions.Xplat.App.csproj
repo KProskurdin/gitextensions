@@ -46,6 +46,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's spelling dictionaries, in the Dictionaries folder next to the app as upstream's installer puts them
+         (AppSettings.GetDictionaryDir looks there). -->
+    <Content Include="..\..\..\setup\assets\Dictionaries\*.dic" Link="Dictionaries\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Upstream's translations (Transifex), linked into the Translation folder next to the app as upstream ships them
          (upstream's Translator looks there), for the language chosen in Settings > Appearance. -->
     <Content Include="..\..\app\GitUI\Translation\*.xlf;..\..\app\GitUI\Translation\*.gif" Link="Translation\%(Filename)%(Extension)">

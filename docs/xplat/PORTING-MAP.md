@@ -63,7 +63,7 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/FormGitCommandLog.cs` | `src/xplat/GitExtensions.Xplat.App/CommandLogWindow.axaml(.cs)` (reads upstream `CommandLog` and `GitModule.GitCommandCache` as is); `src/xplat/GitExtensions.Xplat.Core/Repository/CommandLogDialog.cs` | `52d08e996` | ported |
 | `src/app/GitUI/HelperDialogs/FormRemoteProcess.cs`, `FormProcess.cs` | `src/xplat/GitExtensions.Xplat.App/ProcessWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOutputRunner.cs`, `RepositoryOperationsViewModel.cs` (`OutputLines`, `Cancel`) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormSettings.cs` (pages: appearance, commit dialog, git, git config) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)`, `ThemeApplier.cs`; `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs`, `GitConfigService.cs` | `52d08e996` | partial |
-| `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/Theming/ThemeModule.cs`, `ThemePathProvider.cs`; `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/AppearanceSettingsPage.cs` (theme choice) | `src/xplat/GitExtensions.Xplat.Core/Settings/AppTheme.cs` (`UpstreamThemeService`, `AppThemePaths`); `src/xplat/GitExtensions.Xplat.App/ThemeApplier.cs`, `ThemeBrushes.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ColorsSettings/ColorsSettingsPage.cs` (revision graph group); `src/app/GitUI/UserControls/RevisionGrid/RevisionDataGridView.cs` (`GetForeground`, `GetCommitBodyForeground`) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Colors page), `RevisionGrid.axaml`, `ThemeApplier.cs`, `MainWindow.GridView.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (`DrawNonRelativesTextGray`), `CommitGraph.cs` (`GraphRowRef.IsRelative`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormAbout.cs`, `EnvironmentInfo.cs`, `AboutBoxDialog/FormContributors.cs`; `src/app/GitUI/UserEnvironmentInformation.cs` (`GetInformation`, `GetGitVersionInfo`, `CopyInformation`) | `src/xplat/GitExtensions.Xplat.App/AboutWindow.axaml(.cs)`, `ContributorsWindow.axaml(.cs)`, `UpstreamResources.cs`; `src/xplat/GitExtensions.Xplat.Core/Platform/EnvironmentInformation.cs`, `Contributors.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/BrowseDialog/DashboardControl/Dashboard.cs`, `DashboardTheme.cs`, `UserRepositoriesList.cs`, `UserRepositoriesListController.cs`, `FormDashboardCategoryTitle.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`DashboardPanel`, Start > Recent repositories), `MainWindow.Dashboard.cs`, `ThemeApplier.cs` (dashboard colors); `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs`, `RecentRepositoriesViewModel.cs`, `Dashboard.cs` | `52d08e996` | ported |
@@ -105,11 +105,11 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/DiffViewerSettingsPage.cs`; `src/app/GitUI/Editor/FileViewer.cs` (whitespace, context lines, entire file, `GetExtraDiffArguments`) | `src/xplat/GitExtensions.Xplat.Core/Diff/DiffOptions.cs`, `Settings/AppPreferences.cs`; `src/xplat/GitExtensions.Xplat.App/DiffView.axaml(.cs)`; `SettingsWindow.axaml(.cs)` (Diff viewer tab) | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/CommitDialogSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Commit dialog tab); `src/xplat/GitExtensions.Xplat.Core/Settings/AppPreferences.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ConfirmationsSettingsPage.cs`; `src/app/GitUI/MessageBoxes.cs` (`ConfirmSuppressible`, `ConfirmBranchCheckout`) | `src/xplat/GitExtensions.Xplat.Core/Settings/Confirmations.cs`, `AppPreferences.cs` (`Asks`, `SetAsks`); `src/xplat/GitExtensions.Xplat.App/ConfirmWindow.axaml(.cs)` (`AskAsync`); `SettingsWindow.axaml(.cs)` (Confirmations tab) | `52d08e996` | partial |
-| `src/app/GitUI/Plugin/PluginRegistry.cs`, `FailedPluginWrapper.cs`; `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (`RegisterPlugins`, `UpdatePluginMenu`, plugin parts of `SetGitModule`) | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginCatalog.cs`; `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` (`Register`, `Unregister`); `MainWindow.axaml(.cs)` (Plugins menu) | `52d08e996` | partial |
+| `src/app/GitUI/Plugin/PluginRegistry.cs`, `FailedPluginWrapper.cs`; `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (`RegisterPlugins`, `UpdatePluginMenu`, plugin parts of `SetGitModule`) | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginCatalog.cs`; `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` (`Register`, `Unregister`); `MainWindow.axaml(.cs)` (Plugins menu) | `52d08e996` | ported |
 | `src/app/GitUI/GitUICommands.cs` (the `IGitUICommands` plugins see) | `src/xplat/GitExtensions.Xplat.App/PluginHost.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Plugins/PluginSettingsPage.cs`; `src/app/GitUI/SettingControlBindings/*.cs` | `src/xplat/GitExtensions.Xplat.Core/Plugins/PluginSettings.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml(.cs)` (Plugins tab) | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/InteractiveGitActionControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/GitActionBanner.cs`, `GitRepositoryService.cs` (state), `RepositoryViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml(.cs)` (`BisectBanner`, `StateBanner`) | `52d08e996` | ported |
-| `src/app/GitUI/CommandsDialogs/BrowseDialog/FormBisect.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (bisect items) | `src/xplat/GitExtensions.Xplat.App/BisectWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (bisect), `RepositoryOperationsViewModel.cs` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/BrowseDialog/FormBisect.cs`; `src/app/GitUI/UserControls/RevisionGrid/RevisionGridControl.cs` (bisect items) | `src/xplat/GitExtensions.Xplat.App/BisectWindow.axaml(.cs)`, `MainWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitOperations.cs` (bisect), `RepositoryOperationsViewModel.cs` | `52d08e996` | ported |
 | `src/plugins/CreateLocalBranches/CreateLocalBranchesForm.cs` | `src/xplat/plugins/CreateLocalBranches/CreateLocalBranchesForm.cs` (stand-in), `CreateLocalBranchesWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/plugins/ProxySwitcher/ProxySwitcherForm.cs` | `src/xplat/plugins/ProxySwitcher/ProxySwitcherForm.cs` (stand-in), `ProxySwitcherWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/plugins/FindLargeFiles/FindLargeFilesForm.cs` | `src/xplat/plugins/FindLargeFiles/FindLargeFilesForm.cs` (stand-in), `FindLargeFilesWindow.axaml(.cs)`, `LargeFileFinder.cs`, `LargeFileRow.cs`, `FindLargeFilesScript.cs` | `52d08e996` | ported |
@@ -136,14 +136,14 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/plugins/BuildServerIntegration/JenkinsIntegration/Settings/JenkinsSettingsUserControl.cs` | `src/xplat/plugins/BuildServerIntegration/JenkinsIntegration/Settings/JenkinsSettingsUserControl.axaml(.cs)` | `52d08e996` | ported |
 | `src/plugins/BuildServerIntegration/TeamCityIntegration/Settings/TeamCitySettingsUserControl.cs`, `TeamCityBuildChooser.cs` | `src/xplat/plugins/BuildServerIntegration/TeamCityIntegration/Settings/TeamCitySettingsUserControl.axaml(.cs)`, `TeamCityBuildChooser.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/RepoHosting/ForkAndCloneForm.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/ForkAndCloneWindow.axaml(.cs)` | `52d08e996` | ported |
-| `src/app/GitUI/CommandsDialogs/RepoHosting/ViewPullRequestsForm.cs`, `DiscussionHtmlCreator.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/ViewPullRequestsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/RepoHosting/ViewPullRequestsForm.cs`, `DiscussionHtmlCreator.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/ViewPullRequestsWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/RepoHosting/CreatePullRequestForm.cs` | `src/xplat/GitExtensions.Xplat.App/RepositoryHosts/CreatePullRequestWindow.axaml(.cs)` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.cs` (repository hosts menu); `src/app/GitUI/GitUICommands.cs` (repository host methods); `src/app/GitUI/UserControls/BlameControl.cs` (`ConfigureRepositoryHostPlugin`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.RepositoryHosts.cs`, `PluginHost.cs`, `RepositoryHosts/RepositoryHostMenus.cs`, `BlameWindow.axaml.cs` | `52d08e996` | ported |
-| `src/app/GitUI/CommandsDialogs/FormCommit.cs` (commit templates menu); `src/app/GitCommands/CommitTemplateManager.cs` (used as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormCommit.cs` (commit templates menu, `AssignCommitMessageFromTemplate`); `src/app/GitCommands/CommitTemplateManager.cs` (used as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`, `GitCommitTemplate.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`, `PluginHost.cs` (`AddCommitTemplate`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/CommitDialog/FormCommitTemplateSettings.cs` | `src/xplat/GitExtensions.Xplat.App/CommitTemplateSettingsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Repository/CommitTemplates.cs`, `CommitMessageValidation.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/FormAvailableEncodings.cs` | `src/xplat/GitExtensions.Xplat.App/AvailableEncodingsWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Settings/DiffMergeToolSettings.cs` | `0174ba1cc` | ported |
 | `src/app/GitUI/CommandsDialogs/FormCommit.cs` ("Commit message" menu, reset buttons, `IsCommitMessageValid`, `FormatAllText`, conventional commits) | `src/xplat/GitExtensions.Xplat.Core/Repository/PreviousCommitMessages.cs`, `CommitMessageValidation.cs`, `ConventionalCommits.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.axaml(.cs)`, `ResetChangesWindow.axaml(.cs)` | `52d08e996` | ported |
-| `src/app/GitUI/SpellChecker/EditNetSpell.cs` (auto-completion); `src/app/GitUI/AutoCompletion/*.cs`, `SpellChecker/WordAtCursorExtractor.cs`, `SpellCheckerHelper.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitMessageAutoCompletion.cs`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.AutoComplete.cs` | `52d08e996` | partial |
+| `src/app/GitUI/SpellChecker/EditNetSpell.cs` (auto-completion, spelling), `SpellCheckEditControl.cs`; `src/app/GitUI/AutoCompletion/*.cs`, `SpellChecker/WordAtCursorExtractor.cs`, `SpellCheckerHelper.cs` (linked as is); `externals/NetSpell.SpellChecker` (compiled unchanged) | `src/xplat/GitExtensions.Xplat.Core/Repository/CommitMessageAutoCompletion.cs`, `Spelling/CommitSpellChecker.cs`, `Spelling/SpellingDictionarySetting.cs`; `src/xplat/NetSpell.SpellChecker/`; `src/xplat/GitExtensions.Xplat.App/CommitWindow.AutoComplete.cs`, `CommitWindow.Spelling.cs`, `SpellingUnderlines.cs` | `52d08e996` | partial |
 | `src/app/GitUI/Avatars/*.cs` (`AvatarService` and its providers; `TemplateFormatter.cs`, `HexString.cs` linked as is); `src/app/GitUI/UserControls/AvatarControl.cs` | `src/xplat/GitExtensions.Xplat.Core/Avatars/AvatarService.cs`, `AuthorInitials.cs`; `src/xplat/GitExtensions.Xplat.App/AvatarView.cs`, `SettingsWindow.Appearance.cs` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/PathFormatter.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/FilePathDisplay.cs`; `src/xplat/GitExtensions.Xplat.App/FilePathTrimming.cs` | `52d08e996` | ported |
 | `src/app/GitUI/RepositoryCurrentBranchNameProvider.cs`; `DashboardControl/UserRepositoriesListController.cs` (`GetCurrentBranchName`) | `src/xplat/GitExtensions.Xplat.Core/Repository/RecentRepositories.cs` (`RecentRepositoryBranches`), `RecentRepositoriesViewModel.cs` | `52d08e996` | ported |
@@ -153,9 +153,10 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/CommandsDialogs/BuildReportTabPageExtension.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs`, `MainWindow.axaml` (`BuildReportTab`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (menus), `FormBrowse.cs` (menu visibility on the dashboard); `Menus/StartToolStripMenuItem.cs`, `ToolsToolStripMenuItem.cs`, `HelpToolStripMenuItem.cs`; `src/app/GitUI/RepositoryHistoryUIService.cs` (`PopulateRecentRepositoriesMenu`, `PopulateFavouriteRepositoriesMenu`) | `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (menus), `MainWindow.StartMenu.cs`, `MainWindow.axaml.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepositoryMenus.cs` | `52d08e996` | partial |
 | `src/app/GitUI/CommandsDialogs/FormBrowse.Designer.cs` (`ToolStripMain`), `FormBrowse.cs` (toolstrip parts of `InitMenusAndToolbars`, `RefreshDefaultPullAction`, the layout toggles, the title); `Menus/WorkingDirectoryToolStripSplitButton.cs`; `ToolStripPushButton.cs`; `src/app/GitUI/UserControls/RepoStateVisualiser.cs` | `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs`, `MainWindow.axaml` (toolstrip), `UpstreamImages.cs`; `src/xplat/GitExtensions.Xplat.Core/Repository/RepoState.cs`, `RecentRepositories.cs` (`Caption`), `BrowseWindowTitle.cs` | `52d08e996` | ported |
-| `src/app/GitUI/UserControls/FilterToolBar.cs`, `FilterToolBar.Designer.cs`; `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs` (stored options) | `src/xplat/GitExtensions.Xplat.App/FilterToolBar.axaml(.cs)`, `MainWindow.FilterToolBar.cs`, `FileHistoryWindow.Filter.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`, `StoredRevisionFilter.cs` | `afc512395` | partial |
+| `src/app/GitUI/UserControls/FilterToolBar.cs`, `FilterToolBar.Designer.cs`; `src/app/GitUI/UserControls/RevisionGrid/FilterInfo.cs` (stored options) | `src/xplat/GitExtensions.Xplat.App/FilterToolBar.axaml(.cs)`, `MainWindow.FilterToolBar.cs`, `FileHistoryWindow.Filter.cs`; `src/xplat/GitExtensions.Xplat.Core/CommitHistory/RevisionFilter.cs`, `StoredRevisionFilter.cs` | `afc512395` | ported |
 | `src/app/GitUI/Shells/ShellProvider.cs`, `BashShell.cs`, `CmdShell.cs`, `PwshShell.cs`, `PowerShellShell.cs`; `FormBrowse.InitMenusAndToolbars.cs` (`FillUserShells`), `FormBrowse.cs` (`userShell_Click`) | `src/xplat/GitExtensions.Xplat.Core/Platform/TerminalChoices.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs` (`FillTerminals`) | `afc512395` | partial |
-| `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `RevisionGridRefRenderer.cs`, `RefLabelShape.cs`, `RefLabelIcon.cs`, `RevisionDataGridView.cs` (row colors), `AuthorRevisionHighlighting.cs`, `RevisionGridMenuCommands.cs` (`GetViewMenuCommands`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridLabels.cs`, `CommitListViewModel.cs` (`CommitListItem`, `ArtificialChanges`), `GitCommitHistory.cs` (`LoadRefLabels`); `src/xplat/GitExtensions.Xplat.App/RefLabelView.cs`, `MainWindow.GridView.cs`, `MainWindow.axaml` (row template, View menu), `ThemeApplier.cs` (grid colors) | `afc512395` | partial |
+| `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `RevisionGridRefRenderer.cs`, `RefLabelShape.cs`, `RefLabelIcon.cs`, `RevisionDataGridView.cs` (row colors), `AuthorRevisionHighlighting.cs`, `RevisionGridMenuCommands.cs` (`GetViewMenuCommands`), `SuperProjectInfo.cs` and `RevisionGridControl.cs` (`GetSuperprojectCheckoutAsync`), `GitModule.cs` (`GetSubmoduleItemsForEachRefAsync`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridLabels.cs`, `SuperprojectLabels.cs`, `CommitListViewModel.cs` (`CommitListItem`, `ArtificialChanges`), `GitCommitHistory.cs` (`LoadRefLabels`); `src/xplat/GitExtensions.Xplat.App/RefLabelView.cs`, `MainWindow.GridView.cs`, `MainWindow.Superproject.cs`, `MainWindow.axaml` (row template, View menu), `ThemeApplier.cs` (grid colors) | `afc512395` | ported |
+| `src/app/GitUI/Models/OutputHistoryModel.cs`; `src/app/GitUI/UserControls/OutputHistoryControl.cs`, `OutputHistoryControllerBase.cs`, `OutputHistoryTabController.cs`, `OutputHistoryPanelController.cs`; `src/app/GitUI/HelperDialogs/FormStatus.cs` (`Done`, the recording) | `src/xplat/GitExtensions.Xplat.Core/Operations/OutputHistory.cs`, `RepositoryOperationsViewModel.cs` (`History`); `src/xplat/GitExtensions.Xplat.App/MainWindow.OutputHistory.cs`, `MainWindow.axaml` (tab and panel), `AppServices.cs` (`OutputHistory`), `SettingsWindow.axaml(.cs)` (Browse repository window page) | `0174ba1cc` | ported |
 
 ## Notes per row
 
@@ -594,6 +595,7 @@ settings menu's toolbar submenu (see RevisionDiffControl).
 Added 2026-11-08: "Stage in Superproject" (shown in a submodule, `StageInSuperprojectAfterCommit`, the submodule staged
 after a commit and any push that went through) and no "Stash staged" for a git without `stash --staged` (not covered by a
 test, as it takes an old git). Left: the spelling checker.
+2026-11-09: the spelling checker (see EditNetSpell).
 Added 2026-11-08: the progress bar (`StageProgress`). Its numbers are real, by batch: upstream splits long command lines only when unstaging, and the new shell
 does so for both (`GitOperations.RunForFilesAsync`), since it stages with `git add` where upstream feeds `update-index` through standard input. Before this, staging a few
 hundred files would have passed Windows' limit of 32767 characters. Found with it: unstaging a rename left the removal of its old name staged, in the commit window and the
@@ -1936,6 +1938,8 @@ neither); "Show file history in the main window" (decided with the user, see For
 viewer".
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the Console tab and its shell,
 output history, and "Show blame in diff viewer".
+2026-11-09: the output history settings ("Show output history as tab (otherwise as panel)" with upstream's tooltip, "Output
+history depth (0 to disable)"), see OutputHistory.
 
 **BlameViewerSettingsPage / blame gutter and menu** (`ported`). Ported 2026-10-07: the blame window blames with upstream's
 flags (`-M`, `-C`, `-w` from `DetectCopyInFileOnBlame`, `DetectCopyInAllOnBlame`, `IgnoreWhitespaceOnBlame`) and shows
@@ -1988,6 +1992,9 @@ dictionary (no spelling checker, PLAN.md M8), and the Windows-only "Show current
 user interface" (Avalonia scales by the system's setting).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the console window setting and
 the spelling dictionary; telemetry is not ported on purpose.
+2026-11-09: the spelling dictionary (Appearance page, "Dictionary for spelling checker" with "Download dictionary"): "None" and
+the dictionaries next to the app, a missing one shown as "None", "none" stored for it, as upstream's (upstream fills the list
+when it drops down; here it is filled at once). Left: the console window setting.
 
 **DiffViewerSettingsPage / FileViewer options** (`partial`). Ported 2026-10-07: the four whitespace modes (one box instead
 of upstream's three toggle buttons, same states), fewer and more lines of context (down to none, buttons off while the
@@ -2025,7 +2032,7 @@ new shell names the action on its button).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the questions listed above
 (undo last commit, tracking reference, stash pop after pull and checkout, conflict resolution, second abort).
 
-**PluginRegistry / FailedPluginWrapper** (`partial`). Ported 2026-10-07: the plugins are loaded once, off the UI thread,
+**PluginRegistry / FailedPluginWrapper** (`ported`). Ported 2026-10-07: the plugins are loaded once, off the UI thread,
 by upstream's `ManagedExtensibility` (compiled unchanged in the shadow `GitUIPluginInterfaces`): `GitExtensions.Plugins.*.dll`
 in the Plugins folder next to the app and `GitExtensions.*.dll` in the user's plugins folder (`UserPluginsPath`). Each plugin
 gets upstream's settings container (`GitPluginSettingsContainer`, linked unchanged, so the keys are `<id>.<name>` with the
@@ -2042,6 +2049,9 @@ upstream's loader passed over, with the reason (a third-party plugin built on Wi
 PLAN.md decision 5 chose: such plugins are not loadable in the new shell.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the repository hosts menu
 (`GitHosters`) and the clipboard copy of a load error.
+2026-11-09, on macOS: the hosts menu was already there (see the "Repository host menu, commands and blame items" note; this
+line was stale). The load error is now upstream's OK/Cancel message box, "Copy error details to clipboard?", and OK copies
+the error. Nothing is left. Tests: `PluginHostTests`.
 
 **GitUICommands (plugin side)** (`partial`). `PluginHost` is the `IGitUICommands` the plugins get: the current module,
 `RepoChangedNotifier` (from any thread; it refreshes the window on the UI thread through `PostRepositoryChanged`, as
@@ -2059,6 +2069,19 @@ is not set up is run first, and a failure is shown with upstream's text); `AddUp
 upstream opens its pull dialog to fetch it. Not ported: `RunCommand`, services through `GetService` other than `IGitExecutorProvider`, and `BrowseRepo`.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: `RunCommand`, services through
 `GetService` other than `IGitExecutorProvider`, and `BrowseRepo`.
+2026-11-09, on macOS: `GetService` serves upstream's container without its WinForms services (`PluginServices`): the
+registrations of upstream's app (`IFileSystem`, `IGitDirectoryResolver`, `IRepositoryDescriptionProvider`, `IAppTitleGenerator`,
+`ILinkFactory`; reimplemented, as that class is internal to upstream's exe) and those of `GitExtUtils` and `GitCommands`, used as
+is (the trace listener, the executor provider, the submodule status provider, the branch name normaliser); one container for the
+app. GitUI's services (jump lists, scripts, hotkeys, prompts, output history, consoles) are not offered. `BrowseRepo` is the
+browse window (`MainWindow.BrowseRepo.cs`, upstream's `FormBrowse` as `IBrowseRepo`): the selected revisions, the latest
+first, as upstream's `GitRevision` (`GitRevisions.Of`, without refs); the quick selector place below the latest selected row;
+`GoToRef` as the grid's (upstream's messages); `SetWorkingDir` opens the repository and selects the given commits. Calls from
+another thread run on the UI thread. Left: `RunCommand`, and the `Start...Dialog` methods that still throw (see `UI-PARITY.md`,
+the command line verbs). Tests: `PluginServicesTests`, `PluginHostTests`.
+Decided 2026-11-09: `RunCommand`, upstream's command line verbs other than `fileeditor` and `clone`, and the `Start...Dialog`
+methods that throw are not ported for now. They need one dispatcher from a verb or call to the shell's windows, each opened on
+its own; `RunCommand` returns false, as it does now. The row stays `partial` for them.
 
 **PluginSettingsPage / SettingControlBindings** (`ported`). Ported 2026-10-07: Settings > Plugins lists the plugins and
 shows the selected plugin's settings with the editor of upstream's binding for its type: three-state check box, text box
@@ -2101,7 +2124,8 @@ the FileStatusList row and is not ported there.
 **FilterInfo / FormRevisionFilter** (`ported`). Ported: all branches (the upstream default) or the current branch only, kept
 in upstream's `ShowCurrentBranchOnly` setting; the advanced filter for author, committer, message (ignoring case), since,
 until, path, hide merges and first parent only, built in upstream's argument order; the all-branches view leaves out notes,
-the stash and agent session refs as upstream does with its default settings (including `c16194306`). The status line says
+the stash and agent session refs as upstream does with its default settings (including `c16194306`); since 2026-11-09 the
+agent refs follow upstream's `ShowSessionRefs` (see the Revision grid rows and View menu note). The status line says
 when the list is filtered. 2026-10-13, with the filter toolstrip: the branch filter ("Filtered branches": revisions, ranges
 and options as they are, words with wildcards as `--branches=`), `--reflog`, the diff content search (`-G`), a message
 filter starting with `--` passed as git log options, `HasFilter`, `ResetAllFilters` (keeps the current branch and reflog
@@ -2212,7 +2236,7 @@ installer placement of the helper; the new shell needs none. Not checked on macO
 Audit 2026-11-07 (all "not ported" lines above checked against the code): nothing missing; marked `ported` (the
 installer placement is not needed).
 
-**ThemeModule, ThemePathProvider, appearance page** (`partial`). Ported 2026-10-06: the theme is loaded as upstream's
+**ThemeModule, ThemePathProvider, appearance page** (`ported`). Ported 2026-10-06: the theme is loaded as upstream's
 `ThemeModule.LoadThemeSettings` does (light is upstream's default theme, a theme that fails to load falls back to it, the
 system mode resolves to dark or light), through upstream's own loader files linked into the core unchanged. `AppThemePaths`
 repeats `ThemePathProvider`'s folder rules because the upstream class asserts GitExtensions.exe in Debug builds. The
@@ -2225,6 +2249,12 @@ colors (Fluent draws the controls from its light or dark variant), the theme edi
 restart prompt (the new shell applies a theme at once).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the theme editor. Not
 applicable: the other system colors, `UseSystemVisualStyle` and the restart prompt.
+2026-11-09, on macOS: upstream has had no theme editor since 2019 (`FormThemeEditor` removed in `6e3d29576`), so that line was
+stale. What upstream's Colors page has instead is "Open theme folder" (`sbOpenThemeFolder`, `ColorsSettingsPageController`):
+the whole button drops down "Application folder" and "User folder", the latter made first; both are now beside the theme
+choice, through `AppServices.ThemePaths` and `AppServices.FileManager`. Differences: the folder itself opens (upstream selects
+it in its parent's window); for a portable app the user folder item is off, where upstream's does nothing. Nothing is left, so
+the row is `ported`. Tests: `MainWindowTests`.
 
 **ColorsSettingsPage (revision graph group)** (`ported`). 2026-11-07: the Colors page has upstream's "Revision graph"
 group above the theme, with its six check boxes in its order and with its control names: Multicolor branches
@@ -2246,6 +2276,7 @@ now a patch and no longer shown as a rebase. Continue runs upstream's command fo
 already did; conflicts are taken from the status the window already reads, not from a second `ls-files --unmerged`. More...
 for a patch offers Skip patch (`am --3way --skip`) instead of opening `FormApplyPatch`, which is not ported; for a
 bisect it opens the bisect window, and for a rebase the rebase window (upstream's FormRebase, since 2026-10-16).
+2026-11-09: upstream's `IconBox` at the bars' left: `information`, or `SolveMerge` while conflicts remain.
 2026-11-04: More... for a patch opens the apply patch window (upstream's `StartApplyPatchDialog`; FormApplyPatch is
 ported, its window shows the stopped `git am`'s patches with Skip, Resolved and Abort); the shell's own "Skip patch" menu
 and its operation are removed. Left: Abort asks first with the shell's own text, where upstream's `AbortButton_Click`
@@ -2255,13 +2286,16 @@ upstream's (the shell asks first).
 Changed 2026-11-08: Abort runs at once, as upstream's `AbortButton_Click`; the shell's own question and text are removed.
 Nothing is left, so the row is `ported`.
 
-**FormBisect** (`partial`). Ported 2026-10-09: Commands > Bisect... and the bisect bar's More... open the bisect window with
+**FormBisect** (`ported`). Ported 2026-10-09: Commands > Bisect... and the bisect bar's More... open the bisect window with
 upstream's five buttons and their enabled rules; Start runs while the window stays open, the marks and Stop close it, as
 upstream. Each step runs with git's output in the process window (upstream's process dialog); a mark's window stays open
 whatever the close setting says, because its output names the next commit to test or the first bad one (upstream passes
 `useDialogSettings: false`). Since 2026-11-02 Start with several commits selected asks upstream's "Mark selected revisions
 as start bisect range?" and marks the latest selected good and the earliest bad (upstream's `BisectRange`), then closes
 the window. Not ported: the toolbar's bisect icons.
+2026-11-09, on macOS: the grid menu's bisect items already had upstream's images; what was left is the bisect bar's icon,
+upstream's `IconBox` (`information`), now shown on both notification bars, with `SolveMerge` while conflicts remain (see
+InteractiveGitActionControl). Tests: `GitActionBarTests`.
 
 **Plugin forms (general)**. Since 2026-10-09 upstream plugins with WinForms forms are built for the new shell by shadow
 projects in `src/xplat/plugins` that set `XplatPluginUi`: the plugin class and the files without WinForms are compiled
@@ -2272,6 +2306,7 @@ are named as the form's fields, so upstream's Transifex entries for the form app
 BuildServerIntegration plugins replace their settings controls the same way (exported with upstream's metadata); GitHub3 has
 no form of its own (its windows are upstream GitUI forms, see the repository host rows).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the toolbar's bisect icons.
+(2026-11-09: that line belongs to FormBisect, where it is done.)
 
 **CreateLocalBranchesForm** (`ported`). Creates or updates a tracking branch for every branch of the remote, with upstream's
 commands and messages; as upstream, a branch git cannot create is passed over, and the count in the message is that of every
@@ -2352,7 +2387,8 @@ with several commits or an artificial one selected the first one (HEAD for an ar
 File tree tab shows with the split view on, and the file taken is selected in the tree. Differences: the matches show the
 path, where upstream's list shows `GitItemStatus.ToString()` (with "Renamed ... to ...", the staged state and the
 similarity); the window has the system's thin border, where upstream's has none. Not ported: the `searchfile` verb of
-upstream's `RunCommand` (prints the file for the Visual Studio plugin). Screenshot `XPLAT_SCREENSHOT_WINDOW=search`. Added
+upstream's `RunCommand` (prints the file for the Visual Studio plugin); decided 2026-11-09 to leave it with the other command
+line verbs (see GitUICommands, plugin side). Screenshot `XPLAT_SCREENSHOT_WINDOW=search`. Added
 the same day: "Find file" in the File tree tab's menu (see RevisionDiffControl).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the `searchfile` verb.
 
@@ -2419,12 +2455,14 @@ through the shell's clone, which opens the clone; the parent is added as a remot
 is the default clone folder or the folder of the open repository (upstream: of the most recent repository, usually the same);
 "Open github page" opens the homepage as upstream.
 
-**ViewPullRequestsForm / DiscussionHtmlCreator** (`partial`). The hosted remotes (the current branch's first), their pull
+**ViewPullRequestsForm / DiscussionHtmlCreator** (`ported`). The hosted remotes (the current branch's first), their pull
 requests (moving on from an empty one on the first load, as upstream), the selected one's patch split into files as upstream
 and shown in the diff view, the discussion, Fetch to the pr/ branch, Add remote and fetch (then checkout), and Close pull
 request. Differences: the discussion is a list of entries (author, date, commit, body) instead of upstream's HTML page; the
 comment box and its Refresh and Post buttons work (upstream's have no handlers). Not ported: the file list's status icons.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the file list's status icons.
+2026-11-09, on macOS: done. Upstream marks every file of the patch as changed, so each row has `FileStatusModified` before
+its name. Tests: `RepositoryHostTests`.
 
 **CreatePullRequestForm** (`ported`). The foreign hosted remotes as targets, both branch lists with the default branch chosen,
 the title from the branch's last commit until typed, the body from `.github/PULL_REQUEST_TEMPLATE.md`, and upstream's
@@ -2435,7 +2473,7 @@ messages.
 `PluginHost` as upstream through `GitUICommands`; the blame window's menu gets the host plugin's items (the GitHub plugin's
 "View in GitHub" for the line), which the plugin builds in a shim `ContextMenuStrip` with upstream's `GitBlameContext` as tag.
 
-**Commit templates** (`partial`). The commit window's "Commit templates" menu: the plugins' templates (upstream's
+**Commit templates** (`ported`). The commit window's "Commit templates" menu: the plugins' templates (upstream's
 `CommitTemplateManager` registry, used as is; the GitHub plugin adds the user's assigned issues), then the user's own
 (upstream's `CommitTemplates` setting); a template replaces the message, with upstream's regex placeholders filled from the
 branch name. Added 2026-10-10: the Conventional Commits items and the template settings window (FormCommitTemplateSettings
@@ -2443,6 +2481,14 @@ row: the user's templates and the commit message settings, stored in upstream's 
 `commit.template` as the initial message, and the plugin templates' icons.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: git's `commit.template` as the
 initial message and the plugin templates' icons.
+2026-11-09, on macOS: both. Git's `commit.template` (`GitCommitTemplate`, upstream's `LoadGitCommitTemplate` used as is) is
+the commit window's message when there is no draft or merge message, as upstream's `AssignCommitMessageFromTemplate`; a
+missing file or a read error shows upstream's message and caption. The template left unchanged counts as no message, and
+with a template the lines starting with '#' are left out of the commit (upstream's `usingCommitTemplate`). Difference: a
+path starting with "~/" is in the home folder, as git reads it; upstream resolves it against the working directory and
+reports the template missing. The plugin templates' icons: a System.Drawing image as PNG where it can be drawn (Windows);
+otherwise, as the plugins built for the new shell have none, the registering plugin's embedded icon (the GitHub plugin
+passes its own icon upstream, so it looks the same). Tests: `CommitTemplateFileTests`, `RepositoryHostTests`.
 
 **FormCommitTemplateSettings** (`ported`). 2026-10-10: the user's templates (upstream's `CommitTemplates` setting, read and
 written with upstream's `CommitTemplateItem` and serializer, so both apps share them) and the commit message settings
@@ -2465,6 +2511,26 @@ ported: the spelling checker (upstream's NetSpell is a WinForms component; PLAN.
 tooltip shown while the words are still being read.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the spelling checker (PLAN.md
 M8), "Mark ill formed lines" and the tooltip while the words are read.
+2026-11-09, on macOS: the spelling checker and "Mark ill formed lines". Upstream's engine (`externals/NetSpell.SpellChecker`) is
+compiled unchanged by the shadow project `src/xplat/NetSpell.SpellChecker` (its only WinForms use, a `using` for a designer
+attribute upstream does not compile, gets a stand-in type), with upstream's options (no dialog, all-capital words and words
+starting with a digit passed over) and its dictionaries (`setup/assets/Dictionaries`, copied to the Dictionaries folder next to
+the app; the folder rule is repeated, as upstream's `GetDictionaryDir` asserts GitExtensions.exe and throws here). The
+dictionary is upstream's `Detached().Dictionary` of the repository (default en-US). After upstream's 250 ms pause, a text of at
+least four characters and under 5000 is checked off the UI thread; the auto-completion words count as known, as upstream's
+`AddAutoCompleteWords`. The marks are upstream's `SpellCheckEditControl`'s, drawn by an adorner over the text box's presenter
+(`SpellingUnderlines`): a red wave under each misspelled word, and with "Mark ill formed lines" (`markillformedlinesincommitmsg`)
+a translucent yellow mark over the text past 50 characters of the first line, all of the second and past 72 of the others, and
+over an empty first line. The message box menu is made as upstream's when it opens: the suggestions in bold, "Add to
+dictionary", "Ignore word", "Remove word", then Cut, Copy, Paste, Delete, Select all, "Dictionary" (None and the dictionaries;
+a choice is the repository's local setting), "Mark ill formed lines" and "Provide auto completion", with FormCommit's "Word
+wrap" before the first separator. Words added go to NetSpell's user word list (`NetSpell/user.dic` in the application data
+folder), shared with upstream on the same machine. Differences: the menu is for the word under the pointer when it is opened
+with the pointer (upstream's for the word at the caret, as a right click there does not move it); "Ignore word" ignores the
+word for the window's life, where upstream's calls NetSpell's `IgnoreWord`, which only moves past it, so its next check marks
+the word again; the suggestions show whatever "Provide auto completion" says, where upstream shows them only while it is on.
+Left: the tooltip while the words are read. Tests: `CommitSpellCheckerTests`, `CommitSpellingTests`; seen in a screenshot of
+the commit window on macOS.
 
 **Avatars** (`ported`). 2026-10-11: upstream's provider chain without its System.Drawing images, which do not load off
 Windows: "Default" asks GitHub, then Gravatar (with the generated style as Gravatar's fallback); "Custom" follows the
@@ -2554,7 +2620,7 @@ the toolbars wrap onto another line where upstream's tool strips put the items t
 and `git submodule update` gets the submodule's path in the superproject, which git takes as it takes the full path. The
 row is `ported` (adapted).
 
-**FilterToolBar** (`partial`). 2026-10-13: upstream's filter toolstrip in its order and with its images: the advanced
+**FilterToolBar** (`ported`). 2026-10-13: upstream's filter toolstrip in its order and with its images: the advanced
 filter split button (opens the dialog, or with a filter on offers "Reset path filter", "Reset revision filters" and
 "Advanced filter"; `FunnelExclamation` and the filter summary as tooltip while a filter is on), the reflog toggle, the
 branches split button (all, current only, filtered; the button shows the chosen item's image and text), the "Branches:"
@@ -2567,6 +2633,10 @@ it (upstream has neither; the grid's quick search stays). Not ported: the shortc
 "No results found" item, and the drop-down width that fits the longest branch.
 Added 2026-11-08: upstream's `SetShortcutKeys` (the filter menu's three items, which is all upstream sets) and the "No
 results found" item; the box now matches whatever the case, as upstream. Left: the drop-down width.
+2026-11-09, on macOS: upstream's `ResizeDropDownWidth` on the "Branches:" and "Filter:" boxes (`DropDownWidth`): the list is as
+wide as its longest item plus a scroll bar, at least 200 and at most 600 pixels, while the box keeps its width; for the branches
+the matches shown are measured again as the text changes, as upstream's `UpdateBranchFilterItems`. The list items' padding is
+added, as Avalonia's items have some. Tests: `MainWindowTests`.
 2026-11-04: the toolstrip is a control of its own (`FilterToolBar`, as upstream's), bound to a grid through
 `IFilterToolBarGrid` (upstream's `IRevisionGridFilter`): the browse window's and, as upstream's FormFileHistory, the file
 history's (see FormFileHistory). Upstream's `SetRevisionFilter` is ported for the file history's `filterByRevision`. The
@@ -2579,6 +2649,7 @@ own (`RevisionFilter.ToRevisionArguments` claimed the log format always reads th
 only with `--parents`).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the shortcut texts in the
 tooltips and menus, the "No results found" item and the branch drop-down as wide as the longest branch.
+2026-11-09: all three are done (2026-11-08 and the drop-down width note above), so the row is `ported`.
 
 **Terminals** (`partial`). 2026-10-13: upstream's terminal split button (`userShell`): on Windows the installed shells in
 upstream's order and with its images (bash as git-bash.exe, else bash.exe or sh.exe; cmd; pwsh; powershell), found with
@@ -2588,7 +2659,7 @@ Not ported: the embedded console tab (ConEmu), which is Windows-only.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the embedded console tab
 (ConEmu, Windows only).
 
-**Revision grid rows and View menu** (`partial`). 2026-10-13: no column header row, as upstream's grid. The labels as
+**Revision grid rows and View menu** (`ported`). 2026-10-13: no column header row, as upstream's grid. The labels as
 `MessageColumnProvider` lays them out (`GridLabels` in core): no HEAD label, sorted as `SortRefs` (checked-out branch,
 local, remote, tags), the checked-out branch bold after upstream's filled arrow, a local branch and the remote branch it
 tracks on the same commit as one pair (the remote shown by its remote's name, notched against the branch's point), the
@@ -2635,6 +2706,24 @@ of them as the tooltip, the notes then out of the body). Either choice reads the
 and format patch grids. Not ported: their hotkeys (no default key upstream).
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the session refs and the
 superproject's labels and refs.
+2026-11-09, on macOS: both. The View menu's "Show session checkpoints" (`showSessionRefs`, after "Show git notes") drops
+the exclusions of the refs coding agents keep (see FilterInfo); it also applies to the file history, choose commit and
+format patch grids, and the file history's View menu has it too. The "Grid labels" group has upstream's "Show superproject
+tags", "Show superproject remote branches" and "Show superproject branches" (`showSuperprojectTags`, off;
+`showSuperprojectRemoteBranches`, off; `showSuperprojectBranches`, on), each reading the grid again as upstream's toggles.
+In a submodule, after the commits are shown, `SuperprojectLabels` reads upstream's `SuperProjectInfo`: the commit the
+superproject's index records (`GetSuperprojectCurrentCheckoutAsync`), or for a conflict on the submodule its base, local
+and remote commits (`GetConflictAsync`), and up to 100 of the superproject's refs of the chosen kinds by committer date,
+each with the submodule commit its tree records (`ls-tree`, as `GetSubmoduleItemsForEachRefAsync`, reimplemented because
+upstream's reads `AppSettings` itself). The labels are upstream's: first an empty label after a filled arrow on the
+recorded commit, or "Base", "Local" and "Remote" after an outlined arrow, in orange red adapted to the background
+(`DrawSuperprojectInfo`); a commit's own label whose ref the superproject has too is dashed; then the superproject's
+other refs as dashed labels in their kind's color, at most four with the last as "…" (`DrawSuperprojectRefs`). As
+upstream, a remote branch nestled against its branch is not matched, so the superproject's ref of that name is drawn
+again; the superproject's labels have no tooltip, menu or highlight frame, as upstream gives them no hit box. Differences:
+only the browse window's grid shows the superproject labels (upstream's file history and other grids would too); the
+hover highlight of a commit's ancestry also starts on them. Tests: `GridLabelsTests`, `RevisionFilterTests`,
+`GridSuperprojectTests` (a real submodule, with a conflict), `GridViewTests`.
 
 **CommitInfo and the detail tabs** (`partial`). 2026-10-13: the detail tabs carry upstream's images (Commit, Diff, File tree,
 GPG). The commit info is upstream's layout on the window color: the avatar beside the header, whose rows come from
@@ -2661,6 +2750,12 @@ uses `core.editor` and a console window for a terminal editor. The grid's notes 
 see MessageColumnProvider.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the Console tab, the Output
 history tab and the translations of the commit info texts.
+2026-11-09, on macOS: the translations. The texts the new shell keeps as upstream's English (`CommitInfo`'s related links,
+"Derives from tag", "commits", GitUI `TranslatedStrings`' "Contained in ..." texts, and `RevisionGpgInfoControl`'s "not
+signed" texts) go through the current language's translation of upstream's texts (`UpstreamTranslation.ByText`, passed to
+`CommitInfoReader`); the header's labels already came translated from upstream's `ResourceManager` renderers. Git's own
+messages stay as git gives them. Left: the Console and Output history tabs (the Output history tab came the same day, see
+OutputHistory). Tests: `CommitInfoTests` (core and app).
 
 **macOS notes, 2026-11-08** (no upstream form to compare with; `MACOS.md`, MAC3 and MAC4). `HotkeySettingsManager`: three defaults
 differ on macOS only, where the system takes upstream's key (`HotkeyTable`'s `macOSDefaults`: Commit, Merge, the left panel's
@@ -2668,3 +2763,19 @@ MultiSelect), and that MultiSelect always toggles there. `EditNetSpell`: a typin
 shows the list when they arrive, on every OS; upstream shows nothing until the next key. The words are read again each time the
 changes are, so this was not only a moment after the window opens, and it made a test flaky. FormBrowse's and the other "new
 instance" items go through `NewInstanceCommand`, which on macOS uses `open -n` in a bundle.
+
+**OutputHistory** (`ported`). 2026-11-09, on macOS: upstream's output history, one for the app (`OutputHistory`, reimplementing
+GitUI's internal `OutputHistoryModel`): at most `OutputHistoryDepth` entries (20; 0 turns it off; read when it is first needed,
+as upstream reads it at start), the oldest dropped first, each the time and the run's command and output without terminal
+color codes and an empty line, then upstream's "###" end mark. It records what upstream's does: each run of the process window
+(`FormStatus.Done`; here `RepositoryOperationsViewModel.RunRemoteAsync`) and the trace output (everything in a release build,
+exceptions and `DebugHelper.Trace` messages in a debug one, through upstream's `ISubscribableTraceListener`). The browse window
+shows it as upstream's `OutputHistoryControl`: read-only text in the fixed-width font, at its end, with Copy (the selection or
+all) and Clear; as the "Output" tab of the lower pane with upstream's `GitCommandLog` image (`ShowOutputHistoryAsTab`, on), or
+as a panel below the left panel (`OutputHistoryPanelVisible`). Upstream's hotkey `FocusOutputHistoryAndToggleIfPanel` (Ctrl+9,
+Cmd+9 on macOS) selects the tab, or shows or hides the panel (showing the left panel first). The settings are on the "Browse
+repository window" page; a changed choice also shows the panel when it is one, as upstream's. Differences: a run is recorded
+with the process window's title (e.g. "Fetch origin") instead of git's command line, as an operation here may run several git
+commands; the panel has a fixed height (upstream's follows its splitters); upstream records the commands its process dialog
+runs, and the new shell runs fewer of them in a process window (a commit, for example, has no window here), so fewer runs are
+recorded. Tests: `OutputHistoryTests`, `RepositoryOperationsViewModelTests`, `OutputHistoryUiTests`.

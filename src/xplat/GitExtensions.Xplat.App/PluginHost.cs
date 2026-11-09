@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -9,8 +11,10 @@ using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Extensibility.Settings;
 using GitExtensions.Xplat.App.RepositoryHosts;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
+using GitExtUtils;
 using GitUIPluginInterfaces;
 using Form = System.Windows.Forms.Form;
 using Image = System.Drawing.Image;
@@ -32,7 +36,7 @@ internal sealed class PluginHost : IGitUICommands
     public const string IconResourceName = "GitExtensions.Xplat.PluginIcon.png";
 
     private static readonly IGitExecutorProvider
-        _executorProvider = new GitExecutorProvider(new GitDirectoryResolver());
+        _executorProvider = PluginServices.Container.GetRequiredService<IGitExecutorProvider>();
 
     private readonly Window _owner;
     private readonly RepositoryOperationsViewModel _actions;
@@ -202,12 +206,46 @@ internal sealed class PluginHost : IGitUICommands
         }
     }
 
+    private static byte[]? PngOf(Image? image)
+    {
+        if (image is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using MemoryStream stream = new();
+            image.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+            return stream.ToArray();
+        }
+        catch (Exception ex) when (ex is PlatformNotSupportedException or TypeInitializationException
+                                       or System.Runtime.InteropServices.ExternalException)
+        {
+            return null;
+        }
+    }
+
+    private static byte[]? EmbeddedIcon(Assembly assembly)
+    {
+        using Stream? stream = assembly.GetManifestResourceStream(IconResourceName);
+        if (stream is null)
+        {
+            return null;
+        }
+
+        using MemoryStream copy = new();
+        stream.CopyTo(copy);
+        return copy.ToArray();
+    }
+
     /// <summary>
-    ///  The services upstream's plugins ask for that the new shell has: the git executor provider (the Statistics plugin opens
-    ///  submodules with it). Upstream's service container has more; the others are not available.
+    ///  Upstream's services without WinForms (<see cref="PluginServices"/>): the git executor provider (the Statistics plugin
+    ///  opens submodules with it), the file system, the git directory resolver, the repository description provider, the
+    ///  app title generator, the link factory, the submodule status provider, the branch name normaliser and the trace
+    ///  listener. Upstream's GitUI services are not available.
     /// </summary>
-    public object? GetService(Type serviceType)
-        => serviceType == typeof(IGitExecutorProvider) ? _executorProvider : null;
+    public object? GetService(Type serviceType) => PluginServices.Container.GetService(serviceType);
 
     public void RaisePostBrowseInitialize(IWin32Window? owner)
         => PostBrowseInitialize?.Invoke(this, new GitUIEventArgs(owner, this));
@@ -273,9 +311,12 @@ internal sealed class PluginHost : IGitUICommands
     public IGitUICommands WithWorkingDirectory(string? workingDirectory)
         => WithGitModule(CreateModule(workingDirectory ?? ""));
 
-    // As upstream: the commit window's "Commit templates" menu lists them. The icon is not shown.
+    // As upstream: the commit window's "Commit templates" menu lists them with their icon. A plugin built for the new shell
+    // has no System.Drawing images (they throw off Windows), so its embedded icon stands in: the plugin's own icon, which is
+    // what upstream's GitHub plugin passes. NoInlining keeps the plugin as the calling assembly.
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public void AddCommitTemplate(string key, Func<string> addingText, Image? icon, bool isRegex = false)
-        => CommitTemplates.Register(key, addingText, isRegex);
+        => CommitTemplates.Register(key, addingText, isRegex, PngOf(icon) ?? EmbeddedIcon(Assembly.GetCallingAssembly()));
 
     public void RemoveCommitTemplate(string key) => CommitTemplates.Unregister(key);
 

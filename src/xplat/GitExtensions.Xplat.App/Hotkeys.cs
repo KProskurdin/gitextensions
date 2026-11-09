@@ -35,6 +35,7 @@ public enum BrowseCommand
     StashPop,
     FindFileInSelectedCommit,
     AddNotes,
+    FocusOutputHistoryAndToggleIfPanel,
 }
 
 /// <summary>
@@ -365,6 +366,7 @@ public static class Hotkeys
             [BrowseCommand.StashPop] = (17, "StashPop"),
             [BrowseCommand.FindFileInSelectedCommit] = (9, "FindFileInSelectedCommit"),
             [BrowseCommand.AddNotes] = (8, "AddNotes"),
+            [BrowseCommand.FocusOutputHistoryAndToggleIfPanel] = (47, "FocusOutputHistoryAndToggleIfPanel"),
         },
         new Dictionary<BrowseCommand, WinFormsKeys>
         {
@@ -391,6 +393,7 @@ public static class Hotkeys
             [BrowseCommand.StashPop] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.Down,
             [BrowseCommand.FindFileInSelectedCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.F,
             [BrowseCommand.AddNotes] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.N,
+            [BrowseCommand.FocusOutputHistoryAndToggleIfPanel] = WinFormsKeys.Control | WinFormsKeys.D9,
         },
         macOSDefaults: new Dictionary<BrowseCommand, WinFormsKeys>
         {

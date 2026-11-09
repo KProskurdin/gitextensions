@@ -114,4 +114,66 @@ internal sealed class GridLabelsTests
         GridLabels.Layout(labels, new GridViewOptions(ShowTags: false, ShowRemoteBranches: false))
             .Select(label => label.Text).Should().Equal("x");
     }
+
+    [Test]
+    public void Layout_should_dash_a_label_the_superproject_has_too_and_add_its_other_refs_after()
+    {
+        IReadOnlyList<GridLabel> layout = GridLabels.Layout(
+        [
+            new RefLabel("main", RefKind.Branch) { IsCurrent = true },
+            new RefLabel("v1", RefKind.Tag),
+        ],
+        _all,
+        [
+            new RefLabel("topic", RefKind.Branch),
+            new RefLabel("main", RefKind.Branch),
+            new RefLabel("v1", RefKind.RemoteBranch),
+        ]);
+
+        layout.Select(label => (label.Text, label.Kind, label.InSuperproject, label.Ref is null)).Should().Equal(
+            ("main", RefKind.Branch, true, false),
+            ("v1", RefKind.Tag, false, false),
+            ("topic", RefKind.Branch, true, true),
+            ("v1", RefKind.RemoteBranch, true, true));
+        layout[2].Shape.Should().Be(GridLabelShape.Rect, "upstream draws the superproject's refs as plain labels");
+    }
+
+    [Test]
+    public void Layout_should_draw_the_superproject_ref_of_a_nestled_remote_branch_again_as_upstream()
+    {
+        IReadOnlyList<GridLabel> layout = GridLabels.Layout(
+        [
+            new RefLabel("main", RefKind.Branch) { Upstream = "origin/main" },
+            new RefLabel("origin/main", RefKind.RemoteBranch) { Remote = "origin" },
+        ],
+        _all,
+        [new RefLabel("origin/main", RefKind.RemoteBranch)]);
+
+        layout.Select(label => (label.Text, label.InSuperproject)).Should().Equal(("main", false), ("origin/main", true));
+        layout[0].Nestled!.InSuperproject.Should().BeFalse();
+    }
+
+    [Test]
+    public void Layout_should_show_at_most_four_superproject_refs_the_last_as_an_ellipsis()
+    {
+        RefLabel[] refs = [.. Enumerable.Range(1, 6).Select(i => new RefLabel($"b{i}", RefKind.Branch))];
+
+        GridLabels.Layout([], _all, refs).Select(label => label.Text).Should().Equal("b1", "b2", "b3", "…");
+        GridLabels.Layout([], _all, refs[..3]).Select(label => label.Text).Should().Equal("b1", "b2", "b3");
+    }
+
+    [Test]
+    public void Marks_should_be_upstreams_superproject_info_labels()
+    {
+        SuperprojectLabels checkout = new() { CurrentCommit = "aaaa" };
+        SuperprojectLabels conflict = new() { ConflictBase = "aaaa", ConflictLocal = "bbbb", ConflictRemote = "aaaa" };
+
+        checkout.Marks("AAAA").Select(label => (label.Text, label.IsCurrent, label.IsMergeSource)).Should()
+            .Equal(("", true, false));
+        checkout.Marks("bbbb").Should().BeEmpty();
+        conflict.Marks("aaaa").Select(label => label.Text).Should().Equal("Base", "Remote");
+        conflict.Marks("bbbb").Should().ContainSingle().Which.Should().Match<GridLabel>(label =>
+            label.Text == "Local" && label.IsMergeSource && label.InSuperproject && label.IsSuperprojectCommit
+            && label.Ref == null);
+    }
 }

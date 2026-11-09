@@ -147,6 +147,8 @@ internal sealed class GitActionBarTests
         Find<Button>(window, "MoreActionButton").IsVisible.Should().BeFalse();
         object? conflictBackground = Find<Border>(window, "StateBanner").Background;
         conflictBackground.Should().NotBeNull();
+        Find<Image>(window, "StateBannerIcon").Source.Should().BeSameAs(UpstreamImages.Named("SolveMerge"),
+            "upstream's IconBox shows the solve merge picture while there are conflicts");
 
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "both");
         _repo.Run("add", "a.txt");
@@ -154,6 +156,7 @@ internal sealed class GitActionBarTests
         WaitUntil(() => Find<TextBlock>(window, "StateBannerText").Text == "Merge is currently in progress.");
         Find<Button>(window, "ContinueActionButton").IsVisible.Should().BeTrue();
         Find<Border>(window, "StateBanner").Background.Should().NotBe(conflictBackground);
+        Find<Image>(window, "StateBannerIcon").Source.Should().BeSameAs(UpstreamImages.Named("information"));
 
         Click(window, "ContinueActionButton");
 
@@ -182,6 +185,7 @@ internal sealed class GitActionBarTests
         WaitUntil(() => _repo.Run("for-each-ref", "--format=%(refname)", "refs/bisect/").Contains("refs/bisect/bad"));
         WaitUntil(() => Find<Border>(window, "BisectBanner").IsVisible);
         Find<TextBlock>(window, "BisectBannerText").Text.Should().Be("Bisect is currently in progress.");
+        Find<Image>(window, "BisectBannerIcon").Source.Should().NotBeNull().And.BeSameAs(UpstreamImages.Named("information"));
 
         // A mark's output is its result (the next commit to test), so it stays open although the setting closes it.
         ProcessWindow process = window.OwnedWindows.OfType<ProcessWindow>().Single();

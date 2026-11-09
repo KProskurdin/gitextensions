@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -203,6 +204,56 @@ internal sealed class PluginHostTests
         item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
         WaitUntil(() => window.OwnedWindows.OfType<ErrorWindow>().Any());
+    }
+
+    [AvaloniaTest]
+    public void A_plugin_that_failed_to_load_shows_its_error_and_OK_copies_it()
+    {
+        FailedPlugin failed = new(new InvalidOperationException("broken plugin"));
+        TestAppBuilder.UsePlugins(_plugin, failed);
+        MainWindow window = NewWindow();
+        window.Show();
+        WaitForPluginItem(window);
+        MenuItem item = Find<MenuItem>(window, "PluginsMenu").Items.OfType<MenuItem>().Single(entry => entry.Tag == failed);
+
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
+        MessageBoxWindow box = window.OwnedWindows.OfType<MessageBoxWindow>().Single();
+        box.Title.Should().Be("Plugin loading failure");
+        Find<TextBlock>(box, "MessageText").Text.Should().Contain("broken plugin").And.EndWith("Copy error details to clipboard?");
+        box.GetLogicalDescendants().OfType<Button>().Single(button => button.Name == "OKButton")
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        WaitUntil(() => ClipboardText(window) == failed.Error);
+    }
+
+    [AvaloniaTest]
+    public void A_plugin_reads_the_selected_commit_and_goes_to_a_ref_through_BrowseRepo()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        MenuItem item = WaitForPluginItem(window);
+        Open(window, _repo.Path);
+        WaitUntil(() => item.IsEnabled);
+        ListBox commits = Find<ListBox>(window, "CommitList");
+        commits.SelectedItem = commits.Items.OfType<Core.CommitHistory.CommitListItem>().Single(row => row.Row.Subject == "first");
+        WaitUntil(() => window.SelectedRevisions is [{ Subject: "first" }]);
+        GitUIPluginInterfaces.GitRevision? selected = null;
+        _plugin.OnExecute = args =>
+        {
+            selected = args.GitUICommands.BrowseRepo!.GetLatestSelectedRevision();
+            args.GitUICommands.BrowseRepo.GoToRef("HEAD", showNoRevisionMsg: true);
+            return false;
+        };
+
+        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+        selected.Should().NotBeNull();
+        selected!.Subject.Should().Be("first");
+        selected.ParentIds.Should().BeEmpty();
+        selected.ObjectId.ToString().Should().Be(_repo.Run("rev-parse", "HEAD~1").Trim());
+        WaitUntil(() => window.SelectedRevisions is [{ Subject: "second" }]);
     }
 
     [AvaloniaTest]
@@ -482,5 +533,13 @@ internal sealed class PluginHostTests
 
         private void OnRepositoryChanged(object? sender, GitUIEventArgs e)
             => Calls.Add(Dispatcher.UIThread.CheckAccess() ? "repository changed on UI thread" : "repository changed");
+    }
+
+    private static string? ClipboardText(Window window)
+    {
+        Dispatcher.UIThread.RunJobs();
+        Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
+        WaitUntil(() => text.IsCompleted);
+        return text.Result;
     }
 }

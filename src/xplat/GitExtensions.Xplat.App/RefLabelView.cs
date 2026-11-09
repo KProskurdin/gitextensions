@@ -18,7 +18,9 @@ namespace GitExtensions.Xplat.App;
 ///  shape in a light shade of the ref's color (filled when <c>FillRefLabels</c> is on, or with the window color on a
 ///  selected row), the text in a darker shade, the checked-out branch bold after a filled arrow, and the label nestled
 ///  against it (dashed when it only shows ahead and behind arrows). A bisect mark is upstream's image instead. The label
-///  under the pointer gets upstream's highlight frame and its tooltip (<see cref="RefLabelTooltips"/>).
+///  under the pointer gets upstream's highlight frame and its tooltip (<see cref="RefLabelTooltips"/>). In a submodule a
+///  label the superproject has is dashed, and the superproject's own labels take no frame, as upstream draws them without
+///  a hit box.
 /// </summary>
 public sealed class RefLabelView : Control
 {
@@ -101,7 +103,8 @@ public sealed class RefLabelView : Control
     {
         base.OnPointerMoved(e);
         Point point = e.GetPosition(this);
-        SetHovered(Parts(Bounds.Height).OfType<LabelPart>().LastOrDefault(part => part.Rect.Contains(point))?.Label);
+        SetHovered(Parts(Bounds.Height).OfType<LabelPart>()
+            .LastOrDefault(part => part.Rect.Contains(point) && part.Label is not { InSuperproject: true, Ref: null })?.Label);
         string? tooltip = TooltipAt(point);
         ToolTip.SetTip(this, tooltip);
 
@@ -206,7 +209,7 @@ public sealed class RefLabelView : Control
             return parts;
         }
 
-        LabelPart first = Shape(label, 0, cellHeight, dashed: false);
+        LabelPart first = Shape(label, 0, cellHeight, dashed: label.InSuperproject);
         parts.Add(first);
         if (label.Nestled is { } nested)
         {
@@ -243,12 +246,15 @@ public sealed class RefLabelView : Control
         };
     }
 
-    // Upstream's DrawRef: the color set on the label's remote, else its kind's.
+    // Upstream's DrawRef: the color set on the label's remote, else its kind's; DrawSuperprojectInfo's orange red adapted to
+    // the background.
     private DrawingColor ColorOf(GridLabel label)
-        => label.Remote is { } remote && GetValue(RemoteColorsProperty) is { } colors
-           && colors.TryGetValue(remote, out DrawingColor color)
-            ? color
-            : ColorOf(label.Kind);
+        => label.IsSuperprojectCommit
+            ? DrawingColor.OrangeRed.AdaptForeColor(ThemeBrushes.Current.Colors.GetNonEmpty(System.Drawing.KnownColor.Window))
+            : label.Remote is { } remote && GetValue(RemoteColorsProperty) is { } colors
+              && colors.TryGetValue(remote, out DrawingColor color)
+                ? color
+                : ColorOf(label.Kind);
 
     // Upstream's GetHeadColor; an artificial row's label (HEAD here) has OtherTag's color.
     private static DrawingColor ColorOf(RefKind kind)

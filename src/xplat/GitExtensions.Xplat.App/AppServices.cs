@@ -2,10 +2,12 @@ using System.Reflection;
 using GitExtensions.Xplat.Core.Avatars;
 using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
+using GitUI.Theming;
 
 namespace GitExtensions.Xplat.App;
 
@@ -20,6 +22,9 @@ public static class AppServices
     private static IWindowPlacementStore? _windowPlacements;
     private static ICommitMessageStore? _commitMessages;
     private static IAppThemeService? _themes;
+    private static IThemePathProvider? _themePaths;
+    private static string? _dictionaryFolder;
+    private static OutputHistory? _outputHistory;
     private static IScriptStore? _scripts;
     private static AvatarService? _avatars;
 
@@ -123,8 +128,75 @@ public static class AppServices
     /// </summary>
     public static IAppThemeService Themes
     {
-        get => _themes ??= new UpstreamThemeService(AppThemePaths.Default());
+        get => _themes ??= new UpstreamThemeService(ThemePaths);
         set => _themes = value;
+    }
+
+    /// <summary>
+    ///  Upstream's <c>ThemePathProvider</c>: the built-in themes' folder and the user's (null for a portable app). Created on
+    ///  first use, as <see cref="Themes"/>.
+    /// </summary>
+    public static IThemePathProvider ThemePaths
+    {
+        get => _themePaths ??= AppThemePaths.Default();
+        set => _themePaths = value;
+    }
+
+    /// <summary>
+    ///  Upstream's output history, one for the app, of <c>OutputHistoryDepth</c> entries as the setting is when it is first
+    ///  needed (upstream reads it at start). As upstream's, it also records the trace output: everything in a release build,
+    ///  only exceptions and <c>DebugHelper.Trace</c> messages in a debug one.
+    /// </summary>
+    public static OutputHistory OutputHistory
+    {
+        get => _outputHistory ??= CreateOutputHistory(Preferences.OutputHistoryDepth);
+        set => _outputHistory = value;
+    }
+
+    /// <summary>
+    ///  Upstream's <c>AppSettings.GetDictionaryDir</c>: the spelling dictionaries in the Dictionaries folder next to the app.
+    ///  The rule is repeated, as <c>AppThemePaths</c> repeats the themes', because upstream's asserts the app is
+    ///  GitExtensions.exe and throws here.
+    /// </summary>
+    public static string DictionaryFolder
+    {
+        get => _dictionaryFolder ??= Path.Combine(AppContext.BaseDirectory, "Dictionaries");
+        set => _dictionaryFolder = value;
+    }
+
+    /// <summary>
+    ///  Makes a commit message box's spelling checker (one per box, as upstream's), which keeps the words added to the
+    ///  dictionary in NetSpell's user word list.
+    /// </summary>
+    public static Func<Core.Spelling.CommitSpellChecker> NewSpellChecker { get; set; } =
+        () => new Core.Spelling.CommitSpellChecker(DictionaryFolder);
+
+    /// <summary>
+    ///  The platform's file manager, for upstream's "show in file explorer" commands.
+    /// </summary>
+    public static IFileManager FileManager { get; set; } =
+        new SystemFileManager(new SystemProcessLauncher(), HostPlatform.Current);
+
+    private static OutputHistory CreateOutputHistory(int depth)
+    {
+        OutputHistory history = new(depth);
+        if (PluginServices.Container.GetService(typeof(GitExtUtils.ISubscribableTraceListener)) is GitExtUtils.ISubscribableTraceListener traces)
+        {
+            traces.TraceReceived += (in string message) =>
+            {
+#if DEBUG
+                // Upstream's ServiceContainerRegistry: not the noisy Debug.Write output.
+                const char noBreakSpace = '\u00a0';
+                if (!message.Contains("Exception", StringComparison.Ordinal) && !message.Contains($":{noBreakSpace}", StringComparison.Ordinal))
+                {
+                    return;
+                }
+#endif
+                history.Record(message, DateTime.Now);
+            };
+        }
+
+        return history;
     }
 
     /// <summary>

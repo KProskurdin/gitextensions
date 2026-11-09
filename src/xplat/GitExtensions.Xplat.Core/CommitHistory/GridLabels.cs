@@ -44,6 +44,18 @@ public sealed record GridLabel(string Text, RefKind Kind, GridLabelShape Shape =
     ///  outlined arrow; never for a label nestled against another.
     /// </summary>
     public bool IsMergeSource { get; init; }
+
+    /// <summary>
+    ///  Upstream's dashed outline for a submodule's grid: the superproject has this ref too, or the label is only the
+    ///  superproject's (<see cref="SuperprojectLabels"/>).
+    /// </summary>
+    public bool InSuperproject { get; init; }
+
+    /// <summary>
+    ///  One of upstream's <c>DrawSuperprojectInfo</c> labels, in its orange red: the commit the superproject records, or a
+    ///  side of a conflict on the submodule.
+    /// </summary>
+    public bool IsSuperprojectCommit { get; init; }
 }
 
 /// <summary>
@@ -70,7 +82,13 @@ public sealed record GridViewOptions(bool ShowTags = true, bool ShowRemoteBranch
 /// </summary>
 public static class GridLabels
 {
-    public static IReadOnlyList<GridLabel> Layout(IReadOnlyList<RefLabel> labels, GridViewOptions options)
+    /// <summary>
+    ///  The labels of a commit with <paramref name="labels"/>. In a submodule, a label whose ref the superproject has too
+    ///  (in <paramref name="superprojectRefs"/>) is dashed, and the superproject's other refs on the commit follow as dashed
+    ///  labels of their own (<see cref="SuperprojectLabels.Remaining"/>).
+    /// </summary>
+    public static IReadOnlyList<GridLabel> Layout(IReadOnlyList<RefLabel> labels, GridViewOptions options,
+        IReadOnlyList<RefLabel>? superprojectRefs = null)
     {
         List<RefLabel> refs = [.. labels.Where(label => label.Kind != RefKind.Head && Shows(label, options))];
         refs.Sort(Compare);
@@ -88,6 +106,9 @@ public static class GridLabels
             ? trackedRemotes.Keys.FirstOrDefault()
             : null;
 
+        // As upstream, a remote branch nestled against its local branch is not matched, so the superproject's ref of that
+        // name is drawn again after the labels.
+        List<RefLabel> superproject = [.. superprojectRefs ?? []];
         List<GridLabel> layout = [];
         foreach (RefLabel label in refs)
         {
@@ -95,6 +116,9 @@ public static class GridLabels
             {
                 continue;
             }
+
+            bool inSuperproject = superproject.FirstOrDefault(other => other.Kind == label.Kind && other.Name == label.Name)
+                is { } match && superproject.Remove(match);
 
             if (label.IsBisect)
             {
@@ -107,6 +131,7 @@ public static class GridLabels
                 layout.Add(new GridLabel(label.Name, label.Kind, GridLabelShape.PointRight, label.IsCurrent)
                 {
                     Ref = label,
+                    InSuperproject = inSuperproject,
                     Nestled = new GridLabel(tracked.Remote ?? tracked.Name, RefKind.RemoteBranch, GridLabelShape.NotchLeft)
                     {
                         Ref = tracked,
@@ -125,6 +150,7 @@ public static class GridLabels
                     Ref = label,
                     Remote = label.Remote,
                     IsMergeSource = label.IsMergeSource,
+                    InSuperproject = inSuperproject,
                     Nestled = new GridLabel(arrows, remote ? RefKind.Branch : RefKind.RemoteBranch,
                         remote ? GridLabelShape.PointLeft : GridLabelShape.NotchLeft)
                     {
@@ -144,9 +170,11 @@ public static class GridLabels
                 Ref = label,
                 Remote = label.Remote,
                 IsMergeSource = label.IsMergeSource,
+                InSuperproject = inSuperproject,
             });
         }
 
+        layout.AddRange(SuperprojectLabels.Remaining(superproject));
         return layout;
     }
 
