@@ -503,14 +503,12 @@ internal sealed class GitOperationsTests
             _repo.Run("submodule", "deinit", "-q", "-f", "lib");
 
             RepositorySnapshot before = Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path));
-            before.Submodules.Should().ContainSingle().Which.Should()
-                .Be(new SubmoduleInfo("lib", IsInitialized: false, IsUpToDate: false));
+            before.Submodules.Should().ContainSingle().Which.Should().Be(new SubmoduleInfo("lib"));
+            File.Exists(Path.Combine(_repo.Path, "lib", "a.txt")).Should().BeFalse();
 
             Wait(_operations.UpdateSubmodulesAsync(_repo.Path, path: null));
 
             File.Exists(Path.Combine(_repo.Path, "lib", "a.txt")).Should().BeTrue();
-            Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).Submodules.Should().ContainSingle()
-                .Which.IsInitialized.Should().BeTrue();
         }
         finally
         {

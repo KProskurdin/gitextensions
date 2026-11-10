@@ -179,6 +179,12 @@ button following the default pull action. Added 2026-10-11: the author's avatar 
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the Console tab (ConEmu,
 Windows only) and the Output history tab. Stale above: the GPG tab, the toolbar's branch and repository drop-downs and
 the Navigate and View menus are ported.
+2026-11-10: opening a repository reads its state (branches, tags, status) while the commits load, not after them, and the
+state no longer runs `git submodule status`, which took 0.9 to 1.7 s in this repository: only the submodule list from
+.gitmodules is used (whether to update submodules after a checkout, as upstream's `HasSubmodules`), and the left panel's
+submodule tree reads its own status as before. While a repository opens, the left panel is built once both reads are in
+(`OpenRepositoryAsync`), since the state can arrive before the commit list names the repository. Opening this repository
+went from about 3.3 s to about 1.3 s (Windows, Debug build), with the left panel shown after about 0.8 s instead of 2.7 s.
 
 **RevisionGridControl** (`ported`). Added 2026-10-06: columns (graph and message, author, date, commit); HEAD, branch,
 remote-branch and tag labels colored by kind; a context menu (copy hash or message, create a branch or tag here, browse

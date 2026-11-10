@@ -151,9 +151,8 @@ public sealed record WorktreeInfo(string Path, string Display, bool IsMain, bool
     GitWorktreeHeadType HeadType = GitWorktreeHeadType.Branch, string? Branch = null, string? Sha1 = null);
 
 /// <summary>
-///  A submodule as <c>git submodule status</c> reports it, read through upstream's <c>GitModule.GetSubmodulesInfo</c>.
+///  A submodule listed in .gitmodules (upstream's <c>GitModule.GetSubmodulesLocalPaths</c>). Its status is not read here:
+///  <c>git submodule status</c> takes seconds in a repository with a few submodules, and the windows that show a status
+///  read it themselves.
 /// </summary>
-public sealed record SubmoduleInfo(string Path, bool IsInitialized, bool IsUpToDate)
-{
-    public string Display => !IsInitialized ? $"{Path} (not initialized)" : IsUpToDate ? Path : $"{Path} (changed)";
-}
+public sealed record SubmoduleInfo(string Path);

@@ -928,12 +928,26 @@ public partial class MainWindow : Window
         _openings++;
         try
         {
+            // The repository's state is read while the commits are, as neither needs the other. A folder that is no
+            // repository is left to the commit list, which reports it once.
+            bool readsState = GitModule.IsValidGitWorkingDir(path);
+            Task state = readsState ? _repository.RefreshAsync(path) : Task.CompletedTask;
             await _commits.OpenAsync(path);
-            if (RepositoryPath is { } repositoryPath)
+            if (RepositoryPath is not { } repositoryPath)
+            {
+                // The commits could not be read: the state read meanwhile belongs to no open repository.
+                if (readsState)
+                {
+                    _repository.Clear();
+                }
+            }
+            else
             {
                 Run(() => ShowSuperprojectLabelsAsync(repositoryPath));
                 ShowRepositoryPanels();
-                await _repository.RefreshAsync(repositoryPath);
+                await state;
+                ShowRepoObjects();
+                LoadSubmoduleStructure();
                 await _recent.AddAsync(repositoryPath);
                 if (_showUntrackedReadFor != repositoryPath)
                 {
@@ -1985,8 +1999,10 @@ public partial class MainWindow : Window
                 RefLabelView.SetRemoteColors(CommitList, _repository.RemoteColors);
                 break;
             case nameof(RepositoryViewModel.IsLoading):
-                // The left panel is built once the whole snapshot is read (upstream refills its trees after a refresh).
-                if (!_repository.IsLoading)
+                // The left panel is built once the whole snapshot is read (upstream refills its trees after a refresh). While a
+                // repository opens, OpenRepositoryAsync builds it: the snapshot can arrive before the commit list names the
+                // repository it belongs to.
+                if (!_repository.IsLoading && _openings == 0)
                 {
                     ShowRepoObjects();
                     LoadSubmoduleStructure();

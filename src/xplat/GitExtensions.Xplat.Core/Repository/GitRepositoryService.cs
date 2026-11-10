@@ -172,27 +172,9 @@ public sealed class GitRepositoryService : IRepositoryService
             : null;
     }
 
-    // The list comes from .gitmodules (upstream's GetSubmodulesLocalPaths). Upstream's status parser needs git's describe
-    // suffix, which "git submodule status" leaves out for a submodule that is not initialized; such a submodule has no status
-    // entry and is shown as not initialized.
+    // The list comes from .gitmodules, as upstream's HasSubmodules reads it; see SubmoduleInfo for why the status is not.
     private static IReadOnlyList<SubmoduleInfo> GetSubmodules(GitModule module)
-    {
-        IReadOnlyList<string> paths = module.GetSubmodulesLocalPaths(recursive: false);
-        if (paths.Count == 0)
-        {
-            return [];
-        }
-
-        Dictionary<string, IGitSubmoduleInfo> status = module.GetSubmodulesInfo().OfType<IGitSubmoduleInfo>()
-            .GroupBy(info => info.LocalPath, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-        return
-        [
-            .. paths.Select(path => status.TryGetValue(path, out IGitSubmoduleInfo? info)
-                ? new SubmoduleInfo(path, info.IsInitialized, info.IsUpToDate)
-                : new SubmoduleInfo(path, IsInitialized: false, IsUpToDate: false))
-        ];
-    }
+        => [.. module.GetSubmodulesLocalPaths(recursive: false).Select(path => new SubmoduleInfo(path))];
 
     public static FileChange ToFileChange(GitItemStatus status)
     {
