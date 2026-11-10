@@ -34,6 +34,7 @@ internal sealed class MainWindowTests
     {
         _repo = new TestRepository();
         TestAppBuilder.Preferences.CloseCommitDialogAfterCommit = true;
+        TestAppBuilder.Preferences.CloseCommitDialogAfterLastCommit = true;
         TestAppBuilder.Preferences.Theme = ThemeId.DefaultLight;
         TestAppBuilder.Preferences.ThemeVariations = [];
         TestAppBuilder.Preferences.ShowCurrentBranchOnly = false;
@@ -621,8 +622,10 @@ internal sealed class MainWindowTests
     {
         string longName = "feature/" + new string('x', 16);
         _repo.Run("branch", longName);
-        // Longer than 600 pixels in folders, as a single name can be at most 255 bytes on disk.
-        _repo.Run("branch", "feature/" + string.Join('/', Enumerable.Repeat(new string('y', 60), 5)));
+        // Wider than 600 pixels in few characters, of a wide letter: the ref's file has to fit in Windows' 260-character path
+        // limit with the temporary folder in front of it.
+        string wideName = "feature/" + new string('W', 100);
+        _repo.Run("branch", wideName);
         MainWindow window = NewWindow();
         window.Show();
         Open(window, _repo.Path);
@@ -641,6 +644,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => list.Width == fitted);
         branches.IsDropDownOpen = false;
 
+        DropDownWidth.For(branches, new[] { wideName }).Should().Be(DropDownWidth.MaxWidth);
         branches.Text = "feature";
         branches.IsDropDownOpen = true;
         WaitUntil(() => list.Width == DropDownWidth.MaxWidth);
@@ -1482,7 +1486,9 @@ internal sealed class MainWindowTests
     [AvaloniaTest]
     public void Staging_and_committing_from_the_commit_window_adds_a_commit()
     {
+        // Both: the commit leaves nothing unstaged, which closes the window too unless CloseCommitDialogAfterLastCommit is off.
         TestAppBuilder.Preferences.CloseCommitDialogAfterCommit = false;
+        TestAppBuilder.Preferences.CloseCommitDialogAfterLastCommit = false;
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
         MainWindow window = NewWindow();
         window.Show();

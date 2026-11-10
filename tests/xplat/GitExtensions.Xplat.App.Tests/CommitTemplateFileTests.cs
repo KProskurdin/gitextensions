@@ -93,11 +93,15 @@ internal sealed class CommitTemplateFileTests
     public void A_template_in_the_home_folder_is_found_as_git_finds_it()
     {
         string? home = Environment.GetEnvironmentVariable("HOME");
+        string customHome = AppSettings.CustomHomeDir;
         string fakeHome = Path.Combine(Path.GetTempPath(), "xplat-home-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(fakeHome);
         try
         {
-            Environment.SetEnvironmentVariable("HOME", fakeHome);
+            // Upstream's own setting for HOME, not the variable: on Windows upstream's EnvironmentConfiguration sets HOME again
+            // from the user's profile before git runs, so a changed variable would not last.
+            AppSettings.CustomHomeDir = fakeHome;
+            EnvironmentConfiguration.SetEnvironmentVariables();
             File.WriteAllText(Path.Combine(fakeHome, ".gitmessage"), Template);
             _repo.Run("config", "commit.template", "~/.gitmessage");
             StageChange();
@@ -109,6 +113,7 @@ internal sealed class CommitTemplateFileTests
         }
         finally
         {
+            AppSettings.CustomHomeDir = customHome;
             Environment.SetEnvironmentVariable("HOME", home);
             Directory.Delete(fakeHome, recursive: true);
         }

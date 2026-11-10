@@ -156,9 +156,10 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void Stage_and_unstage_of_more_paths_than_one_command_line_holds_run_in_batches()
     {
-        // Each name takes 201 characters of a command line of 32767.
-        string prefix = new('n', 190);
-        string[] names = [.. Enumerable.Range(0, 400).Select(number => $"{prefix}{number:D5}.txt")];
+        // Each name takes 60 characters of a command line of 32767, so 700 need more than one. Many short names, not a few
+        // long ones: with the temporary folder in front, a long name passes Windows' 260-character path limit.
+        string prefix = new('n', 50);
+        string[] names = [.. Enumerable.Range(0, 700).Select(number => $"{prefix}{number:D5}.txt")];
         foreach (string name in names)
         {
             File.WriteAllText(Path.Combine(_repo.Path, name), "content");
