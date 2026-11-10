@@ -946,8 +946,13 @@ public partial class MainWindow : Window
                 Run(() => ShowSuperprojectLabelsAsync(repositoryPath));
                 ShowRepositoryPanels();
                 await state;
+
+                // The state can arrive before the commit list names the repository, and these read that name: the left
+                // panel, the commit button (a clean image while no repository is open) and the stash count.
                 ShowRepoObjects();
                 LoadSubmoduleStructure();
+                UpdateCommitButton();
+                UpdateBranchText();
                 await _recent.AddAsync(repositoryPath);
                 if (_showUntrackedReadFor != repositoryPath)
                 {
