@@ -74,7 +74,11 @@ internal static class Program
 
         // Upstream code (the shared core, plugins) shows WinForms message boxes; until now they returned no answer.
         MessageBoxHost.Install();
-        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+
+        // Here, not in App: the tests' headless app must not touch macOS' application object from its own thread.
+        return BuildAvaloniaApp()
+            .AfterSetup(_ => App.ShowMacOSDockIcon())
+            .StartWithClassicDesktopLifetime(args);
     }
 
     public static AppBuilder BuildAvaloniaApp()

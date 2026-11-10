@@ -20,6 +20,8 @@
   <ItemGroup>
     <!-- The logo lives in setup/ and is linked, not copied, so the upstream asset stays the single source. -->
     <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-256px.png" Link="Assets\git-extensions-logo-256px.png" />
+    <!-- The Dock's icon on macOS, 512 pixels for a Retina Dock (MacApplicationIcon). -->
+    <AvaloniaResource Include="..\..\..\setup\assets\Logo\git-extensions-logo-512px.png" Link="Assets\git-extensions-logo-512px.png" />
     <!-- Upstream's icons and the resource list that names them, linked so a script's icon name (upstream's
          GitUI.Properties.Images) finds the same picture (ScriptIcons.cs). -->
     <AvaloniaResource Include="..\..\app\GitUI\Properties\Images.resx" Link="Assets\Upstream\Images.resx" />
