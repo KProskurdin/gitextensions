@@ -120,7 +120,7 @@ public partial class MainWindow : Window
         _commits.PropertyChanged += (_, e) => OnCommitsChanged(e.PropertyName);
         _repository.PropertyChanged += (_, e) => OnRepositoryChanged(e.PropertyName);
         _actions.PropertyChanged += (_, e) => OnActionsChanged(e.PropertyName);
-        _actions.RepositoryChanged += (_, e) => OnActionChangedRepository(e.RepositoryPath);
+        _actions.RepositoryChanged += (_, e) => OnActionChangedRepository(e.RepositoryPath, e.OnlyFileStatus);
         _actions.RemoteOperationStarted += (_, _) => ShowProcessWindow();
         _recent.PropertyChanged += (_, e) => OnRecentChanged(e.PropertyName);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);

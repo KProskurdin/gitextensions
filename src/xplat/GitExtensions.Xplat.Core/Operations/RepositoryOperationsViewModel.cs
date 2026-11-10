@@ -128,10 +128,12 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public void Cancel() => _cancellation?.Cancel();
 
     public Task<bool> StageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null)
-        => RunAsync("Staged", repositoryPath, () => _operations.StageAsync(repositoryPath, paths, processed));
+        => RunAsync("Staged", repositoryPath, () => _operations.StageAsync(repositoryPath, paths, processed),
+            onlyFileStatus: true);
 
     public Task<bool> UnstageAsync(string repositoryPath, IReadOnlyList<string> paths, Action<int>? processed = null)
-        => RunAsync("Unstaged", repositoryPath, () => _operations.UnstageAsync(repositoryPath, paths, processed));
+        => RunAsync("Unstaged", repositoryPath, () => _operations.UnstageAsync(repositoryPath, paths, processed),
+            onlyFileStatus: true);
 
     /// <summary>
     ///  Stages or unstages the lines selected in a file's diff (see <see cref="IGitOperations.StageLinesAsync"/>).
@@ -140,7 +142,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         bool unstage, bool isNewFile = false)
         => RunAsync(unstage ? "Unstaged selected lines" : "Staged selected lines", repositoryPath,
             () => _operations.StageLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, unstage,
-                isNewFile));
+                isNewFile), onlyFileStatus: true);
 
     /// <summary>
     ///  Undoes the lines selected in a working directory or index diff (see <see cref="IGitOperations.ResetLinesAsync"/>).
@@ -148,7 +150,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> ResetLinesAsync(string repositoryPath, string diffText, int selectionStart, int selectionLength,
         bool staged)
         => RunAsync("Reset selected lines", repositoryPath,
-            () => _operations.ResetLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, staged));
+            () => _operations.ResetLinesAsync(repositoryPath, diffText, selectionStart, selectionLength, staged),
+            onlyFileStatus: true);
 
     /// <summary>
     ///  Applies or undoes the lines selected in a commit's diff (see <see cref="IGitOperations.ApplyLinesAsync"/>).
@@ -759,7 +762,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         return Task.FromResult(false);
     }
 
-    private async Task<bool> RunAsync(string successMessage, string repositoryPath, Func<Task> operation)
+    private async Task<bool> RunAsync(string successMessage, string repositoryPath, Func<Task> operation,
+        bool onlyFileStatus = false)
     {
         ErrorMessage = null;
         IsBusy = true;
@@ -767,7 +771,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         {
             await operation();
             StatusMessage = successMessage;
-            RepositoryChanged?.Invoke(this, new RepositoryChangedEventArgs(repositoryPath));
+            RepositoryChanged?.Invoke(this, new RepositoryChangedEventArgs(repositoryPath, onlyFileStatus));
             return true;
         }
         catch (Exception ex)
@@ -784,9 +788,15 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     }
 }
 
-public sealed class RepositoryChangedEventArgs(string repositoryPath) : EventArgs
+public sealed class RepositoryChangedEventArgs(string repositoryPath, bool onlyFileStatus = false) : EventArgs
 {
     public string RepositoryPath { get; } = repositoryPath;
+
+    /// <summary>
+    ///  True when the operation changed only the index or the working directory (staging), so reading the changed files
+    ///  again is enough: no commit, ref or submodule moved.
+    /// </summary>
+    public bool OnlyFileStatus { get; } = onlyFileStatus;
 }
 
 /// <summary>

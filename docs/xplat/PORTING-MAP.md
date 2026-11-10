@@ -600,6 +600,11 @@ Added 2026-11-08: the progress bar (`StageProgress`). Its numbers are real, by b
 does so for both (`GitOperations.RunForFilesAsync`), since it stages with `git add` where upstream feeds `update-index` through standard input. Before this, staging a few
 hundred files would have passed Windows' limit of 32767 characters. Found with it: unstaging a rename left the removal of its old name staged, in the commit window and the
 file list menu; now both names go, as upstream's `BatchUnstageFiles` (`FileChange.IndexPaths`, `FileStatusListMenu.FilesShownAt`).
+2026-11-10: staging and unstaging (files and lines) read only the changed files afterwards, as upstream's commit window reads only the status, not the
+whole repository with its history; on this repository that is about 0.13 s instead of a snapshot of 1.4 s plus the history and graph. The buttons stay
+enabled meanwhile, since the repository is no longer marked as loading (`RepositoryChangedEventArgs.OnlyFileStatus`,
+`RepositoryViewModel.RefreshChangesAsync`, `MainWindow.RefreshFileStatusAsync`). With a submodule among the changes the whole repository is still read,
+since the submodule list shows what is staged; a commit still reads it all.
 
 **FormPush** (`ported`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see

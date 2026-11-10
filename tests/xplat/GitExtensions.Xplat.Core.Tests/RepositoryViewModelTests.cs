@@ -95,6 +95,52 @@ internal sealed class RepositoryViewModelTests
     }
 
     [Test]
+    public async Task RefreshChangesAsync_should_read_only_the_changes_without_loading()
+    {
+        Task refresh = _viewModel.RefreshAsync("/work/one");
+        _service.Complete(0, Snapshot("main", new BranchInfo("main", IsRemote: false, IsCurrent: true)));
+        await refresh;
+
+        Task changes = _viewModel.RefreshChangesAsync("/work/one");
+        _viewModel.IsLoading.Should().BeFalse();
+        _service.CompleteChanges(0, [new FileChange("a.txt", ChangeKind.Modified, Staged: true)]);
+        await changes;
+
+        _viewModel.Changes.Should().ContainSingle().Which.Staged.Should().BeTrue();
+        _viewModel.CurrentBranch.Should().Be("main");
+        _viewModel.Branches.Should().ContainSingle();
+    }
+
+    [Test]
+    public async Task RefreshChangesAsync_should_win_over_an_older_full_refresh_that_finishes_later()
+    {
+        Task full = _viewModel.RefreshAsync("/work/one");
+        Task changes = _viewModel.RefreshChangesAsync("/work/one");
+
+        _service.CompleteChanges(0, [new FileChange("a.txt", ChangeKind.Modified, Staged: true)]);
+        await changes;
+        _service.Complete(0, Snapshot("main"));
+        await full;
+
+        _viewModel.Changes.Should().ContainSingle().Which.Staged.Should().BeTrue();
+        _viewModel.CurrentBranch.Should().Be("main");
+    }
+
+    [Test]
+    public async Task RefreshAsync_should_win_over_an_older_read_of_the_changes_that_finishes_later()
+    {
+        Task changes = _viewModel.RefreshChangesAsync("/work/one");
+        Task full = _viewModel.RefreshAsync("/work/one");
+
+        _service.Complete(0, Snapshot("main"));
+        await full;
+        _service.CompleteChanges(0, [new FileChange("a.txt", ChangeKind.Modified, Staged: true)]);
+        await changes;
+
+        _viewModel.Changes.Should().ContainSingle().Which.Staged.Should().BeFalse();
+    }
+
+    [Test]
     public void ToFileChange_should_map_an_untracked_file()
     {
         GitRepositoryService.ToFileChange(new GitItemStatus("new.txt") { IsNew = true })

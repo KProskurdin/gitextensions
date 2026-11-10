@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GitCommands;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
@@ -274,8 +275,9 @@ public partial class MainWindow
     }
 
     // The operations' RepositoryChanged: the repository an action changed is opened, unless it is one of the submodule
-    // tree's other repositories.
-    private void OnActionChangedRepository(string path)
+    // tree's other repositories. Staging in the open repository reads only its changed files, as upstream's commit window
+    // does; with a submodule among them the whole repository is read, since the submodule list shows what is staged.
+    private void OnActionChangedRepository(string path, bool onlyFileStatus)
     {
         if (_submoduleActionRepositories.Any(other => RecentRepositoryPaths.Same(other, path)))
         {
@@ -283,7 +285,26 @@ public partial class MainWindow
             return;
         }
 
+        if (onlyFileStatus && RepositoryPath is { } open && RecentRepositoryPaths.Same(open, path)
+            && !_repository.Changes.Any(change => change.IsSubmodule))
+        {
+            Run(() => RefreshFileStatusAsync(path));
+            return;
+        }
+
         Run(() => OpenRepositoryAsync(path));
+    }
+
+    // The grid's artificial rows take their counts from the changes; a selected one shows its files again, as after a
+    // reload.
+    private async Task RefreshFileStatusAsync(string path)
+    {
+        await _repository.RefreshChangesAsync(path);
+        if (SelectedRevisions.Any(row => ArtificialCommits.IsArtificial(row.Hash)))
+        {
+            ShowSelectionDiff();
+            await _commits.SelectAsync(LatestSelectedItem?.Row);
+        }
     }
 
     // Upstream's paths end in a separator.

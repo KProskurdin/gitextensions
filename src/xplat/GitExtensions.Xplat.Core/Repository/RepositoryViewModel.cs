@@ -7,6 +7,9 @@ public sealed class RepositoryViewModel : ObservableObject
 {
     private readonly IRepositoryService _service;
     private int _refreshVersion;
+
+    // Counts the reads of the changes, whole or alone, so the latest one started is the one shown.
+    private int _changesVersion;
     private string _currentBranch = "";
     private IReadOnlyList<BranchInfo> _branches = [];
     private IReadOnlyList<FileChange> _changes = [];
@@ -231,6 +234,7 @@ public sealed class RepositoryViewModel : ObservableObject
     public void Clear()
     {
         _refreshVersion++;
+        _changesVersion++;
         ClearState();
         IsMerging = false;
         IsRebasing = false;
@@ -260,9 +264,35 @@ public sealed class RepositoryViewModel : ObservableObject
         UserEmail = "";
     }
 
+    /// <summary>
+    ///  Reads the changed files again and nothing else, as upstream's commit window does after staging. The rest of the state
+    ///  stays as it is, and <see cref="IsLoading"/> is not set, so the windows stay usable meanwhile.
+    /// </summary>
+    public async Task RefreshChangesAsync(string repositoryPath)
+    {
+        int version = ++_changesVersion;
+        try
+        {
+            IReadOnlyList<FileChange> changes = await _service.GetChangesAsync(repositoryPath);
+            if (version == _changesVersion)
+            {
+                ChangesRead = true;
+                Changes = changes;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (version == _changesVersion)
+            {
+                ErrorMessage = ex.Message;
+            }
+        }
+    }
+
     public async Task RefreshAsync(string repositoryPath)
     {
         int version = ++_refreshVersion;
+        int changesVersion = ++_changesVersion;
         IsLoading = true;
         try
         {
@@ -274,8 +304,12 @@ public sealed class RepositoryViewModel : ObservableObject
 
             CurrentBranch = snapshot.CurrentBranch ?? "";
             Branches = snapshot.Branches;
-            ChangesRead = true;
-            Changes = snapshot.Changes;
+            if (changesVersion == _changesVersion)
+            {
+                ChangesRead = true;
+                Changes = snapshot.Changes;
+            }
+
             IsMerging = snapshot.IsMerging;
             IsRebasing = snapshot.IsRebasing;
             IsApplyingPatch = snapshot.IsApplyingPatch;

@@ -1513,6 +1513,38 @@ internal sealed class MainWindowTests
         commit.Close();
     }
 
+    // Staging reads only the changed files, as upstream's commit window; the grid's selected index row still shows them.
+    [AvaloniaTest]
+    public void Staging_in_the_commit_window_shows_the_file_in_the_selected_index_row()
+    {
+        TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = true;
+        try
+        {
+            File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
+            MainWindow window = NewWindow();
+            window.Show();
+            Open(window, _repo.Path);
+            ListBox commits = Find<ListBox>(window, "CommitList");
+            WaitUntil(() => commits.Items.Cast<CommitListItem>().Any(item => item.Row.Hash == ArtificialCommits.IndexHash));
+            commits.SelectedItem = commits.Items.Cast<CommitListItem>().First(item => item.Row.Hash == ArtificialCommits.IndexHash);
+            ListBox files = Find<ListBox>(window, "CommitFilesList");
+            CommitWindow commit = OpenCommitWindow(window);
+            ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+            WaitUntil(() => unstaged.ItemCount == 1);
+
+            unstaged.SelectedIndex = 0;
+            Click(commit, "StageButton");
+
+            WaitUntil(() => Find<ListBox>(commit, "StagedList").ItemCount == 1);
+            WaitUntil(() => files.Items.Cast<CommitFile>().Any(file => file.Path == "new.txt"));
+            commit.Close();
+        }
+        finally
+        {
+            TestAppBuilder.Preferences.RevisionGraphShowArtificialCommits = false;
+        }
+    }
+
     [AvaloniaTest]
     public void A_message_typed_in_a_closed_commit_window_is_offered_again()
     {

@@ -98,6 +98,25 @@ internal sealed class RepositoryOperationsViewModelTests
     }
 
     [Test]
+    public async Task StageAsync_and_UnstageAsync_should_report_only_a_file_status_change_where_a_commit_reports_more()
+    {
+        List<bool> onlyFileStatus = [];
+        _viewModel.RepositoryChanged += (_, e) => onlyFileStatus.Add(e.OnlyFileStatus);
+
+        Task stage = _viewModel.StageAsync(RepositoryPath, ["a.txt"]);
+        _git.Complete(0);
+        await stage;
+        Task unstage = _viewModel.UnstageAsync(RepositoryPath, ["a.txt"]);
+        _git.Complete(1);
+        await unstage;
+        Task commit = _viewModel.CommitAsync(RepositoryPath, "add", amend: false, signOff: false, author: "");
+        _git.Complete(2);
+        await commit;
+
+        onlyFileStatus.Should().Equal(true, true, false);
+    }
+
+    [Test]
     public async Task CreateBranchAsync_trims_the_name_and_checks_it_out()
     {
         Task<bool> create = _viewModel.CreateBranchAsync(RepositoryPath, "  feature/x ", checkout: true);

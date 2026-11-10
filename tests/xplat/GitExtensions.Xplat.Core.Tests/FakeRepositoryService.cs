@@ -8,6 +8,7 @@ namespace GitExtensions.Xplat.Core.Tests;
 internal sealed class FakeRepositoryService : IRepositoryService
 {
     private readonly List<TaskCompletionSource<RepositorySnapshot>> _reads = [];
+    private readonly List<TaskCompletionSource<IReadOnlyList<FileChange>>> _changeReads = [];
 
     public Task<string> GetHeadMessageAsync(string repositoryPath) => Task.FromResult("");
 
@@ -20,7 +21,16 @@ internal sealed class FakeRepositoryService : IRepositoryService
         return read.Task;
     }
 
+    public Task<IReadOnlyList<FileChange>> GetChangesAsync(string repositoryPath)
+    {
+        TaskCompletionSource<IReadOnlyList<FileChange>> read = new();
+        _changeReads.Add(read);
+        return read.Task;
+    }
+
     public void Complete(int index, RepositorySnapshot snapshot) => _reads[index].SetResult(snapshot);
+
+    public void CompleteChanges(int index, IReadOnlyList<FileChange> changes) => _changeReads[index].SetResult(changes);
 
     public void Fail(int index, Exception exception) => _reads[index].SetException(exception);
 }

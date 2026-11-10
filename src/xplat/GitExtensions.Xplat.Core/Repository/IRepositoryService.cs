@@ -10,6 +10,13 @@ public interface IRepositoryService
     Task<RepositorySnapshot> GetSnapshotAsync(string repositoryPath);
 
     /// <summary>
+    ///  The changed files alone, as <see cref="RepositorySnapshot.Changes"/> holds them; upstream's commit window reads only
+    ///  these after staging. By default the whole snapshot is read.
+    /// </summary>
+    async Task<IReadOnlyList<FileChange>> GetChangesAsync(string repositoryPath)
+        => (await GetSnapshotAsync(repositoryPath)).Changes;
+
+    /// <summary>
     ///  The message of the commit at HEAD, as written, so an amend can start from it.
     /// </summary>
     Task<string> GetHeadMessageAsync(string repositoryPath);

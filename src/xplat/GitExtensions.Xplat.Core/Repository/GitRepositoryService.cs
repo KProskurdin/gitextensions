@@ -30,6 +30,13 @@ public sealed class GitRepositoryService : IRepositoryService
         return Task.Run(() => GetSnapshot(repositoryPath, sorting));
     }
 
+    public Task<IReadOnlyList<FileChange>> GetChangesAsync(string repositoryPath) =>
+        Task.Run<IReadOnlyList<FileChange>>(() =>
+            [
+                .. ChangedFiles(new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath))
+                    .Select(ToFileChange)
+            ]);
+
     public Task<string> GetHeadMessageAsync(string repositoryPath) =>
         Task.Run(() => new GitModule(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath)
             .GitExecutable.GetOutput(new GitArgumentBuilder("log") { "-1", "--format=%B" }).TrimEnd());
