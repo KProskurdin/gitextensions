@@ -86,6 +86,9 @@ Severity: **A** visible at first glance, **B** noticed in daily use, **C** detai
 5. **Each step is checked by screenshot against the original** with the capture script, and recorded in `PORTING-MAP.md`.
    On a Mac the original cannot run: use the designer files, then reference pictures, then a Windows machine (`MACOS.md`,
    section 6). Say in the Progress entry which of these the step was checked against.
+6. **MVVM for new and reworked UI** (`PLAN.md`, principle 6). A window or control added for parity gets its view model in
+   `GitExtensions.Xplat.Core`, bound from the view; one that a parity step reworks moves to MVVM in the same step. A small fix
+   does not trigger the move.
 
 ## Plan
 

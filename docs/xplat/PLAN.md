@@ -62,6 +62,13 @@ changes most often. That is why the plan keeps the WinForms UI untouched and bui
 4. **No commits from automation.** The user commits. Work stays in the working tree until then.
 5. **Measure before porting.** Each milestone has an exit criterion that can be checked by a
    build, a test, or a screenshot.
+6. **MVVM for new and reworked UI** (decided 2026-11-13, the user). A new window, dialog, user
+   control or panel keeps its state and commands in a view model in `GitExtensions.Xplat.Core`,
+   without Avalonia types, and its view binds to it (compiled bindings, `x:DataType`, commands
+   with `CanExecute`). An existing one that is reworked (new behavior, a layout change, or its
+   logic rewritten; not a small fix) moves to MVVM in the same change. Code-behind keeps only view
+   concerns. View models are tested with plain NUnit tests. Until the base is decided (section
+   12.6, step 1) it is the core's `ObservableObject`, never mixed with another MVVM library.
 
 ## 4. Repository layout (target)
 
@@ -1113,3 +1120,37 @@ Windows), so the Windows suites get local runs (`SYNC-LOG.md`), but Linux has ha
    the macOS menu bar. Questions 12 to 14 affect the handoff, so they come first.
 6. Question 16: CI is off, and 13 upstream workflow files are edited to do it. This blocks MAC1 and breaks the "no upstream
    file edited" rule, so it comes before the others.
+
+### 12.6 MVVM in the app (last)
+
+Added 2026-11-13, after a review of the app against Avalonia's documentation. Moving the existing windows comes after
+everything above: it changes how they are built, not what they do, so parity and the open decisions go first. The rule for
+new and reworked UI (principle 6) applies from now on.
+
+Where it stands: the logic is out of the windows (M2). `GitExtensions.Xplat.Core` has seven view models (`CommitListViewModel`,
+`RepositoryViewModel`, `RepositoryOperationsViewModel`, `DiffViewModel`, `DashboardViewModel`, `FileBrowserViewModel`,
+`RecentRepositoriesViewModel`) and 32 `*Dialog` models, on the core's own `ObservableObject`, tested without a UI. The windows
+do not bind to them: no command is bound in XAML, `DataContext` is set in two places, and about 42,000 lines of code-behind
+(8,800 in `MainWindow`, 767 `Click` handlers) copy view model state into controls by hand.
+
+What it would bring:
+- Bindings, and commands with `CanExecute`, in place of most of that glue code.
+- Window state tested as plain NUnit tests on all three OSes instead of headless UI tests (392 of those took 10 minutes on
+  2026-11-13).
+- Bindings checked at build time (compiled bindings with `x:DataType`).
+- Design data for the XAML previewer, which can already open every window (`DesignTime.cs`).
+
+Steps:
+1. Decide the base: the core's `ObservableObject`, or CommunityToolkit.Mvvm (source-generated properties and `[RelayCommand]`,
+   the default of Avalonia's documentation). Not both. Record it in section 9 as a new question.
+2. A pilot on one mid-sized dialog: bind `CreateBranchWindow` to `CreateBranchDialog` (properties, commands with `CanExecute`,
+   `x:DataType`, design data). Measure the code-behind removed and the test time saved, and decide from that whether to go on.
+3. *Decided 2026-11-13 (the user), in force before the pilot:* new UI uses MVVM, and a window or control that is reworked
+   moves to it in the same change (principle 6). No window is rewritten only for this; the pilot sets the pattern the others
+   follow.
+4. `MainWindow`: the toolbar and menu state that follows the selection moves into `CommitListViewModel` properties bound in
+   XAML.
+5. What stays in code-behind: the menus built from upstream's designers (`MainMenuParityTests`), plugin and script items, the
+   toolbar overflow and the nested frame of a message box.
+6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
+   upstream is not affected.
