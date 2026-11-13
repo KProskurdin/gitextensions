@@ -57,7 +57,7 @@ internal sealed class PullWindowTests
     }
 
     [AvaloniaTest]
-    public void Pull_closes_with_upstreams_request_and_keeps_auto_stash()
+    public async Task Pull_closes_with_upstreams_request_and_keeps_auto_stash()
     {
         Window owner = new();
         owner.Show();
@@ -70,7 +70,7 @@ internal sealed class PullWindowTests
         Click(pull, "PullButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().Be(new PullRequest("origin", "", PullAction.Merge, Prune: false, AutoStash: true,
+        (await result).Should().Be(new PullRequest("origin", "", PullAction.Merge, Prune: false, AutoStash: true,
             LocalBranch: "", FetchTags: false));
         TestAppBuilder.Preferences.AutoStash.Should().BeTrue();
         TestAppBuilder.Preferences.FormPullAction.Should().Be(GitPullAction.Merge);
@@ -78,7 +78,7 @@ internal sealed class PullWindowTests
     }
 
     [AvaloniaTest]
-    public void A_rebase_of_a_merge_commit_is_asked_first()
+    public async Task A_rebase_of_a_merge_commit_is_asked_first()
     {
         Window owner = new();
         owner.Show();
@@ -94,12 +94,12 @@ internal sealed class PullWindowTests
         question.Title.Should().Be(PullDialog.RebaseMergeQuestionCaption);
         Click(question, "YesButton");
         WaitUntil(() => result.IsCompleted);
-        result.Result!.Action.Should().Be(PullAction.Rebase);
+        (await result)!.Action.Should().Be(PullAction.Rebase);
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void A_pull_on_a_detached_head_offers_upstreams_checkout_branch_and_then_pulls()
+    public async Task A_pull_on_a_detached_head_offers_upstreams_checkout_branch_and_then_pulls()
     {
         Window owner = new();
         owner.Show();
@@ -119,12 +119,12 @@ internal sealed class PullWindowTests
         ClickLink(question, PullDialog.CheckoutBranchText);
         WaitUntil(() => result.IsCompleted);
         checkoutOwners.Should().Equal(pull);
-        result.Result.Should().NotBeNull("the pull goes on after the checkout");
+        (await result).Should().NotBeNull("the pull goes on after the checkout");
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void Cancelling_the_detached_head_question_or_the_checkout_closes_the_window_as_upstream()
+    public async Task Cancelling_the_detached_head_question_or_the_checkout_closes_the_window_as_upstream()
     {
         Window owner = new();
         owner.Show();
@@ -136,12 +136,12 @@ internal sealed class PullWindowTests
         ClickLink(Question(pull), PullDialog.CheckoutBranchText);
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().BeNull();
+        (await result).Should().BeNull();
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void Continue_on_the_detached_head_question_pulls()
+    public async Task Continue_on_the_detached_head_question_pulls()
     {
         Window owner = new();
         owner.Show();
@@ -153,7 +153,7 @@ internal sealed class PullWindowTests
         ClickLink(Question(pull), PullDialog.ContinueText);
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().NotBeNull();
+        (await result).Should().NotBeNull();
         owner.Close();
     }
 

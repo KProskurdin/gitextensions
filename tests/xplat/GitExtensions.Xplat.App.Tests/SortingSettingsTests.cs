@@ -125,7 +125,7 @@ internal sealed class SortingSettingsTests
     }
 
     [AvaloniaTest]
-    public void The_grid_reads_commits_in_the_chosen_order()
+    public async Task The_grid_reads_commits_in_the_chosen_order()
     {
         // "older" is authored last but committed first; "newer" the other way round.
         string head = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
@@ -135,14 +135,14 @@ internal sealed class SortingSettingsTests
         _repo.Run("checkout", "-q", head);
         RevisionFilter all = RevisionFilter.AllBranches;
 
-        CommitPage byAuthor = new GitCommitHistory(sortOrder: () => RevisionSortOrder.AuthorDate)
-            .LoadPageAsync(_repo.Path, limit: 10, all).GetAwaiter().GetResult();
+        CommitPage byAuthor = await new GitCommitHistory(sortOrder: () => RevisionSortOrder.AuthorDate)
+            .LoadPageAsync(_repo.Path, limit: 10, all);
         Subjects(byAuthor).Should().Equal("newer", "older");
 
         // Upstream's own setting still adds its flag first; git's default order shows only while that is the default too.
         Assume.That(AppSettings.RevisionSortOrder.Value, Is.EqualTo(RevisionSortOrder.GitDefault));
-        CommitPage byDefault = new GitCommitHistory(sortOrder: () => RevisionSortOrder.GitDefault)
-            .LoadPageAsync(_repo.Path, limit: 10, all).GetAwaiter().GetResult();
+        CommitPage byDefault = await new GitCommitHistory(sortOrder: () => RevisionSortOrder.GitDefault)
+            .LoadPageAsync(_repo.Path, limit: 10, all);
         Subjects(byDefault).Should().Equal("older", "newer");
     }
 

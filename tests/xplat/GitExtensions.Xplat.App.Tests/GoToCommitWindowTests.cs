@@ -30,7 +30,7 @@ internal sealed class GoToCommitWindowTests
     public void TearDown() => _repo.Dispose();
 
     [AvaloniaTest]
-    public void Go_resolves_the_commit_expression()
+    public async Task Go_resolves_the_commit_expression()
     {
         (Window owner, GoToCommitWindow window, Task<ObjectId?> result) = Open(clipboard: "");
         Find<TextBox>(window, "textboxCommitExpression").Text = "  HEAD~1 ";
@@ -38,12 +38,12 @@ internal sealed class GoToCommitWindowTests
         Click(window, "goButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().Be(ObjectId.Parse(_first));
+        (await result).Should().Be(ObjectId.Parse(_first));
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void The_focused_drop_down_supplies_the_tag_or_branch_and_an_unknown_one_resolves_to_nothing()
+    public async Task The_focused_drop_down_supplies_the_tag_or_branch_and_an_unknown_one_resolves_to_nothing()
     {
         (Window owner, GoToCommitWindow window, Task<ObjectId?> result) = Open(clipboard: "");
         ComboBox tags = Find<ComboBox>(window, "comboBoxTags");
@@ -56,13 +56,13 @@ internal sealed class GoToCommitWindowTests
         Click(window, "goButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should()
+        (await result).Should()
             .Be(default(ObjectId), "the focused tag box supplies the revision, and it has no such tag");
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void A_branch_picked_in_the_drop_down_goes_at_once()
+    public async Task A_branch_picked_in_the_drop_down_goes_at_once()
     {
         (Window owner, GoToCommitWindow window, Task<ObjectId?> result) = Open(clipboard: "");
         ComboBox branches = Find<ComboBox>(window, "comboBoxBranches");
@@ -72,7 +72,7 @@ internal sealed class GoToCommitWindowTests
         branches.IsDropDownOpen = false;
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().Be(ObjectId.Parse(_first));
+        (await result).Should().Be(ObjectId.Parse(_first));
         owner.Close();
     }
 

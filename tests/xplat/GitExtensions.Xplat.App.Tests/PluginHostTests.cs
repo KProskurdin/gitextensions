@@ -207,7 +207,7 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
-    public void A_plugin_that_failed_to_load_shows_its_error_and_OK_copies_it()
+    public async Task A_plugin_that_failed_to_load_shows_its_error_and_OK_copies_it()
     {
         FailedPlugin failed = new(new InvalidOperationException("broken plugin"));
         TestAppBuilder.UsePlugins(_plugin, failed);
@@ -225,7 +225,14 @@ internal sealed class PluginHostTests
         box.GetLogicalDescendants().OfType<Button>().Single(button => button.Name == "OKButton")
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-        WaitUntil(() => ClipboardText(window) == failed.Error);
+        // The details reach the clipboard after the box is closed, so it is read until they are there.
+        DateTime deadline = DateTime.UtcNow + _timeout;
+        while (await ClipboardTextAsync(window) != failed.Error)
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, "the error details are copied to the clipboard");
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(20);
+        }
     }
 
     [AvaloniaTest]
@@ -357,7 +364,7 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
-    public void An_upstream_message_box_waits_for_the_answer_on_the_UI_thread_and_from_a_background_thread()
+    public async Task An_upstream_message_box_waits_for_the_answer_on_the_UI_thread_and_from_a_background_thread()
     {
         Window owner = new();
         owner.Show();
@@ -414,7 +421,7 @@ internal sealed class PluginHostTests
 
         // As WinForms: closing a box that has only OK answers OK.
         seen.Should().Equal("Build", "Git Extensions");
-        fromBackground.Result.Should().Be(System.Windows.Forms.DialogResult.OK);
+        (await fromBackground).Should().Be(System.Windows.Forms.DialogResult.OK);
     }
 
     private static MainWindow NewWindow() =>
@@ -535,11 +542,11 @@ internal sealed class PluginHostTests
             => Calls.Add(Dispatcher.UIThread.CheckAccess() ? "repository changed on UI thread" : "repository changed");
     }
 
-    private static string? ClipboardText(Window window)
+    private static async Task<string?> ClipboardTextAsync(Window window)
     {
         Dispatcher.UIThread.RunJobs();
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
-        return text.Result;
+        return await text;
     }
 }

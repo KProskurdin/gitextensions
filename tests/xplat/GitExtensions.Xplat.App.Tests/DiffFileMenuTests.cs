@@ -3,8 +3,8 @@ using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
@@ -118,7 +118,8 @@ internal sealed class DiffFileMenuTests
         Item(files, "tsmiResetChunkOfFile").IsVisible.Should().BeFalse();
         if (OperatingSystem.IsWindows())
         {
-            WaitUntil(() => VisualStudio.InitAsync().IsCompleted);
+            Task init = VisualStudio.InitAsync();
+            WaitUntil(() => init.IsCompleted);
             OpenMenu(files);
             Item(files, "tsmiOpenInVisualStudio").IsVisible.Should().Be(VisualStudio.IsInstalled,
                 "upstream offers the working directory file in Visual Studio when it is installed");

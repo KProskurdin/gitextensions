@@ -46,7 +46,7 @@ internal sealed class CreateBranchWindowTests
     }
 
     [AvaloniaTest]
-    public void Create_branch_creates_and_checks_out_the_branch_and_closes()
+    public async Task Create_branch_creates_and_checks_out_the_branch_and_closes()
     {
         (Window owner, CreateBranchWindow window, Task<bool> result) = Open();
         Find<TextBox>(window, "BranchNameBox").Text = "feature";
@@ -54,7 +54,7 @@ internal sealed class CreateBranchWindowTests
         Click(window, "CreateButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().BeTrue();
+        (await result).Should().BeTrue();
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature");
         owner.Close();
     }

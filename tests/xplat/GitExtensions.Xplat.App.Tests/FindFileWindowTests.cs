@@ -36,7 +36,7 @@ internal sealed class FindFileWindowTests
     public void TearDown() => _repo.Dispose();
 
     [AvaloniaTest]
-    public void The_search_window_lists_the_matches_and_takes_the_one_selected_with_the_arrow_keys()
+    public async Task The_search_window_lists_the_matches_and_takes_the_one_selected_with_the_arrow_keys()
     {
         Window owner = new();
         owner.Show();
@@ -54,12 +54,12 @@ internal sealed class FindFileWindowTests
         search.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, keySymbol: null);
         search.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, keySymbol: null);
         WaitUntil(() => shown.IsCompleted);
-        shown.Result.Should().Be("beta.txt");
+        (await shown).Should().Be("beta.txt");
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void Escape_closes_the_search_window_without_a_file()
+    public async Task Escape_closes_the_search_window_without_a_file()
     {
         Window owner = new();
         owner.Show();
@@ -71,7 +71,7 @@ internal sealed class FindFileWindowTests
         search.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, keySymbol: null);
 
         WaitUntil(() => shown.IsCompleted);
-        shown.Result.Should().BeNull();
+        (await shown).Should().BeNull();
         owner.Close();
     }
 

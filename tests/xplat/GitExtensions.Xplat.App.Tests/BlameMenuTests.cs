@@ -125,7 +125,7 @@ internal sealed class BlameMenuTests
     }
 
     [AvaloniaTest]
-    public void The_copy_items_copy_the_lines_commit()
+    public async Task The_copy_items_copy_the_lines_commit()
     {
         (FileHistoryWindow history, BlameView blame) = OpenHistory();
         string insert = _repo.Run("log", "--format=%H", "--grep=insert").Trim();
@@ -133,13 +133,13 @@ internal sealed class BlameMenuTests
         OpenMenu(blame);
 
         Click(Item(blame, "CommitHashMenuItem"));
-        ClipboardText(history).Should().Be(insert);
+        (await ClipboardTextAsync(history)).Should().Be(insert);
 
         Click(Item(blame, "CommitMessageMenuItem"));
-        ClipboardText(history).Should().Be("insert");
+        (await ClipboardTextAsync(history)).Should().Be("insert");
 
         Click(Item(blame, "AllCommitInfoMenuItem"));
-        ClipboardText(history).Should().Contain("Author: Test").And.Contain($"Commit hash: {insert[..8]}")
+        (await ClipboardTextAsync(history)).Should().Contain("Author: Test").And.Contain($"Commit hash: {insert[..8]}")
             .And.Contain("Summary: insert").And.Contain($"FileName: {BlamedFile}");
         history.Close();
     }
@@ -346,12 +346,12 @@ internal sealed class BlameMenuTests
         lines.ContextMenu!.Close();
     }
 
-    private static string? ClipboardText(Window window)
+    private static async Task<string?> ClipboardTextAsync(Window window)
     {
         Dispatcher.UIThread.RunJobs();
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
-        return text.Result;
+        return await text;
     }
 
     private static void Click(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));

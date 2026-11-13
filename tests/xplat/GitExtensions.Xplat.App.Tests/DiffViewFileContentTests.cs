@@ -255,7 +255,7 @@ internal sealed class DiffViewFileContentTests
     private static void Run(Task task)
     {
         WaitUntil(() => task.IsCompleted);
-        task.GetAwaiter().GetResult();
+        task.Status.Should().Be(TaskStatus.RanToCompletion, task.Exception?.ToString());
         Dispatcher.UIThread.RunJobs();
     }
 

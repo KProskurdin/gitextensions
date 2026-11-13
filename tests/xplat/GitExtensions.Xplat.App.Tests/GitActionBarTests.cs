@@ -48,16 +48,16 @@ internal sealed class GitActionBarTests
         GitOperations operations = new();
         List<GitOutputLine> output = [];
 
-        Wait(operations.StartBisectAsync(_repo.Path));
-        Wait(operations.MarkBisectAsync(_repo.Path, GitBisectOption.Bad, commit: null));
-        Wait(operations.MarkBisectAsync(_repo.Path, GitBisectOption.Good, root, new CollectingProgress(output)));
+        Wait(() => operations.StartBisectAsync(_repo.Path));
+        Wait(() => operations.MarkBisectAsync(_repo.Path, GitBisectOption.Bad, commit: null));
+        Wait(() => operations.MarkBisectAsync(_repo.Path, GitBisectOption.Good, root, new CollectingProgress(output)));
 
         output.Select(line => line.Text).Should().Contain(text => text.StartsWith("Bisecting:", StringComparison.Ordinal));
         Snapshot().IsBisecting.Should().BeTrue();
         Snapshot().IsRebasing.Should().BeFalse();
         _repo.Run("for-each-ref", "--format=%(refname)", "refs/bisect/").Should().Contain("refs/bisect/bad");
 
-        Wait(operations.StopBisectAsync(_repo.Path));
+        Wait(() => operations.StopBisectAsync(_repo.Path));
 
         Snapshot().IsBisecting.Should().BeFalse();
         Snapshot().CurrentBranch.Should().Be(branch);
@@ -73,7 +73,7 @@ internal sealed class GitActionBarTests
         RepositorySnapshot stopped = Snapshot();
         stopped.IsApplyingPatch.Should().BeTrue();
         stopped.IsRebasing.Should().BeFalse();
-        Wait(new GitOperations().AbortPatchAsync(_repo.Path));
+        Wait(() => new GitOperations().AbortPatchAsync(_repo.Path));
         Snapshot().IsApplyingPatch.Should().BeFalse();
     }
 
@@ -94,7 +94,7 @@ internal sealed class GitActionBarTests
         WaitUntil(() => apply.FindControl<Button>("Skip")!.IsEnabled);
         apply.FindControl<Button>("Abort")!.IsEnabled.Should().BeTrue();
         apply.Close();
-        Wait(new GitOperations().AbortPatchAsync(_repo.Path));
+        Wait(() => new GitOperations().AbortPatchAsync(_repo.Path));
         window.Close();
     }
 
@@ -258,7 +258,7 @@ internal sealed class GitActionBarTests
         return Directory.GetFiles(folder).Single();
     }
 
-    private RepositorySnapshot Snapshot() => Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path));
+    private RepositorySnapshot Snapshot() => Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path));
 
     private static MainWindow NewWindow() =>
         new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
@@ -294,9 +294,11 @@ internal sealed class GitActionBarTests
         }
     }
 
-    private static void Wait(Task task) => task.GetAwaiter().GetResult();
+    // Runs a git operation to its end as vs-threading lets a test wait: JoinableTaskFactory.Run keeps the work that the
+    // operation sends to the main thread going, where blocking on its task would not.
+    private static void Wait(Func<Task> operation) => GitUI.ThreadHelper.JoinableTaskFactory.Run(operation);
 
-    private static T Wait<T>(Task<T> task) => task.GetAwaiter().GetResult();
+    private static T Wait<T>(Func<Task<T>> operation) => GitUI.ThreadHelper.JoinableTaskFactory.Run(operation);
 
     private sealed class CollectingProgress(List<GitOutputLine> lines) : IProgress<GitOutputLine>
     {

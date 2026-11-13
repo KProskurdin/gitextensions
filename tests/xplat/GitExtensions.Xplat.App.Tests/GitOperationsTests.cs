@@ -40,8 +40,8 @@ internal sealed class GitOperationsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
 
-        Wait(_operations.StageAsync(_repo.Path, ["new.txt"]));
-        Wait(_operations.CommitAsync(_repo.Path, "add new", amend: false, signOff: false, author: ""));
+        Wait(() => _operations.StageAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.CommitAsync(_repo.Path, "add new", amend: false, signOff: false, author: ""));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("add new");
         _repo.Run("rev-list", "--count", "HEAD").Trim().Should().Be("3");
@@ -55,10 +55,10 @@ internal sealed class GitOperationsTests
         _repo.Run("config", "core.safecrlf", "true");
         File.WriteAllText(Path.Combine(_repo.Path, "lf.txt"), "one\ntwo\n");
 
-        Action strict = () => Wait(new GitOperations(showStagingErrors: () => true).StageAsync(_repo.Path, ["lf.txt"]));
+        Action strict = () => Wait(() => new GitOperations(showStagingErrors: () => true).StageAsync(_repo.Path, ["lf.txt"]));
         strict.Should().Throw<GitOperationException>();
 
-        Wait(new GitOperations(showStagingErrors: () => false).StageAsync(_repo.Path, ["lf.txt"]));
+        Wait(() => new GitOperations(showStagingErrors: () => false).StageAsync(_repo.Path, ["lf.txt"]));
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("lf.txt");
     }
 
@@ -70,11 +70,11 @@ internal sealed class GitOperationsTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "unstaged");
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "new");
 
-        Wait(_operations.ResetAllChangesAsync(_repo.Path, clean: false, onlyWorkTree: true));
+        Wait(() => _operations.ResetAllChangesAsync(_repo.Path, clean: false, onlyWorkTree: true));
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("staged");
         File.Exists(Path.Combine(_repo.Path, "new.txt")).Should().BeTrue();
 
-        Wait(_operations.ResetAllChangesAsync(_repo.Path, clean: true, onlyWorkTree: false));
+        Wait(() => _operations.ResetAllChangesAsync(_repo.Path, clean: true, onlyWorkTree: false));
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
         File.Exists(Path.Combine(_repo.Path, "new.txt")).Should().BeFalse();
     }
@@ -83,11 +83,11 @@ internal sealed class GitOperationsTests
     public void Commit_with_editor_takes_the_message_the_editor_saved()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
-        Wait(_operations.StageAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.StageAsync(_repo.Path, ["new.txt"]));
         // git's template holds the sign-off line, so the editor keeps it below the subject.
         string editor = WriteEditorScript("""{ printf 'from the editor\n'; cat "$1"; } > "$1.tmp" """);
 
-        Wait(_operations.CommitWithEditorAsync(_repo.Path, amend: false, signOff: true, author: "", editor));
+        Wait(() => _operations.CommitWithEditorAsync(_repo.Path, amend: false, signOff: true, author: "", editor));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("from the editor");
         _repo.Run("log", "-1", "--format=%b").Should().Contain("Signed-off-by:");
@@ -97,9 +97,9 @@ internal sealed class GitOperationsTests
     public void Commit_with_an_author_records_that_author()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
-        Wait(_operations.StageAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.StageAsync(_repo.Path, ["new.txt"]));
 
-        Wait(_operations.CommitAsync(_repo.Path, "by someone", amend: false, signOff: false,
+        Wait(() => _operations.CommitAsync(_repo.Path, "by someone", amend: false, signOff: false,
             author: "Other Person <other@example.com>"));
 
         _repo.Run("log", "-1", "--format=%an <%ae>").Trim().Should().Be("Other Person <other@example.com>");
@@ -109,24 +109,24 @@ internal sealed class GitOperationsTests
     public void Commit_with_sign_off_adds_the_signed_off_by_trailer()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
-        Wait(_operations.StageAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.StageAsync(_repo.Path, ["new.txt"]));
 
-        Wait(_operations.CommitAsync(_repo.Path, "signed", amend: false, signOff: true, author: ""));
+        Wait(() => _operations.CommitAsync(_repo.Path, "signed", amend: false, signOff: true, author: ""));
 
         _repo.Run("log", "-1", "--format=%B").Should().Contain("Signed-off-by: Test <test@example.com>");
     }
 
     [AvaloniaTest]
-    public void GetHeadMessageAsync_returns_the_full_message_of_the_last_commit()
+    public async Task GetHeadMessageAsync_returns_the_full_message_of_the_last_commit()
     {
-        new GitRepositoryService().GetHeadMessageAsync(_repo.Path).GetAwaiter().GetResult()
+        (await new GitRepositoryService().GetHeadMessageAsync(_repo.Path))
             .Should().Be("second\n\nbody line");
     }
 
     [AvaloniaTest]
     public void Commit_with_amend_rewrites_the_last_commit_message()
     {
-        Wait(_operations.CommitAsync(_repo.Path, "reworded", amend: true, signOff: false, author: ""));
+        Wait(() => _operations.CommitAsync(_repo.Path, "reworded", amend: true, signOff: false, author: ""));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("reworded");
         _repo.Run("rev-list", "--count", "HEAD").Trim().Should().Be("2");
@@ -138,7 +138,7 @@ internal sealed class GitOperationsTests
         Func<Task> commit = () =>
             _operations.CommitAsync(_repo.Path, "nothing", amend: false, signOff: false, author: "");
 
-        Action act = () => Wait(commit());
+        Action act = () => Wait(() => commit());
         act.Should().Throw<GitOperationException>();
     }
 
@@ -146,9 +146,9 @@ internal sealed class GitOperationsTests
     public void Unstage_takes_a_staged_file_out_of_the_index()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
-        Wait(_operations.StageAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.StageAsync(_repo.Path, ["new.txt"]));
 
-        Wait(_operations.UnstageAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.UnstageAsync(_repo.Path, ["new.txt"]));
 
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().BeEmpty();
     }
@@ -166,14 +166,14 @@ internal sealed class GitOperationsTests
         }
 
         List<int> staged = [];
-        Wait(_operations.StageAsync(_repo.Path, names, staged.Add));
+        Wait(() => _operations.StageAsync(_repo.Path, names, staged.Add));
 
         staged.Should().HaveCountGreaterThan(1);
         staged.Sum().Should().Be(names.Length);
         _repo.Run("diff", "--cached", "--name-only").Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(names.Length);
 
         List<int> unstaged = [];
-        Wait(_operations.UnstageAsync(_repo.Path, names, unstaged.Add));
+        Wait(() => _operations.UnstageAsync(_repo.Path, names, unstaged.Add));
 
         unstaged.Sum().Should().Be(names.Length);
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().BeEmpty();
@@ -182,7 +182,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void Stage_should_report_gits_refusal_of_a_batch()
     {
-        Action stage = () => Wait(_operations.StageAsync(_repo.Path, ["does-not-exist.txt"]));
+        Action stage = () => Wait(() => _operations.StageAsync(_repo.Path, ["does-not-exist.txt"]));
 
         stage.Should().Throw<Exception>().WithMessage("*does-not-exist.txt*");
     }
@@ -190,7 +190,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void CreateBranch_with_checkout_switches_to_the_new_branch()
     {
-        Wait(_operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: true));
+        Wait(() => _operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: true));
 
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature/x");
     }
@@ -198,7 +198,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void CreateBranch_at_a_start_point_points_the_branch_at_that_commit()
     {
-        Wait(_operations.CreateBranchAsync(_repo.Path, "from-first", checkout: false, startPoint: "HEAD~1"));
+        Wait(() => _operations.CreateBranchAsync(_repo.Path, "from-first", checkout: false, startPoint: "HEAD~1"));
 
         _repo.Run("rev-parse", "from-first").Trim().Should().Be(_repo.Run("rev-parse", "HEAD~1").Trim());
     }
@@ -207,9 +207,9 @@ internal sealed class GitOperationsTests
     public void Checkout_returns_to_an_existing_branch()
     {
         string original = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
-        Wait(_operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: true));
+        Wait(() => _operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: true));
 
-        Wait(_operations.CheckoutAsync(_repo.Path, original));
+        Wait(() => _operations.CheckoutAsync(_repo.Path, original));
 
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be(original);
     }
@@ -219,19 +219,19 @@ internal sealed class GitOperationsTests
     {
         string remote = CreateBareRemote();
 
-        Wait(_operations.AddRemoteAsync(_repo.Path, "upstream", remote));
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).Remotes.Should().Equal("upstream");
+        Wait(() => _operations.AddRemoteAsync(_repo.Path, "upstream", remote));
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).Remotes.Should().Equal("upstream");
 
-        Wait(_operations.RemoveRemoteAsync(_repo.Path, "upstream"));
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).Remotes.Should().BeEmpty();
+        Wait(() => _operations.RemoveRemoteAsync(_repo.Path, "upstream"));
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).Remotes.Should().BeEmpty();
     }
 
     [AvaloniaTest]
     public void RenameBranch_renames_a_branch_that_is_not_checked_out()
     {
-        Wait(_operations.CreateBranchAsync(_repo.Path, "old", checkout: false));
+        Wait(() => _operations.CreateBranchAsync(_repo.Path, "old", checkout: false));
 
-        Wait(_operations.RenameBranchAsync(_repo.Path, "old", "new"));
+        Wait(() => _operations.RenameBranchAsync(_repo.Path, "old", "new"));
 
         _repo.Run("branch", "--list", "old").Trim().Should().BeEmpty();
         _repo.Run("branch", "--list", "new").Trim().Should().Be("new");
@@ -242,7 +242,7 @@ internal sealed class GitOperationsTests
     {
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
 
-        Wait(_operations.RenameBranchAsync(_repo.Path, current, "renamed"));
+        Wait(() => _operations.RenameBranchAsync(_repo.Path, current, "renamed"));
 
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("renamed");
     }
@@ -250,9 +250,9 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void DeleteBranch_removes_a_branch_that_is_not_checked_out()
     {
-        Wait(_operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: false));
+        Wait(() => _operations.CreateBranchAsync(_repo.Path, "feature/x", checkout: false));
 
-        Wait(_operations.DeleteBranchAsync(_repo.Path, "feature/x", force: false));
+        Wait(() => _operations.DeleteBranchAsync(_repo.Path, "feature/x", force: false));
 
         _repo.Run("branch", "--list", "feature/x").Trim().Should().BeEmpty();
     }
@@ -267,10 +267,10 @@ internal sealed class GitOperationsTests
         _repo.Run("commit", "-q", "-m", "unmerged work");
         _repo.Run("checkout", "-q", baseBranch);
 
-        Action plain = () => Wait(_operations.DeleteBranchAsync(_repo.Path, "unmerged", force: false));
+        Action plain = () => Wait(() => _operations.DeleteBranchAsync(_repo.Path, "unmerged", force: false));
         plain.Should().Throw<GitOperationException>();
 
-        Wait(_operations.DeleteBranchAsync(_repo.Path, "unmerged", force: true));
+        Wait(() => _operations.DeleteBranchAsync(_repo.Path, "unmerged", force: true));
 
         _repo.Run("branch", "--list", "unmerged").Trim().Should().BeEmpty();
     }
@@ -282,7 +282,7 @@ internal sealed class GitOperationsTests
 
         Func<Task> delete = () => _operations.DeleteBranchAsync(_repo.Path, current, force: false);
 
-        Action act = () => Wait(delete());
+        Action act = () => Wait(() => delete());
         act.Should().Throw<GitOperationException>();
     }
 
@@ -293,7 +293,7 @@ internal sealed class GitOperationsTests
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
 
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
 
         GitProcess.Run(remote, "rev-parse", current).Trim().Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
     }
@@ -303,7 +303,7 @@ internal sealed class GitOperationsTests
     {
         string folder = Path.Combine(NewFolder(), "fresh");
 
-        Wait(_operations.InitAsync(folder));
+        Wait(() => _operations.InitAsync(folder));
 
         Directory.Exists(Path.Combine(folder, ".git")).Should().BeTrue();
     }
@@ -313,10 +313,10 @@ internal sealed class GitOperationsTests
     {
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
-        Wait(_operations.PushAsync(_repo.Path, "origin", _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim()));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim()));
         string target = NewFolder();
 
-        Wait(_operations.CloneAsync(remote, target));
+        Wait(() => _operations.CloneAsync(remote, target));
 
         GitProcess.Run(target, "log", "-1", "--format=%s").Trim().Should().Be("second");
     }
@@ -327,10 +327,10 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         _repo.Run("branch", "gone");
-        Wait(_operations.PushAsync(_repo.Path, "origin", "gone"));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", "gone"));
         GitProcess.Run(remote, "branch", "-D", "gone");
 
-        Wait(_operations.FetchAsync(_repo.Path, "origin", prune: true));
+        Wait(() => _operations.FetchAsync(_repo.Path, "origin", prune: true));
 
         _repo.Run("branch", "-r").Should().NotContain("origin/gone");
     }
@@ -342,7 +342,7 @@ internal sealed class GitOperationsTests
         _repo.Run("remote", "add", "origin", remote);
         _repo.Run("tag", "v1.0");
 
-        Wait(_operations.PushTagsAsync(_repo.Path, "origin"));
+        Wait(() => _operations.PushTagsAsync(_repo.Path, "origin"));
 
         GitProcess.Run(remote, "tag", "--list").Trim().Should().Be("v1.0");
     }
@@ -355,7 +355,7 @@ internal sealed class GitOperationsTests
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
         List<GitOutputLine> output = [];
 
-        Wait(_operations.PushAsync(_repo.Path, "origin", current, new CollectingProgress(output)));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current, new CollectingProgress(output)));
 
         GitProcess.Run(remote, "rev-parse", current).Trim().Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
         output.Should().Contain(line => line.Text.Contains(current, StringComparison.Ordinal) && !line.IsProgress);
@@ -371,7 +371,7 @@ internal sealed class GitOperationsTests
         List<GitOutputLine> output = [];
 
         Action act = () =>
-            Wait(_operations.FetchAsync(_repo.Path, "origin", prune: false, new CollectingProgress(output)));
+            Wait(() => _operations.FetchAsync(_repo.Path, "origin", prune: false, new CollectingProgress(output)));
 
         act.Should().Throw<GitOperationException>().Which.Message.Should().NotBeEmpty();
         output.Should().NotBeEmpty();
@@ -383,7 +383,7 @@ internal sealed class GitOperationsTests
         using CancellationTokenSource cancelled = new();
         cancelled.Cancel();
 
-        Action act = () => Wait(_operations.CloneAsync(CreateBareRemote(), Path.Combine(NewFolder(), "clone"),
+        Action act = () => Wait(() => _operations.CloneAsync(CreateBareRemote(), Path.Combine(NewFolder(), "clone"),
             new CollectingProgress([]), cancelled.Token));
 
         act.Should().Throw<OperationCanceledException>();
@@ -395,13 +395,13 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
         _repo.Run("commit", "-q", "--amend", "-m", "second, reworded");
 
-        Action plain = () => Wait(_operations.PushAsync(_repo.Path,
+        Action plain = () => Wait(() => _operations.PushAsync(_repo.Path,
             new PushRequest("origin", current, "", ForcePushOptions.DoNotForce, Track: false)));
         plain.Should().Throw<GitOperationException>();
-        Wait(_operations.PushAsync(_repo.Path,
+        Wait(() => _operations.PushAsync(_repo.Path,
             new PushRequest("origin", current, "", ForcePushOptions.ForceWithLease, Track: false)));
 
         GitProcess.Run(remote, "log", "-1", "--format=%s", current).Trim().Should().Be("second, reworded");
@@ -414,7 +414,7 @@ internal sealed class GitOperationsTests
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
 
-        Wait(_operations.PushAsync(_repo.Path,
+        Wait(() => _operations.PushAsync(_repo.Path,
             new PushRequest("origin", current, "published", ForcePushOptions.DoNotForce, Track: true)));
 
         GitProcess.Run(remote, "rev-parse", "published").Trim().Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
@@ -427,14 +427,14 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
         GitProcess.Run(remote, "branch", "old", current);
         _repo.Run("tag", "v1");
         _repo.Run("branch", "topic");
 
-        Wait(_operations.PushAsync(_repo.Path,
+        Wait(() => _operations.PushAsync(_repo.Path,
             new PushRequest("origin", "", "", ForcePushOptions.DoNotForce, false, PushKind.Tag, "v1")));
-        Wait(_operations.PushAsync(_repo.Path,
+        Wait(() => _operations.PushAsync(_repo.Path,
             new PushRequest("origin", "", "", ForcePushOptions.DoNotForce, false, PushKind.Multiple,
                 Actions: [new GitPushAction("topic", "topic"), GitPushAction.DeleteRemoteBranch("old")])));
 
@@ -450,14 +450,14 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
         string target = NewFolder();
-        Wait(_operations.CloneAsync(remote, target));
+        Wait(() => _operations.CloneAsync(remote, target));
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "three");
         _repo.Run("commit", "-q", "-am", "third");
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
 
-        Wait(_operations.PullAsync(target,
+        Wait(() => _operations.PullAsync(target,
             new PullRequest("origin", "", PullAction.FetchOnly, Prune: true, AutoStash: false)));
 
         GitProcess.Run(target, "log", "-1", "--format=%s").Trim().Should().Be("second");
@@ -470,16 +470,16 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
         string target = NewFolder();
-        Wait(_operations.CloneAsync(remote, target));
+        Wait(() => _operations.CloneAsync(remote, target));
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "from origin");
         _repo.Run("add", "new.txt");
         _repo.Run("commit", "-q", "-m", "third");
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
         File.WriteAllText(Path.Combine(target, "a.txt"), "local edit");
 
-        Wait(_operations.PullAsync(target,
+        Wait(() => _operations.PullAsync(target,
             new PullRequest("origin", current, PullAction.Rebase, Prune: false, AutoStash: true)));
 
         GitProcess.Run(target, "log", "-1", "--format=%s").Trim().Should().Be("third");
@@ -502,11 +502,11 @@ internal sealed class GitOperationsTests
             _repo.Run("commit", "-q", "-m", "add submodule");
             _repo.Run("submodule", "deinit", "-q", "-f", "lib");
 
-            RepositorySnapshot before = Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path));
+            RepositorySnapshot before = Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path));
             before.Submodules.Should().ContainSingle().Which.Should().Be(new SubmoduleInfo("lib"));
             File.Exists(Path.Combine(_repo.Path, "lib", "a.txt")).Should().BeFalse();
 
-            Wait(_operations.UpdateSubmodulesAsync(_repo.Path, path: null));
+            Wait(() => _operations.UpdateSubmodulesAsync(_repo.Path, path: null));
 
             File.Exists(Path.Combine(_repo.Path, "lib", "a.txt")).Should().BeTrue();
         }
@@ -524,15 +524,15 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
         string target = NewFolder();
-        Wait(_operations.CloneAsync(remote, target));
+        Wait(() => _operations.CloneAsync(remote, target));
 
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "three");
         _repo.Run("commit", "-q", "-am", "third");
-        Wait(_operations.PushAsync(_repo.Path, "origin", current));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", current));
 
-        Wait(_operations.PullAsync(target, "origin", current, rebase: false));
+        Wait(() => _operations.PullAsync(target, "origin", current, rebase: false));
 
         GitProcess.Run(target, "log", "-1", "--format=%s").Trim().Should().Be("third");
     }
@@ -543,11 +543,11 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         _repo.Run("branch", "feature");
-        Wait(_operations.PushAsync(_repo.Path, "origin", "feature"));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", "feature"));
         _repo.Run("checkout", "-q", "--detach");
         _repo.Run("branch", "-D", "feature");
 
-        Wait(_operations.CheckoutRemoteAsync(_repo.Path, "origin/feature"));
+        Wait(() => _operations.CheckoutRemoteAsync(_repo.Path, "origin/feature"));
 
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature");
         _repo.Run("config", "branch.feature.remote").Trim().Should().Be("origin");
@@ -558,12 +558,12 @@ internal sealed class GitOperationsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
 
-        Wait(_operations.StashAsync(_repo.Path, "work in progress", includeUntracked: false, keepIndex: false));
+        Wait(() => _operations.StashAsync(_repo.Path, "work in progress", includeUntracked: false, keepIndex: false));
 
         _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
         _repo.Run("stash", "list").Should().Contain("work in progress");
 
-        Wait(_operations.PopStashAsync(_repo.Path, "stash@{0}"));
+        Wait(() => _operations.PopStashAsync(_repo.Path, "stash@{0}"));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("changed");
         _repo.Run("stash", "list").Trim().Should().BeEmpty();
@@ -574,7 +574,7 @@ internal sealed class GitOperationsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
 
-        Wait(_operations.StashAsync(_repo.Path, "with new file", includeUntracked: true, keepIndex: false));
+        Wait(() => _operations.StashAsync(_repo.Path, "with new file", includeUntracked: true, keepIndex: false));
 
         _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
         _repo.Run("stash", "list").Should().Contain("with new file");
@@ -586,7 +586,7 @@ internal sealed class GitOperationsTests
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
         File.WriteAllText(Path.Combine(_repo.Path, "other.txt"), "content");
 
-        Wait(_operations.DeleteUntrackedAsync(_repo.Path, ["new.txt"]));
+        Wait(() => _operations.DeleteUntrackedAsync(_repo.Path, ["new.txt"]));
 
         File.Exists(Path.Combine(_repo.Path, "new.txt")).Should().BeFalse();
         File.Exists(Path.Combine(_repo.Path, "other.txt")).Should().BeTrue();
@@ -597,7 +597,7 @@ internal sealed class GitOperationsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
 
-        Wait(_operations.DiscardChangesAsync(_repo.Path, ["a.txt"]));
+        Wait(() => _operations.DiscardChangesAsync(_repo.Path, ["a.txt"]));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
         _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
@@ -610,7 +610,7 @@ internal sealed class GitOperationsTests
         _repo.Run("add", "new.txt");
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
 
-        Wait(_operations.StashAsync(_repo.Path, "keep staged", includeUntracked: false, keepIndex: true));
+        Wait(() => _operations.StashAsync(_repo.Path, "keep staged", includeUntracked: false, keepIndex: true));
 
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("new.txt");
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
@@ -622,7 +622,7 @@ internal sealed class GitOperationsTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
 
-        Wait(_operations.StashAsync(_repo.Path, "only a", includeUntracked: false, keepIndex: false, paths: ["a.txt"]));
+        Wait(() => _operations.StashAsync(_repo.Path, "only a", includeUntracked: false, keepIndex: false, paths: ["a.txt"]));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
         _repo.Run("status", "--porcelain").Trim().Should().Be("?? new.txt");
@@ -634,12 +634,12 @@ internal sealed class GitOperationsTests
         SaveStash("one");
         SaveStash("three");
 
-        Wait(_operations.ApplyStashAsync(_repo.Path, "stash@{1}"));
+        Wait(() => _operations.ApplyStashAsync(_repo.Path, "stash@{1}"));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("one");
         _repo.Run("stash", "list").Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(2);
 
-        Wait(_operations.DropStashAsync(_repo.Path, "stash@{1}"));
+        Wait(() => _operations.DropStashAsync(_repo.Path, "stash@{1}"));
 
         _repo.Run("stash", "list").Should().Contain("saved three").And.NotContain("saved one");
     }
@@ -650,7 +650,7 @@ internal sealed class GitOperationsTests
         SaveStash("one");
         SaveStash("three");
 
-        Wait(_operations.PopStashAsync(_repo.Path, "stash@{1}"));
+        Wait(() => _operations.PopStashAsync(_repo.Path, "stash@{1}"));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("one");
         _repo.Run("stash", "list").Should().Contain("saved three").And.NotContain("saved one");
@@ -659,12 +659,12 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void CreateTag_and_DeleteTag_add_and_remove_a_lightweight_tag()
     {
-        Wait(_operations.CreateTagAsync(_repo.Path, "v1.0", "HEAD~1", ""));
+        Wait(() => _operations.CreateTagAsync(_repo.Path, "v1.0", "HEAD~1", ""));
 
         _repo.Run("tag", "--list").Trim().Should().Be("v1.0");
         GitProcess.Run(_repo.Path, "rev-parse", "v1.0").Trim().Should().Be(_repo.Run("rev-parse", "HEAD~1").Trim());
 
-        Wait(_operations.DeleteTagAsync(_repo.Path, "v1.0"));
+        Wait(() => _operations.DeleteTagAsync(_repo.Path, "v1.0"));
 
         _repo.Run("tag", "--list").Trim().Should().BeEmpty();
     }
@@ -672,7 +672,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void CreateTag_with_a_message_makes_an_annotated_tag()
     {
-        Wait(_operations.CreateTagAsync(_repo.Path, "v2.0", "HEAD", "release notes"));
+        Wait(() => _operations.CreateTagAsync(_repo.Path, "v2.0", "HEAD", "release notes"));
 
         _repo.Run("cat-file", "-t", "v2.0").Trim().Should().Be("tag");
     }
@@ -683,9 +683,9 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         _repo.Run("branch", "feature");
-        Wait(_operations.PushAsync(_repo.Path, "origin", "feature"));
+        Wait(() => _operations.PushAsync(_repo.Path, "origin", "feature"));
 
-        Wait(_operations.DeleteRemoteBranchAsync(_repo.Path, "origin", "feature"));
+        Wait(() => _operations.DeleteRemoteBranchAsync(_repo.Path, "origin", "feature"));
 
         GitProcess.Run(remote, "branch", "--list", "feature").Trim().Should().BeEmpty();
         _repo.Run("branch", "--list", "feature").Trim().Should().Be("feature");
@@ -702,7 +702,7 @@ internal sealed class GitOperationsTests
         string picked = _repo.Run("rev-parse", "HEAD").Trim();
         _repo.Run("checkout", "-q", baseBranch);
 
-        Wait(_operations.CherryPickAsync(_repo.Path, picked));
+        Wait(() => _operations.CherryPickAsync(_repo.Path, picked));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
         File.Exists(Path.Combine(_repo.Path, "f.txt")).Should().BeTrue();
@@ -711,7 +711,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void Revert_adds_a_commit_that_undoes_the_selected_one()
     {
-        Wait(_operations.RevertAsync(_repo.Path, "HEAD"));
+        Wait(() => _operations.RevertAsync(_repo.Path, "HEAD"));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("one");
         _repo.Run("log", "-1", "--format=%s").Should().StartWith("Revert \"second");
@@ -726,43 +726,43 @@ internal sealed class GitOperationsTests
         _repo.Run("add", "f.txt");
         _repo.Run("commit", "-q", "-m", "feature work");
 
-        Wait(_operations.RebaseAsync(_repo.Path, baseBranch));
+        Wait(() => _operations.RebaseAsync(_repo.Path, baseBranch));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
         _repo.Run("rev-parse", "HEAD~1").Trim().Should().Be(_repo.Run("rev-parse", baseBranch).Trim());
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
     }
 
     [AvaloniaTest]
     public void Conflicting_rebase_can_be_aborted()
     {
         string baseBranch = CreateRebaseConflict();
-        Action rebase = () => Wait(_operations.RebaseAsync(_repo.Path, baseBranch));
+        Action rebase = () => Wait(() => _operations.RebaseAsync(_repo.Path, baseBranch));
         rebase.Should().Throw<GitOperationException>();
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeTrue();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeTrue();
 
-        Wait(_operations.AbortRebaseAsync(_repo.Path));
+        Wait(() => _operations.AbortRebaseAsync(_repo.Path));
 
         _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("feature");
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
     }
 
     [AvaloniaTest]
     public void Conflicting_rebase_is_completed_by_staging_the_resolution_and_continuing()
     {
         string baseBranch = CreateRebaseConflict();
-        Action rebase = () => Wait(_operations.RebaseAsync(_repo.Path, baseBranch));
+        Action rebase = () => Wait(() => _operations.RebaseAsync(_repo.Path, baseBranch));
         rebase.Should().Throw<GitOperationException>();
 
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "resolved");
-        Wait(_operations.StageAsync(_repo.Path, ["a.txt"]));
-        Wait(_operations.ContinueRebaseAsync(_repo.Path));
+        Wait(() => _operations.StageAsync(_repo.Path, ["a.txt"]));
+        Wait(() => _operations.ContinueRebaseAsync(_repo.Path));
 
         _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature");
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature edit");
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("resolved");
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
     }
 
     [AvaloniaTest]
@@ -770,10 +770,10 @@ internal sealed class GitOperationsTests
     {
         string editor = WriteEditorScript("""sed -e 's/^pick \(.* second\)$/drop \1/' "$1" > "$1.tmp" """);
 
-        Wait(_operations.RebaseInteractiveAsync(_repo.Path, "HEAD~1", editor));
+        Wait(() => _operations.RebaseInteractiveAsync(_repo.Path, "HEAD~1", editor));
 
         _repo.Run("log", "--format=%s").Trim().Should().Be("first");
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
     }
 
     [AvaloniaTest]
@@ -786,7 +786,7 @@ internal sealed class GitOperationsTests
                                           esac
                                           """);
 
-        Wait(_operations.RebaseInteractiveAsync(_repo.Path, "HEAD~1", editor));
+        Wait(() => _operations.RebaseInteractiveAsync(_repo.Path, "HEAD~1", editor));
 
         _repo.Run("log", "-1", "--format=%B").Trim().Should().Be("reworded");
     }
@@ -797,11 +797,11 @@ internal sealed class GitOperationsTests
         string head = _repo.Run("rev-parse", "HEAD").Trim();
         string editor = WriteEditorScript("exit 1");
 
-        Action rebase = () => Wait(_operations.RebaseInteractiveAsync(_repo.Path, "HEAD~1", editor));
+        Action rebase = () => Wait(() => _operations.RebaseInteractiveAsync(_repo.Path, "HEAD~1", editor));
 
         rebase.Should().Throw<GitOperationException>();
         _repo.Run("rev-parse", "HEAD").Trim().Should().Be(head);
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
     }
 
     // A stand-in ssh (core.sshCommand) asks SSH_ASKPASS for a password as ssh does, reports what it got and fails, so the
@@ -825,7 +825,7 @@ internal sealed class GitOperationsTests
         GitOperations operations = new(askPassExecutable: askPass);
 
         Action fetch = () =>
-            Wait(operations.FetchAsync(_repo.Path, "origin", prune: false, new CollectingProgress([])));
+            Wait(() => operations.FetchAsync(_repo.Path, "origin", prune: false, new CollectingProgress([])));
 
         fetch.Should().Throw<GitOperationException>().Which.Message.Should()
             .Contain("got <answer to secret> marker <1>");
@@ -841,7 +841,7 @@ internal sealed class GitOperationsTests
         _repo.Run("config", $"branch.{branch}.remote", "origin");
         RepositoryScriptContext context = new(_repo.Path, [first], _ => Task.FromResult(""));
 
-        string? arguments = Wait(Task.Run(() => ScriptVariables.ExpandAsync(
+        string? arguments = Wait(() => Task.Run(() => ScriptVariables.ExpandAsync(
             "{sHash} {sTag} {sSubject} {cBranch} {cDefaultRemotePathFromUrl} {HEAD} {cSubject}", context)));
 
         arguments.Should().Be($"{first} v1 first {branch} /owner/repo {branch} second");
@@ -854,8 +854,8 @@ internal sealed class GitOperationsTests
     {
         GitDiffMergeToolCatalog catalog = new();
 
-        IReadOnlyList<string> diffTools = Wait(catalog.GetAvailableAsync(diff: true));
-        IReadOnlyList<string> mergeTools = Wait(catalog.GetAvailableAsync(diff: false));
+        IReadOnlyList<string> diffTools = Wait(() => catalog.GetAvailableAsync(diff: true));
+        IReadOnlyList<string> mergeTools = Wait(() => catalog.GetAvailableAsync(diff: false));
 
         diffTools.Concat(mergeTools).Should().NotContain(tool => tool.StartsWith("vimdiff", StringComparison.Ordinal));
     }
@@ -864,13 +864,13 @@ internal sealed class GitOperationsTests
     public void Skipping_the_conflicting_commit_completes_the_rebase_without_it()
     {
         string baseBranch = CreateRebaseConflict();
-        Action rebase = () => Wait(_operations.RebaseAsync(_repo.Path, baseBranch));
+        Action rebase = () => Wait(() => _operations.RebaseAsync(_repo.Path, baseBranch));
         rebase.Should().Throw<GitOperationException>();
 
-        Wait(_operations.SkipRebaseAsync(_repo.Path));
+        Wait(() => _operations.SkipRebaseAsync(_repo.Path));
 
         _repo.Run("rev-parse", "HEAD").Trim().Should().Be(_repo.Run("rev-parse", baseBranch).Trim());
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsRebasing.Should().BeFalse();
     }
 
     [AvaloniaTest]
@@ -878,7 +878,7 @@ internal sealed class GitOperationsTests
     {
         StartConflictingMerge();
 
-        Wait(_operations.ResolveConflictsAsync(_repo.Path, ["a.txt"], ours: false));
+        Wait(() => _operations.ResolveConflictsAsync(_repo.Path, ["a.txt"], ours: false));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("feature");
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("a.txt");
@@ -889,7 +889,7 @@ internal sealed class GitOperationsTests
     {
         StartConflictingMerge();
 
-        Wait(_operations.ResolveConflictsAsync(_repo.Path, ["a.txt"], ours: true));
+        Wait(() => _operations.ResolveConflictsAsync(_repo.Path, ["a.txt"], ours: true));
 
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("two");
         _repo.Run("ls-files", "-u").Trim().Should().BeEmpty();
@@ -898,7 +898,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void Reset_soft_moves_the_branch_and_keeps_the_changes_staged()
     {
-        Wait(_operations.ResetAsync(_repo.Path, "HEAD~1", ResetMode.Soft));
+        Wait(() => _operations.ResetAsync(_repo.Path, "HEAD~1", ResetMode.Soft));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("first");
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("a.txt");
@@ -907,7 +907,7 @@ internal sealed class GitOperationsTests
     [AvaloniaTest]
     public void Reset_mixed_moves_the_branch_and_keeps_the_changes_unstaged()
     {
-        Wait(_operations.ResetAsync(_repo.Path, "HEAD~1", ResetMode.Mixed));
+        Wait(() => _operations.ResetAsync(_repo.Path, "HEAD~1", ResetMode.Mixed));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("first");
         _repo.Run("diff", "--cached", "--name-only").Trim().Should().BeEmpty();
@@ -924,7 +924,7 @@ internal sealed class GitOperationsTests
         _repo.Run("commit", "-q", "-m", "feature work");
         _repo.Run("checkout", "-q", baseBranch);
 
-        Wait(_operations.MergeAsync(_repo.Path, "feature"));
+        Wait(() => _operations.MergeAsync(_repo.Path, "feature"));
 
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("feature work");
     }
@@ -935,9 +935,9 @@ internal sealed class GitOperationsTests
         string remote = CreateBareRemote();
         _repo.Run("remote", "add", "origin", remote);
         _repo.Run("tag", "v1.0");
-        Wait(_operations.PushTagsAsync(_repo.Path, "origin"));
+        Wait(() => _operations.PushTagsAsync(_repo.Path, "origin"));
 
-        Wait(_operations.DeleteRemoteTagAsync(_repo.Path, "origin", "v1.0"));
+        Wait(() => _operations.DeleteRemoteTagAsync(_repo.Path, "origin", "v1.0"));
 
         GitProcess.Run(remote, "tag", "--list").Trim().Should().BeEmpty();
         _repo.Run("tag", "--list").Trim().Should().Be("v1.0");
@@ -950,7 +950,7 @@ internal sealed class GitOperationsTests
         _repo.Run("config", "diff.tool", "");
         _repo.Run("config", "diff.guitool", "");
 
-        Action act = () => Wait(_operations.RunDiffToolAsync(_repo.Path, "a.txt", commit: null, staged: false));
+        Action act = () => Wait(() => _operations.RunDiffToolAsync(_repo.Path, "a.txt", commit: null, staged: false));
 
         act.Should().Throw<GitOperationException>().WithMessage("*diff.tool*");
     }
@@ -962,7 +962,7 @@ internal sealed class GitOperationsTests
         _repo.Run("config", "merge.tool", "");
         _repo.Run("config", "merge.guitool", "");
 
-        Action act = () => Wait(_operations.RunMergeToolAsync(_repo.Path, "a.txt"));
+        Action act = () => Wait(() => _operations.RunMergeToolAsync(_repo.Path, "a.txt"));
 
         act.Should().Throw<GitOperationException>().WithMessage("*merge.tool*");
     }
@@ -979,13 +979,13 @@ internal sealed class GitOperationsTests
         _repo.Run("commit", "-q", "-am", "base edit");
 
         Func<Task> merge = () => _operations.MergeAsync(_repo.Path, "feature");
-        Action act = () => Wait(merge());
+        Action act = () => Wait(() => merge());
         act.Should().Throw<GitOperationException>();
 
         _repo.Run("status", "--porcelain").Should().Contain("UU a.txt");
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsMerging.Should().BeTrue();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsMerging.Should().BeTrue();
 
-        Wait(_operations.AbortMergeAsync(_repo.Path));
+        Wait(() => _operations.AbortMergeAsync(_repo.Path));
 
         _repo.Run("status", "--porcelain").Trim().Should().BeEmpty();
         File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().Be("base");
@@ -1001,23 +1001,23 @@ internal sealed class GitOperationsTests
         _repo.Run("checkout", "-q", baseBranch);
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "base");
         _repo.Run("commit", "-q", "-am", "base edit");
-        Action merge = () => Wait(_operations.MergeAsync(_repo.Path, "feature"));
+        Action merge = () => Wait(() => _operations.MergeAsync(_repo.Path, "feature"));
         merge.Should().Throw<GitOperationException>();
 
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "resolved");
-        Wait(_operations.StageAsync(_repo.Path, ["a.txt"]));
-        Wait(_operations.CommitAsync(_repo.Path, "merge feature", amend: false, signOff: false, author: ""));
+        Wait(() => _operations.StageAsync(_repo.Path, ["a.txt"]));
+        Wait(() => _operations.CommitAsync(_repo.Path, "merge feature", amend: false, signOff: false, author: ""));
 
         _repo.Run("rev-list", "--parents", "-n", "1", "HEAD").Trim().Split(' ').Should().HaveCount(3);
         _repo.Run("log", "-1", "--format=%s").Trim().Should().Be("merge feature");
-        Wait(new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsMerging.Should().BeFalse();
+        Wait(() => new GitRepositoryService().GetSnapshotAsync(_repo.Path)).IsMerging.Should().BeFalse();
     }
 
     private void StartConflictingMerge()
     {
         string baseBranch = CreateRebaseConflict();
         _repo.Run("checkout", "-q", baseBranch);
-        Action merge = () => Wait(_operations.MergeAsync(_repo.Path, "feature"));
+        Action merge = () => Wait(() => _operations.MergeAsync(_repo.Path, "feature"));
         merge.Should().Throw<GitOperationException>();
     }
 
@@ -1048,7 +1048,9 @@ internal sealed class GitOperationsTests
         _repo.Run("stash", "push", "-q", "-m", "saved " + content);
     }
 
-    private static void Wait(Task task) => task.GetAwaiter().GetResult();
+    // Runs a git operation to its end as vs-threading lets a test wait: JoinableTaskFactory.Run keeps the work that the
+    // operation sends to the main thread going, where blocking on its task would not.
+    private static void Wait(Func<Task> operation) => GitUI.ThreadHelper.JoinableTaskFactory.Run(operation);
 
     private sealed class CollectingProgress(List<GitOutputLine> lines) : IProgress<GitOutputLine>
     {
@@ -1061,7 +1063,7 @@ internal sealed class GitOperationsTests
         }
     }
 
-    private static T Wait<T>(Task<T> task) => task.GetAwaiter().GetResult();
+    private static T Wait<T>(Func<Task<T>> operation) => GitUI.ThreadHelper.JoinableTaskFactory.Run(operation);
 
     private string CreateBareRemote()
     {

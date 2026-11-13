@@ -239,7 +239,7 @@ internal sealed class BuildServerUiTests
     }
 
     /// <summary>
-    ///  GitHub's REST API for one finished workflow run of <paramref name="headSha"/>, on a local port. Running builds
+    ///  GitHub's REST API for one finished workflow run of the given commit, on a local port. Running builds
     ///  (status in_progress) get none.
     /// </summary>
     private sealed class FakeGitHubApi : IDisposable

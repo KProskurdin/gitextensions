@@ -124,7 +124,7 @@ internal sealed class WorktreesWindowTests
     }
 
     [AvaloniaTest]
-    public void Create_checks_out_an_existing_branch_in_the_proposed_folder()
+    public async Task Create_checks_out_an_existing_branch_in_the_proposed_folder()
     {
         _repo.Run("branch", "feature/x");
         Window owner = new();
@@ -139,8 +139,8 @@ internal sealed class WorktreesWindowTests
         Click(create, "CreateButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().Be(_repo.Path + "_feature_x");
-        _repo.Run("-C", result.Result!, "rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature/x");
+        (await result).Should().Be(_repo.Path + "_feature_x");
+        _repo.Run("-C", (await result)!, "rev-parse", "--abbrev-ref", "HEAD").Trim().Should().Be("feature/x");
         owner.Close();
     }
 

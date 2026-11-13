@@ -56,7 +56,7 @@ internal sealed class ReflogWindowTests
     }
 
     [AvaloniaTest]
-    public void The_menu_copies_the_hash_and_opens_the_branch_and_reset_windows()
+    public async Task The_menu_copies_the_hash_and_opens_the_branch_and_reset_windows()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "dirty");
         ReflogWindow reflog = Open();
@@ -68,7 +68,7 @@ internal sealed class ReflogWindowTests
         Click(reflog, "CopyShaMenuItem");
         Task<string?> text = TopLevel.GetTopLevel(reflog)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
-        text.Result.Should().Be(entry.Sha.ToString());
+        (await text).Should().Be(entry.Sha.ToString());
 
         Click(reflog, "CreateBranchMenuItem");
         WaitUntil(() => _branchesCreated.Count == 1);
@@ -85,7 +85,7 @@ internal sealed class ReflogWindowTests
     }
 
     [AvaloniaTest]
-    public void The_reset_window_resets_the_branch_as_chosen()
+    public async Task The_reset_window_resets_the_branch_as_chosen()
     {
         string first = _repo.Run("rev-parse", "HEAD~1").Trim();
         Window owner = new();
@@ -101,7 +101,7 @@ internal sealed class ReflogWindowTests
         Click(reset, "OkButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().BeTrue();
+        (await result).Should().BeTrue();
         _repo.Run("rev-parse", "HEAD").Trim().Should().Be(first);
         _repo.Run("status", "--porcelain").Trim().Should().Be("M a.txt", "a mixed reset keeps the working tree");
         owner.Close();

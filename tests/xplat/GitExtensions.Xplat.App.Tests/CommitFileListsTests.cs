@@ -306,7 +306,7 @@ internal sealed class CommitFileListsTests
     }
 
     [AvaloniaTest]
-    public void Copy_relative_paths_posix_puts_the_selected_paths_on_the_clipboard()
+    public async Task Copy_relative_paths_posix_puts_the_selected_paths_on_the_clipboard()
     {
         Directory.CreateDirectory(Path.Combine(_repo.Path, "docs"));
         File.WriteAllText(Path.Combine(_repo.Path, "docs", "notes.md"), "new");
@@ -322,7 +322,7 @@ internal sealed class CommitFileListsTests
         Task<string?> text = TopLevel.GetTopLevel(commit)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
-        text.Result.Should().Be("docs/notes.md");
+        (await text).Should().Be("docs/notes.md");
         commit.Close();
     }
 

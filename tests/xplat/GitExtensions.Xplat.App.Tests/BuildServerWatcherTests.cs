@@ -1,5 +1,6 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using Avalonia.Headless.NUnit;
 using GitCommands;
 using GitCommands.Settings;
 using GitExtensions.Extensibility.BuildServerIntegration;
@@ -9,7 +10,6 @@ using GitExtensions.Xplat.Core.BuildServer;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitUIPluginInterfaces.BuildServerIntegration;
-using Avalonia.Headless.NUnit;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -45,13 +45,13 @@ internal sealed class BuildServerWatcherTests
     }
 
     [AvaloniaTest]
-    public void LaunchAsync_should_poll_the_configured_build_server_and_report_its_builds()
+    public async Task LaunchAsync_should_poll_the_configured_build_server_and_report_its_builds()
     {
         BuildServerSettings.ServerName[_settings] = FakeType;
         FakeAdapter adapter = new([new BuildInfo { CommitHashList = [_commit], Status = BuildStatus.Success }]);
         using BuildServerWatcher watcher = Watcher(adapter);
 
-        string? type = watcher.LaunchAsync().GetAwaiter().GetResult();
+        string? type = await watcher.LaunchAsync();
 
         type.Should().Be(FakeType);
         WaitUntil(() => _reported.Count > 0);
@@ -60,34 +60,34 @@ internal sealed class BuildServerWatcherTests
     }
 
     [AvaloniaTest]
-    public void LaunchAsync_should_show_nothing_when_the_integration_is_turned_off()
+    public async Task LaunchAsync_should_show_nothing_when_the_integration_is_turned_off()
     {
         BuildServerSettings.ServerName[_settings] = FakeType;
         BuildServerSettings.IntegrationEnabled[_settings] = false;
         using BuildServerWatcher watcher = Watcher(new FakeAdapter([]));
 
-        (watcher.LaunchAsync().GetAwaiter().GetResult()).Should().BeNull();
+        (await watcher.LaunchAsync()).Should().BeNull();
     }
 
     [AvaloniaTest]
-    public void LaunchAsync_should_detect_the_build_server_from_the_remotes_in_upstreams_priority_order()
+    public async Task LaunchAsync_should_detect_the_build_server_from_the_remotes_in_upstreams_priority_order()
     {
         FakeDetector detector = new();
         using BuildServerWatcher watcher = Watcher(new FakeAdapter([]), detector);
 
-        string? type = watcher.LaunchAsync().GetAwaiter().GetResult();
+        string? type = await watcher.LaunchAsync();
 
         type.Should().Be(FakeType);
         detector.RemoteUrls.Should().Equal("https://example.com/team/project.git", "https://example.com/fork/project.git");
     }
 
     [AvaloniaTest]
-    public void LaunchAsync_should_not_detect_once_the_user_chose_the_integration_setting()
+    public async Task LaunchAsync_should_not_detect_once_the_user_chose_the_integration_setting()
     {
         BuildServerSettings.IntegrationEnabled[_settings] = true;
         using BuildServerWatcher watcher = Watcher(new FakeAdapter([]), new FakeDetector());
 
-        (watcher.LaunchAsync().GetAwaiter().GetResult()).Should().BeNull();
+        (await watcher.LaunchAsync()).Should().BeNull();
     }
 
     [AvaloniaTest]

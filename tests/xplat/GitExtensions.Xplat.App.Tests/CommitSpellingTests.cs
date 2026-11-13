@@ -110,7 +110,8 @@ internal sealed class CommitSpellingTests
             .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
         WaitUntil(() => commit.SpellingDictionary == "de-DE" && commit.MessageUnderlines!.Misspelled.Count == 0);
-        WaitUntil(() => SpellingDictionarySetting.LoadAsync(_repo.Path).GetAwaiter().GetResult() == "de-DE");
+        WaitUntil(() => GitUI.ThreadHelper.JoinableTaskFactory.Run(() => SpellingDictionarySetting.LoadAsync(_repo.Path))
+            == "de-DE");
         commit.Close();
     }
 

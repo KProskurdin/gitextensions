@@ -51,7 +51,7 @@ internal static class GitProcess
 
         // A git process that just exited can still hold its working directory for a moment, and one a window started in the
         // background can still add or remove its lock files (index.lock), so retry briefly, from the attributes on.
-        for (int attempt = 1;; attempt++)
+        for (int attempt = 1; ; attempt++)
         {
             try
             {

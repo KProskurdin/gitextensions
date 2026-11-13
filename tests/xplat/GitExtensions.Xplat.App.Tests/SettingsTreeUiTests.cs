@@ -145,12 +145,12 @@ internal sealed class SettingsTreeUiTests
     }
 
     [AvaloniaTest]
-    public void The_checklist_shows_a_row_per_check_and_repair_shows_the_page_to_fix_it_on()
+    public async Task The_checklist_shows_a_row_per_check_and_repair_shows_the_page_to_fix_it_on()
     {
         FakeGitConfigService config = TestAppBuilder.GitConfig;
-        config.Set(ConfigScope.Global, "user.name", "Test");
-        config.Set(ConfigScope.Global, "user.email", "test@example.com");
-        config.Set(ConfigScope.Global, "merge.tool", "meld");
+        await config.SetAsync(ConfigScope.Global, "user.name", "Test");
+        await config.SetAsync(ConfigScope.Global, "user.email", "test@example.com");
+        await config.SetAsync(ConfigScope.Global, "merge.tool", "meld");
         TestAppBuilder.Preferences.Translation = "English";
         try
         {
@@ -186,7 +186,7 @@ internal sealed class SettingsTreeUiTests
         {
             foreach (string key in (string[])["user.name", "user.email", "merge.tool"])
             {
-                config.SetAsync(ConfigScope.Global, key, "").Wait();
+                await config.SetAsync(ConfigScope.Global, key, "");
             }
 
             TestAppBuilder.Preferences.Translation = ChooseTranslationWindow.English;

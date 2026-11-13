@@ -3,8 +3,8 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using GitCommands;
 using Avalonia.VisualTree;
+using GitCommands;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 

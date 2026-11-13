@@ -78,7 +78,7 @@ internal sealed class CompareMenuTests
     }
 
     [AvaloniaTest]
-    public void The_compare_to_branch_window_lists_local_or_remote_branches_and_closes_with_the_chosen_one()
+    public async Task The_compare_to_branch_window_lists_local_or_remote_branches_and_closes_with_the_chosen_one()
     {
         _repo.Run("branch", "topic", "HEAD~1");
         _repo.Run("update-ref", "refs/remotes/origin/main", "HEAD");
@@ -97,7 +97,7 @@ internal sealed class CompareMenuTests
         Find<Button>(choose, "btnCompare").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         WaitUntil(() => chosen.IsCompleted);
-        chosen.Result.Should().Be("topic");
+        (await chosen).Should().Be("topic");
         owner.Close();
     }
 

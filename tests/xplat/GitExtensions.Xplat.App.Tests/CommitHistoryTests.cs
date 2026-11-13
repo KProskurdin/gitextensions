@@ -25,9 +25,9 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_stop_at_the_limit_and_report_more_history()
+    public async Task LoadPage_should_stop_at_the_limit_and_report_more_history()
     {
-        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 1).GetAwaiter().GetResult();
+        CommitPage page = await _history.LoadPageAsync(_repo.Path, limit: 1);
 
         page.Rows.Should().HaveCount(1);
         page.Rows[0].Subject.Should().Be("second");
@@ -35,16 +35,16 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_continue_after_the_skipped_commits()
+    public async Task LoadPage_should_continue_after_the_skipped_commits()
     {
-        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 1, skip: 1).GetAwaiter().GetResult();
+        CommitPage page = await _history.LoadPageAsync(_repo.Path, limit: 1, skip: 1);
 
         page.Rows.Select(row => row.Subject).Should().Equal("first");
         page.HasMore.Should().BeFalse();
     }
 
     [AvaloniaTest]
-    public void LoadFileHistory_should_follow_a_rename_unless_turned_off()
+    public async Task LoadFileHistory_should_follow_a_rename_unless_turned_off()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "old.txt"), "one\ntwo\nthree\nfour\n");
         _repo.Run("add", "old.txt");
@@ -55,10 +55,10 @@ internal sealed class CommitHistoryTests
         _repo.Run("commit", "-q", "-am", "change new");
         string first = _repo.Run("rev-parse", "HEAD~2").Trim();
 
-        CommitPage followed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
-            .LoadFileHistoryAsync(_repo.Path, "HEAD", "new.txt", limit: 10).GetAwaiter().GetResult();
-        CommitPage notFollowed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions(FollowRenames: false))
-            .LoadFileHistoryAsync(_repo.Path, "HEAD", "new.txt", limit: 10).GetAwaiter().GetResult();
+        CommitPage followed = await new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
+            .LoadFileHistoryAsync(_repo.Path, "HEAD", "new.txt", limit: 10);
+        CommitPage notFollowed = await new GitCommitHistory(fileHistory: () => new FileHistoryOptions(FollowRenames: false))
+            .LoadFileHistoryAsync(_repo.Path, "HEAD", "new.txt", limit: 10);
 
         followed.Rows.Select(row => row.Subject).Should().Equal("change new", "rename", "add old");
         followed.FilePaths![first].Should().Be("old.txt");
@@ -66,7 +66,7 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_follow_a_single_path_filter_through_its_renames_as_upstreams_grid()
+    public async Task LoadPage_should_follow_a_single_path_filter_through_its_renames_as_upstreams_grid()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "old.txt"), "old\n");
         _repo.Run("add", "old.txt");
@@ -75,12 +75,12 @@ internal sealed class CommitHistoryTests
         _repo.Run("commit", "-q", "-m", "rename");
         string added = _repo.Run("rev-parse", "HEAD~1").Trim();
 
-        CommitPage followed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
-            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt")).GetAwaiter().GetResult();
-        CommitPage notFollowed = new GitCommitHistory(fileHistory: () => new FileHistoryOptions(FollowRenames: false))
-            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt")).GetAwaiter().GetResult();
-        CommitPage twoPaths = new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
-            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt a.txt")).GetAwaiter().GetResult();
+        CommitPage followed = await new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
+            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt"));
+        CommitPage notFollowed = await new GitCommitHistory(fileHistory: () => new FileHistoryOptions(FollowRenames: false))
+            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt"));
+        CommitPage twoPaths = await new GitCommitHistory(fileHistory: () => new FileHistoryOptions())
+            .LoadPageAsync(_repo.Path, 10, new RevisionFilter(PathFilter: "new.txt a.txt"));
 
         followed.Rows.Select(row => row.Subject).Should().Equal("rename", "add old");
         followed.FilePaths![added].Should().Be("old.txt");
@@ -90,43 +90,43 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_label_commits_with_their_branches_and_tags()
+    public async Task LoadPage_should_label_commits_with_their_branches_and_tags()
     {
         _repo.Run("branch", "feature");
         _repo.Run("tag", "v1", "HEAD~1");
 
-        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 5).GetAwaiter().GetResult();
+        CommitPage page = await _history.LoadPageAsync(_repo.Path, limit: 5);
 
         page.Rows[0].Refs.Should().Contain("feature").And.Contain("HEAD");
         page.Rows[1].Refs.Should().Equal("v1");
     }
 
     [AvaloniaTest]
-    public void Reflog_keeps_the_commit_a_hard_reset_moved_away_from()
+    public async Task Reflog_keeps_the_commit_a_hard_reset_moved_away_from()
     {
         string previous = _repo.Run("rev-parse", "HEAD").Trim();
         _repo.Run("reset", "-q", "--hard", "HEAD~1");
 
-        IReadOnlyList<ReflogEntry> entries = Reflog.LoadAsync(_repo.Path).GetAwaiter().GetResult();
+        IReadOnlyList<ReflogEntry> entries = await Reflog.LoadAsync(_repo.Path);
 
         entries[0].Action.Should().StartWith("reset:");
         entries.Should().Contain(entry => entry.Sha.ToString() == previous);
     }
 
     [AvaloniaTest]
-    public void Search_finds_only_the_commits_whose_message_contains_the_text()
+    public async Task Search_finds_only_the_commits_whose_message_contains_the_text()
     {
-        CommitPage found = _history.SearchAsync(_repo.Path, "BODY LINE", 10).GetAwaiter().GetResult();
-        CommitPage none = _history.SearchAsync(_repo.Path, "no such text", 10).GetAwaiter().GetResult();
+        CommitPage found = await _history.SearchAsync(_repo.Path, "BODY LINE", 10);
+        CommitPage none = await _history.SearchAsync(_repo.Path, "no such text", 10);
 
         found.Rows.Should().ContainSingle().Which.Subject.Should().Be("second");
         none.Rows.Should().BeEmpty();
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_give_each_commit_its_parent_hashes()
+    public async Task LoadPage_should_give_each_commit_its_parent_hashes()
     {
-        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 5).GetAwaiter().GetResult();
+        CommitPage page = await _history.LoadPageAsync(_repo.Path, limit: 5);
 
         string first = _repo.Run("rev-parse", "HEAD~1").Trim();
         page.Rows[0].ParentHashes.Should().Equal(first);
@@ -134,71 +134,69 @@ internal sealed class CommitHistoryTests
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_report_no_more_history_when_the_limit_covers_all_commits()
+    public async Task LoadPage_should_report_no_more_history_when_the_limit_covers_all_commits()
     {
-        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 2).GetAwaiter().GetResult();
+        CommitPage page = await _history.LoadPageAsync(_repo.Path, limit: 2);
 
         page.Rows.Should().HaveCount(2);
         page.HasMore.Should().BeFalse();
     }
 
     [AvaloniaTest]
-    public void LoadPage_should_return_all_commits_when_the_limit_is_larger()
+    public async Task LoadPage_should_return_all_commits_when_the_limit_is_larger()
     {
-        CommitPage page = _history.LoadPageAsync(_repo.Path, limit: 5).GetAwaiter().GetResult();
+        CommitPage page = await _history.LoadPageAsync(_repo.Path, limit: 5);
 
         page.Rows.Should().HaveCount(2);
         page.HasMore.Should().BeFalse();
     }
 
     [AvaloniaTest]
-    public void LoadTree_lists_every_file_of_the_commit()
+    public async Task LoadTree_lists_every_file_of_the_commit()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "dir name.txt"), "x");
         _repo.Run("add", "dir name.txt");
         _repo.Run("commit", "-q", "-m", "add file");
         string head = _repo.Run("rev-parse", "HEAD").Trim();
 
-        IReadOnlyList<string> files = _history.LoadTreeAsync(_repo.Path, head).GetAwaiter().GetResult();
+        IReadOnlyList<string> files = await _history.LoadTreeAsync(_repo.Path, head);
 
         files.Should().Equal("a.txt", "dir name.txt");
     }
 
     [AvaloniaTest]
-    public void LoadFileHistory_lists_only_the_commits_that_changed_the_file()
+    public async Task LoadFileHistory_lists_only_the_commits_that_changed_the_file()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "other.txt"), "x");
         _repo.Run("add", "other.txt");
         _repo.Run("commit", "-q", "-m", "other file");
         string head = _repo.Run("rev-parse", "HEAD").Trim();
 
-        CommitPage aHistory = _history.LoadFileHistoryAsync(_repo.Path, head, "a.txt", limit: 10).GetAwaiter()
-            .GetResult();
-        CommitPage otherHistory = _history.LoadFileHistoryAsync(_repo.Path, head, "other.txt", limit: 10).GetAwaiter()
-            .GetResult();
+        CommitPage historyOfA = await _history.LoadFileHistoryAsync(_repo.Path, head, "a.txt", limit: 10);
+        CommitPage otherHistory = await _history.LoadFileHistoryAsync(_repo.Path, head, "other.txt", limit: 10);
 
-        aHistory.Rows.Select(row => row.Subject).Should().Equal("second", "first");
+        historyOfA.Rows.Select(row => row.Subject).Should().Equal("second", "first");
         otherHistory.Rows.Select(row => row.Subject).Should().Equal("other file");
     }
 
     [AvaloniaTest]
-    public void LoadBlame_attributes_each_line_to_the_commit_that_last_changed_it()
+    public async Task LoadBlame_attributes_each_line_to_the_commit_that_last_changed_it()
     {
         string head = _repo.Run("rev-parse", "HEAD").Trim();
 
-        IReadOnlyList<BlameLine> lines = _history.LoadBlameAsync(_repo.Path, head, "a.txt").GetAwaiter().GetResult();
+        IReadOnlyList<BlameLine> lines = await _history.LoadBlameAsync(_repo.Path, head, "a.txt");
 
         lines.Should().ContainSingle().Which.Should().BeEquivalentTo(
             new { LineNumber = 1, Hash = head[..8], Author = "Test", Content = "two" });
     }
 
     [AvaloniaTest]
-    public void LoadDetails_should_return_parents_and_message()
+    public async Task LoadDetails_should_return_parents_and_message()
     {
         string head = _repo.Run("rev-parse", "HEAD").Trim();
         string parent = _repo.Run("rev-parse", "HEAD~1").Trim();
 
-        CommitDetails details = _history.LoadDetailsAsync(_repo.Path, head).GetAwaiter().GetResult();
+        CommitDetails details = await _history.LoadDetailsAsync(_repo.Path, head);
 
         details.Hash.Should().Be(head);
         details.Parents.Should().StartWith(parent[..7]);

@@ -41,7 +41,7 @@ internal sealed class PushWindowTests
     }
 
     [AvaloniaTest]
-    public void Push_of_a_tag_closes_with_upstreams_request()
+    public async Task Push_of_a_tag_closes_with_upstreams_request()
     {
         Window owner = new();
         owner.Show();
@@ -54,12 +54,12 @@ internal sealed class PushWindowTests
         Click(push, "PushButton");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().Be(new PushRequest("origin", "", "", ForcePushOptions.Force, false, PushKind.Tag, "v1"));
+        (await result).Should().Be(new PushRequest("origin", "", "", ForcePushOptions.Force, false, PushKind.Tag, "v1"));
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void A_new_branch_is_confirmed_and_a_force_push_is_offered_as_force_with_lease()
+    public async Task A_new_branch_is_confirmed_and_a_force_push_is_offered_as_force_with_lease()
     {
         Window owner = new();
         owner.Show();
@@ -82,7 +82,7 @@ internal sealed class PushWindowTests
         Find<SelectableTextBlock>(question, "MessageText").Text.Should().Be(PushDialog.UseForceWithLeaseInstead);
         Click(question, "YesButton");
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().Be(new PushRequest("origin", "main", "main", ForcePushOptions.ForceWithLease, false,
+        (await result).Should().Be(new PushRequest("origin", "main", "main", ForcePushOptions.ForceWithLease, false,
             RecursiveSubmodules: 1));
         owner.Close();
     }

@@ -227,7 +227,7 @@ internal sealed class DiffViewOptionsTests
     }
 
     [AvaloniaTest]
-    public void The_menu_copies_a_version_and_offers_line_staging_only_when_the_window_asks()
+    public async Task The_menu_copies_a_version_and_offers_line_staging_only_when_the_window_asks()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed\n");
         DiffView diff = Show();
@@ -247,7 +247,7 @@ internal sealed class DiffViewOptionsTests
         diff.FindControl<MenuItem>("CopyNewVersionMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
         Task<string?> text = TopLevel.GetTopLevel(diff)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
-        text.Result.Should().Be("changed");
+        (await text).Should().Be("changed");
     }
 
     [AvaloniaTest]

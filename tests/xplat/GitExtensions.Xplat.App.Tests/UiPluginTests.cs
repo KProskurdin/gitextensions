@@ -365,13 +365,13 @@ internal sealed class UiPluginTests
     [AvaloniaTest]
     public void Release_notes_html_is_upstreams_cf_html_with_the_offsets_of_the_document_and_the_fragment()
     {
-        string cfHtml = (string)PluginType("ReleaseNotesGenerator", "HtmlClipboard").GetMethod("CreateCfHtml")!
+        string clipboardHtml = (string)PluginType("ReleaseNotesGenerator", "HtmlClipboard").GetMethod("CreateCfHtml")!
             .Invoke(null, ["<b>x</b>"])!;
 
-        cfHtml.Should().Be(
+        clipboardHtml.Should().Be(
             "Version:0.9\r\nStartHTML:00000097\r\nEndHTML:00000173\r\nStartFragment:00000131\r\nEndFragment:00000139\r\n" +
             "<html><body>\r\n<!--StartFragment--><b>x</b><!--EndFragment-->\r\n</body></html>");
-        cfHtml[131..139].Should().Be("<b>x</b>");
+        clipboardHtml[131..139].Should().Be("<b>x</b>");
     }
 
     [AvaloniaTest]
@@ -525,7 +525,7 @@ internal sealed class UiPluginTests
             Control pie = Find<Control>(dialog, "CommitCountPie");
             ((IReadOnlyList<decimal>)pie.GetType().GetProperty("Values")!.GetValue(pie)!).Should().HaveCount(2);
             int slice = (int)pie.GetType().GetMethod("SliceAt")!
-                .Invoke(pie, [new Avalonia.Point(pie.Bounds.Width / 2, pie.Bounds.Height / 2 - 20)])!;
+                .Invoke(pie, [new Avalonia.Point(pie.Bounds.Width / 2, (pie.Bounds.Height / 2) - 20)])!;
             slice.Should().BeInRange(0, 1);
             return true;
         });

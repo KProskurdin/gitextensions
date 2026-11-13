@@ -24,48 +24,48 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_report_the_current_branch_and_mark_it()
+    public async Task GetSnapshot_should_report_the_current_branch_and_mark_it()
     {
         string current = _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim();
 
-        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+        RepositorySnapshot snapshot = await _service.GetSnapshotAsync(_repo.Path);
 
         snapshot.CurrentBranch.Should().Be(current);
         snapshot.Branches.Should().Contain(branch => branch.Name == current && branch.IsCurrent && !branch.IsRemote);
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_list_an_untracked_file_as_untracked_and_unstaged()
+    public async Task GetSnapshot_should_list_an_untracked_file_as_untracked_and_unstaged()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
 
-        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+        RepositorySnapshot snapshot = await _service.GetSnapshotAsync(_repo.Path);
 
         snapshot.Changes.Should().ContainSingle()
             .Which.Should().Be(new FileChange("new.txt", ChangeKind.Untracked, Staged: false));
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_report_a_staged_new_file_as_added_and_staged()
+    public async Task GetSnapshot_should_report_a_staged_new_file_as_added_and_staged()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "content");
         _repo.Run("add", "new.txt");
 
-        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+        RepositorySnapshot snapshot = await _service.GetSnapshotAsync(_repo.Path);
 
         snapshot.Changes.Should().ContainSingle()
             .Which.Should().Be(new FileChange("new.txt", ChangeKind.Added, Staged: true));
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_list_the_stashes_and_tags()
+    public async Task GetSnapshot_should_list_the_stashes_and_tags()
     {
         _repo.Run("tag", "v1.0");
         _repo.Run("tag", "v0.9");
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         _repo.Run("stash", "push", "-q", "-m", "work in progress");
 
-        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+        RepositorySnapshot snapshot = await _service.GetSnapshotAsync(_repo.Path);
 
         StashInfo stash = snapshot.Stashes.Should().ContainSingle().Which;
         stash.Name.Should().Be("stash@{0}");
@@ -74,7 +74,7 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_count_the_commits_ahead_of_the_upstream()
+    public async Task GetSnapshot_should_count_the_commits_ahead_of_the_upstream()
     {
         string remote = Path.Combine(Path.GetTempPath(), "xplat-remote-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(remote);
@@ -86,7 +86,7 @@ internal sealed class RepositoryServiceTests
             File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "local");
             _repo.Run("commit", "-q", "-am", "local");
 
-            RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+            RepositorySnapshot snapshot = await _service.GetSnapshotAsync(_repo.Path);
 
             snapshot.Sync.Should().Be(new SyncStatus(1, 0));
             snapshot.TrackingRemote.Should().Be("origin");
@@ -98,16 +98,16 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_report_no_sync_status_without_an_upstream()
+    public async Task GetSnapshot_should_report_no_sync_status_without_an_upstream()
     {
-        RepositorySnapshot snapshot = _service.GetSnapshotAsync(_repo.Path).GetAwaiter().GetResult();
+        RepositorySnapshot snapshot = await _service.GetSnapshotAsync(_repo.Path);
 
         snapshot.Sync.Should().BeNull();
         snapshot.TrackingRemote.Should().BeNull();
     }
 
     [AvaloniaTest]
-    public void SubmoduleChanges_should_list_the_commits_a_staged_submodule_change_brings_in()
+    public async Task SubmoduleChanges_should_list_the_commits_a_staged_submodule_change_brings_in()
     {
         // git refuses local-path submodules unless the file protocol is allowed; this is set for this test's processes only.
         Environment.SetEnvironmentVariable("GIT_CONFIG_COUNT", "1");
@@ -124,12 +124,11 @@ internal sealed class RepositoryServiceTests
             string third = GitProcess.Run(lib, "log", "-1", "--format=%h").Trim();
             _repo.Run("add", "lib");
 
-            string message = PreviousCommitMessages.SubmoduleChangesAsync(_repo.Path, ["lib", "a.txt"])
-                .GetAwaiter().GetResult();
+            string message = await PreviousCommitMessages.SubmoduleChangesAsync(_repo.Path, ["lib", "a.txt"]);
 
             message.ReplaceLineEndings("\n").Should()
                 .Be($"Submodule lib updated\n\nSubmodule lib:\n    > {third} - third");
-            PreviousCommitMessages.SubmoduleChangesAsync(_repo.Path, ["a.txt"]).GetAwaiter().GetResult().Should()
+            (await PreviousCommitMessages.SubmoduleChangesAsync(_repo.Path, ["a.txt"])).Should()
                 .BeEmpty();
         }
         finally
@@ -141,14 +140,14 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
-    public void PreviousMessages_should_read_the_newest_first_and_only_the_users_own_when_asked()
+    public async Task PreviousMessages_should_read_the_newest_first_and_only_the_users_own_when_asked()
     {
         _repo.Run("-c", "user.name=Other", "-c", "user.email=other@example.com", "commit", "-q", "--allow-empty", "-m",
             "by other");
 
-        PreviousCommitMessages.ReadAsync(_repo.Path, 2, onlyMine: false).GetAwaiter().GetResult().Should()
+        (await PreviousCommitMessages.ReadAsync(_repo.Path, 2, onlyMine: false)).Should()
             .Equal("by other", "second\n\nbody line");
-        PreviousCommitMessages.ReadAsync(_repo.Path, 5, onlyMine: true).GetAwaiter().GetResult().Should()
+        (await PreviousCommitMessages.ReadAsync(_repo.Path, 5, onlyMine: true)).Should()
             .Equal("second\n\nbody line", "first");
     }
 
@@ -171,7 +170,7 @@ internal sealed class RepositoryServiceTests
     }
 
     [AvaloniaTest]
-    public void GetSnapshot_should_fail_for_a_folder_that_is_not_a_repository()
+    public async Task GetSnapshot_should_fail_for_a_folder_that_is_not_a_repository()
     {
         string folder = Path.Combine(Path.GetTempPath(), "xplat-not-a-repo-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -179,8 +178,7 @@ internal sealed class RepositoryServiceTests
         {
             Func<Task> read = () => _service.GetSnapshotAsync(folder);
 
-            Action act = () => read().GetAwaiter().GetResult();
-            act.Should().Throw<InvalidOperationException>().WithMessage("Not a git repository: *");
+            await read.Should().ThrowAsync<InvalidOperationException>().WithMessage("Not a git repository: *");
         }
         finally
         {

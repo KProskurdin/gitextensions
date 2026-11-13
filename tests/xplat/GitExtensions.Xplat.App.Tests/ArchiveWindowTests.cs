@@ -86,7 +86,7 @@ internal sealed class ArchiveWindowTests
     }
 
     [AvaloniaTest]
-    public void The_commit_chooser_preselects_follows_parents_and_returns_the_choice()
+    public async Task The_commit_chooser_preselects_follows_parents_and_returns_the_choice()
     {
         Window owner = new();
         owner.Show();
@@ -106,7 +106,7 @@ internal sealed class ArchiveWindowTests
         grid.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
 
         WaitUntil(() => result.IsCompleted);
-        result.Result!.Hash.Should().Be(_first);
+        (await result)!.Hash.Should().Be(_first);
         owner.Close();
     }
 

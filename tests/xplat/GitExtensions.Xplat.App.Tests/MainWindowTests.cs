@@ -789,7 +789,7 @@ internal sealed class MainWindowTests
     }
 
     [AvaloniaTest]
-    public void Copy_message_puts_the_full_commit_message_on_the_clipboard()
+    public async Task Copy_message_puts_the_full_commit_message_on_the_clipboard()
     {
         MainWindow window = NewWindow();
         window.Show();
@@ -801,11 +801,11 @@ internal sealed class MainWindowTests
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
-        text.Result.Should().Contain("second").And.Contain("body line");
+        (await text).Should().Contain("second").And.Contain("body line");
     }
 
     [AvaloniaTest]
-    public void Copy_hash_from_the_context_menu_puts_the_selected_commit_hash_on_the_clipboard()
+    public async Task Copy_hash_from_the_context_menu_puts_the_selected_commit_hash_on_the_clipboard()
     {
         MainWindow window = NewWindow();
         window.Show();
@@ -817,7 +817,7 @@ internal sealed class MainWindowTests
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
-        text.Result.Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
+        (await text).Should().Be(_repo.Run("rev-parse", "HEAD").Trim());
         window.Close();
     }
 

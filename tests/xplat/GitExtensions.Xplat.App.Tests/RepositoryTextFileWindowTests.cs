@@ -23,7 +23,7 @@ internal sealed class RepositoryTextFileWindowTests
     public void TearDown() => Directory.Delete(_folder, recursive: true);
 
     [AvaloniaTest]
-    public void Save_writes_the_text_with_a_final_line_break_and_closes()
+    public async Task Save_writes_the_text_with_a_final_line_break_and_closes()
     {
         File.WriteAllText(Path.Combine(_folder, ".mailmap"), "Old <old@example.com>\n");
         (Window owner, RepositoryTextFileWindow window, Task<bool> result) = Open(RepositoryTextFiles.MailMap);
@@ -36,13 +36,13 @@ internal sealed class RepositoryTextFileWindowTests
         Click(window, "Save");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().BeTrue();
+        (await result).Should().BeTrue();
         File.ReadAllText(Path.Combine(_folder, ".mailmap")).Should().Be("New <new@example.com>" + Environment.NewLine);
         owner.Close();
     }
 
     [AvaloniaTest]
-    public void Closing_with_changes_asks_and_Cancel_keeps_the_window_and_No_drops_them()
+    public async Task Closing_with_changes_asks_and_Cancel_keeps_the_window_and_No_drops_them()
     {
         (Window owner, RepositoryTextFileWindow window, Task<bool> result) = Open(RepositoryTextFiles.GitAttributes);
         window.Title.Should().Be("Edit .gitattributes");
@@ -56,7 +56,7 @@ internal sealed class RepositoryTextFileWindowTests
         Answer(window, "Save changes?", "No");
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().BeFalse();
+        (await result).Should().BeFalse();
         File.Exists(Path.Combine(_folder, ".gitattributes")).Should().BeFalse();
         owner.Close();
     }

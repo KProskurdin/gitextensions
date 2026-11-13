@@ -43,7 +43,7 @@ internal sealed class DeleteRemoteBranchWindowTests
     }
 
     [AvaloniaTest]
-    public void A_merged_branch_is_deleted_once_Delete_branches_from_remote_is_checked()
+    public async Task A_merged_branch_is_deleted_once_Delete_branches_from_remote_is_checked()
     {
         (Window owner, DeleteRemoteBranchWindow window, Task<bool> result) = Open("origin/merged");
         Button delete = Find<Button>(window, "Delete");
@@ -55,7 +55,7 @@ internal sealed class DeleteRemoteBranchWindowTests
         delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         WaitUntil(() => result.IsCompleted);
-        result.Result.Should().BeTrue();
+        (await result).Should().BeTrue();
         _deletedOnRemote.Should().Equal("origin:merged");
         _deletedLocally.Should().BeEmpty();
         owner.Close();

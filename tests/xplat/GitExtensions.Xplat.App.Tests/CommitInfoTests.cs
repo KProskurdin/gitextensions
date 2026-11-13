@@ -121,7 +121,7 @@ internal sealed class CommitInfoTests
     }
 
     [AvaloniaTest]
-    public void Copy_commit_info_puts_the_header_and_the_message_on_the_clipboard()
+    public async Task Copy_commit_info_puts_the_header_and_the_message_on_the_clipboard()
     {
         MainWindow window = OpenWindow(selectedIndex: 0);
         WaitUntil(() => Find<InfoTextBlock>(window, "DetailMessage").PlainText.Length > 0);
@@ -130,7 +130,7 @@ internal sealed class CommitInfoTests
         Task<string?> text = TopLevel.GetTopLevel(window)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
 
-        text.Result.Should().StartWith("Author: Test <test@example.com>")
+        (await text).Should().StartWith("Author: Test <test@example.com>")
             .And.Contain($"Commit hash: {_repo.Run("rev-parse", "HEAD").Trim()}")
             .And.EndWith($"second{Environment.NewLine}{Environment.NewLine}body line");
     }
