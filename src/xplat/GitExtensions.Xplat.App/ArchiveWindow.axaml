@@ -1,42 +1,49 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.ArchiveWindow"
+        x:DataType="vm:ArchiveViewModel"
         Title="Archive"
         Width="594" SizeToContent="Height" MinWidth="594" CanMinimize="False" CanMaximize="False"
         WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormArchive: the revision to archive with a button to choose another, the file filters (paths, or the files
-       changed since another revision), the format and Save as. -->
+       changed since another revision), the format and Save as. Bound to ArchiveViewModel (PLAN.md principle 6). -->
   <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="3">
     <TextBlock x:Name="label1" Grid.ColumnSpan="2" Text="This revision will be archived:" Margin="3,7,3,3" />
-    <local:CommitSummaryView x:Name="commitSummaryUserControl1" Grid.Row="1" Margin="13,3,3,3" />
+    <local:CommitSummaryView x:Name="commitSummaryUserControl1" Grid.Row="1" Margin="13,3,3,3" Summary="{Binding Summary}" />
     <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3" Margin="3">
       <TextBlock x:Name="label2" Text="Choose another&#10;revision:" />
-      <Button x:Name="btnChooseRevision" Padding="3" HorizontalAlignment="Left">
+      <Button x:Name="btnChooseRevision" Padding="3" HorizontalAlignment="Left" Command="{Binding ChooseRevisionCommand}">
         <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
       </Button>
     </StackPanel>
     <HeaderedContentControl x:Name="groupBox2" Grid.Row="2" Grid.ColumnSpan="2" Classes="groupBox" Header="Filter files"
                             Margin="3">
       <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-        <CheckBox x:Name="checkBoxPathFilter" Grid.ColumnSpan="2" Content="Archive specific paths only" />
+        <CheckBox x:Name="checkBoxPathFilter" Grid.ColumnSpan="2" Content="Archive specific paths only"
+                  IsChecked="{Binding PathFilter}" />
         <TextBox x:Name="textBoxPaths" Grid.Row="1" Grid.ColumnSpan="2" AcceptsReturn="True" TextWrapping="NoWrap"
-                 Height="75" Margin="15,3,0,0" />
+                 Height="75" Margin="15,3,0,0" Text="{Binding Paths}" IsEnabled="{Binding PathFilter}" />
         <TextBlock x:Name="label4" Grid.Row="2" Text="separate each new path by new line" Margin="18,3,0,12" />
         <CheckBox x:Name="checkboxRevisionFilter" Grid.Row="3" Grid.ColumnSpan="2"
-                  Content="Take the files that have changed from the revision above to this one and archive only those" />
-        <HeaderedContentControl x:Name="gbDiffRevision" Grid.Row="4" Classes="groupBox" Header="..." Margin="7,3,3,0">
+                  Content="Take the files that have changed from the revision above to this one and archive only those"
+                  IsChecked="{Binding RevisionFilter}" />
+        <HeaderedContentControl x:Name="gbDiffRevision" Grid.Row="4" Classes="groupBox" Header="{Binding DiffHeader}"
+                                Margin="7,3,3,0" IsEnabled="{Binding RevisionFilter}">
           <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-            <TextBlock x:Name="labelMessage" Grid.ColumnSpan="3" FontWeight="Bold" Text="..." TextWrapping="Wrap"
-                       MaxHeight="50" Margin="0,0,0,8" />
+            <TextBlock x:Name="labelMessage" Grid.ColumnSpan="3" FontWeight="Bold" Text="{Binding DiffMessage}"
+                       TextWrapping="Wrap" MaxHeight="50" Margin="0,0,0,8" />
             <TextBlock x:Name="labelAuthorCaption" Grid.Row="1" Text="Author:" Margin="0,0,4,0" />
-            <TextBlock x:Name="labelAuthor" Grid.Row="1" Grid.Column="1" FontWeight="Bold" Text="..." />
-            <TextBlock x:Name="labelDateCaption" Grid.Row="1" Grid.Column="2" Margin="12,0,0,0" />
+            <TextBlock x:Name="labelAuthor" Grid.Row="1" Grid.Column="1" FontWeight="Bold" Text="{Binding DiffAuthor}" />
+            <TextBlock x:Name="labelDateCaption" Grid.Row="1" Grid.Column="2" Margin="12,0,0,0"
+                       Text="{Binding DiffDateCaption}" />
           </Grid>
         </HeaderedContentControl>
         <StackPanel Grid.Row="4" Grid.Column="1" Spacing="3" Margin="3">
           <TextBlock x:Name="lblChooseDiffRevision" Text="Choose revision to &#10;compare with first:" />
-          <Button x:Name="btnDiffChooseRevision" Padding="3" HorizontalAlignment="Left">
+          <Button x:Name="btnDiffChooseRevision" Padding="3" HorizontalAlignment="Left"
+                  Command="{Binding ChooseDiffRevisionCommand}" IsEnabled="{Binding RevisionFilter}">
             <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
           </Button>
         </StackPanel>
@@ -45,12 +52,13 @@
     <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3">
       <HeaderedContentControl x:Name="groupBox1" Classes="groupBox" Header="Archive format">
         <StackPanel Orientation="Horizontal" Spacing="10">
-          <RadioButton x:Name="_NO_TRANSLATE_radioButtonFormatZip" GroupName="Format" Content="zip" IsChecked="True" />
+          <!-- One bound value is enough: the group unchecks zip when tar is chosen. -->
+          <RadioButton x:Name="_NO_TRANSLATE_radioButtonFormatZip" GroupName="Format" Content="zip" IsChecked="{Binding IsZip}" />
           <RadioButton x:Name="_NO_TRANSLATE_radioButtonFormatTar" GroupName="Format" Content="tar" />
         </StackPanel>
       </HeaderedContentControl>
       <Button x:Name="buttonArchiveRevision" Content="Save as..." MinWidth="111" VerticalAlignment="Bottom"
-              HorizontalContentAlignment="Center" IsDefault="True" />
+              HorizontalContentAlignment="Center" IsDefault="True" Command="{Binding SaveCommand}" />
     </StackPanel>
   </Grid>
 </Window>

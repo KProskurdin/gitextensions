@@ -1,12 +1,14 @@
 using Avalonia.Controls;
 using GitCommands;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormDeleteTag</c>: deletes the tag named in the box, and, when asked, on the chosen remote too (the
-///  branch's remote at first). Closes with true after the delete, as upstream, which closes whether git succeeded or not.
+///  Upstream's <c>FormDeleteTag</c>, bound to <see cref="DeleteTagViewModel"/>: deletes the tag named in the box, and, when
+///  asked, on the chosen remote too (the branch's remote at first). Closes with true after the delete, as upstream, which
+///  closes whether git succeeded or not.
 /// </summary>
 public partial class DeleteTagWindow : Window
 {
@@ -14,8 +16,6 @@ public partial class DeleteTagWindow : Window
     private const string HelpSubfolder = "tag";
     private const string HelpAnchor = "delete-tag";
     private const string HelpTooltip = "Read more about this feature at {0}";
-
-    private readonly Func<string, string?, Task>? _delete;
 
     public DeleteTagWindow()
         : this(null, [], [], "", null)
@@ -30,31 +30,14 @@ public partial class DeleteTagWindow : Window
     public DeleteTagWindow(string? tag, IReadOnlyList<string> tags, IReadOnlyList<string> remotes, string currentRemote,
         Func<string, string?, Task>? delete)
     {
-        _delete = delete;
+        DataContext = new DeleteTagViewModel(new WindowDialogHost(this), tag, tags, remotes, currentRemote, delete);
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormDeleteTag");
+        UpstreamTranslation.Apply(this, DeleteTagViewModel.Category);
         InitialFocus.Attach(this, () => Tags);
-        Tags.ItemsSource = tags;
-        Tags.Text = tag;
-        Remotes.ItemsSource = remotes;
-        Remotes.SelectedItem = remotes.FirstOrDefault(remote => remote == currentRemote);
-        deleteTag.IsCheckedChanged += (_, _) => Remotes.IsEnabled = deleteTag.IsChecked == true;
+
+        // View concern: the user manual's link opens the browser.
         string url = GitUI.UserManual.UserManual.UrlFor(HelpSubfolder, HelpAnchor);
         ToolTip.SetTip(HelpLink, string.Format(UpstreamTranslation.ByText(HelpTooltip), url));
         HelpLink.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(url);
-        Ok.Click += (_, _) => UiActions.Run(DeleteAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
-    }
-
-    // Upstream's OkClick: the remote's tag only when the box names one.
-    private async Task DeleteAsync()
-    {
-        string tag = Tags.Text ?? "";
-        string? remote = deleteTag.IsChecked == true && tag.Length > 0 ? Remotes.SelectedItem as string ?? "" : null;
-        if (_delete is not null)
-        {
-            await _delete(tag, remote);
-        }
-
-        Close(true);
     }
 }

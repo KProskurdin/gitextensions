@@ -125,7 +125,7 @@ internal sealed class GridSuperprojectTests
         => commits.ItemsSource as IReadOnlyList<CommitListItem> ?? [];
 
     private static void Click(Window window, string name)
-        => Find<MenuItem>(window, name).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        => UiClicks.Raise(Find<MenuItem>(window, name), MenuItem.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");

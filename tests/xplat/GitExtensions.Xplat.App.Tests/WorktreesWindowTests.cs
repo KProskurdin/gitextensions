@@ -173,7 +173,7 @@ internal sealed class WorktreesWindowTests
     }
 
     private static void Click(Window window, string name)
-        => Find<Control>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Control>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

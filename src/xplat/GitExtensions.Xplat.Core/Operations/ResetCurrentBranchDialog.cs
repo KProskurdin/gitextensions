@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Operations;
@@ -6,7 +7,7 @@ namespace GitExtensions.Xplat.Core.Operations;
 ///  Upstream's <c>FormResetCurrentBranch</c> without its window: the reset types it offers, the question before a hard
 ///  reset, when submodules are updated afterwards and the git documentation its help button opens.
 /// </summary>
-public sealed class ResetCurrentBranchDialog
+public sealed partial class ResetCurrentBranchDialog : ObservableObject
 {
     // Upstream's texts.
     public const string BranchInfo = "Reset branch '{0}' to revision:";
@@ -27,7 +28,9 @@ public sealed class ResetCurrentBranchDialog
     public static IReadOnlyList<ResetMode> Modes { get; } =
         [ResetMode.Soft, ResetMode.Mixed, ResetMode.Keep, ResetMode.Merge, ResetMode.Hard];
 
-    public ResetMode Mode { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AsksFirst))]
+    public partial ResetMode Mode { get; set; }
 
     /// <summary>
     ///  Upstream asks <see cref="ResetHardWarning"/> before a hard reset only.

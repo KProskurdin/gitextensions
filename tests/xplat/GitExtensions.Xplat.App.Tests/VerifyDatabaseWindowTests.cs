@@ -203,17 +203,17 @@ internal sealed class VerifyDatabaseWindowTests
         WaitUntil(() => !main.IsBusy);
         main.FindControl<MenuItem>("GitMaintenanceMenuItem")!.IsEnabled.Should().BeTrue();
 
-        main.FindControl<MenuItem>("DeleteIndexLockMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("DeleteIndexLockMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => !File.Exists(indexLock));
 
-        main.FindControl<MenuItem>("EditLocalGitConfigMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("EditLocalGitConfigMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<EditorWindow>().Any());
         EditorWindow editor = main.OwnedWindows.OfType<EditorWindow>().Single();
         editor.Title.Should().Be(Path.GetFullPath(Path.Combine(_repo.Path, ".git", "config")));
         Find<Border>(editor, "panelMessage").IsVisible.Should().BeTrue();
         editor.Close();
 
-        main.FindControl<MenuItem>("RecoverLostObjectsMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("RecoverLostObjectsMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<VerifyDatabaseWindow>().Any());
         main.OwnedWindows.OfType<VerifyDatabaseWindow>().Single().Close();
         main.Close();
@@ -240,7 +240,7 @@ internal sealed class VerifyDatabaseWindowTests
     }
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name)
         where T : Control

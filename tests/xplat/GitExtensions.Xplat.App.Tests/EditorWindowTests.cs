@@ -263,7 +263,7 @@ internal sealed class EditorWindowTests
 
     private static void Click(Window window, string buttonName)
     {
-        Find<Button>(window, buttonName).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, buttonName), Button.ClickEvent);
         Dispatcher.UIThread.RunJobs();
     }
 

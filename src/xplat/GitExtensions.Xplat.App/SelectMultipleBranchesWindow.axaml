@@ -1,14 +1,23 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.SelectMultipleBranchesWindow"
+        x:DataType="vm:SelectMultipleBranchesViewModel"
         Title="Select multiple branches"
         Width="263" Height="252" MinWidth="200" MinHeight="200" CanMinimize="False" CanMaximize="False"
         WindowStartupLocation="CenterOwner">
-  <!-- Upstream's FormSelectMultipleBranches: the branches with check boxes, checked with one click, and OK. -->
+  <!-- Upstream's FormSelectMultipleBranches: the branches with check boxes, checked with one click, and OK. Bound to
+       SelectMultipleBranchesViewModel (PLAN.md principle 6). -->
   <DockPanel Margin="12,9,12,6">
     <TextBlock x:Name="selectBranchesLabel" DockPanel.Dock="Top" Text="Select branches" Margin="0,0,0,8" />
     <Button x:Name="okButton" DockPanel.Dock="Bottom" Content="OK" MinWidth="75" HorizontalAlignment="Right"
-            HorizontalContentAlignment="Center" Margin="0,8,0,0" IsDefault="True" />
-    <ListBox x:Name="Branches" />
+            HorizontalContentAlignment="Center" Margin="0,8,0,0" IsDefault="True" Command="{Binding OkCommand}" />
+    <ListBox x:Name="Branches" ItemsSource="{Binding Branches}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:SelectableBranch">
+          <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
   </DockPanel>
 </Window>

@@ -1,12 +1,18 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Presentation"
         x:Class="GitExtensions.Xplat.App.HelpWindow"
+        x:DataType="vm:TextViewModel"
+        Title="{Binding Title}"
         Width="460" Height="560" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream SimpleHelpDisplayDialog: a text to read (and copy from) beside the window it helps with. -->
+  <!-- Mirrors upstream SimpleHelpDisplayDialog: a text to read (and copy from) beside the window it helps with. Bound to
+       TextViewModel (PLAN.md principle 6). -->
   <DockPanel Margin="12" LastChildFill="True">
-    <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Content="Close" IsCancel="True" HorizontalAlignment="Right" Margin="0,8,0,0" />
+    <Button x:Name="CloseButton" DockPanel.Dock="Bottom" Content="Close" IsCancel="True" HorizontalAlignment="Right" Margin="0,8,0,0"
+            Command="{Binding CloseCommand}" />
     <ScrollViewer>
-      <SelectableTextBlock x:Name="ContentText" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" TextWrapping="Wrap" />
+      <SelectableTextBlock x:Name="ContentText" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" TextWrapping="Wrap"
+                           Text="{Binding Content}" />
     </ScrollViewer>
   </DockPanel>
 </Window>

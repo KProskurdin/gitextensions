@@ -1,15 +1,18 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Diagnostics"
         x:Class="GitExtensions.Xplat.App.ExceptionDetailWindow"
+        x:DataType="vm:ExceptionDetailViewModel"
         Title="Exception Detail View"
         Width="575" Height="250" MinWidth="300" MinHeight="150" WindowStartupLocation="CenterOwner">
-  <!-- Upstream's ExceptionDetailView: a property of the bug report's exception and its whole value. -->
+  <!-- Upstream's ExceptionDetailView: a property of the bug report's exception and its whole value. Bound to
+       ExceptionDetailViewModel (PLAN.md principle 6). -->
   <DockPanel Margin="4">
     <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,4,0,6">
       <TextBlock x:Name="propertyLabel" Text="Property:" VerticalAlignment="Center" />
-      <TextBox x:Name="propertyTextBox" Grid.Column="1" IsReadOnly="True" />
+      <TextBox x:Name="propertyTextBox" Grid.Column="1" IsReadOnly="True" Text="{Binding Property, Mode=OneWay}" />
     </Grid>
     <TextBox x:Name="propertyInformationTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-             VerticalContentAlignment="Top" />
+             VerticalContentAlignment="Top" Text="{Binding Information, Mode=OneWay}" />
   </DockPanel>
 </Window>

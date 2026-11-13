@@ -132,7 +132,7 @@ internal sealed class CommandLogWindowTests
         => [.. window.Entries.Where(entry => entry.WorkingDir == "/repo").Select(entry => entry.Arguments)];
 
     private static void Click(Window window, string name)
-        => Find<MenuItem>(window, name).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        => UiClicks.Raise(Find<MenuItem>(window, name), MenuItem.ClickEvent);
 
     private static T Find<T>(Window window, string name)
         where T : Control

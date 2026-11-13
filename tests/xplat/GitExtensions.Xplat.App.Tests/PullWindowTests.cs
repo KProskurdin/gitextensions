@@ -180,8 +180,8 @@ internal sealed class PullWindowTests
 
     // The task dialog's command links have no names; they are found by their text.
     private static void ClickLink(MessageBoxWindow box, string text)
-        => box.GetLogicalDescendants().OfType<AccessText>().First(label => label.Text == text)
-            .FindLogicalAncestorOfType<Button>()!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(box.GetLogicalDescendants().OfType<AccessText>().First(label => label.Text == text)
+            .FindLogicalAncestorOfType<Button>()!, Button.ClickEvent);
 
     [AvaloniaTest]
     public void The_url_box_lists_the_remote_history_and_a_pulled_folder_is_added_to_it()
@@ -211,7 +211,7 @@ internal sealed class PullWindowTests
             TestAppBuilder.Preferences, "C:/repo/", ["origin/main", "origin/topic"], ["main"], isShallow: false, git);
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

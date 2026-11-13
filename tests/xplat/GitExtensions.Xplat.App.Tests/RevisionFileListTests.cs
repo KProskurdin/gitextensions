@@ -61,7 +61,7 @@ internal sealed class RevisionFileListTests
         Paths(files).Should().Equal("b.txt", "z.md");
         files.Items.Cast<CommitFile>().Select(file => file.Image).Should().Equal("FileStatusAdded", "FileStatusModified");
 
-        Find<ToolToggleButton>(window, "DiffFilesByStatusButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<ToolToggleButton>(window, "DiffFilesByStatusButton"), Button.ClickEvent);
         Paths(files).Should().Equal(["z.md", "b.txt"], "a modified file comes before an added one");
 
         FileFilterBox filter = Find<FileFilterBox>(window, "DiffFilesFilterBox");
@@ -118,7 +118,7 @@ internal sealed class RevisionFileListTests
         Dispatcher.UIThread.RunJobs();
         Rows(files).Should().Equal(["> src", "a.cs", "b.cs"], "a double-click expands it again");
 
-        Find<ToolSplitButton>(window, "DiffFilesAsTreeButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        UiClicks.Raise(Find<ToolSplitButton>(window, "DiffFilesAsTreeButton"), SplitButton.ClickEvent);
         Dispatcher.UIThread.RunJobs();
 
         TestAppBuilder.Preferences.DiffListSorting.Should().Be(DiffListSortType.FilePathFlat);
@@ -160,12 +160,12 @@ internal sealed class RevisionFileListTests
         Item("tsmiFileHistory").IsEnabled.Should().BeTrue("upstream shows a folder's history");
         Item("tsmiBlame").IsEnabled.Should().BeFalse();
 
-        Item("_collapseAll").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item("_collapseAll"), MenuItem.ClickEvent);
         Dispatcher.UIThread.RunJobs();
         Rows(files).Should().Equal(["+ src"]);
         files.SelectedItem.Should().BeOfType<FileTreeRow>().Which.Folder.Should().Be("src");
 
-        Item("_selectAll").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item("_selectAll"), MenuItem.ClickEvent);
         Dispatcher.UIThread.RunJobs();
         Rows(files).Should().Equal("> src", "> sub", "b.cs", "c.cs", "a.cs");
         files.SelectedItems!.OfType<CommitFile>().Select(file => file.Path).Should()
@@ -173,13 +173,13 @@ internal sealed class RevisionFileListTests
 
         files.SelectedItem = files.Items.OfType<FileTreeRow>().First(row => row.Folder == "src");
         OpenMenu(files);
-        Item("tsmiMove").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item("tsmiMove"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<PromptWindow>().Any());
         PromptWindow prompt = window.OwnedWindows.OfType<PromptWindow>().Single();
         TextBox name = Find<TextBox>(prompt, "ValueBox");
         name.Text.Should().Be("src");
         name.Text = "lib";
-        Find<Button>(prompt, "OkButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(prompt, "OkButton"), Button.ClickEvent);
         WaitUntil(() => _repo.ReadFile("lib/sub/b.cs") == "b" && _repo.ReadFile("src/a.cs") is null);
         window.Close();
     }
@@ -217,7 +217,7 @@ internal sealed class RevisionFileListTests
         WaitUntil(() => Paths(files).SequenceEqual(["b.txt"]));
         box.Text.Should().Be("b.txt", "a full path in the working directory is cut to the path in it");
 
-        delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(delete, Button.ClickEvent);
         filter.Text.Should().BeEmpty();
         Paths(files).Should().HaveCount(2);
         window.Close();
@@ -242,7 +242,7 @@ internal sealed class RevisionFileListTests
         MenuItem showUntracked = Find<MenuItem>(window, "DiffFilesShowUntrackedMenuItem");
         showUntracked.IsChecked.Should().BeTrue("git's status.showuntrackedfiles is not \"no\"");
         showUntracked.IsChecked = false;
-        showUntracked.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(showUntracked, MenuItem.ClickEvent);
 
         Paths(files).Should().Equal("z.md");
         window.Close();
@@ -265,7 +265,7 @@ internal sealed class RevisionFileListTests
         ChooseCommitWindow choose = create.OwnedWindows.OfType<ChooseCommitWindow>().Single();
         ListBox grid = Find<ListBox>(choose, "revisionGrid");
         grid.SelectedItem = grid.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "first");
-        Find<Button>(choose, "btnOK").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(choose, "btnOK"), Button.ClickEvent);
 
         string first = _repo.Run("rev-parse", "HEAD~3").Trim();
         WaitUntil(() => picker.Selected?.ToString() == first);

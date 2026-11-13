@@ -620,7 +620,7 @@ internal sealed class UiPluginTests
 
         MenuItem item = Find<MenuItem>(window, "PluginsMenu").Items.OfType<MenuItem>()
             .Single(entry => entry.Tag == plugin);
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
         driver.Stop();
 
         if (failure is not null)
@@ -643,7 +643,7 @@ internal sealed class UiPluginTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

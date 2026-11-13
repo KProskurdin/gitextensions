@@ -101,7 +101,7 @@ internal sealed class ArchiveWindowTests
         HyperlinkButton parent = Find<HyperlinkButton>(choose, "linkLabelParent");
         parent.Content.Should().Be(_first[..8]);
         Find<HyperlinkButton>(choose, "linkLabelParent2").IsVisible.Should().BeFalse();
-        parent.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(parent, Button.ClickEvent);
         ((CommitListItem)grid.SelectedItem!).Row.Subject.Should().Be("first");
         grid.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
 
@@ -131,8 +131,7 @@ internal sealed class ArchiveWindowTests
         return (owner, window);
     }
 
-    private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Button>(window, name));
 
     private static T Find<T>(Control parent, string name)
         where T : Control

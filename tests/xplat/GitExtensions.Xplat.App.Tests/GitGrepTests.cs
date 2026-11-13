@@ -65,7 +65,7 @@ internal sealed class GitGrepTests
         match.Text.Should().Be("the needle here");
         match.Runs!.Single(run => run.Bold).Text.Should().Be("needle");
 
-        Find<Button>(window, "DiffFilesGitGrepDeleteButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "DiffFilesGitGrepDeleteButton"), Button.ClickEvent);
         WaitUntil(() => window.DiffGitGrep!.Searched.IsCompleted
                         && files.Items.OfType<CommitFile>().Any() && !files.Items.OfType<DiffGroupHeader>().Any());
         window.Close();
@@ -79,11 +79,11 @@ internal sealed class GitGrepTests
         SplitButton button = Find<SplitButton>(window, "DiffFilesGitGrepButton");
         box.IsVisible.Should().BeFalse();
 
-        button.RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        UiClicks.Raise(button, SplitButton.ClickEvent);
         box.IsVisible.Should().BeTrue();
         TestAppBuilder.Preferences.ShowFindInCommitFilesGitGrep.Should().BeTrue();
 
-        button.RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        UiClicks.Raise(button, SplitButton.ClickEvent);
         box.IsVisible.Should().BeFalse();
         window.DiffGitGrep!.Window.Should().BeNull("upstream's default shows the box only");
         window.Close();
@@ -103,7 +103,7 @@ internal sealed class GitGrepTests
         WaitUntil(() => window.DiffGitGrep!.Window is not null);
         FindInCommitFilesGitGrepWindow grep = window.DiffGitGrep!.Window!;
         grep.GitGrepExpressionText = "needle";
-        Find<Button>(grep, "btnSearch").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(grep, "btnSearch"), Button.ClickEvent);
         WaitUntil(() => window.DiffGitGrep.Searched.IsCompleted
                         && files.Items.OfType<CommitFile>().Any(file => file.Group?.IsGrep == true));
 
@@ -121,7 +121,7 @@ internal sealed class GitGrepTests
         MainWindow window = OpenWindow();
         TabControl tabs = Find<TabControl>(window, "DetailTabs");
         tabs.SelectedItem = Find<TabItem>(window, "DiffTab");
-        Find<SplitButton>(window, "DiffFilesGitGrepButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        UiClicks.Raise(Find<SplitButton>(window, "DiffFilesGitGrepButton"), SplitButton.ClickEvent);
         tabs.SelectedItem = Find<TabItem>(window, "FileTreeTab");
         ComboBox box = Find<ComboBox>(window, "FileTreeGitGrepBox");
         box.IsVisible.Should().BeTrue("both lists follow upstream's ShowFindInCommitFilesGitGrep");
@@ -136,7 +136,7 @@ internal sealed class GitGrepTests
         WaitUntil(() => viewer.Lines.Any(line => line.NewNumber == "2"));
         viewer.Lines.Single(line => line.NewNumber == "2").Runs!.Single(run => run.Bold).Text.Should().Be("needle");
 
-        Find<Button>(window, "FileTreeGitGrepDeleteButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "FileTreeGitGrepDeleteButton"), Button.ClickEvent);
         WaitUntil(() => Files(tree).Contains("other.txt"));
         window.Close();
 

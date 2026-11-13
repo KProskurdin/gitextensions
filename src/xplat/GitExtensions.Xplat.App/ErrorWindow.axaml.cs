@@ -1,7 +1,11 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Presentation;
 
 namespace GitExtensions.Xplat.App;
 
+/// <summary>
+///  The shell's error window, bound to <see cref="MessageViewModel"/>: a message and OK.
+/// </summary>
 public partial class ErrorWindow : Window
 {
     /// <summary>
@@ -12,8 +16,7 @@ public partial class ErrorWindow : Window
 
     public ErrorWindow(string message)
     {
+        DataContext = new MessageViewModel(new WindowDialogHost(this), message);
         InitializeComponent();
-        MessageText.Text = message;
-        OkButton.Click += (_, _) => Close();
     }
 }

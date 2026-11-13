@@ -133,11 +133,11 @@ internal sealed class CommitDialogSettingsTests
             List<MenuItem> items = [.. flyout.Items.OfType<MenuItem>()];
             items.Select(HeaderText).Should().Equal("typed in another repository", "by other",
                 "Generate a list of changes in submodules", "Show only my messages");
-            items[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(items[1], MenuItem.ClickEvent);
             Find<TextBox>(commit, "CommitMessageBox").Text.Should().Be("by other");
 
             items[3].IsChecked = true;
-            items[3].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(items[3], MenuItem.ClickEvent);
             TestAppBuilder.Preferences.CommitDialogShowOnlyMyMessages.Should().BeTrue();
             flyout.Hide();
             flyout.ShowAt(button);
@@ -335,7 +335,7 @@ internal sealed class CommitDialogSettingsTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static string HeaderText(MenuItem item)

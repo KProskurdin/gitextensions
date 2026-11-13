@@ -1,11 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Platform"
         x:Class="GitExtensions.Xplat.App.ContributorsWindow"
-        Title="The application would not be possible without..."
+        x:DataType="vm:ContributorsViewModel"
+        Title="{Binding Title}"
         Width="624" Height="442" CanResize="False" CanMinimize="False" CanMaximize="False"
         WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormContributors: the developers (team and contributors), translators and designers on three tabs, each
-       a read-only text filling its tab. -->
+       a read-only text filling its tab. Bound to ContributorsViewModel (PLAN.md principle 6). -->
   <Window.Styles>
     <Style Selector="TextBox.names">
       <Setter Property="IsReadOnly" Value="True" />
@@ -18,14 +20,14 @@
     </Style>
   </Window.Styles>
   <TabControl x:Name="Tabs" Padding="0">
-    <TabItem x:Name="DevelopersTab" Header="Developers">
-      <TextBox x:Name="DevelopersText" Classes="names" />
+    <TabItem x:Name="DevelopersTab" Header="{Binding DevelopersHeader}">
+      <TextBox x:Name="DevelopersText" Classes="names" Text="{Binding DevelopersText, Mode=OneWay}" />
     </TabItem>
-    <TabItem x:Name="TranslatorsTab" Header="Translators">
-      <TextBox x:Name="TranslatorsText" Classes="names" />
+    <TabItem x:Name="TranslatorsTab" Header="{Binding TranslatorsHeader}">
+      <TextBox x:Name="TranslatorsText" Classes="names" Text="{Binding TranslatorsText, Mode=OneWay}" />
     </TabItem>
-    <TabItem x:Name="DesignersTab" Header="Designers">
-      <TextBox x:Name="DesignersText" Classes="names" />
+    <TabItem x:Name="DesignersTab" Header="{Binding DesignersHeader}">
+      <TextBox x:Name="DesignersText" Classes="names" Text="{Binding DesignersText, Mode=OneWay}" />
     </TabItem>
   </TabControl>
 </Window>

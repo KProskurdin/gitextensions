@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
@@ -214,12 +215,12 @@ public partial class MainWindow
     // the submodule reset.
     private async Task ResetSubmoduleAsync(string path)
     {
-        ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
+        ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
             hasExistingFiles: true, hasNewFiles: true);
-        if (action != ResetChangesWindow.ResetAction.Cancel)
+        if (action != ResetChangesAction.Cancel)
         {
             await InSubmoduleRepositoryAsync(path, submodule => _actions.ResetAllChangesAsync(submodule,
-                clean: action == ResetChangesWindow.ResetAction.ResetAndDelete, onlyWorkTree: false));
+                clean: action == ResetChangesAction.ResetAndDelete, onlyWorkTree: false));
         }
     }
 

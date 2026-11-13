@@ -76,7 +76,7 @@ internal sealed class RenameBranchWindowTests
         WaitUntil(() => FindNode(tree, "feature") is not null);
         tree.SelectedItem = FindNode(tree, "feature");
 
-        main.FindControl<MenuItem>("TreeRenameBranchMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("TreeRenameBranchMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<RenameBranchWindow>().Any());
         RenameBranchWindow window = main.OwnedWindows.OfType<RenameBranchWindow>().Single();
         window.FindControl<TextBox>("BranchNameTextBox")!.Text.Should().Be("feature");
@@ -106,7 +106,7 @@ internal sealed class RenameBranchWindowTests
             .FirstOrDefault(node => node.Branch?.Name == name);
 
     private static void Click(Window window, string name)
-        => window.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(window.FindControl<Button>(name)!, Button.ClickEvent);
 
     private static void WaitUntil(Func<bool> condition)
     {

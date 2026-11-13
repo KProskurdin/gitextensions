@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
-using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.Repository;
@@ -116,11 +115,7 @@ internal sealed class CheckoutRevisionWindowTests
 
     private static void RunUntilDone(Task task) => WaitUntil(() => task.IsCompleted);
 
-    private static void Click(Window window, string name)
-    {
-        Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
-    }
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Control>(window, name));
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");

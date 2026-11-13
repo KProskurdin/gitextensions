@@ -1,11 +1,24 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.ResetAnotherBranchWindow"
+        x:DataType="vm:ResetAnotherBranchViewModel"
         Title="Reset branch"
         Width="535" SizeToContent="Height" MinWidth="535" CanMaximize="False" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormResetAnotherBranch: the warning, the local branch, the commit's summary, "Checkout branch after
-       reset", the force check box, and OK and Cancel at the bottom right. -->
+       reset", the force check box, and OK and Cancel at the bottom right. Bound to ResetAnotherBranchViewModel (PLAN.md
+       principle 6). -->
+  <Window.Styles>
+    <!-- Upstream's Validate: a name that is not listed is marked once the list loses focus, a refused move on OK, in
+         LightCoral made readable on the theme (ResetCoralBrush, set by the window). -->
+    <Style Selector="ComboBox.unlisted:not(:focus-within)">
+      <Setter Property="Background" Value="{DynamicResource ResetCoralBrush}" />
+    </Style>
+    <Style Selector="Button.refused">
+      <Setter Property="Background" Value="{DynamicResource ResetCoralBrush}" />
+    </Style>
+  </Window.Styles>
   <StackPanel x:Name="tableLayoutPanel1" Margin="8" Spacing="3">
     <Grid x:Name="tlpnlWarning" ColumnDefinitions="Auto,*" Margin="3">
       <Image x:Name="pictureBox1" Source="{local:UpstreamImage Warning}" Width="16" Height="16" VerticalAlignment="Top"
@@ -13,14 +26,21 @@
       <TextBlock x:Name="lblResetBranchWarning" Grid.Column="1" TextWrapping="Wrap" />
     </Grid>
     <Label x:Name="BranchInfo" Content="Reset local _branch:" Target="Branches" Padding="3,6,3,0" />
-    <ComboBox x:Name="Branches" IsEditable="True" HorizontalAlignment="Stretch" Margin="3" TabIndex="2" />
-    <local:CommitSummaryView x:Name="commitSummaryUserControl" MinHeight="150" Margin="3" TabIndex="3" />
-    <CheckBox x:Name="cbxCheckoutBranch" Content="Chec_kout branch after reset" Margin="3" TabIndex="4" />
-    <CheckBox x:Name="ForceReset" Content="_Force reset for a non-fast-forward reset" Margin="3" TabIndex="5" />
+    <ComboBox x:Name="Branches" IsEditable="True" HorizontalAlignment="Stretch" Margin="3" TabIndex="2"
+              ItemsSource="{Binding BranchNames}" Text="{Binding BranchText, Mode=TwoWay}"
+              Classes.unlisted="{Binding IsBranchUnlisted}" />
+    <local:CommitSummaryView x:Name="commitSummaryUserControl" MinHeight="150" Margin="3" TabIndex="3"
+                             Summary="{Binding Summary}" />
+    <CheckBox x:Name="cbxCheckoutBranch" Content="Chec_kout branch after reset" Margin="3" TabIndex="4"
+              IsChecked="{Binding CheckoutAfterReset}" />
+    <CheckBox x:Name="ForceReset" Content="_Force reset for a non-fast-forward reset" Margin="3" TabIndex="5"
+              IsChecked="{Binding Force}" />
     <StackPanel x:Name="flowLayoutPanel1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3"
                 TabIndex="6">
-      <Button x:Name="Ok" Content="OK" MinWidth="91" HorizontalContentAlignment="Center" IsDefault="True" IsEnabled="False" />
-      <Button x:Name="Cancel" Content="Cancel" MinWidth="91" HorizontalContentAlignment="Center" IsCancel="True" />
+      <Button x:Name="Ok" Content="OK" MinWidth="91" HorizontalContentAlignment="Center" IsDefault="True"
+              Command="{Binding ResetCommand}" Classes.refused="{Binding IsMoveRefused}" />
+      <Button x:Name="Cancel" Content="Cancel" MinWidth="91" HorizontalContentAlignment="Center" IsCancel="True"
+              Command="{Binding CancelCommand}" />
     </StackPanel>
   </StackPanel>
 </Window>

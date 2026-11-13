@@ -9,6 +9,7 @@ using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Ui;
@@ -579,10 +580,10 @@ public partial class FileStatusListMenu : ContextMenu
 
         (string revision, bool hasExistingFiles, bool hasNewFiles) =
             DiffFileMenu.ResetQuestion(selection, toFirst, binding.DescribeRevision);
-        ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(binding.Owner,
+        ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(binding.Owner,
             hasExistingFiles, hasNewFiles,
             string.Format(UpstreamTranslation.ByText(DiffFileMenu.ResetSelectedChangesText), revision));
-        if (action == ResetChangesWindow.ResetAction.Cancel)
+        if (action == ResetChangesAction.Cancel)
         {
             return;
         }
@@ -590,7 +591,7 @@ public partial class FileStatusListMenu : ContextMenu
         try
         {
             string output = await DiffFileMenu.ResetAsync(selection, path, toFirst,
-                resetAndDelete: action == ResetChangesWindow.ResetAction.ResetAndDelete);
+                resetAndDelete: action == ResetChangesAction.ResetAndDelete);
             if (output.Length > 0)
             {
                 ShowError(output);

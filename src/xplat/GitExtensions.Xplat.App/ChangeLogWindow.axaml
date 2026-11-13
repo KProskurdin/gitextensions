@@ -1,8 +1,12 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Platform"
         x:Class="GitExtensions.Xplat.App.ChangeLogWindow"
+        x:DataType="vm:ChangeLogViewModel"
         Title="Change log"
         Width="849" Height="411" MinWidth="300" MinHeight="200" WindowStartupLocation="CenterOwner">
-  <!-- Upstream's FormChangeLog: the change log upstream ships (GitUI/Resources/ChangeLog.md), read-only, not wrapped. -->
-  <TextBox x:Name="ChangeLog" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" BorderThickness="0" />
+  <!-- Upstream's FormChangeLog: the change log upstream ships (GitUI/Resources/ChangeLog.md), read-only, not wrapped. Bound
+       to ChangeLogViewModel (PLAN.md principle 6). -->
+  <TextBox x:Name="ChangeLog" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" BorderThickness="0"
+           Text="{Binding Text, Mode=OneWay}" />
 </Window>

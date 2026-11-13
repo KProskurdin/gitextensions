@@ -91,16 +91,16 @@ internal sealed class DiffViewOptionsTests
         TestAppBuilder.Preferences.SetDiffOptions(new DiffOptions(IgnoreWhitespaceKind.Eol, ShowEntireFile: true));
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<MenuItem>(window, "SettingsMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "SettingsMenuItem"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
 
         Find<CheckBox>(settings, "RememberIgnoreWhitespaceCheck").IsChecked.Should().BeTrue();
-        Find<Button>(settings, "SaveDiffDefaultsButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(settings, "SaveDiffDefaultsButton"), Button.ClickEvent);
         Find<CheckBox>(settings, "RememberIgnoreWhitespaceCheck").IsChecked = false;
         Find<CheckBox>(settings, "RememberContextLinesCheck").IsChecked = true;
-        Find<Button>(settings, "SaveButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(settings, "SaveButton"), Button.ClickEvent);
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
         TestAppBuilder.Preferences.RememberIgnoreWhiteSpacePreference.Should().BeFalse();
@@ -182,7 +182,7 @@ internal sealed class DiffViewOptionsTests
     {
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        Find<MenuItem>(window, "SettingsMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "SettingsMenuItem"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
@@ -190,7 +190,7 @@ internal sealed class DiffViewOptionsTests
         Find<CheckBox>(settings, "RememberSyntaxHighlightingCheck").IsChecked.Should().BeTrue();
         Find<CheckBox>(settings, "RememberNonPrintingCheck").IsChecked = true;
         Find<NumericUpDown>(settings, "VerticalRulerBox").Value = 72;
-        Find<Button>(settings, "SaveButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(settings, "SaveButton"), Button.ClickEvent);
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
         TestAppBuilder.Preferences.RememberShowNonPrintingCharsPreference.Should().BeTrue();
         TestAppBuilder.Preferences.DiffVerticalRulerPosition.Should().Be(72);
@@ -244,7 +244,7 @@ internal sealed class DiffViewOptionsTests
 
         diff.FindControl<MenuItem>("StageLinesMenuItem")!.IsVisible.Should().BeTrue();
         diff.FindControl<MenuItem>("StageLinesMenuItem")!.IsEnabled.Should().BeTrue();
-        diff.FindControl<MenuItem>("CopyNewVersionMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(diff.FindControl<MenuItem>("CopyNewVersionMenuItem")!, MenuItem.ClickEvent);
         Task<string?> text = TopLevel.GetTopLevel(diff)!.Clipboard!.TryGetTextAsync();
         WaitUntil(() => text.IsCompleted);
         (await text).Should().Be("changed");
@@ -264,7 +264,7 @@ internal sealed class DiffViewOptionsTests
         MenuItem item = lines.ContextMenu!.Items.OfType<MenuItem>().Single(entry => entry.Name == "TreatAllFilesAsTextMenuItem");
         item.IsVisible.Should().BeTrue("upstream offers it for a diff");
 
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
 
         WaitUntil(() => Added(diff) == 1);
         item.IsChecked.Should().BeTrue();
@@ -366,7 +366,7 @@ internal sealed class DiffViewOptionsTests
     }
 
     private static void Click(Control parent, string name)
-        => parent.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(parent.FindControl<Button>(name)!, Button.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");

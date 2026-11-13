@@ -2356,11 +2356,11 @@ public partial class MainWindow : Window
     private async Task<bool> ResetChangesAsync(string path)
     {
         List<FileChange> workTree = [.. _repository.Changes.Where(change => !change.Staged)];
-        ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
+        ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
             hasExistingFiles: workTree.Any(change => !IsNew(change)), hasNewFiles: workTree.Any(IsNew));
-        return action != ResetChangesWindow.ResetAction.Cancel
+        return action != ResetChangesAction.Cancel
                && await _actions.ResetAllChangesAsync(path,
-                   clean: action == ResetChangesWindow.ResetAction.ResetAndDelete,
+                   clean: action == ResetChangesAction.ResetAndDelete,
                    onlyWorkTree: false);
 
         static bool IsNew(FileChange change) => change.Kind is ChangeKind.Untracked or ChangeKind.Added;

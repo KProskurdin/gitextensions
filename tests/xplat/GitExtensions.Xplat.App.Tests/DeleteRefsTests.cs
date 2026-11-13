@@ -4,6 +4,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
@@ -69,7 +70,9 @@ internal sealed class DeleteRefsTests
         Click(delete, "selectMultipleBranchesButton");
         WaitUntil(() => delete.OwnedWindows.OfType<SelectMultipleBranchesWindow>().Any());
         SelectMultipleBranchesWindow select = delete.OwnedWindows.OfType<SelectMultipleBranchesWindow>().Single();
-        List<CheckBox> checks = [.. Find<ListBox>(select, "Branches").Items.Cast<CheckBox>()];
+        // The list holds the view model's branches; their check boxes are the rendered items.
+        WaitUntil(() => select.GetVisualDescendants().OfType<CheckBox>().Any());
+        List<CheckBox> checks = [.. Find<ListBox>(select, "Branches").GetVisualDescendants().OfType<CheckBox>()];
         checks.Single(check => (string)check.Content! == "merged").IsChecked.Should().BeTrue();
         checks.Single(check => (string)check.Content! == "other").IsChecked = true;
         Click(select, "okButton");
@@ -146,7 +149,7 @@ internal sealed class DeleteRefsTests
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
     }
 
     private static T Find<T>(Window window, string name)

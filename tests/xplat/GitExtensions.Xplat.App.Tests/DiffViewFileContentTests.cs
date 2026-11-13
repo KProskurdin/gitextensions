@@ -193,7 +193,7 @@ internal sealed class DiffViewFileContentTests
         (link.Content as string).Should().StartWith("This file is 5");
         _diff.Lines.Should().BeEmpty();
 
-        link.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(link, Button.ClickEvent);
 
         WaitUntil(() => !link.IsVisible && _diff.Lines.Count == 1 && _diff.Lines[0].Text.Length == MoreThanFiveMb);
     }

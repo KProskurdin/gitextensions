@@ -144,7 +144,7 @@ internal sealed class GridMultiSelectionTests
             ToolToggleButton onlyA = Find<ToolToggleButton>(window, "DiffFilesOnlyAButton");
             onlyA.IsVisible.Should().BeTrue();
             onlyA.IsChecked = false;
-            onlyA.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            UiClicks.Raise(onlyA, Button.ClickEvent);
             Dispatcher.UIThread.RunJobs();
 
             files.Items.OfType<CommitFile>().Should().NotContain(file => file.Path == "c.txt",
@@ -166,7 +166,7 @@ internal sealed class GridMultiSelectionTests
         Select(commits, "third");
         commits.SelectedItems!.Add(Item(commits, "first"));
 
-        Find<MenuItem>(window, "CompareSelectedCommitsMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "CompareSelectedCommitsMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<RevisionDiffWindow>().SingleOrDefault()?.DiffLoaded.IsCompleted == true);
         RevisionDiffWindow diff = window.OwnedWindows.OfType<RevisionDiffWindow>().Single();
@@ -205,13 +205,13 @@ internal sealed class GridMultiSelectionTests
         Select(commits, "third");
         commits.SelectedItems!.Add(Item(commits, "second"));
 
-        Find<MenuItem>(window, "CherryPickMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "CherryPickMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<CherryPickWindow>().SingleOrDefault()?.RevisionLoaded.IsCompleted == true);
         CherryPickWindow pick = window.OwnedWindows.OfType<CherryPickWindow>().Single();
         pick.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text).Should()
             .Contain("second", "the lowest selected commit comes first");
-        Find<Button>(pick, "btnAbort").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(pick, "btnAbort"), Button.ClickEvent);
         WaitUntil(() => !pick.IsVisible);
         for (int i = 0; i < 20; i++)
         {
@@ -230,7 +230,7 @@ internal sealed class GridMultiSelectionTests
         Select(commits, "first");
         commits.SelectedItems!.Add(Item(commits, "third"));
 
-        Find<MenuItem>(window, "ArchiveCommitMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "ArchiveCommitMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<ArchiveWindow>().SingleOrDefault()?.RevisionsLoaded.IsCompleted == true);
         ArchiveWindow archive = window.OwnedWindows.OfType<ArchiveWindow>().Single();
@@ -239,7 +239,7 @@ internal sealed class GridMultiSelectionTests
         archive.Close();
 
         commits.SelectedItems.Add(Item(commits, "second"));
-        Find<MenuItem>(window, "ArchiveCommitMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "ArchiveCommitMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
         window.OwnedWindows.OfType<ArchiveWindow>().Should().BeEmpty("upstream archives one or two commits");
@@ -257,13 +257,13 @@ internal sealed class GridMultiSelectionTests
         string third = _repo.Run("rev-parse", "HEAD").Trim();
         string first = _repo.Run("rev-parse", "HEAD~2").Trim();
 
-        Find<MenuItem>(window, "BisectMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "BisectMenuItem"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<BisectWindow>().Any());
         BisectWindow bisect = window.OwnedWindows.OfType<BisectWindow>().Single();
-        Find<Button>(bisect, "StartButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(bisect, "StartButton"), Button.ClickEvent);
         WaitUntil(() => bisect.OwnedWindows.OfType<MessageBoxWindow>().Any());
         MessageBoxWindow question = bisect.OwnedWindows.OfType<MessageBoxWindow>().Single();
-        Find<Button>(question, "YesButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(question, "YesButton"), Button.ClickEvent);
 
         WaitUntil(() => !bisect.IsVisible);
         string log = File.ReadAllText(Path.Combine(_repo.Path, ".git", "BISECT_LOG"));
@@ -282,7 +282,7 @@ internal sealed class GridMultiSelectionTests
         Select(commits, "first");
         commits.SelectedItems!.Add(Item(commits, "second"));
 
-        Find<Button>(window, "RefreshButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "RefreshButton"), Button.ClickEvent);
         WaitUntil(() => window.IsBusy);
         WaitUntil(() => !window.IsBusy && window.SelectedRevisions.Count == 2);
 
@@ -300,7 +300,7 @@ internal sealed class GridMultiSelectionTests
         _repo.Run("reset", "-q", "--hard", "HEAD~1");
         _repo.Run("commit", "-q", "--allow-empty", "-m", "fourth");
 
-        Find<Button>(window, "RefreshButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "RefreshButton"), Button.ClickEvent);
         WaitUntil(() => window.IsBusy);
         WaitUntil(() => !window.IsBusy && window.SelectedRevisions.Count == 1
                                        && window.SelectedRevisions[0].Subject != "third");
@@ -317,7 +317,7 @@ internal sealed class GridMultiSelectionTests
         Select(commits, "first");
         commits.SelectedItems!.Add(Item(commits, "third"));
 
-        Find<MenuItem>(window, "RebaseAdvancedMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "RebaseAdvancedMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<RebaseWindow>().Any());
         RebaseWindow rebase = window.OwnedWindows.OfType<RebaseWindow>().Single();
@@ -397,13 +397,13 @@ internal sealed class GridMultiSelectionTests
             MenuItem show = Find<MenuItem>(window, "DiffFilesShowSkipWorktreeMenuItem");
 
             show.IsChecked = true;
-            show.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(show, MenuItem.ClickEvent);
             WaitUntil(() => files.Items.OfType<CommitFile>().Any(file => file.Path == "a.txt"));
             files.Items.OfType<CommitFile>().Should().Contain(file => file.Path == "b.txt");
             files.Items.OfType<DiffGroupHeader>().Should().BeEmpty("one group has no node");
 
             show.IsChecked = false;
-            show.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(show, MenuItem.ClickEvent);
             WaitUntil(() => !files.Items.OfType<CommitFile>().Any(file => file.Path == "a.txt"));
             window.Close();
         }

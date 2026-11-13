@@ -97,7 +97,7 @@ internal sealed class BrowseRepositorySettingsTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

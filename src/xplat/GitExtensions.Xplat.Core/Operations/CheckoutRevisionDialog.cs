@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility;
@@ -9,18 +10,20 @@ namespace GitExtensions.Xplat.Core.Operations;
 ///  Upstream's <c>FormCheckoutRevision</c> without its window: the commit to check out (detaching HEAD), whether local
 ///  changes are reset, the check before checking out and the checkout command.
 /// </summary>
-public sealed class CheckoutRevisionDialog
+public sealed partial class CheckoutRevisionDialog : ObservableObject
 {
     // Upstream's texts.
     public const string NoRevisionSelected = "Select 1 revision to checkout.";
     public const string NoRevisionSelectedCaption = "Checkout";
 
-    public ObjectId? Revision { get; set; }
+    [ObservableProperty]
+    public partial ObjectId? Revision { get; set; }
 
     /// <summary>
     ///  Upstream's "Force (reset local changes)".
     /// </summary>
-    public bool Force { get; set; }
+    [ObservableProperty]
+    public partial bool Force { get; set; }
 
     /// <summary>
     ///  Upstream's <c>OkClick</c> check: a commit is chosen. Returns the error to show, or null.

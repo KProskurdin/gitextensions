@@ -1,27 +1,31 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.RevertCommitWindow"
+        x:DataType="vm:RevertCommitViewModel"
         Title="Revert commit"
         Width="614" SizeToContent="Height" MinWidth="630" CanMaximize="False" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormRevertCommit (a GitExtensionsDialog): the commit's summary, the parent of a merge, "Automatically
-       create a commit", and Revert this commit and Abort at the bottom right. -->
+       create a commit", and Revert this commit and Abort at the bottom right. Bound to RevertCommitViewModel (PLAN.md
+       principle 6). -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
         <Button x:Name="Revert" Content="_Revert this commit" MinWidth="117" HorizontalContentAlignment="Center"
-                IsDefault="True" TabIndex="0" />
+                IsDefault="True" TabIndex="0" Command="{Binding RevertCommand}" />
         <Button x:Name="btnAbort" Content="A_bort" MinWidth="75" HorizontalContentAlignment="Center" IsCancel="True"
-                TabIndex="1" />
+                TabIndex="1" Command="{Binding CancelCommand}" />
       </StackPanel>
     </Border>
     <StackPanel x:Name="tlPnlMain" Margin="12" Spacing="4">
       <TextBlock x:Name="BranchInfo" Text="Revert this commit:" />
-      <local:CommitSummaryView x:Name="commitSummaryUserControl1" MinHeight="160" />
+      <local:CommitSummaryView x:Name="commitSummaryUserControl1" MinHeight="160" Summary="{Binding Summary}" />
       <Label x:Name="ParentsLabel" Content="This commit is a merge, select _parent:" Target="lvParentsList" Padding="0"
-             IsVisible="False" />
-      <ListBox x:Name="lvParentsList" IsVisible="False" />
-      <CheckBox x:Name="AutoCommit" Content="_Automatically create a commit" />
+             IsVisible="{Binding IsMerge}" />
+      <ListBox x:Name="lvParentsList" IsVisible="{Binding IsMerge}" ItemsSource="{Binding Parents}"
+               SelectedItem="{Binding SelectedParent}" />
+      <CheckBox x:Name="AutoCommit" Content="_Automatically create a commit" IsChecked="{Binding AutoCommit}" />
     </StackPanel>
   </DockPanel>
 </Window>

@@ -699,12 +699,12 @@ public partial class CommitWindow : Window
     private async Task ResetChangesAsync(bool onlyWorkTree)
     {
         List<FileChange> unstaged = [.. _repository.Changes.Where(change => !change.Staged)];
-        ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
+        ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
             hasExistingFiles: unstaged.Any(change => !IsNew(change)), hasNewFiles: unstaged.Any(IsNew));
-        if (action != ResetChangesWindow.ResetAction.Cancel)
+        if (action != ResetChangesAction.Cancel)
         {
             await _actions.ResetAllChangesAsync(_repositoryPath,
-                clean: action == ResetChangesWindow.ResetAction.ResetAndDelete, onlyWorkTree);
+                clean: action == ResetChangesAction.ResetAndDelete, onlyWorkTree);
         }
 
         return;

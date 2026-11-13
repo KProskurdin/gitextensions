@@ -151,7 +151,7 @@ internal sealed class SubmodulesWindowTests
         WaitUntil(() => !main.IsBusy);
         main.FindControl<MenuItem>("ManageSubmodulesMenuItem")!.IsEnabled.Should().BeTrue();
 
-        main.FindControl<MenuItem>("ManageSubmodulesMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("ManageSubmodulesMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<SubmodulesWindow>().Any());
         SubmodulesWindow window = main.OwnedWindows.OfType<SubmodulesWindow>().Single();
         WaitUntil(() => window.Items.Count == 1);
@@ -180,7 +180,7 @@ internal sealed class SubmodulesWindowTests
     }
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name)
         where T : Control

@@ -1,22 +1,17 @@
 using Avalonia.Controls;
 using Avalonia.Media;
-using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
-using GitExtensions.Xplat.Ui;
 using GitExtUtils.GitUI.Theming;
-using GitUIPluginInterfaces;
-using DialogResult = System.Windows.Forms.DialogResult;
-using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormResetCurrentBranch</c> in the new shell (rules in <see cref="ResetCurrentBranchDialog"/>): resets the
-///  current branch to a commit, soft, mixed, keep, merge or hard (after a question), and updates the submodules when
-///  upstream does. Closes with true after resetting.
+///  Upstream's <c>FormResetCurrentBranch</c> in the new shell, bound to <see cref="ResetCurrentBranchViewModel"/> (rules in
+///  <see cref="ResetCurrentBranchDialog"/>): resets the current branch to a commit, soft, mixed, keep, merge or hard (after
+///  a question), and updates the submodules when upstream does. Closes with true after resetting.
 /// </summary>
 public partial class ResetCurrentBranchWindow : Window
 {
@@ -24,17 +19,6 @@ public partial class ResetCurrentBranchWindow : Window
     private static readonly System.Drawing.Color _soft = System.Drawing.Color.FromArgb(128, 255, 128);
     private static readonly System.Drawing.Color _mixed = System.Drawing.Color.FromArgb(255, 255, 128);
     private static readonly System.Drawing.Color _hard = System.Drawing.Color.FromArgb(255, 128, 128);
-
-    private readonly string _repositoryPath;
-    private readonly RepositoryOperationsViewModel _actions;
-    private readonly IAppPreferences _preferences;
-    private readonly string _target;
-    private readonly Func<string, Task<bool>> _updateSubmodules;
-    private readonly GitModule _module;
-    private readonly ResetCurrentBranchDialog _dialog;
-    private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly Dictionary<ResetMode, RadioButton> _radios;
-    private ObjectId _revision;
 
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
@@ -50,16 +34,12 @@ public partial class ResetCurrentBranchWindow : Window
     public ResetCurrentBranchWindow(string repositoryPath, RepositoryOperationsViewModel actions,
         IAppPreferences preferences, string target, ResetMode mode, Func<string, Task<bool>> updateSubmodules)
     {
-        _repositoryPath = repositoryPath;
-        _actions = actions;
-        _preferences = preferences;
-        _target = target;
-        _updateSubmodules = updateSubmodules;
-        _module = GitModules.Open(repositoryPath);
-        _dialog = new ResetCurrentBranchDialog(mode);
+        ViewModel = new ResetCurrentBranchViewModel(new WindowDialogHost(this), GitModules.Open(repositoryPath), actions,
+            preferences, target, mode, updateSubmodules);
+        DataContext = ViewModel;
         InitializeComponent();
-        DialogHelp.Attach(this, HelpButton, () => _dialog.HelpUrl());
-        _radios = new Dictionary<ResetMode, RadioButton>
+        DialogHelp.Attach(this, HelpButton, () => ViewModel.Dialog.HelpUrl());
+        Dictionary<ResetMode, RadioButton> radios = new()
         {
             [ResetMode.Soft] = SoftRadio,
             [ResetMode.Mixed] = MixedRadio,
@@ -67,7 +47,9 @@ public partial class ResetCurrentBranchWindow : Window
             [ResetMode.Merge] = MergeRadio,
             [ResetMode.Hard] = HardRadio,
         };
-        foreach ((ResetMode radioMode, RadioButton radio) in _radios)
+
+        // View concerns: upstream's colors behind the reset types, and the chosen type focused once loaded.
+        foreach ((ResetMode radioMode, RadioButton radio) in radios)
         {
             System.Drawing.Color back = radioMode switch
             {
@@ -82,75 +64,26 @@ public partial class ResetCurrentBranchWindow : Window
 
             radio.Background = new SolidColorBrush(Color.FromRgb(back.R, back.G, back.B));
             radio.Foreground = ThemeBrushes.Current.IsDark ? Brushes.White : Brushes.Black;
-            radio.IsChecked = radioMode == mode;
-            radio.IsCheckedChanged += (_, _) =>
-            {
-                if (radio.IsChecked == true)
-                {
-                    _dialog.Mode = radioMode;
-                }
-            };
         }
 
-        OkButton.Click += (_, _) => UiActions.Run(ResetAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
-        CancelButton.Click += (_, _) => Close(false);
-        Opened += (_, _) => UiActions.Run(LoadAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+        Opened += (_, _) => UiActions.Run(
+            async () =>
+            {
+                await ViewModel.LoadAsync();
+                radios[ViewModel.Dialog.Mode].Focus();
+            },
+            ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
     }
+
+    public ResetCurrentBranchViewModel ViewModel { get; }
 
     /// <summary>
     ///  The dialog state, for tests.
     /// </summary>
-    public ResetCurrentBranchDialog Dialog => _dialog;
+    public ResetCurrentBranchDialog Dialog => ViewModel.Dialog;
 
     /// <summary>
     ///  Completes when the branch and the commit's summary are shown, for tests.
     /// </summary>
-    public Task ResetLoaded => _loaded.Task;
-
-    // Upstream's FormResetCurrentBranch_Load.
-    private async Task LoadAsync()
-    {
-        (string branch, ObjectId id, GitRevision? revision) = await Task.Run(() =>
-        {
-            ObjectId id = _module.RevParse(_target);
-            return (_module.GetSelectedBranch(), id,
-                id.IsZero ? null : _module.GetRevision(id, shortFormat: true, loadRefs: true));
-        });
-        _revision = id;
-        BranchInfoText.Text = string.Format(UpstreamTranslation.ByText(ResetCurrentBranchDialog.BranchInfo), branch);
-        Summary.Show(revision is null ? null : CreateBranchDialog.Summarize(revision));
-        _radios[_dialog.Mode].Focus();
-        _loaded.TrySetResult();
-    }
-
-    // Upstream's Ok_Click: the reset (a hard one after the question), then the submodules when upstream updates them.
-    private async Task ResetAsync()
-    {
-        if (_revision.IsZero)
-        {
-            return;
-        }
-
-        if (_dialog.AsksFirst)
-        {
-            MessageBoxWindow question = new(UpstreamTranslation.ByText(ResetCurrentBranchDialog.ResetHardWarning),
-                UpstreamTranslation.ByText(ResetCurrentBranchDialog.ResetCaption), MessageBoxButtons.YesNo);
-            await question.ShowDialog(this);
-            if (question.Result != DialogResult.Yes)
-            {
-                return;
-            }
-        }
-
-        ObjectId revision = _revision;
-        (bool movesHead, bool hasSubmodules) = await Task.Run(() =>
-            (_module.GetCurrentCheckout() != revision, _module.HasSubmodules()));
-        bool reset = await _actions.ResetAsync(_repositoryPath, revision.ToString(), _dialog.Mode);
-        if (reset && _dialog.UpdatesSubmodules(movesHead, _preferences.UpdateSubmodulesOnCheckout, hasSubmodules))
-        {
-            await _updateSubmodules(_repositoryPath);
-        }
-
-        Close(reset);
-    }
+    public Task ResetLoaded => ViewModel.Loaded;
 }

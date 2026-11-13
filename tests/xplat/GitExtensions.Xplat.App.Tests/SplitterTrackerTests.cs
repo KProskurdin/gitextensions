@@ -57,10 +57,10 @@ internal sealed class SplitterTrackerTests
 
         WaitUntil(() => toggle.IsChecked == false);
         Find<Grid>(window, "MainSplitGrid").ColumnDefinitions[0].Width.Value.Should().Be(0);
-        toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(toggle, Button.ClickEvent);
         Dispatcher.UIThread.RunJobs();
         Find<Grid>(window, "MainSplitGrid").ColumnDefinitions[0].Width.Value.Should().Be(350);
-        toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(toggle, Button.ClickEvent);
         window.Close();
 
         SplitterSettings saved = TestAppBuilder.Splitters.Saved["FormBrowse.MainSplitContainer"];

@@ -72,7 +72,7 @@ internal sealed class RecentRepositoriesSettingsWindowTests
         width.Value = 50;
         Find<NumericUpDown>(window, "_NO_TRANSLATE_RecentRepositoriesHistorySize").Value = 45;
 
-        Find<Button>(window, "Ok").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "Ok"), Button.ClickEvent);
         WaitUntil(() => !window.IsVisible);
 
         _preferences.RecentRepositoryMenu.Should().Be(new RecentRepositoryMenuSettings(1, true,
@@ -88,7 +88,7 @@ internal sealed class RecentRepositoriesSettingsWindowTests
         RecentRepositoriesSettingsWindow window = Show();
         Find<CheckBox>(window, "sortTopRepos").IsChecked = true;
 
-        Find<Button>(window, "Abort").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "Abort"), Button.ClickEvent);
         WaitUntil(() => !window.IsVisible);
 
         _preferences.RecentRepositoryMenu.SortTopRepos.Should().BeFalse();
@@ -111,12 +111,12 @@ internal sealed class RecentRepositoriesSettingsWindowTests
         items.Select(item => item.IsEnabled).Should().Equal(true, true, false, true);
         menu.Close();
 
-        items[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(items[1], MenuItem.ClickEvent);
 
         Rows(recent)[1].Anchored.Should().BeTrue();
         Rows(recent)[1].Path.Should().Be(_beta);
         recent.SelectedItem = Rows(recent)[2];
-        items[3].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(items[3], MenuItem.ClickEvent);
 
         WaitUntil(() => Paths(recent).Count == 2);
         (await _store.LoadAsync()).Should().Equal(_alpha, _beta);

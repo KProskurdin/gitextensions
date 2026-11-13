@@ -119,5 +119,6 @@
     <File Path="docs/xplat/PORTING-MAP.md" />
     <File Path="docs/xplat/UI-PARITY.md" />
     <File Path="docs/xplat/SYNC-LOG.md" />
+    <File Path="docs/xplat/MVVM.md" />
   </Folder>
 </Solution>

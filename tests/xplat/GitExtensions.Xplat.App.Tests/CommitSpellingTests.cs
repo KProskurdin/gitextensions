@@ -134,7 +134,7 @@ internal sealed class CommitSpellingTests
         => item is MenuItem { Header: TextBlock text } ? text.Text : (item as MenuItem)?.Header as string;
 
     private static void Click(IReadOnlyList<object?> items, string header)
-        => items.OfType<MenuItem>().First(item => Header(item) == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        => UiClicks.Raise(items.OfType<MenuItem>().First(item => Header(item) == header), MenuItem.ClickEvent);
 
     private CommitWindow OpenCommitWindow()
     {
@@ -145,7 +145,7 @@ internal sealed class CommitSpellingTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
-        Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "CommitDialogButton"), Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         return window.OwnedWindows.OfType<CommitWindow>().Single();
     }

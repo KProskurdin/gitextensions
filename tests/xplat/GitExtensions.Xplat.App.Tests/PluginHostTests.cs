@@ -56,7 +56,7 @@ internal sealed class PluginHostTests
 
         // The plugins move to the repository at the end of the opening, after the window is no longer busy.
         WaitUntil(() => item.IsEnabled);
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
 
         _plugin.ExecutedIn.Should().ContainSingle().Which.Should().Be(_repo.Path);
     }
@@ -201,7 +201,7 @@ internal sealed class PluginHostTests
         Open(window, _repo.Path);
         _plugin.OnExecute = args => args.GitUICommands.StartPushDialog(args.OwnerForm, pushOnShow: true);
 
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<ErrorWindow>().Any());
     }
@@ -216,7 +216,7 @@ internal sealed class PluginHostTests
         WaitForPluginItem(window);
         MenuItem item = Find<MenuItem>(window, "PluginsMenu").Items.OfType<MenuItem>().Single(entry => entry.Tag == failed);
 
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
         MessageBoxWindow box = window.OwnedWindows.OfType<MessageBoxWindow>().Single();
@@ -254,7 +254,7 @@ internal sealed class PluginHostTests
             return false;
         };
 
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
 
         selected.Should().NotBeNull();
         selected!.Subject.Should().Be("first");
@@ -273,7 +273,7 @@ internal sealed class PluginHostTests
         Open(window, _repo.Path);
         _plugin.OnExecute = args => args.GitUICommands.StartCloneDialog(args.OwnerForm, url);
 
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<CloneWindow>().Any());
         CloneWindow clone = window.OwnedWindows.OfType<CloneWindow>().Single();
@@ -357,7 +357,7 @@ internal sealed class PluginHostTests
         Open(window, _repo.Path);
         StackPanel scripts = Find<StackPanel>(window, "UserScriptsPanel");
 
-        scripts.Children.OfType<Button>().Single().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(scripts.Children.OfType<Button>().Single(), Button.ClickEvent);
 
         WaitUntil(() => _plugin.ExecutedIn.Count == 1);
         _plugin.ExecutedIn.Should().Equal(_repo.Path);
@@ -444,7 +444,7 @@ internal sealed class PluginHostTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

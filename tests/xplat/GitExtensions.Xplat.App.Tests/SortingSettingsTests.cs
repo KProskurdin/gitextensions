@@ -114,7 +114,7 @@ internal sealed class SortingSettingsTests
 
         MenuItem descending = Find<MenuItem>(window, "SortOrderMenuItem").Items.OfType<MenuItem>()
             .Single(item => item.Header as string == "Z ↑ A");
-        descending.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(descending, MenuItem.ClickEvent);
 
         WaitUntil(() => LocalBranches(branches).SequenceEqual(ascending.Reverse()));
         TestAppBuilder.Preferences.RefsSortOrder.Should().Be(GitRefsSortOrder.Descending);
@@ -198,7 +198,7 @@ internal sealed class SortingSettingsTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

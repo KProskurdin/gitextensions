@@ -17,7 +17,7 @@ internal sealed class HelpMenuTests
         MainWindow main = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         main.Show();
 
-        main.FindControl<MenuItem>("ChangelogMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("ChangelogMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<ChangeLogWindow>().Any());
         ChangeLogWindow changeLog = main.OwnedWindows.OfType<ChangeLogWindow>().Single();
         WaitUntil(() => changeLog.ChangeLogLoaded.IsCompleted);
@@ -38,7 +38,7 @@ internal sealed class HelpMenuTests
         _ = donate.ShowDialog(owner);
 
         donate.FindControl<TextBlock>("lblText")!.Text.Should().Be(DonateWindow.DonateText);
-        donate.FindControl<Button>("pbxDonate")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(donate.FindControl<Button>("pbxDonate")!, Button.ClickEvent);
 
         opened.Should().Equal("https://opencollective.com/gitextensions");
         owner.Close();
@@ -61,7 +61,7 @@ internal sealed class HelpMenuTests
         about.ThanksText.Should().StartWith("Thanks to over ");
         about.FindControl<HyperlinkButton>("_NO_TRANSLATE_labelProductName")!.Content.Should().Be("Git Extensions");
 
-        about.FindControl<HyperlinkButton>("_NO_TRANSLATE_ThanksTo")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(about.FindControl<HyperlinkButton>("_NO_TRANSLATE_ThanksTo")!, Button.ClickEvent);
         WaitUntil(() => about.OwnedWindows.OfType<ContributorsWindow>().Any());
         ContributorsWindow contributors = about.OwnedWindows.OfType<ContributorsWindow>().Single();
         contributors.FindControl<TextBox>("DevelopersText")!.Text.Should().StartWith("Team:\r\n")

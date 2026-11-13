@@ -36,7 +36,7 @@ internal sealed class DialogHelpTests
         _ = window.ShowDialog(owner);
         Dispatcher.UIThread.RunJobs();
 
-        window.FindControl<Button>("HelpButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(window.FindControl<Button>("HelpButton")!, Button.ClickEvent);
         window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.F1, keySymbol: null);
 
         _opened.Should().HaveCount(2).And.AllSatisfy(url => url.Should().EndWith("branches.html#delete-branch"));
@@ -57,7 +57,7 @@ internal sealed class DialogHelpTests
         Dispatcher.UIThread.RunJobs();
 
         window.FindControl<RadioButton>("HardRadio")!.IsChecked = true;
-        window.FindControl<Button>("HelpButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(window.FindControl<Button>("HelpButton")!, Button.ClickEvent);
 
         _opened.Should().Equal("https://git-scm.com/docs/git-reset#Documentation/git-reset.txt---hard");
         owner.Close();

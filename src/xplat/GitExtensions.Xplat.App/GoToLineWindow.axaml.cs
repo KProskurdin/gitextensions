@@ -1,38 +1,35 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormGoToLine</c>: the line number to go to, from 1 to the viewer's last line number.
+///  Upstream's <c>FormGoToLine</c>, bound to <see cref="GoToLineViewModel"/>: the line number to go to, from 1 to the
+///  viewer's last line number.
 /// </summary>
 public partial class GoToLineWindow : Window
 {
-    private string _label = "";
-
     public GoToLineWindow()
     {
+        ViewModel = new GoToLineViewModel(new WindowDialogHost(this));
+        DataContext = ViewModel;
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormGoToLine");
-        _label = lineLabel.Content as string ?? "";
+        UpstreamTranslation.Apply(this, GoToLineViewModel.Category);
         InitialFocus.Attach(this, () => _NO_TRANSLATE_LineNumberUpDown);
-        okBtn.Click += (_, _) => Close(LineNumber);
-        cancelBtn.Click += (_, _) => Close(null);
     }
+
+    public GoToLineViewModel ViewModel { get; }
 
     /// <summary>
     ///  The line number chosen.
     /// </summary>
-    public int LineNumber => (int)(_NO_TRANSLATE_LineNumberUpDown.Value ?? 1);
+    public int LineNumber => ViewModel.LineNumber;
 
     /// <summary>
     ///  Upstream's <c>SetMaxLineNumber</c>: the last line and the label that names the range.
     /// </summary>
-    public void SetMaxLineNumber(int maxLineNumber)
-    {
-        _NO_TRANSLATE_LineNumberUpDown.Maximum = Math.Max(1, maxLineNumber);
-        lineLabel.Content = _label + " (1 - " + maxLineNumber + "):";
-    }
+    public void SetMaxLineNumber(int maxLineNumber) => ViewModel.SetMaxLineNumber(maxLineNumber);
 
     /// <summary>
     ///  Shows the window over <paramref name="owner"/>; the line number for OK, null for Cancel.

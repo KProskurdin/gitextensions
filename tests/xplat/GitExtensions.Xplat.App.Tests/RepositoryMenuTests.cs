@@ -29,7 +29,7 @@ internal sealed class RepositoryMenuTests
         MenuItem item = main.FindControl<MenuItem>("RepositorySettingsMenuItem")!;
         item.IsEnabled.Should().BeTrue();
 
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = main.OwnedWindows.OfType<SettingsWindow>().Single();
         settings.FindControl<TabControl>("Tabs")!.SelectedItem.Should().Be(settings.FindControl<TabItem>("GitConfigTab"));

@@ -211,7 +211,7 @@ internal sealed class FileHistoryWindowTests
             .Equal("meld", "vscode", null);
         open.Items.OfType<MenuItem>().Last().Header.Should().Be("Disable this dropdown");
 
-        open.Items.OfType<MenuItem>().Last().RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(open.Items.OfType<MenuItem>().Last(), MenuItem.ClickEvent);
 
         TestAppBuilder.Preferences.ShowAvailableDiffTools.Should().BeFalse();
         open.Items.Should().BeEmpty();

@@ -54,7 +54,7 @@ internal sealed class GridAdvancedMenuTests
         Button modify = Find<Button>(commit, "modifyCommitMessageButton");
         modify.IsVisible.Should().BeTrue();
 
-        modify.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(modify, Button.ClickEvent);
 
         message.IsEnabled.Should().BeTrue();
         modify.IsVisible.Should().BeFalse();
@@ -129,7 +129,7 @@ internal sealed class GridAdvancedMenuTests
         return owner.OwnedWindows.OfType<CommitWindow>().Single();
     }
 
-    private static void Click(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    private static void Click(MenuItem item) => UiClicks.Raise(item, MenuItem.ClickEvent);
 
     private static T Find<T>(Window window, string name)
         where T : Control

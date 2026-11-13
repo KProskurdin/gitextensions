@@ -1,17 +1,13 @@
+using GitExtensions.Xplat.Core.Presentation;
+
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  What the user entered in a <see cref="PromptWindow"/>: the name, and the optional second value (e.g. a tag message).
-/// </summary>
-public sealed record PromptResult(string Value, string SecondValue);
-
-/// <summary>
-///  Asks for a name, such as a new branch or tag name. Closes with null when cancelled or when the name is empty.
+///  Asks for a name, such as a new branch or tag name, bound to <see cref="PromptViewModel"/>. Closes with a
+///  <see cref="PromptResult"/>, or with null when cancelled or when the name is empty.
 /// </summary>
 public partial class PromptWindow : Avalonia.Controls.Window
 {
-    private readonly bool _allowEmpty;
-
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
     /// </summary>
@@ -23,22 +19,9 @@ public partial class PromptWindow : Avalonia.Controls.Window
         string initialValue = "",
         bool allowEmpty = false)
     {
-        _allowEmpty = allowEmpty;
+        DataContext = new PromptViewModel(new WindowDialogHost(this), title, label, acceptText, secondPlaceholder,
+            initialValue, allowEmpty);
         InitializeComponent();
-        Title = title;
-        LabelText.Text = label;
-        OkButton.Content = acceptText;
-        ValueBox.Text = initialValue;
-        SecondValueBox.IsVisible = secondPlaceholder.Length > 0;
-        SecondValueBox.PlaceholderText = secondPlaceholder;
-        CancelButton.Click += (_, _) => Close(null);
-        OkButton.Click += (_, _) => Accept();
         Opened += (_, _) => ValueBox.Focus();
-    }
-
-    private void Accept()
-    {
-        string value = ValueBox.Text?.Trim() ?? "";
-        Close(value.Length == 0 && !_allowEmpty ? null : new PromptResult(value, SecondValueBox.Text?.Trim() ?? ""));
     }
 }

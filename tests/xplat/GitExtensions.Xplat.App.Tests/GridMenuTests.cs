@@ -138,12 +138,12 @@ internal sealed partial class GridMenuTests
             .Equal(Find<MenuItem>(window, "ViewMenu").Items.Select(entry => (entry as MenuItem)?.Header));
         MenuItem copy = view.Items.OfType<MenuItem>().Single(item => item.Header as string == "Show _tags");
         copy.IsChecked.Should().Be(shown);
-        copy.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(copy, MenuItem.ClickEvent);
         showTags.IsChecked.Should().Be(!shown, "the copy runs the View menu's command");
 
         OpenMenu(window);
         view.Items.OfType<MenuItem>().Single(item => item.Header as string == "Show _tags").IsChecked.Should().Be(!shown);
-        showTags.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(showTags, MenuItem.ClickEvent);
         showTags.IsChecked.Should().Be(shown);
         window.Close();
     }

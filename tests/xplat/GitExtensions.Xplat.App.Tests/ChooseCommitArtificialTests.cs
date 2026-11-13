@@ -78,12 +78,12 @@ internal sealed class ChooseCommitArtificialTests
         ListBox files = diff.FindControl<ListBox>("DiffFiles")!;
 
         Button pick = diff.FindControl<Button>("btnAnotherSecondCommit")!;
-        pick.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(pick, Button.ClickEvent);
         WaitUntil(() => diff.OwnedWindows.OfType<ChooseCommitWindow>().SingleOrDefault()?.CommitsLoaded.IsCompleted == true);
         ChooseCommitWindow choose = diff.OwnedWindows.OfType<ChooseCommitWindow>().Single();
         ListBox grid = choose.FindControl<ListBox>("revisionGrid")!;
         grid.SelectedItem = grid.Items.Cast<CommitListItem>().Single(item => item.Row.Hash == ObjectId.WorkTreeId.ToString());
-        choose.FindControl<Button>("btnOK")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(choose.FindControl<Button>("btnOK")!, Button.ClickEvent);
 
         WaitUntil(() => files.Items.OfType<RevisionDiffFile>().Any(file => file.Path == "a.txt"));
         diff.Close();

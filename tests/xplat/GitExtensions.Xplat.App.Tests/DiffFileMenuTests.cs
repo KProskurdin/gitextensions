@@ -60,17 +60,17 @@ internal sealed class DiffFileMenuTests
             WaitUntil(() => diff.Lines.Any(line => line.Text == "+three"));
             diff.FindControl<ListBox>("DiffList")!.SelectedItem = diff.Lines.Single(line => line.Text == "+three");
 
-            Find<MenuItem>(files.ContextMenu!, "tsmiBlame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(Find<MenuItem>(files.ContextMenu!, "tsmiBlame"), MenuItem.ClickEvent);
 
             WaitUntil(() => blame.IsVisible && blame.Lines.Count == 3 && blame.CurrentFileLine == 3);
             diff.IsVisible.Should().BeFalse();
             tabs.SelectedItem.Should().Be(Find<Avalonia.Controls.TabItem>(window, "DiffTab"), "not the File tree tab");
 
-            Find<MenuItem>(files.ContextMenu!, "tsmiBlame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(Find<MenuItem>(files.ContextMenu!, "tsmiBlame"), MenuItem.ClickEvent);
 
             WaitUntil(() => diff.IsVisible && !blame.IsVisible && diff.CurrentFileLine == 3);
 
-            Find<MenuItem>(files.ContextMenu!, "tsmiBlame").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(Find<MenuItem>(files.ContextMenu!, "tsmiBlame"), MenuItem.ClickEvent);
             WaitUntil(() => blame.IsVisible);
             files.SelectedItem = files.Items.OfType<CommitFile>().Single(file => file.Path == "other.txt");
 
@@ -454,10 +454,16 @@ internal sealed class DiffFileMenuTests
         Click(Find<Button>(diff.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton"));
         WaitUntil(() => _repo.ReadFile("z.md") == "z");
 
-        files.SelectedItems!.Clear();
-        files.ContainerFromIndex(0)!.Focus();
-        diff.KeyPress(Key.A, TestKeys.Command, PhysicalKey.A, keySymbol: null);
-        files.SelectedItems.Cast<RevisionDiffFile>().Select(file => file.Path).Should().Equal("z.md");
+        // The reset reloads the list a moment later, which drops a selection made before; Ctrl+A is pressed until the
+        // selection outlives the reload.
+        WaitUntil(() =>
+        {
+            files.SelectedItems!.Clear();
+            files.ContainerFromIndex(0)?.Focus();
+            diff.KeyPress(Key.A, TestKeys.Command, PhysicalKey.A, keySymbol: null);
+            Dispatcher.UIThread.RunJobs();
+            return files.SelectedItems.Cast<RevisionDiffFile>().Select(file => file.Path).SequenceEqual(["z.md"]);
+        });
         diff.Close();
         window.Close();
     }
@@ -519,7 +525,7 @@ internal sealed class DiffFileMenuTests
     }
 
     private static void Click(Control control)
-        => control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        => UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
 
     private static T Find<T>(Control root, string name)
         where T : Control

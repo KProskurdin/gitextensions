@@ -71,7 +71,7 @@ internal sealed class ErrorReporterTests
             .BeFalse("only an external error can be ignored there");
         Find<Button>(bugReport, "sendAndQuitButton").IsEnabled.Should().BeTrue();
 
-        Find<Button>(bugReport, "quitButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(bugReport, "quitButton"), Button.ClickEvent);
         WaitUntil(() => report.IsCompleted);
         _exits.Should().Equal(-1);
     }
@@ -94,7 +94,7 @@ internal sealed class ErrorReporterTests
             .BeFalse("upstream holds back the user's own errors");
         Button ignore = Find<Button>(details, "IgnoreButton");
         ignore.IsVisible.Should().BeTrue();
-        ignore.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(ignore, Button.ClickEvent);
 
         WaitUntil(() => report.IsCompleted);
         details.Result.Should().Be(DialogResult.Ignore);
@@ -119,7 +119,7 @@ internal sealed class ErrorReporterTests
         window.Show();
         Button send = Find<Button>(window, "sendAndQuitButton");
 
-        send.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(send, Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
         MessageBoxWindow missing = window.OwnedWindows.OfType<MessageBoxWindow>().Single();
         Find<SelectableTextBlock>(missing, "MessageText").Text.Should().StartWith("Please provide");
@@ -127,7 +127,7 @@ internal sealed class ErrorReporterTests
         WaitUntil(() => !window.OwnedWindows.Any());
 
         Find<TextBox>(window, "descriptionTextBox").Text = "Clicked Refresh twice.";
-        send.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(send, Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
         MessageBoxWindow confirm = window.OwnedWindows.OfType<MessageBoxWindow>().Single();
         Descendants<Button>(confirm).Single(button => button.Name == "YesButton")
@@ -151,7 +151,7 @@ internal sealed class ErrorReporterTests
         Dispatcher.UIThread.RunJobs();
 
         window.IsVisible.Should().BeTrue("upstream hides the close box when the error ends the application");
-        Find<Button>(window, "quitButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "quitButton"), Button.ClickEvent);
         WaitUntil(() => !window.IsVisible);
         window.Result.Should().Be(DialogResult.Abort);
     }

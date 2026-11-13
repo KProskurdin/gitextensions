@@ -1,15 +1,19 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.AddFilesWindow"
+        x:DataType="vm:AddFilesViewModel"
         Title="Add files"
         Width="552" SizeToContent="Height" CanMinimize="False" CanMaximize="False" WindowStartupLocation="CenterOwner">
-  <!-- Upstream's FormAddFiles: the filter, Force, and Show files (a dry run) and Add files. -->
+  <!-- Upstream's FormAddFiles: the filter, Force, and Show files (a dry run) and Add files. Bound to AddFilesViewModel (PLAN.md
+       principle 6). -->
   <Grid ColumnDefinitions="80,*,Auto,Auto" RowDefinitions="Auto,Auto" Margin="9,4" ColumnSpacing="8" RowSpacing="4">
     <TextBlock x:Name="label1" Text="Filter" VerticalAlignment="Center" />
-    <TextBox x:Name="Filter" Grid.Column="1" />
-    <Button x:Name="ShowFiles" Grid.Column="2" Content="Show files" MinWidth="94" HorizontalContentAlignment="Center" />
+    <TextBox x:Name="Filter" Grid.Column="1" Text="{Binding Filter}" />
+    <Button x:Name="ShowFiles" Grid.Column="2" Content="Show files" MinWidth="94" HorizontalContentAlignment="Center"
+            Command="{Binding ShowFilesCommand}" />
     <Button x:Name="AddFiles" Grid.Column="3" Content="Add files" MinWidth="94" HorizontalContentAlignment="Center"
-            IsDefault="True" />
-    <CheckBox x:Name="force" Grid.Row="1" Grid.Column="1" Content="Force" />
+            IsDefault="True" Command="{Binding AddFilesCommand}" />
+    <CheckBox x:Name="force" Grid.Row="1" Grid.Column="1" Content="Force" IsChecked="{Binding Force}" />
   </Grid>
 </Window>

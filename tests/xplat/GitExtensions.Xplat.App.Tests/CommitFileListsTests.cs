@@ -141,7 +141,7 @@ internal sealed class CommitFileListsTests
         MenuItem showUntracked = Find<MenuItem>(commit, "UnstagedShowUntrackedMenuItem");
 
         showUntracked.IsChecked = false;
-        showUntracked.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(showUntracked, MenuItem.ClickEvent);
 
         Paths(unstaged).Should().Equal("a.txt");
         commit.Close();
@@ -254,7 +254,7 @@ internal sealed class CommitFileListsTests
 
         unstaged.Items.OfType<FileTreeRow>().Select(row => row.Text).Should().Equal("src");
         staged.Items.OfType<FileTreeRow>().Select(row => row.Text).Should().Equal("src");
-        Find<ToolSplitButton>(commit, "StagedAsTreeButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        UiClicks.Raise(Find<ToolSplitButton>(commit, "StagedAsTreeButton"), SplitButton.ClickEvent);
         Dispatcher.UIThread.RunJobs();
 
         TestAppBuilder.Preferences.DiffListSorting.Should().Be(DiffListSortType.FilePathFlat);
@@ -334,7 +334,7 @@ internal sealed class CommitFileListsTests
         => list.ContextMenu!.FindControl<MenuItem>(name) ?? throw new InvalidOperationException($"No item {name}");
 
     private static void ClickItem(ListBox list, string name)
-        => Item(list, name).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        => UiClicks.Raise(Item(list, name), MenuItem.ClickEvent);
 
     // The menu updates itself for the selection when it opens, as upstream's ItemContextMenu_Opening.
     [AvaloniaTest]
@@ -398,13 +398,13 @@ internal sealed class CommitFileListsTests
     {
         MenuItem item = Find<MenuItem>(window, name);
         item.IsChecked = check;
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
     }
 
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

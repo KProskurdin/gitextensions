@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Extensibility;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -46,7 +47,7 @@ internal sealed class CherryPickWindowTests
         ListBox commits = window.FindControl<ListBox>("CommitList")!;
         commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "side change");
 
-        window.FindControl<MenuItem>("CherryPickMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(window.FindControl<MenuItem>("CherryPickMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<CherryPickWindow>().Any());
         CherryPickWindow pick = window.OwnedWindows.OfType<CherryPickWindow>().Single();
         WaitUntil(() => pick.RevisionLoaded.IsCompleted);
@@ -95,8 +96,7 @@ internal sealed class CherryPickWindowTests
         owner.Close();
     }
 
-    private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Button>(window, name));
 
     private static T Find<T>(Window window, string name)
         where T : Control

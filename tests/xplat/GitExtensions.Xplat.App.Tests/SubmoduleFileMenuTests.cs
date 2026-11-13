@@ -71,7 +71,7 @@ internal sealed class SubmoduleFileMenuTests
             Item(name).IsVisible.Should().BeTrue(name);
         }
 
-        Item("tsmiStashSubmoduleChanges").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item("tsmiStashSubmoduleChanges"), MenuItem.ClickEvent);
 
         WaitUntil(() => ErrorShown(window) is null
             ? GitProcess.Run(Path.Combine(_repo.Path, "lib"), "stash", "list").Length > 0
@@ -238,16 +238,16 @@ internal sealed class SubmoduleFileMenuTests
         {
             File.WriteAllText(Path.Combine(library, "a.txt"), message);
             GitProcess.Run(library, "add", "a.txt");
-            Find<Button>(window, "RefreshButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            UiClicks.Raise(Find<Button>(window, "RefreshButton"), Button.ClickEvent);
             WaitUntil(() => !window.IsBusy && Find<Button>(window, "CommitDialogButton").IsEnabled);
-            Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            UiClicks.Raise(Find<Button>(window, "CommitDialogButton"), Button.ClickEvent);
             WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
             CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
             CheckBox check = Find<CheckBox>(commit, "StageInSuperprojectCheck");
             WaitUntil(() => check.IsVisible);
             WaitUntil(() => Find<ListBox>(commit, "StagedList").Items.OfType<Core.Repository.FileChange>().Any());
             Find<TextBox>(commit, "CommitMessageBox").Text = message;
-            Find<Button>(commit, "CommitButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            UiClicks.Raise(Find<Button>(commit, "CommitButton"), Button.ClickEvent);
             WaitUntil(() => GitProcess.Run(library, "log", "-1", "--format=%s").Trim() == message);
 
             // The window closes after the commit that leaves no unstaged changes, once it has staged in the superproject.
@@ -263,7 +263,7 @@ internal sealed class SubmoduleFileMenuTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
-        Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "CommitDialogButton"), Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
         ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
@@ -288,7 +288,7 @@ internal sealed class SubmoduleFileMenuTests
             Find<MenuItem>(unstaged.ContextMenu!, name).IsVisible.Should().BeTrue(name);
         }
 
-        Find<MenuItem>(unstaged.ContextMenu!, "tsmiStashSubmoduleChanges").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(unstaged.ContextMenu!, "tsmiStashSubmoduleChanges"), MenuItem.ClickEvent);
 
         WaitUntil(() => ErrorShown(window, commit) is null ? GitProcess.Run(Path.Combine(_repo.Path, "lib"), "stash", "list").Length > 0
             : throw new AssertionException("The stash failed: " + ErrorShown(window, commit)));
@@ -306,7 +306,7 @@ internal sealed class SubmoduleFileMenuTests
         ListBox commits = Find<ListBox>(window, "CommitList");
         WaitUntil(() => commits.Items.Cast<CommitListItem>().Any(item => item.Row.Subject == "add submodule"));
         commits.SelectedItem = commits.Items.Cast<CommitListItem>().First(item => item.Row.Subject == "add submodule");
-        Find<MenuItem>(window, "CompareToWorkingDirectoryMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "CompareToWorkingDirectoryMenuItem"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<RevisionDiffWindow>().SingleOrDefault()?.DiffLoaded.IsCompleted == true);
         RevisionDiffWindow diff = window.OwnedWindows.OfType<RevisionDiffWindow>().Single();
         ListBox diffFiles = Find<ListBox>(diff, "DiffFiles");
@@ -318,7 +318,7 @@ internal sealed class SubmoduleFileMenuTests
         ShouldHaveSubmoduleItems(diffFiles);
         diff.Close();
 
-        Find<MenuItem>(window, "ManageStashesCommandMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "ManageStashesCommandMenuItem"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<StashWindow>().SingleOrDefault() is { StashesLoaded.IsCompleted: true, IsLoadingFiles: false });
         StashWindow stash = window.OwnedWindows.OfType<StashWindow>().Single();
         ListBox stashFiles = Find<ListBox>(stash, "FilesList");

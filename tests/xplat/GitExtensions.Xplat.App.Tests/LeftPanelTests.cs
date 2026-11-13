@@ -365,7 +365,7 @@ internal sealed class LeftPanelTests
         texts[2].Should().StartWith("lib");
         texts[3..].Should().Equal("_Update all submodules", "Update current submodule");
 
-        button.RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        UiClicks.Raise(button, SplitButton.ClickEvent);
 
         WaitUntil(() => !window.IsBusy && button.Image == "SubmodulesManage" && SubmoduleTop(tree)?.IsBold == true);
         window.Close();
@@ -632,7 +632,7 @@ internal sealed class LeftPanelTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

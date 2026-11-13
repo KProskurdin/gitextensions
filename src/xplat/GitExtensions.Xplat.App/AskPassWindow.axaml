@@ -1,15 +1,18 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.AskPassWindow"
+        x:DataType="vm:AskPassViewModel"
         Title="Git Extensions"
         Width="480" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterScreen" Topmost="True">
-  <!-- Mirrors upstream's native GitExtSshAskPass dialog: git's or ssh's prompt, one answer, OK and Cancel. -->
+  <!-- Mirrors upstream's native GitExtSshAskPass dialog: git's or ssh's prompt, one answer, OK and Cancel. Bound to
+       AskPassViewModel (PLAN.md principle 6). -->
   <StackPanel Margin="16" Spacing="10">
-    <TextBlock x:Name="PromptText" TextWrapping="Wrap" />
-    <TextBox x:Name="AnswerBox" />
+    <TextBlock x:Name="PromptText" TextWrapping="Wrap" Text="{Binding Prompt}" />
+    <TextBox x:Name="AnswerBox" Text="{Binding Text}" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-      <Button x:Name="OkButton" Content="OK" IsDefault="True" />
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="OkButton" Content="OK" IsDefault="True" Command="{Binding OkCommand}" />
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}" />
     </StackPanel>
   </StackPanel>
 </Window>

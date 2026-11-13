@@ -130,7 +130,7 @@ internal sealed class StashWindowTests
             Rows(window).Where(row => row.IsFile).Select(row => row.Text).Should().Equal("docs/n.txt");
 
             Find<FileFilterBox>(window, "FilesFilterBox").Text = "";
-            Find<ToolSplitButton>(window, "FilesAsTreeButton").RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+            UiClicks.Raise(Find<ToolSplitButton>(window, "FilesAsTreeButton"), SplitButton.ClickEvent);
             Dispatcher.UIThread.RunJobs();
 
             TestAppBuilder.Preferences.DiffListSorting.Should().Be(DiffListSortType.FilePathFlat);
@@ -221,7 +221,7 @@ internal sealed class StashWindowTests
         files.SelectedItems.Clear();
         files.SelectedItems.Add(Rows(window).Single(row => row.Text == "a.txt"));
         OpenMenu(files);
-        Item(files, "tsmiUnstageFile").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item(files, "tsmiUnstageFile"), MenuItem.ClickEvent);
 
         WaitUntil(() => _repo.Run("diff", "--cached", "--name-only").Trim().Length == 0);
         WaitUntil(() => !window.IsLoadingFiles && Rows(window).Count(row => row.IsHeader) == 1);
@@ -240,7 +240,7 @@ internal sealed class StashWindowTests
         Item(files, "tsmiStageFile").IsVisible.Should().BeFalse();
         Item(files, "tsmiResetFileToSelected").Header.Should()
             .Be("Second: B " + _repo.Run("rev-parse", "--short=8", "stash@{0}").Trim());
-        Item(files, "tsmiResetFileToSelected").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item(files, "tsmiResetFileToSelected"), MenuItem.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<ResetChangesWindow>().Any());
         Click(window.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
 
@@ -282,7 +282,7 @@ internal sealed class StashWindowTests
         => [.. Find<ListBox>(window, "FilesList").ItemsSource?.OfType<StashFileRow>() ?? []];
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");

@@ -1,33 +1,42 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
+        xmlns:git="using:GitExtensions.Extensibility.Git"
         x:Class="GitExtensions.Xplat.App.ResetCurrentBranchWindow"
+        x:DataType="vm:ResetCurrentBranchViewModel"
         Title="Reset current branch"
         MinWidth="479" SizeToContent="WidthAndHeight" CanResize="False" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormResetCurrentBranch: the branch and the commit's summary, the reset types on their colors, and OK and
-       Cancel at the bottom right. -->
+       Cancel at the bottom right. Bound to ResetCurrentBranchViewModel (PLAN.md principle 6); each radio button is one
+       value of the reset type (EnumEqualsConverter). -->
   <StackPanel Margin="5">
-    <TextBlock x:Name="BranchInfoText" Margin="3" />
-    <local:CommitSummaryView x:Name="Summary" Margin="3" MinHeight="147" />
+    <TextBlock x:Name="BranchInfoText" Margin="3" Text="{Binding BranchInfo}" />
+    <local:CommitSummaryView x:Name="Summary" Margin="3" MinHeight="147" Summary="{Binding Summary}" />
     <HeaderedContentControl Classes="groupBox" Header="Reset type" Margin="3">
       <StackPanel Spacing="3" Margin="5">
         <RadioButton x:Name="SoftRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
-                     Content="_Soft: leave working directory and index untouched" />
+                     Content="_Soft: leave working directory and index untouched"
+                     IsChecked="{Binding Dialog.Mode, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:ResetMode.Soft}}" />
         <RadioButton x:Name="MixedRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
-                     Content="Mi_xed: leave working directory untouched, reset index" />
+                     Content="Mi_xed: leave working directory untouched, reset index"
+                     IsChecked="{Binding Dialog.Mode, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:ResetMode.Mixed}}" />
         <RadioButton x:Name="KeepRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
-                     Content="_Keep: update working directory to the commit &#10;(abort if there are local changes), reset index" />
+                     Content="_Keep: update working directory to the commit &#10;(abort if there are local changes), reset index"
+                     IsChecked="{Binding Dialog.Mode, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:ResetMode.Keep}}" />
         <RadioButton x:Name="MergeRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
-                     Content="_Merge: update working directory to the commit and keep local changes &#10;(abort if there are conflicts), reset index" />
+                     Content="_Merge: update working directory to the commit and keep local changes &#10;(abort if there are conflicts), reset index"
+                     IsChecked="{Binding Dialog.Mode, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:ResetMode.Merge}}" />
         <RadioButton x:Name="HardRadio" GroupName="ResetType" Padding="3" HorizontalAlignment="Stretch"
-                     Content="_Hard: reset working directory and index&#10;(discard ALL local changes, even uncommitted changes)" />
+                     Content="_Hard: reset working directory and index&#10;(discard ALL local changes, even uncommitted changes)"
+                     IsChecked="{Binding Dialog.Mode, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:ResetMode.Hard}}" />
       </StackPanel>
     </HeaderedContentControl>
     <Grid ColumnDefinitions="Auto,*" Margin="3">
       <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-        <Button x:Name="OkButton" Content="OK" MinWidth="91" IsDefault="True" />
-        <Button x:Name="CancelButton" Content="Cancel" MinWidth="91" IsCancel="True" />
+        <Button x:Name="OkButton" Content="OK" MinWidth="91" IsDefault="True" Command="{Binding ResetCommand}" />
+        <Button x:Name="CancelButton" Content="Cancel" MinWidth="91" IsCancel="True" Command="{Binding CancelCommand}" />
       </StackPanel>
     </Grid>
   </StackPanel>

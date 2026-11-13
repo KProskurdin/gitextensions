@@ -52,7 +52,7 @@ internal sealed class DeleteRemoteBranchWindowTests
         Find<TextBlock>(window, "_NO_TRANSLATE_labelLocalTrackingBranches").Text.Should().BeEmpty();
 
         Find<CheckBox>(window, "DeleteRemote").IsChecked = true;
-        delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(delete, Button.ClickEvent);
 
         WaitUntil(() => result.IsCompleted);
         (await result).Should().BeTrue();
@@ -71,11 +71,11 @@ internal sealed class DeleteRemoteBranchWindowTests
         Find<CheckBox>(window, "DeleteRemote").IsChecked = true;
         tracking.IsChecked = true;
 
-        Find<Button>(window, "Delete").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "Delete"), Button.ClickEvent);
         Answer(window, "NoButton");
         _deletedOnRemote.Should().BeEmpty("No keeps the branch");
 
-        Find<Button>(window, "Delete").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "Delete"), Button.ClickEvent);
         Answer(window, "YesButton");
 
         WaitUntil(() => result.IsCompleted);

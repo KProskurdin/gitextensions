@@ -20,14 +20,14 @@ public static class RevertCommitDialog
     /// <summary>
     ///  The message prepared before the revert (.git/MERGE_MSG, else .git/COMMITMESSAGE), as upstream reads it first.
     /// </summary>
-    public static Task<string> ReadPreparedMessageAsync(GitModule module)
+    public static Task<string> ReadPreparedMessageAsync(IGitModule module)
         => Manager(module).GetMergeOrCommitMessageAsync();
 
     /// <summary>
     ///  Upstream's step after the revert: a message that was prepared before is put above git's revert message, so it is
     ///  not lost; nothing happens without one. Errors are ignored, as upstream's.
     /// </summary>
-    public static async Task KeepPreparedMessageAsync(GitModule module, string preparedMessage)
+    public static async Task KeepPreparedMessageAsync(IGitModule module, string preparedMessage)
     {
         if (string.IsNullOrWhiteSpace(preparedMessage))
         {
@@ -47,6 +47,6 @@ public static class RevertCommitDialog
     }
 
     // As upstream's, through its CommitMessageManager (the owner control is only used for its dialogs).
-    private static ICommitMessageManager Manager(GitModule module)
+    private static ICommitMessageManager Manager(IGitModule module)
         => new CommitMessageManager(new System.Windows.Forms.Control(), module.WorkingDirGitDir, module.CommitEncoding);
 }

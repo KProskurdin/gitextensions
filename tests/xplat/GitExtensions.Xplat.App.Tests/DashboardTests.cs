@@ -61,7 +61,7 @@ internal sealed class DashboardTests
 
         MenuItem work = CategoryItems(window, TileButton(window, _repo.Path, favourite: false)!)
             .Single(item => item.Header as string == "Work");
-        work.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(work, MenuItem.ClickEvent);
 
         WaitUntil(() => TileButton(window, _repo.Path, favourite: true) is not null);
 
@@ -79,7 +79,7 @@ internal sealed class DashboardTests
         MainWindow window = OpenWindow();
         WaitUntil(() => TileButton(window, _repo.Path, favourite: false) is not null);
 
-        TileButton(window, _repo.Path, favourite: false)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(TileButton(window, _repo.Path, favourite: false)!, Button.ClickEvent);
 
         WaitUntil(() => Find<Grid>(window, "BrowsePanel").IsVisible && !window.IsBusy);
         Find<Grid>(window, "DashboardPanel").IsVisible.Should().BeFalse();

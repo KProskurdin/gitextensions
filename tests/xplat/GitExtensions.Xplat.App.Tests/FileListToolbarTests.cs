@@ -67,7 +67,7 @@ internal sealed class FileListToolbarTests
         _hidden.Add("btnByPath");
 
         entry.IsChecked = false;
-        entry.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(entry, MenuItem.ClickEvent);
 
         button.Classes.Should().Contain(FileListToolbar.HiddenClass);
         TestAppBuilder.Preferences.IsFileListToolbarItemVisible("btnByPath").Should().BeFalse();

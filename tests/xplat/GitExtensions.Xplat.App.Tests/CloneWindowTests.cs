@@ -182,7 +182,7 @@ internal sealed class CloneWindowTests
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
 
-        Find<MenuItem>(window, "CloneMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "CloneMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<CloneWindow>().Any());
         CloneWindow clone = window.OwnedWindows.OfType<CloneWindow>().Single();
@@ -252,7 +252,7 @@ internal sealed class CloneWindowTests
     }
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

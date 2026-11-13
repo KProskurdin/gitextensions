@@ -191,7 +191,7 @@ internal sealed class GitConfigToolRowsTests
     {
         window = new MainWindow(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
-        window.FindControl<MenuItem>("SettingsMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(window.FindControl<MenuItem>("SettingsMenuItem")!, MenuItem.ClickEvent);
         MainWindow main = window;
         WaitUntil(() => main.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = main.OwnedWindows.OfType<SettingsWindow>().Single();
@@ -212,7 +212,7 @@ internal sealed class GitConfigToolRowsTests
     }
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

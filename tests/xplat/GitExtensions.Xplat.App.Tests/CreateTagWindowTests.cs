@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
-using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using NUnit.Framework;
@@ -97,8 +96,7 @@ internal sealed class CreateTagWindowTests
         return process.ExitCode == 0;
     }
 
-    private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Button>(window, name));
 
     private static T Find<T>(Window window, string name)
         where T : Control

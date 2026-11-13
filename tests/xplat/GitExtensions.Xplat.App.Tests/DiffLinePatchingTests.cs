@@ -108,7 +108,7 @@ internal sealed class DiffLinePatchingTests
         MenuItem cherryPick = Find<MenuItem>(files.ContextMenu, "tsmiCherryPickChanges");
         cherryPick.IsVisible.Should().BeTrue("the viewer can apply the commit's lines");
 
-        cherryPick.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(cherryPick, MenuItem.ClickEvent);
 
         WaitUntil(() => ReadLines().SequenceEqual(Edited()));
         window.Close();
@@ -174,13 +174,13 @@ internal sealed class DiffLinePatchingTests
         list.ContextMenu!.Close();
         MenuItem item = diff.FindControl<MenuItem>(name)!;
         (item.IsVisible, item.IsEnabled).Should().Be((true, true));
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
     }
 
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
     }
 
     private static T Find<T>(Control root, string name)

@@ -86,7 +86,7 @@ internal sealed class FindFileWindowTests
         MenuItem findFile = Find<MenuItem>(files.ContextMenu, "tsmiFindFile");
         findFile.IsVisible.Should().BeTrue();
 
-        findFile.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(findFile, MenuItem.ClickEvent);
 
         SearchWindow search = WaitForSearchWindow(window);
         Type(search, Find<TextBox>(search, "txtSearchBox"), "GUIDE");

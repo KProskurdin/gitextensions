@@ -40,7 +40,7 @@ internal sealed class IndexFlagsTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
-        Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "CommitDialogButton"), Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
         ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
@@ -51,7 +51,7 @@ internal sealed class IndexFlagsTests
         MenuItem assume = unstaged.ContextMenu!.FindControl<MenuItem>("tsmiAssumeUnchanged")!;
         (skip.IsVisible, skip.IsChecked, assume.IsVisible, assume.IsChecked).Should().Be((true, false, true, false));
 
-        skip.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(skip, MenuItem.ClickEvent);
 
         WaitUntil(() => _repo.Run("ls-files", "-v", "config.txt").StartsWith("S ", StringComparison.Ordinal));
         WaitUntil(() => !unstaged.Items.OfType<FileChange>().Any(), "upstream's list hides a skip-worktree file");
@@ -59,19 +59,19 @@ internal sealed class IndexFlagsTests
         // Upstream's "Show skip-worktree files" lists it again, with the item checked.
         MenuItem showSkipWorktree = Find<MenuItem>(commit, "UnstagedShowSkipWorktreeMenuItem");
         showSkipWorktree.IsChecked = true;
-        showSkipWorktree.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(showSkipWorktree, MenuItem.ClickEvent);
         WaitUntil(() => unstaged.Items.OfType<FileChange>().Any(change => change.IsSkipWorktree));
         unstaged.SelectedItem = unstaged.Items.OfType<FileChange>().Single(change => change.Path == "config.txt");
         OpenMenu(unstaged);
         skip.IsChecked.Should().BeTrue();
 
-        skip.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(skip, MenuItem.ClickEvent);
         WaitUntil(() => _repo.Run("ls-files", "-v", "config.txt").StartsWith("H ", StringComparison.Ordinal));
 
         WaitUntil(() => unstaged.Items.OfType<FileChange>().Any(change => change.Path == "config.txt" && !change.IsSkipWorktree));
         unstaged.SelectedItem = unstaged.Items.OfType<FileChange>().Single(change => change.Path == "config.txt");
         OpenMenu(unstaged);
-        assume.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(assume, MenuItem.ClickEvent);
         WaitUntil(() => _repo.Run("ls-files", "-v", "config.txt").StartsWith("h ", StringComparison.Ordinal));
         commit.Close();
         window.Close();

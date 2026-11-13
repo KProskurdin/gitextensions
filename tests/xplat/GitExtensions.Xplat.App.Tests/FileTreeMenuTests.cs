@@ -247,7 +247,7 @@ internal sealed class FileTreeMenuTests
     }
 
     private static void Click(Control control)
-        => control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        => UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
 
     private static T Find<T>(Control root, string name)
         where T : Control

@@ -176,7 +176,7 @@ internal sealed class SettingsTreeUiTests
             rows.Children.OfType<Button>().Where(button => Equals(button.Content, SettingsChecklist.RepairText))
                 .Should().HaveCount(settings.ChecklistEntries.Count(entry => entry.State != ChecklistState.Set));
 
-            repair.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            UiClicks.Raise(repair, Button.ClickEvent);
 
             settings.SelectedPage!.Title.Should().Be("Config");
             Find<TextBlock>(settings, "InstantSaveNoticeText").IsVisible.Should().BeFalse();
@@ -238,7 +238,7 @@ internal sealed class SettingsTreeUiTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

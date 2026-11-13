@@ -59,7 +59,7 @@ public static class CreateTagDialog
     ///  one, upstream's <c>Commands.CreateTag</c> run by <paramref name="run"/>, and the file deleted again.
     /// </summary>
     /// <exception cref="ArgumentException">The arguments are not valid for the kind (upstream's checks).</exception>
-    public static async Task<bool> CreateAsync(GitModule module, GitCreateTagArgs args, Func<string, Task<bool>> run)
+    public static async Task<bool> CreateAsync(IGitModule module, GitCreateTagArgs args, Func<string, Task<bool>> run)
     {
         string? messageFile = null;
         if (args.Operation.CanProvideMessage())

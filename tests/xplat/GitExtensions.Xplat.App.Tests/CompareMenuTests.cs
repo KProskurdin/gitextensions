@@ -66,7 +66,7 @@ internal sealed class CompareMenuTests
         files.Items.Cast<RevisionDiffFile>().Select(file => file.Display).Should().BeEquivalentTo(["M a.txt", "A new.txt"]);
         Find<Button>(diff, "btnCompareDirectoriesWithDiffTool").IsEnabled.Should().BeTrue();
 
-        Find<Button>(diff, "btnSwap").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(diff, "btnSwap"), Button.ClickEvent);
         WaitUntil(() => diff.FilesShown.IsCompleted && files.ItemCount > 0);
 
         Find<TextBlock>(diff, "lblFirstCommit").Text.Should().Be("Working directory");
@@ -94,7 +94,7 @@ internal sealed class CompareMenuTests
         WaitUntil(() => branches.Items.Cast<string>().Contains("topic"));
         branches.SelectedItem = "topic";
         WaitUntil(() => Find<TextBlock>(choose, "lbChanges").Text?.Length > 0);
-        Find<Button>(choose, "btnCompare").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(choose, "btnCompare"), Button.ClickEvent);
 
         WaitUntil(() => chosen.IsCompleted);
         (await chosen).Should().Be("topic");
@@ -147,7 +147,7 @@ internal sealed class CompareMenuTests
         commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == subject);
     }
 
-    private static void Click(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    private static void Click(MenuItem item) => UiClicks.Raise(item, MenuItem.ClickEvent);
 
     private static T Find<T>(Window window, string name)
         where T : Control

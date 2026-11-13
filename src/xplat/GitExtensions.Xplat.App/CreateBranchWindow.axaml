@@ -1,17 +1,28 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.CreateBranchWindow"
+        x:DataType="vm:CreateBranchViewModel"
         Title="Create branch"
         Width="570" SizeToContent="Height" MinWidth="570" WindowStartupLocation="CenterOwner" CanResize="True">
   <!-- Upstream's FormCreateBranch (a GitExtensionsDialog): the name, the commit with its summary, checkout after create and
-       the orphan options; Create branch in the strip at the bottom. -->
+       the orphan options; Create branch in the strip at the bottom. Bound to CreateBranchViewModel (PLAN.md principle 6). -->
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+  </Window.KeyBindings>
+  <Window.Styles>
+    <!-- Upstream's ConfigureForOrphanBranch: the label takes the commit picker's place. -->
+    <Style Selector="TextBlock#OrphanOnlyLabel">
+      <Setter Property="Grid.ColumnSpan" Value="2" />
+    </Style>
+  </Window.Styles>
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <Grid ColumnDefinitions="Auto,*">
         <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button x:Name="CreateButton" MinWidth="107" IsDefault="True" VerticalAlignment="Center">
+          <Button x:Name="CreateButton" MinWidth="107" IsDefault="True" VerticalAlignment="Center" Command="{Binding CreateCommand}">
             <StackPanel Orientation="Horizontal" Spacing="4">
               <Image Source="{local:UpstreamImage BranchCreate}" Width="16" Height="16" />
               <AccessText Text="_Create branch" VerticalAlignment="Center" />
@@ -22,17 +33,25 @@
     </Border>
     <Grid Margin="12" ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
       <AccessText Text="_Branch name" VerticalAlignment="Center" Margin="3" />
-      <TextBox x:Name="BranchNameBox" Grid.Column="1" Margin="3" />
+      <TextBox x:Name="BranchNameBox" Grid.Column="1" Margin="3" Text="{Binding Dialog.BranchName}" />
       <AccessText x:Name="CreateAtLabel" Grid.Row="1" Text="Create b_ranch at this revision" VerticalAlignment="Center"
-                  Margin="3" TextWrapping="Wrap" />
-      <local:CommitPickerView x:Name="CommitPicker" Grid.Row="1" Grid.Column="1" Margin="3" />
-      <CheckBox x:Name="CheckoutAfterCreateCheck" Grid.Row="2" Grid.Column="1" Content="Checkout _after create" Margin="3" />
-      <local:CommitSummaryView x:Name="Summary" Grid.Row="3" Grid.ColumnSpan="2" Margin="3" />
-      <HeaderedContentControl x:Name="OrphanGroup" Grid.Row="4" Grid.ColumnSpan="2" Classes="groupBox" Header="Orphan" Margin="3">
+                  Margin="3" TextWrapping="Wrap" IsVisible="{Binding !Dialog.IsOrphanOnly}" />
+      <TextBlock x:Name="OrphanOnlyLabel" Grid.Row="1" Text="{Binding OrphanOnlyText}" VerticalAlignment="Center" Margin="3"
+                 TextWrapping="Wrap" IsVisible="{Binding Dialog.IsOrphanOnly}" />
+      <local:CommitPickerView x:Name="CommitPicker" Grid.Row="1" Grid.Column="1" Margin="3"
+                              Module="{Binding Module}" Selected="{Binding Dialog.Revision}"
+                              IsEnabled="{Binding CanPickRevision}" IsVisible="{Binding !Dialog.IsOrphanOnly}" />
+      <CheckBox x:Name="CheckoutAfterCreateCheck" Grid.Row="2" Grid.Column="1" Content="Checkout _after create" Margin="3"
+                IsChecked="{Binding Dialog.CheckoutAfterCreate}" IsEnabled="{Binding Dialog.CanChangeCheckout}" />
+      <local:CommitSummaryView x:Name="Summary" Grid.Row="3" Grid.ColumnSpan="2" Margin="3" Summary="{Binding Summary}" />
+      <HeaderedContentControl x:Name="OrphanGroup" Grid.Row="4" Grid.ColumnSpan="2" Classes="groupBox" Header="Orphan" Margin="3"
+                              IsEnabled="{Binding CouldBeOrphan}">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <CheckBox x:Name="CreateOrphanCheck" Content="Create or_phan" ToolTip.Tip="New branch will have NO parents" />
-          <CheckBox x:Name="ClearOrphanCheck" Content="Clear _working directory and index" IsEnabled="False"
-                    ToolTip.Tip="Remove files from the working directory and from the index" />
+          <CheckBox x:Name="CreateOrphanCheck" Content="Create or_phan" ToolTip.Tip="New branch will have NO parents"
+                    IsChecked="{Binding Dialog.CreateOrphan}" IsEnabled="{Binding Dialog.CanChangeOrphan}" />
+          <CheckBox x:Name="ClearOrphanCheck" Content="Clear _working directory and index"
+                    ToolTip.Tip="Remove files from the working directory and from the index"
+                    IsChecked="{Binding Dialog.ClearOrphan}" IsEnabled="{Binding Dialog.CanClearOrphan}" />
         </StackPanel>
       </HeaderedContentControl>
     </Grid>

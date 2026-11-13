@@ -306,7 +306,7 @@ internal sealed class ConflictsWindowTests
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

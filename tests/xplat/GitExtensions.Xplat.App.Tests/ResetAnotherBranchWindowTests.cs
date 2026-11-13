@@ -39,7 +39,7 @@ internal sealed class ResetAnotherBranchWindowTests
         ListBox commits = window.FindControl<ListBox>("CommitList")!;
         commits.SelectedItem = commits.Items.Cast<CommitListItem>().Single(item => item.Row.Subject == "second");
 
-        window.FindControl<MenuItem>("ResetAnotherBranchMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(window.FindControl<MenuItem>("ResetAnotherBranchMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() =>
             window.OwnedWindows.OfType<ResetAnotherBranchWindow>().SingleOrDefault()?.BranchesLoaded.IsCompleted == true);
         ResetAnotherBranchWindow reset = window.OwnedWindows.OfType<ResetAnotherBranchWindow>().Single();
@@ -47,7 +47,7 @@ internal sealed class ResetAnotherBranchWindowTests
         branches.Items.Cast<string>().Should().Equal(["old"], "the current branch is left out");
         branches.IsDropDownOpen = false;
         branches.Text = "old";
-        WaitUntil(() => reset.Validated.IsCompleted && Find<Button>(reset, "Ok").IsEnabled);
+        WaitUntil(() => reset.Validated.IsCompleted && Find<Button>(reset, "Ok").IsEffectivelyEnabled);
         Click(reset, "Ok");
 
         WaitUntil(() => !reset.IsVisible);
@@ -70,14 +70,14 @@ internal sealed class ResetAnotherBranchWindowTests
         branches.IsDropDownOpen = false;
 
         branches.Text = "nothing";
-        ok.IsEnabled.Should().BeFalse("no listed branch has that name");
+        ok.IsEffectivelyEnabled.Should().BeFalse("no listed branch has that name");
         branches.Text = "side";
         WaitUntil(() => reset.Validated.IsCompleted);
         Dispatcher.UIThread.RunJobs();
-        ok.IsEnabled.Should().BeFalse("side has a commit the target lacks");
+        ok.IsEffectivelyEnabled.Should().BeFalse("side has a commit the target lacks");
 
         Find<CheckBox>(reset, "ForceReset").IsChecked = true;
-        ok.IsEnabled.Should().BeTrue();
+        ok.IsEffectivelyEnabled.Should().BeTrue();
         Find<CheckBox>(reset, "cbxCheckoutBranch").IsChecked = true;
         Click(reset, "Ok");
         WaitUntil(() => checkedOut.Count == 1);
@@ -129,8 +129,7 @@ internal sealed class ResetAnotherBranchWindowTests
         return (reset, owner, ran, checkedOut);
     }
 
-    private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Button>(window, name));
 
     private static T Find<T>(Window window, string name)
         where T : Control

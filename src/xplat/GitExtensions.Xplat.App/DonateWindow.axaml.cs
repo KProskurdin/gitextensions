@@ -1,21 +1,18 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormDonate</c> (Help > Donate): its text and the badge that opens the donation page.
+///  Upstream's <c>FormDonate</c>, bound to <see cref="DonateViewModel"/>: its text, and the donate badge, which opens the
+///  donation page.
 /// </summary>
 public partial class DonateWindow : Window
 {
-    // Upstream's text and address.
-    public const string DonateText =
-        "We have a dedicated team of collaborators that spends a lot of time maintaining the app, working on new features and fixing bugs." +
-        "You can support the project by making a financial contribution. Donations will be used to cover running costs " +
-        "and to get the resources needed to keep the project running. We will also use donations to thank collaborators for their efforts.\r\n\r\n" +
-        "Click on the button below to get more information about making a donation.";
-
-    public const string DonationUrl = "https://opencollective.com/gitextensions";
+    // Upstream's text and address (kept here for the windows and tests that name them).
+    public const string DonateText = DonateViewModel.DonateText;
+    public const string DonationUrl = DonateViewModel.DonationUrl;
 
     public DonateWindow()
         : this(_ => { })
@@ -25,9 +22,8 @@ public partial class DonateWindow : Window
     /// <param name="openUrl">Opens an address in the browser.</param>
     public DonateWindow(Action<string> openUrl)
     {
+        DataContext = new DonateViewModel(new WindowDialogHost(this), openUrl);
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormDonate");
-        lblText.Text = UpstreamTranslation.Text("FormDonate", "_donateText", DonateText);
-        pbxDonate.Click += (_, _) => openUrl(DonationUrl);
+        UpstreamTranslation.Apply(this, DonateViewModel.Category);
     }
 }

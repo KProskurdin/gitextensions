@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using GitExtensions.Xplat.Core.Operations;
@@ -8,10 +9,17 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Upstream's <c>CommitSummaryUserControl</c> (texts in <see cref="CreateBranchDialog.Summarize"/>), shared by the create
-///  branch and reset current branch windows.
+///  branch and reset current branch windows. A view model binds <see cref="Summary"/>; code-behind windows call
+///  <see cref="Show"/>.
 /// </summary>
 public partial class CommitSummaryView : UserControl
 {
+    /// <summary>
+    ///  The commit shown; null shows upstream's "No revision", as the control starts.
+    /// </summary>
+    public static readonly StyledProperty<CommitSummary?> SummaryProperty =
+        AvaloniaProperty.Register<CommitSummaryView, CommitSummary?>(nameof(Summary));
+
     private const string Unknown = "---";
 
     // CommitSummaryUserControl's label colors.
@@ -23,6 +31,12 @@ public partial class CommitSummaryView : UserControl
         InitializeComponent();
         AuthorCaption.Text = ResourceManager.TranslatedStrings.Author + ":";
         DateCaption.Text = ResourceManager.TranslatedStrings.CommitDate + ":";
+    }
+
+    public CommitSummary? Summary
+    {
+        get => GetValue(SummaryProperty);
+        set => SetValue(SummaryProperty, value);
     }
 
     /// <summary>
@@ -56,6 +70,15 @@ public partial class CommitSummaryView : UserControl
                 border.ClearValue(Border.BackgroundProperty);
                 text.ClearValue(TextBlock.ForegroundProperty);
             }
+        }
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == SummaryProperty)
+        {
+            Show(Summary);
         }
     }
 }

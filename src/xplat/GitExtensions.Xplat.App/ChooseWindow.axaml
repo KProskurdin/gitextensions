@@ -1,14 +1,17 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Presentation"
         x:Class="GitExtensions.Xplat.App.ChooseWindow"
+        x:DataType="vm:ChooseViewModel"
         Title="Select"
         Width="360" Height="300" WindowStartupLocation="CenterOwner">
-  <!-- Mirrors upstream's FormQuickGitRefSelector and FormQuickStringSelector: pick one of several refs or remotes. -->
+  <!-- Mirrors upstream's FormQuickGitRefSelector and FormQuickStringSelector: pick one of several refs or remotes. Bound to
+       ChooseViewModel (PLAN.md principle 6). -->
   <DockPanel Margin="12" LastChildFill="True">
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
-      <Button x:Name="OkButton" Content="Select" IsDefault="True" />
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}" />
+      <Button x:Name="OkButton" Content="Select" IsDefault="True" Command="{Binding SelectCommand}" />
     </StackPanel>
-    <ListBox x:Name="OptionList" />
+    <ListBox x:Name="OptionList" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" />
   </DockPanel>
 </Window>

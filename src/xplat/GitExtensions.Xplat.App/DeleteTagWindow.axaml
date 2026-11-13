@@ -1,22 +1,27 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.DeleteTagWindow"
+        x:DataType="vm:DeleteTagViewModel"
         Title="Delete tag"
         Width="470" SizeToContent="Height" MinWidth="470" MaxWidth="1000" CanMinimize="False" CanMaximize="False"
         WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormDeleteTag: the tag with Delete beside it, the note, the remote to delete it from as well, and the
-       user manual's link. -->
+       user manual's link. Bound to DeleteTagViewModel (PLAN.md principle 6). -->
   <StackPanel Margin="7,10,10,6" Spacing="8">
     <Grid ColumnDefinitions="119,*,Auto" ColumnSpacing="6">
       <TextBlock x:Name="label1" Text="Select tag" VerticalAlignment="Center" />
-      <ComboBox x:Name="Tags" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
+      <ComboBox x:Name="Tags" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" ItemsSource="{Binding Tags}"
+                Text="{Binding TagText, Mode=TwoWay}" />
       <Button x:Name="Ok" Grid.Column="2" Content="Delete" MinWidth="75" HorizontalContentAlignment="Center"
-              IsDefault="True" />
+              IsDefault="True" Command="{Binding DeleteCommand}" />
     </Grid>
     <TextBlock x:Name="label2" Text="This will delete the selected tag from the (local) repository." Margin="0,6,0,0" />
-    <CheckBox x:Name="deleteTag" Content="Delete tag also from the following remote(s):" Margin="3,0,0,0" />
-    <ComboBox x:Name="Remotes" Width="270" HorizontalAlignment="Left" Margin="3,0,0,0" IsEnabled="False" />
+    <CheckBox x:Name="deleteTag" Content="Delete tag also from the following remote(s):" Margin="3,0,0,0"
+              IsChecked="{Binding DeleteFromRemote}" />
+    <ComboBox x:Name="Remotes" Width="270" HorizontalAlignment="Left" Margin="3,0,0,0" ItemsSource="{Binding Remotes}"
+              SelectedItem="{Binding SelectedRemote}" IsEnabled="{Binding DeleteFromRemote}" />
     <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="4" Margin="0,6,0,0">
       <Image Source="{local:UpstreamImage GotoManual}" Width="16" Height="16" VerticalAlignment="Top" />
       <HyperlinkButton x:Name="HelpLink" Grid.Column="1" Content="Help" Padding="0" VerticalAlignment="Top" />

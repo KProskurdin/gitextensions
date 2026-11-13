@@ -67,7 +67,7 @@ internal sealed class RevisionLinksSettingsTests
         Button? removeSecond = null;
         WaitUntil(() => (removeSecond = settings.GetVisualDescendants().OfType<Button>()
             .Where(button => button.Name == "RemoveRevisionLinkFormatButton").Skip(1).FirstOrDefault()) is not null);
-        removeSecond!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(removeSecond!, Button.ClickEvent);
         item.Formats.Select(row => row.Caption).Should().Equal("#{0}");
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
@@ -177,7 +177,7 @@ internal sealed class RevisionLinksSettingsTests
     {
         Control control = Find<Control>(window, name);
         RoutedEvent click = control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent;
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

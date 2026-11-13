@@ -1,10 +1,12 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Asks before an action that cannot be undone. Closes with true only when the confirm button is pressed.
+///  Asks before an action that cannot be undone, bound to <see cref="ConfirmViewModel"/>. Closes with true only when the
+///  confirm button is pressed.
 /// </summary>
 public partial class ConfirmWindow : Window
 {
@@ -12,34 +14,25 @@ public partial class ConfirmWindow : Window
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
     /// </summary>
     [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
     public ConfirmWindow() => InitializeComponent();
+#pragma warning restore CS8618
 
     public ConfirmWindow(string message, string confirmText, string? caption = null, bool offerDontShowAgain = false,
         string? cancelText = null, string? dontShowAgainText = null)
     {
+        ViewModel = new ConfirmViewModel(new WindowDialogHost(this), message, confirmText, caption, offerDontShowAgain,
+            cancelText, dontShowAgainText);
+        DataContext = ViewModel;
         InitializeComponent();
-        MessageText.Text = message;
-        ConfirmButton.Content = confirmText;
-        if (cancelText is not null)
-        {
-            CancelButton.Content = cancelText;
-        }
-
-        if (caption is not null)
-        {
-            Title = caption;
-        }
-
-        DontShowAgainCheck.Content = dontShowAgainText ?? Confirmations.DontShowAgain;
-        DontShowAgainCheck.IsVisible = offerDontShowAgain;
-        CancelButton.Click += (_, _) => Close(false);
-        ConfirmButton.Click += (_, _) => Close(true);
     }
+
+    public ConfirmViewModel ViewModel { get; }
 
     /// <summary>
     ///  True when the user ticked "Don't show me this message again".
     /// </summary>
-    public bool DontShowAgain => DontShowAgainCheck.IsChecked == true;
+    public bool DontShowAgain => ViewModel.DontShowAgain;
 
     /// <summary>
     ///  Asks before <paramref name="confirmation"/>'s action, as upstream's <c>MessageBoxes.ConfirmSuppressible</c>: true at

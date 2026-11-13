@@ -38,7 +38,7 @@ internal sealed class OverflowToolStripTests
         strip.Children.Should().NotContain(settings, "the item moved into the drop-down");
         settings.IsEffectivelyVisible.Should().BeTrue();
 
-        settings.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(settings, Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
 
         strip.IsOverflowOpen.Should().BeFalse("an item's click closes the drop-down");

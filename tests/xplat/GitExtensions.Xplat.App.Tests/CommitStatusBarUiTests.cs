@@ -68,7 +68,7 @@ internal sealed class CommitStatusBarUiTests
         HyperlinkButton link = Find<HyperlinkButton>(commit, "CommitterLink");
         ToolTip.GetTip(link).Should().Be("Click to change committer information.");
 
-        link.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(link, Button.ClickEvent);
 
         WaitUntil(() => commit.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = commit.OwnedWindows.OfType<SettingsWindow>().Single();
@@ -86,7 +86,7 @@ internal sealed class CommitStatusBarUiTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
-        Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "CommitDialogButton"), Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         return window.OwnedWindows.OfType<CommitWindow>().Single();
     }

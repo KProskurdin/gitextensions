@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
@@ -17,9 +18,10 @@ public sealed record CommitSummary(string ShortId, string Author, string Date, s
 
 /// <summary>
 ///  Upstream's <c>FormCreateBranch</c> without its window: the proposed name, the commit to create the branch at, the
-///  orphan options and their rules, the checks before creating, and the git commands that create it.
+///  orphan options and their rules, the checks before creating, and the git commands that create it. Observable, so the
+///  window binds to it through <see cref="CreateBranchViewModel"/>.
 /// </summary>
-public sealed class CreateBranchDialog
+public sealed partial class CreateBranchDialog : ObservableObject
 {
     // Upstream's texts.
     public const string NoRevisionSelected = "Select 1 revision to create the branch on.";
@@ -41,11 +43,11 @@ public sealed class CreateBranchDialog
     {
         IsOrphanOnly = !hasCommits;
         BranchName = namePrefix ?? "";
+        CheckoutAfterCreate = true;
         if (IsOrphanOnly)
         {
-            // Upstream's ConfigureForOrphanBranch.
+            // Upstream's ConfigureForOrphanBranch (an orphan is checked out, see OnCreateOrphanChanged).
             CreateOrphan = true;
-            CheckoutAfterCreate = true;
         }
     }
 
@@ -55,18 +57,30 @@ public sealed class CreateBranchDialog
     /// </summary>
     public bool IsOrphanOnly { get; }
 
-    public string BranchName { get; set; }
+    [ObservableProperty]
+    public partial string BranchName { get; set; }
 
     /// <summary>
     ///  The commit the branch is created at; null when none is chosen.
     /// </summary>
-    public ObjectId? Revision { get; set; }
+    [ObservableProperty]
+    public partial ObjectId? Revision { get; set; }
 
-    public bool CheckoutAfterCreate { get; set; } = true;
+    [ObservableProperty]
+    public partial bool CheckoutAfterCreate { get; set; }
 
-    public bool CreateOrphan { get; private set; }
+    /// <summary>
+    ///  Upstream's "Create orphan"; setting it keeps the rules of <see cref="SetCreateOrphan"/> but not its check of
+    ///  <see cref="CanChangeOrphan"/>, which the window's disabled check box makes.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanChangeRevision))]
+    [NotifyPropertyChangedFor(nameof(CanChangeCheckout))]
+    [NotifyPropertyChangedFor(nameof(CanClearOrphan))]
+    public partial bool CreateOrphan { get; set; }
 
-    public bool ClearOrphan { get; set; }
+    [ObservableProperty]
+    public partial bool ClearOrphan { get; set; }
 
     public bool CanChangeRevision => !CreateOrphan;
 
@@ -87,7 +101,12 @@ public sealed class CreateBranchDialog
         }
 
         CreateOrphan = orphan;
-        if (orphan)
+    }
+
+    // Upstream's chkCreateOrphan_CheckedChanged: an orphan is always checked out.
+    partial void OnCreateOrphanChanged(bool value)
+    {
+        if (value)
         {
             CheckoutAfterCreate = true;
         }

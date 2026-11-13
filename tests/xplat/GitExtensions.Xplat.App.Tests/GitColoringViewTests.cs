@@ -172,7 +172,7 @@ internal sealed class GitColoringViewTests
         Item(diff, "ShowGitWordColoringMenuItem").IsChecked.Should().BeTrue();
         Item(diff, "ShowPatchMenuItem").IsChecked.Should().BeFalse();
 
-        Item(diff, "ShowPatchMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item(diff, "ShowPatchMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => diff.Lines.Any(line => line.Text == "+new word here"));
         TestAppBuilder.Preferences.DiffDisplayAppearance.Should().Be(DiffDisplayAppearance.Patch);
@@ -253,7 +253,7 @@ internal sealed class GitColoringViewTests
         Task load = diff.ShowAsync(repo.Path, commitHash: null, "a.txt", staged: false, "a.txt");
         WaitUntil(() => load.IsCompleted && Item(diff, "ShowDifftasticMenuItem").IsEnabled);
 
-        Item(diff, "ShowDifftasticMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Item(diff, "ShowDifftasticMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => diff.Lines.Any(line => line.Text == "same"));
         diff.Lines.Select(line => line.Text).Should().Equal("a.txt --- Text", "same", "more");
@@ -279,7 +279,7 @@ internal sealed class GitColoringViewTests
     }
 
     private static void ToggleWordDiff(DiffView diff)
-        => Item(diff, "ShowGitWordColoringMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        => UiClicks.Raise(Item(diff, "ShowGitWordColoringMenuItem"), MenuItem.ClickEvent);
 
     private static MenuItem Item(DiffView diff, string name)
         => diff.FindControl<MenuItem>(name)

@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input.Platform;
-using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitCommands;
@@ -127,11 +126,7 @@ internal sealed class ReflogWindowTests
         return reflog;
     }
 
-    private static void Click(Window window, string name)
-    {
-        Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
-    }
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Control>(window, name));
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

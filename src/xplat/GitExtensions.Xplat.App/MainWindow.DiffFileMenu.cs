@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
@@ -89,9 +90,9 @@ public partial class MainWindow
             },
             Reset: async paths =>
             {
-                ResetChangesWindow.ResetAction action = await ResetChangesWindow.ShowResetDialogAsync(owner(),
+                ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(owner(),
                     hasExistingFiles: true, hasNewFiles: true);
-                if (action == ResetChangesWindow.ResetAction.Cancel)
+                if (action == ResetChangesAction.Cancel)
                 {
                     return;
                 }
@@ -99,7 +100,7 @@ public partial class MainWindow
                 foreach (string full in paths.Select(FullPath).OfType<string>())
                 {
                     await InSubmoduleRepositoryAsync(full, submodule => _actions.ResetAllChangesAsync(submodule,
-                        clean: action == ResetChangesWindow.ResetAction.ResetAndDelete, onlyWorkTree: false));
+                        clean: action == ResetChangesAction.ResetAndDelete, onlyWorkTree: false));
                 }
             },
             Stash: async paths =>

@@ -5,6 +5,7 @@ using Avalonia.Platform.Storage;
 using GitCommands;
 using GitExtensions.Extensibility;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Scripts;
 using GitUI.ScriptsEngine;
 

@@ -73,7 +73,7 @@ internal sealed class GridStashTests
         Dispatcher.UIThread.RunJobs();
         commits.ContextMenu!.Close();
         Find<MenuItem>(window, "PopStashMenuItem").IsVisible.Should().BeTrue();
-        Find<MenuItem>(window, "PopStashMenuItem").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(Find<MenuItem>(window, "PopStashMenuItem"), MenuItem.ClickEvent);
 
         WaitUntil(() => window.OwnedWindows.OfType<ErrorWindow>().FirstOrDefault() is { } error
             ? throw new AssertionException("The pop failed: " + error.FindControl<TextBlock>("MessageText")?.Text)

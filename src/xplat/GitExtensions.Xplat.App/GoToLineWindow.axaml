@@ -1,16 +1,19 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Presentation"
         x:Class="GitExtensions.Xplat.App.GoToLineWindow"
+        x:DataType="vm:GoToLineViewModel"
         Title="Go to line"
         SizeToContent="WidthAndHeight" CanResize="False" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
-  <!-- Upstream's FormGoToLine: the line number, 1 to the viewer's last, and OK or Cancel. -->
+  <!-- Upstream's FormGoToLine: the line number, 1 to the viewer's last, and OK or Cancel. Bound to GoToLineViewModel
+       (PLAN.md principle 6). -->
   <StackPanel Margin="12" Spacing="6" MinWidth="240">
-    <Label x:Name="lineLabel" Content="Line number" Target="_NO_TRANSLATE_LineNumberUpDown" />
-    <NumericUpDown x:Name="_NO_TRANSLATE_LineNumberUpDown" Minimum="1" Value="1" Increment="1" FormatString="0"
-                   ParsingNumberStyle="Integer" />
+    <Label x:Name="lineLabel" Content="{Binding Label}" Target="_NO_TRANSLATE_LineNumberUpDown" />
+    <NumericUpDown x:Name="_NO_TRANSLATE_LineNumberUpDown" Minimum="1" Increment="1" FormatString="0"
+                   ParsingNumberStyle="Integer" Value="{Binding Line}" Maximum="{Binding Maximum}" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-      <Button x:Name="okBtn" Content="OK" IsDefault="True" MinWidth="75" />
-      <Button x:Name="cancelBtn" Content="Cancel" IsCancel="True" MinWidth="75" />
+      <Button x:Name="okBtn" Content="OK" IsDefault="True" MinWidth="75" Command="{Binding OkCommand}" />
+      <Button x:Name="cancelBtn" Content="Cancel" IsCancel="True" MinWidth="75" Command="{Binding CancelCommand}" />
     </StackPanel>
   </StackPanel>
 </Window>

@@ -273,11 +273,11 @@ internal sealed class BlameMenuTests
         string wanted = SelectedContent(blame)!;
         int other = Enumerable.Range(1, lines.ItemCount - 1).First(index => ((BlameRow)lines.Items[index]!).Content != wanted);
         window.LookFor = ((BlameRow)lines.Items[other]!).Content;
-        window.FindControl<Button>("btnFindNext")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(window.FindControl<Button>("btnFindNext")!, Button.ClickEvent);
         WaitUntil(() => lines.SelectedIndex == other);
 
         window.LookFor = "nothing-like-this";
-        window.FindControl<Button>("btnFindNext")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(window.FindControl<Button>("btnFindNext")!, Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<MessageBoxWindow>().Any());
         window.OwnedWindows.OfType<MessageBoxWindow>().Single().Close();
         lines.SelectedIndex.Should().Be(other);
@@ -354,7 +354,7 @@ internal sealed class BlameMenuTests
         return await text;
     }
 
-    private static void Click(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    private static void Click(MenuItem item) => UiClicks.Raise(item, MenuItem.ClickEvent);
 
     private static T Find<T>(Control root, string name)
         where T : Control

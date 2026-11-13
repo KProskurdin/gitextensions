@@ -531,7 +531,7 @@ internal sealed class MainWindowTests
         MenuItem clear = recent.Items.OfType<MenuItem>().Last();
         clear.Header.Should().Be("Clear list");
 
-        clear.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(clear, MenuItem.ClickEvent);
 
         WaitUntil(() => !recent.IsEnabled);
     }
@@ -1282,7 +1282,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        unstaged.ContextMenu!.FindControl<MenuItem>("tsmiResetFileToParent")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(unstaged.ContextMenu!.FindControl<MenuItem>("tsmiResetFileToParent")!, MenuItem.ClickEvent);
         WaitUntil(() => commit.OwnedWindows.OfType<ResetChangesWindow>().Any());
         Click(commit.OwnedWindows.OfType<ResetChangesWindow>().Single(), "ResetButton");
 
@@ -1433,7 +1433,7 @@ internal sealed class MainWindowTests
             links.Select(button => button.GetLogicalDescendants().OfType<AccessText>().Single().Text).Should().Equal(
                 "_Pull with the default pull action (merge)", "Pull with _rebase", "Pull with _merge",
                 "_Force push with lease");
-            links[1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            UiClicks.Raise(links[1], Button.ClickEvent);
 
             WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Pushed");
             GitProcess.Run(remote, "log", "--format=%s", branch).Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -1635,7 +1635,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => unstaged.ItemCount == 1);
         unstaged.SelectedIndex = 0;
 
-        unstaged.ContextMenu!.FindControl<MenuItem>("tsmiAddFileToGitIgnore")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(unstaged.ContextMenu!.FindControl<MenuItem>("tsmiAddFileToGitIgnore")!, MenuItem.ClickEvent);
         WaitUntil(() => commit.OwnedWindows.OfType<AddToGitIgnoreWindow>().Any());
         AddToGitIgnoreWindow ignore = commit.OwnedWindows.OfType<AddToGitIgnoreWindow>().Single();
         Find<TextBox>(ignore, "FilePattern").Text.Should().Be("/notes.txt");
@@ -2024,7 +2024,7 @@ internal sealed class MainWindowTests
         StackPanel scripts = Find<StackPanel>(window, "UserScriptsPanel");
         scripts.Children.OfType<Button>().Select(button => button.Content).Should().Equal("Tag it");
 
-        scripts.Children.OfType<Button>().Single().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(scripts.Children.OfType<Button>().Single(), Button.ClickEvent);
 
         WaitUntil(() => _repo.Run("tag", "--list").Contains("from-script", StringComparison.Ordinal));
         _repo.Run("rev-parse", "from-script").Trim().Should().Be(_repo.Run("rev-parse", "HEAD~1").Trim());
@@ -2101,7 +2101,7 @@ internal sealed class MainWindowTests
         unstaged.RaiseEvent(new ContextRequestedEventArgs());
         MenuItem item = menu.Items.OfType<MenuItem>().Single(entry => entry.Header is TextBlock { Text: "Tag file" });
         menu.FindControl<MenuItem>("tsmiRunScript")!.IsEnabled.Should().BeFalse();
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
         menu.Close();
 
         WaitUntil(() => _repo.Run("tag", "--list").Contains("file-new.txt", StringComparison.Ordinal));
@@ -2128,16 +2128,16 @@ internal sealed class MainWindowTests
             List<MenuItem> items = [.. flyout.Items.OfType<MenuItem>()];
             items.Select(HeaderText).Should().Equal("Mine", "Conven_tional Commits",
                 "_Edit commit message templates and settings...");
-            items[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(items[0], MenuItem.ClickEvent);
             message.Text.Should().Be("my text");
 
             List<MenuItem> conventional = [.. items[1].Items.OfType<MenuItem>()];
-            conventional.Single(item => HeaderText(item) == "fix").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(conventional.Single(item => HeaderText(item) == "fix"), MenuItem.ClickEvent);
             message.Text.Should().Be("fix: my text");
             conventional.Select(HeaderText).Should().Contain(["BREAKING CHANGE", "[skip ci]", "Documentation..."]);
 
             // The settings window stores upstream's commit validation; a subject over the limit then asks before committing.
-            items[2].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            UiClicks.Raise(items[2], MenuItem.ClickEvent);
             WaitUntil(() => commit.OwnedWindows.OfType<CommitTemplateSettingsWindow>().Any());
             CommitTemplateSettingsWindow settings = commit.OwnedWindows.OfType<CommitTemplateSettingsWindow>().Single();
             Find<NumericUpDown>(settings, "_NO_TRANSLATE_numericMaxFirstLineLength").Value = 5;
@@ -2403,7 +2403,7 @@ internal sealed class MainWindowTests
         list.ContextMenu!.Close();
         MenuItem item = diff.FindControl<MenuItem>(name)!;
         (item.IsVisible, item.IsEnabled).Should().Be((true, true));
-        item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(item, MenuItem.ClickEvent);
     }
 
     private static CommitWindow OpenCommitWindow(MainWindow window)
@@ -2437,13 +2437,19 @@ internal sealed class MainWindowTests
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
+        if (control is Button { Command: not null })
+        {
+            UiClicks.Click(control);
+            return;
+        }
+
         RoutedEvent click = control switch
         {
             MenuItem => MenuItem.ClickEvent,
             SplitButton => SplitButton.ClickEvent,
             _ => Button.ClickEvent,
         };
-        control.RaiseEvent(new RoutedEventArgs(click));
+        UiClicks.Raise(control, click);
     }
 
     [AvaloniaTest]

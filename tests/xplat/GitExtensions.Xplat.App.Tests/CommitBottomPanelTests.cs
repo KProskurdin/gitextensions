@@ -132,10 +132,10 @@ internal sealed class CommitBottomPanelTests
         MenuItem closeAfterLast = Find<MenuItem>(commit, "CloseAfterAllCommittedMenuItem");
 
         closeAfterLast.IsChecked = false;
-        closeAfterLast.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(closeAfterLast, MenuItem.ClickEvent);
         MenuItem refresh = Find<MenuItem>(commit, "RefreshOnFocusMenuItem");
         refresh.IsChecked = true;
-        refresh.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(refresh, MenuItem.ClickEvent);
 
         TestAppBuilder.Preferences.CloseCommitDialogAfterLastCommit.Should().BeFalse();
         TestAppBuilder.Preferences.RefreshCommitDialogOnFocus.Should().BeTrue();
@@ -176,7 +176,7 @@ internal sealed class CommitBottomPanelTests
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent));
+        UiClicks.Raise(control, control is MenuItem ? MenuItem.ClickEvent : Button.ClickEvent);
     }
 
     private static T Find<T>(Window window, string name) where T : Control

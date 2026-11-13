@@ -1,12 +1,13 @@
 using Avalonia.Controls;
 using Avalonia.Platform;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormChangeLog</c> (Help > Changelog): upstream's change log, linked into the app from upstream's
-///  resources, as upstream's <c>Resources.ChangeLog</c>.
+///  Upstream's <c>FormChangeLog</c> (Help > Changelog), bound to <see cref="ChangeLogViewModel"/>: upstream's change log,
+///  linked into the app from upstream's resources, as upstream's <c>Resources.ChangeLog</c>.
 /// </summary>
 public partial class ChangeLogWindow : Window
 {
@@ -15,31 +16,19 @@ public partial class ChangeLogWindow : Window
     /// </summary>
     public static readonly Uri ChangeLogUri = new("avares://GitExtensions/Assets/Upstream/ChangeLog.md");
 
-    private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
     public ChangeLogWindow()
     {
+        ViewModel = new ChangeLogViewModel(new WindowDialogHost(this), () => AssetLoader.Open(ChangeLogUri));
+        DataContext = ViewModel;
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormChangeLog");
-        Opened += (_, _) => UiActions.Run(LoadAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+        UpstreamTranslation.Apply(this, ChangeLogViewModel.Category);
+        Opened += (_, _) => UiActions.Run(ViewModel.LoadAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
     }
+
+    public ChangeLogViewModel ViewModel { get; }
 
     /// <summary>
     ///  Completes when the change log is shown, for tests.
     /// </summary>
-    public Task ChangeLogLoaded => _loaded.Task;
-
-    private async Task LoadAsync()
-    {
-        try
-        {
-            await using Stream stream = AssetLoader.Open(ChangeLogUri);
-            using StreamReader reader = new(stream, detectEncodingFromByteOrderMarks: true);
-            ChangeLog.Text = await reader.ReadToEndAsync();
-        }
-        finally
-        {
-            _loaded.TrySetResult();
-        }
-    }
+    public Task ChangeLogLoaded => ViewModel.Loaded;
 }

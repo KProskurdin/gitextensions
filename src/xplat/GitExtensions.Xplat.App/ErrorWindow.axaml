@@ -1,10 +1,13 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Presentation"
         x:Class="GitExtensions.Xplat.App.ErrorWindow"
+        x:DataType="vm:MessageViewModel"
         Title="Git Extensions"
         Width="480" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- The shell's error window, bound to MessageViewModel (PLAN.md principle 6). -->
   <StackPanel Margin="16" Spacing="12">
-    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
-    <Button x:Name="OkButton" Content="OK" HorizontalAlignment="Right" />
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" Text="{Binding Message}" />
+    <Button x:Name="OkButton" Content="OK" HorizontalAlignment="Right" Command="{Binding CloseCommand}" />
   </StackPanel>
 </Window>

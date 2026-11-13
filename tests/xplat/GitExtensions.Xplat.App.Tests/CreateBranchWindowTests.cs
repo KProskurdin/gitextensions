@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
-using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using GitExtensions.Xplat.Core.Operations;
@@ -35,7 +34,7 @@ internal sealed class CreateBranchWindowTests
         Find<TextBox>(window, "BranchNameBox").Text.Should().Be(head);
         CommitPickerView picker = Find<CommitPickerView>(window, "CommitPicker");
         picker.FindControl<TextBox>("CommitHashBox")!.Text.Should().Be(hash);
-        picker.FindControl<TextBlock>("CommitCountText")!.Text.Should().Be("=");
+        WaitUntil(() => picker.FindControl<TextBlock>("CommitCountText")!.Text == "=");
         Find<HeaderedContentControl>(window, "SummaryGroup").Header.Should().Be(hash);
         Find<TextBlock>(window, "MessageText").Text.Should().Be("second");
         Find<TextBlock>(window, "TagsText").Text.Should().Be("n/a");
@@ -117,7 +116,8 @@ internal sealed class CreateBranchWindowTests
             GitProcess.Run(empty, "init", "-q");
             (Window owner, CreateBranchWindow window, Task<bool> result) = Open(path: empty);
 
-            Find<AccessText>(window, "CreateAtLabel").Text.Should().Be(CreateBranchDialog.CreatingOrphanBranch);
+            Find<TextBlock>(window, "OrphanOnlyLabel").Text.Should().Be(CreateBranchDialog.CreatingOrphanBranch);
+            Find<AccessText>(window, "CreateAtLabel").IsVisible.Should().BeFalse();
             Find<Control>(window, "CommitPicker").IsVisible.Should().BeFalse();
             Find<CheckBox>(window, "CreateOrphanCheck").IsChecked.Should().BeTrue();
             Find<CheckBox>(window, "CreateOrphanCheck").IsEnabled.Should().BeFalse();
@@ -147,8 +147,7 @@ internal sealed class CreateBranchWindowTests
         return (owner, window, result);
     }
 
-    private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private static void Click(Window window, string name) => UiClicks.Click(Find<Button>(window, name));
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

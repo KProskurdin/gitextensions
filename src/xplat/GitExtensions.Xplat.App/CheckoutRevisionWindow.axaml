@@ -1,14 +1,21 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.CheckoutRevisionWindow"
+        x:DataType="vm:CheckoutRevisionViewModel"
         Title="Checkout revision"
         Width="481" SizeToContent="Height" MinWidth="460" WindowStartupLocation="CenterOwner">
-  <!-- Upstream's FormCheckoutRevision (a GitExtensionsDialog): the commit and "Force"; Checkout at the bottom. -->
+  <!-- Upstream's FormCheckoutRevision (a GitExtensionsDialog): the commit and "Force"; Checkout at the bottom. Bound to
+       CheckoutRevisionViewModel (PLAN.md principle 6). -->
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+  </Window.KeyBindings>
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-        <Button x:Name="CheckoutButton" MinWidth="75" IsDefault="True" VerticalAlignment="Center">
+        <Button x:Name="CheckoutButton" MinWidth="75" IsDefault="True" VerticalAlignment="Center"
+                Command="{Binding CheckoutCommand}">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage Checkout}" Width="16" Height="16" />
             <AccessText Text="_Checkout" VerticalAlignment="Center" />
@@ -18,8 +25,10 @@
     </Border>
     <Grid Margin="12" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
       <AccessText Text="Checkout this _revision" VerticalAlignment="Center" Margin="3,3,12,3" />
-      <local:CommitPickerView x:Name="CommitPicker" Grid.Column="1" Margin="3" />
-      <CheckBox x:Name="ForceCheck" Grid.Row="1" Grid.Column="1" Content="_Force (reset local changes)" Margin="3" />
+      <local:CommitPickerView x:Name="CommitPicker" Grid.Column="1" Margin="3" Module="{Binding Module}"
+                              Selected="{Binding Dialog.Revision}" />
+      <CheckBox x:Name="ForceCheck" Grid.Row="1" Grid.Column="1" Content="_Force (reset local changes)" Margin="3"
+                IsChecked="{Binding Dialog.Force}" />
     </Grid>
   </DockPanel>
 </Window>

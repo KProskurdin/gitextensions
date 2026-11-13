@@ -52,7 +52,7 @@ internal sealed class ContinuousScrollTests
         window.OpenRepository(_repo.Path);
         WaitUntil(() => !window.IsBusy);
         WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
-        Find<Button>(window, "CommitDialogButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<Button>(window, "CommitDialogButton"), Button.ClickEvent);
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
         ListBox unstaged = Find<ListBox>(commit, "UnstagedList");

@@ -91,7 +91,7 @@ internal sealed class SparseWorkingCopyWindowTests
         WaitUntil(() => window.RulesLoaded.IsCompleted);
         Find<TextBox>(window, "RulesEditor").Text.Should().Be("/a.txt\n");
 
-        Find<HyperlinkButton>(window, "DisableLink").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(Find<HyperlinkButton>(window, "DisableLink"), Button.ClickEvent);
         Find<Control>(window, "DisabledPanel").IsVisible.Should().BeTrue();
         Click(window, "SaveButton");
         Answer(window, "YesButton");
@@ -110,7 +110,7 @@ internal sealed class SparseWorkingCopyWindowTests
         main.OpenRepository(_repo.Path);
         WaitUntil(() => !main.IsBusy);
 
-        main.FindControl<MenuItem>("SparseWorkingCopyMenuItem")!.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Raise(main.FindControl<MenuItem>("SparseWorkingCopyMenuItem")!, MenuItem.ClickEvent);
         WaitUntil(() => main.OwnedWindows.OfType<SparseWorkingCopyWindow>().Any());
         main.OwnedWindows.OfType<SparseWorkingCopyWindow>().Single().Close();
         main.Close();
@@ -139,7 +139,7 @@ internal sealed class SparseWorkingCopyWindowTests
     }
 
     private static void Click(Window window, string name)
-        => Find<Button>(window, name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
 
     private static T Find<T>(Window window, string name)
         where T : Control

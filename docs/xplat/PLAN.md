@@ -1150,11 +1150,14 @@ What it would bring:
 Steps:
 1. *Done 2026-11-13:* the base is CommunityToolkit.Mvvm (section 9, question 17). The core's own `ObservableObject` was replaced
    by the toolkit's, so there is one MVVM base.
-2. A pilot on one mid-sized dialog: bind `CreateBranchWindow` to `CreateBranchDialog` (properties, commands with `CanExecute`,
+2. *Done 2026-11-13:* the pilot, `CreateBranchWindow` with `CreateBranchViewModel`: code-behind 209 to 67 lines, 10 view model
+   tests in plain NUnit that run in milliseconds, the window's headless tests unchanged but for clicking. The pattern and
+   its gotchas are `MVVM.md`, which also lists the windows done. The user asked the same day to go on with every window.
+   Planned as: a pilot on one mid-sized dialog: bind `CreateBranchWindow` to `CreateBranchDialog` (properties, commands with `CanExecute`,
    `x:DataType`, design data). Measure the code-behind removed and the test time saved, and decide from that whether to go on.
 3. *Decided 2026-11-13 (the user), in force before the pilot:* new UI uses MVVM, and a window or control that is reworked
-   moves to it in the same change (principle 6). No window is rewritten only for this; the pilot sets the pattern the others
-   follow.
+   moves to it in the same change (principle 6). *Later the same day:* the user asked to convert every window now, after
+   the pilot, window by window in the pilot's pattern; `MVVM.md` lists the windows done.
 4. `MainWindow`: the toolbar and menu state that follows the selection moves into `CommitListViewModel` properties bound in
    XAML.
 5. What stays in code-behind: the menus built from upstream's designers (`MainMenuParityTests`), plugin and script items, the

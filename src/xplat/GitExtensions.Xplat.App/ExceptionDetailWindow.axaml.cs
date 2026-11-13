@@ -1,11 +1,12 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Diagnostics;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>ExceptionDetailView</c>: the property of the bug report's exception that was double-clicked, and its
-///  whole value.
+///  Upstream's <c>ExceptionDetailView</c>, bound to <see cref="ExceptionDetailViewModel"/>: the property of the bug report's
+///  exception that was double-clicked, and its whole value.
 /// </summary>
 public partial class ExceptionDetailWindow : Window
 {
@@ -17,9 +18,8 @@ public partial class ExceptionDetailWindow : Window
 
     public ExceptionDetailWindow(string property, string information)
     {
+        DataContext = new ExceptionDetailViewModel(property, information);
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "ExceptionDetailView");
-        propertyTextBox.Text = property;
-        propertyInformationTextBox.Text = information;
+        UpstreamTranslation.Apply(this, ExceptionDetailViewModel.Category);
     }
 }

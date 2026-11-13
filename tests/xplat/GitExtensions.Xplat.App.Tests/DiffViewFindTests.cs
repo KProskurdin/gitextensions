@@ -166,11 +166,11 @@ internal sealed class DiffViewFindTests
         Button next = diff.FindControl<ToolButton>("NextChangeButton")!;
         Button previous = diff.FindControl<ToolButton>("PreviousChangeButton")!;
 
-        next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(next, Button.ClickEvent);
         lines.SelectedIndex.Should().Be(1);
-        next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(next, Button.ClickEvent);
         lines.SelectedIndex.Should().Be(4, "lines that match one after the other are one stop, as upstream's");
-        previous.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(previous, Button.ClickEvent);
         lines.SelectedIndex.Should().Be(1);
         window.Close();
     }
@@ -197,7 +197,7 @@ internal sealed class DiffViewFindTests
 
     private static void Click(Control parent, string name)
     {
-        parent.FindControl<Button>(name)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(parent.FindControl<Button>(name)!, Button.ClickEvent);
         Dispatcher.UIThread.RunJobs();
     }
 
