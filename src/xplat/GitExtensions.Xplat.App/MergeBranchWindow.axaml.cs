@@ -31,6 +31,14 @@ public partial class MergeBranchWindow : Window
 
     private bool _showing;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public MergeBranchWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="defaultBranch">The branch to merge; null for the branch the current one tracks.</param>
     /// <param name="withScripts">Runs the merge between the before and after merge scripts.</param>
     /// <param name="showConflicts">Opens the conflicts window.</param>

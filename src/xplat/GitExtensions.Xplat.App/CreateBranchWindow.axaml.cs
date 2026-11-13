@@ -32,6 +32,14 @@ public partial class CreateBranchWindow : Window
     private CreateBranchDialog _dialog = new(hasCommits: true);
     private ObjectId _originalCheckout;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public CreateBranchWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="revision">The commit to create the branch at (a hash or ref); HEAD when null or an artificial commit.</param>
     /// <param name="namePrefix">The proposed name, e.g. a left panel folder's path with a trailing slash.</param>
     /// <param name="checkoutAfterCreation">Upstream's <c>CheckoutAfterCreation</c>: "Checkout after create" to start with.</param>

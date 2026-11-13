@@ -314,7 +314,7 @@ public sealed class RefLabelView : Control
         public override void Draw(DrawingContext context)
         {
             DrawingColor window = WindowColor();
-            Geometry outline = Outline(label.Shape, Rect, PointWidth);
+            Geometry outline = Outline(Label.Shape, Rect, PointWidth);
             IBrush? background = fill
                 ? new LinearGradientBrush
                 {
@@ -331,7 +331,7 @@ public sealed class RefLabelView : Control
                 dashed ? new DashStyle(_dashPattern, 0) : null);
             context.DrawGeometry(background, frame, outline);
 
-            if (label.IsCurrent || label.IsMergeSource)
+            if (Label.IsCurrent || Label.IsMergeSource)
             {
                 // Upstream's DrawArrow: a triangle before the text, filled for the checked-out branch and outlined for
                 // the remote branch it tracks.
@@ -341,14 +341,14 @@ public sealed class RefLabelView : Control
                 StreamGeometry arrow = new();
                 using (StreamGeometryContext path = arrow.Open())
                 {
-                    path.BeginFigure(new Point(x, y), isFilled: label.IsCurrent);
+                    path.BeginFigure(new Point(x, y), isFilled: Label.IsCurrent);
                     path.LineTo(new Point(x + (height / 2), y + (height / 2)));
                     path.LineTo(new Point(x, y + height));
                     path.EndFigure(isClosed: true);
                 }
 
                 SolidColorBrush arrowBrush = new(ToColor(color));
-                context.DrawGeometry(label.IsCurrent ? arrowBrush : null, label.IsCurrent ? null : new Pen(arrowBrush, 1), arrow);
+                context.DrawGeometry(Label.IsCurrent ? arrowBrush : null, Label.IsCurrent ? null : new Pen(arrowBrush, 1), arrow);
             }
 
             text.SetForegroundBrush(new SolidColorBrush(ToColor(fill ? color : ColorHelper.Lerp(color, DrawingColor.Black, 0.25f))));
@@ -358,7 +358,7 @@ public sealed class RefLabelView : Control
         // Upstream's highlight frame of a hovered label (RefLabelHighlightWidth): the outline in the label's color.
         public void DrawHighlight(DrawingContext context)
             => context.DrawGeometry(null, new Pen(new SolidColorBrush(ToColor(color)), 1, dashed ? new DashStyle(_dashPattern, 0) : null),
-                Outline(label.Shape, Rect, PointWidth));
+                Outline(Label.Shape, Rect, PointWidth));
 
         private static DrawingColor WindowColor()
             => ThemeBrushes.Current.Colors.GetNonEmpty(System.Drawing.KnownColor.Window);

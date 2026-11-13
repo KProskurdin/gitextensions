@@ -2,8 +2,8 @@ using Avalonia;
 using Avalonia.Threading;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
-using GitUIPluginInterfaces;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitUIPluginInterfaces;
 using DrawingPoint = System.Drawing.Point;
 
 namespace GitExtensions.Xplat.App;

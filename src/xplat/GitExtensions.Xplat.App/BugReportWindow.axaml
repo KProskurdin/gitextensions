@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:diag="using:GitExtensions.Xplat.Core.Diagnostics"
+        x:Class="GitExtensions.Xplat.App.BugReportWindow"
+        Title="Error Report"
+        Width="558" Height="469" MinWidth="400" MinHeight="360" WindowStartupLocation="CenterScreen">
+  <!-- Upstream's BugReportForm: the General tab (what happened, the environment and the user's description), the
+       Exception tab (upstream's ExceptionDetails: the exceptions and their properties), and Copy, Ignore, Send and Quit,
+       Quit. Upstream removes its third tab, "Report Contents", at run time, so it is not here. -->
+  <Window.Styles>
+    <!-- Upstream shows the extended information rows in bold. -->
+    <Style Selector="TextBlock.extended">
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <!-- Upstream expands the whole exception tree. -->
+    <Style Selector="TreeView#exceptionTreeView TreeViewItem">
+      <Setter Property="IsExpanded" Value="True" />
+    </Style>
+  </Window.Styles>
+  <DockPanel Margin="4">
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="4,6,4,0">
+      <Button x:Name="btnCopy" MinWidth="75" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage CopyToClipboard}" Width="16" Height="16" />
+          <AccessText Text="_Copy" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button x:Name="IgnoreButton" Grid.Column="1" Content="_Ignore" MinWidth="75" HorizontalContentAlignment="Center" />
+      <Button x:Name="sendAndQuitButton" Grid.Column="2" MinWidth="120">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage CloneRepoGitHub}" Width="16" Height="16" />
+          <AccessText Text="_Send and Quit" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button x:Name="quitButton" Grid.Column="3" Content="_Quit" MinWidth="75" HorizontalContentAlignment="Center" />
+    </Grid>
+    <TabControl x:Name="mainTabs">
+      <TabItem x:Name="generalTabPage" Header="General">
+        <DockPanel>
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+            <Image x:Name="warningPictureBox" Source="{local:UpstreamImage Warning}" Width="32" Height="32" Margin="8"
+                   VerticalAlignment="Top" />
+            <TextBlock x:Name="warningLabel" Grid.Column="1" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Text="The application has crashed and it will now be terminated. If you click Quit, the application will close immediately. If you click Send and Quit, the application will close and a bug report will be sent." />
+            <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="4"
+                  ColumnSpacing="6" Margin="3">
+              <StackPanel x:Name="exceptionTypeLabel" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Image Source="{local:UpstreamImage Bug}" Width="16" Height="16" />
+                <TextBlock Text="Exception Type:" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBox x:Name="exceptionTextBox" Grid.Column="1" IsReadOnly="True" />
+              <TextBox x:Name="exceptionMessageTextBox" Grid.Row="1" Grid.ColumnSpan="2" IsReadOnly="True"
+                       AcceptsReturn="True" TextWrapping="Wrap" Height="44" />
+            </Grid>
+          </Grid>
+          <Grid x:Name="tpnlEnvInfo" ColumnDefinitions="18*,32*,18*,32*" RowDefinitions="Auto,Auto,Auto,8,Auto,*"
+                RowSpacing="3" ColumnSpacing="6" Margin="3">
+            <TextBlock x:Name="targetSiteLabel" Text="Target Site:" VerticalAlignment="Center" />
+            <TextBox x:Name="targetSiteTextBox" Grid.Column="1" Grid.ColumnSpan="3" IsReadOnly="True" />
+            <TextBlock x:Name="applicationLabel" Grid.Row="1" Text="Application:" VerticalAlignment="Center" />
+            <TextBox x:Name="applicationTextBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True" />
+            <TextBlock x:Name="_NO_TRANSLATE_GitLabel" Grid.Row="1" Grid.Column="2" Text="Git:" VerticalAlignment="Center" />
+            <TextBox x:Name="gitTextBox" Grid.Row="1" Grid.Column="3" IsReadOnly="True" />
+            <TextBlock x:Name="dateTimeLabel" Grid.Row="2" Text="Date/Time:" VerticalAlignment="Center" />
+            <TextBox x:Name="dateTimeTextBox" Grid.Row="2" Grid.Column="1" IsReadOnly="True" />
+            <TextBlock x:Name="_NO_TRANSLATE_ClrLabel" Grid.Row="2" Grid.Column="2" Text="CLR:" VerticalAlignment="Center" />
+            <TextBox x:Name="clrTextBox" Grid.Row="2" Grid.Column="3" IsReadOnly="True" />
+            <TextBlock x:Name="errorDescriptionLabel" Grid.Row="4" Grid.ColumnSpan="4" TextWrapping="Wrap"
+                       Text="Please add a brief description (in English) of how we can reproduce the error:" />
+            <TextBox x:Name="descriptionTextBox" Grid.Row="5" Grid.ColumnSpan="4" AcceptsReturn="True" TextWrapping="Wrap"
+                     VerticalContentAlignment="Top" />
+          </Grid>
+        </DockPanel>
+      </TabItem>
+      <TabItem x:Name="exceptionTabPage" Header="Exception">
+        <DockPanel Margin="3">
+          <TextBlock x:Name="exceptionLabel" DockPanel.Dock="Top" Text="Exception(s):" Margin="0,4" />
+          <TreeView x:Name="exceptionTreeView" DockPanel.Dock="Top" Height="80">
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate x:DataType="diag:ExceptionNode" ItemsSource="{Binding Children}">
+                <TextBlock Text="{Binding Type}" />
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+          <TextBlock x:Name="exceptionDetailsLabel" DockPanel.Dock="Top" Margin="0,8,0,4"
+                     Text="Exception Details (double click on items to see details):" />
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="101,*" Margin="4,0">
+            <TextBlock x:Name="propertyColumnHeader" Text="Property" FontWeight="SemiBold" />
+            <TextBlock x:Name="informationColumnHeader" Grid.Column="1" Text="Information" FontWeight="SemiBold" />
+          </Grid>
+          <ListBox x:Name="exceptionDetailsListView">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="diag:ExceptionProperty">
+                <Grid ColumnDefinitions="101,*" ToolTip.Tip="{Binding Information}">
+                  <TextBlock Text="{Binding Property}" Classes.extended="{Binding IsExtended}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Information}" TextTrimming="CharacterEllipsis"
+                             MaxLines="1" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

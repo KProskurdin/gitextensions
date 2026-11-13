@@ -4,7 +4,7 @@
              x:Class="GitExtensions.Xplat.App.DiffView">
   <DockPanel LastChildFill="True">
     <TextBlock x:Name="TitleText" DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" TextWrapping="Wrap" IsVisible="False" />
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" TextWrapping="Wrap" IsVisible="False" />
     <!-- Upstream's _NO_TRANSLATE_lblShowPreview: a large file waits for a click. -->
     <HyperlinkButton x:Name="ShowLargeFileLink" DockPanel.Dock="Top" IsVisible="False" />
     <!-- Upstream's EditorBackground behind the lines, LineNumberBackground behind the numbers, Selection on selected lines. -->
@@ -81,7 +81,7 @@
       </ListBox.ItemTemplate>
     </ListBox>
     <Canvas IsHitTestVisible="False" ClipToBounds="True">
-      <Line x:Name="VerticalRuler" StrokeThickness="1" Stroke="Gray" Opacity="0.6" IsVisible="False" />
+      <Line x:Name="VerticalRuler" StrokeThickness="1" Stroke="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" IsVisible="False" />
     </Canvas>
     <!-- Upstream FileViewer's toolbar: at the top right over the lines, shown while the pointer is on the viewer. -->
     <StackPanel x:Name="DiffToolbar" Classes="toolStrip" HorizontalAlignment="Right" VerticalAlignment="Top"

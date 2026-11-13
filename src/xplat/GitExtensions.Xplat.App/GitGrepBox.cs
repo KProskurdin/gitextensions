@@ -187,10 +187,10 @@ public sealed class GitGrepBox
         _typing?.Cancel();
         CancellationTokenSource typing = new();
         _typing = typing;
-        Searched = Run();
+        Searched = RunAsync();
         return;
 
-        async Task Run()
+        async Task RunAsync()
         {
             if (delay > 0)
             {

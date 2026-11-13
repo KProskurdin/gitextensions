@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Repository;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitExtensions.Xplat.App;
 
@@ -11,7 +12,7 @@ namespace GitExtensions.Xplat.App;
 public partial class MainWindow
 {
     // The File tree tab's latest read of a commit's files.
-    private Task _fileTreeLoad = Task.CompletedTask;
+    private JoinableTask? _fileTreeLoad;
 
     /// <summary>
     ///  Upstream's <c>FindFileInSelectedCommit</c>: with several commits or an artificial one selected, the first selected
@@ -40,7 +41,7 @@ public partial class MainWindow
             [.. (await _history.LoadTreeAsync(path, hash)).Select(file => (file, (string?)null))];
         if (await new SearchWindow(text => FindFile.Matches(files, text, path)).ShowAsync(this) is { } file)
         {
-            await _fileTreeLoad;
+            await FileTreeLoadedAsync();
             SelectInFileTree(file);
         }
     }
@@ -54,4 +55,7 @@ public partial class MainWindow
         search.txtSearchBox.Text = "Form";
         return search;
     }
+
+    // The File tree tab's latest read, which selecting a file in that tree waits for.
+    private Task FileTreeLoadedAsync() => _fileTreeLoad?.JoinAsync() ?? Task.CompletedTask;
 }

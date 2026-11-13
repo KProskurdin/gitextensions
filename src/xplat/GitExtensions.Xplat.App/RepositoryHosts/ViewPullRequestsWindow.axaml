@@ -71,7 +71,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="local:DiscussionEntryRow">
                   <StackPanel Margin="0,0,0,12">
-                    <Border BorderThickness="0,0,0,1" BorderBrush="Gray" Padding="0,0,0,2">
+                    <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" Padding="0,0,0,2">
                       <DockPanel>
                         <TextBlock DockPanel.Dock="Right" Text="{Binding Created}" Opacity="0.7" />
                         <TextBlock Text="{Binding Author}" FontWeight="Bold" Foreground="{Binding AuthorBrush}" />

@@ -75,9 +75,14 @@ internal static class Program
         // Upstream code (the shared core, plugins) shows WinForms message boxes; until now they returned no answer.
         MessageBoxHost.Install();
 
-        // Here, not in App: the tests' headless app must not touch macOS' application object from its own thread.
+        // Here, not in App: the tests' headless app must not touch macOS' application object from its own thread, and an
+        // exception in a test must fail the test instead of opening upstream's error report.
         return BuildAvaloniaApp()
-            .AfterSetup(_ => App.ShowMacOSDockIcon())
+            .AfterSetup(_ =>
+            {
+                App.ShowMacOSDockIcon();
+                ErrorReporter.Install();
+            })
             .StartWithClassicDesktopLifetime(args);
     }
 

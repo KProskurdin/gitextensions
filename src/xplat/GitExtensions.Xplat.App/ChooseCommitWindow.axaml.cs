@@ -75,6 +75,7 @@ public partial class ChooseCommitWindow : Window
         await _commits.ApplyFilterAsync(_filter);
         await _commits.OpenAsync(_repositoryPath);
         revisionGrid.ItemsSource = _commits.VisibleRows;
+
         // An artificial commit is no revision for git to resolve.
         string? hash = string.IsNullOrEmpty(_preselect)
             ? null

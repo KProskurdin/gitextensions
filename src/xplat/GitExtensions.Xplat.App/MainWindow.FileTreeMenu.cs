@@ -25,7 +25,6 @@ public partial class MainWindow
     // Upstream's _lastExplicitlySelectedItem: the file to select when the tree of the commit asked for is shown.
     private string? _fileInRevisionToSelect;
 
-
     // The File tree tab's files (the commit's, or a git-grep search's) before the filter.
     private IReadOnlyList<string> _fileTreeFiles = [];
 
@@ -247,7 +246,7 @@ public partial class MainWindow
             _fileTreeBlame = true;
         }
 
-        await _fileTreeLoad;
+        await FileTreeLoadedAsync();
         SelectInFileTree(file);
         if (blame)
         {

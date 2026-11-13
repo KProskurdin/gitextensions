@@ -744,6 +744,10 @@ toolbar icons with upstream's `ToolTipText`.
   in its window; the colors set in code are upstream's own literals (upstream does not theme them either) and follow a dark
   theme where upstream's do; windows unsubscribe from the shared view models and services when they close; fonts and splitter
   positions convert DPI as upstream does. The gaps are item 7 below.
+- 2026-11-13, on Windows, item 7 below: upstream's error reports (`ErrorReporter`, `BugReportWindow`, core `ErrorReports`),
+  the dubious ownership report, Enter and Escape in three dialogs with a test over every ported form, and accessible names
+  for the tool buttons. The shim's task dialog gained WinForms' `TaskDialogCommandLinkButton.DescriptionText` and the
+  `TaskDialogButton.Close` and `Help` buttons (3 members). See the notes in `PORTING-MAP.md`.
 
 ### Continuing on macOS
 
@@ -787,27 +791,23 @@ result, and Windows has only the local runs in `SYNC-LOG.md`.
    the OutputHistory note of `PORTING-MAP.md`); only the Console tab is ConEmu.
 7. Found by the review of 2026-11-13 (Progress above). Not in the audit, because the audit checked only what each
    `PORTING-MAP.md` row listed as not ported, and these sit between rows. In this order:
-   1. **Errors that nothing catches.** Upstream's `Program.Main` sends every UI-thread exception (`Application.ThreadException`)
-      and every terminating one (`AppDomain.UnhandledException`) to `BugReportInvoker.Report`. The shell has no handler at all
-      (no `Dispatcher.UIThread.UnhandledException`, no `AppDomain.UnhandledException`). An exception outside `UiActions.Run`
-      therefore ends the process without a message, and the 11 tasks the app starts as `_ = ...Async()` lose theirs without
-      a trace. Port, as a `BugReportInvoker` row in `PORTING-MAP.md`: its rules (cancellation is not reported, git failures are
-      the user's and show the command, arguments and folder, `WriteErrorLog`), upstream's `BugReportForm` as a window (copy
-      the details, the GitHub issue link from `ErrorReportUrlBuilder`), and both handlers in `App`. Then send the discarded
-      tasks through `UiActions.Run` or the same report. `ErrorWindow`, used in 65 places, shows only `ex.Message`; for a git
-      failure it should show upstream's details too.
-   2. **Dubious ownership.** When git refuses a repository owned by another user (`safe.directory`), upstream's
-      `ReportDubiousOwnership` offers to add it to the global config. The shell shows git's message only. This is more
-      common off Windows (external disks, clones made by another user or by a container), so it affects first use.
-   3. **Enter and Escape.** `DeleteBranchWindow` and `DeleteRemoteBranchWindow` lack upstream's `AcceptButton` (Delete), and
-      `AvailableEncodingsWindow` lacks both `AcceptButton` and `CancelButton`. Every other ported form with either one has
-      `IsDefault`/`IsCancel` or a key handler (FormStash sets `CancelButton = null`).
-   4. **Screen readers.** A WinForms toolstrip button is announced by its `Text`, also when it shows only its image (47 such
-      items in upstream's designers). The shell's image-only tool buttons (about 90 of 107) have no text, and the shell sets
-      no `AutomationProperties.Name` anywhere, so a reader most likely announces nothing useful. Not checked yet: first a
-      headless test that reads each toolbar button's automation name, then set the name from the tooltip in `ToolButton`,
-      `ToolToggleButton`, `ToolDropDownButton` and `ToolSplitButton`. Check with VoiceOver on the Mac and Narrator on Windows.
-      Upstream's 5 `AccessibleName`s come along.
+   *Done 2026-11-13 on Windows, but for the leftovers named in each.* See the BugReportInvoker, BugReportForm, "Dialog keys
+   and minimum sizes" and "Accessible names of tool buttons" notes in `PORTING-MAP.md`.
+   1. ~~**Errors that nothing catches.** Upstream's `Program.Main` sends every UI-thread exception and every terminating one
+      to `BugReportInvoker.Report`; the shell had no handler at all.~~ Done: `ErrorReporter` with upstream's rules (core
+      `ErrorReports`) and both handlers, `BugReportWindow` for upstream's `BugReportForm`. The 11 discarded tasks turned out to
+      catch their own errors or not to fail, so they stay. **Left:** `ErrorWindow` (65 places) still shows only the message.
+      Upstream's details (command, arguments, folder, exit code) need them on the shell's `GitOperationException`, which
+      carries only git's message; that touches its 17 throw sites, so it waits.
+   2. ~~**Dubious ownership.**~~ Done: the report offers to trust the repository (git's own `safe.directory` command), open
+      its folder or read git's help, for an unhandled exception and when a repository fails to open; a trusted repository
+      opens again.
+   3. ~~**Enter and Escape.**~~ Done for the three windows, and `DialogKeysParityTests` now checks every ported form's
+      `AcceptButton`, `CancelButton` and `MinimumSize` against its window, from `PORTING-MAP.md`'s rows.
+   4. ~~**Screen readers.**~~ Done: the test confirmed it (a reader got "Avalonia.Controls.Image"); the tool buttons now
+      name themselves by their text or tooltip, and upstream's five `AccessibleName`s are on the settings window. **Left:**
+      a check with VoiceOver on the Mac and Narrator on Windows, at the screen. The rest of the shell (grids, lists, custom
+      controls) was not reviewed for names; upstream's WinForms controls give theirs by default.
 
 **Windows only: do not start from the Mac** (`MACOS.md`, section 7): FormClone's PuTTY prompts, the process dialog's PuTTY
 retry, the PuTTY menu items, "Download Git", the HOME check and FormFixHome's search, the checklist's installer rows and

@@ -460,7 +460,7 @@ public partial class VerifyDatabaseWindow : Window
         }
 
         CheckBox check = new() { MinWidth = 0, Padding = new(0), VerticalAlignment = VerticalAlignment.Top, DataContext = row };
-        check.Bind(CheckBox.IsCheckedProperty, new Binding(nameof(LostObjectRow.IsSelected)) { Mode = BindingMode.TwoWay });
+        check.Bind(CheckBox.IsCheckedProperty, CompiledBinding.Create<LostObjectRow, bool>(lost => lost.IsSelected, mode: BindingMode.TwoWay));
         grid.Children.Add(check);
         LostObject lostObject = row.Object;
         AddCell(DateColumn, lostObject.Date?.ToString() ?? "", wrap: false);

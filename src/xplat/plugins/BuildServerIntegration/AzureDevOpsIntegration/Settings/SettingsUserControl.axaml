@@ -13,7 +13,7 @@
     <TextBox x:Name="TfsBuildDefinitionNameFilter" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" />
     <TextBlock x:Name="labelBuildIdFilter" Grid.Row="4" Grid.Column="1" Opacity="0.7"
                Text="If needed, use the '*' wildcard or enter a Regular Expression" />
-    <TextBlock x:Name="labelRegexError" Grid.Row="5" Grid.Column="1" Foreground="Firebrick" IsVisible="False"
+    <TextBlock x:Name="labelRegexError" Grid.Row="5" Grid.Column="1" Classes="errorText" IsVisible="False"
                Text="The 'Build definition name' regular expression is not valid and won't be saved!" />
     <TextBlock x:Name="RestApiTokenLabel" Grid.Row="6" Text="Rest Api Token" VerticalAlignment="Center" />
     <TextBox x:Name="RestApiToken" Grid.Row="6" Grid.Column="1" />

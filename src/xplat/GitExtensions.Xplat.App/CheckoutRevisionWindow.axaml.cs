@@ -24,6 +24,14 @@ public partial class CheckoutRevisionWindow : Window
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GitModule _module;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public CheckoutRevisionWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="revision">The commit to propose (a hash, tag or other ref).</param>
     /// <param name="withScripts">Runs the checkout between the before and after checkout scripts (and plugin events).</param>
     /// <param name="updateSubmodules">Upstream's <c>UpdateSubmodules</c> after the checkout moved HEAD.</param>

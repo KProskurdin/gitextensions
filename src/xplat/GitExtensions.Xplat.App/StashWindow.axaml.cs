@@ -53,11 +53,16 @@ public partial class StashWindow : Window
     private bool _showing;
     private int _filesVersion;
     private StashRevisions? _revisions;
-    // Upstream FileStatusList's title of an invalid filter's error.
-
-
     private FileTreeRows<StashFileRow> _tree = null!;
     private IReadOnlyList<(string Group, IReadOnlyList<StashFileRow> Files)> _fileGroups = [];
+
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public StashWindow() => InitializeComponent();
+#pragma warning restore CS8618
 
     /// <param name="manageStashes">Upstream's <c>ManageStashes</c>: show the newest stash first.</param>
     /// <param name="initialStash">The stash to show first ("stash@{n}").</param>
@@ -314,6 +319,7 @@ public partial class StashWindow : Window
         }
 
         FilesList.ItemsSource = rows;
+
         // Avalonia keeps a selected row that the new list has an equal one of (the rows are records); adding that one too
         // would list the file twice in SelectedItems.
         foreach (StashFileRow row in rows.OfType<StashFileRow>().Where(selected.Contains))

@@ -78,6 +78,14 @@ public partial class SettingsWindow : Window
     private readonly Dictionary<AppFont, (CheckBox Bold, CheckBox Italic)> _fontStyleBoxes = [];
     private readonly Dictionary<AppFont, FontSetting?> _loadedFonts = [];
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public SettingsWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public SettingsWindow(IAppPreferences preferences, string? repositoryPath,
         IReadOnlyList<IGitPlugin>? plugins = null, IGitPlugin? selectedPlugin = null, bool pluginsPage = false)
     {
@@ -449,11 +457,8 @@ public partial class SettingsWindow : Window
             (_, _) => (RevisionLinksList.SelectedItem as RevisionLinkItem)?.AddFormat();
         RevisionLinkFormatsList.AddHandler(Button.ClickEvent, (_, e) =>
         {
-            if (e.Source is Button
-                {
-                    Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format
-                } &&
-                RevisionLinksList.SelectedItem is RevisionLinkItem item)
+            if (e.Source is Button { Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format }
+                && RevisionLinksList.SelectedItem is RevisionLinkItem item)
             {
                 item.Formats.Remove(format);
             }
@@ -828,12 +833,13 @@ public partial class SettingsWindow : Window
         ScriptEventBox.ItemsSource = Enum.GetValues<ScriptEvent>();
 
         // Upstream's icon list: no icon, then its images by name, each shown with its picture.
-        ScriptIconBox.ItemsSource = (IEnumerable<ScriptIconChoice>)
+        IEnumerable<ScriptIconChoice> icons =
         [
             new ScriptIconChoice("", null),
             .. ScriptIcons.Names.Select(name => new ScriptIconChoice(name, ScriptIcons.Named(name)))
         ];
-        ScriptIconBox.SelectedValueBinding = new Binding(nameof(ScriptIconChoice.Name));
+        ScriptIconBox.ItemsSource = icons;
+        ScriptIconBox.SelectedValueBinding = CompiledBinding.Create<ScriptIconChoice, string>(choice => choice.Name);
         ScriptIconBox.ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<ScriptIconChoice>((choice, _) =>
             new StackPanel
             {
@@ -1025,7 +1031,7 @@ public partial class SettingsWindow : Window
                     row.Text = text.Text;
 
                     // Upstream colors a number box red while its text is not a number.
-                    text.Foreground = row.IsValid ? null : Avalonia.Media.Brushes.Firebrick;
+                    text.Classes.Set("errorText", !row.IsValid);
                 };
                 return Labeled(row.Caption, text);
             case PluginSettingKind.Credentials:
@@ -1218,6 +1224,7 @@ public partial class SettingsWindow : Window
             _preferences.OutputHistoryDepth = outputHistoryDepth;
             _preferences.OutputHistoryPanelVisible = !asTab && outputHistoryDepth > 0;
         }
+
         _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
         _preferences.RenderGraphWithDiagonals = GraphDiagonalsCheck.IsChecked == true;
         _preferences.StraightenGraphDiagonals = StraightenDiagonalsCheck.IsChecked == true;

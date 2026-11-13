@@ -31,7 +31,9 @@ public static class MessageBoxHost
     /// </summary>
     public static void Answer(
         Func<IWin32Window?, string, string, MessageBoxButtons, MessageBoxIcon, MessageBoxDefaultButton, DialogResult>? handler)
+#pragma warning disable RS0030 // Upstream bans showing WinForms' MessageBox; this sets the shim's hook that answers it.
         => System.Windows.Forms.MessageBox.Handler = handler;
+#pragma warning restore RS0030
 
     public static DialogResult Show(IWin32Window? owner, string text, string caption, MessageBoxButtons buttons,
         MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)

@@ -27,6 +27,14 @@ public partial class CreateWorktreeWindow : Window
     private bool _useRelativePathsSet;
     private bool _updating;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public CreateWorktreeWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="mainWorktreePath">The main worktree's folder, which the proposed directory is named after.</param>
     public CreateWorktreeWindow(string repositoryPath, string mainWorktreePath, RepositoryOperationsViewModel actions,
         IAppPreferences preferences)

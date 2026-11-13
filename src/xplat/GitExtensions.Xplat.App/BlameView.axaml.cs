@@ -55,7 +55,7 @@ public partial class BlameView : UserControl
             // Upstream's SelectedLineChanged.
             if (SelectedCommitLine()?.Commit is { } commit)
             {
-                ShowCommitInfo(commit.ObjectId.ToString());
+                StartShowingCommitInfo(commit.ObjectId.ToString());
             }
         };
         BlameList.PointerMoved += (_, e) => HighlightCommit(
@@ -323,11 +323,12 @@ public partial class BlameView : UserControl
             ShowRows(line);
 
             // Upstream's ProcessBlame: the blamed commit, whatever commit the line it went to is from.
-            ShowCommitInfo(_hash);
+            StartShowingCommitInfo(_hash);
         }
     }
 
-    private void ShowCommitInfo(string hash)
+    // Not awaited: the blame shows without waiting for the commit info, whose errors go to ErrorOccurred.
+    private void StartShowingCommitInfo(string hash)
     {
         if (CommitInfo.IsVisible && hash != _commitInfoHash)
         {

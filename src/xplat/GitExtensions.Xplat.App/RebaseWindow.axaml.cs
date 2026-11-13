@@ -48,6 +48,14 @@ public partial class RebaseWindow : Window
     private bool _busy;
     private bool _showing;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public RebaseWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="from">Upstream's specific range start (excluded); empty for none.</param>
     /// <param name="to">The branch the specific range ends at; null for the current one.</param>
     /// <param name="onto">The branch or commit to rebase on; null for none.</param>

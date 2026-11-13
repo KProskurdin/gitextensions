@@ -19,6 +19,15 @@ public partial class MessageBoxWindow : Window
 {
     private const string CommandLinkArrow = "➔";
 
+    // A command link's description is smaller than its text, as in WinForms.
+    private const double DescriptionFontSize = 11;
+
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public MessageBoxWindow() => InitializeComponent();
+
     public MessageBoxWindow(string text, string caption, MessageBoxButtons buttons,
         MessageBoxDefaultButton defaultButton = MessageBoxDefaultButton.Button1)
     {
@@ -87,10 +96,12 @@ public partial class MessageBoxWindow : Window
             AccessText label = new() { Text = choice.Text?.Replace('&', '_') };
             Button button = new()
             {
-                Content = isCommandLink ? CommandLinkContent(label) : label,
+                Content = isCommandLink
+                    ? CommandLinkContent(label, ((TaskDialogCommandLinkButton)choice).DescriptionText)
+                    : label,
                 MinWidth = 80,
                 IsDefault = page.DefaultButton is { } defaultButton ? choice == defaultButton : index == 0,
-                IsCancel = choice == TaskDialogButton.Cancel,
+                IsCancel = choice == TaskDialogButton.Cancel || choice == TaskDialogButton.Close,
                 HorizontalAlignment = isCommandLink ? HorizontalAlignment.Stretch : HorizontalAlignment.Right,
                 HorizontalContentAlignment = isCommandLink ? HorizontalAlignment.Left : HorizontalAlignment.Center,
             };
@@ -138,11 +149,28 @@ public partial class MessageBoxWindow : Window
         _ => result.ToString(),
     };
 
-    // WinForms draws command links flat, with an arrow and a frame only under the pointer.
-    private static StackPanel CommandLinkContent(AccessText label)
+    // WinForms draws command links flat, with an arrow and a frame only under the pointer, and the description under the
+    // text in a smaller font.
+    private static StackPanel CommandLinkContent(AccessText label, string? description)
     {
         TextBlock arrow = new() { Text = CommandLinkArrow, VerticalAlignment = VerticalAlignment.Center };
         arrow.Bind(TextBlock.ForegroundProperty, arrow.GetResourceObservable("SystemControlHighlightAccentBrush"));
-        return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { arrow, label } };
+        if (string.IsNullOrEmpty(description))
+        {
+            return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { arrow, label } };
+        }
+
+        TextBlock descriptionText = new()
+        {
+            Text = description,
+            FontSize = DescriptionFontSize,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+        };
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children = { arrow, new StackPanel { Spacing = 2, Children = { label, descriptionText } } },
+        };
     }
 }

@@ -41,6 +41,14 @@ public partial class FileHistoryWindow : Window
     private bool _selectedOnce;
     private string? _selectedHash;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public FileHistoryWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="fileName">The file in the repository, relative to its working directory.</param>
     /// <param name="revision">The commit to select at first; null for the first one.</param>
     /// <param name="showBlame">Open on the Blame tab instead of Diff.</param>

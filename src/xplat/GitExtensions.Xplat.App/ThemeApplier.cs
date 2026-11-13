@@ -60,6 +60,7 @@ public static class ThemeApplier
             ColorHelper.ThemeSettings = new ThemeSettings(theme, Theme.Default, [.. preferences.ThemeVariations],
                 useSystemVisualStyle: false);
         }
+
         app.RequestedThemeVariant = colors.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
 
         // Upstream's panel, editor, line number and selection colors: windows and panels, the diff and file views, their
@@ -131,6 +132,9 @@ public static class ThemeApplier
         SetBrush(app, InfoTextKey, SystemColor(colors, System.Drawing.KnownColor.ControlText));
         SetBrush(app, InfoErrorTextKey, System.Drawing.Color.Red.AdaptForeColor(info));
 
+        // A problem shown on a window or panel (the "errorText" class): the red the windows used, readable on the panel.
+        SetBrush(app, ErrorTextKey, System.Drawing.Color.Firebrick.AdaptForeColor(panel));
+
         // Upstream's left panel search matches: on the Info color in the InfoText color.
         SetBrush(app, InfoSystemTextKey, SystemColor(colors, System.Drawing.KnownColor.InfoText));
 
@@ -173,6 +177,7 @@ public static class ThemeApplier
     public const string InfoTextKey = "InfoTextBrush";
     public const string InfoErrorTextKey = "InfoErrorTextBrush";
     public const string InfoSystemTextKey = "InfoSystemTextBrush";
+    public const string ErrorTextKey = "ErrorTextBrush";
     public const string WarningPanelKey = "WarningPanelBrush";
     public const string WarningPanelTextKey = "WarningPanelTextBrush";
 

@@ -14,7 +14,7 @@
     <TextBox x:Name="ProjectIdTextBox" Grid.Row="2" Grid.Column="1" />
     <HyperlinkButton x:Name="GetProjectIdLink" Grid.Row="2" Grid.Column="2" Content="Get Project ID from server"
                      IsEnabled="False" />
-    <TextBlock x:Name="GetProjectIdStatusText" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Foreground="Firebrick"
+    <TextBlock x:Name="GetProjectIdStatusText" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Classes="errorText"
                TextWrapping="Wrap" IsVisible="False"
                Text="Failed to obtain project from server. Try to specify valid API token or check instance URL" />
   </Grid>

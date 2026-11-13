@@ -8,6 +8,12 @@ namespace GitExtensions.Xplat.App;
 public partial class DiffWindow : Window
 {
     /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public DiffWindow() => InitializeComponent();
+
+    /// <summary>
     ///  Shows a diff that <paramref name="show"/> loads into the window's view (a file between two revisions).
     /// </summary>
     public DiffWindow(string title, Func<DiffView, Task> show)

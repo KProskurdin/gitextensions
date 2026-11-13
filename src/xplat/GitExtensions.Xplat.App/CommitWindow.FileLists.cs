@@ -57,6 +57,7 @@ public partial class CommitWindow
 
         // Upstream's OtherColors.MergeConflictsColor.
         SolveConflictsButton.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(230, 99, 99));
+
         // Upstream's FormCommit opens the conflicts window without its offer to commit.
         SolveConflictsButton.Click += (_, _) => _ = new ConflictsWindow(_repositoryPath, _repository, _actions,
             _preferences,

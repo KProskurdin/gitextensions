@@ -7,6 +7,12 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class HelpWindow : Window
 {
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public HelpWindow() => InitializeComponent();
+
     public HelpWindow(string title, string content)
     {
         InitializeComponent();

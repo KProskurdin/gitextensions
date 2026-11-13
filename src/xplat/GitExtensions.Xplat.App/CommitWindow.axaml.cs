@@ -8,6 +8,7 @@ using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitUI.ScriptsEngine;
+using Microsoft.VisualStudio.Threading;
 
 namespace GitExtensions.Xplat.App;
 
@@ -65,6 +66,14 @@ public partial class CommitWindow : Window
     // Upstream's CommitKind: a fixup, squash or amend commit started from the grid, until it is made.
     private CommitKind _commitKind;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public CommitWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public CommitWindow(string repositoryPath, RepositoryViewModel repository, RepositoryOperationsViewModel actions,
         IRepositoryService repositoryService, IAppPreferences preferences, Func<Task> refresh,
         ICommitMessageStore messages, Func<string, bool>? runPlugin = null,
@@ -72,6 +81,7 @@ public partial class CommitWindow : Window
     {
         // Opens the browse window's settings over this one on an upstream page.
         _showSettings = showSettings;
+
         // Runs a plugin named by a script's plugin command, as the browse window does.
         _runPlugin = runPlugin;
         _repositoryPath = repositoryPath;
@@ -93,8 +103,9 @@ public partial class CommitWindow : Window
         _messages = messages;
         Opened += (_, _) => Run(LoadMessageAsync);
         Closing += (_, _) => SavedDraft = CommitKinds.KeepsDraft(_commitKind)
-            ? SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true)
-            : Task.CompletedTask;
+            ? GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(() =>
+                SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true))
+            : null;
         modifyCommitMessageButton.Click += (_, _) =>
         {
             SetCommitKind(CommitKind.Normal);
@@ -196,9 +207,10 @@ public partial class CommitWindow : Window
     }
 
     /// <summary>
-    ///  The save of the typed message when the window closed, so the next commit window can wait for it before it reads.
+    ///  The save of the typed message when the window closed, so the next commit window can wait for it before it reads;
+    ///  null while there is nothing to wait for.
     /// </summary>
-    public Task SavedDraft { get; private set; } = Task.CompletedTask;
+    public JoinableTask? SavedDraft { get; private set; }
 
     // Like upstream, the window starts from the prepared message: git's merge message while a merge is stopped, otherwise the
     // draft left last time (in this app or the WinForms one), otherwise git's commit.template. A message typed before the
@@ -664,6 +676,7 @@ public partial class CommitWindow : Window
         }
 
         string remote = _repository.TrackingRemote ?? DefaultRemote;
+
         // As upstream, which pushes through its push dialog: a rejected push is offered a pull or a force push.
         bool pushed = await new PushRejectedFlow(_actions, _preferences).PushAsync(() => this, _repositoryPath,
             forced

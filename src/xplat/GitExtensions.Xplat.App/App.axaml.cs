@@ -22,6 +22,7 @@ public partial class App : Application
     {
         // The shared core marshals work onto the thread that created this context, i.e. the UI thread.
         GitUI.ThreadHelper.JoinableTaskContext = new Microsoft.VisualStudio.Threading.JoinableTaskContext();
+
         // As upstream at startup (Program.Main): the user manual's links need the version's documentation address.
         if (!_documentationBaseUrlSet)
         {

@@ -159,10 +159,13 @@ public partial class ApplyPatchWindow : Window
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = UpstreamTranslation.ByText(ApplyPatchDialog.SelectPatchFileCaption),
-            FileTypeFilter = [new FilePickerFileType(UpstreamTranslation.ByText(ApplyPatchDialog.SelectPatchFileFilter))
-            {
-                Patterns = ["*.patch"],
-            }],
+            FileTypeFilter =
+            [
+                new FilePickerFileType(UpstreamTranslation.ByText(ApplyPatchDialog.SelectPatchFileFilter))
+                {
+                    Patterns = ["*.patch"],
+                },
+            ],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
         {

@@ -13,7 +13,7 @@
       <Grid ColumnDefinitions="Auto,*">
         <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
         <Panel Grid.Column="1">
-          <Button x:Name="Delete" Content="_Delete" MinWidth="75" HorizontalAlignment="Right" HorizontalContentAlignment="Center" />
+          <Button x:Name="Delete" Content="_Delete" MinWidth="75" IsDefault="True" HorizontalAlignment="Right" HorizontalContentAlignment="Center" />
         </Panel>
       </Grid>
     </Border>

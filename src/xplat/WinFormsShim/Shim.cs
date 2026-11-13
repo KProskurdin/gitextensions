@@ -428,12 +428,26 @@ public class TaskDialogButton(string? text = null)
     ///  WinForms' standard No button.
     /// </summary>
     public static TaskDialogButton No { get; } = new("&No");
+
+    /// <summary>
+    ///  WinForms' standard Close button, which also closes the dialog as Cancel does.
+    /// </summary>
+    public static TaskDialogButton Close { get; } = new("&Close");
+
+    /// <summary>
+    ///  WinForms' standard Help button.
+    /// </summary>
+    public static TaskDialogButton Help { get; } = new("&Help");
 }
 
 /// <summary>
-///  A task dialog button shown as a command link: a row of its own above the dialog's other buttons.
+///  A task dialog button shown as a command link: a row of its own above the dialog's other buttons, with the smaller
+///  <see cref="DescriptionText"/> under its text, as WinForms shows it.
 /// </summary>
-public class TaskDialogCommandLinkButton(string? text = null) : TaskDialogButton(text);
+public class TaskDialogCommandLinkButton(string? text = null, string? descriptionText = null) : TaskDialogButton(text)
+{
+    public string? DescriptionText { get; set; } = descriptionText;
+}
 
 /// <summary>
 ///  The check box at the bottom of a task dialog, e.g. "Don't show me this message again"; <see cref="Checked"/> holds the

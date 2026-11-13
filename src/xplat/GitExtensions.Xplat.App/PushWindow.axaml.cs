@@ -27,6 +27,14 @@ public partial class PushWindow : Window
     private readonly Func<string, Task<IReadOnlyList<IGitRef>?>>? _readRemoteHeads;
     private string? _rowsRemote;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public PushWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="canCreatePullRequest">True when a repository host plugin knows the repository; a remote on Azure DevOps
     ///  enables the choice too, as upstream's.</param>
     /// <param name="openPull">Opens the pull dialog over this window (upstream's Pull button).</param>

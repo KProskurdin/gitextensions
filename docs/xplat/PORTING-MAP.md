@@ -157,6 +157,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/Shells/ShellProvider.cs`, `BashShell.cs`, `CmdShell.cs`, `PwshShell.cs`, `PowerShellShell.cs`; `FormBrowse.InitMenusAndToolbars.cs` (`FillUserShells`), `FormBrowse.cs` (`userShell_Click`) | `src/xplat/GitExtensions.Xplat.Core/Platform/TerminalChoices.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.Toolbar.cs` (`FillTerminals`) | `afc512395` | partial |
 | `src/app/GitUI/UserControls/RevisionGrid/Columns/MessageColumnProvider.cs`, `RevisionGridRefRenderer.cs`, `RefLabelShape.cs`, `RefLabelIcon.cs`, `RevisionDataGridView.cs` (row colors), `AuthorRevisionHighlighting.cs`, `RevisionGridMenuCommands.cs` (`GetViewMenuCommands`), `SuperProjectInfo.cs` and `RevisionGridControl.cs` (`GetSuperprojectCheckoutAsync`), `GitModule.cs` (`GetSubmoduleItemsForEachRefAsync`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/GridLabels.cs`, `SuperprojectLabels.cs`, `CommitListViewModel.cs` (`CommitListItem`, `ArtificialChanges`), `GitCommitHistory.cs` (`LoadRefLabels`); `src/xplat/GitExtensions.Xplat.App/RefLabelView.cs`, `MainWindow.GridView.cs`, `MainWindow.Superproject.cs`, `MainWindow.axaml` (row template, View menu), `ThemeApplier.cs` (grid colors) | `afc512395` | ported |
 | `src/app/GitUI/Models/OutputHistoryModel.cs`; `src/app/GitUI/UserControls/OutputHistoryControl.cs`, `OutputHistoryControllerBase.cs`, `OutputHistoryTabController.cs`, `OutputHistoryPanelController.cs`; `src/app/GitUI/HelperDialogs/FormStatus.cs` (`Done`, the recording) | `src/xplat/GitExtensions.Xplat.Core/Operations/OutputHistory.cs`, `RepositoryOperationsViewModel.cs` (`History`); `src/xplat/GitExtensions.Xplat.App/MainWindow.OutputHistory.cs`, `MainWindow.axaml` (tab and panel), `AppServices.cs` (`OutputHistory`), `SettingsWindow.axaml(.cs)` (Browse repository window page) | `0174ba1cc` | ported |
+| `src/app/GitUI/NBugReports/BugReportInvoker.cs`, `UIReporter.cs`, `ExceptionExtensions.cs`, `OperationInfo.cs`; `src/app/GitExtensions/Program.cs` (`Application.ThreadException`, `AppDomain.UnhandledException`) | `src/xplat/GitExtensions.Xplat.App/ErrorReporter.cs`, `Program.cs` (`ErrorReporter.Install`), `MainWindow.axaml.cs` (`ShowError`: dubious ownership); `src/xplat/GitExtensions.Xplat.Core/Diagnostics/ErrorReports.cs` | `0174ba1cc` | ported |
+| `src/app/BugReporter/BugReportForm.cs`, `ExceptionDetails.cs`, `ExceptionDetailView.cs`; `ErrorReportUrlBuilder.cs`, `GitHubUrlBuilder.cs`, `Serialization/*.cs`, `Info/GeneralInfo.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.App/BugReportWindow.axaml(.cs)`, `ExceptionDetailWindow.axaml(.cs)`; `src/xplat/GitExtensions.Xplat.Core/Diagnostics/ExceptionDetails.cs` | `0174ba1cc` | ported |
 
 ## Notes per row
 
@@ -478,6 +480,53 @@ submodules are updated once where upstream may run its update twice. Not ported:
 the chosen type, `ResetCurrentBranchDialog.HelpUrl`); since 2026-11-04 it is F1 and the "?" button (see "Title bar
 help button"), so the row is `ported`. Fixed with it: the summary's "n/a" for a commit without tags or
 branches had no text brush and did not show (in the create branch window too).
+
+**BugReportInvoker, UIReporter** (`ported`, 2026-11-13, `UI-PARITY.md` "Continuing on macOS" item 7). Before this the shell
+had no handler at all: an exception outside `UiActions.Run` ended the process without a message. `ErrorReporter.Install`
+(from `Program.Main`, after Avalonia's setup, so the headless tests still fail on an exception) adds upstream's two
+handlers: the UI thread's (`Dispatcher.UIThread.UnhandledException`, marked handled, the app goes on) and the process's
+(`AppDomain.UnhandledException`, whose worker thread waits while the UI thread shows the report, as upstream's separate
+BugReporter process outlives the app). The rules are upstream's, in core `ErrorReports`: the error log
+(`WriteErrorLog`), a file that failed to load (shown once, Restart, a report only for a file not of .NET or the VC
+runtime), no report for a cancellation, the dubious ownership report, the bug report for a terminating exception, and
+the task dialog with the root error as heading and the failed command's details (`GetExceptionInfo`). As upstream, git
+errors are the user's ("View details", no report); the shell's own `GitOperationException` counts as one. Upstream's
+task dialogs are `MessageBoxWindow` pages; the shim's command link gained WinForms' `DescriptionText`, and its buttons
+`Close` and `Help`. Differences: one report at a time (exceptions raised while one is open are traced, so an error on
+every render does not stack windows); the expanders' texts (git's output, the load error) are under the text, always
+shown; "Open repository in Explorer" shows the dialog again after opening the folder, where upstream's button keeps it
+open. The dubious ownership report also shows when a repository fails to open: `MainWindow.ShowError` recognises git's
+message (the commit list and the state read report it as text, not as an exception), shows the report once for both,
+and opens the repository again once it is trusted, as upstream's `ShowGitRepo`. Not ported: upstream's skip of a
+WinForms accessibility exception (`ListViewGroup.get_AccessibilityObject`), which the shell cannot raise. Checked
+2026-11-13: the 11 tasks the app starts as `_ = ...Async()` catch their own errors or cannot fail, so none needs the
+report. Tests: `ErrorReportsTests` (core), `ErrorReporterTests` (app; the dubious ownership test uses git's
+`GIT_TEST_ASSUME_DIFFERENT_OWNER` and a global config file of its own).
+
+**BugReportForm** (`ported`, 2026-11-13). `BugReportWindow`: the General tab (warning, exception type and message,
+target site, application, git, time and .NET, the description), the Exception tab (upstream's `ExceptionDetails`: the
+exception tree, expanded, and its properties, extended information in bold, a double click opens `ExceptionDetailWindow`,
+upstream's `ExceptionDetailView`), and Copy, Ignore, Send and Quit, Quit. Send and Quit asks for a description and a
+confirmation, then opens the GitHub issue upstream's `GitHubUrlBuilder` builds; Copy puts `ErrorReportUrlBuilder.CopyText`
+on the clipboard. A report that cannot be ignored does not close from the title bar (upstream hides the close box). The
+environment lines are the About window's (`EnvironmentInformation`). Upstream's non-UI files are linked into the core as
+they are. Differences: upstream's tree puts every deeper inner exception under the root's first child
+(`FillInnerExceptionTree` passes `Nodes[0]`); here each is under the exception it is inside. The images are GitUI's
+`Bug`, `CopyToClipboard`, `Warning` and `CloneRepoGitHub` (BugReporter's own copies are not linked). Upstream removes its
+"Report Contents" tab at run time, so it is not here.
+
+**Dialog keys and minimum sizes** (2026-11-13). `DialogKeysParityTests` reads each row above that names an upstream form
+and a window, and checks the form's `AcceptButton`, `CancelButton` and `MinimumSize` against the window (a default or
+cancel button in markup or code, or a key handler; `MinWidth`/`MinHeight`). It found FormDeleteBranch,
+FormDeleteRemoteBranch (Delete) and FormAvailableEncodings (OK and Cancel) without them; they now have them.
+
+**Accessible names of tool buttons** (2026-11-13). WinForms announces a toolstrip item by its text, also when it shows only
+its image. The shell's image-only tool buttons have no text, so a screen reader got "Avalonia.Controls.Image". `ToolButton`,
+`ToolToggleButton`, `ToolDropDownButton` and `ToolSplitButton` now name themselves by their text, else their tooltip
+(upstream's `ToolTipText`), below a name set in markup (the filter toolbar's advanced filter button, whose tooltip turns
+into the filter summary). Upstream's five `AccessibleName`s (GitConfigSettingsPage's Browse and Suggest buttons) are set
+on the settings window's buttons. Left unnamed, as upstream: the plain image buttons that clear the file filter and the
+git-grep box. Test: `ToolButtonNamesTests`. Not checked with a real reader (VoiceOver, Narrator) yet.
 
 ## Not in this map
 

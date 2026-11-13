@@ -1577,7 +1577,7 @@ internal sealed class MainWindowTests
         CommitWindow first = OpenCommitWindow(window);
         Find<TextBox>(first, "CommitMessageBox").Text = "draft text";
         first.Close();
-        WaitUntil(() => first.SavedDraft.IsCompleted);
+        WaitUntil(() => first.SavedDraft is null or { IsCompleted: true });
         File.ReadAllText(Path.Combine(_repo.Path, ".git", "COMMITMESSAGE")).Should().Be("draft text");
 
         GitProcess.RunAllowingFailure(_repo.Path, "merge", "other");

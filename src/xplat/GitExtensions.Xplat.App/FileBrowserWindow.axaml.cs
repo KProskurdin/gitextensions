@@ -18,6 +18,14 @@ public partial class FileBrowserWindow : Window
     private readonly string _hash;
     private readonly Func<IRepositoryHostPlugin?>? _repositoryHost;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public FileBrowserWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="repositoryHost">The repository host plugin of the repository, for the blame menu (e.g. "View in GitHub").</param>
     /// <param name="selectedFile">A file to select, whose history then shows (upstream's file history of a file).</param>
     public FileBrowserWindow(string repositoryPath, string hash, Func<IRepositoryHostPlugin?>? repositoryHost = null,

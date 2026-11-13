@@ -17,6 +17,12 @@ public partial class ResetChangesWindow : Window
         ResetAndDelete
     }
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public ResetChangesWindow() => InitializeComponent();
+
     /// <param name="hasExistingFiles">Whether changed tracked files are among those reset.</param>
     /// <param name="hasNewFiles">Whether new (untracked) files are among those reset.</param>
     /// <param name="confirmationMessage">Upstream's question in place of the default one, as the file lists ask it.</param>

@@ -684,6 +684,7 @@ public partial class DiffView : UserControl
                 }
 
                 return false;
+
             // Upstream's replace item finds in a viewer that cannot be edited, and every viewer here is such a one.
             case DiffCommand.Find:
             case DiffCommand.Replace:

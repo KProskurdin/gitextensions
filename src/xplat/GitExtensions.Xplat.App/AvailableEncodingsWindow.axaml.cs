@@ -18,8 +18,8 @@ public partial class AvailableEncodingsWindow : Window
     public AvailableEncodingsWindow()
     {
         InitializeComponent();
-        ListIncludedEncodings.DisplayMemberBinding = new Binding(nameof(Encoding.EncodingName));
-        ListAvailableEncodings.DisplayMemberBinding = new Binding(nameof(Encoding.EncodingName));
+        ListIncludedEncodings.DisplayMemberBinding = CompiledBinding.Create<Encoding, string>(encoding => encoding.EncodingName);
+        ListAvailableEncodings.DisplayMemberBinding = CompiledBinding.Create<Encoding, string>(encoding => encoding.EncodingName);
         ListIncludedEncodings.ItemsSource = _included;
         ListAvailableEncodings.ItemsSource = _available;
         ListIncludedEncodings.SelectionChanged += (_, _) =>

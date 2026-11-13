@@ -10,6 +10,12 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class AskPassWindow : Window
 {
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public AskPassWindow() => InitializeComponent();
+
     public AskPassWindow(string prompt)
     {
         InitializeComponent();

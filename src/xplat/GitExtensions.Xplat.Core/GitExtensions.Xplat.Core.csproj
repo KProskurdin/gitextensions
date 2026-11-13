@@ -118,6 +118,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Upstream's bug report without its WinForms form (BugReporter is a WinForms program): the exception as the report
+         shows it, the General tab's facts, and the GitHub issue and clipboard texts, unchanged (Diagnostics/ErrorReports.cs). -->
+    <Compile Include="..\..\app\BugReporter\Serialization\SerializableException.cs" Link="Upstream\BugReporter\SerializableException.cs" />
+    <Compile Include="..\..\app\BugReporter\Serialization\SerializableDictionary.cs" Link="Upstream\BugReporter\SerializableDictionary.cs" />
+    <Compile Include="..\..\app\BugReporter\Info\GeneralInfo.cs" Link="Upstream\BugReporter\GeneralInfo.cs" />
+    <Compile Include="..\..\app\BugReporter\ErrorReportUrlBuilder.cs" Link="Upstream\BugReporter\ErrorReportUrlBuilder.cs" />
+    <Compile Include="..\..\app\BugReporter\GitHubUrlBuilder.cs" Link="Upstream\BugReporter\GitHubUrlBuilder.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ExCSS" />
     <!-- Upstream's "Open in Visual Studio" on Windows (Platform/VisualStudio.cs). -->
     <PackageReference Include="EnvDTE" />

@@ -35,6 +35,14 @@ public partial class ForkAndCloneWindow : Window
     private readonly EventHandler<GitModuleEventArgs>? _gitModuleChanged;
     private bool _updating;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public ForkAndCloneWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public ForkAndCloneWindow(IRepositoryHostPlugin gitHoster, RepositoryOperationsViewModel actions, string defaultDestination,
         EventHandler<GitModuleEventArgs>? gitModuleChanged = null)
     {

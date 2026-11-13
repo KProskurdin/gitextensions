@@ -12,6 +12,12 @@ public partial class PromptWindow : Avalonia.Controls.Window
 {
     private readonly bool _allowEmpty;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public PromptWindow() => InitializeComponent();
+
     /// <param name="allowEmpty">Accept an empty value (a script's user input may be empty, as upstream's prompt allows).</param>
     public PromptWindow(string title, string label, string acceptText, string secondPlaceholder = "",
         string initialValue = "",

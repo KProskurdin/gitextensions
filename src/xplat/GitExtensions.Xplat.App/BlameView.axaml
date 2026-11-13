@@ -64,7 +64,7 @@
             <local:AvatarView Width="16" Height="16" ImageSize="32" IsVisible="{Binding ShowAvatar}"
                               Email="{Binding Line.AuthorEmail}" AuthorName="{Binding Line.Author}" />
           </Panel>
-          <TextBlock Grid.Column="2" Text="{Binding LineNumberText}" Foreground="Gray" Margin="0,0,8,0" />
+          <TextBlock Grid.Column="2" Text="{Binding LineNumberText}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" Margin="0,0,8,0" />
           <!-- A background, for the tooltip to show on the empty cells below a commit's first line too. -->
           <TextBlock Grid.Column="3" Text="{Binding Hash}" Background="Transparent" ToolTip.Tip="{Binding CommitTooltip}" />
           <TextBlock Grid.Column="4" Text="{Binding AuthorLine}" TextTrimming="CharacterEllipsis" Padding="0,0,12,0"

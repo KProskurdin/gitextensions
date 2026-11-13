@@ -5,7 +5,7 @@
         Title="Blame"
         Width="980" Height="620">
   <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="0,0,0,8" />
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" Margin="0,0,0,8" />
     <local:BlameView x:Name="Blame" />
   </DockPanel>
 </Window>

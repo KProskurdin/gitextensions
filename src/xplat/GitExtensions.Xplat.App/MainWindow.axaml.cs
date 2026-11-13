@@ -15,6 +15,7 @@ using GitCommands.Utils;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diagnostics;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
@@ -24,6 +25,7 @@ using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using GitUI.ScriptsEngine;
 using GitUIPluginInterfaces;
+using Microsoft.VisualStudio.Threading;
 using DialogResult = System.Windows.Forms.DialogResult;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
@@ -61,7 +63,7 @@ public partial class MainWindow : Window
         path => AppServices.Preferences.ShowRepoCurrentBranch ? RecentRepositoryBranches.CurrentBranch(path) : null);
 
     private readonly ICommitMessageStore _commitMessages = AppServices.CommitMessages;
-    private Task _commitDraftSaved = Task.CompletedTask;
+    private JoinableTask? _commitDraftSaved;
     private readonly IAppPreferences _preferences = AppServices.Preferences;
     private readonly IProcessLauncher _launcher = new SystemProcessLauncher();
     private readonly IFileManager _fileManager;
@@ -81,8 +83,19 @@ public partial class MainWindow : Window
 
     // The repository openings not finished yet (IsBusy).
     private int _openings;
+
+    // The folder last asked to open, which a refusal by git (dubious ownership) opens again once it is trusted.
+    private string? _requestedPath;
     private int _fileTreeVersion;
     private DateTime _lastActivationRefresh = DateTime.MinValue;
+
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public MainWindow() => InitializeComponent();
+#pragma warning restore CS8618
 
     public MainWindow(GitDiscoveryResult? git)
     {
@@ -342,9 +355,9 @@ public partial class MainWindow : Window
         int version = ++_fileTreeVersion;
         FileContentView.Clear();
         ShowFileTreeBlame(false);
-        Task load = LoadFileTreeAsync();
+        JoinableTask load = GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(LoadFileTreeAsync);
         _fileTreeLoad = load;
-        Run(() => load);
+        Run(() => load.JoinAsync());
         return;
 
         async Task LoadFileTreeAsync()
@@ -925,6 +938,7 @@ public partial class MainWindow : Window
             _navigationHistory.Clear();
         }
 
+        _requestedPath = path;
         _openings++;
         try
         {
@@ -1517,10 +1531,14 @@ public partial class MainWindow : Window
         };
 
         // The window reads the draft the previous one saved, so it waits for that save.
-        Task previousSave = _commitDraftSaved;
+        JoinableTask? previousSave = _commitDraftSaved;
         Run(async () =>
         {
-            await previousSave;
+            if (previousSave is not null)
+            {
+                await previousSave;
+            }
+
             window.Show(this);
         });
         return window;
@@ -2461,10 +2479,11 @@ public partial class MainWindow : Window
         }
 
         ShowCommitDiffButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile;
+
         // Upstream has no difftool for the combined diff of a merge or the range diff item.
         CommitDiffToolButton.IsEnabled = CommitFilesList.SelectedItem is CommitFile
         {
-            Group: not ({ IsCombinedDiff: true } or { IsRangeDiff: true })
+            Group: not { IsCombinedDiff: true } and not { IsRangeDiff: true }
         };
 
         // Upstream's ShowSelectedFolderAsync: a selected folder or group node shows the files below it.
@@ -2518,6 +2537,21 @@ public partial class MainWindow : Window
     // (the stash window) runs operations whose errors arrive here, and an error owned by this window would open behind it.
     private void ShowError(string message)
     {
+        // Upstream's BugReportInvoker offers to trust a repository git refused, instead of git's message. Every read of the
+        // repository fails the same way; the report is shown once.
+        if (ErrorReports.DubiousOwnershipIn(message) is { } dubious)
+        {
+            string path = _requestedPath ?? dubious.Folder;
+            Run(async () =>
+            {
+                if (await ErrorReporter.ReportDubiousOwnershipAsync(dubious))
+                {
+                    await OpenRepositoryAsync(path);
+                }
+            });
+            return;
+        }
+
         _ = new ErrorWindow(message).ShowDialog(OwnedWindows.FirstOrDefault(window => window.IsActive) ?? this);
     }
 }

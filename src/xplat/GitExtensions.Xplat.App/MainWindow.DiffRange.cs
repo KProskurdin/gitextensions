@@ -89,9 +89,15 @@ public partial class MainWindow
     // selecting something else cancels it.
     private async Task ShowRangeDiffAsync(DiffView view, string path, DiffGroup group, RevisionDiffFile file)
     {
-        _rangeDiffCancellation?.Cancel();
+        // The field changes before the wait, so a range diff started meanwhile cancels this one, not the previous one.
+        CancellationTokenSource? previous = _rangeDiffCancellation;
         using CancellationTokenSource cancellation = new();
         _rangeDiffCancellation = cancellation;
+        if (previous is not null)
+        {
+            await previous.CancelAsync();
+        }
+
         string filter = _commits.Filter.PathFilter;
         view.ShowText(file.Path, $"git range-diff {group.First}...{group.Second} -- {filter}");
         try

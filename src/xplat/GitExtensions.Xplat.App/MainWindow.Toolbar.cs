@@ -102,6 +102,7 @@ public partial class MainWindow
         FillTerminals();
         TerminalButton.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
         EditSettingsButton.Click += (_, _) => Run(() => ShowSettingsAsync());
+
         // The menus are built before they open: Avalonia shows a menu whose items change while it opens as a thin line.
         ((PopulatingMenuFlyout)SubmodulesButton.Flyout!).Populating += (_, _) => ShowSubmodulesMenu();
         SubmodulesButton.Click += (_, _) => OnSubmodulesButtonClick();

@@ -8,6 +8,12 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class ChooseWindow : Window
 {
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public ChooseWindow() => InitializeComponent();
+
     public ChooseWindow(IReadOnlyList<string> options)
     {
         InitializeComponent();

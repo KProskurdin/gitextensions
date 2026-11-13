@@ -8,6 +8,12 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class ConfirmWindow : Window
 {
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+    public ConfirmWindow() => InitializeComponent();
+
     public ConfirmWindow(string message, string confirmText, string? caption = null, bool offerDontShowAgain = false,
         string? cancelText = null, string? dontShowAgainText = null)
     {

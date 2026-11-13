@@ -24,6 +24,14 @@ public partial class BisectWindow : Window
     private readonly Func<Task<bool>> _start;
     private bool _isBisecting;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public BisectWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public BisectWindow(bool isBisecting, Func<Task<bool>> start)
     {
         _isBisecting = isBisecting;

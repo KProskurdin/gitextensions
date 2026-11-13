@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
@@ -166,6 +169,17 @@ internal static class ToolStripContent
         Source = picture, Width = IconSize, Height = IconSize, VerticalAlignment = VerticalAlignment.Center,
     };
 
+    /// <summary>
+    ///  Names a toolstrip item for screen readers as WinForms does: by its text, without the access key mark. Upstream's
+    ///  image-only items keep a text that the port leaves out, so such an item is named by its tooltip, upstream's
+    ///  <c>ToolTipText</c>. A name the markup sets wins over this one.
+    /// </summary>
+    public static void Name(Control item, string? text)
+    {
+        string? name = string.IsNullOrEmpty(text) ? ToolTip.GetTip(item) as string : UpstreamTranslation.ByText(text);
+        item.SetValue(AutomationProperties.NameProperty, WithoutAccessKey(name), BindingPriority.Template);
+    }
+
     // The text is upstream's English; it shows in the current language, also when a view sets it after the window was
     // translated (e.g. the Commit button's count).
     public static object? Build(string? image, string? text)
@@ -192,6 +206,10 @@ internal static class ToolStripContent
             },
         };
     }
+
+    // Avalonia marks an access key with "_" and writes a real underscore as "__".
+    private static string? WithoutAccessKey(string? text)
+        => text is null ? null : Regex.Replace(text, "_(_?)", "$1");
 }
 
 /// <summary>
@@ -231,6 +249,11 @@ public class ToolButton : Button
         {
             Content = ToolStripContent.Build(Image, Text);
         }
+
+        if (change.Property == TextProperty || change.Property == ToolTip.TipProperty)
+        {
+            ToolStripContent.Name(this, Text);
+        }
     }
 }
 
@@ -267,6 +290,11 @@ public class ToolToggleButton : ToggleButton
         if (change.Property == ImageProperty || change.Property == TextProperty)
         {
             Content = ToolStripContent.Build(Image, Text);
+        }
+
+        if (change.Property == TextProperty || change.Property == ToolTip.TipProperty)
+        {
+            ToolStripContent.Name(this, Text);
         }
     }
 }
@@ -305,6 +333,11 @@ public class ToolDropDownButton : DropDownButton
         {
             Content = ToolStripContent.Build(Image, Text);
         }
+
+        if (change.Property == TextProperty || change.Property == ToolTip.TipProperty)
+        {
+            ToolStripContent.Name(this, Text);
+        }
     }
 }
 
@@ -342,6 +375,11 @@ public class ToolSplitButton : SplitButton
         if (change.Property == ImageProperty || change.Property == TextProperty)
         {
             Content = ToolStripContent.Build(Image, Text);
+        }
+
+        if (change.Property == TextProperty || change.Property == ToolTip.TipProperty)
+        {
+            ToolStripContent.Name(this, Text);
         }
     }
 }

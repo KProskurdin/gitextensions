@@ -136,7 +136,6 @@ internal sealed class FileTreeRows<T>
         }
     }
 
-
     /// <summary>
     ///  Upstream's tree items for the list (<c>FileStatusList.TreeContextMenu.cs</c>) outside file tree mode: select all,
     ///  collapse all and expand all for the selected nodes; no "Collapse root folders".

@@ -43,6 +43,14 @@ public partial class PullWindow : Window
     private readonly string _displayPath;
     private bool _showing;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public PullWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="remoteBranches">The remote-tracking branches ("origin/main") the remote branch box offers.</param>
     /// <param name="localBranches">The local branches it offers when pulling from a URL.</param>
     /// <param name="isShallow">True when the repository is a shallow clone, which offers the full history.</param>

@@ -302,7 +302,7 @@
       </DockPanel>
     </Border>
 
-    <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Foreground="Firebrick" Margin="8,4" IsVisible="False" TextWrapping="Wrap" />
+    <TextBlock x:Name="GitProblemText" DockPanel.Dock="Top" Classes="errorText" Margin="8,4" IsVisible="False" TextWrapping="Wrap" />
 
     <!-- Upstream's two notification bars above the grid (InteractiveGitActionControl): a bisect in progress, and a stopped
          rebase, merge or patch or unresolved conflicts. Texts, buttons and their order come from the core's GitActionBanner. -->

@@ -156,6 +156,14 @@
         </ControlTemplate>
       </Setter>
     </Style>
+    <!-- A problem shown in a window (a failed load, a setting that is not valid): red made readable on the panel color
+         (ThemeApplier), so it follows the theme instead of one fixed red. -->
+    <Style Selector="TextBlock.errorText">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorTextBrush}" />
+    </Style>
+    <Style Selector="TextBox.errorText">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorTextBrush}" />
+    </Style>
     <!-- Upstream's menu group captions (MenuUtil.SetAsCaptionMenuItem): disabled, in italics. -->
     <Style Selector="MenuItem.groupHeader">
       <Setter Property="FontStyle" Value="Italic" />

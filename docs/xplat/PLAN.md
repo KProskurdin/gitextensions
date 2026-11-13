@@ -938,7 +938,7 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 | `XplatLinux*` counterparts go stale when the upstream test changes | Medium | `xplat-drift.sh` in the nightly job flags them (section 4) |
 | `WinFormsShim` grows with every new shared use of WinForms, and its stand-ins drift from real behavior | Medium | Measure the member count (11.2); each new member needs a note on what the real type does |
 | Terminal, diff-tool and shell launch behave differently on each OS | Medium | Section 9, question 10; per-OS tests where the OS allows |
-| An unexpected exception ends the app without a message: the shell has no last-chance handler and no bug report (found 2026-11-13) | High | `UI-PARITY.md`, "Continuing on macOS" item 7.1, before any wider use of the app |
+| An unexpected exception ends the app without a message: the shell had no last-chance handler and no bug report (found 2026-11-13) | High, now Low | Done 2026-11-13: upstream's handlers and reports (`UI-PARITY.md`, "Continuing on macOS" item 7.1). Left: a terminating exception on the UI thread itself is traced only, as there is no thread left to show it on |
 
 ## 11. Long-term mergeability
 
@@ -1086,7 +1086,8 @@ bug found by the comparison: lane colors differ from upstream's (U1 item 1).
 *2026-11-13:* a review against the WinForms checklist (what a form gets from its designer and from `Program.Main`) found four
 gaps that the per-row audit could not see: no crash handling or bug report, no `safe.directory` prompt, three dialogs without
 Enter or Escape, and no accessible names on image-only tool buttons. They are `UI-PARITY.md`'s "Continuing on macOS" item 7
-and come before the remaining parity work, the first two above all.
+and come before the remaining parity work, the first two above all. *Done the same day on Windows*, with two leftovers recorded
+there: the failed command's details in the shell's error window, and a check with a real screen reader.
 
 ### 12.4c Moving development to macOS
 

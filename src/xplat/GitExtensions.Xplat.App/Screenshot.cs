@@ -147,6 +147,6 @@ internal static class Screenshot
         using RenderTargetBitmap bitmap = new(new PixelSize((int)window.Bounds.Width, (int)window.Bounds.Height));
         bitmap.Render(window);
         await using FileStream stream = File.Create(file);
-        bitmap.Save(stream);
+        bitmap.Save(stream, PngBitmapEncoderOptions.Default);
     }
 }

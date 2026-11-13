@@ -24,6 +24,14 @@ public partial class MergeSubmoduleWindow : Window
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private ConflictData _item;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public MergeSubmoduleWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="fileName">The submodule's path in the repository.</param>
     /// <param name="checkoutBranch">Upstream's <c>StartCheckoutBranch</c> in the submodule's folder, limited to the branches
     ///  that contain the given commits; without it "Checkout Branch" is disabled.</param>
@@ -46,6 +54,7 @@ public partial class MergeSubmoduleWindow : Window
             await StageAsync();
             Close(true);
         });
+
         // Upstream's btOpenSubmodule_Click: a new instance on the submodule.
         OpenSubmoduleButton.Click += (_, _) => NewInstanceCommand.Start(_launcher, _module.GetSubmoduleFullPath(_fileName));
         CheckoutBranchButton.Click += (_, _) => Run(CheckoutBranchAsync);

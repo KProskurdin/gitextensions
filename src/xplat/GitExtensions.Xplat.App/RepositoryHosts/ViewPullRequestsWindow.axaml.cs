@@ -45,6 +45,14 @@ public partial class ViewPullRequestsWindow : Window
     private GitProtocol _cloneGitProtocol;
     private bool _isFirstLoad = true;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public ViewPullRequestsWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public ViewPullRequestsWindow(IRepositoryHostPlugin gitHoster, IGitModule module, RepositoryOperationsViewModel actions)
     {
         _gitHoster = gitHoster;

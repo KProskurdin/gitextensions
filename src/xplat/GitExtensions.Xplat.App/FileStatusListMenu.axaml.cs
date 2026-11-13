@@ -417,6 +417,7 @@ public partial class FileStatusListMenu : ContextMenu
            || item == _collapseRootFolders;
 
     // Upstream's submodule items: each acts on the selected submodules' paths (Distinct, as upstream's).
+
     /// <summary>
     ///  Upstream FileStatusList's <c>FileStatusListView_DoubleClick</c>: a submodule opens where
     ///  <c>OpenSubmoduleDiffInSeparateWindow</c> says so, anything else shows its history. True when something was done.

@@ -10,6 +10,7 @@ using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtUtils.GitUI.Theming;
+using Microsoft.VisualStudio.Threading;
 using DialogResult = System.Windows.Forms.DialogResult;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
@@ -36,7 +37,15 @@ public partial class ReflogWindow : Window
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private string? _currentBranch;
     private bool _isDirtyDir;
-    private Task _entriesLoaded = Task.CompletedTask;
+    private JoinableTask? _entriesLoaded;
+
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public ReflogWindow() => InitializeComponent();
+#pragma warning restore CS8618
 
     /// <param name="createBranch">Opens the create branch window on a commit, as upstream's reflog opens it.</param>
     /// <param name="resetCurrentBranch">Opens the reset current branch window on a commit with a reset type.</param>
@@ -53,7 +62,12 @@ public partial class ReflogWindow : Window
             ThemeBrushes.Current.IsDark
                 ? System.Drawing.Color.FromArgb(0x20, 0x20, 0x20)
                 : System.Drawing.Color.White)));
-        ReferencesBox.SelectionChanged += (_, _) => Run(() => _entriesLoaded = ShowReflogAsync());
+        ReferencesBox.SelectionChanged += (_, _) =>
+        {
+            JoinableTask load = GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(ShowReflogAsync);
+            _entriesLoaded = load;
+            Run(() => load.JoinAsync());
+        };
         CurrentBranchLink.Click += (_, _) => ReferencesBox.SelectedItem = _currentBranch;
         HeadLink.Click += (_, _) => ReferencesBox.SelectedIndex = 0;
         CopyShaMenuItem.Click += (_, _) => Run(CopyShaAsync);
@@ -88,7 +102,7 @@ public partial class ReflogWindow : Window
     /// <summary>
     ///  The last read of a reflog, for tests.
     /// </summary>
-    public Task EntriesLoaded => _entriesLoaded;
+    public Task EntriesLoaded => _entriesLoaded?.JoinAsync() ?? Task.CompletedTask;
 
     // Upstream's FormReflog_Load: the dirty warning, the current branch link (on a branch only) and the references.
     private async Task LoadAsync()
@@ -104,7 +118,11 @@ public partial class ReflogWindow : Window
         ResetBranchMenuItem.IsEnabled = onBranch;
         ReferencesBox.ItemsSource = references;
         ReferencesBox.SelectedIndex = 0;
-        await _entriesLoaded;
+        if (_entriesLoaded is { } entries)
+        {
+            await entries;
+        }
+
         _loaded.TrySetResult();
     }
 

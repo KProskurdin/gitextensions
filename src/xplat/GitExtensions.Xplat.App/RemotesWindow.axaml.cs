@@ -60,6 +60,14 @@ public partial class RemotesWindow : Window
     private IList<UserRepository> _history = [];
     private bool _showing;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public RemotesWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="fetchRemote">Fetches a saved remote, as upstream pulls with the fetch action after a save.</param>
     /// <param name="preselectRemote">Upstream's <c>PreselectRemoteOnLoad</c>.</param>
     /// <param name="preselectLocal">Upstream's <c>PreselectLocalOnLoad</c>: opens the pull behavior tab on this branch.</param>

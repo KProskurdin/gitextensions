@@ -26,7 +26,6 @@ internal sealed class RevisionFileList<T>
     // Upstream's texts.
     public const string NoChanges = "No changes";
 
-
     // Upstream's icons of the BASE groups (FileStatusDiffCalculator).
     private const string DiffAIcon = "DiffA";
     private const string DiffBIcon = "DiffB";
@@ -221,6 +220,7 @@ internal sealed class RevisionFileList<T>
         // filter while it has a BASE group (HasDiffABGroups).
         _treeButtons?.CollapseGroups?.IsVisible = groups.Count >= 2;
         _statusButtons?.SetVisible(groups.Any(group => group.Icon is DiffAIcon or DiffBIcon));
+
         // Avalonia keeps a selected item that the new list has an equal one of (the files are records); adding that one
         // too would list the file twice in SelectedItems.
         foreach (T file in items.OfType<T>().Where(file => selected.Contains(Key(file))))

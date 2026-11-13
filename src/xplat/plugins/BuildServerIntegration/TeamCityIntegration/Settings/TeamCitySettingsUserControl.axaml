@@ -19,7 +19,7 @@
     <TextBox x:Name="TeamCityBuildIdFilter" Grid.Row="4" Grid.Column="1" />
     <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="12">
       <TextBlock x:Name="labelBuildIdFilter" Opacity="0.7" Text="Regexp" />
-      <TextBlock x:Name="labelRegexError" Foreground="Firebrick" IsVisible="False"
+      <TextBlock x:Name="labelRegexError" Classes="errorText" IsVisible="False"
                  Text="The &quot;Build Id Filter&quot; regular expression is not valid and won't be saved!" />
     </StackPanel>
     <CheckBox x:Name="CheckBoxLogAsGuest" Grid.Row="6" Grid.Column="1" IsThreeState="True"

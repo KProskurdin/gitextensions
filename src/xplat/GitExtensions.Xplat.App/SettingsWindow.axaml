@@ -40,7 +40,7 @@
       </TreeView>
     </DockPanel>
     <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="0,6,3,3">
-      <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+      <TextBlock x:Name="ErrorText" Classes="errorText" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
       <!-- Upstream's labelInstantSaveNotice, shown on the pages that save at once (the Checklist). -->
       <TextBlock x:Name="InstantSaveNoticeText" Text="{x:Static settings:SettingsChecklist.InstantSaveNotice}"
                  VerticalAlignment="Center" TextAlignment="Right" IsVisible="False" />
@@ -461,7 +461,7 @@
                     <Grid ColumnDefinitions="150,8,*,8,Auto" Margin="0,0,0,4">
                       <TextBox Text="{Binding Caption}" />
                       <TextBox Grid.Column="2" Text="{Binding Format}" />
-                      <Button Grid.Column="4" Name="RemoveRevisionLinkFormatButton" Content="Remove" />
+                      <Button Grid.Column="4" x:Name="RemoveRevisionLinkFormatButton" Content="Remove" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -514,22 +514,22 @@
                     Margin="0,0,0,6" />
           <TextBlock Grid.Row="5" Text="Path to mergetool" VerticalAlignment="Center" />
           <TextBox x:Name="MergeToolPathBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseMergeToolButton" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <Button x:Name="BrowseMergeToolButton" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to mergetool" />
           <TextBlock Grid.Row="6" Text="Mergetool command" VerticalAlignment="Center" />
           <TextBox x:Name="MergeToolCommandBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="SuggestMergeToolButton" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" />
+          <Button x:Name="SuggestMergeToolButton" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Mergetool command" />
           <TextBlock Grid.Row="7" Text="Difftool" VerticalAlignment="Center" />
           <ComboBox x:Name="DiffToolBox" Grid.Row="7" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
                     Margin="0,0,0,6" />
           <TextBlock Grid.Row="8" Text="Path to difftool" VerticalAlignment="Center" />
           <TextBox x:Name="DiffToolPathBox" Grid.Row="8" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseDiffToolButton" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <Button x:Name="BrowseDiffToolButton" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Difftool command" />
           <TextBlock Grid.Row="9" Text="Difftool command" VerticalAlignment="Center" />
           <TextBox x:Name="DiffToolCommandBox" Grid.Row="9" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="SuggestDiffToolButton" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" />
+          <Button x:Name="SuggestDiffToolButton" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Difftool command" />
           <TextBlock Grid.Row="10" Text="Path to commit template" VerticalAlignment="Center" />
           <TextBox x:Name="CommitTemplateBox" Grid.Row="10" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" />
+          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to commit template" />
           <TextBlock Grid.Row="11" Text="Files content encoding" VerticalAlignment="Center" />
           <ComboBox x:Name="FilesEncodingBox" Grid.Row="11" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
           <Button x:Name="ConfigureEncodingButton" Grid.Row="11" Grid.Column="4" Content="Configure" Margin="0,0,0,6" />

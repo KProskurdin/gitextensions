@@ -68,7 +68,7 @@
                       <Flyout Placement="BottomEdgeAlignedLeft">
                         <StackPanel Spacing="6" Width="232">
                           <WrapPanel x:Name="ColorSwatches" />
-                          <TextBox x:Name="ColorHtmlBox" Watermark="#RRGGBB" />
+                          <TextBox x:Name="ColorHtmlBox" PlaceholderText="#RRGGBB" />
                         </StackPanel>
                       </Flyout>
                     </Button.Flyout>

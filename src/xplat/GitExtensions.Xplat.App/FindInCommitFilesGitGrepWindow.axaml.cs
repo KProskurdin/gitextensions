@@ -19,6 +19,14 @@ public partial class FindInCommitFilesGitGrepWindow : Window
     private bool _loaded;
     private bool _settingShowBox;
 
+    /// <summary>
+    ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
+    /// </summary>
+    [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public FindInCommitFilesGitGrepWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     /// <param name="locate">Searches the list with an expression ("" clears the search).</param>
     /// <param name="toggleBox">Shows or hides the list's git-grep box.</param>
     public FindInCommitFilesGitGrepWindow(IAppPreferences preferences, Action<string> locate, Action<bool> toggleBox)

@@ -579,6 +579,7 @@ public partial class MainWindow
                     .. folder.Descendants().Select(node => node.Branch)
                         .OfType<BranchInfo>().Where(branch => !branch.IsCurrent).Select(branch => branch.Name)
                 ];
+
                 // Upstream's BranchPathNode.DeleteAll: upstream's delete branch window with the folder's branches.
                 RunOnRepository(path => ShowDeleteBranchAsync(path, branches));
             }
@@ -750,7 +751,6 @@ public partial class MainWindow
         => RepoObjectsTree.PathTo(roots, node).FirstOrDefault();
 
     private RepoObjectNode? RootOf(RepoObjectNode node) => RootOf(node, _repoObjects);
-
 
     // Upstream's WorktreeNode.OpenWorktree: upstream's WorktreeSwitch, with its question.
     private void OpenWorktree(WorktreeInfo worktree) => Run(() => WorktreeFlow().SwitchAsync(this, worktree.Path));
