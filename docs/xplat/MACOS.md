@@ -20,14 +20,16 @@ Windows; each is corrected where a real result exists.
 | Repository on a case-insensitive disk | No conflict | `git ls-files`: no paths differ only by case, none are non-ASCII, no symlinks |
 | Windows-only project types in `GitExtensions.xplat.slnx` | None | No `net10.0-windows` or `UseWindowsForms=true` under `src/xplat` or `tests/xplat` |
 | Windows calls in the new code | Guarded by platform | Only `XplatRegistryKey.cs` and `VisualStudio.cs` use Windows APIs. Check them on the first Mac run |
-| CI has ever run | Once, with failures | Run `42521621315` on 2026-11-08: see the status under MAC1. The schedule and manual runs stay unavailable while `origin/master` lacks the file |
+| CI has ever run | Once, with failures; **off since** | Run `42521621315` on 2026-11-08: see the status under MAC1. Since `fc4d4ba5d`, the same night, every workflow is commented out, `xplat.yml` too (`PLAN.md` section 9, question 16). The schedule and manual runs stay unavailable while `origin/master` lacks the file |
 | Linux app tests | Pass | In that run, on Ubuntu. Before it, last attempted on 2026-10-11, and killed for lack of memory |
 
 ### Assumptions
 
 Each of these changes the plan if it is wrong (`PLAN.md` section 9, question 12):
 
-1. The Mac becomes the main development machine.
+1. The Mac becomes the main development machine. *As it turned out:* 2026-11-08 and 9 on the Mac; the commits of 2026-11-10
+   (staging and opening speed, the Dock icon, the commit button) were written and timed on Windows. Both are in use, so
+   each result names its OS.
 2. Windows stays reachable: CI for tests, and a Windows machine or VM now and then for the items in section 7.
 3. Linux is checked by CI only, because the WSL setup stays behind on the Windows machine.
 4. Either Mac CPU works. Use `osx-arm64` on Apple Silicon and `osx-x64` on Intel. `macos-latest` in CI is arm64.
@@ -215,6 +217,11 @@ Job logs and artifacts need a sign-in, but a job's annotations do not, so the wo
 `tests/xplat/ci-report.py` gives each suite's counts and the failed tests, and `tests/xplat/run-with-watchdog.sh` gives the processes and the app's
 managed stacks when the app outlives its limit. The app's build is a step of its own, so the step times show which of the two a hang is in. To read them:
 GET a job's `check_run_url` + `/annotations` (60 requests an hour without a sign-in).
+
+**Status 2026-11-13: blocked.** There was no next run: `fc4d4ba5d` commented out every workflow, `xplat.yml` included, 15 minutes
+after the commit that added the annotations (`PLAN.md` section 9, question 16). So the Windows shadow failure, the screenshot hang and
+the annotation reporting itself are all untried, and parity work went on without MAC1's exit (`UI-PARITY.md`, "Continuing on
+macOS"). Local Windows runs since: see `SYNC-LOG.md`, 2026-11-13.
 
 ### MAC2. First real results on the Mac (1 to 3 days, the least certain)
 

@@ -162,3 +162,17 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   4022. The settings folder and `~/.gitconfig` were unchanged by hash through the app and shadow runs, and the tests wrote no NetSpell user
   word list. The whole `GitExtensions.xplat.slnx` builds. `verify-upstream.sh` was not run again. Upstream files modified 0, seam count 8.
   `port-drift.sh`: 135 rows, 12 with upstream changes. Windows and Linux were not run.
+
+### 2026-11-13: review of the commits since `MACOS.md` against the plan, no merge
+
+- Reviewed `04d868edd..34744f906`. The 2026-11-10 commits were made on Windows (staging reads only the changed files; opening reads the
+  state while the commits load, without `git submodule status`; the Dock icon outside a bundle; solution items). Each is in `PORTING-MAP.md`
+  or `MACOS.md`; `UI-PARITY.md`'s Progress has an entry for them now.
+- **Correction to the entries of 2026-11-09 and 10:** "Upstream files modified 0" was wrong. `fc4d4ba5d` (2026-11-08) comments out the 13
+  upstream workflows in `.github/workflows/`, and `.gitignore` has a fork line since `735c6ae4d`. The measure only looked at the code folders.
+  `PLAN.md` section 11.2 now checks every path; the files are listed in section 5 and the choice is section 9, question 16. Seam count 8.
+- CI: off since `fc4d4ba5d`, so no run since `42521621315`.
+- On Windows, from `34744f906` with these doc changes only: the whole `GitExtensions.xplat.slnx` builds with 0 errors (warnings include SA1518 in
+  `PushWindowTests.cs`, no final newline). Core 992 pass of 1001, 9 not run on Windows. App, the classes touched since 2026-11-08 only
+  (`ApplicationMenuTests`, `MainWindowTests`, `GitOperationsTests`, `CommitTemplateFileTests`, `LeftPanelTests`, submodule tree): 187 of 187.
+  The full app suite, the shadow projects and `verify-upstream.sh` were not run. Linux and macOS were not run.

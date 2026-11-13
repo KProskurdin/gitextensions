@@ -24,12 +24,12 @@ criterion, and the milestones beyond M4 are estimates only.
 |---|---|---|
 | Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) compiles as `net10.0` | Done | `src/xplat/*` shadow projects, 0 errors on Windows and Linux |
 | Shared core tests | Done with a gap | macOS 3381 pass, 0 fail, 149 ignored with reasons (`GitCommands.Tests`, 2026-11-08). Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03, in WSL; `MACOS.md`, MAC2, explains why plain Linux may differ). Since 2026-11-02 every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8), and `run-tests.sh` runs them all; the analyzer project is in the solution as it is (netstandard2.0) |
-| Upstream files | Untouched | 0 fork changes in upstream folders (checked 2026-10-03); all changes are additive or carried as seams (section 5) |
-| Seams | 7 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, and the test-side replacements |
+| Upstream files | **Edited, 2026-11-13 review** | Code folders untouched: no fork change under `src/app`, `src/plugins`, `tests/app`, `setup` or `eng`. Outside them the fork changes 14 upstream files against the fork base: the 13 upstream workflows in `.github/workflows/`, all commented out by `fc4d4ba5d` (2026-11-08), and one line in `.gitignore`. `CLAUDE.md` is a fork file at the root. Section 5, "Files outside the fork folders", has each one and what to do about it. The measure in 11.2 did not see these, as it checked only the code folders; it now checks everything |
+| Seams | 8 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj` and `src/xplat/GitUIPluginInterfaces`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, `PluginAssemblyResolve.cs` and the test-side replacements |
 | Settings persistence | Linux done 2026-10-03; macOS seen working 2026-11-08 (`MACOS.md`, MAC2) | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
 | Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 929 core and 738 app, all passing, and a signed zip and dmg that start through `open` (`MACOS.md`, MAC2 to MAC5; the checks at the screen are open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
 | Fork workflow | Partly set up | `upstream` remote added on the Mac and fetched. `tests/xplat/verify-upstream.sh` passed on `c584b9740` on macOS, 2026-11-08 (`SYNC-LOG.md`). Local `master` NOT moved (user decision) |
-| CI | **First run 2026-11-08, with failures** | `.github/workflows/xplat.yml` covers Windows, Ubuntu and macOS. Packages and Ubuntu's tests pass; Windows' shadow tests fail and the screenshot job hangs on every OS, both not understood yet (`MACOS.md`, MAC1). `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
+| CI | **Off since 2026-11-08** | One run, `42521621315` on `5ea555567`: packages and Ubuntu's tests pass; Windows' shadow tests fail and the screenshot job hangs on every OS, both not understood yet (`MACOS.md`, MAC1). Then `fc4d4ba5d` commented out every workflow, `xplat.yml` included, so nothing after `5ea555567` has a CI result and MAC1's exit cannot be met. Question 16 has the choice. `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
 | Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
 
 Upstream size, for scale (measured 2026-10-03):
@@ -90,7 +90,11 @@ tests/
                             forms: FindLargeFiles.Tests, BugReporter.Tests, GitUI.Tests and the integration tests
     GitExtensions.Xplat.App.Tests/  NEW in M1: Avalonia headless tests
 tests/xplat/
+  XplatTestUserData.cs     moves the settings folder of every test assembly, so tests never touch the user's settings
   run-tests.sh             builds and tests every shadow test project (Windows via cmd.exe; Linux/macOS directly)
+  run-with-watchdog.sh     CI: runs the app with a time limit and reports its processes and stacks if it hangs
+  ci-report.py             CI: turns each suite's .trx into job annotations, readable without a sign-in
+  make-bench-repo.sh       builds the 5500-commit repository of the revision graph benchmark (M3.5)
   verify-upstream.sh       runs the same against upstream/master in a temporary worktree
   port-drift.sh            NEW in M1: lists upstream commits that touched ported files since the recorded commit
   xplat-drift.sh           NEW in M1: flags mirrored upstream test classes (from each XplatLinux* file's
@@ -126,6 +130,18 @@ by an additive file.
 
 Rule: a new seam needs a line in this table, a reason, and a note on whether it is an upstream
 candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on Linux too.
+
+### Files outside the fork folders
+
+Not seams, as the build does not depend on them, but each is a change at an upstream path and can conflict with an upstream
+merge. Listed 2026-11-13, when a review found them; nothing listed them before.
+
+| File | Change | Merge risk | Recommendation |
+|---|---|---|---|
+| `.github/workflows/*.yml`, the 13 upstream workflows | Every line commented out (`fc4d4ba5d`, 2026-11-08, "disabled all actions") | High: any upstream change to a workflow conflicts, and upstream edits them often (pinned action versions) | Restore upstream's content and turn workflows off on GitHub instead: `gh workflow disable "<name>"`, or Settings, Actions. That state lives on GitHub and survives merges. It is also the only way that works for scheduled workflows: GitHub runs those from the default branch, `master`, which this commit did not change, so `pr-check-stale` and the labelers were not stopped by it. Upstream's `app-build` runs only on `master`, `release/**` and pull requests, so on `feature/**` the edit stopped nothing but `xplat.yml`. Question 16 |
+| `.github/workflows/xplat.yml` | Fork-owned, added by the fork; commented out by the same commit | None | Turn it back on; question 16 |
+| `.gitignore` | One line appended, `/.claude` (`735c6ae4d`, 2026-10-17) | Low: only an upstream change at the file's end conflicts | Keep and accept, or move the line to each clone's `.git/info/exclude`. User's choice |
+| `CLAUDE.md` | Added at the root by the fork | Add/add conflict if upstream ever adds one (upstream has none on 2026-10-09) | Keep; on such a conflict, merge the fork's rules into upstream's file |
 
 ## 6. Mapping WinForms to the new shell
 
@@ -847,7 +863,8 @@ These change the plan. Each has a recommendation, but the choice is the user's.
    and credentials choices are per OS from the start.
 3. **Upstream strategy.** *Decided 2026-10-03:* shadow projects only. No seam PRs are sent
    upstream. S2, S3 and S4 stay as seams in `XplatPatch`.
-   *Consequence:* the seam count stays at 7 and must not grow without a table entry.
+   *Consequence:* the seam count stays at 7 and must not grow without a table entry. (S8 was added later with its entry, so the
+   count is 8.)
 4. **macOS hardware run.** *Decided 2026-10-03:* the user will test the macOS build on their own
    laptop later. Until then, CI-only evidence (question 11) is what the milestones use.
    *Updated 2026-11-08:* development moves to a Mac, so hardware runs are now routine (`MACOS.md`).
@@ -892,6 +909,13 @@ These change the plan. Each has a recommendation, but the choice is the user's.
     be taken before leaving Windows, or later on a Windows machine or VM.
 15. **macOS menu bar.** In the window, as on the other OSes, or in the system menu bar? *Recommendation:* the system menu
     bar, generated from the window's menu so there is one definition (`MACOS.md`, MAC4). Not needed before MAC2.
+16. **CI on or off.** *Found 2026-11-13:* `fc4d4ba5d` (2026-11-08) commented out every workflow, so the fork has had no CI since
+    its first run, and Windows and Linux are checked only when someone runs them locally. The commit also edits 13 upstream
+    files (section 5, "Files outside the fork folders"). The reason was not recorded. *Recommendation:* restore those 13 files
+    to upstream's content and turn the unwanted workflows off on GitHub (`gh workflow disable`), which also stops the scheduled
+    ones that the edit did not reach. Turn `xplat.yml` back on. If run time or notification noise is the reason, keep
+    `workflow_dispatch` and push to `feature/**`, and drop the nightly `schedule` until question 13 is settled. If CI stays off,
+    MAC1's exit changes to "Windows and Linux suites run by hand before each push", and every status report says which OS ran.
 
 ## 10. Risks
 
@@ -914,6 +938,7 @@ These change the plan. Each has a recommendation, but the choice is the user's.
 | `XplatLinux*` counterparts go stale when the upstream test changes | Medium | `xplat-drift.sh` in the nightly job flags them (section 4) |
 | `WinFormsShim` grows with every new shared use of WinForms, and its stand-ins drift from real behavior | Medium | Measure the member count (11.2); each new member needs a note on what the real type does |
 | Terminal, diff-tool and shell launch behave differently on each OS | Medium | Section 9, question 10; per-OS tests where the OS allows |
+| An unexpected exception ends the app without a message: the shell has no last-chance handler and no bug report (found 2026-11-13) | High | `UI-PARITY.md`, "Continuing on macOS" item 7.1, before any wider use of the app |
 
 ## 11. Long-term mergeability
 
@@ -940,7 +965,7 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
 
 | Measure | Target | How it is measured |
 |---|---|---|
-| Upstream files modified | 0 | `git diff --name-only <last-sync> HEAD -- src/app src/plugins tests/app setup eng` must be empty, except seam files listed in section 5 |
+| Upstream files modified | 0, apart from the files listed in section 5 | `git diff --name-only <fork-base> HEAD -- . ':!src/xplat' ':!tests/xplat' ':!docs/xplat' ':!GitExtensions.xplat.slnx' ':!.github/workflows/xplat.yml'` lists only the files in section 5's two tables. Until 2026-11-13 this checked `src/app src/plugins tests/app setup eng` only, and so reported 0 while 13 workflows were edited |
 | Seam count | at most 10 | Rows in section 5 |
 | Seam anchors intact after upstream merge | 100% | Build fails if an anchor is missing; `verify-upstream.sh` |
 | Shadow build and tests on current upstream | pass | `tests/xplat/verify-upstream.sh` |
@@ -1015,6 +1040,8 @@ Nothing below needs code for M0 to M6; it is user actions, runs that are still m
 1. Linux app tests: passed in CI's first run on 2026-11-08 (`42521621315`).
 2. CI on GitHub: ran on 2026-11-08 with failures on Windows and a hang in the screenshot job (section 2; MAC1). One cause of the core
    failure is fixed; the rest needs the next run, whose annotations report the failed tests and what a hung app is doing.
+   *2026-11-13:* there has been no next run, as CI is off (question 16). Windows had local runs only: core 992 pass and part
+   of the app suite (`SYNC-LOG.md`, 2026-11-13). The full Windows app suite and shadow projects have not run since 2026-11-08.
 3. macOS on hardware: done for the test suites on 2026-11-08 (all pass, `SYNC-LOG.md`). The smoke items that need a person at
    the screen are still open (`MACOS.md`, MAC2).
 
@@ -1028,6 +1055,10 @@ with an `.icns`, as a zip and a `.dmg`, ad-hoc signed; built on a Mac 2026-11-08
 4. An installer for the Avalonia app on Windows.
 
 ### 12.4 M8, feature parity (optional, not planned in detail)
+
+*Stale, 2026-11-13:* most of this list was done through `UI-PARITY.md` (items 1, 2, 3 and 5, and the GPG, output history and
+git-grep parts of item 4, by `PORTING-MAP.md`). The current list of gaps is `UI-PARITY.md`'s audit of 2026-11-07 and its
+"Continuing on macOS" section; this list is kept as it was planned.
 
 In the order users would notice them:
 1. The diffs of merge commits against each parent and the combined diff ("Show file differences for all parents",
@@ -1052,6 +1083,11 @@ The look and behavior of the Avalonia app against the WinForms app: the comparis
 U2 browse window, U3 commit window, U4 settings, U5 other windows, U6 UX details) are in `UI-PARITY.md`. It includes a
 bug found by the comparison: lane colors differ from upstream's (U1 item 1).
 
+*2026-11-13:* a review against the WinForms checklist (what a form gets from its designer and from `Program.Main`) found four
+gaps that the per-row audit could not see: no crash handling or bug report, no `safe.directory` prompt, three dialogs without
+Enter or Escape, and no accessible names on image-only tool buttons. They are `UI-PARITY.md`'s "Continuing on macOS" item 7
+and come before the remaining parity work, the first two above all.
+
 ### 12.4c Moving development to macOS
 
 This comes before the rest of section 12 and before more UI parity work. `MACOS.md` has the handoff, the setup, and phases
@@ -1062,6 +1098,10 @@ State on 2026-11-08: the test parts of MAC2, MAC3 items 1 to 4, most of MAC4 and
 for the user: pushing for the first CI run (MAC1), the checks at the screen (MAC2's smoke list, MAC3 item 5, the menu bar and Terminal
 in MAC4), and questions 12 to 15. `MACOS.md` has each one's state. Windows and Linux have run none of this yet.
 
+State on 2026-11-13: parity resumed on 2026-11-08 and items 1 to 6 of `UI-PARITY.md`'s Mac list are done, while MAC1 stays open:
+CI was turned off that night (question 16). Work now alternates between the Mac and Windows (the 2026-11-10 commits were made on
+Windows), so the Windows suites get local runs (`SYNC-LOG.md`), but Linux has had no run since CI's only one.
+
 ### 12.5 Open decisions (section 9)
 
 1. Question 7: confirm "keep upstream behavior" for branch-name rules and commit-message line endings.
@@ -1070,3 +1110,5 @@ in MAC4), and questions 12 to 15. `MACOS.md` has each one's state. Windows and L
 4. Question 10: the terminal on Linux and macOS (recommendation: a configurable command with a default from the OS).
 5. Questions 12 to 15, from the move to macOS: where the work runs, the fork's default branch, the reference pictures, and
    the macOS menu bar. Questions 12 to 14 affect the handoff, so they come first.
+6. Question 16: CI is off, and 13 upstream workflow files are edited to do it. This blocks MAC1 and breaks the "no upstream
+   file edited" rule, so it comes before the others.

@@ -733,12 +733,26 @@ toolbar icons with upstream's `ToolTipText`.
   FormAvailableEncodings, the warning without git and the check of what is typed as the git command. Fixed on the way: upstream's
   `AppSettings.LoadSettings` was never called, so the viewer's encoding box was empty in the real app; and a git failure while the
   page loaded left the window's Save disabled, so the git path could not be corrected.
+- 2026-11-10, on Windows, not in the list below: staging reads only the changed files afterwards, as upstream's commit window
+  does, and opening a repository reads its state while the commits load and no longer runs `git submodule status` (about
+  3.3 s to 1.3 s on this repository). See the FormCommit and FormBrowse notes in `PORTING-MAP.md`. The Dock icon outside a
+  bundle (`MACOS.md`, MAC4 item 4), written on Windows and not yet seen on a Mac.
+- 2026-11-13, on Windows, a review against the WinForms checklist of the `dotnet-winforms` skill: what a form gets from its
+  designer and from upstream's `Program.Main` that a port can miss (dialog keys, minimum sizes, error handling, accessibility,
+  DPI, colors set in code, event lifetimes). Static only: greps, and a script that pairs each `PORTING-MAP.md` row's upstream
+  designer with its window. Nothing ran and no code changed. What matches: every upstream form with a `MinimumSize` has one
+  in its window; the colors set in code are upstream's own literals (upstream does not theme them either) and follow a dark
+  theme where upstream's do; windows unsubscribe from the shared view models and services when they close; fonts and splitter
+  positions convert DPI as upstream does. The gaps are item 7 below.
 
 ### Continuing on macOS
 
 Written 2026-11-08. Parity work resumes after phases MAC1 and MAC2 of `MACOS.md`, so that the first macOS test results are
-not mixed with new changes. This sorts the audit's list above (2026-11-07) by where the work can be done and checked. All
-results so far come from Windows: nothing in this list or the Progress above has been seen on a Mac.
+not mixed with new changes. This sorts the audit's list above (2026-11-07) by where the work can be done and checked.
+
+*As it went (2026-11-13):* MAC2's tests were done first, as planned, and items 1 to 6 below were then done on the Mac.
+MAC1 was not: CI has been off since the night of 2026-11-08 (`PLAN.md` section 9, question 16), so these items have no Linux
+result, and Windows has only the local runs in `SYNC-LOG.md`.
 
 **Do on the Mac, fully checkable there.** In the proposed order, starting with what affects first use:
 
@@ -771,6 +785,29 @@ results so far come from Windows: nothing in this list or the Progress above has
    instead. See the ThemeModule and EditNetSpell rows of `PORTING-MAP.md`.
    The hotkeys and settings pages of a feature come with that feature. ~~Output history can be done too~~ done 2026-11-09 (see
    the OutputHistory note of `PORTING-MAP.md`); only the Console tab is ConEmu.
+7. Found by the review of 2026-11-13 (Progress above). Not in the audit, because the audit checked only what each
+   `PORTING-MAP.md` row listed as not ported, and these sit between rows. In this order:
+   1. **Errors that nothing catches.** Upstream's `Program.Main` sends every UI-thread exception (`Application.ThreadException`)
+      and every terminating one (`AppDomain.UnhandledException`) to `BugReportInvoker.Report`. The shell has no handler at all
+      (no `Dispatcher.UIThread.UnhandledException`, no `AppDomain.UnhandledException`). An exception outside `UiActions.Run`
+      therefore ends the process without a message, and the 11 tasks the app starts as `_ = ...Async()` lose theirs without
+      a trace. Port, as a `BugReportInvoker` row in `PORTING-MAP.md`: its rules (cancellation is not reported, git failures are
+      the user's and show the command, arguments and folder, `WriteErrorLog`), upstream's `BugReportForm` as a window (copy
+      the details, the GitHub issue link from `ErrorReportUrlBuilder`), and both handlers in `App`. Then send the discarded
+      tasks through `UiActions.Run` or the same report. `ErrorWindow`, used in 65 places, shows only `ex.Message`; for a git
+      failure it should show upstream's details too.
+   2. **Dubious ownership.** When git refuses a repository owned by another user (`safe.directory`), upstream's
+      `ReportDubiousOwnership` offers to add it to the global config. The shell shows git's message only. This is more
+      common off Windows (external disks, clones made by another user or by a container), so it affects first use.
+   3. **Enter and Escape.** `DeleteBranchWindow` and `DeleteRemoteBranchWindow` lack upstream's `AcceptButton` (Delete), and
+      `AvailableEncodingsWindow` lacks both `AcceptButton` and `CancelButton`. Every other ported form with either one has
+      `IsDefault`/`IsCancel` or a key handler (FormStash sets `CancelButton = null`).
+   4. **Screen readers.** A WinForms toolstrip button is announced by its `Text`, also when it shows only its image (47 such
+      items in upstream's designers). The shell's image-only tool buttons (about 90 of 107) have no text, and the shell sets
+      no `AutomationProperties.Name` anywhere, so a reader most likely announces nothing useful. Not checked yet: first a
+      headless test that reads each toolbar button's automation name, then set the name from the tooltip in `ToolButton`,
+      `ToolToggleButton`, `ToolDropDownButton` and `ToolSplitButton`. Check with VoiceOver on the Mac and Narrator on Windows.
+      Upstream's 5 `AccessibleName`s come along.
 
 **Windows only: do not start from the Mac** (`MACOS.md`, section 7): FormClone's PuTTY prompts, the process dialog's PuTTY
 retry, the PuTTY menu items, "Download Git", the HOME check and FormFixHome's search, the checklist's installer rows and
