@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace GitExtensions.Xplat.Core.Repository;
 
 /// <summary>

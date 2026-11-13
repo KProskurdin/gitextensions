@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core;

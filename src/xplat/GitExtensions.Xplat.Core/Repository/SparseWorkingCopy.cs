@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitExtensions.Extensibility;
 

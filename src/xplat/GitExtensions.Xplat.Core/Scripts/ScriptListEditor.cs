@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitUI.ScriptsEngine;
 
 namespace GitExtensions.Xplat.Core.Scripts;
@@ -181,7 +182,7 @@ public sealed class ScriptListItem(ScriptDefinition script) : ObservableObject
         set();
         foreach (string property in _properties)
         {
-            RaisePropertyChanged(property);
+            OnPropertyChanged(property);
         }
     }
 }

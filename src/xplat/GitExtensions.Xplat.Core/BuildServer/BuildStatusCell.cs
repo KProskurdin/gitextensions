@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitExtensions.Extensibility.BuildServerIntegration;
 
 namespace GitExtensions.Xplat.Core.BuildServer;
@@ -58,12 +59,12 @@ public sealed class BuildStatusCell : ObservableObject
     private void Show(BuildInfo? info)
     {
         _info = info;
-        RaisePropertyChanged(nameof(Info));
-        RaisePropertyChanged(nameof(Status));
-        RaisePropertyChanged(nameof(Symbol));
-        RaisePropertyChanged(nameof(Text));
-        RaisePropertyChanged(nameof(Tooltip));
-        RaisePropertyChanged(nameof(Url));
-        RaisePropertyChanged(nameof(PullRequestUrl));
+        OnPropertyChanged(nameof(Info));
+        OnPropertyChanged(nameof(Status));
+        OnPropertyChanged(nameof(Symbol));
+        OnPropertyChanged(nameof(Text));
+        OnPropertyChanged(nameof(Tooltip));
+        OnPropertyChanged(nameof(Url));
+        OnPropertyChanged(nameof(PullRequestUrl));
     }
 }

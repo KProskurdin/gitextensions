@@ -133,6 +133,8 @@
     <PackageReference Include="EnvDTE" />
     <!-- Upstream's encrypted build server credentials on Windows (BuildServer/BuildServerCredentialStore.cs). -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+    <!-- The base of the view models, which live here without UI types (PLAN.md principle 6). -->
+    <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 
   <ItemGroup>

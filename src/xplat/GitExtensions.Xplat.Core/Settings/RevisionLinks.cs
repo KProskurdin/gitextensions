@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitCommands.ExternalLinks;
 using GitCommands.Git;
@@ -322,7 +323,7 @@ public sealed class RevisionLinkItem : ObservableObject
     private void Change(Action change, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
     {
         change();
-        RaisePropertyChanged(propertyName);
+        OnPropertyChanged(propertyName);
     }
 }
 

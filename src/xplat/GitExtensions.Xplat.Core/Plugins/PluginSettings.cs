@@ -1,4 +1,5 @@
 using System.Reflection;
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Settings;
@@ -119,7 +120,7 @@ public sealed class PluginSettingRow : ObservableObject
         {
             if (SetProperty(ref _text, value))
             {
-                RaisePropertyChanged(nameof(IsValid));
+                OnPropertyChanged(nameof(IsValid));
             }
         }
     }

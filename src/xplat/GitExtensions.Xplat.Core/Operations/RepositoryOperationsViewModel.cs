@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands.Git;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
@@ -105,7 +106,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         {
             if (SetProperty(ref _remoteState, value))
             {
-                RaisePropertyChanged(nameof(CanCancel));
+                OnPropertyChanged(nameof(CanCancel));
             }
         }
     }

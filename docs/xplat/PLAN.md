@@ -67,8 +67,9 @@ changes most often. That is why the plan keeps the WinForms UI untouched and bui
    without Avalonia types, and its view binds to it (compiled bindings, `x:DataType`, commands
    with `CanExecute`). An existing one that is reworked (new behavior, a layout change, or its
    logic rewritten; not a small fix) moves to MVVM in the same change. Code-behind keeps only view
-   concerns. View models are tested with plain NUnit tests. Until the base is decided (section
-   12.6, step 1) it is the core's `ObservableObject`, never mixed with another MVVM library.
+   concerns. View models are tested with plain NUnit tests. They use CommunityToolkit.Mvvm
+   (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`; section 9, question 17), and no
+   other MVVM library.
 
 ## 4. Repository layout (target)
 
@@ -228,7 +229,8 @@ WinForms shell calls the same services where practical.
 
 Started 2026-10-03: `src/xplat/GitExtensions.Xplat.Core` holds `ICommitHistory` with `GitCommitHistory`
 (the history reads, moved out of the app), `CommitListViewModel` (commit list, paging, selection,
-details, errors, with no UI types) and `ObservableObject`. The app's window is a view over the view model.
+details, errors, with no UI types) and `ObservableObject` (replaced by CommunityToolkit.Mvvm's on 2026-11-13, principle 6). The
+app's window is a view over the view model.
 Continued 2026-10-03: `Repository/IRepositoryService` with `GitRepositoryService` (snapshot: current branch,
 local and remote branches, changed files with kind and staged state) and `RepositoryViewModel`. The window
 shows the branch and the changes in a left panel. Open stays disabled while either panel is loading.
@@ -923,6 +925,11 @@ These change the plan. Each has a recommendation, but the choice is the user's.
     ones that the edit did not reach. Turn `xplat.yml` back on. If run time or notification noise is the reason, keep
     `workflow_dispatch` and push to `feature/**`, and drop the nightly `schedule` until question 13 is settled. If CI stays off,
     MAC1's exit changes to "Windows and Linux suites run by hand before each push", and every status report says which OS ran.
+17. **The base of the view models.** *Decided 2026-11-13 (the user):* CommunityToolkit.Mvvm, the default of Avalonia's
+    documentation and templates: source-generated properties (`[ObservableProperty]`) and commands (`[RelayCommand]`, with
+    `CanExecute`). The core's own `ObservableObject` was replaced by the toolkit's the same day (16 types; its
+    `RaisePropertyChanged` is the toolkit's `OnPropertyChanged`), so the app has one MVVM base. The version is set in
+    `src/xplat/Directory.Packages.props`, and `GitExtensions.Xplat.Core` references the package.
 
 ## 10. Risks
 
@@ -1129,7 +1136,7 @@ new and reworked UI (principle 6) applies from now on.
 
 Where it stands: the logic is out of the windows (M2). `GitExtensions.Xplat.Core` has seven view models (`CommitListViewModel`,
 `RepositoryViewModel`, `RepositoryOperationsViewModel`, `DiffViewModel`, `DashboardViewModel`, `FileBrowserViewModel`,
-`RecentRepositoriesViewModel`) and 32 `*Dialog` models, on the core's own `ObservableObject`, tested without a UI. The windows
+`RecentRepositoriesViewModel`) and 32 `*Dialog` models, on CommunityToolkit.Mvvm's `ObservableObject`, tested without a UI. The windows
 do not bind to them: no command is bound in XAML, `DataContext` is set in two places, and about 42,000 lines of code-behind
 (8,800 in `MainWindow`, 767 `Click` handlers) copy view model state into controls by hand.
 
@@ -1141,8 +1148,8 @@ What it would bring:
 - Design data for the XAML previewer, which can already open every window (`DesignTime.cs`).
 
 Steps:
-1. Decide the base: the core's `ObservableObject`, or CommunityToolkit.Mvvm (source-generated properties and `[RelayCommand]`,
-   the default of Avalonia's documentation). Not both. Record it in section 9 as a new question.
+1. *Done 2026-11-13:* the base is CommunityToolkit.Mvvm (section 9, question 17). The core's own `ObservableObject` was replaced
+   by the toolkit's, so there is one MVVM base.
 2. A pilot on one mid-sized dialog: bind `CreateBranchWindow` to `CreateBranchDialog` (properties, commands with `CanExecute`,
    `x:DataType`, design data). Measure the code-behind removed and the test time saved, and decide from that whether to go on.
 3. *Decided 2026-11-13 (the user), in force before the pilot:* new UI uses MVVM, and a window or control that is reworked

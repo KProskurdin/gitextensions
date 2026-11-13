@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text;
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitExtensions.Extensibility.BuildServerIntegration;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.BuildServer;

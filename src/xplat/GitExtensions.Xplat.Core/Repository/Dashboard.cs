@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands.UserRepositoryHistory;
 using HistoryEntry = GitCommands.UserRepositoryHistory.Repository;
 
@@ -228,7 +229,7 @@ public sealed class DashboardViewModel : ObservableObject
         }
 
         Groups = groups;
-        RaisePropertyChanged(nameof(HasInvalid));
+        OnPropertyChanged(nameof(HasInvalid));
     }
 
     // Upstream's PreRenderRepositories: filtered by path, then the splitter's top and other repositories with its captions.

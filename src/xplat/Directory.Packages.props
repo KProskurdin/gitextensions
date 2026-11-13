@@ -18,5 +18,7 @@
     <!-- One UI font on every OS: some Linux installs have no sans-serif font, and the UI then falls back to monospace. -->
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.3" />
     <PackageVersion Include="Avalonia.Headless.NUnit" Version="12.1.3" />
+    <!-- MVVM for the app's view models (PLAN.md principle 6): ObservableObject, [ObservableProperty], [RelayCommand]. -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 </Project>

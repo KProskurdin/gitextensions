@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
 
@@ -170,14 +171,14 @@ public sealed class RepoObjectNode : ObservableObject
         if (_isHidden != isHidden)
         {
             _isHidden = isHidden;
-            RaisePropertyChanged(nameof(IsHidden));
-            RaisePropertyChanged(nameof(Image));
+            OnPropertyChanged(nameof(IsHidden));
+            OnPropertyChanged(nameof(Image));
         }
 
         if (_hiddenToolTip != toolTip)
         {
             _hiddenToolTip = toolTip;
-            RaisePropertyChanged(nameof(ToolTip));
+            OnPropertyChanged(nameof(ToolTip));
         }
     }
 
@@ -199,11 +200,11 @@ public sealed class RepoObjectNode : ObservableObject
         _mergedToolTip = mergedToolTip;
         if (wasMerged != IsMerged)
         {
-            RaisePropertyChanged(nameof(IsMerged));
-            RaisePropertyChanged(nameof(Image));
+            OnPropertyChanged(nameof(IsMerged));
+            OnPropertyChanged(nameof(Image));
         }
 
-        RaisePropertyChanged(nameof(ToolTip));
+        OnPropertyChanged(nameof(ToolTip));
     }
 
     /// <summary>
