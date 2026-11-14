@@ -168,7 +168,7 @@ internal sealed class GitConfigToolRowsTests
         _ = cancelled.ShowDialog<bool>(owner);
         ListBox available = Find<ListBox>(cancelled, "ListAvailableEncodings");
         available.SelectedIndex = 0;
-        Find<Button>(cancelled, "ToLeft").IsEnabled.Should().BeTrue();
+        Find<Button>(cancelled, "ToLeft").IsEffectivelyEnabled.Should().BeTrue();
         Click(cancelled, "ToLeft");
         Click(cancelled, "ButtonCancel");
         AppSettings.AvailableEncodings.Values.Should().Equal(before);
@@ -180,7 +180,7 @@ internal sealed class GitConfigToolRowsTests
         Encoding added = (Encoding)available.SelectedItem!;
         Click(window, "ToLeft");
         Find<ListBox>(window, "ListIncludedEncodings").SelectedItem = added;
-        Find<Button>(window, "ToRight").IsEnabled.Should().Be(AvailableEncodingsDialog.CanRemove(added));
+        Find<Button>(window, "ToRight").IsEffectivelyEnabled.Should().Be(AvailableEncodingsDialog.CanRemove(added));
         Click(window, "ButtonOk");
 
         AppSettings.AvailableEncodings.Should().ContainKey(added.WebName);

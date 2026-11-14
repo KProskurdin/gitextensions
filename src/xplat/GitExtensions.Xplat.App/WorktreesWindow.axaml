@@ -2,7 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.WorktreesWindow"
+        x:DataType="vm:WorktreesViewModel"
         Title="Existing worktrees"
         Width="710" Height="400" MinWidth="710" MinHeight="200" CanMaximize="False" WindowStartupLocation="CenterOwner">
   <Window.Styles>
@@ -12,12 +14,15 @@
     </Style>
   </Window.Styles>
   <!-- Upstream's FormManageWorktree: the worktrees with their path, type, branch and SHA-1, Delete selected and Open
-       selected under them on the right, and Prune deleted worktrees and Create... at the bottom. -->
+       selected under them on the right, and Prune deleted worktrees and Create... at the bottom. Bound to
+       WorktreesViewModel (PLAN.md principle 6). -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Button x:Name="PruneButton" Content="_Prune deleted worktrees" VerticalAlignment="Center" />
-        <Button x:Name="CreateButton" Grid.Column="2" MinWidth="100" VerticalAlignment="Center">
+        <Button x:Name="PruneButton" Content="_Prune deleted worktrees" VerticalAlignment="Center"
+                Command="{Binding PruneCommand}" />
+        <Button x:Name="CreateButton" Grid.Column="2" MinWidth="100" VerticalAlignment="Center"
+                Command="{Binding CreateCommand}">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage FileStatusAdded}" Width="16" Height="16" />
             <AccessText Text="_Create..." VerticalAlignment="Center" />
@@ -39,7 +44,7 @@
           <TextBlock Grid.Column="2" Text="Branch" FontWeight="SemiBold" Margin="0,0,12,0" />
           <TextBlock Grid.Column="3" Text="SHA-1" FontWeight="SemiBold" />
         </Grid>
-        <ListBox x:Name="WorktreeList">
+        <ListBox x:Name="WorktreeList" ItemsSource="{Binding Worktrees}" SelectedIndex="{Binding SelectedIndex}">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="repo:WorktreeInfo">
               <Grid Classes.deleted="{Binding IsDeleted}">
@@ -60,13 +65,13 @@
         </ListBox>
       </DockPanel>
       <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="3">
-        <Button x:Name="DeleteButton" MinWidth="112">
+        <Button x:Name="DeleteButton" MinWidth="112" Command="{Binding DeleteCommand}">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage DeleteFile}" Width="16" Height="16" />
             <AccessText Text="_Delete selected" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <Button x:Name="OpenButton" MinWidth="108" IsDefault="True">
+        <Button x:Name="OpenButton" MinWidth="108" IsDefault="True" Command="{Binding OpenCommand}">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
             <AccessText Text="_Open selected" VerticalAlignment="Center" />

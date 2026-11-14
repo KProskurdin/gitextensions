@@ -35,10 +35,21 @@ internal sealed class FakeDialogHost : IDialogHost
         return Task.CompletedTask;
     }
 
-    public Task<bool> ConfirmAsync(string text, string? caption = null)
+    public Task<bool> ConfirmAsync(string text, string? caption = null, bool defaultIsNo = false)
     {
         Questions.Add(text);
         return Task.FromResult(Answer);
+    }
+
+    /// <summary>
+    ///  The answer to every Yes, No and Cancel question: Yes unless a test says otherwise.
+    /// </summary>
+    public bool? ThreeWayAnswer { get; set; } = true;
+
+    public Task<bool?> AskAsync(string text, string? caption = null, bool defaultIsNo = false)
+    {
+        Questions.Add(text);
+        return Task.FromResult(ThreeWayAnswer);
     }
 
     public void ShowError(Exception exception) => Errors.Add(exception);

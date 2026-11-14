@@ -1,33 +1,35 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.AddToGitIgnoreWindow"
-        Title="Add file(s) to .gitignore"
+        x:DataType="vm:AddToGitIgnoreViewModel"
+        Title="{Binding Title}"
         Width="599" Height="341" MinWidth="400" MinHeight="300" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormAddToGitIgnore: the patterns to ignore, the preview of the files they match (with the count, or the
-       "no match" note over the empty list), and Ignore and Cancel. -->
+       "no match" note over the empty list), and Ignore and Cancel. Bound to AddToGitIgnoreViewModel (PLAN.md principle 6). -->
   <DockPanel>
     <HeaderedContentControl x:Name="groupFilePattern" DockPanel.Dock="Top" Classes="groupBox"
                             Header="Enter a file pattern to ignore:" Margin="3,0,3,3">
-      <TextBox x:Name="FilePattern" AcceptsReturn="True" TextWrapping="NoWrap" Height="71" />
+      <TextBox x:Name="FilePattern" AcceptsReturn="True" TextWrapping="NoWrap" Height="71" Text="{Binding PatternText}" />
     </HeaderedContentControl>
     <Grid x:Name="panel1" DockPanel.Dock="Bottom" Height="44">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="22"
                   Margin="0,0,22,0">
         <Button x:Name="AddToIgnore" Width="110" Height="25" HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center" Content="Ignore" IsDefault="True" />
+                VerticalContentAlignment="Center" Content="Ignore" IsDefault="True" Command="{Binding AddToIgnoreCommand}" />
         <Button x:Name="btnCancel" Width="110" Height="25" HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center" Content="Cancel" IsCancel="True" />
+                VerticalContentAlignment="Center" Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}" />
       </StackPanel>
     </Grid>
     <HeaderedContentControl x:Name="groupBox1" Classes="groupBox" Header="Preview" Margin="3,0,3,0">
       <DockPanel>
         <TextBlock x:Name="_NO_TRANSLATE_filesWillBeIgnored" DockPanel.Dock="Bottom" HorizontalAlignment="Right"
-                   Text="(matched files count)" />
+                   Text="{Binding PreviewText}" />
         <Panel>
-          <ListBox x:Name="_NO_TRANSLATE_Preview" />
+          <ListBox x:Name="_NO_TRANSLATE_Preview" ItemsSource="{Binding PreviewItems}" IsEnabled="{Binding IsPreviewReady}" />
           <Border x:Name="noMatchPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10,5"
-                  Background="{DynamicResource PanelBackgroundBrush}" IsVisible="False">
+                  Background="{DynamicResource PanelBackgroundBrush}" IsVisible="{Binding NoMatch}">
             <StackPanel Orientation="Horizontal" Spacing="0">
               <Image Source="{local:UpstreamImage Unmerged}" Width="16" Height="16" />
               <TextBlock x:Name="label2" Margin="0,0,0,0" Opacity="0.6" VerticalAlignment="Center"

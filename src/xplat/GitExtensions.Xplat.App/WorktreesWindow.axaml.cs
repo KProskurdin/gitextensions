@@ -5,17 +5,13 @@ using GitExtensions.Xplat.Core.Repository;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormManageWorktree</c> in the new shell (rules in <see cref="ManageWorktreeDialog"/>): the worktrees,
-///  open or delete the selected one, prune the deleted ones and create one, through upstream's <see cref="WorktreeFlow"/>.
-///  Closes after a worktree is opened; <see cref="ShouldRefresh"/> says whether one was created.
+///  Upstream's <c>FormManageWorktree</c> in the new shell, bound to <see cref="WorktreesViewModel"/> (rules in
+///  <see cref="ManageWorktreeDialog"/>): the worktrees, open or delete the selected one, prune the deleted ones and create
+///  one, through upstream's <see cref="WorktreeFlow"/>. Closes after a worktree is opened; <see cref="ShouldRefresh"/> says
+///  whether one was created.
 /// </summary>
 public partial class WorktreesWindow : Window
 {
-    private readonly string _repositoryPath;
-    private readonly IRepositoryService _repositoryService;
-    private readonly WorktreeFlow _flow;
-    private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
     /// </summary>
@@ -26,86 +22,43 @@ public partial class WorktreesWindow : Window
 
     public WorktreesWindow(string repositoryPath, IRepositoryService repositoryService, WorktreeFlow flow)
     {
-        _repositoryPath = repositoryPath;
-        _repositoryService = repositoryService;
-        _flow = flow;
+        ViewModel = new WorktreesViewModel(new WindowDialogHost(this), repositoryPath, repositoryService,
+            new OwnedWorktreeActions(flow, this));
+        DataContext = ViewModel;
         InitializeComponent();
         InitialFocus.Attach(this, () => WorktreeList);
-        WorktreeList.SelectionChanged += (_, _) => UpdateButtons();
-        WorktreeList.DoubleTapped += (_, _) => Run(OpenSelectedAsync);
-        OpenButton.Click += (_, _) => Run(OpenSelectedAsync);
-        DeleteButton.Click += (_, _) => Run(DeleteSelectedAsync);
-        PruneButton.Click += (_, _) => Run(PruneAsync);
-        CreateButton.Click += (_, _) => Run(CreateAsync);
-        Opened += (_, _) => Run(LoadAsync);
-        UpdateButtons();
+        WorktreeList.DoubleTapped += (_, _) => ViewModel.OpenCommand.Execute(null);
+        Opened += (_, _) => _ = ViewModel.LoadAsync();
     }
+
+    public WorktreesViewModel ViewModel { get; }
 
     /// <summary>
     ///  The worktrees on show.
     /// </summary>
-    public IReadOnlyList<WorktreeInfo> Worktrees { get; private set; } = [];
+    public IReadOnlyList<WorktreeInfo> Worktrees => ViewModel.Worktrees;
 
     /// <summary>
     ///  Upstream's <c>ShouldRefreshRevisionGrid</c>: a worktree was created, so its new branch shows in the grid.
     /// </summary>
-    public bool ShouldRefresh { get; private set; }
+    public bool ShouldRefresh => ViewModel.ShouldRefresh;
 
     /// <summary>
     ///  Completes when the worktrees are first shown, for tests.
     /// </summary>
-    public Task WorktreesLoaded => _loaded.Task;
+    public Task WorktreesLoaded => ViewModel.Loaded;
 
-    private void Run(Func<Task> action) =>
-        UiActions.Run(action, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
-
-    // Upstream's Initialize: the worktrees, and Prune only when one other than the main one lost its folder.
-    private async Task LoadAsync()
+    // The flow's questions and windows are owned by this window.
+    private sealed class OwnedWorktreeActions(WorktreeFlow flow, Window owner) : IWorktreeActions
     {
-        Worktrees = await _repositoryService.GetWorktreesAsync(_repositoryPath);
-        WorktreeList.ItemsSource = Worktrees;
-        PruneButton.IsEnabled = ManageWorktreeDialog.CanPrune(Worktrees);
-        UpdateButtons();
-        _loaded.TrySetResult();
-    }
+        public Task<bool> SwitchAsync(string worktreePath) => flow.SwitchAsync(owner, worktreePath);
 
-    private void UpdateButtons()
-    {
-        OpenButton.IsEnabled = ManageWorktreeDialog.CanOpen(Worktrees, WorktreeList.SelectedIndex, _repositoryPath);
-        DeleteButton.IsEnabled = ManageWorktreeDialog.CanDelete(Worktrees, WorktreeList.SelectedIndex, _repositoryPath);
-    }
+        public Task<bool> DeleteAsync(string repositoryPath, string worktreePath)
+            => flow.DeleteAsync(owner, repositoryPath, worktreePath);
 
-    private async Task OpenSelectedAsync()
-    {
-        if (ManageWorktreeDialog.CanOpen(Worktrees, WorktreeList.SelectedIndex, _repositoryPath)
-            && await _flow.SwitchAsync(this, Worktrees[WorktreeList.SelectedIndex].Path))
-        {
-            Close();
-        }
-    }
+        public Task<bool> PruneAsync(string repositoryPath) => flow.PruneAsync(repositoryPath);
 
-    private async Task DeleteSelectedAsync()
-    {
-        if (ManageWorktreeDialog.CanDelete(Worktrees, WorktreeList.SelectedIndex, _repositoryPath)
-            && await _flow.DeleteAsync(this, _repositoryPath, Worktrees[WorktreeList.SelectedIndex].Path))
-        {
-            await LoadAsync();
-        }
-    }
-
-    private async Task PruneAsync()
-    {
-        await _flow.PruneAsync(_repositoryPath);
-        await LoadAsync();
-    }
-
-    private async Task CreateAsync()
-    {
-        if (await _flow.CreateAsync(this, _repositoryPath,
-                ManageWorktreeDialog.MainWorktreePath(Worktrees, _repositoryPath)))
-        {
-            ShouldRefresh = true;
-            await LoadAsync();
-        }
+        public Task<bool> CreateAsync(string repositoryPath, string mainWorktreePath)
+            => flow.CreateAsync(owner, repositoryPath, mainWorktreePath);
     }
 }

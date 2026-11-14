@@ -1,25 +1,27 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.ApplyPatchWindow"
-        Title="Apply patch"
+        x:DataType="vm:ApplyPatchViewModel"
+        Title="{Binding Title}"
         Width="711" Height="436" MinWidth="720" MinHeight="410" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormApplyPatch: the patch file or directory with Browse, Apply with its options, the patches of the
        git am in progress, and the buttons to go on once it stopped. -->
   <Grid ColumnDefinitions="*,150" RowDefinitions="Auto,*" Margin="6">
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="4">
-      <RadioButton x:Name="PatchFileMode" GroupName="Mode" Content="Patch _file" IsChecked="True" />
-      <TextBox x:Name="PatchFile" Grid.Column="1" />
-      <Button x:Name="BrowsePatch" Grid.Column="2" Content="B_rowse" MinWidth="100" HorizontalContentAlignment="Center" />
-      <RadioButton x:Name="PatchDirMode" Grid.Row="1" GroupName="Mode" Content="Patch _directory" />
-      <TextBox x:Name="PatchDir" Grid.Row="1" Grid.Column="1" />
-      <Button x:Name="BrowseDir" Grid.Row="1" Grid.Column="2" Content="Bro_wse" MinWidth="100"
+      <RadioButton x:Name="PatchFileMode" IsChecked="{Binding IsFileMode}" IsEnabled="{Binding Buttons.Apply}" GroupName="Mode" Content="Patch _file" />
+      <TextBox x:Name="PatchFile" Text="{Binding PatchFile}" IsEnabled="{Binding Buttons.FileBox}" Grid.Column="1" />
+      <Button x:Name="BrowsePatch" Command="{Binding BrowsePatchCommand}" IsEnabled="{Binding Buttons.FileBox}" Grid.Column="2" Content="B_rowse" MinWidth="100" HorizontalContentAlignment="Center" />
+      <RadioButton x:Name="PatchDirMode" IsChecked="{Binding IsFileMode, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:False}}" IsEnabled="{Binding Buttons.Apply}" Grid.Row="1" GroupName="Mode" Content="Patch _directory" />
+      <TextBox x:Name="PatchDir" Text="{Binding PatchDir}" IsEnabled="{Binding Buttons.DirectoryBox}" Grid.Row="1" Grid.Column="1" />
+      <Button x:Name="BrowseDir" Command="{Binding BrowseDirCommand}" IsEnabled="{Binding Buttons.DirectoryBox}" Grid.Row="1" Grid.Column="2" Content="Bro_wse" MinWidth="100"
               HorizontalContentAlignment="Center" />
     </Grid>
     <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
-      <Button x:Name="Apply" Content="Apply patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-      <CheckBox x:Name="IgnoreWhitespace" Content="_Ignore Wh.spc." />
-      <CheckBox x:Name="SignOff" Content="Sign-_Off" />
+      <Button x:Name="Apply" Command="{Binding ApplyCommand}" IsEnabled="{Binding Buttons.Apply}" Content="Apply patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <CheckBox x:Name="IgnoreWhitespace" IsChecked="{Binding IgnoreWhitespace}" IsEnabled="{Binding Buttons.Apply}" Content="_Ignore Wh.spc." />
+      <CheckBox x:Name="SignOff" IsChecked="{Binding SignOff}" IsEnabled="{Binding Buttons.Apply}" Content="Sign-_Off" />
     </StackPanel>
     <DockPanel Grid.Row="1" Margin="0,6,0,0">
       <Grid DockPanel.Dock="Top" ColumnDefinitions="70,120,*,140,110" Margin="4,0">
@@ -48,22 +50,22 @@
       </ListBox>
     </DockPanel>
     <StackPanel Grid.Row="1" Grid.Column="1" Spacing="2" Margin="6,6,0,0">
-      <Button x:Name="SolveMergeConflicts" IsVisible="False" MinHeight="78" HorizontalAlignment="Stretch"
+      <Button x:Name="SolveMergeConflicts" Command="{Binding SolveConflictsCommand}" IsVisible="{Binding Buttons.UnresolvedConflicts}" MinHeight="78" HorizontalAlignment="Stretch"
               HorizontalContentAlignment="Center">
         <TextBlock x:Name="SolveMergeConflictsText" Text="There are unresolved merge conflicts" TextWrapping="Wrap"
                    TextAlignment="Center" />
       </Button>
-      <Button x:Name="Abort" Content="A_bort patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-      <Button x:Name="Skip" Content="S_kip patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <Button x:Name="Abort" Command="{Binding AbortCommand}" IsEnabled="{Binding Buttons.Abort}" Content="A_bort patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      <Button x:Name="Skip" Command="{Binding SkipCommand}" IsEnabled="{Binding Buttons.Skip}" Content="S_kip patch" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
       <Border x:Name="ContinuePanel" Padding="1">
-        <Button x:Name="Resolved" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+        <Button x:Name="Resolved" Command="{Binding ResolvedCommand}" IsEnabled="{Binding Buttons.Resolved}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
           <AccessText x:Name="ResolvedText" Text="Conflicts resolved" />
         </Button>
       </Border>
-      <Button x:Name="AddFiles" Content="_Add files" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+      <Button x:Name="AddFiles" Command="{Binding AddFilesCommand}" IsEnabled="{Binding Buttons.AddFiles}" Content="_Add files" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
               Margin="0,15,0,0" />
       <Border x:Name="MergeToolPanel" Padding="1" Margin="0,15,0,0">
-        <Button x:Name="Mergetool" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+        <Button x:Name="Mergetool" Command="{Binding SolveConflictsCommand}" IsEnabled="{Binding Buttons.Mergetool}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
           <AccessText x:Name="MergetoolText" Text="_Solve conflicts" />
         </Button>
       </Border>

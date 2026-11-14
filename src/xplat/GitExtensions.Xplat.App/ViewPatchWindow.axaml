@@ -1,25 +1,59 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
+        xmlns:git="using:GitExtensions.Extensibility.Git"
         x:Class="GitExtensions.Xplat.App.ViewPatchWindow"
+        x:DataType="vm:ViewPatchViewModel"
         Title="View patch"
         Width="689" Height="501" MinWidth="300" MinHeight="250" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormViewPatch: the patch file with Browse, its file patches (file name, change, type; sortable), and the
-       selected one's diff below. -->
+       selected one's diff below. Bound to ViewPatchViewModel (PLAN.md principle 6). -->
   <Grid RowDefinitions="Auto,270,5,*" Margin="3">
     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="6" Margin="0,0,0,4">
       <TextBlock x:Name="labelPatch" Text="Patch" VerticalAlignment="Center" />
-      <TextBox x:Name="PatchFileNameEdit" Grid.Column="1" />
-      <Button x:Name="BrowsePatch" Grid.Column="2" Content="Browse" MinWidth="100" HorizontalContentAlignment="Center" />
+      <TextBox x:Name="PatchFileNameEdit" Grid.Column="1" Text="{Binding PatchFile}" />
+      <Button x:Name="BrowsePatch" Grid.Column="2" Content="Browse" MinWidth="100" HorizontalContentAlignment="Center"
+              Command="{Binding BrowseCommand}" />
     </Grid>
     <DockPanel Grid.Row="1">
       <Grid DockPanel.Dock="Top" ColumnDefinitions="*,70,50">
-        <Button x:Name="FileNameA" Content="Filename" Classes="tool" HorizontalAlignment="Stretch" />
+        <Button x:Name="FileNameA" Content="Filename" Classes="tool" HorizontalAlignment="Stretch"
+                Command="{Binding SortByCommand}">
+          <Button.CommandParameter>
+            <x:Int32>0</x:Int32>
+          </Button.CommandParameter>
+        </Button>
         <Button x:Name="typeDataGridViewTextBoxColumn" Grid.Column="1" Content="Change" Classes="tool"
-                HorizontalAlignment="Stretch" />
-        <Button x:Name="File" Grid.Column="2" Content="Type" Classes="tool" HorizontalAlignment="Stretch" />
+                HorizontalAlignment="Stretch" Command="{Binding SortByCommand}">
+          <Button.CommandParameter>
+            <x:Int32>1</x:Int32>
+          </Button.CommandParameter>
+        </Button>
+        <Button x:Name="File" Grid.Column="2" Content="Type" Classes="tool" HorizontalAlignment="Stretch"
+                Command="{Binding SortByCommand}">
+          <Button.CommandParameter>
+            <x:Int32>2</x:Int32>
+          </Button.CommandParameter>
+        </Button>
       </Grid>
-      <ListBox x:Name="GridChangedFiles" />
+      <ListBox x:Name="GridChangedFiles" ItemsSource="{Binding Patches}" SelectedItem="{Binding SelectedPatch}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="git:Patch">
+            <Grid ColumnDefinitions="*,70,50">
+              <Grid.Styles>
+                <Style Selector="TextBlock">
+                  <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                  <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+              </Grid.Styles>
+              <TextBlock Text="{Binding FileNameA}" />
+              <TextBlock Grid.Column="1" Text="{Binding ChangeType}" />
+              <TextBlock Grid.Column="2" Text="{Binding FileType}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </DockPanel>
     <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
     <local:DiffView x:Name="ChangesList" Grid.Row="3" />

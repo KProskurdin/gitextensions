@@ -1,20 +1,18 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Threading;
+using Avalonia.Interactivity;
 using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>SearchWindow</c> with its <c>SearchControl</c>, for "Find file": while the user types, the first
-///  matches drop down below the text box, the first one selected; Up and Down move through them, Enter (or a double-click)
-///  takes the selected one and Escape closes without one. Upstream has no translation for it (a generic form).
+///  Upstream's <c>SearchWindow</c> with its <c>SearchControl</c>, for "Find file", bound to <see cref="SearchViewModel"/>:
+///  while the user types, the first matches drop down below the text box; Up and Down move through them, Enter (or a
+///  double-click) takes the selected one and Escape closes without one. Upstream has no translation for it (a generic
+///  form).
 /// </summary>
 public partial class SearchWindow : Window
 {
-    private readonly Func<string, IEnumerable<string>> _getCandidates;
-    private int _searchVersion;
-
     public SearchWindow()
         : this(_ => [])
     {
@@ -23,23 +21,27 @@ public partial class SearchWindow : Window
     /// <param name="getCandidates">The matches for a text; called off the UI thread, as upstream's AsyncLoader does.</param>
     public SearchWindow(Func<string, IEnumerable<string>> getCandidates)
     {
-        _getCandidates = getCandidates;
+        ViewModel = new SearchViewModel(new WindowDialogHost(this), getCandidates);
+        DataContext = ViewModel;
         InitializeComponent();
-        txtSearchBox.TextChanged += (_, _) => Search(txtSearchBox.Text ?? "");
-        txtSearchBox.AddHandler(KeyDownEvent, OnSearchBoxKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        listBoxSearchResult.DoubleTapped += (_, _) => TakeSelected();
+
+        // View concerns: the text box's keys (it would handle Up, Down and Enter itself), and the double-click.
+        txtSearchBox.AddHandler(KeyDownEvent, OnSearchBoxKeyDown, RoutingStrategies.Tunnel);
+        listBoxSearchResult.DoubleTapped += (_, _) => ViewModel.TakeCommand.Execute(null);
         InitialFocus.Attach(this, () => txtSearchBox);
     }
+
+    public SearchViewModel ViewModel { get; }
 
     /// <summary>
     ///  The match the user took; null when the window was closed without one.
     /// </summary>
-    public string? SelectedItem { get; private set; }
+    public string? SelectedItem => ViewModel.SelectedItem;
 
     /// <summary>
     ///  The search of the latest text: done once its matches show.
     /// </summary>
-    public Task Searched { get; private set; } = Task.CompletedTask;
+    public Task Searched => ViewModel.Searched;
 
     /// <summary>
     ///  Shows the window over <paramref name="owner"/> and returns the match the user took.
@@ -50,62 +52,27 @@ public partial class SearchWindow : Window
         return SelectedItem;
     }
 
-    // Upstream's txtSearchBox_TextChange and SearchForCandidates: the first matches of the latest text.
-    private void Search(string text)
-    {
-        int version = ++_searchVersion;
-        Searched = SearchAsync();
-        return;
-
-        async Task SearchAsync()
-        {
-            List<string> candidates = await Task.Run(() => _getCandidates(text).Take(FindFile.MaxCandidates).ToList());
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                if (version != _searchVersion)
-                {
-                    return;
-                }
-
-                listBoxSearchResult.ItemsSource = candidates;
-                listBoxSearchResult.SelectedIndex = candidates.Count > 0 ? 0 : -1;
-                listBoxSearchResult.IsVisible = candidates.Count > 0;
-            });
-        }
-    }
-
     // Upstream's txtSearchBox_KeyDown and txtSearchBox_KeyUp.
     private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
     {
-        int count = listBoxSearchResult.ItemCount;
         switch (e.Key)
         {
-            case Key.Down when count > 1:
-                listBoxSearchResult.SelectedIndex = (listBoxSearchResult.SelectedIndex + 1) % count;
+            case Key.Down when ViewModel.Candidates.Count > 1:
                 e.Handled = true;
+                ViewModel.MoveDownCommand.Execute(null);
                 break;
-            case Key.Up when count > 1:
-                listBoxSearchResult.SelectedIndex = listBoxSearchResult.SelectedIndex - 1 < 0
-                    ? count - 1
-                    : listBoxSearchResult.SelectedIndex - 1;
+            case Key.Up when ViewModel.Candidates.Count > 1:
                 e.Handled = true;
+                ViewModel.MoveUpCommand.Execute(null);
                 break;
             case Key.Enter:
                 e.Handled = true;
-                TakeSelected();
+                ViewModel.TakeCommand.Execute(null);
                 break;
             case Key.Escape:
                 e.Handled = true;
-                SelectedItem = null;
-                Close();
+                ViewModel.CancelCommand.Execute(null);
                 break;
         }
-    }
-
-    // Upstream's ItemSelectedFromList: the selected match, then the window closes (with none when nothing matched).
-    private void TakeSelected()
-    {
-        SelectedItem = listBoxSearchResult.IsVisible ? listBoxSearchResult.SelectedItem as string : null;
-        Close();
     }
 }

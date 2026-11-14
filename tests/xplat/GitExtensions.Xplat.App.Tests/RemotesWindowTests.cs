@@ -3,6 +3,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;

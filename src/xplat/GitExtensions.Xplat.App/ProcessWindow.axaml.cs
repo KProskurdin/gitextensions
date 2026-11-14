@@ -7,13 +7,11 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Shows the output of a remote operation (fetch, pull, push, clone) while git runs: the new shell's version of upstream
-///  <c>FormRemoteProcess</c>. Abort stops git. Closing the window does not stop the operation.
+///  <c>FormRemoteProcess</c>, bound to <see cref="ProcessViewModel"/>. Abort stops git. Closing the window does not stop
+///  the operation.
 /// </summary>
 public partial class ProcessWindow : Window
 {
-    private readonly RepositoryOperationsViewModel _actions;
-    private readonly IAppPreferences _preferences;
-
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
     /// </summary>
@@ -24,76 +22,44 @@ public partial class ProcessWindow : Window
 
     public ProcessWindow(RepositoryOperationsViewModel actions, IAppPreferences preferences)
     {
-        _actions = actions;
-        _preferences = preferences;
+        ViewModel = new ProcessViewModel(new WindowDialogHost(this), actions, preferences);
+        DataContext = ViewModel;
         InitializeComponent();
-        AbortButton.Click += (_, _) => _actions.Cancel();
-        CloseButton.Click += (_, _) => Close();
-        KeepDialogOpen.IsChecked = !_preferences.CloseProcessDialog;
-        KeepDialogOpen.IsCheckedChanged += (_, _) => KeepDialogOpenChanged();
-        _actions.PropertyChanged += OnActionsChanged;
-        Closed += (_, _) => _actions.PropertyChanged -= OnActionsChanged;
-        ShowOutput();
-        ShowState();
-    }
 
-    // Upstream's KeepDialogOpen_CheckedChanged: turned off when the operation has already succeeded, the dialog closes as it
-    // would have.
-    private void KeepDialogOpenChanged()
-    {
-        _preferences.CloseProcessDialog = KeepDialogOpen.IsChecked != true;
-        _preferences.Save();
-        if (_preferences.CloseProcessDialog && _actions.RemoteState == RemoteOperationState.Succeeded)
+        // View concerns: the newest line in view, and the state in the theme's colors.
+        ViewModel.PropertyChanged += OnViewModelChanged;
+        Closed += (_, _) =>
         {
-            Close();
-        }
+            ViewModel.PropertyChanged -= OnViewModelChanged;
+            ViewModel.Detach();
+        };
+        ShowLastLine();
+        ShowStateColor();
     }
 
-    private void OnActionsChanged(object? sender, PropertyChangedEventArgs e)
+    public ProcessViewModel ViewModel { get; }
+
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
-            case nameof(RepositoryOperationsViewModel.OutputLines):
-                ShowOutput();
+            case nameof(ProcessViewModel.OutputLines):
+                ShowLastLine();
                 break;
-            case nameof(RepositoryOperationsViewModel.RemoteState):
-            case nameof(RepositoryOperationsViewModel.ErrorMessage):
-                ShowState();
+            case nameof(ProcessViewModel.IsFailed):
+                ShowStateColor();
                 break;
         }
     }
 
-    private void ShowOutput()
+    private void ShowLastLine()
     {
-        OutputList.ItemsSource = _actions.OutputLines;
-        if (_actions.OutputLines.Count > 0)
+        if (ViewModel.OutputLines.Count > 0)
         {
-            OutputList.ScrollIntoView(_actions.OutputLines.Count - 1);
+            OutputList.ScrollIntoView(ViewModel.OutputLines.Count - 1);
         }
     }
 
-    private void ShowState()
-    {
-        Title = _actions.OutputTitle;
-        RemoteOperationState state = _actions.RemoteState;
-        StateText.Text = state switch
-        {
-            RemoteOperationState.Running => "Running...",
-            RemoteOperationState.Succeeded => "Done",
-            RemoteOperationState.Cancelled => "Aborted",
-            RemoteOperationState.Failed => "Failed" + (_actions.ErrorMessage is { } error ? $": {error}" : ""),
-            _ => "",
-        };
-        StateText.Foreground = state == RemoteOperationState.Failed ? ThemeBrushes.Current.Removed : ThemeBrushes.Current.Context;
-        AbortButton.IsEnabled = _actions.CanCancel;
-        CloseButton.IsEnabled = state != RemoteOperationState.Running;
-
-        // Upstream hides it for a dialog that ignores the setting (useDialogSettings: false).
-        KeepDialogOpen.IsVisible = !_actions.KeepOutputOpen;
-
-        if (state == RemoteOperationState.Succeeded && _preferences.CloseProcessDialog && !_actions.KeepOutputOpen)
-        {
-            Close();
-        }
-    }
+    private void ShowStateColor()
+        => StateText.Foreground = ViewModel.IsFailed ? ThemeBrushes.Current.Removed : ThemeBrushes.Current.Context;
 }

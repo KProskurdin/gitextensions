@@ -185,6 +185,9 @@ internal sealed class VerifyDatabaseWindowTests
         Click(window, "Remove");
         CloseMessageBox(window, "YesButton");
         WaitUntil(() => commands.Count == 1);
+
+        // The window is disabled while it reads the objects again after the prune.
+        WaitUntil(() => window.ObjectsLoaded.IsCompleted);
         Click(window, "SaveObjects");
         WaitUntil(() => commands.Count == 2);
 

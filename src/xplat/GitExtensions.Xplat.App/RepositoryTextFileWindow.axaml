@@ -1,17 +1,21 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.RepositoryTextFileWindow"
+        x:DataType="vm:RepositoryTextFileViewModel"
+        Title="{Binding Title}"
         Width="634" Height="474" WindowStartupLocation="CenterOwner">
-  <!-- Upstream's FormGitAttributes and FormMailMap: the file's text on the left, upstream's help and Save on the right. -->
+  <!-- Upstream's FormGitAttributes and FormMailMap: the file's text on the left, upstream's help and Save on the right.
+       Bound to RepositoryTextFileViewModel (PLAN.md principle 6). -->
   <Grid ColumnDefinitions="381,4,*">
-    <TextBox x:Name="FileText" AcceptsReturn="True" TextWrapping="NoWrap"
+    <TextBox x:Name="FileText" AcceptsReturn="True" TextWrapping="NoWrap" Text="{Binding Text}"
              FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}"
              FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" />
     <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
     <DockPanel Grid.Column="2" Margin="3,9,6,9">
       <Button x:Name="Save" DockPanel.Dock="Bottom" Content="Save" MinWidth="75" HorizontalAlignment="Center"
-              HorizontalContentAlignment="Center" />
-      <TextBlock x:Name="label1" TextWrapping="Wrap" />
+              HorizontalContentAlignment="Center" Command="{Binding SaveCommand}" />
+      <TextBlock x:Name="label1" TextWrapping="Wrap" Text="{Binding Help}" />
     </DockPanel>
   </Grid>
 </Window>

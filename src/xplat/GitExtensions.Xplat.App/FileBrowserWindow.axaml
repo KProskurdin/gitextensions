@@ -1,32 +1,36 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+        xmlns:vm="using:GitExtensions.Xplat.Core.CommitHistory"
         x:Class="GitExtensions.Xplat.App.FileBrowserWindow"
-        Title="Files"
+        x:DataType="vm:FileBrowserViewModel"
+        Title="{Binding Title}"
         Width="960" Height="620">
+  <!-- The files of a commit and the history of the one selected. Bound to FileBrowserViewModel (PLAN.md principle 6). -->
   <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" Margin="0,0,0,8" />
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" Margin="0,0,0,8" Text="{Binding ErrorMessage}" />
     <Grid ColumnDefinitions="*,12,*">
       <DockPanel Grid.Column="0" LastChildFill="True">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
           <TextBlock Text="Files in this commit" FontWeight="Bold" VerticalAlignment="Center" />
-          <Button x:Name="BlameButton" Content="Blame" IsEnabled="False" />
+          <Button x:Name="BlameButton" Content="Blame" Command="{Binding BlameCommand}" />
         </StackPanel>
-        <ListBox x:Name="FileList" />
+        <ListBox x:Name="FileList" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" />
       </DockPanel>
       <DockPanel Grid.Column="2" LastChildFill="True">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
           <TextBlock Text="History of the selected file" FontWeight="Bold" VerticalAlignment="Center" />
-          <Button x:Name="ShowHistoryDiffButton" Content="Show diff" />
+          <Button x:Name="ShowHistoryDiffButton" Content="Show diff" Command="{Binding ShowHistoryDiffCommand}" />
         </StackPanel>
         <!-- Upstream FormFileHistory's rename choices (followrenamesinfilehistory, ...exactonly). -->
         <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
-          <CheckBox x:Name="FollowRenamesCheck" Content="Detect and follow renames" Margin="0,0,12,0" />
-          <CheckBox x:Name="ExactRenamesCheck" Content="Detect and follow - exact renames and copies only" />
+          <CheckBox x:Name="FollowRenamesCheck" Content="Detect and follow renames" Margin="0,0,12,0"
+                    IsChecked="{Binding FollowRenames}" />
+          <CheckBox x:Name="ExactRenamesCheck" Content="Detect and follow - exact renames and copies only"
+                    IsChecked="{Binding ExactRenamesOnly}" IsEnabled="{Binding FollowRenames}" />
         </WrapPanel>
-        <ListBox x:Name="HistoryList">
+        <ListBox x:Name="HistoryList" ItemsSource="{Binding FileHistory}" SelectedItem="{Binding SelectedHistoryRow}">
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="core:CommitRow">
+            <DataTemplate x:DataType="vm:CommitRow">
               <Grid ColumnDefinitions="90,*,160,140" Margin="4,2">
                 <TextBlock Grid.Column="0" Text="{Binding ShortHash}" FontFamily="{DynamicResource MonospaceFontFamily}" FontWeight="{DynamicResource MonospaceFontWeight}" FontStyle="{DynamicResource MonospaceFontStyle}" FontSize="{DynamicResource MonospaceFontSize}" />
                 <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />

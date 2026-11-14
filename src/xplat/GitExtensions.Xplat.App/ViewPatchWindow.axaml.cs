@@ -1,9 +1,6 @@
+using System.ComponentModel;
 using Avalonia.Controls;
-using Avalonia.Controls.Templates;
-using Avalonia.Layout;
-using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
@@ -12,16 +9,12 @@ using GitExtensions.Xplat.Ui;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormViewPatch</c> (reading in <see cref="ViewPatchDialog"/>): a patch file's file patches, sortable by
-///  file name, change and type as upstream's grid columns, and the selected one's diff.
+///  Upstream's <c>FormViewPatch</c>, bound to <see cref="ViewPatchViewModel"/> (reading in <see cref="ViewPatchDialog"/>):
+///  a patch file's file patches, sortable by file name, change and type as upstream's grid columns, and the selected one's
+///  diff.
 /// </summary>
 public partial class ViewPatchWindow : Window
 {
-    private readonly GitModule _module;
-    private IReadOnlyList<Patch> _patches = [];
-    private int? _sortColumn;
-    private bool _descending;
-
     public ViewPatchWindow()
         : this("", null)
     {
@@ -31,30 +24,35 @@ public partial class ViewPatchWindow : Window
     /// <param name="patchFile">The patch file shown at first (upstream's <c>LoadPatch</c>), or null.</param>
     public ViewPatchWindow(string repositoryPath, string? patchFile)
     {
-        _module = GitModules.Open(repositoryPath);
-        InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormViewPatch");
-        InitialFocus.Attach(this);
-        GridChangedFiles.ItemTemplate = new FuncDataTemplate<Patch>((patch, _) => PatchRow(patch));
-        GridChangedFiles.SelectionChanged += (_, _) => ShowSelectedPatch();
-        FileNameA.Click += (_, _) => SortBy(0);
-        typeDataGridViewTextBoxColumn.Click += (_, _) => SortBy(1);
-        File.Click += (_, _) => SortBy(2);
-        BrowsePatch.Click += (_, _) => UiActions.Run(BrowseAsync, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
-        if (patchFile is not null)
+        ViewModel = new ViewPatchViewModel(new WindowDialogHost(this), GitModules.Open(repositoryPath), patchFile)
         {
-            PatchFileNameEdit.Text = patchFile;
-            LoadPatchFile();
-        }
+            PickPatchFile = PickPatchFileAsync,
+        };
+        DataContext = ViewModel;
+        InitializeComponent();
+        UpstreamTranslation.Apply(this, ViewPatchViewModel.Category);
+        InitialFocus.Attach(this);
+
+        // View concern: the diff control shows the selected file patch (upstream's ViewFixedPatch).
+        ViewModel.PropertyChanged += OnViewModelChanged;
     }
+
+    public ViewPatchViewModel ViewModel { get; }
 
     /// <summary>
     ///  The file patches as listed.
     /// </summary>
-    public IReadOnlyList<Patch> Patches => GridChangedFiles.ItemsSource as IReadOnlyList<Patch> ?? [];
+    public IReadOnlyList<Patch> Patches => ViewModel.Patches;
 
-    // Upstream's BrowsePatch_Click: a .patch file, then the list (read again even when cancelled, as upstream's).
-    private async Task BrowseAsync()
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewPatchViewModel.SelectedPatch) && ViewModel.SelectedPatch is { } patch)
+        {
+            ChangesList.ShowPatch(patch.FileNameB ?? "", patch.Text ?? "");
+        }
+    }
+
+    private async Task<string?> PickPatchFileAsync()
     {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -67,77 +65,6 @@ public partial class ViewPatchWindow : Window
                 },
             ],
         });
-        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
-        {
-            PatchFileNameEdit.Text = path;
-        }
-
-        LoadPatchFile();
-    }
-
-    // Upstream's LoadPatchFile.
-    private void LoadPatchFile()
-    {
-        _patches = ViewPatchDialog.Read(PatchFileNameEdit.Text ?? "", () => _module.FilesEncoding);
-        ShowPatches();
-    }
-
-    // Upstream's SortablePatchesList: a header click sorts by its column, a second click the other way.
-    private void SortBy(int column)
-    {
-        _descending = _sortColumn == column && !_descending;
-        _sortColumn = column;
-        ShowPatches();
-    }
-
-    private void ShowPatches()
-    {
-        IEnumerable<Patch> patches = _patches;
-        if (_sortColumn is { } column)
-        {
-            Func<Patch, string> key = patch => Columns(patch)[column];
-            patches = _descending
-                ? patches.OrderByDescending(key, StringComparer.Ordinal)
-                : patches.OrderBy(key, StringComparer.Ordinal);
-        }
-
-        GridChangedFiles.ItemsSource = patches.ToList();
-    }
-
-    // Upstream's GridChangedFiles_SelectionChanged: ViewFixedPatch of the selected file patch.
-    private void ShowSelectedPatch()
-    {
-        if (GridChangedFiles.SelectedItem is Patch patch)
-        {
-            ChangesList.ShowPatch(patch.FileNameB ?? "", patch.Text ?? "");
-        }
-    }
-
-    // Upstream's columns: FileNameA, ChangeType and FileType.
-    private static string[] Columns(Patch patch)
-        => [patch.FileNameA ?? "", patch.ChangeType.ToString(), patch.FileType.ToString()];
-
-    private static Control PatchRow(Patch? patch)
-    {
-        Grid row = new() { ColumnDefinitions = new ColumnDefinitions("*,70,50") };
-        if (patch is null)
-        {
-            return row;
-        }
-
-        string[] texts = Columns(patch);
-        for (int column = 0; column < texts.Length; column++)
-        {
-            TextBlock text = new()
-            {
-                Text = texts[column],
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            Grid.SetColumn(text, column);
-            row.Children.Add(text);
-        }
-
-        return row;
+        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
     }
 }

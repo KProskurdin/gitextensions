@@ -3,22 +3,26 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.ReflogWindow"
+        x:DataType="repo:ReflogViewModel"
         Title="Reflog"
         Width="782" Height="555" MinWidth="400" MinHeight="200" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormReflog: the warning about local changes, the reference with the current branch and HEAD links, and
-       the reflog with its context menu, which a click opens too. -->
+       the reflog with its context menu, which a click opens too. Bound to ReflogViewModel (PLAN.md principle 6). -->
   <Grid RowDefinitions="Auto,40,*" ColumnDefinitions="Auto,*">
-    <TextBlock x:Name="DirtyWarningText" Grid.ColumnSpan="2" IsVisible="False" Margin="3,0" TextAlignment="Center"
+    <TextBlock x:Name="DirtyWarningText" Grid.ColumnSpan="2" IsVisible="{Binding IsDirty}" Margin="3,0" TextAlignment="Center"
                TextWrapping="Wrap"
                Text="Warning: you've got changes in your working directory that could be lost if you want to reset the current branch to another commit.&#10;Stash them before if you don't want to lose them." />
     <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="4">
       <TextBlock Text="Reference:" VerticalAlignment="Center" />
-      <ComboBox x:Name="ReferencesBox" Width="272" VerticalAlignment="Center" />
+      <ComboBox x:Name="ReferencesBox" Width="272" VerticalAlignment="Center" ItemsSource="{Binding References}"
+                SelectedItem="{Binding SelectedReference}" />
     </StackPanel>
     <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="4">
       <TextBlock Text="Display reflog for:" VerticalAlignment="Center" />
-      <HyperlinkButton x:Name="CurrentBranchLink" Padding="0" VerticalAlignment="Center" />
-      <HyperlinkButton x:Name="HeadLink" Content="HEAD" Padding="0" VerticalAlignment="Center" />
+      <HyperlinkButton x:Name="CurrentBranchLink" Padding="0" VerticalAlignment="Center" Content="{Binding CurrentBranchText}"
+                       IsVisible="{Binding IsOnBranch}" Command="{Binding ShowCurrentBranchCommand}" />
+      <HyperlinkButton x:Name="HeadLink" Content="HEAD" Padding="0" VerticalAlignment="Center"
+                       Command="{Binding ShowHeadCommand}" />
     </StackPanel>
     <DockPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="3" Grid.IsSharedSizeScope="True">
       <Grid DockPanel.Dock="Top" Margin="4,0">
@@ -31,14 +35,15 @@
         <TextBlock Grid.Column="1" Text="Ref" FontWeight="SemiBold" Margin="0,0,12,0" />
         <TextBlock Grid.Column="2" Text="Action" FontWeight="SemiBold" />
       </Grid>
-      <ListBox x:Name="EntryList">
+      <ListBox x:Name="EntryList" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}">
         <ListBox.ContextMenu>
           <ContextMenu x:Name="EntryMenu">
-            <MenuItem x:Name="CopyShaMenuItem" Header="Copy SHA-1" Icon="{local:UpstreamIcon CommitId}" />
+            <MenuItem x:Name="CopyShaMenuItem" Header="Copy SHA-1" Icon="{local:UpstreamIcon CommitId}"
+                      Command="{Binding CopyShaCommand}" />
             <MenuItem x:Name="CreateBranchMenuItem" Header="Create a branch on this commit..."
-                      Icon="{local:UpstreamIcon BranchCreate}" />
+                      Icon="{local:UpstreamIcon BranchCreate}" Command="{Binding CreateBranchCommand}" />
             <MenuItem x:Name="ResetBranchMenuItem" Header="Reset current branch to this commit..."
-                      Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" />
+                      Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" Command="{Binding ResetCurrentBranchCommand}" />
           </ContextMenu>
         </ListBox.ContextMenu>
         <ListBox.ItemTemplate>

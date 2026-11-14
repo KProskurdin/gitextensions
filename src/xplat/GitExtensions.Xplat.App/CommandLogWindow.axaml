@@ -1,7 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.CommandLogWindow"
+        x:DataType="vm:CommandLogViewModel"
+        Topmost="{Binding AlwaysOnTop}"
         Title="Git Command Log"
         Width="659" Height="470" ShowInTaskbar="True">
   <!-- Upstream's FormGitCommandLog: the command log and the command cache on two tabs, each a list above the selected
@@ -27,40 +30,40 @@
   </Window.Styles>
   <DockPanel>
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12" Margin="4,2,4,2">
-      <CheckBox x:Name="chkAlwaysOnTop" Content="Always on top" />
-      <CheckBox x:Name="chkWordWrap" Content="Word wrap" IsChecked="True" />
-      <CheckBox x:Name="chkCaptureCallStacks" Content="Capture call stacks" />
+      <CheckBox x:Name="chkAlwaysOnTop" IsChecked="{Binding AlwaysOnTop}" Content="Always on top" />
+      <CheckBox x:Name="chkWordWrap" Content="Word wrap" IsChecked="{Binding WordWrap}" />
+      <CheckBox x:Name="chkCaptureCallStacks" IsChecked="{Binding CaptureCallStacks}" Content="Capture call stacks" />
     </StackPanel>
-    <TabControl x:Name="TabControl" Padding="0">
+    <TabControl x:Name="TabControl" SelectedIndex="{Binding SelectedTab}" Padding="0">
       <TabItem x:Name="tabPageCommandLog" Header="Command log">
         <Grid RowDefinitions="*,4,150">
-          <ListBox x:Name="LogItems" Classes="log">
+          <ListBox x:Name="LogItems" ItemsSource="{Binding LogRows}" SelectedIndex="{Binding SelectedLogIndex}" Classes="log">
             <ListBox.ContextMenu>
               <ContextMenu x:Name="contextMenu">
-                <MenuItem x:Name="mnuSaveToFile" Header="_Save to file" InputGesture="{local:CommandGesture S}"
+                <MenuItem x:Name="mnuSaveToFile" Command="{Binding SaveToFileCommand}" Header="_Save to file" InputGesture="{local:CommandGesture S}"
                           Icon="{local:UpstreamIcon SaveAs}" />
-                <MenuItem x:Name="mnuCopyCommandLine" Header="_Copy full command line" InputGesture="{local:CommandGesture C}"
+                <MenuItem x:Name="mnuCopyCommandLine" Command="{Binding CopyCommandLineCommand}" Header="_Copy full command line" InputGesture="{local:CommandGesture C}"
                           Icon="{local:UpstreamIcon CopyToClipboard}" />
-                <MenuItem x:Name="mnuClear" Header="C_lear" InputGesture="{local:CommandGesture L}" Icon="{local:UpstreamIcon ClearLog}" />
+                <MenuItem x:Name="mnuClear" Command="{Binding ClearCommand}" Header="C_lear" InputGesture="{local:CommandGesture L}" Icon="{local:UpstreamIcon ClearLog}" />
               </ContextMenu>
             </ListBox.ContextMenu>
           </ListBox>
           <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-          <TextBox x:Name="LogOutput" Grid.Row="2" Classes="detail" />
+          <TextBox x:Name="LogOutput" Text="{Binding LogDetail, Mode=OneWay}" Grid.Row="2" Classes="detail" />
         </Grid>
       </TabItem>
       <TabItem x:Name="tabPageCommandCache" Header="Command cache">
         <Grid RowDefinitions="183,4,*">
-          <ListBox x:Name="CommandCacheItems" Classes="log">
+          <ListBox x:Name="CommandCacheItems" ItemsSource="{Binding CacheRows}" SelectedIndex="{Binding SelectedCacheIndex}" Classes="log">
             <ListBox.ContextMenu>
               <ContextMenu x:Name="cmsCache">
-                <MenuItem x:Name="tsmiClearCache" Header="C_lear" InputGesture="{local:CommandGesture L}"
+                <MenuItem x:Name="tsmiClearCache" Command="{Binding ClearCacheCommand}" Header="C_lear" InputGesture="{local:CommandGesture L}"
                           Icon="{local:UpstreamIcon ClearLog}" />
               </ContextMenu>
             </ListBox.ContextMenu>
           </ListBox>
           <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
-          <TextBox x:Name="commandCacheOutput" Grid.Row="2" Classes="detail" />
+          <TextBox x:Name="commandCacheOutput" Text="{Binding CacheDetail, Mode=OneWay}" Grid.Row="2" Classes="detail" />
         </Grid>
       </TabItem>
     </TabControl>

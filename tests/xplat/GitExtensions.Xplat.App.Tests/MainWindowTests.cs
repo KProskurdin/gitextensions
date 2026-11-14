@@ -920,7 +920,7 @@ internal sealed class MainWindowTests
         ListBox fileList = files.FindControl<ListBox>("FileList")!;
         WaitUntil(() => fileList.ItemCount == 1);
         fileList.SelectedIndex = 0;
-        WaitUntil(() => files.FindControl<Button>("BlameButton")!.IsEnabled);
+        WaitUntil(() => files.FindControl<Button>("BlameButton")!.IsEffectivelyEnabled);
 
         Click(files, "BlameButton");
         WaitUntil(() => files.OwnedWindows.OfType<BlameWindow>().Any());
@@ -1385,8 +1385,8 @@ internal sealed class MainWindowTests
             WaitUntil(() => Find<TextBlock>(process, "StateText").Text == "Done");
 
             Find<ListBox>(process, "OutputList").ItemCount.Should().BeGreaterThan(0);
-            Find<Button>(process, "CloseButton").IsEnabled.Should().BeTrue();
-            Find<Button>(process, "AbortButton").IsEnabled.Should().BeFalse();
+            Find<Button>(process, "CloseButton").IsEffectivelyEnabled.Should().BeTrue();
+            Find<Button>(process, "AbortButton").IsEffectivelyEnabled.Should().BeFalse();
             process.Title.Should().StartWith("Push ");
             process.Close();
         }

@@ -2155,7 +2155,7 @@ public partial class MainWindow : Window
         {
             await _actions.StopBisectAsync(path);
         }
-        else if (step is { } mark && BisectWindow.OptionFor(mark) is { } option)
+        else if (step is { } mark && BisectViewModel.OptionFor(mark) is { } option)
         {
             await _actions.MarkBisectAsync(path, option);
         }

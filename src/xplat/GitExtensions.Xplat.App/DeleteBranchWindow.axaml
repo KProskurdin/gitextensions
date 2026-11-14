@@ -1,26 +1,32 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.DeleteBranchWindow"
+        x:DataType="vm:DeleteBranchViewModel"
         Title="Delete branch"
         Width="420" SizeToContent="Height" MinWidth="420" MaxWidth="950" CanMinimize="False" CanMaximize="False"
         WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormDeleteBranch: its BranchComboBox (the branches' names with spaces between, and a button for
-       upstream's FormSelectMultipleBranches), and Delete at the bottom right. -->
+       upstream's FormSelectMultipleBranches), and Delete at the bottom right. Bound to DeleteBranchViewModel (PLAN.md
+       principle 6). -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             Padding="9,8">
       <Grid ColumnDefinitions="Auto,*">
         <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
         <Panel Grid.Column="1">
-          <Button x:Name="Delete" Content="_Delete" MinWidth="75" IsDefault="True" HorizontalAlignment="Right" HorizontalContentAlignment="Center" />
+          <Button x:Name="Delete" Content="_Delete" MinWidth="75" IsDefault="True" HorizontalAlignment="Right" HorizontalContentAlignment="Center"
+                  Command="{Binding DeleteCommand}" />
         </Panel>
       </Grid>
     </Border>
     <Grid ColumnDefinitions="Auto,*,Auto" Margin="9" ColumnSpacing="4">
       <Label x:Name="labelSelectBranches" Content="Select _branches" Target="Branches" VerticalAlignment="Center" Padding="0" />
-      <ComboBox x:Name="Branches" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
-      <Button x:Name="selectMultipleBranchesButton" Grid.Column="2" Padding="3" VerticalAlignment="Center">
+      <ComboBox x:Name="Branches" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch"
+                ItemsSource="{Binding Branches}" Text="{Binding BranchesText, Mode=TwoWay}" />
+      <Button x:Name="selectMultipleBranchesButton" Grid.Column="2" Padding="3" VerticalAlignment="Center"
+              Command="{Binding SelectMultipleBranchesCommand}">
         <Image Source="{local:UpstreamImage SelectBranch}" Width="16" Height="16" />
       </Button>
     </Grid>

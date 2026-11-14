@@ -1,14 +1,20 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.BisectWindow"
+        x:DataType="vm:BisectViewModel"
         Title="Bisect"
         Width="260" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
-  <!-- Upstream FormBisect: one button per step, in its order. -->
+  <!-- Upstream FormBisect: one button per step, in its order. Bound to BisectViewModel (PLAN.md principle 6). -->
   <StackPanel Margin="12" Spacing="4">
-    <Button x:Name="StartButton" Content="Start bisect" HorizontalAlignment="Stretch" />
-    <Button x:Name="BadButton" Content="Mark current revision _bad" HorizontalAlignment="Stretch" />
-    <Button x:Name="GoodButton" Content="Mark current revision _good" HorizontalAlignment="Stretch" />
-    <Button x:Name="SkipButton" Content="_Skip current revision" HorizontalAlignment="Stretch" />
-    <Button x:Name="StopButton" Content="Stop bisect" HorizontalAlignment="Stretch" Margin="0,0,0,4" />
+    <Button x:Name="StartButton" Content="Start bisect" HorizontalAlignment="Stretch" Command="{Binding StartCommand}" />
+    <Button x:Name="BadButton" Content="Mark current revision _bad" HorizontalAlignment="Stretch"
+            Command="{Binding MarkCommand}" CommandParameter="{x:Static vm:BisectStep.Bad}" />
+    <Button x:Name="GoodButton" Content="Mark current revision _good" HorizontalAlignment="Stretch"
+            Command="{Binding MarkCommand}" CommandParameter="{x:Static vm:BisectStep.Good}" />
+    <Button x:Name="SkipButton" Content="_Skip current revision" HorizontalAlignment="Stretch"
+            Command="{Binding MarkCommand}" CommandParameter="{x:Static vm:BisectStep.Skip}" />
+    <Button x:Name="StopButton" Content="Stop bisect" HorizontalAlignment="Stretch" Margin="0,0,0,4"
+            Command="{Binding StopCommand}" />
   </StackPanel>
 </Window>

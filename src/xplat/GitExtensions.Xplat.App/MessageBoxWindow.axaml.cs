@@ -2,18 +2,19 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using GitExtensions.Xplat.Core.Presentation;
 using DialogResult = System.Windows.Forms.DialogResult;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 using MessageBoxDefaultButton = System.Windows.Forms.MessageBoxDefaultButton;
 using TaskDialogButton = System.Windows.Forms.TaskDialogButton;
-using TaskDialogCommandLinkButton = System.Windows.Forms.TaskDialogCommandLinkButton;
 using TaskDialogPage = System.Windows.Forms.TaskDialogPage;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  The new shell's WinForms message box, for the message boxes upstream code shows (the shared core and plugins): the
-///  text, the caption as title, and WinForms' buttons. <see cref="Result"/> is the button pressed.
+///  The new shell's WinForms message box, bound to <see cref="MessageBoxViewModel"/>, for the message boxes upstream code
+///  shows (the shared core and plugins): the text, the caption as title, and WinForms' buttons. <see cref="Result"/> is
+///  the button pressed.
 /// </summary>
 public partial class MessageBoxWindow : Window
 {
@@ -26,45 +27,17 @@ public partial class MessageBoxWindow : Window
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
     /// </summary>
     [Obsolete(DesignTime.ConstructorOnly)]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
     public MessageBoxWindow() => InitializeComponent();
+#pragma warning restore CS8618
 
     public MessageBoxWindow(string text, string caption, MessageBoxButtons buttons,
         MessageBoxDefaultButton defaultButton = MessageBoxDefaultButton.Button1)
     {
+        ViewModel = new MessageBoxViewModel(new WindowDialogHost(this), text, caption, buttons, defaultButton);
+        DataContext = ViewModel;
         InitializeComponent();
-        Title = string.IsNullOrEmpty(caption) ? "Git Extensions" : caption;
-        MessageText.Text = text;
-
-        IReadOnlyList<DialogResult> results = ButtonsOf(buttons);
-        int defaultIndex = defaultButton switch
-        {
-            MessageBoxDefaultButton.Button2 => 1,
-            MessageBoxDefaultButton.Button3 => 2,
-            _ => 0,
-        };
-
-        // As WinForms: closing the box is Cancel when there is a Cancel button; with OK alone it is OK.
-        Result = results.Contains(DialogResult.Cancel) ? DialogResult.Cancel
-            : results is [DialogResult.OK] ? DialogResult.OK
-            : DialogResult.None;
-        for (int index = 0; index < results.Count; index++)
-        {
-            DialogResult result = results[index];
-            Button button = new()
-            {
-                Content = TextOf(result),
-                Name = $"{result}Button",
-                MinWidth = 80,
-                IsDefault = index == Math.Min(defaultIndex, results.Count - 1),
-                IsCancel = result == DialogResult.Cancel,
-            };
-            button.Click += (_, _) =>
-            {
-                Result = result;
-                Close(result);
-            };
-            ButtonsPanel.Children.Add(button);
-        }
+        AddButtons();
     }
 
     /// <summary>
@@ -74,80 +47,62 @@ public partial class MessageBoxWindow : Window
     /// </summary>
     public MessageBoxWindow(TaskDialogPage page)
     {
+        ViewModel = new MessageBoxViewModel(new WindowDialogHost(this), page);
+        DataContext = ViewModel;
         InitializeComponent();
-        Title = string.IsNullOrEmpty(page.Caption) ? "Git Extensions" : page.Caption;
-        HeadingText.Text = page.Heading;
-        HeadingText.IsVisible = !string.IsNullOrEmpty(page.Heading);
-        MessageText.Text = page.Text;
-        if (page.Verification is { } verification)
-        {
-            VerificationCheck.Content = new AccessText { Text = verification.Text?.Replace('&', '_') };
-            VerificationCheck.IsChecked = verification.Checked;
-            VerificationCheck.IsVisible = true;
-            Closed += (_, _) => verification.Checked = VerificationCheck.IsChecked == true;
-        }
+        AddButtons();
+        Closed += (_, _) => ViewModel.OnClosed();
+    }
 
-        for (int index = 0; index < page.Buttons.Count; index++)
-        {
-            TaskDialogButton choice = page.Buttons[index];
-            bool isCommandLink = choice is TaskDialogCommandLinkButton;
+    public MessageBoxViewModel ViewModel { get; }
 
-            // WinForms' access keys are '&', Avalonia's '_'.
-            AccessText label = new() { Text = choice.Text?.Replace('&', '_') };
+    /// <summary>
+    ///  The button pressed, or the result of closing the box.
+    /// </summary>
+    public DialogResult Result => ViewModel.Result;
+
+    /// <summary>
+    ///  The task dialog button pressed.
+    /// </summary>
+    public TaskDialogButton ChosenButton => ViewModel.ChosenButton;
+
+    // View concern: the buttons are made from the choices, named as WinForms' results, and press the choice's command.
+    private void AddButtons()
+    {
+        foreach (MessageBoxChoice choice in ViewModel.Choices)
+        {
+            // A task dialog's buttons have access keys (WinForms' '&', which the view model turned into Avalonia's '_'); a
+            // message box's are plain text, as WinForms shows them.
+            AccessText label = new() { Text = choice.Text };
             Button button = new()
             {
-                Content = isCommandLink
-                    ? CommandLinkContent(label, ((TaskDialogCommandLinkButton)choice).DescriptionText)
+                Content = choice.TaskButton is null ? choice.Text
+                    : choice.IsCommandLink ? CommandLinkContent(label, choice.Description)
                     : label,
                 MinWidth = 80,
-                IsDefault = page.DefaultButton is { } defaultButton ? choice == defaultButton : index == 0,
-                IsCancel = choice == TaskDialogButton.Cancel || choice == TaskDialogButton.Close,
-                HorizontalAlignment = isCommandLink ? HorizontalAlignment.Stretch : HorizontalAlignment.Right,
-                HorizontalContentAlignment = isCommandLink ? HorizontalAlignment.Left : HorizontalAlignment.Center,
+                IsDefault = choice.IsDefault,
+                IsCancel = choice.IsCancel,
+                HorizontalAlignment = choice.IsCommandLink ? HorizontalAlignment.Stretch : HorizontalAlignment.Right,
+                HorizontalContentAlignment =
+                    choice.IsCommandLink ? HorizontalAlignment.Left : HorizontalAlignment.Center,
             };
-            if (isCommandLink)
+            if (choice.Name.Length > 0)
+            {
+                button.Name = choice.Name;
+            }
+
+            if (choice.IsCommandLink)
             {
                 button.Classes.Add("tool");
                 button.Padding = new Thickness(8, 6);
             }
 
-            button.Click += (_, _) =>
-            {
-                ChosenButton = choice;
-                Close();
-            };
-            (isCommandLink ? CommandLinksPanel : ButtonsPanel).Children.Add(button);
+            button.Click += (_, _) => ViewModel.ChooseCommand.Execute(choice);
+            (choice.IsCommandLink ? CommandLinksPanel : ButtonsPanel).Children.Add(button);
         }
 
         CommandLinksPanel.IsVisible = CommandLinksPanel.Children.Count > 0;
     }
-
-    /// <summary>
-    ///  The button pressed, or the result of closing the box.
-    /// </summary>
-    public DialogResult Result { get; private set; }
-
-    /// <summary>
-    ///  The task dialog button pressed.
-    /// </summary>
-    public TaskDialogButton ChosenButton { get; private set; } = TaskDialogButton.Cancel;
-
-    private static IReadOnlyList<DialogResult> ButtonsOf(MessageBoxButtons buttons) => buttons switch
-    {
-        MessageBoxButtons.OKCancel => [DialogResult.OK, DialogResult.Cancel],
-        MessageBoxButtons.AbortRetryIgnore => [DialogResult.Abort, DialogResult.Retry, DialogResult.Ignore],
-        MessageBoxButtons.YesNoCancel => [DialogResult.Yes, DialogResult.No, DialogResult.Cancel],
-        MessageBoxButtons.YesNo => [DialogResult.Yes, DialogResult.No],
-        MessageBoxButtons.RetryCancel => [DialogResult.Retry, DialogResult.Cancel],
-        MessageBoxButtons.CancelTryContinue => [DialogResult.Cancel, DialogResult.TryAgain, DialogResult.Continue],
-        _ => [DialogResult.OK],
-    };
-
-    private static string TextOf(DialogResult result) => result switch
-    {
-        DialogResult.TryAgain => "Try again",
-        _ => result.ToString(),
-    };
 
     // WinForms draws command links flat, with an arrow and a frame only under the pointer, and the description under the
     // text in a smaller font.
@@ -162,9 +117,7 @@ public partial class MessageBoxWindow : Window
 
         TextBlock descriptionText = new()
         {
-            Text = description,
-            FontSize = DescriptionFontSize,
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Text = description, FontSize = DescriptionFontSize, TextWrapping = Avalonia.Media.TextWrapping.Wrap,
         };
         return new StackPanel
         {

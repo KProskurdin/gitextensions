@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace GitExtensions.Xplat.App.Tests;
 
@@ -26,9 +28,13 @@ internal static class UiClicks
             return;
         }
 
-        control.RaiseEvent(new RoutedEventArgs(routedEvent));
-        if (routedEvent == MenuItem.ClickEvent && control is MenuItem { Command: ICommand command } item
-                                               && command.CanExecute(item.CommandParameter))
+        // A menu item's own click handling runs its command and marks the click handled; the command runs here only when
+        // it did not, so it never runs twice.
+        RoutedEventArgs args = new(routedEvent);
+        control.RaiseEvent(args);
+        if (!args.Handled && routedEvent == MenuItem.ClickEvent
+            && control is MenuItem { Command: ICommand command } item
+            && command.CanExecute(item.CommandParameter))
         {
             command.Execute(item.CommandParameter);
         }
@@ -39,10 +45,30 @@ internal static class UiClicks
         TopLevel window = TopLevel.GetTopLevel(button) ??
                           throw new InvalidOperationException($"{button.Name} is not shown");
 
-        // A window shown a moment ago may not be laid out yet, and the click goes to the button's place.
+        // A command that just finished (a message box was closed a moment ago) re-enables its button only once its
+        // continuation has run, and a window shown a moment ago may not be laid out yet; the click goes to the button's
+        // place.
+        Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
         Point middle = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)
                        ?? throw new InvalidOperationException($"{button.Name} is not in its window");
+
+        // The headless fonts are wider than a desktop's, so a row can put a button outside the window or under its
+        // neighbour, where no mouse reaches it; the click then runs the command as the button would (a hidden button stays
+        // unclickable).
+        if (!new Rect(window.ClientSize).Contains(middle)
+            || window.InputHitTest(middle) is not Visual hit
+            || (hit != button && !button.IsVisualAncestorOf(hit)))
+        {
+            if (button.IsEffectivelyVisible && button.IsEffectivelyEnabled
+                && button.Command!.CanExecute(button.CommandParameter))
+            {
+                button.Command.Execute(button.CommandParameter);
+            }
+
+            return;
+        }
+
         window.MouseDown(middle, MouseButton.Left);
         window.MouseUp(middle, MouseButton.Left);
     }

@@ -2,27 +2,32 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.PushWindow"
-        Title="Push"
+        x:DataType="vm:PushViewModel"
+        Title="{Binding Title}"
         Width="584" Height="290" MinWidth="584" MinHeight="290" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormPush: "Push to" (a remote or a URL), the tabs for branches, tags and several branches, and Pull on the
        left and Push on the right at the bottom. -->
   <Grid Margin="12,12,12,12" RowDefinitions="Auto,*,Auto">
     <HeaderedContentControl Classes="groupBox" Header="Push to">
       <Grid ColumnDefinitions="114,*,6,150" RowDefinitions="Auto,6,Auto">
-        <RadioButton x:Name="PushToRemoteRadio" GroupName="PushTo" Content="_Remote" IsChecked="True"
+        <RadioButton x:Name="PushToRemoteRadio" GroupName="PushTo" Content="_Remote"
+                     IsChecked="{Binding ToUrl, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:False}}"
                      ToolTip.Tip="Remote repository to push to" />
-        <ComboBox x:Name="RemotesBox" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-        <Button x:Name="AddRemoteButton" Grid.Column="3" HorizontalAlignment="Stretch">
+        <ComboBox x:Name="RemotesBox" ItemsSource="{Binding Remotes}" SelectedItem="{Binding Remote}" IsEnabled="{Binding !ToUrl}" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+        <Button x:Name="AddRemoteButton" Command="{Binding ManageRemotesCommand}" IsEnabled="{Binding CanManageRemotes}" Grid.Column="3" HorizontalAlignment="Stretch">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage Remotes}" Width="16" Height="16" />
             <AccessText Text="_Manage remotes" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <RadioButton x:Name="PushToUrlRadio" Grid.Row="2" GroupName="PushTo" Content="U_rl" ToolTip.Tip="Url to push to" />
-        <ComboBox x:Name="DestinationBox" Grid.Row="2" Grid.Column="1" IsEditable="True" IsEnabled="False"
+        <RadioButton x:Name="PushToUrlRadio" IsChecked="{Binding ToUrl}" Grid.Row="2" GroupName="PushTo" Content="U_rl" ToolTip.Tip="Url to push to" />
+        <ComboBox IsEditable="True" x:Name="DestinationBox" ItemsSource="{Binding UrlHistory}" Text="{Binding Destination}"
+                  IsEnabled="{Binding ToUrl}" Grid.Row="2" Grid.Column="1"
                   HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-        <Button x:Name="BrowseDestinationButton" Grid.Row="2" Grid.Column="3" IsEnabled="False" HorizontalAlignment="Stretch">
+        <Button x:Name="BrowseDestinationButton" Command="{Binding BrowseDestinationCommand}"
+                IsEnabled="{Binding ToUrl}" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Stretch">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
             <AccessText Text="Bro_wse..." VerticalAlignment="Center" />
@@ -30,36 +35,36 @@
         </Button>
       </Grid>
     </HeaderedContentControl>
-    <TabControl x:Name="PushTabs" Grid.Row="1" Margin="0,6,0,0">
+    <TabControl x:Name="PushTabs" SelectedIndex="{Binding SelectedTab}" Grid.Row="1" Margin="0,6,0,0">
       <TabItem x:Name="BranchTab" Header="Push branches" ToolTip.Tip="Push branches and commits to remote repository.">
         <StackPanel Margin="6" Spacing="6">
           <Grid ColumnDefinitions="118,*,Auto,*">
             <TextBlock Text="Branch to push" VerticalAlignment="Center" />
-            <ComboBox x:Name="BranchBox" Grid.Column="1" HorizontalAlignment="Stretch" />
+            <ComboBox x:Name="BranchBox" ItemsSource="{Binding Branches}" SelectedItem="{Binding Branch}" Grid.Column="1" HorizontalAlignment="Stretch" />
             <TextBlock Grid.Column="2" Text="to" VerticalAlignment="Center" Margin="6,0" />
-            <ComboBox x:Name="RemoteBranchBox" Grid.Column="3" IsEditable="True" HorizontalAlignment="Stretch" />
+            <ComboBox IsEditable="True" x:Name="RemoteBranchBox" ItemsSource="{Binding RemoteBranches}" Text="{Binding RemoteBranch}" IsEnabled="{Binding RemoteBranchEnabled}" Grid.Column="3" HorizontalAlignment="Stretch" />
           </Grid>
-          <HyperlinkButton x:Name="ShowOptionsLink" Content="Show options" Padding="0" />
+          <HyperlinkButton x:Name="ShowOptionsLink" Command="{Binding ShowOptionsCommand}" IsVisible="{Binding !OptionsVisible}" Content="Show options" Padding="0" />
           <!-- Upstream's PushOptionsPanel, shown by "Show options" or always (AlwaysShowAdvOpt). -->
-          <Grid x:Name="OptionsPanel" IsVisible="False" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+          <Grid x:Name="OptionsPanel" IsVisible="{Binding OptionsVisible}" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
             <StackPanel Orientation="Horizontal" Spacing="12">
-              <CheckBox x:Name="ForceWithLeaseCheck" Content="_Force with lease" />
-              <CheckBox x:Name="ForcePushCheck" Content="F_orce push" />
+              <CheckBox x:Name="ForceWithLeaseCheck" IsChecked="{Binding ForceWithLease}" ToolTip.Tip="{Binding ForceWithLeaseTip}" Content="_Force with lease" />
+              <CheckBox x:Name="ForcePushCheck" IsChecked="{Binding Force}" Content="F_orce push" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
               <TextBlock Text="Recursive submodules" VerticalAlignment="Center" />
-              <ComboBox x:Name="RecursiveSubmodulesBox" MinWidth="98" />
+              <ComboBox x:Name="RecursiveSubmodulesBox" ItemsSource="{x:Static vm:PushViewModel.RecursiveSubmoduleChoices}" SelectedIndex="{Binding RecursiveSubmodules}" MinWidth="98" />
             </StackPanel>
-            <CheckBox x:Name="ReplaceTrackingCheck" Grid.Row="1" Content="R_eplace tracking reference" />
-            <CheckBox x:Name="CreatePullRequestCheck" Grid.Row="2" Content="_Create pull request after push" />
+            <CheckBox x:Name="ReplaceTrackingCheck" IsChecked="{Binding ReplaceTrackingReference}" Grid.Row="1" Content="R_eplace tracking reference" />
+            <CheckBox x:Name="CreatePullRequestCheck" IsChecked="{Binding CreatePullRequest}" IsEnabled="{Binding CanCreatePullRequest}" Grid.Row="2" Content="_Create pull request after push" />
           </Grid>
         </StackPanel>
       </TabItem>
       <TabItem x:Name="TagTab" Header="Push tags" ToolTip.Tip="Push tags to remote repository">
         <Grid Margin="6" ColumnDefinitions="118,262" RowDefinitions="Auto,6,Auto">
           <TextBlock Text="Tag to push" VerticalAlignment="Center" />
-          <ComboBox x:Name="TagBox" Grid.Column="1" HorizontalAlignment="Stretch" />
-          <CheckBox x:Name="ForcePushTagsCheck" Grid.Row="2" Grid.Column="1" Content="_Force push" />
+          <ComboBox x:Name="TagBox" ItemsSource="{Binding Tags}" SelectedItem="{Binding Tag}" Grid.Column="1" HorizontalAlignment="Stretch" />
+          <CheckBox x:Name="ForcePushTagsCheck" IsChecked="{Binding ForceWithLease}" Grid.Row="2" Grid.Column="1" Content="_Force push" />
         </Grid>
       </TabItem>
       <TabItem x:Name="MultipleBranchTab" Header="Push multiple branches">
@@ -72,16 +77,16 @@
             <Button x:Name="PushColumnHeader" Grid.Column="3" Classes="tool" Content="Push" FontWeight="SemiBold">
               <Button.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="UnselectAllMenuItem" Header="Unselect all" />
-                  <MenuItem x:Name="SelectTrackedMenuItem" Header="Select tracked" />
-                  <MenuItem x:Name="SelectAllMenuItem" Header="Select all" />
+                  <MenuItem x:Name="UnselectAllMenuItem" Command="{Binding UnselectAllCommand}" Header="Unselect all" />
+                  <MenuItem x:Name="SelectTrackedMenuItem" Command="{Binding SelectTrackedCommand}" Header="Select tracked" />
+                  <MenuItem x:Name="SelectAllMenuItem" Command="{Binding SelectAllCommand}" Header="Select all" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
             <TextBlock Grid.Column="4" Text="Force" FontWeight="SemiBold" />
             <TextBlock Grid.Column="5" Text="Delete Remote Branch" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
           </Grid>
-          <ListBox x:Name="BranchRowsList">
+          <ListBox x:Name="BranchRowsList" ItemsSource="{Binding MultipleBranches}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="ops:PushBranchRow">
                 <Grid ColumnDefinitions="*,*,97,36,101,108">
@@ -101,15 +106,15 @@
       </TabItem>
     </TabControl>
     <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,6,0,0">
-      <Button x:Name="PullButton" Content="P_ull" MinWidth="101" />
+      <Button x:Name="PullButton" Command="{Binding PullCommand}" IsEnabled="{Binding CanPull}" Content="P_ull" MinWidth="101" />
       <!-- Upstream's LoadSSHKey, left of Push, shown when the chosen remote has a PuTTY key. -->
-      <Button x:Name="LoadSSHKey" Grid.Column="2" MinWidth="137" Margin="0,0,18,0" IsVisible="False">
+      <Button x:Name="LoadSSHKey" Command="{Binding LoadSshKeyCommand}" Grid.Column="2" MinWidth="137" Margin="0,0,18,0" IsVisible="{Binding ShowLoadSshKey}">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
           <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
         </StackPanel>
       </Button>
-      <Button x:Name="PushButton" Grid.Column="3" MinWidth="101" IsDefault="True">
+      <Button x:Name="PushButton" Command="{Binding PushCommand}" Grid.Column="3" MinWidth="101" IsDefault="True">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage ArrowUp}" Width="16" Height="16" />
           <AccessText Text="_Push" VerticalAlignment="Center" />

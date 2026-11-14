@@ -1,33 +1,45 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.CreateWorktreeWindow"
+        x:DataType="vm:CreateWorktreeViewModel"
         Title="Create a new worktree"
         Width="620" MinWidth="500" SizeToContent="Height" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormCreateWorktree (a GitExtensionsDialog): what to check out (an existing branch, or a new branch from
-       the current commit), the new worktree's directory with Browse, and "Create the new worktree" at the bottom. -->
+       the current commit), the new worktree's directory with Browse, and "Create the new worktree" at the bottom. Bound
+       to CreateWorktreeViewModel (PLAN.md principle 6). -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <Button x:Name="CreateButton" Content="_Create the new worktree" MinWidth="75" IsDefault="True"
-              HorizontalAlignment="Right" VerticalAlignment="Center" />
+              HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding CreateCommand}" />
     </Border>
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="12">
       <HeaderedContentControl Classes="groupBox" Grid.ColumnSpan="3" Header="What to checkout:" Margin="3">
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="3">
-          <RadioButton x:Name="ExistingBranchRadio" GroupName="WhatToCheckout" IsChecked="True" Margin="3"
-                       VerticalAlignment="Center" Content="Checkout an _existing branch:" />
+          <RadioButton x:Name="ExistingBranchRadio" GroupName="WhatToCheckout" Margin="3"
+                       VerticalAlignment="Center" Content="Checkout an _existing branch:"
+                       IsEnabled="{Binding CanCheckoutExistingBranch}"
+                       IsChecked="{Binding CreateNewBranch, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                   ConverterParameter={x:False}}" />
           <ComboBox x:Name="BranchesBox" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                    Margin="3" />
+                    Margin="3" ItemsSource="{Binding Branches}" SelectedItem="{Binding SelectedBranch}"
+                    PlaceholderText="{Binding LoadingText}" IsEnabled="{Binding !CreateNewBranch}" />
           <RadioButton x:Name="NewBranchRadio" Grid.Row="1" GroupName="WhatToCheckout" Margin="3"
-                       VerticalAlignment="Center">
+                       VerticalAlignment="Center"
+                       IsChecked="{Binding CreateNewBranch, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                   ConverterParameter={x:True}}">
             <AccessText Text="Create a _new branch:&#10;(from current commit)" />
           </RadioButton>
-          <TextBox x:Name="NewBranchNameBox" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="3" />
+          <TextBox x:Name="NewBranchNameBox" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="3"
+                   Text="{Binding NewBranchName}" IsEnabled="{Binding CreateNewBranch}" />
         </Grid>
       </HeaderedContentControl>
       <AccessText Grid.Row="1" Text="New worktree _directory:" VerticalAlignment="Center" Margin="3" />
-      <TextBox x:Name="DirectoryBox" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="8,3,3,3" />
+      <TextBox x:Name="DirectoryBox" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="8,3,3,3"
+               Text="{Binding Directory}" />
       <Button x:Name="BrowseButton" Grid.Row="1" Grid.Column="2" Content="_Browse..." MinWidth="110" Margin="3"
-              VerticalAlignment="Center" />
+              VerticalAlignment="Center" Command="{Binding BrowseCommand}" />
     </Grid>
   </DockPanel>
 </Window>

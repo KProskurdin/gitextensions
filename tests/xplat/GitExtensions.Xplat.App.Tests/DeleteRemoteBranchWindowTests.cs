@@ -47,7 +47,7 @@ internal sealed class DeleteRemoteBranchWindowTests
     {
         (Window owner, DeleteRemoteBranchWindow window, Task<bool> result) = Open("origin/merged");
         Button delete = Find<Button>(window, "Delete");
-        delete.IsEnabled.Should().BeFalse();
+        delete.IsEffectivelyEnabled.Should().BeFalse();
         Find<CheckBox>(window, "DeleteLocalTrackingBranch").IsEnabled.Should().BeFalse("no local branch tracks it");
         Find<TextBlock>(window, "_NO_TRANSLATE_labelLocalTrackingBranches").Text.Should().BeEmpty();
 

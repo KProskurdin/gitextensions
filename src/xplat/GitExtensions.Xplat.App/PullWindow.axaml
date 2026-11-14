@@ -1,22 +1,24 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.PullWindow"
-        Title="Pull"
+        x:DataType="ops:PullViewModel"
+        Title="{Binding Title}"
         SizeToContent="Width" Height="525" MinWidth="674" MinHeight="525" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormPull (a GitExtensionsDialog): the help picture on the left, the option groups on the right, and the
        buttons in the strip at the bottom, from the right. -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-        <Button x:Name="MergetoolButton" Content="_Solve conflicts" MinWidth="141" VerticalAlignment="Center" />
-        <Button x:Name="StashButton" Content="Stash _changes" MinWidth="132" VerticalAlignment="Center" />
-        <CheckBox x:Name="AutoStashCheck" Content="Auto stas_h" VerticalAlignment="Center" />
+        <Button x:Name="MergetoolButton" Command="{Binding SolveConflictsCommand}" IsEnabled="{Binding CanSolveConflicts}" Content="_Solve conflicts" MinWidth="141" VerticalAlignment="Center" />
+        <Button x:Name="StashButton" Command="{Binding ManageStashesCommand}" IsEnabled="{Binding CanManageStashes}" Content="Stash _changes" MinWidth="132" VerticalAlignment="Center" />
+        <CheckBox x:Name="AutoStashCheck" IsChecked="{Binding AutoStash}" Content="Auto stas_h" VerticalAlignment="Center" />
         <Border Width="100" />
-        <Button x:Name="PullButton" MinWidth="120" IsDefault="True" VerticalAlignment="Center">
+        <Button x:Name="PullButton" Command="{Binding PullCommand}" MinWidth="120" IsDefault="True" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage ArrowDown}" Width="16" Height="16" />
-            <AccessText x:Name="PullButtonText" Text="_Pull" VerticalAlignment="Center" />
+            <AccessText x:Name="PullButtonText" Text="{Binding PullButtonText}" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
       </StackPanel>
@@ -28,20 +30,23 @@
         <StackPanel Spacing="6">
           <HeaderedContentControl Classes="groupBox" Header="Pull from">
             <Grid ColumnDefinitions="140,8,*,6,150" RowDefinitions="Auto,6,Auto">
-              <RadioButton x:Name="PullFromRemoteRadio" GroupName="PullFrom" Content="_Remote" IsChecked="True"
+              <RadioButton x:Name="PullFromRemoteRadio" GroupName="PullFrom" Content="_Remote"
+                           IsChecked="{Binding FromUrl, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:False}}"
                            ToolTip.Tip="Remote repository to pull from" />
-              <ComboBox x:Name="RemotesBox" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-              <Button x:Name="AddRemoteButton" Grid.Column="4" HorizontalAlignment="Stretch">
+              <ComboBox x:Name="RemotesBox" ItemsSource="{Binding Remotes}" SelectedItem="{Binding Remote}" IsEnabled="{Binding !FromUrl}" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+              <Button x:Name="AddRemoteButton" Command="{Binding ManageRemotesCommand}" IsEnabled="{Binding CanManageRemotes}" Grid.Column="4" HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <Image Source="{local:UpstreamImage Remotes}" Width="16" Height="16" />
                   <AccessText Text="Mana_ge remotes" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
-              <RadioButton x:Name="PullFromUrlRadio" Grid.Row="2" GroupName="PullFrom" Content="_URL"
+              <RadioButton x:Name="PullFromUrlRadio" IsChecked="{Binding FromUrl}" Grid.Row="2" GroupName="PullFrom" Content="_URL"
                            ToolTip.Tip="Url to pull from" />
-              <ComboBox x:Name="UrlBox" Grid.Row="2" Grid.Column="2" IsEditable="True" IsEnabled="False"
+              <ComboBox IsEditable="True" x:Name="UrlBox" ItemsSource="{Binding UrlHistory}" Text="{Binding Url}"
+                        IsEnabled="{Binding FromUrl}" Grid.Row="2" Grid.Column="2"
                         HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-              <Button x:Name="BrowseUrlButton" Grid.Row="2" Grid.Column="4" IsEnabled="False" HorizontalAlignment="Stretch">
+              <Button x:Name="BrowseUrlButton" Command="{Binding BrowseUrlCommand}"
+                      IsEnabled="{Binding FromUrl}" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Stretch">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
                   <AccessText Text="_Browse..." VerticalAlignment="Center" />
@@ -53,42 +58,44 @@
             <Grid ColumnDefinitions="140,8,*,156" RowDefinitions="Auto,6,Auto">
               <TextBlock Text="Local branch" VerticalAlignment="Center" Background="Transparent"
                          ToolTip.Tip="Local branch to create or reset to the remote branch selected." />
-              <TextBox x:Name="LocalBranchBox" Grid.Column="2" />
+              <TextBox x:Name="LocalBranchBox" Text="{Binding LocalBranch}" IsEnabled="{Binding FetchOptionsEnabled}" Grid.Column="2" />
               <TextBlock Grid.Row="2" Text="Remote branch" VerticalAlignment="Center" Background="Transparent"
                          ToolTip.Tip="Remote branch to pull. Leave empty to pull all branches." />
-              <ComboBox x:Name="RemoteBranchBox" Grid.Row="2" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch" />
+              <ComboBox IsEditable="True" x:Name="RemoteBranchBox" ItemsSource="{Binding RemoteBranchItems}" Text="{Binding RemoteBranch}" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Stretch" />
             </Grid>
           </HeaderedContentControl>
           <HeaderedContentControl Classes="groupBox" Header="Merge options">
             <StackPanel Spacing="4">
-              <RadioButton x:Name="MergeRadio" GroupName="Action">
+              <RadioButton x:Name="MergeRadio" IsChecked="{Binding Action, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static ops:PullAction.Merge}}" IsEnabled="{Binding CanMergeOrRebase}" GroupName="Action">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <Image Source="{local:UpstreamImage Merge}" Width="16" Height="16" />
                   <AccessText Text="_Merge remote branch into current branch" VerticalAlignment="Center" />
                 </StackPanel>
               </RadioButton>
-              <RadioButton x:Name="RebaseRadio" GroupName="Action">
+              <RadioButton x:Name="RebaseRadio" IsChecked="{Binding Action, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static ops:PullAction.Rebase}}" IsEnabled="{Binding CanMergeOrRebase}" GroupName="Action">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <Image Source="{local:UpstreamImage Rebase}" Width="16" Height="16" />
                   <AccessText Text="R_ebase current branch on top of remote branch, creates linear history (use with caution)"
                               VerticalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
               </RadioButton>
-              <RadioButton x:Name="FetchRadio" GroupName="Action" Content="Do not merge, only _fetch remote changes" />
+              <RadioButton x:Name="FetchRadio" IsChecked="{Binding Action, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static ops:PullAction.FetchOnly}}" GroupName="Action" Content="Do not merge, only _fetch remote changes" />
             </StackPanel>
           </HeaderedContentControl>
           <HeaderedContentControl Classes="groupBox" Header="Tag options">
             <StackPanel Spacing="4">
-              <RadioButton x:Name="ReachableTagsRadio" GroupName="Tags" IsChecked="True"
+              <RadioButton x:Name="ReachableTagsRadio" GroupName="Tags"
+                           IsChecked="{Binding Tags, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static ops:PullTags.Reachable}}"
                            Content="Follow _tagopt, if not specified, fetch tags reachable from remote HEAD" />
-              <RadioButton x:Name="NoTagsRadio" GroupName="Tags" Content="Fetch _no tag" />
-              <RadioButton x:Name="AllTagsRadio" GroupName="Tags" Content="Fetch _all tags" />
+              <RadioButton x:Name="NoTagsRadio" IsChecked="{Binding Tags, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static ops:PullTags.None}}" GroupName="Tags" Content="Fetch _no tag" />
+              <RadioButton x:Name="AllTagsRadio" IsChecked="{Binding Tags, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static ops:PullTags.All}}" IsEnabled="{Binding FetchOptionsEnabled}" GroupName="Tags" Content="Fetch _all tags" />
             </StackPanel>
           </HeaderedContentControl>
-          <CheckBox x:Name="UnshallowCheck" Content="Do_wnload full history" IsVisible="False" />
-          <CheckBox x:Name="PruneCheck" Content="_Prune remote branches"
+          <CheckBox x:Name="UnshallowCheck" Content="Do_wnload full history" IsChecked="{Binding Unshallow}"
+                    IsVisible="{Binding IsShallow}" />
+          <CheckBox x:Name="PruneCheck" IsChecked="{Binding Prune}" IsEnabled="{Binding FetchOptionsEnabled}" Content="_Prune remote branches"
                     ToolTip.Tip="Removes remote tracking branches that no longer exist on the remote (e.g. if someone else deleted them).&#10;&#10;Actual command line (if checked): --prune --force" />
-          <CheckBox x:Name="PruneTagsCheck" Content="Prune remote branches an_d tags"
+          <CheckBox x:Name="PruneTagsCheck" IsChecked="{Binding PruneTags}" IsEnabled="{Binding FetchOptionsEnabled}" Content="Prune remote branches an_d tags"
                     ToolTip.Tip="Before fetching, remove any local tags that no longer exist on the remote if --prune is enabled." />
         </StackPanel>
       </ScrollViewer>

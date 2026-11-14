@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Media;
 using GitCommands;
@@ -13,25 +14,16 @@ using GitExtUtils.GitUI.Theming;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormDiff</c> (rules in <see cref="RevisionDiff"/>): the files changed from a BASE revision to a compared
-///  one and the selected file's diff. Either side can be another branch (the compare to branch window) or commit (the
-///  choose commit window), the two can be swapped, BASE can be their merge base, and the directory diff tool can open
-///  them.
+///  Upstream's <c>FormDiff</c>, bound to <see cref="RevisionDiffViewModel"/> (rules in <see cref="RevisionDiff"/>): the
+///  files changed from a BASE revision to a compared one and the selected file's diff. Either side can be another branch
+///  (the compare to branch window) or commit (the choose commit window), the two can be swapped, BASE can be their merge
+///  base, and the directory diff tool can open them. The file list, its menu and the diff stay in the view.
 /// </summary>
 public partial class RevisionDiffWindow : Window
 {
     private readonly string _repositoryPath;
-    private readonly IAppPreferences _preferences;
     private readonly GitModule _module;
-    private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly RevisionFileList<RevisionDiffFile> _files;
-    private ObjectId? _first;
-    private ObjectId? _second;
-    private string? _firstDisplay;
-    private string? _secondDisplay;
-    private ObjectId? _mergeBase;
-    private int _populate;
-    private Task _filesShown = Task.CompletedTask;
 
     public RevisionDiffWindow()
         : this("", ObjectId.WorkTreeId, ObjectId.IndexId, "", "", AppServices.Preferences)
@@ -48,20 +40,31 @@ public partial class RevisionDiffWindow : Window
         string secondDisplay, IAppPreferences preferences)
     {
         _repositoryPath = repositoryPath;
-        _preferences = preferences;
         _module = GitModules.Open(repositoryPath);
-        _first = first;
-        _second = second;
-        _firstDisplay = firstDisplay;
-        _secondDisplay = secondDisplay;
+        ViewModel = new RevisionDiffViewModel(new WindowDialogHost(this), _module, first, second, firstDisplay,
+            secondDisplay)
+        {
+            PickBranch = async current =>
+                await new CompareToBranchWindow(repositoryPath, current ?? default).ShowDialog<string?>(this),
+            PickCommit = async current =>
+                await new ChooseCommitWindow(repositoryPath, current?.ToString(), preferences, showArtificial: true)
+                    .ShowDialog<CommitRow?>(this) is { } row
+                    ? (row.Hash, row.Subject)
+                    : null,
+        };
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormDiff");
+        UpstreamTranslation.Apply(this, RevisionDiffViewModel.Category);
 
+        // After the translation pass, which would put upstream's text back on "Compare to merge base".
+        DataContext = ViewModel;
+
+        // View concerns: the file list (its filter, grouping and menu), the selected file's diff and the sides' colors.
         // This window has no settings menu, but upstream's choice holds for every file list.
         FileListToolbar.Attach(DiffFilesByPathButton, preferences);
         _files = new RevisionFileList<RevisionDiffFile>(DiffFiles, DiffFilesFilterBox, DiffFilesByPathButton,
             DiffFilesByExtensionButton, DiffFilesByStatusButton, DiffFilesNoFilesText, preferences, file => file.Path,
-            file => file.Status, treeButtons: new FileListTreeButtons(DiffFilesCollapseGroupsButton, DiffFilesAsTreeButton,
+            file => file.Status, treeButtons: new FileListTreeButtons(DiffFilesCollapseGroupsButton,
+                DiffFilesAsTreeButton,
                 [
                     (DiffFilesPathTreeMenuItem, DiffListSortType.FilePath),
                     (DiffFilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
@@ -74,7 +77,7 @@ public partial class RevisionDiffWindow : Window
         DiffFilesFilterBox.WorkingDirectory = () => _repositoryPath;
         lblFirstCommitBack.Background = Brush(AppColor.AnsiTerminalRedBackNormal);
         lblSecondCommitBack.Background = Brush(AppColor.AnsiTerminalGreenBackNormal);
-        ckCompareToMergeBase.IsEnabled = false;
+        ViewModel.PropertyChanged += OnViewModelChanged;
         DiffFiles.SelectionChanged += (_, _) => Run(ShowSelectedFileDiffAsync);
 
         // Upstream's FileViewer_TopScrollReached and FileViewer_BottomScrollReached.
@@ -96,18 +99,6 @@ public partial class RevisionDiffWindow : Window
                     ShowSelectedFileDiffAsync));
             }
         };
-        btnSwap.Click += (_, _) =>
-        {
-            (_second, _first) = (_first, _second);
-            (_secondDisplay, _firstDisplay) = (_firstDisplay, _secondDisplay);
-            PopulateDiffFiles();
-        };
-        ckCompareToMergeBase.IsCheckedChanged += (_, _) => PopulateDiffFiles();
-        btnCompareDirectoriesWithDiffTool.Click += (_, _) => OpenDirectoryDiff();
-        btnAnotherFirstBranch.Click += (_, _) => Run(() => PickAnotherBranchAsync(first: true));
-        btnAnotherSecondBranch.Click += (_, _) => Run(() => PickAnotherBranchAsync(first: false));
-        btnAnotherFirstCommit.Click += (_, _) => Run(() => PickAnotherCommitAsync(first: true));
-        btnAnotherSecondCommit.Click += (_, _) => Run(() => PickAnotherCommitAsync(first: false));
         DiffFilesMenu.Bind(new FileStatusListMenuBinding
         {
             Owner = this,
@@ -115,7 +106,7 @@ public partial class RevisionDiffWindow : Window
             Selection = MenuSelection,
             DescribeRevision = FileStatusListMenu.DescribeByHash,
             Services = () => MenuServices,
-            Refresh = PopulateDiffFiles,
+            Refresh = ViewModel.Refresh,
             RunScript = RunScript,
             FocusedPath = () => (FileStatusListMenu.FocusedItem(DiffFiles) as RevisionDiffFile)?.Path,
             FindFile = new FileListFind(() => [.. (_files.Files ?? []).Select(file => (file.Path, file.OldPath))],
@@ -133,18 +124,20 @@ public partial class RevisionDiffWindow : Window
                 DiffFilesMenu.RunDoubleClick();
             }
         };
-        Opened += (_, _) => Run(LoadAsync);
+        Opened += (_, _) => _ = ViewModel.LoadAsync();
     }
+
+    public RevisionDiffViewModel ViewModel { get; }
 
     /// <summary>
     ///  Completes when the merge base is known and the first file list is shown, for tests.
     /// </summary>
-    public Task DiffLoaded => _loaded.Task;
+    public Task DiffLoaded => ViewModel.Loaded;
 
     /// <summary>
     ///  Completes when the last file list asked for is shown, for tests.
     /// </summary>
-    public Task FilesShown => _filesShown;
+    public Task FilesShown => ViewModel.FilesShown;
 
     /// <summary>
     ///  The browse window's git actions and windows for the file list's menu; without them the menu leaves out the items
@@ -158,77 +151,36 @@ public partial class RevisionDiffWindow : Window
     /// </summary>
     internal Func<Window, FileListSubmodules>? Submodules { get; init; }
 
-    // Upstream's constructor (the merge base, which later picks do not change) and Load (PopulateDiffFiles).
-    private async Task LoadAsync()
+    private static SolidColorBrush Brush(AppColor color)
     {
-        try
-        {
-            ObjectId? first = _first;
-            ObjectId? second = _second;
-            _mergeBase = first is { } a && second is { } b
-                ? await Task.Run(() => RevisionDiff.MergeBase(_module, a, b))
-                : null;
-            ckCompareToMergeBase.Content =
-                $"{UpstreamTranslation.ByText(RevisionDiff.CompareToMergeBase)} ({_mergeBase?.ToShortString()})";
-            ckCompareToMergeBase.IsEnabled = _mergeBase is not null;
-            await ShowDiffFilesAsync();
-        }
-        finally
-        {
-            _loaded.TrySetResult();
-        }
+        System.Drawing.Color value = ThemeBrushes.Current.Colors.Get(color);
+        return new SolidColorBrush(Color.FromArgb(value.A, value.R, value.G, value.B));
     }
 
-    // Upstream's PopulateDiffFiles: the labels, the directory diff tool (not from the work tree), and the files from BASE
-    // (or the merge base) to the compared revision.
-    private void PopulateDiffFiles() => _ = ShowDiffFilesAsync();
-
-    // PopulateDiffFiles' work; the task completes when the files are shown, for the first load and the tests.
-    private Task ShowDiffFilesAsync()
+    // The files show once read, the first selected; while they are read the list and the diff are empty.
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        lblFirstCommit.Text = _firstDisplay;
-        lblSecondCommit.Text = _secondDisplay;
-        ToolTip.SetTip(lblFirstCommit, _firstDisplay);
-        ToolTip.SetTip(lblSecondCommit, _secondDisplay);
-        btnCompareDirectoriesWithDiffTool.IsEnabled = _first is { } first && RevisionDiff.CanOpenDirectoryDiff(first);
-        int populate = ++_populate;
-        ObjectId? from = ckCompareToMergeBase.IsChecked == true ? _mergeBase : _first;
-        ObjectId? to = _second;
-        _files.Files = null;
-        DiffText.Clear();
-        if (from is not { } fromId || to is not { } toId)
+        if (e.PropertyName != nameof(RevisionDiffViewModel.Files))
         {
-            return Task.CompletedTask;
+            return;
         }
 
-        return _filesShown = ShowFilesAsync(populate, fromId, toId);
-    }
-
-    private async Task ShowFilesAsync(int populate, ObjectId from, ObjectId to)
-    {
-        try
+        _files.Files = ViewModel.Files;
+        if (ViewModel.Files is null)
         {
-            IReadOnlyList<RevisionDiffFile> files = await Task.Run(() => RevisionDiff.Files(_module, from, to));
-            if (populate == _populate)
-            {
-                _files.Files = files;
-                DiffFiles.SelectedIndex = DiffFiles.ItemCount > 0 ? 0 : -1;
-            }
+            DiffText.Clear();
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        else
         {
-            if (populate == _populate)
-            {
-                _ = new ErrorWindow(ex.Message).ShowDialog(this);
-            }
+            DiffFiles.SelectedIndex = DiffFiles.ItemCount > 0 ? 0 : -1;
         }
     }
 
     // Upstream's ShowSelectedFileDiff.
     private Task ShowSelectedFileDiffAsync()
     {
-        ObjectId? from = ckCompareToMergeBase.IsChecked == true ? _mergeBase : _first;
-        if (DiffFiles.SelectedItem is not RevisionDiffFile file || from is not { } fromId || _second is not { } toId)
+        if (DiffFiles.SelectedItem is not RevisionDiffFile file || ViewModel.ShownFrom is not { } fromId
+                                                                || ViewModel.Second is not { } toId)
         {
             DiffText.Clear();
             return Task.CompletedTask;
@@ -243,68 +195,11 @@ public partial class RevisionDiffWindow : Window
             options => RevisionDiff.DiffAsync(_module, fromId, toId, file, options), FileRevision.Of(toId));
     }
 
-    // Upstream's btnCompareDirectoriesWithDiffTool_Clicked.
-    private void OpenDirectoryDiff()
-    {
-        ObjectId? from = ckCompareToMergeBase.IsChecked == true ? _mergeBase : _first;
-        if (from is not { } fromId || _second is not { } toId)
-        {
-            return;
-        }
-
-        Run(() => Task.Run(() =>
-            _module.OpenWithDifftoolDirDiff(fromId.ToString(), toId.ToString(), customTool: null)));
-    }
-
-    // Upstream's PickAnotherBranch: the compare to branch window from the side's commit; a name git does not know leaves
-    // the side empty.
-    private async Task PickAnotherBranchAsync(bool first)
-    {
-        ObjectId? current = first ? _first : _second;
-        if (await new CompareToBranchWindow(_repositoryPath, current ?? default).ShowDialog<string?>(this) is not
-            { } branch)
-        {
-            return;
-        }
-
-        ObjectId id = await Task.Run(() => _module.RevParse(branch));
-        SetSide(first, id.IsZero ? null : id, branch);
-    }
-
-    // Upstream's PickAnotherCommit: the choose commit window from the side's commit.
-    private async Task PickAnotherCommitAsync(bool first)
-    {
-        ObjectId? current = first ? _first : _second;
-        if (await new ChooseCommitWindow(_repositoryPath, current?.ToString(), _preferences, showArtificial: true)
-                .ShowDialog<CommitRow?>(this) is not { } row)
-        {
-            return;
-        }
-
-        SetSide(first, ObjectId.TryParse(row.Hash, out ObjectId id) ? id : null, row.Subject);
-    }
-
-    private void SetSide(bool first, ObjectId? id, string display)
-    {
-        if (first)
-        {
-            _first = id;
-            _firstDisplay = display;
-        }
-        else
-        {
-            _second = id;
-            _secondDisplay = display;
-        }
-
-        PopulateDiffFiles();
-    }
-
     // The selected files between the shown revisions (BASE or its merge base, and the compared one), for the menu.
     private DiffMenuSelection? MenuSelection()
     {
-        ObjectId? from = ckCompareToMergeBase.IsChecked == true ? _mergeBase : _first;
-        if (_second is not { } second)
+        ObjectId? from = ViewModel.ShownFrom;
+        if (ViewModel.Second is not { } second)
         {
             return null;
         }
@@ -329,17 +224,11 @@ public partial class RevisionDiffWindow : Window
             return;
         }
 
-        IReadOnlyList<string> hashes = _second is { } second ? [second.ToString()] : [];
+        IReadOnlyList<string> hashes = ViewModel.Second is { } second ? [second.ToString()] : [];
         IReadOnlyDictionary<string, IReadOnlyList<string>> options = ScriptFileOptions.For(
             (DiffFiles.SelectedItems ?? Array.Empty<object>()).OfType<RevisionDiffFile>().Select(file => file.Path),
             DiffText.CurrentFileLine);
         Run(() => new ScriptHost(this, services.Actions).RunAsync(script, _repositoryPath, hashes, options));
-    }
-
-    private static SolidColorBrush Brush(AppColor color)
-    {
-        System.Drawing.Color value = ThemeBrushes.Current.Colors.Get(color);
-        return new SolidColorBrush(Color.FromArgb(value.A, value.R, value.G, value.B));
     }
 
     private void Run(Func<Task> action)

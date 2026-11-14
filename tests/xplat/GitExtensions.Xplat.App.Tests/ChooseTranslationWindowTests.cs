@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Xplat.Core.Settings;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -29,7 +30,7 @@ internal sealed class ChooseTranslationWindowTests
         choices[0].Name.Should().Be("English");
         choices.Select(choice => choice.Name).Should().Contain(["German", "Japanese"]);
         choices.Skip(1).Select(choice => choice.Name).Should().BeInAscendingOrder(StringComparer.CurrentCulture);
-        choices.Should().OnlyContain(choice => choice.Flag != null, "upstream's flags are next to the app");
+        choices.Should().OnlyContain(choice => choice.FlagPath != null, "upstream's flags are next to the app");
         window.Title.Should().Be("Choose language");
 
         window.Choose(choices.Single(choice => choice.Name == "German"));

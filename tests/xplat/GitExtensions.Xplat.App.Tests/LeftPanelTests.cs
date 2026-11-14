@@ -561,8 +561,24 @@ internal sealed class LeftPanelTests
             parent.IsExpanded = true;
         }
 
-        Dispatcher.UIThread.RunJobs();
-        tree.GetVisualDescendants().OfType<TreeViewItem>().Single(item => item.DataContext == node).Focus();
+        // An expanded parent's items get their containers in a later layout pass, not always in the first jobs, and the
+        // focus can be taken away before it settles: the keys the test presses reach the left panel through the focused
+        // item.
+        WaitUntil(() =>
+        {
+            tree.UpdateLayout();
+            if (Container() is not { } container)
+            {
+                return false;
+            }
+
+            container.Focus();
+            return container.IsFocused;
+        });
+        return;
+
+        TreeViewItem? Container() => tree.GetVisualDescendants().OfType<TreeViewItem>()
+            .SingleOrDefault(item => item.DataContext == node);
     }
 
     private static string? SelectedSubject(ListBox commits) => (commits.SelectedItem as CommitListItem)?.Row.Subject;

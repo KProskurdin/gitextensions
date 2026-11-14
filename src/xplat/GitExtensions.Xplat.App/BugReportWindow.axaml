@@ -3,11 +3,13 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:diag="using:GitExtensions.Xplat.Core.Diagnostics"
         x:Class="GitExtensions.Xplat.App.BugReportWindow"
-        Title="Error Report"
+        x:DataType="diag:BugReportViewModel"
+        Title="{Binding Title}"
         Width="558" Height="469" MinWidth="400" MinHeight="360" WindowStartupLocation="CenterScreen">
   <!-- Upstream's BugReportForm: the General tab (what happened, the environment and the user's description), the
        Exception tab (upstream's ExceptionDetails: the exceptions and their properties), and Copy, Ignore, Send and Quit,
-       Quit. Upstream removes its third tab, "Report Contents", at run time, so it is not here. -->
+       Quit. Upstream removes its third tab, "Report Contents", at run time, so it is not here. Bound to BugReportViewModel
+       (PLAN.md principle 6). -->
   <Window.Styles>
     <!-- Upstream shows the extended information rows in bold. -->
     <Style Selector="TextBlock.extended">
@@ -20,20 +22,24 @@
   </Window.Styles>
   <DockPanel Margin="4">
     <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="4,6,4,0">
-      <Button x:Name="btnCopy" MinWidth="75" HorizontalAlignment="Left">
+      <Button x:Name="btnCopy" MinWidth="75" HorizontalAlignment="Left" Command="{Binding CopyCommand}"
+              ToolTip.Tip="{Binding CopyTip}">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage CopyToClipboard}" Width="16" Height="16" />
           <AccessText Text="_Copy" VerticalAlignment="Center" />
         </StackPanel>
       </Button>
-      <Button x:Name="IgnoreButton" Grid.Column="1" Content="_Ignore" MinWidth="75" HorizontalContentAlignment="Center" />
-      <Button x:Name="sendAndQuitButton" Grid.Column="2" MinWidth="120">
+      <Button x:Name="IgnoreButton" Grid.Column="1" Content="_Ignore" MinWidth="75" HorizontalContentAlignment="Center"
+              IsVisible="{Binding ShowIgnore}" IsEnabled="{Binding CanIgnore}" Command="{Binding IgnoreCommand}" />
+      <Button x:Name="sendAndQuitButton" Grid.Column="2" MinWidth="120" IsEnabled="{Binding CanSend}"
+              Command="{Binding SendAndQuitCommand}" ToolTip.Tip="{Binding SendTip}">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage CloneRepoGitHub}" Width="16" Height="16" />
           <AccessText Text="_Send and Quit" VerticalAlignment="Center" />
         </StackPanel>
       </Button>
-      <Button x:Name="quitButton" Grid.Column="3" Content="_Quit" MinWidth="75" HorizontalContentAlignment="Center" />
+      <Button x:Name="quitButton" Grid.Column="3" Content="_Quit" MinWidth="75" HorizontalContentAlignment="Center"
+              Command="{Binding QuitCommand}" ToolTip.Tip="{Binding QuitTip}" />
     </Grid>
     <TabControl x:Name="mainTabs">
       <TabItem x:Name="generalTabPage" Header="General">
@@ -49,34 +55,37 @@
                 <Image Source="{local:UpstreamImage Bug}" Width="16" Height="16" />
                 <TextBlock Text="Exception Type:" VerticalAlignment="Center" />
               </StackPanel>
-              <TextBox x:Name="exceptionTextBox" Grid.Column="1" IsReadOnly="True" />
+              <TextBox x:Name="exceptionTextBox" Grid.Column="1" IsReadOnly="True" Text="{Binding ExceptionType, Mode=OneWay}" />
               <TextBox x:Name="exceptionMessageTextBox" Grid.Row="1" Grid.ColumnSpan="2" IsReadOnly="True"
-                       AcceptsReturn="True" TextWrapping="Wrap" Height="44" />
+                       AcceptsReturn="True" TextWrapping="Wrap" Height="44" Text="{Binding ExceptionMessage, Mode=OneWay}" />
             </Grid>
           </Grid>
           <Grid x:Name="tpnlEnvInfo" ColumnDefinitions="18*,32*,18*,32*" RowDefinitions="Auto,Auto,Auto,8,Auto,*"
                 RowSpacing="3" ColumnSpacing="6" Margin="3">
             <TextBlock x:Name="targetSiteLabel" Text="Target Site:" VerticalAlignment="Center" />
-            <TextBox x:Name="targetSiteTextBox" Grid.Column="1" Grid.ColumnSpan="3" IsReadOnly="True" />
+            <TextBox x:Name="targetSiteTextBox" Grid.Column="1" Grid.ColumnSpan="3" IsReadOnly="True"
+                     Text="{Binding TargetSite, Mode=OneWay}" />
             <TextBlock x:Name="applicationLabel" Grid.Row="1" Text="Application:" VerticalAlignment="Center" />
-            <TextBox x:Name="applicationTextBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True" />
+            <TextBox x:Name="applicationTextBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True"
+                     Text="{Binding Application, Mode=OneWay}" />
             <TextBlock x:Name="_NO_TRANSLATE_GitLabel" Grid.Row="1" Grid.Column="2" Text="Git:" VerticalAlignment="Center" />
-            <TextBox x:Name="gitTextBox" Grid.Row="1" Grid.Column="3" IsReadOnly="True" />
+            <TextBox x:Name="gitTextBox" Grid.Row="1" Grid.Column="3" IsReadOnly="True" Text="{Binding GitVersion, Mode=OneWay}" />
             <TextBlock x:Name="dateTimeLabel" Grid.Row="2" Text="Date/Time:" VerticalAlignment="Center" />
-            <TextBox x:Name="dateTimeTextBox" Grid.Row="2" Grid.Column="1" IsReadOnly="True" />
+            <TextBox x:Name="dateTimeTextBox" Grid.Row="2" Grid.Column="1" IsReadOnly="True" Text="{Binding DateTime, Mode=OneWay}" />
             <TextBlock x:Name="_NO_TRANSLATE_ClrLabel" Grid.Row="2" Grid.Column="2" Text="CLR:" VerticalAlignment="Center" />
-            <TextBox x:Name="clrTextBox" Grid.Row="2" Grid.Column="3" IsReadOnly="True" />
+            <TextBox x:Name="clrTextBox" Grid.Row="2" Grid.Column="3" IsReadOnly="True" Text="{Binding ClrVersion, Mode=OneWay}" />
             <TextBlock x:Name="errorDescriptionLabel" Grid.Row="4" Grid.ColumnSpan="4" TextWrapping="Wrap"
                        Text="Please add a brief description (in English) of how we can reproduce the error:" />
             <TextBox x:Name="descriptionTextBox" Grid.Row="5" Grid.ColumnSpan="4" AcceptsReturn="True" TextWrapping="Wrap"
-                     VerticalContentAlignment="Top" />
+                     VerticalContentAlignment="Top" Text="{Binding Description}" />
           </Grid>
         </DockPanel>
       </TabItem>
       <TabItem x:Name="exceptionTabPage" Header="Exception">
         <DockPanel Margin="3">
           <TextBlock x:Name="exceptionLabel" DockPanel.Dock="Top" Text="Exception(s):" Margin="0,4" />
-          <TreeView x:Name="exceptionTreeView" DockPanel.Dock="Top" Height="80">
+          <TreeView x:Name="exceptionTreeView" DockPanel.Dock="Top" Height="80" ItemsSource="{Binding Exceptions}"
+                    SelectedItem="{Binding SelectedException}">
             <TreeView.ItemTemplate>
               <TreeDataTemplate x:DataType="diag:ExceptionNode" ItemsSource="{Binding Children}">
                 <TextBlock Text="{Binding Type}" />
@@ -89,7 +98,7 @@
             <TextBlock x:Name="propertyColumnHeader" Text="Property" FontWeight="SemiBold" />
             <TextBlock x:Name="informationColumnHeader" Grid.Column="1" Text="Information" FontWeight="SemiBold" />
           </Grid>
-          <ListBox x:Name="exceptionDetailsListView">
+          <ListBox x:Name="exceptionDetailsListView" ItemsSource="{Binding Properties}" SelectedItem="{Binding SelectedProperty}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="diag:ExceptionProperty">
                 <Grid ColumnDefinitions="101,*" ToolTip.Tip="{Binding Information}">

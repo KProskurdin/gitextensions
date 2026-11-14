@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
@@ -8,17 +9,12 @@ using GitExtensions.Xplat.Ui;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormChooseCommit</c>: a revision grid to pick one commit (OK, or a double-click), with "Go to commit..."
-///  and links to the selected commit's parents. Closes with the chosen row, or null.
+///  Upstream's <c>FormChooseCommit</c>, bound to <see cref="ChooseCommitViewModel"/>: a revision grid to pick one commit (OK,
+///  or a double-click), with "Go to commit..." and links to the selected commit's parents. Closes with the chosen row, or
+///  null.
 /// </summary>
 public partial class ChooseCommitWindow : Window
 {
-    private readonly string _repositoryPath;
-    private readonly string? _preselect;
-    private readonly RevisionFilter _filter;
-    private readonly CommitListViewModel _commits;
-    private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
     public ChooseCommitWindow()
         : this("", null, AppServices.Preferences)
     {
@@ -37,126 +33,40 @@ public partial class ChooseCommitWindow : Window
     public ChooseCommitWindow(string repositoryPath, string? preselect, IAppPreferences preferences,
         bool showCurrentBranchOnly = false, string? lastRevisionToDisplayHash = null, bool showArtificial = false)
     {
-        _repositoryPath = repositoryPath;
-        _preselect = preselect;
-        _filter = new RevisionFilter(CurrentBranchOnly: showCurrentBranchOnly,
-            LastRevisionToDisplayHash: lastRevisionToDisplayHash ?? "");
-        _commits = new CommitListViewModel(new GitCommitHistory(
-            () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
-            () => preferences.RevisionSortOrder,
-            showArtificialCommits: () => showArtificial && preferences.RevisionGraphShowArtificialCommits,
-            gridView: () => preferences.GridViewOptions, showSessionRefs: () => preferences.ShowSessionRefs));
+        ViewModel = new ChooseCommitViewModel(new WindowDialogHost(this), GitModules.Open(repositoryPath),
+            repositoryPath, new GitCommitHistory(
+                () => new CommitDateStyle(preferences.RelativeDate, preferences.ShowAuthorDate),
+                () => preferences.RevisionSortOrder,
+                showArtificialCommits: () => showArtificial && preferences.RevisionGraphShowArtificialCommits,
+                gridView: () => preferences.GridViewOptions, showSessionRefs: () => preferences.ShowSessionRefs),
+            preselect, showCurrentBranchOnly, lastRevisionToDisplayHash)
+        {
+            // The window FormGoToCommit opens over this one.
+            OpenGoToCommit = () => new GoToCommitWindow(repositoryPath).ShowDialog<ObjectId?>(this),
+        };
+        DataContext = ViewModel;
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FormChooseCommit");
-        RevisionGridColumns.ShowAsSettingsSay(this, revisionGrid, preferences, _commits);
-        flowLayoutPanelParents.IsVisible = false;
-        revisionGrid.SelectionChanged += (_, _) => ShowParents();
-        revisionGrid.DoubleTapped += (_, _) => Choose();
-        btnOK.Click += (_, _) => Choose();
-        buttonGotoCommit.Click += (_, _) => Run(GoToCommitAsync);
-        linkLabelParent.Click += (_, _) => SelectOrTell(linkLabelParent.Tag as string);
-        linkLabelParent2.Click += (_, _) => SelectOrTell(linkLabelParent2.Tag as string);
-        Opened += (_, _) => Run(LoadAsync);
+        UpstreamTranslation.Apply(this, ChooseCommitViewModel.Category);
+
+        // View concerns: the grid's columns as the settings say, the selected commit in view, and the double-click.
+        RevisionGridColumns.ShowAsSettingsSay(this, revisionGrid, preferences, ViewModel.Commits);
+        ViewModel.PropertyChanged += OnViewModelChanged;
+        revisionGrid.DoubleTapped += (_, _) => ViewModel.ChooseCommand.Execute(null);
+        Opened += (_, _) => _ = ViewModel.LoadAsync();
     }
+
+    public ChooseCommitViewModel ViewModel { get; }
 
     /// <summary>
     ///  Completes when the commits are listed, for tests.
     /// </summary>
-    public Task CommitsLoaded => _loaded.Task;
+    public Task CommitsLoaded => ViewModel.Loaded;
 
-    private CommitRow? SelectedRow => (revisionGrid.SelectedItem as CommitListItem)?.Row;
-
-    private void Run(Func<Task> action)
-        => UiActions.Run(action, ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
-
-    // Upstream's OnLoad and its constructor's preselected commit.
-    private async Task LoadAsync()
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        await _commits.ApplyFilterAsync(_filter);
-        await _commits.OpenAsync(_repositoryPath);
-        revisionGrid.ItemsSource = _commits.VisibleRows;
-
-        // An artificial commit is no revision for git to resolve.
-        string? hash = string.IsNullOrEmpty(_preselect)
-            ? null
-            : ObjectId.TryParse(_preselect, out ObjectId given) && given.IsArtificial
-                ? _preselect
-                : await Task.Run(() => GoToCommit.Resolve(GitModules.Open(_repositoryPath), _preselect)) is { IsZero: false } id
-                    ? id.ToString()
-                    : null;
-        if (hash is null || !Select(hash))
+        if (e.PropertyName == nameof(ChooseCommitViewModel.SelectedIndex) && ViewModel.SelectedIndex >= 0)
         {
-            revisionGrid.SelectedIndex = _commits.VisibleRows.Count > 0 ? 0 : -1;
-        }
-
-        _loaded.TrySetResult();
-    }
-
-    // Upstream's btnOK_Click and revisionGrid_DoubleClickRevision.
-    private void Choose()
-    {
-        if (SelectedRow is { } row)
-        {
-            Close(row);
+            revisionGrid.ScrollIntoView(ViewModel.SelectedIndex);
         }
     }
-
-    // Upstream's revisionGrid_SelectionChanged: the selected commit's first two parents as links.
-    private void ShowParents()
-    {
-        IReadOnlyList<string> parents = SelectedRow?.ParentHashes ?? [];
-        flowLayoutPanelParents.IsVisible = parents.Count > 0;
-        ShowParent(linkLabelParent, parents.Count > 0 ? parents[0] : null);
-        ShowParent(linkLabelParent2, parents.Count > 1 ? parents[1] : null);
-
-        static void ShowParent(HyperlinkButton link, string? hash)
-        {
-            link.IsVisible = hash is not null;
-            link.Tag = hash;
-            link.Content = hash is null ? null : ObjectId.Parse(hash).ToShortString();
-        }
-    }
-
-    // Upstream's buttonGotoCommit_Click: the grid's GotoCommitExecute.
-    private async Task GoToCommitAsync()
-    {
-        if (await new GoToCommitWindow(_repositoryPath).ShowDialog<ObjectId?>(this) is not { } commit)
-        {
-            return;
-        }
-
-        if (commit.IsZero)
-        {
-            ShowError(UpstreamTranslation.ByText(GoToCommit.NoRevisionFound));
-        }
-        else
-        {
-            SelectOrTell(commit.ToString());
-        }
-    }
-
-    // Upstream's linkLabelParent_LinkClicked: the commit, or upstream's RevisionFilteredInGrid message.
-    private void SelectOrTell(string? hash)
-    {
-        if (hash is not null && !Select(hash))
-        {
-            ShowError(string.Format(UpstreamTranslation.ByText(GoToCommit.RevisionNotVisible),
-                hash[..Math.Min(hash.Length, 8)]));
-        }
-    }
-
-    // Upstream's SetSelectedRevision: false when the grid does not show the commit.
-    private bool Select(string hash)
-    {
-        if (_commits.IndexOfHash(hash) is not { } index)
-        {
-            return false;
-        }
-
-        revisionGrid.SelectedIndex = index;
-        revisionGrid.ScrollIntoView(index);
-        return true;
-    }
-
-    private void ShowError(string message) => _ = new ErrorWindow(message).ShowDialog(this);
 }

@@ -3,6 +3,7 @@
         xmlns:core="using:GitExtensions.Xplat.Core.Diff"
         xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.RevisionDiffWindow"
+        x:DataType="core:RevisionDiffViewModel"
         Title="Diff"
         Width="1042" Height="685" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormDiff: BASE and Compare with their pickers and the swap button between them, "Compare to merge base"
@@ -11,42 +12,42 @@
     <Grid x:Name="settingsLayoutPanel" ColumnDefinitions="*,Auto,*" RowDefinitions="Auto,Auto">
       <HeaderedContentControl x:Name="firstCommitGroup" Classes="groupBox" Header="BASE" Margin="3">
         <DockPanel x:Name="firstCommitPanel" Margin="3">
-          <Button x:Name="btnAnotherFirstCommit" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+          <Button x:Name="btnAnotherFirstCommit" Command="{Binding PickFirstCommitCommand}" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
                   ToolTip.Tip="Select another commit">
             <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
           </Button>
-          <Button x:Name="btnAnotherFirstBranch" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+          <Button x:Name="btnAnotherFirstBranch" Command="{Binding PickFirstBranchCommand}" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
                   ToolTip.Tip="Select another branch">
             <Image Source="{local:UpstreamImage BranchCheckout}" Width="16" Height="16" />
           </Button>
           <Border x:Name="lblFirstCommitBack" Padding="4,2" VerticalAlignment="Center">
-            <TextBlock x:Name="lblFirstCommit" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="lblFirstCommit" Text="{Binding FirstDisplay}" ToolTip.Tip="{Binding FirstDisplay}" TextTrimming="CharacterEllipsis" />
           </Border>
         </DockPanel>
       </HeaderedContentControl>
-      <Button x:Name="btnSwap" Grid.Column="1" VerticalAlignment="Center" Margin="3" Padding="4,2"
+      <Button x:Name="btnSwap" Command="{Binding SwapCommand}" Grid.Column="1" VerticalAlignment="Center" Margin="3" Padding="4,2"
               ToolTip.Tip="Swap BASE and Compare commits">
         <Image Source="{local:UpstreamImage Renamed}" Width="16" Height="16" />
       </Button>
       <HeaderedContentControl x:Name="secondCommitGroup" Grid.Column="2" Classes="groupBox" Header="Compare" Margin="3">
         <DockPanel x:Name="secondCommitPanel" Margin="3">
-          <Button x:Name="btnAnotherSecondCommit" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+          <Button x:Name="btnAnotherSecondCommit" Command="{Binding PickSecondCommitCommand}" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
                   ToolTip.Tip="Select another commit">
             <Image Source="{local:UpstreamImage SelectRevision}" Width="16" Height="16" />
           </Button>
-          <Button x:Name="btnAnotherSecondBranch" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
+          <Button x:Name="btnAnotherSecondBranch" Command="{Binding PickSecondBranchCommand}" DockPanel.Dock="Right" Margin="3,0,0,0" Padding="4,2"
                   ToolTip.Tip="Select another branch">
             <Image Source="{local:UpstreamImage BranchCheckout}" Width="16" Height="16" />
           </Button>
           <Border x:Name="lblSecondCommitBack" Padding="4,2" VerticalAlignment="Center">
-            <TextBlock x:Name="lblSecondCommit" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="lblSecondCommit" Text="{Binding SecondDisplay}" ToolTip.Tip="{Binding SecondDisplay}" TextTrimming="CharacterEllipsis" />
           </Border>
         </DockPanel>
       </HeaderedContentControl>
       <StackPanel x:Name="diffOptionsPanel" Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="6"
                   Margin="3">
-        <CheckBox x:Name="ckCompareToMergeBase" Content="Compare to merge _base" />
-        <Button x:Name="btnCompareDirectoriesWithDiffTool" Content="Open diff using _directory diff tool" />
+        <CheckBox x:Name="ckCompareToMergeBase" IsChecked="{Binding CompareToMergeBase}" Content="{Binding CompareToMergeBaseText}" IsEnabled="{Binding CanCompareToMergeBase}" />
+        <Button x:Name="btnCompareDirectoriesWithDiffTool" Command="{Binding OpenDirectoryDiffCommand}" IsEnabled="{Binding CanOpenDirectoryDiff}" Content="Open diff using _directory diff tool" />
       </StackPanel>
     </Grid>
     <Grid x:Name="splitContainer1" Grid.Row="1" ColumnDefinitions="345,5,*">

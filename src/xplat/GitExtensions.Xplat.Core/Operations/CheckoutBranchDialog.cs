@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitCommands.Git;
 using GitExtensions.Extensibility;
@@ -28,9 +29,9 @@ public sealed record CheckoutBranchSource(
 /// <summary>
 ///  Upstream's <c>FormCheckoutBranch</c> without its window: local or remote branches (or the branches containing given
 ///  commits), for a remote branch whether a local branch is reset, created with a custom name or not made, what happens to
-///  local changes, the checks before checking out, and the checkout command.
+///  local changes, the checks before checking out, and the checkout command. Observable, so the checkout window binds to it.
 /// </summary>
-public sealed class CheckoutBranchDialog
+public sealed class CheckoutBranchDialog : ObservableObject
 {
     // Upstream's texts.
     public const string CustomBranchNameIsEmpty = "Custom branch name is empty.\nEnter valid branch name or select predefined value.";
@@ -46,6 +47,14 @@ public sealed class CheckoutBranchDialog
 
     private readonly CheckoutBranchSource _source;
     private string _branch = "";
+    private bool _isRemote;
+    private IReadOnlyList<string> _branches = [];
+    private string _remoteName = "";
+    private string _localBranchName = "";
+    private string _customBranchName = "";
+    private CheckoutNewBranchMode _newBranchMode;
+    private LocalChangesAction _changesMode;
+    private bool _setAsDefault;
 
     /// <param name="branch">The branch to show selected (upstream adds it to the list).</param>
     /// <param name="remote">True to start with the remote branches.</param>
@@ -77,9 +86,17 @@ public sealed class CheckoutBranchDialog
         NewBranchMode = createLocalBranchForRemote ? CheckoutNewBranchMode.Create : CheckoutNewBranchMode.Reset;
     }
 
-    public bool IsRemote { get; private set; }
+    public bool IsRemote
+    {
+        get => _isRemote;
+        private set => SetProperty(ref _isRemote, value);
+    }
 
-    public IReadOnlyList<string> Branches { get; private set; }
+    public IReadOnlyList<string> Branches
+    {
+        get => _branches;
+        private set => SetProperty(ref _branches, value);
+    }
 
     public bool IsContainingCommits => _source.ContainingLocal is not null || _source.ContainingRemote is not null;
 
@@ -91,10 +108,13 @@ public sealed class CheckoutBranchDialog
         get => _branch;
         set
         {
-            _branch = value;
+            // An editable list passes no text on the way when its items change.
+            value ??= "";
+            SetProperty(ref _branch, value);
             if (string.IsNullOrWhiteSpace(value) || !IsRemote)
             {
                 RemoteName = LocalBranchName = CustomBranchName = "";
+                OnPropertyChanged(nameof(ResetOptionText));
                 return;
             }
 
@@ -110,33 +130,65 @@ public sealed class CheckoutBranchDialog
                 CustomBranchName = $"{RemoteName}_{LocalBranchName}_{i}";
                 i++;
             }
+
+            OnPropertyChanged(nameof(ResetOptionText));
         }
     }
 
-    public string RemoteName { get; private set; } = "";
+    public string RemoteName
+    {
+        get => _remoteName;
+        private set => SetProperty(ref _remoteName, value);
+    }
 
     /// <summary>
     ///  The local branch a remote branch's checkout resets or creates (upstream's <c>branchName</c> label).
     /// </summary>
-    public string LocalBranchName { get; private set; } = "";
+    public string LocalBranchName
+    {
+        get => _localBranchName;
+        private set => SetProperty(ref _localBranchName, value);
+    }
 
-    public string CustomBranchName { get; set; } = "";
+    public string CustomBranchName
+    {
+        get => _customBranchName;
+        set => SetProperty(ref _customBranchName, value);
+    }
 
     /// <summary>
     ///  Upstream's <c>rbResetBranch</c> text: reset when the local branch exists, else create it with the same name.
     /// </summary>
     public string ResetOptionText => LocalBranchExists(LocalBranchName) ? ResetBranchText : CreateBranchText;
 
-    public CheckoutNewBranchMode NewBranchMode { get; set; }
+    public CheckoutNewBranchMode NewBranchMode
+    {
+        get => _newBranchMode;
+        set => SetProperty(ref _newBranchMode, value);
+    }
 
     public bool HasUncommittedChanges => _source.IsDirty ?? true;
 
-    public LocalChangesAction ChangesMode { get; set; }
+    public LocalChangesAction ChangesMode
+    {
+        get => _changesMode;
+        set
+        {
+            if (SetProperty(ref _changesMode, value))
+            {
+                OnPropertyChanged(nameof(CanSetAsDefault));
+            }
+        }
+    }
 
     /// <summary>
     ///  Upstream's "Set as default": not offered for Reset.
     /// </summary>
-    public bool SetAsDefault { get; set; }
+    public bool SetAsDefault
+    {
+        get => _setAsDefault;
+        set => SetProperty(ref _setAsDefault, value);
+    }
 
     public bool CanSetAsDefault => ChangesMode != LocalChangesAction.Reset;
 

@@ -1,26 +1,34 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Presentation"
         x:Class="GitExtensions.Xplat.App.FindWindow"
-        Title="Find"
+        x:DataType="vm:FindViewModel"
+        Title="{Binding Title}"
         SizeToContent="WidthAndHeight" CanResize="False" ShowInTaskbar="False">
-  <!-- Upstream's FindAndReplaceForm. Its replace controls show only for what can be edited: the editor window. -->
+  <!-- Upstream's FindAndReplaceForm. Its replace controls show only for what can be edited: the editor window. Bound to
+       FindViewModel (PLAN.md principle 6). -->
   <Grid Margin="8" ColumnDefinitions="Auto,240,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6"
         RowSpacing="4">
     <Label x:Name="label1" Content="Fi_nd what:" Target="txtLookFor" VerticalAlignment="Center" />
-    <TextBox x:Name="txtLookFor" Grid.Column="1" />
+    <TextBox x:Name="txtLookFor" Grid.Column="1" Text="{Binding LookFor}" />
     <Label x:Name="lblReplaceWith" Grid.Row="1" Content="Re_place with:" Target="txtReplaceWith" VerticalAlignment="Center"
-           IsVisible="False" />
-    <TextBox x:Name="txtReplaceWith" Grid.Row="1" Grid.Column="1" IsVisible="False" />
-    <CheckBox x:Name="chkMatchWholeWord" Grid.Row="2" Grid.Column="1" Content="Match _whole word" />
-    <CheckBox x:Name="chkMatchCase" Grid.Row="3" Grid.Column="1" Content="Match _case" />
-    <Button x:Name="btnFindPrevious" Grid.Column="2" Content="Find pre_vious" HorizontalAlignment="Stretch" />
-    <Button x:Name="btnFindNext" Grid.Row="1" Grid.Column="2" Content="_Find next" IsDefault="True"
-            HorizontalAlignment="Stretch" />
-    <Button x:Name="btnReplace" Grid.Row="2" Grid.Column="2" Content="_Replace" HorizontalAlignment="Stretch" IsVisible="False" />
-    <Button x:Name="btnReplaceAll" Grid.Row="3" Grid.Column="2" Content="Replace _All" HorizontalAlignment="Stretch" IsVisible="False" />
+           IsVisible="{Binding ReplaceMode}" />
+    <TextBox x:Name="txtReplaceWith" Grid.Row="1" Grid.Column="1" IsVisible="{Binding ReplaceMode}"
+             Text="{Binding ReplaceWith}" />
+    <CheckBox x:Name="chkMatchWholeWord" Grid.Row="2" Grid.Column="1" Content="Match _whole word"
+              IsChecked="{Binding MatchWholeWord}" />
+    <CheckBox x:Name="chkMatchCase" Grid.Row="3" Grid.Column="1" Content="Match _case" IsChecked="{Binding MatchCase}" />
+    <Button x:Name="btnFindPrevious" Grid.Column="2" Content="Find pre_vious" HorizontalAlignment="Stretch"
+            Command="{Binding FindPreviousCommand}" />
+    <Button x:Name="btnFindNext" Grid.Row="1" Grid.Column="2" Content="_Find next" IsDefault="{Binding !ReplaceMode}"
+            HorizontalAlignment="Stretch" Command="{Binding FindNextCommand}" />
+    <Button x:Name="btnReplace" Grid.Row="2" Grid.Column="2" Content="_Replace" HorizontalAlignment="Stretch"
+            IsVisible="{Binding ReplaceMode}" IsDefault="{Binding ReplaceMode}" Command="{Binding ReplaceCommand}" />
+    <Button x:Name="btnReplaceAll" Grid.Row="3" Grid.Column="2" Content="Replace _All" HorizontalAlignment="Stretch"
+            IsVisible="{Binding ReplaceMode}" Command="{Binding ReplaceAllCommand}" />
     <Button x:Name="btnHighlightAll" Grid.Row="2" Grid.Column="2" Content="Find &amp; highlight _all"
-            HorizontalAlignment="Stretch" />
+            HorizontalAlignment="Stretch" IsVisible="{Binding ShowsHighlightAll}" Command="{Binding HighlightAllCommand}" />
     <Button x:Name="btnCancel" Grid.Row="4" Grid.Column="2" Content="Cancel" IsCancel="True"
-            HorizontalAlignment="Stretch" />
+            HorizontalAlignment="Stretch" Command="{Binding CancelCommand}" />
   </Grid>
 </Window>

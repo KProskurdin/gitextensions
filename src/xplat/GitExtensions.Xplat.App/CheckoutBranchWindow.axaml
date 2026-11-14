@@ -1,51 +1,83 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
+        xmlns:git="using:GitCommands"
+        xmlns:gitgit="using:GitCommands.Git"
         x:Class="GitExtensions.Xplat.App.CheckoutBranchWindow"
+        x:DataType="vm:CheckoutBranchViewModel"
         Title="Checkout branch"
         Width="626" SizeToContent="Height" MinWidth="560" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormCheckoutBranch (a GitExtensionsDialog): the branch kind and branch, for a remote branch what happens to
-       the local branch, and for a dirty working directory what happens to the local changes; Checkout at the bottom. -->
+       the local branch, and for a dirty working directory what happens to the local changes; Checkout at the bottom. Bound
+       to CheckoutBranchViewModel and its CheckoutBranchDialog (PLAN.md principle 6). -->
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+  </Window.KeyBindings>
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <Grid ColumnDefinitions="Auto,*">
         <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button x:Name="CheckoutButton" Content="_Checkout" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
+          <Button x:Name="CheckoutButton" Content="_Checkout" MinWidth="75" IsDefault="True" VerticalAlignment="Center"
+                  Command="{Binding CheckoutCommand}" />
         </StackPanel>
       </Grid>
     </Border>
     <StackPanel Margin="12" Spacing="3">
       <!-- Upstream's tlpnlBranches. -->
       <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
-        <RadioButton x:Name="LocalBranchRadio" GroupName="Kind" Content="Local _branch" IsChecked="True" Margin="3" />
-        <RadioButton x:Name="RemoteBranchRadio" Grid.Column="1" GroupName="Kind" Content="Remote _branch" Margin="3" />
+        <RadioButton x:Name="LocalBranchRadio" GroupName="Kind" Content="Local _branch" Margin="3"
+                     IsChecked="{Binding IsRemote, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                 ConverterParameter={x:False}}" />
+        <RadioButton x:Name="RemoteBranchRadio" Grid.Column="1" GroupName="Kind" Content="Remote _branch" Margin="3"
+                     IsChecked="{Binding IsRemote, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                 ConverterParameter={x:True}}" />
         <AccessText Grid.Row="1" Text="_Select branch" VerticalAlignment="Center" Margin="3,3,12,3" />
-        <ComboBox x:Name="BranchesBox" Grid.Row="1" Grid.Column="1" Margin="3" IsEditable="True" HorizontalAlignment="Stretch" />
-        <TextBlock x:Name="ChangesText" Grid.Row="1" Grid.Column="2" Text="-" VerticalAlignment="Center" Margin="3"
-                   MinWidth="40" />
+        <ComboBox x:Name="BranchesBox" Grid.Row="1" Grid.Column="1" Margin="3" IsEditable="True" HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding Dialog.Branches}" Text="{Binding Dialog.Branch, Mode=TwoWay}" />
+        <TextBlock x:Name="ChangesText" Grid.Row="1" Grid.Column="2" Text="{Binding Changes}" VerticalAlignment="Center"
+                   Margin="3" MinWidth="40" />
       </Grid>
       <Separator Margin="3" />
       <!-- Upstream's tlpnlRemoteOptions, shown for a remote branch. -->
-      <Grid x:Name="RemoteOptions" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" IsVisible="False">
-        <RadioButton x:Name="ResetBranchRadio" GroupName="NewBranch" Margin="3">
-          <AccessText x:Name="ResetBranchText" Text="R_eset local branch with the name:" />
+      <Grid x:Name="RemoteOptions" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" IsVisible="{Binding IsRemote}">
+        <RadioButton x:Name="ResetBranchRadio" GroupName="NewBranch" Margin="3"
+                     IsChecked="{Binding Dialog.NewBranchMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                 ConverterParameter={x:Static gitgit:CheckoutNewBranchMode.Reset}}">
+          <AccessText x:Name="ResetBranchText" Text="{Binding ResetText}" />
         </RadioButton>
-        <TextBlock x:Name="LocalBranchNameText" Grid.Column="1" VerticalAlignment="Center" FontWeight="Bold" Margin="3" />
+        <TextBlock x:Name="LocalBranchNameText" Grid.Column="1" VerticalAlignment="Center" FontWeight="Bold" Margin="3"
+                   Text="{Binding LocalBranchNameText}" />
         <RadioButton x:Name="CreateBranchRadio" Grid.Row="1" GroupName="NewBranch" Content="Cr_eate local branch with custom name:"
-                     Margin="3" />
-        <TextBox x:Name="CustomBranchNameBox" Grid.Row="1" Grid.Column="1" Margin="3" IsEnabled="False" />
+                     Margin="3"
+                     IsChecked="{Binding Dialog.NewBranchMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                 ConverterParameter={x:Static gitgit:CheckoutNewBranchMode.Create}}" />
+        <TextBox x:Name="CustomBranchNameBox" Grid.Row="1" Grid.Column="1" Margin="3" IsEnabled="{Binding UsesCustomName}"
+                 Text="{Binding Dialog.CustomBranchName}" />
         <RadioButton x:Name="DontCreateRadio" Grid.Row="2" GroupName="NewBranch"
-                     Content="Ch_eckout the commit (in detached head)" Margin="3" />
+                     Content="Ch_eckout the commit (in detached head)" Margin="3"
+                     IsChecked="{Binding Dialog.NewBranchMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                 ConverterParameter={x:Static gitgit:CheckoutNewBranchMode.DontCreate}}" />
       </Grid>
       <!-- Upstream's localChangesGB, shown when the working directory has changes. -->
-      <HeaderedContentControl x:Name="LocalChangesGroup" Classes="groupBox" Header="Local changes" Margin="3">
+      <HeaderedContentControl x:Name="LocalChangesGroup" Classes="groupBox" Header="Local changes" Margin="3"
+                              IsVisible="{Binding Dialog.HasUncommittedChanges}">
         <WrapPanel>
-          <RadioButton x:Name="DontChangeRadio" GroupName="Changes" Content="Do_n't change" Margin="0,0,12,0" />
-          <RadioButton x:Name="MergeRadio" GroupName="Changes" Content="_Merge" Margin="0,0,12,0" />
-          <RadioButton x:Name="StashRadio" GroupName="Changes" Content="S_tash" Margin="0,0,12,0" />
-          <RadioButton x:Name="ResetRadio" GroupName="Changes" Content="_Reset" Margin="0,0,12,0" />
-          <CheckBox x:Name="SetAsDefaultCheck" Content="Set as _default" />
+          <RadioButton x:Name="DontChangeRadio" GroupName="Changes" Content="Do_n't change" Margin="0,0,12,0"
+                       IsChecked="{Binding Dialog.ChangesMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                   ConverterParameter={x:Static git:LocalChangesAction.DontChange}}" />
+          <RadioButton x:Name="MergeRadio" GroupName="Changes" Content="_Merge" Margin="0,0,12,0"
+                       IsChecked="{Binding Dialog.ChangesMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                   ConverterParameter={x:Static git:LocalChangesAction.Merge}}" />
+          <RadioButton x:Name="StashRadio" GroupName="Changes" Content="S_tash" Margin="0,0,12,0"
+                       IsChecked="{Binding Dialog.ChangesMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                   ConverterParameter={x:Static git:LocalChangesAction.Stash}}" />
+          <RadioButton x:Name="ResetRadio" GroupName="Changes" Content="_Reset" Margin="0,0,12,0"
+                       IsChecked="{Binding Dialog.ChangesMode, Converter={x:Static local:EnumEqualsConverter.Instance},
+                                   ConverterParameter={x:Static git:LocalChangesAction.Reset}}" />
+          <CheckBox x:Name="SetAsDefaultCheck" Content="Set as _default" IsChecked="{Binding Dialog.SetAsDefault}"
+                    IsEnabled="{Binding Dialog.CanSetAsDefault}" />
         </WrapPanel>
       </HeaderedContentControl>
     </StackPanel>

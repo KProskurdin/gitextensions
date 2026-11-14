@@ -27,9 +27,17 @@ public interface IDialogHost
     Task ShowMessageAsync(string text, string? caption = null);
 
     /// <summary>
-    ///  Asks <paramref name="text"/> with Yes and No buttons (caption as for <see cref="ShowMessageAsync"/>); true for Yes.
+    ///  Asks <paramref name="text"/> with Yes and No buttons (caption as for <see cref="ShowMessageAsync"/>), No the
+    ///  default button when <paramref name="defaultIsNo"/>; true for Yes.
     /// </summary>
-    Task<bool> ConfirmAsync(string text, string? caption = null);
+    Task<bool> ConfirmAsync(string text, string? caption = null, bool defaultIsNo = false);
+
+    /// <summary>
+    ///  Asks <paramref name="text"/> with Yes, No and Cancel buttons (caption as for <see cref="ShowMessageAsync"/>): true
+    ///  for Yes, false for No, null for Cancel or a closed question. No is the default button when
+    ///  <paramref name="defaultIsNo"/>.
+    /// </summary>
+    Task<bool?> AskAsync(string text, string? caption = null, bool defaultIsNo = false);
 
     /// <summary>
     ///  Shows an error that stopped a command, as the windows show such errors.

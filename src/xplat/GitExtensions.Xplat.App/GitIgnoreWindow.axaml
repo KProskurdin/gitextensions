@@ -1,18 +1,21 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.GitIgnoreWindow"
-        Title="Edit .gitignore"
+        x:DataType="vm:GitIgnoreViewModel"
+        Title="{Binding Title}"
         Width="634" Height="623" MinWidth="634" MinHeight="459" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormGitIgnore: the file in an editor with "Add default ignores" and "Add pattern" below it, the help text
-       with the two links on the right (a fixed width, as upstream's FixedPanel), and Save and Cancel along the bottom. -->
+       with the two links on the right (a fixed width, as upstream's FixedPanel), and Save and Cancel along the bottom.
+       Bound to GitIgnoreViewModel (PLAN.md principle 6). -->
   <DockPanel Margin="4">
     <StackPanel x:Name="flowLayoutPanel1" DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
                 Spacing="6" Margin="3">
       <Button x:Name="btnCancel" MinWidth="75" MinHeight="27" HorizontalContentAlignment="Center"
-              VerticalContentAlignment="Center" Content="Cancel" IsCancel="True" />
+              VerticalContentAlignment="Center" Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}" />
       <Button x:Name="SaveButton" MinWidth="160" MinHeight="27" HorizontalContentAlignment="Center"
-              VerticalContentAlignment="Center">
+              VerticalContentAlignment="Center" Command="{Binding SaveCommand}">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage Save}" Width="16" Height="16" />
           <AccessText x:Name="Save" Text="Save" VerticalAlignment="Center" />
@@ -23,12 +26,13 @@
       <DockPanel Margin="0,0,3,2" MinWidth="250">
         <StackPanel x:Name="flowLayoutPanel2" DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="3">
           <Button x:Name="AddDefault" MinWidth="160" MinHeight="27" HorizontalContentAlignment="Center"
-                  VerticalContentAlignment="Center" Content="Add default ignores" />
+                  VerticalContentAlignment="Center" Content="Add default ignores" Command="{Binding AddDefaultsCommand}" />
           <Button x:Name="AddPattern" MinWidth="160" MinHeight="27" HorizontalContentAlignment="Center"
-                  VerticalContentAlignment="Center" Content="Add pattern" />
+                  VerticalContentAlignment="Center" Content="Add pattern" Command="{Binding AddPatternCommand}" />
         </StackPanel>
         <TextBox x:Name="_NO_TRANSLATE_GitIgnoreEdit" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
-                 IsReadOnly="True" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}"
+                 Text="{Binding Text}" NewLine="{Binding NewLine}"
+                 IsReadOnly="{Binding IsReadOnly}" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}"
                  FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" />
       </DockPanel>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
@@ -40,7 +44,8 @@
                            Content="Example ignore patterns" />
         </StackPanel>
         <TextBox x:Name="label1" Margin="3,0,3,3" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                 BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                 BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 Text="{Binding HelpText, Mode=OneWay}" />
       </DockPanel>
     </Grid>
   </DockPanel>

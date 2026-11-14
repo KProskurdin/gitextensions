@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Settings;
@@ -66,84 +67,87 @@ public sealed class InMemoryMergeSettingsStore : IMergeSettingsStore
 ///  Upstream's <c>FormMergeBranch</c> without its window: the branch to merge into the current one, fast-forward or a merge
 ///  commit, no commit, the advanced options and their rules, and the merge command.
 /// </summary>
-public sealed class MergeBranchDialog
+public sealed partial class MergeBranchDialog : ObservableObject
 {
     // Upstream's text.
     public const string HoverShowImageText = "Hover to see scenario when fast forward is possible.";
-
-    private bool _noFastForward;
-    private bool _advanced;
 
     /// <param name="noCommit">Upstream's <c>DontCommitMerge</c>.</param>
     /// <param name="advanced">Upstream's <c>AlwaysShowAdvOpt</c>.</param>
     public MergeBranchDialog(MergeRepositorySettings settings, bool noCommit, bool advanced)
     {
-        _noFastForward = settings.NoFastForward;
+        NoFastForward = settings.NoFastForward;
         AddLogMessages = settings.AddLogMessages;
         LogMessagesCount = settings.LogMessagesCount;
         NoCommit = noCommit;
-        _advanced = advanced;
+        Advanced = advanced;
     }
 
-    public string Branch { get; set; } = "";
+    [ObservableProperty]
+    public partial string Branch { get; set; } = "";
 
     /// <summary>
     ///  "Always create a new merge commit"; when false, upstream's "Keep a single branch line if possible (fast forward)".
     /// </summary>
-    public bool NoFastForward
-    {
-        get => _noFastForward;
-        set
-        {
-            _noFastForward = value;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSquash))]
+    public partial bool NoFastForward { get; set; }
 
-            // Upstream's noFastForward_CheckedChanged: a squash makes no merge commit.
-            if (value)
-            {
-                Squash = false;
-            }
-        }
-    }
-
-    public bool NoCommit { get; set; }
+    [ObservableProperty]
+    public partial bool NoCommit { get; set; }
 
     /// <summary>
     ///  "Show advanced options"; hiding them clears them, as upstream's <c>advanced_CheckedChanged</c>.
     /// </summary>
-    public bool Advanced
-    {
-        get => _advanced;
-        set
-        {
-            _advanced = value;
-            if (!value)
-            {
-                UseStrategy = false;
-                Strategy = "";
-                Squash = false;
-                AllowUnrelatedHistories = false;
-                AddMergeMessage = false;
-            }
-        }
-    }
+    [ObservableProperty]
+    public partial bool Advanced { get; set; }
 
-    public bool UseStrategy { get; set; }
+    [ObservableProperty]
+    public partial bool UseStrategy { get; set; }
 
-    public string Strategy { get; set; } = "";
+    [ObservableProperty]
+    public partial string Strategy { get; set; } = "";
 
-    public bool Squash { get; set; }
+    [ObservableProperty]
+    public partial bool Squash { get; set; }
 
     public bool CanSquash => !NoFastForward;
 
-    public bool AllowUnrelatedHistories { get; set; }
+    [ObservableProperty]
+    public partial bool AllowUnrelatedHistories { get; set; }
 
-    public bool AddLogMessages { get; set; }
+    [ObservableProperty]
+    public partial bool AddLogMessages { get; set; }
 
-    public int LogMessagesCount { get; set; }
+    [ObservableProperty]
+    public partial int LogMessagesCount { get; set; }
 
-    public bool AddMergeMessage { get; set; }
+    [ObservableProperty]
+    public partial bool AddMergeMessage { get; set; }
 
-    public string MergeMessage { get; set; } = "";
+    [ObservableProperty]
+    public partial string MergeMessage { get; set; } = "";
+
+    // Upstream's noFastForward_CheckedChanged: a squash makes no merge commit.
+    partial void OnNoFastForwardChanged(bool value)
+    {
+        if (value)
+        {
+            Squash = false;
+        }
+    }
+
+    partial void OnAdvancedChanged(bool value)
+    {
+        if (!value)
+        {
+            UseStrategy = false;
+            Strategy = "";
+            Squash = false;
+            AllowUnrelatedHistories = false;
+            AddMergeMessage = false;
+        }
+    }
 
     /// <summary>
     ///  The settings to keep after the merge, as upstream's <c>OkClick</c> and change handlers store them.

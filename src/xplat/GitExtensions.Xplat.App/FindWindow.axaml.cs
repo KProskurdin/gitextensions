@@ -1,37 +1,31 @@
 using Avalonia;
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FindAndReplaceForm</c>, one per viewer and kept while it lives: closing hides it, as
-///  upstream's does, so the next Find shows it again with the last search. The viewer runs the searches it asks for.
+///  Upstream's <c>FindAndReplaceForm</c>, bound to <see cref="FindViewModel"/>, one per viewer and kept while it lives:
+///  closing hides it, as upstream's does, so the next Find shows it again with the last search. The viewer runs the
+///  searches it asks for.
 /// </summary>
 public partial class FindWindow : Window
 {
     // Upstream's texts.
-    public const string FindText = "Find";
-    public const string FindAndReplaceText = "Find & replace";
-    public const string SelectionOnlyText = "selection only";
+    public const string FindText = FindViewModel.FindText;
+    public const string FindAndReplaceText = FindViewModel.FindAndReplaceText;
+    public const string SelectionOnlyText = FindViewModel.SelectionOnlyText;
 
     // Upstream shows the form this far right of and below its owner's corner.
     private const int OwnerOffset = 100;
 
-    private string? _fileName;
-    private bool _selectionOnly;
-    private bool _canHighlightAll = true;
-
     public FindWindow()
     {
+        ViewModel = new FindViewModel(new WindowDialogHost(this));
+        DataContext = ViewModel;
         InitializeComponent();
-        UpstreamTranslation.Apply(this, "FindAndReplaceForm");
-        btnFindNext.Click += (_, _) => FindNextRequested?.Invoke(this, false);
-        btnFindPrevious.Click += (_, _) => FindNextRequested?.Invoke(this, true);
-        btnHighlightAll.Click += (_, _) => HighlightAllRequested?.Invoke(this, EventArgs.Empty);
-        btnReplace.Click += (_, _) => ReplaceRequested?.Invoke(this, EventArgs.Empty);
-        btnReplaceAll.Click += (_, _) => ReplaceAllRequested?.Invoke(this, EventArgs.Empty);
-        btnCancel.Click += (_, _) => Close();
+        UpstreamTranslation.Apply(this, FindViewModel.Category);
 
         // Upstream's FindAndReplaceForm_FormClosing: a user's close hides the form, which is used again, and drops the
         // selection the search kept to; the owner's close ends it.
@@ -52,35 +46,53 @@ public partial class FindWindow : Window
     /// <summary>
     ///  Raised for Find next (false) and Find previous (true).
     /// </summary>
-    public event EventHandler<bool>? FindNextRequested;
+    public event EventHandler<bool>? FindNextRequested
+    {
+        add => ViewModel.FindNextRequested += value;
+        remove => ViewModel.FindNextRequested -= value;
+    }
 
     /// <summary>
     ///  Raised for upstream's "Find &amp; highlight all".
     /// </summary>
-    public event EventHandler? HighlightAllRequested;
+    public event EventHandler? HighlightAllRequested
+    {
+        add => ViewModel.HighlightAllRequested += value;
+        remove => ViewModel.HighlightAllRequested -= value;
+    }
 
     /// <summary>
     ///  Raised for upstream's "Replace".
     /// </summary>
-    public event EventHandler? ReplaceRequested;
+    public event EventHandler? ReplaceRequested
+    {
+        add => ViewModel.ReplaceRequested += value;
+        remove => ViewModel.ReplaceRequested -= value;
+    }
 
     /// <summary>
     ///  Raised for upstream's "Replace All".
     /// </summary>
-    public event EventHandler? ReplaceAllRequested;
+    public event EventHandler? ReplaceAllRequested
+    {
+        add => ViewModel.ReplaceAllRequested += value;
+        remove => ViewModel.ReplaceAllRequested -= value;
+    }
 
     /// <summary>
     ///  Raised when the user closed the window, which hides it.
     /// </summary>
     public event EventHandler? Hidden;
 
+    public FindViewModel ViewModel { get; }
+
     /// <summary>
     ///  Upstream's <c>LookFor</c>: the text to find.
     /// </summary>
     public string LookFor
     {
-        get => txtLookFor.Text ?? "";
-        set => txtLookFor.Text = value;
+        get => ViewModel.LookFor ?? "";
+        set => ViewModel.LookFor = value;
     }
 
     /// <summary>
@@ -88,15 +100,8 @@ public partial class FindWindow : Window
     /// </summary>
     public bool ReplaceMode
     {
-        get => txtReplaceWith.IsVisible;
-        set
-        {
-            txtReplaceWith.IsVisible = lblReplaceWith.IsVisible = btnReplace.IsVisible = btnReplaceAll.IsVisible = value;
-            btnReplace.IsDefault = value;
-            btnFindNext.IsDefault = !value;
-            btnHighlightAll.IsVisible = !value && CanHighlightAll;
-            UpdateTitleBar();
-        }
+        get => ViewModel.ReplaceMode;
+        set => ViewModel.ReplaceMode = value;
     }
 
     /// <summary>
@@ -104,12 +109,8 @@ public partial class FindWindow : Window
     /// </summary>
     public bool CanHighlightAll
     {
-        get => _canHighlightAll;
-        set
-        {
-            _canHighlightAll = value;
-            btnHighlightAll.IsVisible = value && !ReplaceMode;
-        }
+        get => ViewModel.CanHighlightAll;
+        set => ViewModel.CanHighlightAll = value;
     }
 
     /// <summary>
@@ -117,13 +118,13 @@ public partial class FindWindow : Window
     /// </summary>
     public string ReplaceWith
     {
-        get => txtReplaceWith.Text ?? "";
-        set => txtReplaceWith.Text = value;
+        get => ViewModel.ReplaceWith ?? "";
+        set => ViewModel.ReplaceWith = value;
     }
 
-    public bool MatchCase => chkMatchCase.IsChecked == true;
+    public bool MatchCase => ViewModel.MatchCase;
 
-    public bool MatchWholeWord => chkMatchWholeWord.IsChecked == true;
+    public bool MatchWholeWord => ViewModel.MatchWholeWord;
 
     /// <summary>
     ///  Upstream's <c>ShowFor</c>: shown over <paramref name="owner"/>, titled with the viewer's file and whether the search
@@ -131,8 +132,8 @@ public partial class FindWindow : Window
     /// </summary>
     public void ShowFor(Window owner, string? fileName, bool selectionOnly)
     {
-        _fileName = fileName;
-        SetSelectionOnly(selectionOnly);
+        ViewModel.FileName = fileName;
+        ViewModel.SelectionOnly = selectionOnly;
         if (!IsVisible)
         {
             Position = new PixelPoint(owner.Position.X + OwnerOffset, owner.Position.Y + OwnerOffset);
@@ -147,26 +148,5 @@ public partial class FindWindow : Window
     /// <summary>
     ///  Upstream's <c>ScanRegionChanged</c>: the title says whether the search keeps to the selection.
     /// </summary>
-    public void SetSelectionOnly(bool selectionOnly)
-    {
-        _selectionOnly = selectionOnly;
-        UpdateTitleBar();
-    }
-
-    // Upstream's UpdateTitleBar.
-    private void UpdateTitleBar()
-    {
-        string text = UpstreamTranslation.ByText(ReplaceMode ? FindAndReplaceText : FindText);
-        if (_fileName is not null)
-        {
-            text += " - " + Path.GetFileName(_fileName);
-        }
-
-        if (_selectionOnly)
-        {
-            text += " (" + UpstreamTranslation.ByText(SelectionOnlyText) + ")";
-        }
-
-        Title = text;
-    }
+    public void SetSelectionOnly(bool selectionOnly) => ViewModel.SelectionOnly = selectionOnly;
 }

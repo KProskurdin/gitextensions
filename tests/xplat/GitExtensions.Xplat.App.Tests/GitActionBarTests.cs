@@ -176,10 +176,10 @@ internal sealed class GitActionBarTests
         Click(window, "BisectMenuItem");
         WaitUntil(() => window.OwnedWindows.OfType<BisectWindow>().Any());
         BisectWindow bisect = window.OwnedWindows.OfType<BisectWindow>().Single();
-        Find<Button>(bisect, "BadButton").IsEnabled.Should().BeFalse();
+        Find<Button>(bisect, "BadButton").IsEffectivelyEnabled.Should().BeFalse();
         Click(bisect, "StartButton");
-        WaitUntil(() => Find<Button>(bisect, "BadButton").IsEnabled);
-        Find<Button>(bisect, "StartButton").IsEnabled.Should().BeFalse();
+        WaitUntil(() => Find<Button>(bisect, "BadButton").IsEffectivelyEnabled);
+        Find<Button>(bisect, "StartButton").IsEffectivelyEnabled.Should().BeFalse();
         Click(bisect, "BadButton");
 
         WaitUntil(() => _repo.Run("for-each-ref", "--format=%(refname)", "refs/bisect/").Contains("refs/bisect/bad"));

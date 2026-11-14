@@ -187,7 +187,7 @@ internal sealed class ConflictsWindowTests
         (Find<TextBox>(submodule, "BaseBox").Text, Find<TextBox>(submodule, "LocalBox").Text,
             Find<TextBox>(submodule, "RemoteBox").Text, Find<TextBox>(submodule, "CurrentBox").Text).Should()
             .Be((baseCommit, local, remote, local));
-        Find<Button>(submodule, "CheckoutBranchButton").IsEnabled.Should().BeFalse("no checkout was given");
+        Find<Button>(submodule, "CheckoutBranchButton").IsEffectivelyEnabled.Should().BeFalse("no checkout was given");
         Click(submodule, "StageCurrentButton");
 
         WaitUntil(() => conflicts.OwnedWindows.OfType<ConfirmWindow>().Any());

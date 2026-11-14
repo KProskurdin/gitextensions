@@ -1,17 +1,21 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Editing"
         x:Class="GitExtensions.Xplat.App.EditorWindow"
-        Title="Editor"
+        x:DataType="vm:EditorViewModel"
+        Title="{Binding Path}"
         Width="800" Height="560" WindowStartupLocation="CenterScreen">
   <!-- Mirrors upstream FormEditor: a toolbar with Save, its warning for files that are risky to edit (panelMessage), the
-       file's text, and a question about unsaved changes on close. -->
+       file's text, and a question about unsaved changes on close. Bound to EditorViewModel (PLAN.md principle 6). -->
   <DockPanel LastChildFill="True">
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8,6">
-      <Button x:Name="SaveButton" Content="Save" ToolTip.Tip="{local:CommandShortcutText 'Save the file ({0}+S)'}" />
-      <TextBlock x:Name="ErrorText" Classes="errorText" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <Button x:Name="SaveButton" Content="Save" ToolTip.Tip="{local:CommandShortcutText 'Save the file ({0}+S)'}"
+              Command="{Binding SaveCommand}" />
+      <TextBlock x:Name="ErrorText" Classes="errorText" VerticalAlignment="Center" TextWrapping="Wrap"
+                 Text="{Binding ErrorText}" />
     </StackPanel>
-    <Border x:Name="panelMessage" DockPanel.Dock="Top" IsVisible="False" Padding="5"
+    <Border x:Name="panelMessage" DockPanel.Dock="Top" IsVisible="{Binding ShowWarning}" Padding="5"
             Background="{DynamicResource WarningPanelBrush}">
       <StackPanel Orientation="Horizontal" Spacing="9">
         <Image Source="{local:UpstreamImage Warning}" Width="16" Height="16" VerticalAlignment="Center" />
@@ -19,16 +23,17 @@
                    Text="Here be dragons!&#10;Changing this file by hand can be harmful and might break something.&#10;If you are not sure just close this window." />
       </StackPanel>
     </Border>
-    <Border x:Name="SaveChangesBar" DockPanel.Dock="Bottom" IsVisible="False" Padding="8,6"
+    <Border x:Name="SaveChangesBar" DockPanel.Dock="Bottom" IsVisible="{Binding AsksToSave}" Padding="8,6"
             BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
         <TextBlock Text="Do you want to save changes?" VerticalAlignment="Center" FontWeight="SemiBold" />
-        <Button x:Name="SaveAndCloseButton" Content="Save" />
-        <Button x:Name="DiscardButton" Content="Don't save" />
-        <Button x:Name="KeepEditingButton" Content="Cancel" />
+        <Button x:Name="SaveAndCloseButton" Content="Save" Command="{Binding SaveAndCloseCommand}" />
+        <Button x:Name="DiscardButton" Content="Don't save" Command="{Binding DiscardCommand}" />
+        <Button x:Name="KeepEditingButton" Content="Cancel" Command="{Binding KeepEditingCommand}" />
       </StackPanel>
     </Border>
     <TextBox x:Name="ContentBox" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" ClearSelectionOnLostFocus="False" BorderThickness="0"
+             Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}"
              FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" />
   </DockPanel>
 </Window>

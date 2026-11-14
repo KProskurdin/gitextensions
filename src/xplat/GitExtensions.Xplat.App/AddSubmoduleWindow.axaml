@@ -1,22 +1,27 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.AddSubmoduleWindow"
+        x:DataType="vm:AddSubmoduleViewModel"
         Title="Add submodule"
         Width="492" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormAddSubmodule: the repository to add (the remote URL history, or a folder), the local path proposed
-       from it, the branch (the remote's branches when the list opens), Force, and Add. -->
+       from it, the branch (the remote's branches when the list opens), Force, and Add. Bound to AddSubmoduleViewModel
+       (PLAN.md principle 6). -->
   <Grid ColumnDefinitions="Auto,*,102" RowDefinitions="Auto,Auto,Auto,Auto" Margin="5,10,12,10" RowSpacing="4"
         ColumnSpacing="6">
     <TextBlock x:Name="label1" Text="Path to submodule" VerticalAlignment="Center" />
-    <ComboBox x:Name="Directory" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" TabIndex="1" />
+    <ComboBox x:Name="Directory" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" TabIndex="1"
+              ItemsSource="{Binding RemoteHistory}" Text="{Binding RemotePath, Mode=TwoWay}" />
     <Button x:Name="Browse" Grid.Column="2" Content="Browse" HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Center" TabIndex="2" />
+            HorizontalContentAlignment="Center" TabIndex="2" Command="{Binding BrowseCommand}" />
     <TextBlock x:Name="label2" Grid.Row="1" Text="Local path" VerticalAlignment="Center" />
-    <TextBox x:Name="LocalPath" Grid.Row="1" Grid.Column="1" TabIndex="4" />
+    <TextBox x:Name="LocalPath" Grid.Row="1" Grid.Column="1" TabIndex="4" Text="{Binding LocalPath}" />
     <TextBlock x:Name="label3" Grid.Row="2" Text="Branch" VerticalAlignment="Center" />
-    <ComboBox x:Name="Branch" Grid.Row="2" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" TabIndex="6" />
-    <CheckBox x:Name="chkForce" Grid.Row="3" Content="Force" TabIndex="7" />
+    <ComboBox x:Name="Branch" Grid.Row="2" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" TabIndex="6"
+              ItemsSource="{Binding RemoteBranches}" Text="{Binding Branch, Mode=TwoWay}" />
+    <CheckBox x:Name="chkForce" Grid.Row="3" Content="Force" TabIndex="7" IsChecked="{Binding Force}" />
     <Button x:Name="Add" Grid.Row="3" Grid.Column="2" Content="Add" IsDefault="True" HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Center" TabIndex="8" />
+            HorizontalContentAlignment="Center" TabIndex="8" Command="{Binding AddCommand}" />
   </Grid>
 </Window>

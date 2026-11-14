@@ -47,9 +47,9 @@ internal sealed class WorktreesWindowTests
         ListBox list = Find<ListBox>(worktrees, "WorktreeList");
         worktrees.Worktrees.Should().ContainSingle().Which.Branch.Should().Be(_branch);
         list.SelectedIndex = 0;
-        Find<Button>(worktrees, "OpenButton").IsEnabled.Should().BeFalse("it is the open worktree");
-        Find<Button>(worktrees, "DeleteButton").IsEnabled.Should().BeFalse();
-        Find<Button>(worktrees, "PruneButton").IsEnabled.Should().BeFalse();
+        Find<Button>(worktrees, "OpenButton").IsEffectivelyEnabled.Should().BeFalse("it is the open worktree");
+        Find<Button>(worktrees, "DeleteButton").IsEffectivelyEnabled.Should().BeFalse();
+        Find<Button>(worktrees, "PruneButton").IsEffectivelyEnabled.Should().BeFalse();
 
         Click(worktrees, "CreateButton");
         CreateWorktreeWindow create = WaitForOwned<CreateWorktreeWindow>(worktrees);
@@ -70,7 +70,7 @@ internal sealed class WorktreesWindowTests
         _opened.Should().BeEmpty();
 
         list.SelectedIndex = 1;
-        Find<Button>(worktrees, "DeleteButton").IsEnabled.Should().BeTrue();
+        Find<Button>(worktrees, "DeleteButton").IsEffectivelyEnabled.Should().BeTrue();
         Click(worktrees, "DeleteButton");
         MessageBoxWindow delete = WaitForOwned<MessageBoxWindow>(worktrees);
         delete.Title.Should().Be(ManageWorktreeDialog.DeleteCaption);
@@ -111,15 +111,15 @@ internal sealed class WorktreesWindowTests
         Find<ListBox>(worktrees, "WorktreeList").SelectedIndex = 1;
 
         worktrees.Worktrees[1].IsDeleted.Should().BeTrue();
-        Find<Button>(worktrees, "OpenButton").IsEnabled.Should().BeFalse();
-        Find<Button>(worktrees, "DeleteButton").IsEnabled.Should().BeFalse();
-        Find<Button>(worktrees, "PruneButton").IsEnabled.Should().BeTrue();
+        Find<Button>(worktrees, "OpenButton").IsEffectivelyEnabled.Should().BeFalse();
+        Find<Button>(worktrees, "DeleteButton").IsEffectivelyEnabled.Should().BeFalse();
+        Find<Button>(worktrees, "PruneButton").IsEffectivelyEnabled.Should().BeTrue();
         worktrees.GetLogicalDescendants().OfType<Grid>().Count(grid => grid.Classes.Contains("deleted")).Should().Be(1);
 
         Click(worktrees, "PruneButton");
 
         WaitUntil(() => worktrees.Worktrees.Count == 1);
-        Find<Button>(worktrees, "PruneButton").IsEnabled.Should().BeFalse();
+        Find<Button>(worktrees, "PruneButton").IsEffectivelyEnabled.Should().BeFalse();
         worktrees.Close();
     }
 

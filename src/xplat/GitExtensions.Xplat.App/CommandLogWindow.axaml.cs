@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -12,75 +13,53 @@ using GitExtensions.Xplat.Ui;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream's <c>FormGitCommandLog</c>: the git commands the app ran (upstream's <see cref="CommandLog"/>, which the
-///  shared engine fills for every git call), oldest first with the newest followed, and upstream's cache of git output
-///  (<see cref="GitModule.GitCommandCache"/>), each with the selected entry's detail; one window at a time.
+///  Upstream's <c>FormGitCommandLog</c>, bound to <see cref="CommandLogViewModel"/>: the git commands the app ran
+///  (upstream's <see cref="CommandLog"/>, which the shared engine fills for every git call), oldest first with the newest
+///  followed, and upstream's cache of git output (<see cref="GitModule.GitCommandCache"/>), each with the selected entry's
+///  detail; one window at a time.
 /// </summary>
 public partial class CommandLogWindow : Window
 {
-    private const string FormName = "FormGitCommandLog";
-
     private static CommandLogWindow? _instance;
-    private bool _logRefreshQueued;
-    private bool _cacheRefreshQueued;
-    private IReadOnlyList<CommandLogEntry> _entries = [];
-    private IReadOnlyList<string> _cachedCommands = [];
 
     public CommandLogWindow()
     {
+        ViewModel = new CommandLogViewModel(new WindowDialogHost(this), GitModule.GitCommandCache,
+            AppSettings.LogCaptureCallStacks, value => AppSettings.LogCaptureCallStacks = value,
+            action => Dispatcher.UIThread.Post(action, DispatcherPriority.Background))
+        {
+            PickSaveFile = PickSaveFileAsync,
+            CopyText = text => Clipboard?.SetTextAsync(text) ?? Task.CompletedTask,
+        };
+        DataContext = ViewModel;
         InitializeComponent();
-        UpstreamTranslation.Apply(this, FormName);
+        UpstreamTranslation.Apply(this, CommandLogViewModel.Category);
         WindowPlacementTracker.Attach(this, "Xplat.CommandLogWindow");
         InitialFocus.Attach(this, () => LogItems);
 
-        chkCaptureCallStacks.IsChecked = AppSettings.LogCaptureCallStacks;
-        chkCaptureCallStacks.IsCheckedChanged +=
-            (_, _) => AppSettings.LogCaptureCallStacks = chkCaptureCallStacks.IsChecked == true;
-        chkWordWrap.IsCheckedChanged += (_, _) => ApplyWordWrap();
-        chkAlwaysOnTop.IsCheckedChanged += (_, _) => Topmost = chkAlwaysOnTop.IsChecked == true;
+        // View concerns: the menus' data context (a context menu gets it only when it opens), word wrap, the newest entry
+        // scrolled into view and upstream's shortcuts, which WinForms runs while the tab page has the focus.
+        contextMenu.DataContext = ViewModel;
+        cmsCache.DataContext = ViewModel;
         ApplyWordWrap();
-
-        LogItems.SelectionChanged += (_, _) => LogOutput.Text = SelectedEntry()?.Detail ?? "";
-        CommandCacheItems.SelectionChanged += (_, _) => ShowCachedCommand();
-        TabControl.SelectionChanged += (_, e) =>
-        {
-            if (ReferenceEquals(e.Source, TabControl))
-            {
-                RefreshLogItems();
-                RefreshCommandCacheItems();
-            }
-        };
-
-        mnuSaveToFile.Click += (_, _) => UiActions.Run(SaveToFileAsync, ShowError);
-        mnuCopyCommandLine.Click += (_, _) => UiActions.Run(CopyCommandLineAsync, ShowError);
-        mnuClear.Click += (_, _) => CommandLog.Clear();
-        tsmiClearCache.Click += (_, _) => ClearCache();
+        ViewModel.PropertyChanged += OnViewModelChanged;
         tabPageCommandLog.KeyDown += OnCommandLogKeyDown;
         tabPageCommandCache.KeyDown += OnCommandCacheKeyDown;
-
-        CommandLog.CommandsChanged += OnCommandsChanged;
-        GitModule.GitCommandCache.Changed += OnCachedCommandsChanged;
-        Closed += (_, _) =>
-        {
-            CommandLog.CommandsChanged -= OnCommandsChanged;
-            GitModule.GitCommandCache.Changed -= OnCachedCommandsChanged;
-        };
-        Opened += (_, _) =>
-        {
-            RefreshLogItems();
-            RefreshCommandCacheItems();
-        };
+        Opened += (_, _) => ViewModel.Attach();
+        Closed += (_, _) => ViewModel.Detach();
     }
+
+    public CommandLogViewModel ViewModel { get; }
 
     /// <summary>
     ///  The commands on show, oldest first.
     /// </summary>
-    public IReadOnlyList<CommandLogEntry> Entries => _entries;
+    public IReadOnlyList<CommandLogEntry> Entries => ViewModel.Entries;
 
     /// <summary>
     ///  The cached commands on show.
     /// </summary>
-    public IReadOnlyList<string> CachedCommands => _cachedCommands;
+    public IReadOnlyList<string> CachedCommands => ViewModel.CachedCommands;
 
     /// <summary>
     ///  Upstream's <c>ShowOrActivate</c>: shows the log, or restores or activates the open window.
@@ -106,95 +85,30 @@ public partial class CommandLogWindow : Window
         _instance.Show(owner);
     }
 
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(CommandLogViewModel.WordWrap):
+                ApplyWordWrap();
+                break;
+            case nameof(CommandLogViewModel.SelectedLogIndex) when ViewModel.SelectedLogIndex >= 0:
+                LogItems.ScrollIntoView(ViewModel.SelectedLogIndex);
+                break;
+            case nameof(CommandLogViewModel.SelectedCacheIndex) when ViewModel.SelectedCacheIndex >= 0:
+                CommandCacheItems.ScrollIntoView(ViewModel.SelectedCacheIndex);
+                break;
+        }
+    }
+
     private void ApplyWordWrap()
     {
-        TextWrapping wrapping = chkWordWrap.IsChecked == true ? TextWrapping.Wrap : TextWrapping.NoWrap;
+        TextWrapping wrapping = ViewModel.WordWrap ? TextWrapping.Wrap : TextWrapping.NoWrap;
         LogOutput.TextWrapping = wrapping;
         commandCacheOutput.TextWrapping = wrapping;
     }
 
-    // The log changes on whichever thread ran git; one refresh per burst is posted to the UI thread.
-    private void OnCommandsChanged()
-    {
-        if (_logRefreshQueued)
-        {
-            return;
-        }
-
-        _logRefreshQueued = true;
-        Dispatcher.UIThread.Post(() =>
-        {
-            _logRefreshQueued = false;
-            RefreshLogItems();
-        }, DispatcherPriority.Background);
-    }
-
-    private void OnCachedCommandsChanged(object? sender, EventArgs e)
-    {
-        if (_cacheRefreshQueued)
-        {
-            return;
-        }
-
-        _cacheRefreshQueued = true;
-        Dispatcher.UIThread.Post(() =>
-        {
-            _cacheRefreshQueued = false;
-            RefreshCommandCacheItems();
-        }, DispatcherPriority.Background);
-    }
-
-    // Upstream's RefreshLogItems and RefreshCommandCacheItems: only the tab on show is refilled.
-    private void RefreshLogItems()
-    {
-        if (TabControl.SelectedItem == tabPageCommandLog)
-        {
-            int oldCount = _entries.Count;
-            _entries = [.. CommandLog.Commands];
-            Refill(LogItems, oldCount, [.. _entries.Select(entry => entry.ColumnLine)]);
-        }
-    }
-
-    private void RefreshCommandCacheItems()
-    {
-        if (TabControl.SelectedItem == tabPageCommandCache)
-        {
-            int oldCount = _cachedCommands.Count;
-            _cachedCommands = GitModule.GitCommandCache.GetCachedCommands();
-            Refill(CommandCacheItems, oldCount, [.. _cachedCommands.Select(CommandLogDialog.CacheDisplay)]);
-        }
-    }
-
-    private static void Refill(ListBox list, int oldCount, IReadOnlyList<string> rows)
-    {
-        int selected = CommandLogDialog.SelectionAfterRefresh(oldCount, list.SelectedIndex, rows.Count);
-        list.ItemsSource = rows;
-        list.SelectedIndex = selected;
-        if (selected >= 0)
-        {
-            list.ScrollIntoView(selected);
-        }
-    }
-
-    private CommandLogEntry? SelectedEntry()
-        => LogItems.SelectedIndex is var index and >= 0 && index < _entries.Count ? _entries[index] : null;
-
-    private void ShowCachedCommand()
-    {
-        int index = CommandCacheItems.SelectedIndex;
-        string? command = index >= 0 && index < _cachedCommands.Count ? _cachedCommands[index] : null;
-        commandCacheOutput.Text = GitModule.GitCommandCache.TryGet(command, out string? output, out string? error)
-            ? CommandLogDialog.CacheDetail(command!, output, error)
-            : "";
-    }
-
-    private void ClearCache()
-    {
-        GitModule.GitCommandCache.Clear();
-        RefreshCommandCacheItems();
-    }
-
-    // Upstream's menu shortcuts, which WinForms runs while the tab page has the focus. The detail box keeps its own copy.
+    // The detail box keeps its own copy.
     private void OnCommandLogKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Handled || e.KeyModifiers != Hotkeys.CommandModifier)
@@ -205,13 +119,13 @@ public partial class CommandLogWindow : Window
         switch (e.Key)
         {
             case Key.S:
-                UiActions.Run(SaveToFileAsync, ShowError);
+                ViewModel.SaveToFileCommand.Execute(null);
                 break;
             case Key.C:
-                UiActions.Run(CopyCommandLineAsync, ShowError);
+                ViewModel.CopyCommandLineCommand.Execute(null);
                 break;
             case Key.L:
-                CommandLog.Clear();
+                ViewModel.ClearCommand.Execute(null);
                 break;
             default:
                 return;
@@ -224,13 +138,13 @@ public partial class CommandLogWindow : Window
     {
         if (!e.Handled && e.KeyModifiers == Hotkeys.CommandModifier && e.Key == Key.L)
         {
-            ClearCache();
+            ViewModel.ClearCacheCommand.Execute(null);
             e.Handled = true;
         }
     }
 
-    // Upstream's mnuSaveToFile_Click.
-    private async Task SaveToFileAsync()
+    // Upstream's mnuSaveToFile_Click: a text or CSV file.
+    private async Task<string?> PickSaveFileAsync()
     {
         IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -243,19 +157,6 @@ public partial class CommandLogWindow : Window
                 new FilePickerFileType(CommandLogDialog.AllFiles) { Patterns = ["*.*"] },
             ],
         });
-        if (file?.TryGetLocalPath() is { } path)
-        {
-            await File.WriteAllLinesAsync(path, CommandLogDialog.SaveLines(path, CommandLog.Commands.ToList()));
-        }
+        return file?.TryGetLocalPath();
     }
-
-    private async Task CopyCommandLineAsync()
-    {
-        if (SelectedEntry() is { } entry && GetTopLevel(this)?.Clipboard is { } clipboard)
-        {
-            await clipboard.SetTextAsync(entry.CommandLine);
-        }
-    }
-
-    private void ShowError(Exception ex) => _ = new ErrorWindow(ex.Message).ShowDialog(this);
 }

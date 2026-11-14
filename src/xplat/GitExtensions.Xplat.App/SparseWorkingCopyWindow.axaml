@@ -1,11 +1,14 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.SparseWorkingCopyWindow"
+        x:DataType="vm:SparseWorkingCopyViewModel"
         Title="Sparse Working Copy"
         Width="800" Height="600" MinWidth="800" MinHeight="600" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormSparseWorkingCopy, which builds its layout in code: a header, the on/off state (an info strip with
        Enable while off, a link to disable while on), the rules editor with its explanation (while on), and a footer
-       with "Refresh working copy...", Save and Cancel. Separators are upstream's 2 pixel lines. -->
+       with "Refresh working copy...", Save and Cancel. Separators are upstream's 2 pixel lines. Bound to
+       SparseWorkingCopyViewModel (PLAN.md principle 6); the texts upstream sets in code are set in the code-behind. -->
   <Grid RowDefinitions="Auto,2,Auto,*,2,Auto">
     <StackPanel x:Name="HeaderPanel" Background="{DynamicResource DialogFooterBrush}">
       <TextBlock x:Name="TitleLabel" FontWeight="Bold" Margin="10,10,10,0" />
@@ -14,32 +17,37 @@
     <Border Grid.Row="1" Background="{DynamicResource DialogFooterLineBrush}" />
     <StackPanel Grid.Row="2">
       <Grid x:Name="DisabledPanel" ColumnDefinitions="*,Auto" Background="{DynamicResource InfoBackgroundBrush}"
-            Margin="0" >
+            Margin="0" IsVisible="{Binding !Sparse.IsSparseCheckoutEnabled}">
         <TextBlock x:Name="DisabledLabel" Foreground="{DynamicResource InfoTextBrush}" VerticalAlignment="Center"
                    Margin="10,5" />
-        <Button x:Name="EnableButton" Grid.Column="1" MinWidth="75" Margin="10,5" HorizontalContentAlignment="Center" />
+        <Button x:Name="EnableButton" Grid.Column="1" MinWidth="75" Margin="10,5" HorizontalContentAlignment="Center"
+                Command="{Binding EnableCommand}" />
       </Grid>
-      <Border x:Name="DisabledSeparator" Height="2" Background="{DynamicResource DialogFooterLineBrush}" />
-      <StackPanel x:Name="EnabledPanel" Orientation="Horizontal" Margin="10,10,10,5">
+      <Border x:Name="DisabledSeparator" Height="2" Background="{DynamicResource DialogFooterLineBrush}"
+              IsVisible="{Binding !Sparse.IsSparseCheckoutEnabled}" />
+      <StackPanel x:Name="EnabledPanel" Orientation="Horizontal" Margin="10,10,10,5"
+                  IsVisible="{Binding Sparse.IsSparseCheckoutEnabled}">
         <TextBlock x:Name="EnabledLabel" VerticalAlignment="Center" />
-        <HyperlinkButton x:Name="DisableLink" Padding="0" VerticalAlignment="Center" />
+        <HyperlinkButton x:Name="DisableLink" Padding="0" VerticalAlignment="Center" Command="{Binding DisableCommand}" />
       </StackPanel>
     </StackPanel>
-    <DockPanel x:Name="RulesPanel" Grid.Row="3">
+    <DockPanel x:Name="RulesPanel" Grid.Row="3" IsVisible="{Binding Sparse.IsSparseCheckoutEnabled}">
       <TextBlock x:Name="RulesLabel1" DockPanel.Dock="Top" Margin="10,5,10,0" TextWrapping="Wrap" />
       <TextBlock x:Name="RulesLabel2" DockPanel.Dock="Top" Margin="25,3,10,3" TextWrapping="Wrap"
                  Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
       <Border DockPanel.Dock="Top" Height="2" Background="{DynamicResource DialogFooterLineBrush}" />
       <TextBox x:Name="RulesEditor" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" BorderThickness="0"
-               FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}" />
+               FontFamily="{DynamicResource DiffFontFamily}" FontSize="{DynamicResource DiffFontSize}"
+               Text="{Binding Sparse.RulesText}" />
     </DockPanel>
     <Border Grid.Row="4" Background="{DynamicResource DialogFooterLineBrush}" />
     <Grid Grid.Row="5" ColumnDefinitions="*,75,10,75,10" Background="{DynamicResource DialogFooterBrush}" Margin="0">
-      <CheckBox x:Name="RefreshCheck" Margin="10,15,0,15" VerticalAlignment="Center" />
+      <CheckBox x:Name="RefreshCheck" Margin="10,15,0,15" VerticalAlignment="Center"
+              IsChecked="{Binding Sparse.IsRefreshWorkingCopyOnSave}" />
       <Button x:Name="SaveButton" Grid.Column="1" IsDefault="True" HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+              HorizontalContentAlignment="Center" VerticalAlignment="Center" Command="{Binding SaveCommand}" />
       <Button x:Name="CancelButton" Grid.Column="3" IsCancel="True" HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+              HorizontalContentAlignment="Center" VerticalAlignment="Center" Command="{Binding CancelCommand}" />
     </Grid>
   </Grid>
 </Window>

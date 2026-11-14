@@ -1,14 +1,17 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.SearchWindow"
+        x:DataType="vm:SearchViewModel"
         Title="Git Extensions"
         MinWidth="325" SizeToContent="WidthAndHeight" CanResize="False" ShowInTaskbar="False"
         WindowDecorations="BorderOnly" WindowStartupLocation="CenterOwner">
   <!-- Upstream's SearchWindow: a window without a title bar holding the label and upstream's SearchControl, whose matches
-       drop down below the text box while there are any. -->
+       drop down below the text box while there are any. Bound to SearchViewModel (PLAN.md principle 6). -->
   <StackPanel Margin="4" Spacing="2">
     <TextBlock x:Name="lblEnterFileName" Text="Enter File Name" />
-    <TextBox x:Name="txtSearchBox" />
-    <ListBox x:Name="listBoxSearchResult" IsVisible="False" MaxHeight="800" />
+    <TextBox x:Name="txtSearchBox" Text="{Binding SearchText}" />
+    <ListBox x:Name="listBoxSearchResult" MaxHeight="800" ItemsSource="{Binding Candidates}"
+             SelectedIndex="{Binding SelectedIndex}" IsVisible="{Binding HasCandidates}" />
   </StackPanel>
 </Window>

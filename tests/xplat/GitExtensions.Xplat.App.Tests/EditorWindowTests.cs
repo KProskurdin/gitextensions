@@ -33,7 +33,7 @@ internal sealed class EditorWindowTests
         EditorWindow editor = OpenEditor();
 
         Find<TextBox>(editor, "ContentBox").Text.Should().Be("pick 1111111 first\npick 2222222 second\n");
-        Find<Button>(editor, "SaveButton").IsEnabled.Should().BeFalse();
+        Find<Button>(editor, "SaveButton").IsEffectivelyEnabled.Should().BeFalse();
         editor.Close();
 
         editor.IsVisible.Should().BeFalse();
@@ -53,7 +53,7 @@ internal sealed class EditorWindowTests
         Find<TextBox>(editor, "ContentBox").Text.Should().Be("caf\u00E9\n");
         Find<TextBox>(editor, "ContentBox").Text = "caf\u00E9 noir\n";
         Click(editor, "SaveButton");
-        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEnabled);
+        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEffectivelyEnabled);
         File.ReadAllBytes(file).Should().Equal(System.Text.Encoding.Latin1.GetBytes("caf\u00E9 noir\n"));
         editor.Close();
     }
@@ -65,7 +65,7 @@ internal sealed class EditorWindowTests
         Find<TextBox>(editor, "ContentBox").Text = "pick 2222222 second\ndrop 1111111 first\n";
 
         Click(editor, "SaveButton");
-        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEnabled);
+        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEffectivelyEnabled);
         editor.Close();
 
         File.ReadAllText(_path).Should().Be("pick 2222222 second\ndrop 1111111 first\n");
@@ -85,6 +85,7 @@ internal sealed class EditorWindowTests
         Click(editor, "KeepEditingButton");
         Find<Border>(editor, "SaveChangesBar").IsVisible.Should().BeFalse();
         editor.IsVisible.Should().BeTrue();
+        editor.Close();
         Click(editor, "SaveAndCloseButton");
         WaitUntil(() => !editor.IsVisible);
 
@@ -165,7 +166,7 @@ internal sealed class EditorWindowTests
         WaitUntil(() => box.SelectionStart == 24);
         box.Text.Should().Be("very pick 1111111 first\npick 2222222 second\n");
         box.SelectedText.Should().Be("pick", "upstream goes on to the next one, past what it just wrote");
-        Find<Button>(editor, "SaveButton").IsEnabled.Should().BeTrue();
+        Find<Button>(editor, "SaveButton").IsEffectivelyEnabled.Should().BeTrue();
         DiscardAndClose(editor);
     }
 

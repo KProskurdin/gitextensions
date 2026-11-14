@@ -407,8 +407,8 @@ internal sealed class UiPluginTests
             return true;
         });
 
-        WaitUntil(() => File.Exists(recorded) && File.ReadAllText(recorded).Contains("--seconds-per-day"));
-        File.ReadAllText(recorded).Should().Contain("--hide filenames --user-image-dir")
+        WaitUntil(() => ReadWritten(recorded).Contains("--seconds-per-day"));
+        ReadWritten(recorded).Should().Contain("--hide filenames --user-image-dir")
             .And.Contain(Path.Combine(Path.GetTempPath(), "GitAvatars").TrimEnd(Path.DirectorySeparatorChar));
         settings.GetString("Arguments", null).Should().EndWith("--seconds-per-day 1");
         settings.GetString("Path to Gource", null).Should().Be(gource);
@@ -648,6 +648,19 @@ internal sealed class UiPluginTests
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ?? throw new InvalidOperationException($"Control {name} not found");
+
+    // The fake program may still hold the file it writes; until it lets go, the file reads as not written yet.
+    private static string ReadWritten(string path)
+    {
+        try
+        {
+            return File.Exists(path) ? File.ReadAllText(path) : "";
+        }
+        catch (IOException)
+        {
+            return "";
+        }
+    }
 
     private static void WaitUntil(Func<bool> condition)
     {

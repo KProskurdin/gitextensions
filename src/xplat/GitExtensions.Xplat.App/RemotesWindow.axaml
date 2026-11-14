@@ -1,30 +1,32 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.RemotesWindow"
+        x:DataType="ops:RemotesViewModel"
         Title="Remote repositories"
         Width="950" Height="400" MinWidth="950" MinHeight="400" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormRemotes: the remotes with their details, and the default pull behavior of the local branches. -->
-  <TabControl x:Name="Tabs" Margin="3">
+  <TabControl x:Name="Tabs" SelectedIndex="{Binding SelectedTab}" Margin="3">
     <TabItem x:Name="RemotesTab" Header="Remote repositories">
       <DockPanel>
         <!-- The list (active and inactive remotes as groups) with the New, Delete and Activate/Deactivate buttons. -->
         <DockPanel DockPanel.Dock="Left" Width="350" Margin="8">
           <StackPanel DockPanel.Dock="Right" Margin="4,0,0,0" Spacing="6">
-            <Button x:Name="NewButton" Width="26" Height="26" Padding="0">
+            <Button x:Name="NewButton" Command="{Binding NewCommand}" ToolTip.Tip="{Binding NewTip}" Width="26" Height="26" Padding="0">
               <Image Source="{local:UpstreamImage RemoteAdd}" Width="16" Height="16" />
             </Button>
-            <Button x:Name="DeleteButton" Width="26" Height="26" Padding="0">
+            <Button x:Name="DeleteButton" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}" ToolTip.Tip="{Binding DeleteTip}" Width="26" Height="26" Padding="0">
               <Image Source="{local:UpstreamImage RemoteDelete}" Width="16" Height="16" />
             </Button>
-            <Button x:Name="ToggleStateButton" Width="26" Height="26" Padding="0">
+            <Button x:Name="ToggleStateButton" Command="{Binding ToggleStateCommand}" IsEnabled="{Binding CanDelete}" ToolTip.Tip="{Binding ToggleTip}" Width="26" Height="26" Padding="0">
               <Image x:Name="ToggleStateImage" Source="{local:UpstreamImage EyeOpened}" Width="16" Height="16" />
             </Button>
           </StackPanel>
-          <ListBox x:Name="RemotesList">
+          <ListBox x:Name="RemotesList" ItemsSource="{Binding RemoteRows}" SelectedItem="{Binding SelectedRemoteRow}">
             <ListBox.Styles>
               <!-- A group's header is not a remote: it cannot be clicked. -->
-              <Style Selector="ListBoxItem" x:DataType="local:RemoteListRow">
+              <Style Selector="ListBoxItem" x:DataType="ops:RemoteListRow">
                 <Setter Property="IsHitTestVisible" Value="{Binding IsSelectable}" />
                 <Setter Property="Padding" Value="6,2" />
                 <Setter Property="MinHeight" Value="0" />
@@ -37,7 +39,7 @@
               </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="local:RemoteListRow">
+              <DataTemplate x:DataType="ops:RemoteListRow">
                 <TextBlock Text="{Binding Text}" Classes.groupHeader="{Binding IsHeader}"
                            Classes.inactive="{Binding IsInactive}" />
               </DataTemplate>
@@ -45,41 +47,41 @@
           </ListBox>
         </DockPanel>
         <ScrollViewer Margin="0,8,8,8">
-          <HeaderedContentControl x:Name="DetailsGroup" Classes="groupBox" Header="Create New Remote"
+          <HeaderedContentControl x:Name="DetailsGroup" Header="{Binding DetailsHeader}" Classes="groupBox"
                                   VerticalAlignment="Top">
             <StackPanel Spacing="6">
-              <Grid x:Name="DetailsGrid" ColumnDefinitions="110,*,6,104" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,4,Auto,4,Auto">
-                <AccessText x:Name="UrlLabel" Text="_Url" VerticalAlignment="Center" />
-                <ComboBox x:Name="UrlBox" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
-                <Button x:Name="UrlBrowseButton" Grid.Column="3" HorizontalAlignment="Stretch">
+              <Grid x:Name="DetailsGrid" IsEnabled="{Binding IsEditable}" ColumnDefinitions="110,*,6,104" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,4,Auto,4,Auto">
+                <AccessText x:Name="UrlLabel" Text="{Binding UrlLabel}" VerticalAlignment="Center" />
+                <ComboBox IsEditable="True" x:Name="UrlBox" ItemsSource="{Binding UrlChoices}" Text="{Binding Url}" Grid.Column="1" HorizontalAlignment="Stretch" />
+                <Button x:Name="UrlBrowseButton" Command="{Binding BrowseUrlCommand}" Grid.Column="3" HorizontalAlignment="Stretch">
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
                     <AccessText Text="_Browse..." VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
                 <AccessText Text="_Name" Grid.Row="2" VerticalAlignment="Center" />
-                <TextBox x:Name="NameBox" Grid.Row="2" Grid.Column="1" />
-                <TextBlock x:Name="PrefixLabel" Grid.Row="4" Text="Prefix" VerticalAlignment="Center" />
-                <TextBox x:Name="PrefixBox" Grid.Row="4" Grid.Column="1" />
-                <TextBlock x:Name="ColorLabel" Grid.Row="6" Text="Color" VerticalAlignment="Center" />
-                <StackPanel x:Name="ColorPanel" Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                  <Button x:Name="ColorButton" MinWidth="60" Content="Set _color">
+                <TextBox x:Name="NameBox" Text="{Binding Name}" Grid.Row="2" Grid.Column="1" />
+                <TextBlock x:Name="PrefixLabel" IsVisible="{Binding ShowAdvanced}" Grid.Row="4" Text="Prefix" VerticalAlignment="Center" />
+                <TextBox x:Name="PrefixBox" Text="{Binding Prefix}" IsVisible="{Binding ShowAdvanced}" Grid.Row="4" Grid.Column="1" />
+                <TextBlock x:Name="ColorLabel" IsVisible="{Binding ShowAdvanced}" Grid.Row="6" Text="Color" VerticalAlignment="Center" />
+                <StackPanel x:Name="ColorPanel" IsVisible="{Binding ShowAdvanced}" Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                  <Button x:Name="ColorButton" Content="{Binding ColorButtonText}" MinWidth="60">
                     <Button.Flyout>
                       <Flyout Placement="BottomEdgeAlignedLeft">
                         <StackPanel Spacing="6" Width="232">
                           <WrapPanel x:Name="ColorSwatches" />
-                          <TextBox x:Name="ColorHtmlBox" PlaceholderText="#RRGGBB" />
+                          <TextBox x:Name="ColorHtmlBox" Text="{Binding ColorHtml, Mode=OneWay}" PlaceholderText="#RRGGBB" />
                         </StackPanel>
                       </Flyout>
                     </Button.Flyout>
                   </Button>
-                  <Button x:Name="ColorResetButton" Content="Default color" IsVisible="False" />
+                  <Button x:Name="ColorResetButton" Command="{Binding ChooseColorCommand}" IsVisible="{Binding HasColor}" Content="Default color" />
                 </StackPanel>
-                <CheckBox x:Name="SeparatePushUrlCheck" Grid.Row="8" Grid.ColumnSpan="2" Content="Sep_arate Push Url" />
-                <AccessText x:Name="PushUrlLabel" Text="_Push Url" Grid.Row="10" VerticalAlignment="Center" IsVisible="False" />
-                <ComboBox x:Name="PushUrlBox" Grid.Row="10" Grid.Column="1" IsEditable="True" IsVisible="False"
+                <CheckBox x:Name="SeparatePushUrlCheck" IsChecked="{Binding SeparatePushUrl}" Grid.Row="8" Grid.ColumnSpan="2" Content="Sep_arate Push Url" />
+                <AccessText x:Name="PushUrlLabel" IsVisible="{Binding SeparatePushUrl}" Text="_Push Url" Grid.Row="10" VerticalAlignment="Center" />
+                <ComboBox IsEditable="True" x:Name="PushUrlBox" ItemsSource="{Binding PushUrlChoices}" Text="{Binding PushUrl}" IsVisible="{Binding SeparatePushUrl}" Grid.Row="10" Grid.Column="1"
                           HorizontalAlignment="Stretch" />
-                <Button x:Name="PushUrlBrowseButton" Grid.Row="10" Grid.Column="3" IsVisible="False"
+                <Button x:Name="PushUrlBrowseButton" Command="{Binding BrowsePushUrlCommand}" IsVisible="{Binding SeparatePushUrl}" Grid.Row="10" Grid.Column="3"
                         HorizontalAlignment="Stretch">
                   <StackPanel Orientation="Horizontal" Spacing="4">
                     <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
@@ -88,7 +90,7 @@
                 </Button>
               </Grid>
               <!-- Upstream's PuTTY panel, shown when git uses plink. -->
-              <StackPanel x:Name="PuttyPanel" Spacing="4" IsVisible="False">
+              <StackPanel x:Name="PuttyPanel" IsEnabled="{Binding IsEditable}" Spacing="4" IsVisible="False">
                 <Grid ColumnDefinitions="Auto,*">
                   <TextBlock Text="PuTTY SSH" FontWeight="SemiBold" />
                   <Rectangle Grid.Column="1" Height="1" Margin="6,0,0,0" VerticalAlignment="Center"
@@ -96,8 +98,8 @@
                 </Grid>
                 <Grid ColumnDefinitions="110,*,6,104">
                   <AccessText Text="Private _key file" VerticalAlignment="Center" />
-                  <TextBox x:Name="PuttyKeyBox" Grid.Column="1" />
-                  <Button x:Name="PuttyKeyBrowseButton" Grid.Column="3" HorizontalAlignment="Stretch">
+                  <TextBox x:Name="PuttyKeyBox" Text="{Binding PuttySshKey}" Grid.Column="1" />
+                  <Button x:Name="PuttyKeyBrowseButton" Command="{Binding BrowsePuttyKeyCommand}" Grid.Column="3" HorizontalAlignment="Stretch">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                       <Image Source="{local:UpstreamImage FileNew}" Width="16" Height="16" />
                       <AccessText Text="Brows_e..." VerticalAlignment="Center" />
@@ -106,13 +108,13 @@
                 </Grid>
                 <!-- Upstream's flowLayoutPanelSsh, right to left: Test connection, then Load SSH key. -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="0,0,110,0">
-                  <Button x:Name="LoadSSHKey" MinWidth="160">
+                  <Button x:Name="LoadSSHKey" Command="{Binding LoadSshKeyCommand}" MinWidth="160">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                       <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
                       <AccessText Text="_Load SSH key" VerticalAlignment="Center" />
                     </StackPanel>
                   </Button>
-                  <Button x:Name="TestConnection" MinWidth="160">
+                  <Button x:Name="TestConnection" Command="{Binding TestConnectionCommand}" MinWidth="160">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                       <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
                       <AccessText Text="_Test connection" VerticalAlignment="Center" />
@@ -120,7 +122,7 @@
                   </Button>
                 </StackPanel>
               </StackPanel>
-              <Button x:Name="SaveButton" HorizontalAlignment="Right" MinWidth="130" Margin="0,0,20,0" IsEnabled="False">
+              <Button x:Name="SaveButton" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}" HorizontalAlignment="Right" MinWidth="130" Margin="0,0,20,0">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                   <Image Source="{local:UpstreamImage Save}" Width="16" Height="16" />
                   <AccessText Text="_Save changes" VerticalAlignment="Center" />
@@ -139,7 +141,7 @@
             <TextBlock Grid.Column="1" Text="Remote repository" FontWeight="SemiBold" />
             <TextBlock Grid.Column="2" Text="Default merge with" FontWeight="SemiBold" />
           </Grid>
-          <ListBox x:Name="BranchesList">
+          <ListBox x:Name="BranchesList" ItemsSource="{Binding BranchRows}" SelectedItem="{Binding SelectedBranchRow}">
             <ListBox.Styles>
               <Style Selector="ListBoxItem">
                 <Setter Property="Padding" Value="6,2" />
@@ -147,7 +149,7 @@
               </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="local:PullBehaviorRow">
+              <DataTemplate x:DataType="ops:PullBehaviorRow">
                 <Grid ColumnDefinitions="*,*,*">
                   <TextBlock Text="{Binding LocalName}" TextTrimming="CharacterEllipsis" />
                   <TextBlock Grid.Column="1" Text="{Binding TrackingRemote}" TextTrimming="CharacterEllipsis" />
@@ -159,12 +161,12 @@
         </DockPanel>
         <Grid Grid.Row="1" Margin="36,8,50,8" ColumnDefinitions="122,*" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto">
           <AccessText Text="_Local branch name" VerticalAlignment="Center" />
-          <TextBox x:Name="LocalBranchBox" Grid.Column="1" IsReadOnly="True" />
+          <TextBox x:Name="LocalBranchBox" Text="{Binding LocalBranch, Mode=OneWay}" Grid.Column="1" IsReadOnly="True" />
           <AccessText Text="_Remote repository" Grid.Row="2" VerticalAlignment="Center" />
-          <ComboBox x:Name="RemoteRepositoryBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
+          <ComboBox x:Name="RemoteRepositoryBox" ItemsSource="{Binding RemoteChoices}" SelectedItem="{Binding BranchRemote}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
           <AccessText Text="_Default merge with" Grid.Row="4" VerticalAlignment="Center" />
-          <ComboBox x:Name="MergeWithBox" Grid.Row="4" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch" />
-          <Button x:Name="SavePullBehaviorButton" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Right" MinWidth="130">
+          <ComboBox IsEditable="True" x:Name="MergeWithBox" ItemsSource="{Binding MergeWithChoices}" Text="{Binding MergeWith}" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" />
+          <Button x:Name="SavePullBehaviorButton" Command="{Binding SavePullBehaviorCommand}" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Right" MinWidth="130">
             <StackPanel Orientation="Horizontal" Spacing="4">
               <Image Source="{local:UpstreamImage Save}" Width="16" Height="16" />
               <AccessText Text="_Save changes" VerticalAlignment="Center" />

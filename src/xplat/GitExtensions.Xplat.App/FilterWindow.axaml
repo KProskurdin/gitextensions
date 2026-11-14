@@ -1,15 +1,19 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.CommitHistory"
         x:Class="GitExtensions.Xplat.App.FilterWindow"
+        x:DataType="vm:FilterViewModel"
         Title="Filter"
         Width="408" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormRevisionFilter (a GitExtensionsDialog): each filter a label, the check box that turns it on and its
-       value; then the branch and history options; OK at the bottom (Escape cancels). -->
+       value; then the branch and history options; OK at the bottom (Escape cancels). Bound to FilterViewModel (PLAN.md
+       principle 6). -->
   <DockPanel>
     <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-        <Button x:Name="ApplyButton" Content="OK" MinWidth="75" IsDefault="True" VerticalAlignment="Center" />
-        <Button x:Name="CancelButton" IsCancel="True" IsVisible="False" />
+        <Button x:Name="ApplyButton" Content="OK" MinWidth="75" IsDefault="True" VerticalAlignment="Center"
+                Command="{Binding ApplyCommand}" />
+        <Button x:Name="CancelButton" IsCancel="True" IsVisible="False" Command="{Binding CancelCommand}" />
       </StackPanel>
     </Border>
     <Grid Margin="9" ColumnDefinitions="Auto,Auto,*"
@@ -27,41 +31,50 @@
         </Style>
       </Grid.Styles>
       <AccessText Grid.Row="0" Classes="label" Text="_Since" />
-      <CheckBox x:Name="SinceCheck" Grid.Row="0" Grid.Column="1" />
-      <CalendarDatePicker x:Name="SinceBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" />
+      <CheckBox x:Name="SinceCheck" Grid.Row="0" Grid.Column="1" IsChecked="{Binding HasSince}" />
+      <CalendarDatePicker x:Name="SinceBox" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch"
+                          SelectedDate="{Binding Since}" IsEnabled="{Binding HasSince}" />
       <AccessText Grid.Row="1" Classes="label" Text="_Until" />
-      <CheckBox x:Name="UntilCheck" Grid.Row="1" Grid.Column="1" />
-      <CalendarDatePicker x:Name="UntilBox" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" />
+      <CheckBox x:Name="UntilCheck" Grid.Row="1" Grid.Column="1" IsChecked="{Binding HasUntil}" />
+      <CalendarDatePicker x:Name="UntilBox" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch"
+                          SelectedDate="{Binding Until}" IsEnabled="{Binding HasUntil}" />
       <AccessText Grid.Row="2" Classes="label" Text="_Author" />
-      <CheckBox x:Name="AuthorCheck" Grid.Row="2" Grid.Column="1" />
-      <TextBox x:Name="AuthorBox" Grid.Row="2" Grid.Column="2" />
+      <CheckBox x:Name="AuthorCheck" Grid.Row="2" Grid.Column="1" IsChecked="{Binding HasAuthor}" />
+      <TextBox x:Name="AuthorBox" Grid.Row="2" Grid.Column="2" Text="{Binding Author}" IsEnabled="{Binding HasAuthor}" />
       <AccessText Grid.Row="3" Classes="label" Text="_Committer" />
-      <CheckBox x:Name="CommitterCheck" Grid.Row="3" Grid.Column="1" />
-      <TextBox x:Name="CommitterBox" Grid.Row="3" Grid.Column="2" />
+      <CheckBox x:Name="CommitterCheck" Grid.Row="3" Grid.Column="1" IsChecked="{Binding HasCommitter}" />
+      <TextBox x:Name="CommitterBox" Grid.Row="3" Grid.Column="2" Text="{Binding Committer}"
+               IsEnabled="{Binding HasCommitter}" />
       <AccessText Grid.Row="4" Classes="label" Text="_Message" />
-      <CheckBox x:Name="MessageCheck" Grid.Row="4" Grid.Column="1" />
-      <TextBox x:Name="MessageBox" Grid.Row="4" Grid.Column="2" />
+      <CheckBox x:Name="MessageCheck" Grid.Row="4" Grid.Column="1" IsChecked="{Binding HasMessage}" />
+      <TextBox x:Name="MessageBox" Grid.Row="4" Grid.Column="2" Text="{Binding Message}" IsEnabled="{Binding HasMessage}" />
       <AccessText Grid.Row="5" Classes="label" Text="_Diff contains" />
-      <CheckBox x:Name="DiffContentCheck" Grid.Row="5" Grid.Column="1" ToolTip.Tip="SLOW" />
-      <TextBox x:Name="DiffContentBox" Grid.Row="5" Grid.Column="2" ToolTip.Tip="SLOW" />
-      <CheckBox x:Name="IgnoreCaseCheck" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Content="_Ignore case" />
+      <CheckBox x:Name="DiffContentCheck" Grid.Row="5" Grid.Column="1" ToolTip.Tip="SLOW" IsChecked="{Binding HasDiffContent}" />
+      <TextBox x:Name="DiffContentBox" Grid.Row="5" Grid.Column="2" ToolTip.Tip="SLOW" Text="{Binding DiffContent}"
+               IsEnabled="{Binding HasDiffContent}" />
+      <CheckBox x:Name="IgnoreCaseCheck" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Content="_Ignore case"
+                IsChecked="{Binding IgnoreCase}" IsEnabled="{Binding CanIgnoreCase}" />
       <AccessText Grid.Row="7" Classes="label" Text="_Limit" />
-      <CheckBox x:Name="CommitsLimitCheck" Grid.Row="7" Grid.Column="1" />
+      <CheckBox x:Name="CommitsLimitCheck" Grid.Row="7" Grid.Column="1" IsChecked="{Binding HasCommitsLimit}" />
       <NumericUpDown x:Name="CommitsLimitBox" Grid.Row="7" Grid.Column="2" Minimum="0" Maximum="1000000" Increment="1"
-                     FormatString="0" Width="116" HorizontalAlignment="Left" />
+                     FormatString="0" Width="116" HorizontalAlignment="Left" Value="{Binding CommitsLimit}"
+                     IsEnabled="{Binding HasCommitsLimit}" />
       <AccessText Grid.Row="8" Classes="label" Text="_Path filter" />
-      <CheckBox x:Name="PathFilterCheck" Grid.Row="8" Grid.Column="1" />
-      <TextBox x:Name="PathBox" Grid.Row="8" Grid.Column="2" />
+      <CheckBox x:Name="PathFilterCheck" Grid.Row="8" Grid.Column="1" IsChecked="{Binding HasPathFilter}" />
+      <TextBox x:Name="PathBox" Grid.Row="8" Grid.Column="2" Text="{Binding PathFilter}" IsEnabled="{Binding HasPathFilter}" />
       <AccessText Grid.Row="9" Classes="label" Text="_Branches" />
-      <CheckBox x:Name="BranchFilterCheck" Grid.Row="9" Grid.Column="1" />
-      <TextBox x:Name="BranchFilterBox" Grid.Row="9" Grid.Column="2" />
-      <CheckBox x:Name="CurrentBranchOnlyCheck" Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Content="Show current branch _only" />
-      <CheckBox x:Name="ReflogCheck" Grid.Row="11" Grid.Column="1" Grid.ColumnSpan="2" Content="Show _reflog" />
-      <CheckBox x:Name="FirstParentCheck" Grid.Row="12" Grid.Column="1" Grid.ColumnSpan="2" Content="Show only _first parent" />
-      <CheckBox x:Name="NoMergesCheck" Grid.Row="13" Grid.Column="1" Grid.ColumnSpan="2" Content="Hide merge commi_ts" />
-      <CheckBox x:Name="SimplifyByDecorationCheck" Grid.Row="14" Grid.Column="1" Grid.ColumnSpan="2" Content="Simplify b_y decoration" />
-      <CheckBox x:Name="FullHistoryCheck" Grid.Row="15" Grid.Column="1" Grid.ColumnSpan="2" Content="Full _history" />
-      <CheckBox x:Name="SimplifyMergesCheck" Grid.Row="16" Grid.Column="1" Grid.ColumnSpan="2" Content="Simplify mer_ges" />
+      <CheckBox x:Name="BranchFilterCheck" Grid.Row="9" Grid.Column="1" IsChecked="{Binding ShowFilteredBranches}"
+                IsEnabled="{Binding CanFilterBranches}" />
+      <TextBox x:Name="BranchFilterBox" Grid.Row="9" Grid.Column="2" Text="{Binding BranchFilter}"
+               IsEnabled="{Binding ShowFilteredBranches}" />
+      <CheckBox x:Name="CurrentBranchOnlyCheck" Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Content="Show current branch _only"
+                IsChecked="{Binding CurrentBranchOnly}" IsEnabled="{Binding CanShowCurrentBranchOnly}" />
+      <CheckBox x:Name="ReflogCheck" Grid.Row="11" Grid.Column="1" Grid.ColumnSpan="2" Content="Show _reflog" IsChecked="{Binding ShowReflog}" />
+      <CheckBox x:Name="FirstParentCheck" Grid.Row="12" Grid.Column="1" Grid.ColumnSpan="2" Content="Show only _first parent" IsChecked="{Binding FirstParent}" />
+      <CheckBox x:Name="NoMergesCheck" Grid.Row="13" Grid.Column="1" Grid.ColumnSpan="2" Content="Hide merge commi_ts" IsChecked="{Binding NoMerges}" />
+      <CheckBox x:Name="SimplifyByDecorationCheck" Grid.Row="14" Grid.Column="1" Grid.ColumnSpan="2" Content="Simplify b_y decoration" IsChecked="{Binding SimplifyByDecoration}" />
+      <CheckBox x:Name="FullHistoryCheck" Grid.Row="15" Grid.Column="1" Grid.ColumnSpan="2" Content="Full _history" IsChecked="{Binding FullHistory}" />
+      <CheckBox x:Name="SimplifyMergesCheck" Grid.Row="16" Grid.Column="1" Grid.ColumnSpan="2" Content="Simplify mer_ges" IsChecked="{Binding SimplifyMerges}" />
     </Grid>
   </DockPanel>
 </Window>
