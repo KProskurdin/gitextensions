@@ -1,44 +1,35 @@
 using Avalonia.Controls;
 using GitExtensions.Extensibility.Plugins;
+using GitExtensions.Xplat.Core.CommitHistory;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Shows, for each line of a file, the commit and author that last changed it, as of a commit (upstream's <c>FormBlame</c>
-///  around the shared <see cref="BlameView"/>).
+///  around the shared <see cref="BlameView"/>); bound to <see cref="BlameWindowViewModel"/>.
 /// </summary>
 public partial class BlameWindow : Window
 {
-    private readonly string _repositoryPath;
-    private readonly string _hash;
-    private readonly string _filePath;
-
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
     /// </summary>
     [Obsolete(DesignTime.ConstructorOnly)]
-#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
     public BlameWindow() => InitializeComponent();
-#pragma warning restore CS8618
 
     /// <param name="repositoryHost">The repository host plugin of the repository, whose items the context menu shows, as
     ///  upstream's blame menu shows the GitHub plugin's "View in GitHub".</param>
     public BlameWindow(string repositoryPath, string hash, string filePath,
         Func<IRepositoryHostPlugin?>? repositoryHost = null)
     {
-        _repositoryPath = repositoryPath;
-        _hash = hash;
-        _filePath = filePath;
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.BlameWindow");
-        Title = $"Blame: {filePath}";
+        BlameWindowViewModel viewModel = new(BlameView.NewViewModel(), repositoryPath, hash, filePath);
+        DataContext = viewModel;
         Blame.RepositoryHost = repositoryHost;
-        Blame.ErrorOccurred += (_, message) => ErrorText.Text = message;
 
         // A line leads to that commit's change to the file.
-        Blame.CommitRequested += (_, request) =>
-            new DiffWindow(_repositoryPath, request.Hash, request.FileName, staged: false).Show(this);
-        Opened += (_, _) => UiActions.Run(() => Blame.LoadAsync(_repositoryPath, _hash, _filePath),
-            ex => ErrorText.Text = ex.Message);
+        viewModel.Blame.CommitRequested += (_, request) =>
+            new DiffWindow(repositoryPath, request.Hash, request.FileName, staged: false).Show(this);
+        Opened += (_, _) => _ = viewModel.LoadAsync();
     }
 }

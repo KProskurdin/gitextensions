@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;

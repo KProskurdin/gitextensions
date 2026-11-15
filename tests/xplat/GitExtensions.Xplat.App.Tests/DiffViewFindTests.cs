@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -165,6 +166,9 @@ internal sealed class DiffViewFindTests
         ListBox lines = diff.FindControl<ListBox>("DiffList")!;
         Button next = diff.FindControl<ToolButton>("NextChangeButton")!;
         Button previous = diff.FindControl<ToolButton>("PreviousChangeButton")!;
+
+        // The toolbar shows while the pointer is on the viewer, and only a shown button can be clicked.
+        window.MouseMove(new Avalonia.Point(450, 300));
 
         UiClicks.Raise(next, Button.ClickEvent);
         lines.SelectedIndex.Should().Be(1);

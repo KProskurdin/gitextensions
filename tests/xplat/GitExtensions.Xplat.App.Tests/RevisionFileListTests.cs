@@ -197,6 +197,9 @@ internal sealed class RevisionFileListTests
         ListBox files = Find<ListBox>(window, "CommitFilesList");
         WaitUntil(() => files.ItemCount == 2);
         FileFilterBox filter = Find<FileFilterBox>(window, "DiffFilesFilterBox");
+
+        // Only a shown tab's command-bound buttons can be clicked (MVVM.md, Pages not shown).
+        Find<TabControl>(window, "DetailTabs").SelectedItem = Find<TabItem>(window, "DiffTab");
         ComboBox box = filter.GetLogicalDescendants().OfType<ComboBox>().Single();
         Button delete = filter.GetLogicalDescendants().OfType<Button>().Single();
         box.Items.Cast<string>().Should().Equal("^(?!.*NotThisWord)", @"^(?!.*\bg?tests?/)");

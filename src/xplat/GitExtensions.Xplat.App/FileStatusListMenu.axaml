@@ -1,72 +1,77 @@
 <ContextMenu xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GitExtensions.Xplat.App"
-             x:Class="GitExtensions.Xplat.App.FileStatusListMenu">
-  <!-- Upstream FileStatusList's ItemContextMenu, in its order and with its names, for the items the new shell has. -->
+             xmlns:vm="using:GitExtensions.Xplat.Core.Diff"
+             xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+             x:Class="GitExtensions.Xplat.App.FileStatusListMenu"
+             x:DataType="vm:FileListMenuViewModel">
+  <!-- Upstream FileStatusList's ItemContextMenu, in its order and with its names, for the items the new shell has. Its
+       state and actions are bound to FileListMenuViewModel (PLAN.md principle 6); the items with sub-items, the custom
+       difftools and the scripts keep their click handlers in the view. -->
   <!-- Upstream's open submodule item, inserted at the very top for a selected submodule. -->
-  <MenuItem x:Name="openSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" />
+  <MenuItem x:Name="openSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" IsVisible="{Binding IsOpenSubmoduleVisible}" Command="{Binding OpenSubmoduleCommand}" />
   <!-- Upstream's tree items (FileStatusList.TreeContextMenu.cs), inserted first, for a list shown as a tree. -->
-  <MenuItem x:Name="_selectAll" Header="S_elect all" Icon="{local:UpstreamIcon FileTree}" />
-  <MenuItem x:Name="_collapseAll" Header="C_ollapse all" Icon="{local:UpstreamIcon CollapseAll}" />
-  <MenuItem x:Name="_expandAll" Header="E_xpand all" Icon="{local:UpstreamIcon ExpandAll}" />
-  <Separator x:Name="_treeContextMenuSeparator" />
-  <MenuItem x:Name="tsmiUpdateSubmodule" Header="_Update submodule" Icon="{local:UpstreamIcon SubmodulesUpdate}" />
-  <MenuItem x:Name="tsmiResetSubmoduleChanges" Header="R_eset submodule changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
-  <MenuItem x:Name="tsmiStashSubmoduleChanges" Header="S_tash submodule changes" Icon="{local:UpstreamIcon Stash}" />
-  <MenuItem x:Name="tsmiCommitSubmoduleChanges" Header="_Commit submodule changes" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}" />
-  <Separator x:Name="sepSubmodule" />
-  <MenuItem x:Name="tsmiStageFile" Header="_Stage selected" Icon="{local:UpstreamIcon Stage}" />
-  <MenuItem x:Name="tsmiUnstageFile" Header="_Unstage selected" Icon="{local:UpstreamIcon Unstage}" />
-  <MenuItem x:Name="tsmiResetFileTo" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}">
-    <MenuItem x:Name="tsmiResetFileToSelected" />
-    <MenuItem x:Name="tsmiResetFileToParent" />
+  <MenuItem x:Name="_selectAll" Header="S_elect all" Icon="{local:UpstreamIcon FileTree}" IsVisible="{Binding AreTreeItemsVisible}" Command="{Binding SelectAllCommand}" />
+  <MenuItem x:Name="_collapseAll" Header="C_ollapse all" Icon="{local:UpstreamIcon CollapseAll}" IsVisible="{Binding AreTreeItemsVisible}" Command="{Binding CollapseAllCommand}" />
+  <MenuItem x:Name="_expandAll" Header="E_xpand all" Icon="{local:UpstreamIcon ExpandAll}" IsVisible="{Binding AreTreeItemsVisible}" Command="{Binding ExpandAllCommand}" />
+  <Separator x:Name="_treeContextMenuSeparator" IsVisible="{Binding AreTreeItemsVisible}" />
+  <MenuItem x:Name="tsmiUpdateSubmodule" Header="_Update submodule" Icon="{local:UpstreamIcon SubmodulesUpdate}" IsVisible="{Binding AreSubmoduleItemsVisible}" Command="{Binding UpdateSubmoduleCommand}" />
+  <MenuItem x:Name="tsmiResetSubmoduleChanges" Header="R_eset submodule changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsVisible="{Binding AreSubmoduleItemsVisible}" Command="{Binding ResetSubmoduleCommand}" />
+  <MenuItem x:Name="tsmiStashSubmoduleChanges" Header="S_tash submodule changes" Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding AreSubmoduleItemsVisible}" Command="{Binding StashSubmoduleCommand}" />
+  <MenuItem x:Name="tsmiCommitSubmoduleChanges" Header="_Commit submodule changes" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}" IsVisible="{Binding AreSubmoduleItemsVisible}" Command="{Binding CommitSubmoduleCommand}" />
+  <Separator x:Name="sepSubmodule" IsVisible="{Binding AreSubmoduleItemsVisible}" />
+  <MenuItem x:Name="tsmiStageFile" Header="_Stage selected" Icon="{local:UpstreamIcon Stage}" IsVisible="{Binding IsStageVisible}" Command="{Binding StageCommand}" />
+  <MenuItem x:Name="tsmiUnstageFile" Header="_Unstage selected" Icon="{local:UpstreamIcon Unstage}" IsVisible="{Binding IsUnstageVisible}" Command="{Binding UnstageCommand}" />
+  <MenuItem x:Name="tsmiResetFileTo" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsResetFileToEnabled}">
+    <MenuItem x:Name="tsmiResetFileToSelected" IsVisible="{Binding IsResetToSecondVisible}" Header="{Binding ResetToSecondHeader}" Command="{Binding ResetToSelectedCommand}" />
+    <MenuItem x:Name="tsmiResetFileToParent" IsVisible="{Binding IsResetToFirstVisible}" Header="{Binding ResetToFirstHeader}" Command="{Binding ResetToParentCommand}" />
   </MenuItem>
-  <MenuItem x:Name="tsmiResetChunkOfFile" Header="Reset chunk of file..." IsVisible="False" />
-  <MenuItem x:Name="tsmiInteractiveAdd" Header="Interactive add..." IsVisible="False" />
-  <MenuItem x:Name="tsmiCherryPickChanges" Header="Cherr_y pick changes" Icon="{local:UpstreamIcon CherryPick}" />
-  <Separator x:Name="sepGit" />
-  <MenuItem x:Name="tsmiOpenWithDifftool" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}">
-    <MenuItem x:Name="tsmiSecondDiffCaption" IsEnabled="False" />
-    <MenuItem x:Name="tsmiFirstDiffCaption" IsEnabled="False" />
+  <MenuItem x:Name="tsmiResetChunkOfFile" Header="Reset chunk of file..." IsVisible="{Binding IsInteractivePatchVisible}" Command="{Binding InteractivePatchCommand}" CommandParameter="{x:True}" />
+  <MenuItem x:Name="tsmiInteractiveAdd" Header="Interactive add..." IsVisible="{Binding IsInteractivePatchVisible}" Command="{Binding InteractivePatchCommand}" CommandParameter="{x:False}" />
+  <MenuItem x:Name="tsmiCherryPickChanges" Header="Cherr_y pick changes" Icon="{local:UpstreamIcon CherryPick}" IsVisible="{Binding IsCherryPickVisible}" Command="{Binding CherryPickCommand}" />
+  <Separator x:Name="sepGit" IsVisible="{Binding HasSelection}" />
+  <MenuItem x:Name="tsmiOpenWithDifftool" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsOpenWithDifftoolEnabled}">
+    <MenuItem x:Name="tsmiSecondDiffCaption" IsEnabled="False" Header="{Binding DiffSecondCaption}" />
+    <MenuItem x:Name="tsmiFirstDiffCaption" IsEnabled="False" Header="{Binding DiffFirstCaption}" />
     <Separator />
-    <MenuItem x:Name="tsmiDiffFirstToSelected" Header="_First -&gt; Second" />
-    <MenuItem x:Name="tsmiDiffSelectedToLocal" Header="_Second -&gt; Working directory" />
-    <MenuItem x:Name="tsmiDiffFirstToLocal" Header="First -&gt; _Working directory" />
-    <Separator x:Name="sepDifftoolRemember" />
-    <MenuItem x:Name="tsmiDiffTwoSelected" Header="_Diff the selected files" />
-    <MenuItem x:Name="tsmiDiffWithRemembered" />
-    <MenuItem x:Name="tsmiRememberSecondRevDiff" Header="_Remember Second for diff" />
-    <MenuItem x:Name="tsmiRememberFirstRevDiff" Header="R_emember First for diff" />
+    <MenuItem x:Name="tsmiDiffFirstToSelected" Header="_First -&gt; Second" IsEnabled="{Binding IsDiffFirstToSelectedEnabled}" />
+    <MenuItem x:Name="tsmiDiffSelectedToLocal" Header="_Second -&gt; Working directory" IsVisible="{Binding IsToLocalVisible}" IsEnabled="{Binding IsDiffSelectedToLocalEnabled}" />
+    <MenuItem x:Name="tsmiDiffFirstToLocal" Header="First -&gt; _Working directory" IsVisible="{Binding IsToLocalVisible}" IsEnabled="{Binding IsDiffFirstToLocalEnabled}" />
+    <Separator x:Name="sepDifftoolRemember" IsVisible="{Binding IsRememberSeparatorVisible}" />
+    <MenuItem x:Name="tsmiDiffTwoSelected" Header="_Diff the selected files" IsVisible="{Binding IsDiffTwoSelectedVisible}" IsEnabled="{Binding IsDiffTwoSelectedEnabled}" />
+    <MenuItem x:Name="tsmiDiffWithRemembered" IsVisible="{Binding IsDiffWithRememberedVisible}" IsEnabled="{Binding IsDiffWithRememberedEnabled}" Header="{Binding DiffWithRememberedHeader}" />
+    <MenuItem x:Name="tsmiRememberSecondRevDiff" Header="_Remember Second for diff" IsVisible="{Binding IsRememberSecondVisible}" IsEnabled="{Binding IsRememberSecondEnabled}" Command="{Binding RememberCommand}" CommandParameter="{x:False}" />
+    <MenuItem x:Name="tsmiRememberFirstRevDiff" Header="R_emember First for diff" IsVisible="{Binding IsRememberFirstVisible}" IsEnabled="{Binding IsRememberFirstEnabled}" Command="{Binding RememberCommand}" CommandParameter="{x:True}" />
   </MenuItem>
-  <MenuItem x:Name="tsmiOpenWorkingDirectoryFile" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" />
-  <MenuItem x:Name="tsmiOpenWorkingDirectoryFileWith" Header="Open working directory file with..." />
-  <MenuItem x:Name="tsmiOpenRevisionFile" Header="Ope_n this revision (temp file)" Icon="{local:UpstreamIcon ViewFile}" />
-  <MenuItem x:Name="tsmiOpenRevisionFileWith" Header="Open this revision _with... (temp file)" />
-  <MenuItem x:Name="tsmiEditWorkingDirectoryFile" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" />
-  <MenuItem x:Name="tsmiOpenInVisualStudio" Header="Open in _Visual Studio" Icon="{local:UpstreamIcon VisualStudio16}" IsVisible="False" />
-  <MenuItem x:Name="tsmiSaveAs" Header="S_ave selected as..." Icon="{local:UpstreamIcon SaveAs}" />
-  <MenuItem x:Name="tsmiMove" Header="Rena_me / move" />
-  <MenuItem x:Name="tsmiDeleteFile" Header="De_lete file" Icon="{local:UpstreamIcon DeleteFile}" />
-  <Separator x:Name="sepFile" />
-  <MenuItem x:Name="tsmiCopyPaths" Header="Copy _path(s)" Icon="{local:UpstreamIcon CopyToClipboard}" />
-  <MenuItem x:Name="tsmiShowInFolder" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
-  <Separator x:Name="sepBrowse" />
-  <MenuItem x:Name="tsmiShowInFileTree" Header="Show in File _tree" Icon="{local:UpstreamIcon FileTree}" />
-  <MenuItem x:Name="tsmiFilterFileInGrid" Header="Filter file in _grid" Icon="{local:UpstreamIcon FunnelPencil}" />
-  <MenuItem x:Name="tsmiFileHistory" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" />
-  <MenuItem x:Name="tsmiBlame" Header="_Blame" Icon="{local:UpstreamIcon Blame}" />
-  <MenuItem x:Name="tsmiFindFile" Header="_Find file..." />
+  <MenuItem x:Name="tsmiOpenWorkingDirectoryFile" Header="_Open working directory file" Icon="{local:UpstreamIcon EditFile}" IsVisible="{Binding IsOpenWorkingFileVisible}" Command="{Binding OpenWorkingFileCommand}" />
+  <MenuItem x:Name="tsmiOpenWorkingDirectoryFileWith" Header="Open working directory file with..." IsVisible="{Binding IsOpenWorkingFileWithVisible}" Command="{Binding OpenWorkingFileWithCommand}" />
+  <MenuItem x:Name="tsmiOpenRevisionFile" Header="Ope_n this revision (temp file)" Icon="{local:UpstreamIcon ViewFile}" IsVisible="{Binding IsOpenRevisionFileVisible}" IsEnabled="{Binding IsOpenRevisionFileEnabled}" Command="{Binding OpenRevisionFileCommand}" />
+  <MenuItem x:Name="tsmiOpenRevisionFileWith" Header="Open this revision _with... (temp file)" IsVisible="{Binding IsOpenRevisionFileWithVisible}" IsEnabled="{Binding IsOpenRevisionFileEnabled}" Command="{Binding OpenRevisionFileWithCommand}" />
+  <MenuItem x:Name="tsmiEditWorkingDirectoryFile" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" IsVisible="{Binding IsEditWorkingFileVisible}" Command="{Binding EditWorkingFileCommand}" />
+  <MenuItem x:Name="tsmiOpenInVisualStudio" Header="Open in _Visual Studio" Icon="{local:UpstreamIcon VisualStudio16}" IsVisible="{Binding IsOpenInVisualStudioVisible}" Command="{Binding OpenInVisualStudioCommand}" />
+  <MenuItem x:Name="tsmiSaveAs" Header="S_ave selected as..." Icon="{local:UpstreamIcon SaveAs}" IsVisible="{Binding IsSaveAsVisible}" Command="{Binding SaveAsCommand}" />
+  <MenuItem x:Name="tsmiMove" Header="Rena_me / move" IsVisible="{Binding IsMoveVisible}" Command="{Binding MoveFileCommand}" />
+  <MenuItem x:Name="tsmiDeleteFile" Icon="{local:UpstreamIcon DeleteFile}" IsVisible="{Binding IsDeleteFileVisible}" Header="{Binding DeleteFileHeader}" Command="{Binding DeleteFileCommand}" />
+  <Separator x:Name="sepFile" IsVisible="{Binding IsFileSeparatorVisible}" />
+  <MenuItem x:Name="tsmiCopyPaths" Header="Copy _path(s)" Icon="{local:UpstreamIcon CopyToClipboard}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsCopyPathsEnabled}" />
+  <MenuItem x:Name="tsmiShowInFolder" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" IsVisible="{Binding IsShowInFolderVisible}" IsEnabled="{Binding IsShowInFolderEnabled}" Command="{Binding ShowInFolderCommand}" />
+  <Separator x:Name="sepBrowse" IsVisible="{Binding HasSelection}" />
+  <MenuItem x:Name="tsmiShowInFileTree" Header="Show in File _tree" Icon="{local:UpstreamIcon FileTree}" IsVisible="{Binding IsShowInFileTreeVisible}" Command="{Binding ShowInFileTreeCommand}" />
+  <MenuItem x:Name="tsmiFilterFileInGrid" Header="Filter file in _grid" Icon="{local:UpstreamIcon FunnelPencil}" IsVisible="{Binding IsFilterFileInGridVisible}" IsEnabled="{Binding IsFilterFileInGridEnabled}" Command="{Binding FilterFileInGridCommand}" />
+  <MenuItem x:Name="tsmiFileHistory" Header="File _history" Icon="{local:UpstreamIcon FileHistory}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsFileHistoryEnabled}" Command="{Binding FileHistoryCommand}" />
+  <MenuItem x:Name="tsmiBlame" Header="_Blame" Icon="{local:UpstreamIcon Blame}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsBlameEnabled}" IsChecked="{Binding IsBlameChecked, Mode=OneWay}" Command="{Binding BlameCommand}" />
+  <MenuItem x:Name="tsmiFindFile" Header="_Find file..." IsVisible="{Binding IsFindFileVisible}" Command="{Binding FindFileInListCommand}" />
   <MenuItem x:Name="tsmiOpenFindInCommitFilesGitGrepDialog" Header="Find in _commit files using git-grep..."
-            Icon="{local:UpstreamIcon ViewFile}" />
+            Icon="{local:UpstreamIcon ViewFile}" IsVisible="{Binding IsGitGrepVisible}" Command="{Binding OpenGitGrepCommand}" />
   <MenuItem x:Name="tsmiShowFindInCommitFilesGitGrep" Header="Show 'Find in commit fi_les using git-grep'"
-            ToggleType="CheckBox" />
-  <Separator x:Name="sepIgnore" />
-  <MenuItem x:Name="tsmiAddFileToGitIgnore" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" />
-  <MenuItem x:Name="tsmiAddFileToGitInfoExclude" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" />
-  <MenuItem x:Name="tsmiSkipWorktree" Header="S_kip worktree" ToggleType="CheckBox" />
-  <MenuItem x:Name="tsmiAssumeUnchanged" Header="Assu_me unchanged" ToggleType="CheckBox" />
-  <MenuItem x:Name="tsmiStopTracking" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" />
+            ToggleType="CheckBox" IsVisible="{Binding IsGitGrepVisible}" IsChecked="{Binding IsGitGrepBoxShown, Mode=OneWay}" Command="{Binding ToggleGitGrepBoxCommand}" />
+  <Separator x:Name="sepIgnore" IsVisible="{Binding IsIgnoreSeparatorVisible}" />
+  <MenuItem x:Name="tsmiAddFileToGitIgnore" Header="Add file to _.gitignore" Icon="{local:UpstreamIcon AddToGitIgnore}" IsVisible="{Binding IsAddToIgnoreVisible}" Command="{Binding AddToIgnoreFileCommand}" CommandParameter="{x:False}" />
+  <MenuItem x:Name="tsmiAddFileToGitInfoExclude" Header="Add file to .git/info/exclude" Icon="{local:UpstreamIcon AddToGitIgnore}" IsVisible="{Binding IsAddToIgnoreVisible}" Command="{Binding AddToIgnoreFileCommand}" CommandParameter="{x:True}" />
+  <MenuItem x:Name="tsmiSkipWorktree" Header="S_kip worktree" ToggleType="CheckBox" IsVisible="{Binding AreIndexFlagsVisible}" IsChecked="{Binding IsSkipWorktreeChecked, Mode=OneWay}" Command="{Binding SetIndexFlagCommand}" CommandParameter="{x:Static repo:IndexFlag.SkipWorktree}" />
+  <MenuItem x:Name="tsmiAssumeUnchanged" Header="Assu_me unchanged" ToggleType="CheckBox" IsVisible="{Binding AreIndexFlagsVisible}" IsChecked="{Binding IsAssumeUnchangedChecked, Mode=OneWay}" Command="{Binding SetIndexFlagCommand}" CommandParameter="{x:Static repo:IndexFlag.AssumeUnchanged}" />
+  <MenuItem x:Name="tsmiStopTracking" Header="Stop tracking this file" Icon="{local:UpstreamIcon StopTrackingFile}" IsVisible="{Binding IsStopTrackingVisible}" Command="{Binding StopTrackingCommand}" />
   <Separator x:Name="sepScripts" />
   <MenuItem x:Name="tsmiRunScript" Header="Run script" Icon="{local:UpstreamIcon Console}" />
-  <MenuItem x:Name="_collapseRootFolders" Header="Collap_se root folders" Icon="{local:UpstreamIcon TreeCollapseAll}" />
+  <MenuItem x:Name="_collapseRootFolders" Header="Collap_se root folders" Icon="{local:UpstreamIcon TreeCollapseAll}" IsVisible="{Binding IsCollapseRootFoldersVisible}" Command="{Binding CollapseRootFoldersCommand}" />
 </ContextMenu>

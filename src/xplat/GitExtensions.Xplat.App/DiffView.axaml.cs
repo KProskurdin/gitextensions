@@ -1,11 +1,11 @@
 using System.Globalization;
-using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
-using GitCommands.Settings;
 using GitExtensions.Xplat.Core.Diff;
+using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
@@ -15,43 +15,36 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class DiffView : UserControl
 {
-    private readonly DiffViewModel _viewModel = new(new GitDiffService());
-    private DiffRequest? _request;
-
-    // The file whose syntax colors the lines (upstream's FileViewer picks the highlighting by the file name), and whether the
-    // lines are a diff (a first column of +, - or space) or a file's text.
-    private string? _syntaxPath;
-    private bool _textIsDiff = true;
-    private IReadOnlyList<DiffLine>? _text;
-
-    // A file's git-grep matches, shown instead of a diff or a text (upstream's ViewMode.Grep), and how they are read for
-    // the view's options.
-    private IReadOnlyList<GrepLine>? _grep;
-    private Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>>? _grepRead;
-    private DiffOptions _options;
-
     // Upstream's line argument of ViewChangesAsync: the line to go to when the next lines are shown.
     private int? _lineToGoTo;
 
     // The item template's padding and line number columns, before a line's text.
     private const double LinePadding = 4;
     private const double LineNumbersWidth = 88;
-    private bool _showingOptions;
+
+    /// <summary>
+    ///  The viewer's state and commands; the view draws its lines. A view model that owns the viewer's (a window's) binds
+    ///  it here; without one the viewer makes its own.
+    /// </summary>
+    public static readonly StyledProperty<DiffViewModel?> ViewModelProperty =
+        AvaloniaProperty.Register<DiffView, DiffViewModel?>(nameof(ViewModel));
+
+    private DiffViewModel _viewModel;
 
     public DiffView()
     {
         InitializeComponent();
-        _viewModel.PropertyChanged += (_, e) => OnDiffChanged(e.PropertyName);
-
-        // As upstream's FileViewer, each view starts from the options of this run or the saved defaults; "Treat all files as
-        // text" starts off in each.
-        _options = AppServices.Preferences.InitialDiffOptions() with { TreatAllFilesAsText = false, Encoding = null };
-        AppServices.Preferences.ReloadDiffDisplayAppearance();
-        WireOptions();
+        _viewModel = NewViewModel();
+        Attach(_viewModel);
+        WireMenu();
         WireContinuousScroll();
         WireFind();
         WireFileContent();
-        DiffList.SizeChanged += (_, _) => ShowVerticalRuler();
+        DiffList.SizeChanged += (_, _) =>
+        {
+            ViewModel.ViewerWidth = DiffList.Bounds.Width;
+            ShowVerticalRuler();
+        };
         DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
         DiffList.PropertyChanged += (_, e) =>
         {
@@ -65,8 +58,44 @@ public partial class DiffView : UserControl
         // A switch between two themes of the same variant (e.g. dark and dark+) changes only the colors.
         AttachedToVisualTree += (_, _) => ThemeApplier.Changed += OnThemeChanged;
         DetachedFromVisualTree += (_, _) => ThemeApplier.Changed -= OnThemeChanged;
-        DiffList.SelectionChanged += (_, _) => LineSelectionChanged?.Invoke(this, EventArgs.Empty);
+        DiffList.SelectionChanged += (_, _) =>
+        {
+            SyncSelection();
+            LineSelectionChanged?.Invoke(this, EventArgs.Empty);
+        };
         DiffList.AddHandler(KeyDownEvent, OnDiffKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    /// <inheritdoc cref="ViewModelProperty"/>
+    public DiffViewModel ViewModel
+    {
+        get => _viewModel;
+        set => SetValue(ViewModelProperty, value);
+    }
+
+    /// <summary>
+    ///  A viewer's view model with the app's preferences, git and translations, for a view model that owns a viewer.
+    /// </summary>
+    public static DiffViewModel NewViewModel()
+        => new(new GitDiffService(), AppServices.Preferences, new DiffViewModelServices
+        {
+            Translate = UpstreamTranslation.ByText,
+        });
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property != ViewModelProperty || change.NewValue is not DiffViewModel viewModel
+                                                 || viewModel == _viewModel)
+        {
+            return;
+        }
+
+        Detach(_viewModel);
+        _viewModel = viewModel;
+        Attach(viewModel);
+        ShowLines();
+        ShowPicture();
     }
 
     /// <summary>
@@ -75,7 +104,8 @@ public partial class DiffView : UserControl
     public event EventHandler? LineSelectionChanged;
 
     /// <summary>
-    ///  Raised for upstream FileViewer's stage and unstage lines hotkeys; the window that can stage handles them.
+    ///  Raised for upstream FileViewer's stage and unstage lines hotkeys and menu items; the window that can stage handles
+    ///  them.
     /// </summary>
     public event EventHandler<DiffCommand>? LinesHotkey;
 
@@ -87,35 +117,28 @@ public partial class DiffView : UserControl
     /// <summary>
     ///  True while a diff is being read.
     /// </summary>
-    public bool IsLoading => _viewModel.IsLoading;
+    public bool IsLoading => ViewModel.IsLoading;
+
+    /// <summary>
+    ///  The whitespace, context and entire file choices in effect.
+    /// </summary>
+    public DiffOptions Options => ViewModel.Options;
+
+    /// <summary>
+    ///  The line action the menu offers; it raises <see cref="LinesHotkey"/> as the hotkey does.
+    /// </summary>
+    public DiffLineAction LineAction
+    {
+        get => ViewModel.LineAction;
+        set => ViewModel.LineAction = value;
+    }
 
     /// <summary>
     ///  Shows the diff of <paramref name="filePath"/> in <paramref name="commitHash"/>, or of the working tree (staged or
     ///  unstaged) when no commit is given. A null file shows the whole commit.
     /// </summary>
-    public async Task ShowAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, string title)
-    {
-        int version = ResetContent();
-        FileRevision revision = FileRevision.Of(commitHash, staged);
-        if (filePath is not null && GitCommands.FileHelper.IsImage(filePath)
-            && await ShowImageInsteadOfDiffAsync(version, repositoryPath, revision, filePath, title))
-        {
-            return;
-        }
-
-        DiffRequest request = new(repositoryPath, commitHash, filePath, staged);
-        _request = request;
-        _text = null;
-        _grep = null;
-        _grepRead = null;
-        _syntaxPath = filePath;
-        _textIsDiff = true;
-        _hasOptions = true;
-        ShowToolbar();
-        TitleText.Text = title;
-        await LoadAsync(request);
-        await ShowNewBinaryFileAsync(version, request, revision, title);
-    }
+    public Task ShowAsync(string repositoryPath, string? commitHash, string? filePath, bool staged, string title)
+        => ViewModel.ShowAsync(repositoryPath, commitHash, filePath, staged, title);
 
     /// <summary>
     ///  Shows the diff <paramref name="read"/> returns for the view's options (upstream's <c>FormDiff</c>, a file between
@@ -123,150 +146,52 @@ public partial class DiffView : UserControl
     /// </summary>
     /// <param name="revision">The revision the diff goes to, whose image or new binary file is shown instead, as upstream's
     ///  <c>ViewChangesAsync</c>.</param>
-    public async Task ShowDiffAsync(string repositoryPath, string? filePath, string title,
+    public Task ShowDiffAsync(string repositoryPath, string? filePath, string title,
         Func<DiffOptions, Task<IReadOnlyList<DiffLine>>> read, FileRevision? revision = null)
-    {
-        int version = ResetContent();
-        if (revision is not null && filePath is not null && GitCommands.FileHelper.IsImage(filePath)
-            && await ShowImageInsteadOfDiffAsync(version, repositoryPath, revision, filePath, title))
-        {
-            return;
-        }
-
-        DiffRequest request = new(repositoryPath, CommitHash: null, filePath, Staged: false, read);
-        _request = request;
-        _text = null;
-        _grep = null;
-        _grepRead = null;
-        _syntaxPath = filePath;
-        _textIsDiff = true;
-        _hasOptions = true;
-        ShowToolbar();
-        TitleText.Text = title;
-        await LoadAsync(request);
-        if (revision is not null)
-        {
-            await ShowNewBinaryFileAsync(version, request, revision, title);
-        }
-    }
+        => ViewModel.ShowDiffAsync(repositoryPath, filePath, title, read, revision);
 
     /// <summary>
     ///  Shows a file's content with line numbers instead of a diff, as upstream's file viewer does for the File tree tab. A
     ///  null <paramref name="content"/> is a binary file, which is not shown.
     /// </summary>
-    public void ShowText(string title, string? content)
-    {
-        ResetContent();
-        _request = null;
-        _grep = null;
-        _grepRead = null;
-        TitleText.Text = title;
-        _hasOptions = false;
-        ShowToolbar();
-        ShowError(content is null ? "Binary file, not shown." : null);
-        _syntaxPath = title;
-        _textIsDiff = false;
-        _text = content is null ? [] : DiffParser.ParseText(content);
-        ShowLines();
-    }
+    public void ShowText(string title, string? content) => ViewModel.ShowText(title, content);
+
+    /// <summary>
+    ///  Shows lines read elsewhere, in their colors, such as a range diff's.
+    /// </summary>
+    public void ShowDiffLines(string title, IReadOnlyList<DiffLine> lines) => ViewModel.ShowDiffLines(title, lines);
 
     /// <summary>
     ///  Shows a patch that is not in the repository (a pull request's file), as upstream's <c>ViewFixedPatch</c>.
     /// </summary>
-    /// <summary>
-    ///  Shows lines read elsewhere, in their colors, such as a range diff's.
-    /// </summary>
-    public void ShowDiffLines(string title, IReadOnlyList<DiffLine> lines)
-    {
-        ResetContent();
-        _request = null;
-        _grep = null;
-        _grepRead = null;
-        TitleText.Text = title;
-        _hasOptions = false;
-        ShowToolbar();
-        ShowError(null);
-        _syntaxPath = null;
-        _textIsDiff = false;
-        _text = lines;
-        ShowLines();
-    }
+    public void ShowPatch(string title, string patch) => ViewModel.ShowPatch(title, patch);
 
-    public void ShowPatch(string title, string patch)
-    {
-        ResetContent();
-        _request = null;
-        _grep = null;
-        _grepRead = null;
-        TitleText.Text = title;
-        _hasOptions = false;
-        ShowToolbar();
-        _syntaxPath = title;
-        _textIsDiff = true;
-        ShowError(null);
-        _text = DiffParser.Parse(patch);
-        ShowLines();
-    }
-
-    /// <summary>
-    ///  The diff as git printed it and the character range of the selected lines in it, as upstream's <c>PatchManager</c>
-    ///  takes them; null when no line is selected or a file's content is shown instead of a diff.
-    /// </summary>
     /// <summary>
     ///  The file's line number at the selected line (upstream FileViewer's <c>CurrentFileLine</c>): the new number, or the old
     ///  one for a removed line; null when no numbered line is selected.
     /// </summary>
     public int? CurrentFileLine
-        => DiffList.SelectedItem is DiffLineItem line
-           && int.TryParse(line.NewNumber.Length > 0 ? line.NewNumber : line.OldNumber, out int number)
-            ? number
-            : null;
+    {
+        get
+        {
+            SyncSelection();
+            return ViewModel.CurrentFileLine;
+        }
+    }
 
     /// <summary>
     ///  The whole diff as git printed it, as upstream's <c>CherryPickAllChanges</c> applies it; null while no diff is shown.
     /// </summary>
-    public (string Text, int Start, int Length)? WholeRange()
-    {
-        if (_request is null || _text is not null || _viewModel.Lines.Count == 0 || !CanPatchLines)
-        {
-            return null;
-        }
+    public (string Text, int Start, int Length)? WholeRange() => ViewModel.WholeRange();
 
-        string text = string.Join('\n', _viewModel.Lines.Select(line => line.Text)) + "\n";
-        return (text, 0, text.Length);
-    }
-
+    /// <summary>
+    ///  The diff as git printed it and the character range of the selected lines in it, as upstream's <c>PatchManager</c>
+    ///  takes them; null when no line is selected or a file's content is shown instead of a diff.
+    /// </summary>
     public (string Text, int Start, int Length)? SelectedRange()
     {
-        IReadOnlyList<int> selected = DiffList.Selection.SelectedIndexes;
-        IReadOnlyList<DiffLine> lines = _viewModel.Lines;
-        if (_request is null || _text is not null || selected.Count == 0 || lines.Count == 0 || !CanPatchLines)
-        {
-            return null;
-        }
-
-        int first = selected.Min();
-        int last = Math.Min(selected.Max(), lines.Count - 1);
-        StringBuilder text = new();
-        int start = 0;
-        int end = 0;
-        for (int i = 0; i < lines.Count; i++)
-        {
-            if (i == first)
-            {
-                start = text.Length;
-            }
-
-            text.Append(lines[i].Text);
-            if (i == last)
-            {
-                end = text.Length;
-            }
-
-            text.Append('\n');
-        }
-
-        return (text.ToString(), start, end - start);
+        SyncSelection();
+        return ViewModel.SelectedRange();
     }
 
     /// <summary>
@@ -276,90 +201,72 @@ public partial class DiffView : UserControl
     /// </summary>
     public Task ShowGrepAsync(string title,
         Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>> read)
+        => ViewModel.ShowGrepAsync(title, read);
+
+    public void Clear() => ViewModel.Clear();
+
+    // What the view does for its view model: decoding pictures, the clipboard, drawing and selecting the lines, and the line
+    // actions it raises as hotkeys.
+    private void Attach(DiffViewModel viewModel)
     {
-        ResetContent();
-        _request = null;
-        _text = null;
-        _grepRead = read;
-        TitleText.Text = title;
-        _hasOptions = true;
-        ShowToolbar();
-        _syntaxPath = title;
-        _textIsDiff = false;
-        return LoadGrepAsync(read);
+        viewModel.DecodeImage = bytes => DecodeImage(bytes);
+        viewModel.SetClipboard = text => TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard
+            ? clipboard.SetTextAsync(text)
+            : Task.CompletedTask;
+        viewModel.ViewerWidth = DiffList.Bounds.Width;
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        viewModel.SelectLineRequested += OnSelectLineRequested;
+        viewModel.LinesRequested += OnLinesRequested;
+        LayoutRoot.DataContext = viewModel;
+
+        // A context menu gets its data context only when it opens (MVVM.md).
+        DiffContextMenu.DataContext = viewModel;
     }
 
-    private async Task LoadGrepAsync(Func<DiffOptions, Task<(IReadOnlyList<GrepLine> Lines, string? Error)>> read)
+    private void Detach(DiffViewModel viewModel)
     {
-        (IReadOnlyList<GrepLine> lines, string? error) = await read(_options);
-        if (_grepRead != read)
+        viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        viewModel.SelectLineRequested -= OnSelectLineRequested;
+        viewModel.LinesRequested -= OnLinesRequested;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => OnViewModelChanged(e.PropertyName);
+
+    private void OnSelectLineRequested(object? sender, int index) => SelectLine(index);
+
+    private void OnLinesRequested(object? sender, DiffLinesCommand command)
+        => LinesHotkey?.Invoke(this, command switch
         {
-            return;
-        }
+            DiffLinesCommand.Stage => DiffCommand.StageLines,
+            DiffLinesCommand.Unstage => DiffCommand.UnstageLines,
+            _ => DiffCommand.ResetLines,
+        });
 
-        ShowError(error);
-        _grep = lines;
-        ShowLines();
-    }
+    // The list's selection, which the view model's menu, copy and line range read.
+    private void SyncSelection()
+        => ViewModel.SetSelection(DiffList.SelectedIndex, [.. DiffList.Selection.SelectedIndexes]);
 
-    public void Clear()
+    private void SelectLine(int index)
     {
-        ResetContent();
-        _request = null;
-        _text = null;
-        _grep = null;
-        _grepRead = null;
-        TitleText.Text = "";
-        ShowError(null);
-        Lines = [];
-        ResetFind();
-        DiffList.ItemsSource = Lines;
+        DiffList.SelectedIndex = index;
+        DiffList.ScrollIntoView(index);
     }
 
-    private void Reload()
-    {
-        if (_grepRead is { } grepRead)
-        {
-            UiActions.Run(() => LoadGrepAsync(grepRead), ex => ShowError(ex.Message));
-            return;
-        }
-
-        if (_request is { } request)
-        {
-            UiActions.Run(() => LoadAsync(request), ex => ShowError(ex.Message));
-        }
-    }
-
-    private Task LoadAsync(DiffRequest request)
-    {
-        ShowError(null);
-        DiffOptions options = _options with
-        {
-            Histogram = AppServices.Preferences.UseHistogramDiffAlgorithm,
-            UseGitColoring = AppServices.Preferences.UseGitColoring,
-            Appearance = AppServices.Preferences.DiffDisplayAppearance,
-            DifftasticWidth = Difftastic.WidthFor(DiffList.Bounds.Width),
-        };
-        ShowDifftasticEnabled(request.RepositoryPath);
-        return request.Read is { } read
-            ? _viewModel.LoadAsync(() => read(options))
-            : _viewModel.LoadAsync(request.RepositoryPath, request.CommitHash, request.FilePath, request.Staged, options);
-    }
-
-    private void OnDiffChanged(string? propertyName)
+    private void OnViewModelChanged(string? propertyName)
     {
         switch (propertyName)
         {
-            case nameof(DiffViewModel.Lines):
+            case nameof(DiffViewModel.Content):
                 ShowLines();
                 break;
-            case nameof(DiffViewModel.ErrorMessage):
-                if (_viewModel.ErrorMessage is { } message)
-                {
-                    _viewModel.ClearError();
-                    ShowError(message);
-                }
 
+            // A search waiting for the next file's lines goes on after its error too.
+            case nameof(DiffViewModel.ErrorMessage) when ViewModel.ErrorMessage is not null:
+                _linesShown?.TrySetResult();
+                break;
+            case nameof(DiffViewModel.Picture):
+                ShowPicture();
                 break;
         }
     }
@@ -368,7 +275,8 @@ public partial class DiffView : UserControl
     // while "Show syntax highlighting" is on, a file's text always.
     private void ShowLines()
     {
-        if (_grep is { } grep)
+        DiffContent content = ViewModel.Content;
+        if (content.Grep is { } grep)
         {
             Lines = [.. grep.Select(GrepItem)];
             ResetFind();
@@ -377,13 +285,14 @@ public partial class DiffView : UserControl
             return;
         }
 
-        SyntaxHighlighter? highlighter = (_options.ShowSyntaxHighlighting || !_textIsDiff) && _syntaxPath is { } path
+        SyntaxHighlighter? highlighter = (ViewModel.Options.ShowSyntaxHighlighting || !content.IsDiff)
+                                         && content.SyntaxPath is { } path
             && SyntaxDefinitions.ForFile(path) is { } syntax
                 ? new SyntaxHighlighter(syntax)
                 : null;
         Lines =
         [
-            .. (_text ?? _viewModel.Lines).Select(line => WithDimmedRuns(line, line.ColorRuns is null
+            .. content.Lines.Select(line => WithDimmedRuns(line, line.ColorRuns is null
                 ? new DiffLineItem(DisplayText(line),
                     ThemeBrushes.ForegroundFor(line.Kind), ThemeBrushes.BackgroundFor(line.Kind),
                     line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
@@ -454,12 +363,12 @@ public partial class DiffView : UserControl
     // Where a position of a line's text is on show: the non-printing marks put a mark before each tab.
     private int DisplayOffset(DiffLine line, int offset)
     {
-        if (!_options.ShowNonPrintingChars)
+        if (!ViewModel.Options.ShowNonPrintingChars)
         {
             return offset;
         }
 
-        int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
+        int prefix = ViewModel.Content.IsDiff && line.Text.Length > 0 ? 1 : 0;
         int tabs = 0;
         for (int i = prefix; i < offset && i < line.Text.Length; i++)
         {
@@ -487,7 +396,7 @@ public partial class DiffView : UserControl
 
     private List<DiffTextRun> GitColorRuns(DiffLine line, IReadOnlyList<DiffColorRun> colors)
     {
-        bool marks = _options.ShowNonPrintingChars;
+        bool marks = ViewModel.Options.ShowNonPrintingChars;
         List<DiffTextRun> runs = [];
         int position = 0;
         foreach (DiffColorRun color in colors)
@@ -569,12 +478,12 @@ public partial class DiffView : UserControl
     // Upstream's nonprinting characters mark a line's spaces, tabs and end, not a diff line's +, - or space.
     private string DisplayText(DiffLine line)
     {
-        if (!_options.ShowNonPrintingChars || line.Kind is DiffLineKind.Header or DiffLineKind.Hunk)
+        if (!ViewModel.Options.ShowNonPrintingChars || line.Kind is DiffLineKind.Header or DiffLineKind.Hunk)
         {
             return line.Text;
         }
 
-        int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
+        int prefix = ViewModel.Content.IsDiff && line.Text.Length > 0 ? 1 : 0;
         return line.Text[..prefix] + NonPrintingCharacters.Mark(line.Text[prefix..]) + EndOfLineMark(line);
     }
 
@@ -616,10 +525,10 @@ public partial class DiffView : UserControl
             return null;
         }
 
-        int prefix = _textIsDiff && line.Text.Length > 0 ? 1 : 0;
+        int prefix = ViewModel.Content.IsDiff && line.Text.Length > 0 ? 1 : 0;
         List<DiffTextRun> runs = prefix > 0 ? [new DiffTextRun(line.Text[..prefix], null, false, false)] : [];
         string code = line.Text[prefix..];
-        bool marks = _options.ShowNonPrintingChars;
+        bool marks = ViewModel.Options.ShowNonPrintingChars;
         foreach (SyntaxRun run in highlighter.HighlightLine(code))
         {
             string text = code.Substring(run.Start, run.Length);
@@ -660,19 +569,20 @@ public partial class DiffView : UserControl
         {
             case DiffCommand.NextChange:
             case DiffCommand.PreviousChange:
-                GoToChange(next: command == DiffCommand.NextChange);
+                SyncSelection();
+                ViewModel.GoToChangeCommand.Execute(command == DiffCommand.NextChange);
                 return true;
             case DiffCommand.IgnoreAllWhitespace:
-                ChangeOptions(_options.ToggleIgnoreWhitespace(IgnoreWhitespaceKind.AllSpace));
+                ViewModel.IgnoreAllWhitespace = !ViewModel.IgnoreAllWhitespace;
                 return true;
             case DiffCommand.IncreaseContext:
-                ChangeOptions(_options.WithMoreContext());
+                ViewModel.IncreaseContextCommand.Execute(null);
                 return true;
             case DiffCommand.DecreaseContext:
-                ChangeOptions(_options.WithLessContext());
+                ViewModel.DecreaseContextCommand.Execute(null);
                 return true;
             case DiffCommand.ShowEntireFile:
-                ChangeOptions(_options.ToggleEntireFile());
+                ViewModel.ShowEntireFile = !ViewModel.ShowEntireFile;
                 return true;
             case DiffCommand.StageLines:
             case DiffCommand.UnstageLines:
@@ -700,102 +610,29 @@ public partial class DiffView : UserControl
                 }
 
                 UiActions.Run(() => FindNextAsync(viaF3: true, searchBackward: false, TextNotFoundText),
-                    ex => ShowError(ex.Message));
+                    ex => ViewModel.ReportError(ex.Message));
                 return true;
             case DiffCommand.FindPrevious:
                 UiActions.Run(() => FindNextAsync(viaF3: true, searchBackward: true, TextNotFoundText),
-                    ex => ShowError(ex.Message));
+                    ex => ViewModel.ReportError(ex.Message));
                 return true;
             case DiffCommand.GoToLine:
-                UiActions.Run(GoToLineAsync, ex => ShowError(ex.Message));
-                return true;
-
-            case DiffCommand.TreatFileAsText:
-                if (!IsPartialTextView)
-                {
-                    return false;
-                }
-
-                ChangeOptions(_options with { TreatAllFilesAsText = !_options.TreatAllFilesAsText });
+                UiActions.Run(GoToLineAsync, ex => ViewModel.ReportError(ex.Message));
                 return true;
 
             // Upstream's PerformClickIfAvailable: only while the menu offers the item.
+            case DiffCommand.TreatFileAsText:
+                return ViewModel.TryToggleTreatAllFilesAsText();
             case DiffCommand.ShowGitWordColoring:
-                ShowMenu();
-                if (!DiffAppearanceMenuItem.IsVisible)
-                {
-                    return false;
-                }
-
-                ToggleAppearance(DiffDisplayAppearance.GitWordDiff);
-                return true;
+                return ViewModel.TryToggleGitWordDiff();
             case DiffCommand.ShowDifftastic:
-                ShowMenu();
-                if (!DiffAppearanceMenuItem.IsVisible || !ShowDifftasticMenuItem.IsEnabled)
-                {
-                    return false;
-                }
-
-                ToggleAppearance(DiffDisplayAppearance.Difftastic);
-                return true;
-
-            // As above.
+                return ViewModel.TryToggleDifftastic();
             case DiffCommand.ShowSyntaxHighlighting:
-                ShowMenu();
-                if (!SyntaxHighlightingMenuItem.IsVisible || !SyntaxHighlightingMenuItem.IsEnabled)
-                {
-                    return false;
-                }
-
-                ChangeOptions(_options with { ShowSyntaxHighlighting = !_options.ShowSyntaxHighlighting });
-                return true;
+                return ViewModel.TryToggleSyntaxHighlighting();
             default:
                 return false;
         }
     }
-
-    /// <summary>
-    ///  The whitespace, context and entire file choices in effect.
-    /// </summary>
-    public DiffOptions Options => _options;
-
-    // As upstream's FileViewer: the change is kept for the next view in this run and the diff is read again.
-    private void ChangeOptions(DiffOptions options)
-    {
-        if (options == _options)
-        {
-            return;
-        }
-
-        // Nonprinting characters and syntax highlighting change only the display; the diff is not read again for them.
-        bool sameDiff = options.Arguments.SequenceEqual(_options.Arguments) && Equals(options.Encoding, _options.Encoding);
-        _options = options;
-        AppServices.Preferences.SetDiffOptions(options);
-        ShowOptions();
-        if (sameDiff)
-        {
-            ShowLines();
-        }
-        else
-        {
-            Reload();
-        }
-    }
-
-    private void ShowError(string? message)
-    {
-        ErrorText.Text = message ?? "";
-        ErrorText.IsVisible = message is not null;
-
-        // A search waiting for the next file's lines goes on after its error too.
-        if (message is not null)
-        {
-            _linesShown?.TrySetResult();
-        }
-    }
-
-    private sealed record DiffRequest(string RepositoryPath, string? CommitHash, string? FilePath, bool Staged,
-        Func<DiffOptions, Task<IReadOnlyList<DiffLine>>>? Read = null);
 }
 
 /// <summary>

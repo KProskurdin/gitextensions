@@ -2,14 +2,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
              xmlns:local="using:GitExtensions.Xplat.App"
-             x:Class="GitExtensions.Xplat.App.BlameView">
+             x:Class="GitExtensions.Xplat.App.BlameView"
+             x:DataType="core:BlameViewModel">
   <!-- Upstream's BlameControl, shared by the blame window and the file history's Blame tab: the commit's information above
        (splitContainer1, its panel 160 pixels), which the File tree tab hides. Upstream's gutter: the commit's author line on
-       the first line of each run of lines from one commit. -->
+       the first line of each run of lines from one commit. Bound to BlameViewModel (PLAN.md principle 6), the data context
+       of the root grid so the window around keeps its own; the selection, the commit under the mouse, find and the
+       repository host's items stay in the view. -->
   <Grid x:Name="Layout" RowDefinitions="160,5,*">
-  <local:CommitInfoView x:Name="CommitInfo" />
-  <GridSplitter x:Name="CommitInfoSplitter" Grid.Row="1" ResizeDirection="Rows" />
-  <ListBox x:Name="BlameList" Grid.Row="2" Grid.IsSharedSizeScope="True"
+  <local:CommitInfoView x:Name="CommitInfo" IsVisible="{Binding IsCommitInfoVisible}" />
+  <GridSplitter x:Name="CommitInfoSplitter" Grid.Row="1" ResizeDirection="Rows" IsVisible="{Binding IsCommitInfoVisible}" />
+  <ListBox x:Name="BlameList" Grid.Row="2" Grid.IsSharedSizeScope="True" ItemsSource="{Binding Rows}"
            FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}">
     <ListBox.Styles>
       <!-- Upstream's HighlightLinesForCommit: the lines of the commit under the mouse. -->
@@ -21,29 +24,58 @@
     <ListBox.ContextMenu>
       <ContextMenu x:Name="BlameContextMenu">
         <!-- Upstream BlameControl's menu. -->
-        <MenuItem x:Name="BlameRevisionMenuItem" Header="Blame _this revision" Icon="{local:UpstreamIcon Blame}" />
-        <MenuItem x:Name="BlamePreviousRevisionMenuItem" Header="_Blame previous revision"
-                  Icon="{local:UpstreamIcon RecentRepositories}" />
-        <MenuItem x:Name="ShowChangesMenuItem" Header="_Show changes" Icon="{local:UpstreamIcon information}" />
+        <MenuItem x:Name="BlameRevisionMenuItem" Header="Blame _this revision" Icon="{local:UpstreamIcon Blame}"
+                  IsEnabled="{Binding CanBlameRevision}" Command="{Binding BlameRevisionCommand}" />
+        <MenuItem x:Name="BlamePreviousRevisionMenuItem" Header="{Binding PreviousRevisionHeader}"
+                  Icon="{local:UpstreamIcon RecentRepositories}"
+                  IsEnabled="{Binding CanBlamePreviousRevision}" Command="{Binding BlamePreviousRevisionCommand}" />
+        <MenuItem x:Name="ShowChangesMenuItem" Header="_Show changes" Icon="{local:UpstreamIcon information}"
+                  IsEnabled="{Binding HasSelectedCommit}" Command="{Binding ShowChangesCommand}" />
         <Separator />
-        <MenuItem x:Name="CopyToClipboardMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
-          <MenuItem x:Name="CommitHashMenuItem" Header="Commit _hash" Icon="{local:UpstreamIcon CommitId}" />
-          <MenuItem x:Name="CommitMessageMenuItem" Header="Commit _message" Icon="{local:UpstreamIcon Message}" />
-          <MenuItem x:Name="AllCommitInfoMenuItem" Header="_All commit info" Icon="{local:UpstreamIcon CommitSummary}" />
+        <MenuItem x:Name="CopyToClipboardMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}"
+                  IsEnabled="{Binding HasSelectedCommit}">
+          <MenuItem x:Name="CommitHashMenuItem" Header="Commit _hash" Icon="{local:UpstreamIcon CommitId}"
+                    Command="{Binding CopyCommitHashCommand}" />
+          <MenuItem x:Name="CommitMessageMenuItem" Header="Commit _message" Icon="{local:UpstreamIcon Message}"
+                    Command="{Binding CopyCommitMessageCommand}" />
+          <MenuItem x:Name="AllCommitInfoMenuItem" Header="_All commit info" Icon="{local:UpstreamIcon CommitSummary}"
+                    Command="{Binding CopyAllCommitInfoCommand}" />
         </MenuItem>
         <Separator />
+        <!-- The check items run the toggle command; Avalonia checks the item itself on a real click, before the command,
+             and the one-way binding then shows the stored setting (MVVM.md, Menu check items). -->
         <MenuItem Header="Blame settings:" IsEnabled="False" />
-        <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox" />
-        <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox" />
-        <MenuItem x:Name="DetectMoveInAllFilesMenuItem" Header="Detect move and copy in all files" ToggleType="CheckBox" />
+        <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox"
+                  IsChecked="{Binding IgnoreWhitespace, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.IgnoreWhitespace}" />
+        <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox"
+                  IsChecked="{Binding DetectMoveInFile, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.DetectMoveInFile}" />
+        <MenuItem x:Name="DetectMoveInAllFilesMenuItem" Header="Detect move and copy in all files" ToggleType="CheckBox"
+                  IsChecked="{Binding DetectMoveInAllFiles, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.DetectMoveInAllFiles}" />
         <Separator />
-        <MenuItem x:Name="DisplayAuthorFirstMenuItem" Header="Display author first" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAuthorMenuItem" Header="Show author" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Show author date" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAuthorTimeMenuItem" Header="Show author time" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowLineNumbersMenuItem" Header="Show line numbers" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowOriginalFilePathMenuItem" Header="Show original file path" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAuthorAvatarMenuItem" Header="Show author avatar" ToggleType="CheckBox" />
+        <MenuItem x:Name="DisplayAuthorFirstMenuItem" Header="Display author first" ToggleType="CheckBox"
+                  IsChecked="{Binding DisplayAuthorFirst, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.DisplayAuthorFirst}" />
+        <MenuItem x:Name="ShowAuthorMenuItem" Header="Show author" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowAuthor, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.ShowAuthor}" />
+        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Show author date" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowAuthorDate, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.ShowAuthorDate}" />
+        <MenuItem x:Name="ShowAuthorTimeMenuItem" Header="Show author time" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowAuthorTime, Mode=OneWay}" IsEnabled="{Binding CanShowAuthorTime}"
+                  Command="{Binding ToggleOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowAuthorTime}" />
+        <MenuItem x:Name="ShowLineNumbersMenuItem" Header="Show line numbers" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowLineNumbers, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.ShowLineNumbers}" />
+        <MenuItem x:Name="ShowOriginalFilePathMenuItem" Header="Show original file path" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowOriginalFilePath, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.ShowOriginalFilePath}" />
+        <MenuItem x:Name="ShowAuthorAvatarMenuItem" Header="Show author avatar" ToggleType="CheckBox"
+                  IsChecked="{Binding ShowAuthorAvatar, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:BlameOption.ShowAuthorAvatar}" />
       </ContextMenu>
     </ListBox.ContextMenu>
     <ListBox.ItemTemplate>

@@ -13,6 +13,12 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public sealed class InfoTextBlock : SelectableTextBlock
 {
+    /// <summary>
+    ///  The lines in their spans; bindable, so a view model's lines show here.
+    /// </summary>
+    public static readonly StyledProperty<IReadOnlyList<IReadOnlyList<InfoSpan>>> LinesProperty =
+        AvaloniaProperty.Register<InfoTextBlock, IReadOnlyList<IReadOnlyList<InfoSpan>>>(nameof(Lines), []);
+
     private const string LinkBrushKey = "SystemControlHyperlinkTextBrush";
 
     private readonly List<(int Start, int End, string Link)> _links = [];
@@ -31,14 +37,11 @@ public sealed class InfoTextBlock : SelectableTextBlock
     /// </summary>
     public event EventHandler<string>? LinkClicked;
 
+    /// <inheritdoc cref="LinesProperty"/>
     public IReadOnlyList<IReadOnlyList<InfoSpan>> Lines
     {
-        get => _lines;
-        set
-        {
-            _lines = value;
-            Build();
-        }
+        get => GetValue(LinesProperty);
+        set => SetValue(LinesProperty, value);
     }
 
     /// <summary>
@@ -64,6 +67,16 @@ public sealed class InfoTextBlock : SelectableTextBlock
 
         int position = hit.TextPosition;
         return _links.FirstOrDefault(link => position >= link.Start && position < link.End).Link;
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == LinesProperty)
+        {
+            _lines = Lines;
+            Build();
+        }
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)

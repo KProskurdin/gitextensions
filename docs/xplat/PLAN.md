@@ -1159,7 +1159,11 @@ Steps:
    moves to it in the same change (principle 6). *Later the same day:* the user asked to convert every window now, after
    the pilot, window by window in the pilot's pattern; `MVVM.md` lists the windows done.
 4. `MainWindow`: the toolbar and menu state that follows the selection moves into `CommitListViewModel` properties bound in
-   XAML.
+   XAML. *Started 2026-11-15:* the state is its own view model instead, `BrowseToolbarViewModel` (core `Repository/`), the
+   window's data context: what can run (from the busy state, the open repository, git, the branch, the remotes and the
+   selected commit; about 80 menu items and buttons), the toolstrip's texts (working directory, branch, push's ahead and
+   behind, the commit count and state image) and the title. It reads the grid's, the repository's and the actions' view
+   models, which `UpdateBusyState` refreshes as before. The window's other parts follow in `MVVM.md`.
 5. What stays in code-behind: the menus built from upstream's designers (`MainMenuParityTests`), plugin and script items, the
    toolbar overflow and the nested frame of a message box.
 6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with

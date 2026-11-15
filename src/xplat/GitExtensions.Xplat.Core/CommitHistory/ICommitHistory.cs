@@ -42,6 +42,19 @@ public interface ICommitHistory
     /// </summary>
     Task<IReadOnlyList<BlameLine>> LoadBlameAsync(string repositoryPath, string hash, string filePath,
         BlameOptions? options = null);
+
+    /// <summary>
+    ///  The commit's real parents, as upstream's <c>GetActualRevision</c> reads them: a path filtered grid rewrites the ones
+    ///  its rows have.
+    /// </summary>
+    Task<IReadOnlyList<string>> LoadParentsAsync(string repositoryPath, string hash);
+
+    /// <summary>
+    ///  Upstream's <c>GitBlameParser.GetOriginalLineInPreviousCommit</c>: where a line of <paramref name="hash"/> was in the
+    ///  first of <paramref name="parents"/>.
+    /// </summary>
+    Task<int> OriginalLineInPreviousCommitAsync(string repositoryPath, string hash, IReadOnlyList<string> parents,
+        string filePath, int line);
 }
 
 /// <param name="FilePaths">For a file history that follows renames: the path the file had in each commit, by commit hash.</param>

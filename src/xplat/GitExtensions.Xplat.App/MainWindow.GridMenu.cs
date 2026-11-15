@@ -161,7 +161,6 @@ public partial class MainWindow
             _rightClickModifiers.HasFlag(KeyModifiers.Shift), _preferences.AlwaysShowAdvOpt));
         Func<RefLabel, bool>? keep = clicked is null ? null : GridMenus.Only(clicked);
 
-        bool artificial = ArtificialCommits.IsArtificial(row.Hash);
         HashSet<string> localBranches = [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)];
         GridRefMenus menus = GridMenus.For(row, _repository.CurrentBranch,
             new HashSet<string>(_repository.Tags.Where(localBranches.Contains)), keep);
@@ -181,43 +180,12 @@ public partial class MainWindow
         ShowViewMenuChecks();
         FillFromMenu(GridViewMenuItem, ViewMenu);
 
-        // Upstream's SetEnabled calls: an item that does not apply is hidden.
-        Show(CopyToClipboardMenuItem, !artificial);
-        Show(GridCheckoutBranchMenuItem, !artificial && HasItems(GridCheckoutBranchMenuItem));
-        Show(GridMergeBranchMenuItem, !artificial && HasItems(GridMergeBranchMenuItem));
-        Show(GridPushBranchMenuItem, !artificial && HasItems(GridPushBranchMenuItem));
-        Show(GridRebaseOnMenuItem, !artificial);
-        RebaseOnCommitMenuItem.IsEnabled = menus.RebaseOnTopOf is not null;
-        RebaseInteractiveMenuItem.IsEnabled = menus.RebaseOnTopOf is not null && _actions.EditorCommand is not null;
-        RebaseAdvancedMenuItem.IsEnabled = menus.RebaseOnTopOf is not null;
-        Show(GridRenameBranchMenuItem, HasItems(GridRenameBranchMenuItem));
-        Show(GridDeleteBranchMenuItem, HasItems(GridDeleteBranchMenuItem) || menus.IsHeadOfCurrentBranch);
-        GridDeleteBranchMenuItem.IsEnabled = HasItems(GridDeleteBranchMenuItem);
-        Show(GridDeleteTagMenuItem, HasItems(GridDeleteTagMenuItem));
-        foreach (MenuItem item in new[]
-                 {
-                     CheckoutCommitMenuItem, RevertMenuItem, CherryPickMenuItem, CreateBranchHereMenuItem,
-                     ResetCurrentBranchMenuItem, ResetAnotherBranchMenuItem,
-                 })
-        {
-            Show(item, !artificial);
-        }
-
-        Show(ArchiveCommitMenuItem, !artificial);
-        Show(GridAdvancedMenuItem, !artificial);
-
-        // Upstream's showStash: the stash items for a stash row.
-        Show(ApplyStashMenuItem, !artificial && row.IsStash);
-        Show(PopStashMenuItem, !artificial && row.IsStash);
-        Show(GridDropStashMenuItem, !artificial && row.IsStash);
+        // Upstream's SetEnabled calls: an item that does not apply is hidden (the view model's state, bound in XAML), then
+        // the separators left alone.
+        Toolbar.GridMenu.Refresh(row, menus, editorAvailable: _actions.EditorCommand is not null,
+            hasBuildReport: SelectedBuildStatus()?.Url is not null,
+            hasPullRequest: SelectedBuildStatus()?.PullRequestUrl is not null);
         ShowCompareMenu(row);
-        Show(AmendCommitMenuItem, !artificial && GitVersion.Current.SupportAmendCommits);
-        Show(CreateTagHereMenuItem, !artificial);
-        Show(GridResetChangesMenuItem, artificial);
-        Show(GridCommitMenuItem, artificial);
-        Show(GridSelectInLeftPanelMenuItem, menus.SelectInLeftPanel.Count > 0);
-        Show(OpenBuildReportMenuItem, SelectedBuildStatus()?.Url is not null);
-        Show(OpenPullRequestPageMenuItem, SelectedBuildStatus()?.PullRequestUrl is not null);
         UpdateGridMenuSeparators();
         return true;
     }
@@ -395,8 +363,7 @@ public partial class MainWindow
         }
     }
 
-    private static bool HasItems(MenuItem item) => item.Items.OfType<MenuItem>().Any(child => child.IsEnabled);
-
+    // An item that does not apply is hidden, as upstream's SetEnabled; also for the left panel's submodule menu.
     private static void Show(MenuItem item, bool shown)
     {
         item.IsVisible = shown;

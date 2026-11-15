@@ -1,5 +1,6 @@
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diff;
 
 namespace GitExtensions.Xplat.App;
 

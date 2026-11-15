@@ -1,8 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Diff"
         x:Class="GitExtensions.Xplat.App.DiffWindow"
-        Title="Diff"
+        x:DataType="vm:DiffWindowViewModel"
+        Title="{Binding Title}"
         Width="860" Height="620">
-  <local:DiffView x:Name="Diff" Margin="12" />
+  <!-- Bound to DiffWindowViewModel (PLAN.md principle 6), which owns the viewer's view model. -->
+  <local:DiffView x:Name="Diff" Margin="12" ViewModel="{Binding Diff}" />
 </Window>

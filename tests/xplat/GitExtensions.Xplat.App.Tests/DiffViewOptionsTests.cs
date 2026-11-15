@@ -54,6 +54,9 @@ internal sealed class DiffViewOptionsTests
         WaitUntil(() => Added(diff) == 0);
 
         diff.FindControl<ToolToggleButton>("IgnoreWhitespaceChangeToggle")!.IsChecked = false;
+
+        // The toolbar shows while the pointer is on the viewer, and only a shown button can be clicked.
+        ((Window)TopLevel.GetTopLevel(diff)!).MouseMove(new Avalonia.Point(450, 300));
         Click(diff, "IncreaseContextButton");
         WaitUntil(() => diff.Lines.Count(line => line.Text.StartsWith(' ')) == 8);
         diff.Options.ContextLines.Should().Be(4);
@@ -264,7 +267,8 @@ internal sealed class DiffViewOptionsTests
         MenuItem item = lines.ContextMenu!.Items.OfType<MenuItem>().Single(entry => entry.Name == "TreatAllFilesAsTextMenuItem");
         item.IsVisible.Should().BeTrue("upstream offers it for a diff");
 
-        UiClicks.Raise(item, MenuItem.ClickEvent);
+        // A check item toggles itself on a click, which a raised click event does not do (MVVM.md, Menu check items).
+        item.IsChecked = true;
 
         WaitUntil(() => Added(diff) == 1);
         item.IsChecked.Should().BeTrue();

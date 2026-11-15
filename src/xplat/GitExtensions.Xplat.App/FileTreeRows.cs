@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using GitCommands;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 

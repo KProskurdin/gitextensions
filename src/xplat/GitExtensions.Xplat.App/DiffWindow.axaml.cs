@@ -1,9 +1,11 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Diff;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Shows the diff of one file, either in a commit or in the working tree (staged or unstaged), in its own window.
+///  Shows the diff of one file, either in a commit or in the working tree (staged or unstaged), in its own window; bound to
+///  <see cref="DiffWindowViewModel"/>.
 /// </summary>
 public partial class DiffWindow : Window
 {
@@ -19,21 +21,25 @@ public partial class DiffWindow : Window
     public DiffWindow(string title, Func<DiffView, Task> show)
     {
         InitializeComponent();
-        WindowPlacementTracker.Attach(this, "Xplat.DiffWindow");
-        Title = title;
-        Opened += (_, _) => UiActions.Run(() => show(Diff), ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+
+        // The caller's load takes the view, whose view model is the window's.
+        Open(new DiffWindowViewModel(new WindowDialogHost(this), DiffView.NewViewModel(), title, _ => show(Diff)));
     }
 
     public DiffWindow(string repositoryPath, string? commitHash, string? filePath, bool staged)
     {
         InitializeComponent();
+        Open(new DiffWindowViewModel(new WindowDialogHost(this), DiffView.NewViewModel(), repositoryPath, commitHash,
+            filePath, staged));
+    }
+
+    public DiffWindowViewModel? ViewModel { get; private set; }
+
+    private void Open(DiffWindowViewModel viewModel)
+    {
         WindowPlacementTracker.Attach(this, "Xplat.DiffWindow");
-        string? name = filePath is null ? null : $": {filePath}";
-        Title = commitHash is null
-            ? $"{(staged ? "Staged" : "Unstaged")}{name}"
-            : $"{commitHash[..Math.Min(8, commitHash.Length)]}{name}";
-        Opened += (_, _) => UiActions.Run(
-            () => Diff.ShowAsync(repositoryPath, commitHash, filePath, staged, filePath ?? Title),
-            ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
+        ViewModel = viewModel;
+        DataContext = viewModel;
+        Opened += (_, _) => _ = viewModel.LoadAsync();
     }
 }

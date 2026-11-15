@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Ui;
 

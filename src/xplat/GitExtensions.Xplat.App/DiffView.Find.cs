@@ -68,7 +68,7 @@ public partial class DiffView
     private void WireFind()
     {
         FindMenuItem.Click += (_, _) => Find();
-        GoToLineMenuItem.Click += (_, _) => UiActions.Run(GoToLineAsync, ex => ShowError(ex.Message));
+        GoToLineMenuItem.Click += (_, _) => UiActions.Run(GoToLineAsync, ex => ViewModel.ReportError(ex.Message));
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ public partial class DiffView
         _scanRegion = selected is [var first, .., var last] && last > first
             ? (LineStart(first), LineStart(last) + _unmarkedLines[last].Text.Length - LineStart(first))
             : null;
-        window.ShowFor(owner, _syntaxPath, _scanRegion is not null);
+        window.ShowFor(owner, ViewModel.Content.SyntaxPath, _scanRegion is not null);
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public partial class DiffView
         }
 
         int index = 0;
-        if (!_textIsDiff)
+        if (!ViewModel.Content.IsDiff)
         {
             index = Math.Clamp(lineNumber - 1, 0, _unmarkedLines.Count - 1);
         }
@@ -216,7 +216,7 @@ public partial class DiffView
     ///  Upstream's <c>MaxLineNumber</c>: the number of lines of a file's text, the highest line number of a diff.
     /// </summary>
     public int MaxLineNumber
-        => !_textIsDiff
+        => !ViewModel.Content.IsDiff
             ? _unmarkedLines.Count
             : _unmarkedLines.SelectMany(line => new[] { Number(line.OldNumber), Number(line.NewNumber) })
                 .Max(number => number ?? 0);
@@ -250,9 +250,9 @@ public partial class DiffView
     {
         FindWindow window = new();
         window.FindNextRequested += (_, backward) => UiActions.Run(
-            () => FindNextAsync(viaF3: false, backward, TextNotFoundText), ex => ShowError(ex.Message));
+            () => FindNextAsync(viaF3: false, backward, TextNotFoundText), ex => ViewModel.ReportError(ex.Message));
         window.HighlightAllRequested += (_, _) => UiActions.Run(() => HighlightAllAsync(window),
-            ex => ShowError(ex.Message));
+            ex => ViewModel.ReportError(ex.Message));
 
         // Upstream's FormClosing discards the search region.
         window.Hidden += (_, _) => _scanRegion = null;

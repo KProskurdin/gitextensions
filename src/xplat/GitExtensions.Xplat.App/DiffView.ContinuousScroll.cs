@@ -2,19 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
 
 // Upstream FileViewer's continuous scroll (ContinuousScrollEventManager): a wheel turn past the top or the bottom of the
 // diff, with Alt held or upstream's AutomaticContinuousScroll on, asks the window for the previous or next file, at most
-// once per AutomaticContinuousScrollDelay.
+// once per AutomaticContinuousScrollDelay (the view model's rule; the wheel and the scrolling are the view's).
 public partial class DiffView
 {
-    // Upstream's text of the menu item and of the setting.
-    private const string ContinuousScrollText = "Enable automatic continuous scroll (without ALT button)";
-
-    private DateTime _lastScrollReached = DateTime.MinValue;
     private bool? _pendingScrollToBottom;
 
     /// <summary>
@@ -31,7 +26,11 @@ public partial class DiffView
     ///  Upstream's <c>EnableAutomaticContinuousScroll</c>: whether the menu has the setting's item (not in the browse
     ///  window's tabs, whose lists do not move with the viewer).
     /// </summary>
-    public bool EnableAutomaticContinuousScroll { get; set; } = true;
+    public bool EnableAutomaticContinuousScroll
+    {
+        get => ViewModel.EnableAutomaticContinuousScroll;
+        set => ViewModel.EnableAutomaticContinuousScroll = value;
+    }
 
     /// <summary>
     ///  Upstream's <c>ScrollToTop</c>: the diff shown next starts at its top.
@@ -45,18 +44,6 @@ public partial class DiffView
 
     private void WireContinuousScroll()
     {
-        ContinuousScrollMenuItem.Header = UpstreamTranslation.ByText(ContinuousScrollText);
-        ContinuousScrollMenuItem.Click += (_, _) =>
-        {
-            AppServices.Preferences.AutomaticContinuousScroll = !AppServices.Preferences.AutomaticContinuousScroll;
-            AppServices.Preferences.Save();
-        };
-        DiffContextMenu.Opening += (_, _) =>
-        {
-            ContinuousScrollMenuItem.IsVisible = EnableAutomaticContinuousScroll;
-            ContinuousScrollMenuItem.IsChecked = AppServices.Preferences.AutomaticContinuousScroll;
-        };
-
         // Before the list scrolls, as upstream reads the scroll bar before the wheel moves it.
         DiffList.AddHandler(PointerWheelChangedEvent, (_, e) =>
         {
@@ -78,18 +65,12 @@ public partial class DiffView
         }, RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
-    // Upstream's IsScrollDisabled and IsScrollTooFast.
     private void RaiseScrollReached(EventHandler? handler, KeyModifiers modifiers)
     {
-        if (handler is null
-            || (modifiers != KeyModifiers.Alt && !AppServices.Preferences.AutomaticContinuousScroll)
-            || DateTime.Now - _lastScrollReached < TimeSpan.FromMilliseconds(AppServices.Preferences.AutomaticContinuousScrollDelay))
+        if (handler is not null && ViewModel.TakeScrollReached(altHeld: modifiers == KeyModifiers.Alt))
         {
-            return;
+            handler(this, EventArgs.Empty);
         }
-
-        _lastScrollReached = DateTime.Now;
-        handler(this, EventArgs.Empty);
     }
 
     private void ScrollToEnd(bool bottom)

@@ -1,40 +1,60 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GitExtensions.Xplat.App"
-             x:Class="GitExtensions.Xplat.App.CommitInfoView">
+             xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+             x:Class="GitExtensions.Xplat.App.CommitInfoView"
+             x:DataType="core:CommitInfoViewModel">
   <!-- Upstream's CommitInfo. On the window color: the header (CommitInfoHeader: the avatar and the author, date, hash,
        child and parent lines), the message on a slightly darker panel, then the annotated tags' messages, related links,
-       branches and tags containing the commit, and the tag it derives from. -->
+       branches and tags containing the commit, and the tag it derives from. Bound to CommitInfoViewModel (PLAN.md
+       principle 6), the data context of the scroll viewer so the window around keeps its own; the header's layout and the
+       link under the pointer stay in the view. -->
   <ScrollViewer x:Name="RevisionInfoScroll" Background="{DynamicResource CommitInfoBackgroundBrush}"
                 HorizontalScrollBarVisibility="Disabled">
     <ScrollViewer.ContextMenu>
       <ContextMenu x:Name="CommitInfoContextMenu">
-        <MenuItem x:Name="CopyCommitInfoLinkMenuItem" Header="Copy link" IsVisible="False" />
-        <MenuItem x:Name="CopyCommitInfoMenuItem" Header="_Copy commit info" />
+        <MenuItem x:Name="CopyCommitInfoLinkMenuItem" Header="{Binding CopyLinkHeader}" IsVisible="{Binding IsCopyLinkVisible}"
+                  Command="{Binding CopyLinkCommand}" />
+        <MenuItem x:Name="CopyCommitInfoMenuItem" Header="_Copy commit info" Command="{Binding CopyCommitInfoCommand}" />
         <Separator />
-        <MenuItem x:Name="ShowContainedInBranchesMenuItem" Header="Show local branches containing this commit" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowContainedInBranchesRemoteMenuItem" Header="Show remote branches containing this commit" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowContainedInBranchesRemoteIfNoLocalMenuItem" Header="Show remote branches only when no local branch contains this commit" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowContainedInTagsMenuItem" Header="Show tags containing this commit" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAnnotatedTagsMessagesMenuItem" Header="Show messages of annotated tags" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowDerivesFromTagMenuItem" Header="Show the most recent tag this commit derives from" ToggleType="CheckBox" />
+        <!-- One-way checks and a toggle command (MVVM.md, Menu check items). -->
+        <MenuItem x:Name="ShowContainedInBranchesMenuItem" Header="Show local branches containing this commit" ToggleType="CheckBox"
+                  IsChecked="{Binding BranchesLocal, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:CommitInfoOption.BranchesLocal}" />
+        <MenuItem x:Name="ShowContainedInBranchesRemoteMenuItem" Header="Show remote branches containing this commit" ToggleType="CheckBox"
+                  IsChecked="{Binding BranchesRemote, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:CommitInfoOption.BranchesRemote}" />
+        <MenuItem x:Name="ShowContainedInBranchesRemoteIfNoLocalMenuItem" Header="Show remote branches only when no local branch contains this commit" ToggleType="CheckBox"
+                  IsChecked="{Binding BranchesRemoteIfNoLocal, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:CommitInfoOption.BranchesRemoteIfNoLocal}" />
+        <MenuItem x:Name="ShowContainedInTagsMenuItem" Header="Show tags containing this commit" ToggleType="CheckBox"
+                  IsChecked="{Binding Tags, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:CommitInfoOption.Tags}" />
+        <MenuItem x:Name="ShowAnnotatedTagsMessagesMenuItem" Header="Show messages of annotated tags" ToggleType="CheckBox"
+                  IsChecked="{Binding AnnotatedTagsMessages, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:CommitInfoOption.AnnotatedTagsMessages}" />
+        <MenuItem x:Name="ShowDerivesFromTagMenuItem" Header="Show the most recent tag this commit derives from" ToggleType="CheckBox"
+                  IsChecked="{Binding DerivesFromTag, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                  CommandParameter="{x:Static core:CommitInfoOption.DerivesFromTag}" />
         <Separator />
-        <MenuItem x:Name="addNoteToolStripMenuItem" Header="Add _notes" />
+        <MenuItem x:Name="addNoteToolStripMenuItem" Header="Add _notes" Command="{Binding AddNotesCommand}" />
       </ContextMenu>
     </ScrollViewer.ContextMenu>
     <StackPanel x:Name="RevisionInfoPanel">
       <DockPanel Margin="8,8,16,8">
         <!-- Upstream's commit info avatar (ShowAuthorAvatarInCommitInfo), 80 pixels as upstream asks. -->
         <local:AvatarView x:Name="DetailAvatar" DockPanel.Dock="Left" Width="80" Height="80" ImageSize="80"
-                          VerticalAlignment="Top" Margin="0,0,8,0" IsVisible="False" />
+                          VerticalAlignment="Top" Margin="0,0,8,0" IsVisible="{Binding IsAvatarVisible}"
+                          AuthorName="{Binding AvatarName}" Email="{Binding AvatarEmail}" />
         <Grid x:Name="DetailHeader" ColumnDefinitions="Auto,*" />
       </DockPanel>
       <Border x:Name="DetailMessagePanel" Background="{DynamicResource CommitMessageBackgroundBrush}">
         <local:InfoTextBlock x:Name="DetailMessage" Margin="8" TextWrapping="Wrap"
                              FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}"
-                             FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" />
+                             FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}"
+                             Lines="{Binding MessageLines}" />
       </Border>
-      <local:InfoTextBlock x:Name="DetailRevisionInfo" Margin="8,8,16,8" TextWrapping="Wrap" />
+      <local:InfoTextBlock x:Name="DetailRevisionInfo" Margin="8,8,16,8" TextWrapping="Wrap" Lines="{Binding RevisionInfoLines}" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

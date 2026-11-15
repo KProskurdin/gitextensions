@@ -22,7 +22,7 @@ public partial class BlameView
     /// </summary>
     public FindWindow? FindWindow => _findWindow;
 
-    private string SearchText => string.Join('\n', _lines.Select(line => line.Content));
+    private string SearchText => string.Join('\n', ViewModel.Lines.Select(line => line.Content));
 
     private bool RunFindHotkey(KeyEventArgs e)
     {
@@ -33,7 +33,7 @@ public partial class BlameView
             case DiffCommand.Replace:
                 if (TopLevel.GetTopLevel(this) is Window owner)
                 {
-                    (_findWindow ??= NewFindWindow()).ShowFor(owner, _filePath, selectionOnly: false);
+                    (_findWindow ??= NewFindWindow()).ShowFor(owner, ViewModel.FilePath, selectionOnly: false);
                 }
 
                 return true;
@@ -113,10 +113,10 @@ public partial class BlameView
         if (TopLevel.GetTopLevel(this) is Window owner)
         {
             GoToLineWindow window = new();
-            window.SetMaxLineNumber(_lines.Count);
+            window.SetMaxLineNumber(ViewModel.Lines.Count);
             if (await window.ShowAsync(owner) is { } line)
             {
-                GoToLine(line);
+                ViewModel.GoToLine(line);
             }
         }
     }

@@ -57,12 +57,6 @@ public partial class MainWindow
         OpenBuildReportLink.Click += (_, _) => OpenBuildLink(_reportedBuild?.Url);
         CommitList.SelectionChanged += (_, _) => FollowSelectedBuild();
         OpenPullRequestPageMenuItem.Click += (_, _) => OpenBuildLink(SelectedBuildStatus()?.PullRequestUrl);
-        CommitContextMenu.Opening += (_, _) =>
-        {
-            OpenBuildReportMenuItem.IsEnabled = SelectedBuildStatus()?.Url is not null;
-            OpenPullRequestPageMenuItem.IsEnabled = SelectedBuildStatus()?.PullRequestUrl is not null;
-        };
-
         // As upstream, a click on a build status opens the build report.
         CommitList.AddHandler(PointerReleasedEvent, (_, e) =>
         {

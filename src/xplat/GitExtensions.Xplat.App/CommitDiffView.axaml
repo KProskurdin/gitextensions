@@ -2,14 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
              xmlns:local="using:GitExtensions.Xplat.App"
-             x:Class="GitExtensions.Xplat.App.CommitDiffView">
+             x:Class="GitExtensions.Xplat.App.CommitDiffView"
+             x:DataType="core:CommitDiffViewModel">
   <!-- Upstream's CommitDiff: the commit's information above (splitContainer1, its panel 200 pixels), its changed files
-       (260 pixels) beside the selected file's diff (splitContainer2). -->
-  <Grid RowDefinitions="200,5,*">
+       (260 pixels) beside the selected file's diff (splitContainer2). Bound to CommitDiffViewModel (PLAN.md principle 6),
+       the data context of the root grid so the window around keeps its own. -->
+  <Grid x:Name="LayoutRoot" RowDefinitions="200,5,*">
     <local:CommitInfoView x:Name="CommitInfo" />
     <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
     <Grid Grid.Row="2" ColumnDefinitions="260,5,*">
-      <ListBox x:Name="DiffFiles">
+      <ListBox x:Name="DiffFiles" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile, Mode=TwoWay}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="core:CommitFile">
             <!-- The path follows upstream's "Truncate long filenames" (FilePathTrimming). -->
@@ -24,7 +26,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
-      <local:DiffView x:Name="DiffText" Grid.Column="2" />
+      <local:DiffView x:Name="DiffText" Grid.Column="2" ViewModel="{Binding Diff}" />
     </Grid>
   </Grid>
 </UserControl>

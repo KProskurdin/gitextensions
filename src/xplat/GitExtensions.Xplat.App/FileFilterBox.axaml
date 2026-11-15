@@ -1,11 +1,16 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GitExtensions.Xplat.App"
-             x:Class="GitExtensions.Xplat.App.FileFilterBox">
-  <!-- Upstream FileStatusList's cboFilterComboBox with its DeleteFilterButton. -->
-  <DockPanel>
-    <local:ToolButton x:Name="DeleteFilterButton" DockPanel.Dock="Right" Image="DeleteText" IsVisible="False" />
-    <ComboBox x:Name="cboFilterComboBox" IsEditable="True" HorizontalAlignment="Stretch"
-              PlaceholderText="Filter files using a regular expression..." />
+             xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
+             x:Class="GitExtensions.Xplat.App.FileFilterBox"
+             x:DataType="vm:FileFilterViewModel">
+  <!-- Upstream FileStatusList's cboFilterComboBox with its DeleteFilterButton. Bound to FileFilterViewModel (PLAN.md
+       principle 6), the data context of the panel so the window around keeps its own; the colors stay in the view. -->
+  <DockPanel x:Name="LayoutRoot">
+    <local:ToolButton x:Name="DeleteFilterButton" DockPanel.Dock="Right" Image="DeleteText" IsVisible="{Binding HasText}"
+                      Command="{Binding DeleteCommand}" />
+    <!-- IsEditable before the Text binding (MVVM.md, Editable lists). -->
+    <ComboBox x:Name="cboFilterComboBox" IsEditable="True" HorizontalAlignment="Stretch" ItemsSource="{Binding Filters}"
+              Text="{Binding Text, Mode=TwoWay}" PlaceholderText="{Binding Placeholder}" ToolTip.Tip="{Binding ErrorTip}" />
   </DockPanel>
 </UserControl>

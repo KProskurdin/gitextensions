@@ -4,7 +4,8 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Upstream's <c>FormCommitDiff</c>: a commit's information, files and diffs in their own window, opened by a double-click
-///  on a commit of the revision grid (<c>RevisionGridControl.ViewSelectedRevisions</c>).
+///  on a commit of the revision grid (<c>RevisionGridControl.ViewSelectedRevisions</c>). Bound to its view's
+///  <see cref="Core.CommitHistory.CommitDiffViewModel"/>, whose title it takes.
 /// </summary>
 public partial class CommitDiffWindow : Window
 {
@@ -17,7 +18,7 @@ public partial class CommitDiffWindow : Window
     {
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.CommitDiffWindow");
-        CommitDiff.TitleChanged += (_, _) => Title = CommitDiff.Title;
+        DataContext = CommitDiff.ViewModel;
         if (hash.Length > 0)
         {
             RevisionLoaded = CommitDiff.SetRevisionAsync(repositoryPath, hash, fileToSelect: null);

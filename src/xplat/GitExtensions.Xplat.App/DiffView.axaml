@@ -1,20 +1,29 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GitExtensions.Xplat.App"
-             x:Class="GitExtensions.Xplat.App.DiffView">
-  <DockPanel LastChildFill="True">
-    <TextBlock x:Name="TitleText" DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" TextWrapping="Wrap" IsVisible="False" />
+             xmlns:vm="using:GitExtensions.Xplat.Core.Diff"
+             xmlns:settings="using:GitCommands.Settings"
+             x:Class="GitExtensions.Xplat.App.DiffView"
+             x:DataType="vm:DiffViewModel">
+  <!-- Upstream's FileViewer, bound to DiffViewModel (PLAN.md principle 6). The view model is this panel's data context, not
+       the control's, so the window around keeps its own. The lines' colors, find and the selection stay in the view. -->
+  <DockPanel x:Name="LayoutRoot" LastChildFill="True">
+    <TextBlock x:Name="TitleText" DockPanel.Dock="Top" Margin="0,0,0,4" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+               Text="{Binding Title}" />
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" TextWrapping="Wrap" Text="{Binding ErrorMessage}"
+               IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
     <!-- Upstream's _NO_TRANSLATE_lblShowPreview: a large file waits for a click. -->
-    <HyperlinkButton x:Name="ShowLargeFileLink" DockPanel.Dock="Top" IsVisible="False" />
+    <HyperlinkButton x:Name="ShowLargeFileLink" DockPanel.Dock="Top" Content="{Binding LargeFileText}"
+                     IsVisible="{Binding LargeFileText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                     Command="{Binding ShowLargeFileCommand}" />
     <!-- Upstream's EditorBackground behind the lines, LineNumberBackground behind the numbers, Selection on selected lines. -->
     <!-- Upstream's vertical ruler (diffverticalrulerposition) over the lines. -->
     <Panel>
     <!-- Upstream's PictureBox: zoomed to fit when larger than the viewer, else centered at its size. -->
-    <Border x:Name="PicturePanel" IsVisible="False" Background="{DynamicResource EditorBackgroundBrush}">
+    <Border x:Name="PicturePanel" IsVisible="{Binding IsShowingImage}" Background="{DynamicResource EditorBackgroundBrush}">
       <Image x:Name="PictureBox" Stretch="Uniform" StretchDirection="DownOnly" />
     </Border>
-    <ListBox x:Name="DiffList" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
+    <ListBox x:Name="DiffList" IsVisible="{Binding !IsShowingImage}" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
              Background="{DynamicResource EditorBackgroundBrush}">
       <ListBox.Styles>
         <Style Selector="ListBoxItem">
@@ -34,34 +43,61 @@
       <!-- Upstream FileViewer's menu: line staging (where the window can stage), the copy items, then the view options. -->
       <ListBox.ContextMenu>
         <ContextMenu x:Name="DiffContextMenu">
-          <MenuItem x:Name="StageLinesMenuItem" Header="Stage selected line(s)" Icon="{local:UpstreamIcon Stage}" />
-          <MenuItem x:Name="UnstageLinesMenuItem" Header="Unstage selected line(s)" Icon="{local:UpstreamIcon Unstage}" />
+          <MenuItem x:Name="StageLinesMenuItem" Header="Stage selected line(s)" Icon="{local:UpstreamIcon Stage}"
+                    IsVisible="{Binding IsStageLinesVisible}" IsEnabled="{Binding HasSelectedLines}"
+                    Command="{Binding RequestLinesCommand}" CommandParameter="{x:Static vm:DiffLinesCommand.Stage}" />
+          <MenuItem x:Name="UnstageLinesMenuItem" Header="Unstage selected line(s)" Icon="{local:UpstreamIcon Unstage}"
+                    IsVisible="{Binding IsUnstageLinesVisible}" IsEnabled="{Binding HasSelectedLines}"
+                    Command="{Binding RequestLinesCommand}" CommandParameter="{x:Static vm:DiffLinesCommand.Unstage}" />
           <MenuItem x:Name="ResetLinesMenuItem" Header="Reset selected line(s)"
-                    Icon="{local:UpstreamIcon ResetWorkingDirChanges}" />
-          <MenuItem x:Name="CopyMenuItem" Header="_Copy" />
-          <MenuItem x:Name="CopyPatchMenuItem" Header="Copy _patch" />
-          <MenuItem x:Name="CopyNewVersionMenuItem" Header="Copy _new version" />
-          <MenuItem x:Name="CopyOldVersionMenuItem" Header="Copy _old version" />
-          <Separator x:Name="OptionsSeparator" />
-          <MenuItem x:Name="IncreaseContextMenuItem" Header="_Increase the number of lines of context" Icon="{local:UpstreamIcon NumberOfLinesIncrease}" />
-          <MenuItem x:Name="DecreaseContextMenuItem" Header="_Decrease the number of lines of context" Icon="{local:UpstreamIcon NumberOfLinesDecrease}" />
-          <MenuItem x:Name="EntireFileMenuItem" Header="Show _entire file" ToggleType="CheckBox" />
-          <MenuItem x:Name="NonPrintingMenuItem" Header="S_how nonprinting characters" ToggleType="CheckBox" />
-          <MenuItem x:Name="SyntaxHighlightingMenuItem" Header="Show synta_x highlighting" ToggleType="CheckBox" />
-          <MenuItem x:Name="IgnoreWhitespaceEolMenuItem" Header="Ignore whitespace changes at end of _line" ToggleType="CheckBox" />
-          <MenuItem x:Name="IgnoreWhitespaceChangeMenuItem" Header="Ignore changes in _amount of whitespace" ToggleType="CheckBox" />
-          <MenuItem x:Name="IgnoreAllWhitespaceMenuItem" Header="Ignore all _whitespace changes" ToggleType="CheckBox" />
-          <!-- Upstream's diffAppearanceToolStripMenuItem. -->
-          <MenuItem x:Name="DiffAppearanceMenuItem" Header="Diff appea_rance" Icon="{local:UpstreamIcon Diff}">
-            <MenuItem x:Name="ShowPatchMenuItem" Header="_Patch" ToggleType="CheckBox" Icon="{local:UpstreamIcon Diff}" />
+                    Icon="{local:UpstreamIcon ResetWorkingDirChanges}"
+                    IsVisible="{Binding IsResetLinesVisible}" IsEnabled="{Binding HasSelectedLines}"
+                    Command="{Binding RequestLinesCommand}" CommandParameter="{x:Static vm:DiffLinesCommand.Reset}" />
+          <MenuItem x:Name="CopyMenuItem" Header="_Copy" Command="{Binding CopyCommand}" />
+          <MenuItem x:Name="CopyPatchMenuItem" Header="Copy _patch" IsVisible="{Binding IsCopyPatchVisible}"
+                    Command="{Binding CopyPatchCommand}" />
+          <MenuItem x:Name="CopyNewVersionMenuItem" Header="Copy _new version" IsVisible="{Binding AreCopyVersionsVisible}"
+                    Command="{Binding CopyNewVersionCommand}" />
+          <MenuItem x:Name="CopyOldVersionMenuItem" Header="Copy _old version" IsVisible="{Binding AreCopyVersionsVisible}"
+                    Command="{Binding CopyOldVersionCommand}" />
+          <Separator x:Name="OptionsSeparator" IsVisible="{Binding HasOptions}" />
+          <MenuItem x:Name="IncreaseContextMenuItem" Header="_Increase the number of lines of context" Icon="{local:UpstreamIcon NumberOfLinesIncrease}"
+                    IsVisible="{Binding HasOptions}" IsEnabled="{Binding CanIncreaseContext}" Command="{Binding IncreaseContextCommand}" />
+          <MenuItem x:Name="DecreaseContextMenuItem" Header="_Decrease the number of lines of context" Icon="{local:UpstreamIcon NumberOfLinesDecrease}"
+                    IsVisible="{Binding HasOptions}" IsEnabled="{Binding CanDecreaseContext}" Command="{Binding DecreaseContextCommand}" />
+          <MenuItem x:Name="EntireFileMenuItem" Header="Show _entire file" ToggleType="CheckBox"
+                    IsVisible="{Binding HasOptions}" IsChecked="{Binding ShowEntireFile, Mode=TwoWay}" />
+          <MenuItem x:Name="NonPrintingMenuItem" Header="S_how nonprinting characters" ToggleType="CheckBox"
+                    IsVisible="{Binding HasOptions}" IsChecked="{Binding ShowNonPrintingChars, Mode=TwoWay}" />
+          <MenuItem x:Name="SyntaxHighlightingMenuItem" Header="Show synta_x highlighting" ToggleType="CheckBox"
+                    IsVisible="{Binding HasOptions}" IsChecked="{Binding ShowSyntaxHighlighting, Mode=TwoWay}" />
+          <MenuItem x:Name="IgnoreWhitespaceEolMenuItem" Header="Ignore whitespace changes at end of _line" ToggleType="CheckBox"
+                    IsVisible="{Binding HasOptions}" IsChecked="{Binding IgnoreWhitespaceEol, Mode=TwoWay}" />
+          <MenuItem x:Name="IgnoreWhitespaceChangeMenuItem" Header="Ignore changes in _amount of whitespace" ToggleType="CheckBox"
+                    IsVisible="{Binding HasOptions}" IsChecked="{Binding IgnoreWhitespaceChange, Mode=TwoWay}" />
+          <MenuItem x:Name="IgnoreAllWhitespaceMenuItem" Header="Ignore all _whitespace changes" ToggleType="CheckBox"
+                    IsVisible="{Binding HasOptions}" IsChecked="{Binding IgnoreAllWhitespace, Mode=TwoWay}" />
+          <!-- Upstream's diffAppearanceToolStripMenuItem; a click on the item itself goes back to the patch (code-behind,
+               as the click of a sub-item reaches it too). -->
+          <MenuItem x:Name="DiffAppearanceMenuItem" Header="Diff appea_rance" Icon="{local:UpstreamIcon Diff}"
+                    IsVisible="{Binding IsDiffAppearanceVisible}">
+            <MenuItem x:Name="ShowPatchMenuItem" Header="_Patch" ToggleType="CheckBox" Icon="{local:UpstreamIcon Diff}"
+                      IsChecked="{Binding IsPatchAppearance, Mode=OneWay}" Command="{Binding ChangeAppearanceCommand}"
+                      CommandParameter="{x:Static settings:DiffDisplayAppearance.Patch}" />
             <MenuItem x:Name="ShowGitWordColoringMenuItem" Header="Git wor_d diff" ToggleType="CheckBox"
-                      Icon="{local:UpstreamIcon EditColor}" />
-            <MenuItem x:Name="ShowDifftasticMenuItem" Header="Diff_tastic" ToggleType="CheckBox" IsEnabled="False"
-                      Icon="{local:UpstreamIcon Difftastic}" />
+                      Icon="{local:UpstreamIcon EditColor}"
+                      IsChecked="{Binding IsGitWordDiffAppearance, Mode=OneWay}" Command="{Binding ToggleAppearanceCommand}"
+                      CommandParameter="{x:Static settings:DiffDisplayAppearance.GitWordDiff}" />
+            <MenuItem x:Name="ShowDifftasticMenuItem" Header="Diff_tastic" ToggleType="CheckBox" IsEnabled="{Binding IsDifftasticEnabled}"
+                      Icon="{local:UpstreamIcon Difftastic}"
+                      IsChecked="{Binding IsDifftasticAppearance, Mode=OneWay}" Command="{Binding ToggleAppearanceCommand}"
+                      CommandParameter="{x:Static settings:DiffDisplayAppearance.Difftastic}" />
           </MenuItem>
-          <Separator x:Name="TreatAllFilesAsTextSeparator" />
-          <MenuItem x:Name="TreatAllFilesAsTextMenuItem" Header="_Treat all files as text" ToggleType="CheckBox" />
-          <MenuItem x:Name="ContinuousScrollMenuItem" ToggleType="CheckBox" />
+          <Separator x:Name="TreatAllFilesAsTextSeparator" IsVisible="{Binding IsPartialTextView}" />
+          <MenuItem x:Name="TreatAllFilesAsTextMenuItem" Header="_Treat all files as text" ToggleType="CheckBox"
+                    IsVisible="{Binding IsPartialTextView}" IsChecked="{Binding TreatAllFilesAsText, Mode=TwoWay}" />
+          <MenuItem x:Name="ContinuousScrollMenuItem" ToggleType="CheckBox" Header="{Binding ContinuousScrollHeader}"
+                    IsVisible="{Binding IsContinuousScrollVisible}" IsChecked="{Binding AutomaticContinuousScroll, Mode=TwoWay}" />
           <MenuItem x:Name="FindMenuItem" Header="_Find..." Icon="{local:UpstreamIcon Preview}" />
           <MenuItem x:Name="GoToLineMenuItem" Header="_Go to line" />
         </ContextMenu>
@@ -85,21 +121,33 @@
     </Canvas>
     <!-- Upstream FileViewer's toolbar: at the top right over the lines, shown while the pointer is on the viewer. -->
     <StackPanel x:Name="DiffToolbar" Classes="toolStrip" HorizontalAlignment="Right" VerticalAlignment="Top"
-                Margin="0,0,40,0" IsVisible="False" Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
-      <local:ToolButton x:Name="NextChangeButton" Image="ArrowDown" ToolTip.Tip="Next change" />
-      <local:ToolButton x:Name="PreviousChangeButton" Image="ArrowUp" ToolTip.Tip="Previous change" />
+                Margin="0,0,40,0" IsVisible="{Binding IsToolbarVisible}" Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+      <local:ToolButton x:Name="NextChangeButton" Image="ArrowDown" ToolTip.Tip="Next change"
+                        Command="{Binding GoToChangeCommand}" CommandParameter="{x:True}" />
+      <local:ToolButton x:Name="PreviousChangeButton" Image="ArrowUp" ToolTip.Tip="Previous change"
+                        Command="{Binding GoToChangeCommand}" CommandParameter="{x:False}" />
       <Rectangle Classes="toolSeparator" />
-      <local:ToolButton x:Name="IncreaseContextButton" Image="NumberOfLinesIncrease" ToolTip.Tip="Increase the number of lines of context" />
-      <local:ToolButton x:Name="DecreaseContextButton" Image="NumberOfLinesDecrease" ToolTip.Tip="Decrease the number of lines of context" />
+      <local:ToolButton x:Name="IncreaseContextButton" Image="NumberOfLinesIncrease" ToolTip.Tip="{Binding IncreaseContextTip}"
+                        IsEnabled="{Binding CanIncreaseContext}" Command="{Binding IncreaseContextCommand}" />
+      <local:ToolButton x:Name="DecreaseContextButton" Image="NumberOfLinesDecrease" ToolTip.Tip="Decrease the number of lines of context"
+                        IsEnabled="{Binding CanDecreaseContext}" Command="{Binding DecreaseContextCommand}" />
       <Rectangle Classes="toolSeparator" />
-      <local:ToolToggleButton x:Name="EntireFileToggle" Image="ShowEntireFile" ToolTip.Tip="Show entire file" />
-      <local:ToolToggleButton x:Name="NonPrintingToggle" Image="ShowWhitespace" ToolTip.Tip="Show nonprinting characters" />
-      <local:ToolToggleButton x:Name="SyntaxHighlightingToggle" Image="SyntaxHighlighting" ToolTip.Tip="Show syntax highlighting" />
-      <local:ToolToggleButton x:Name="IgnoreWhitespaceEolToggle" Image="WhitespaceIgnoreEol" ToolTip.Tip="Ignore whitespace changes at end of line" />
-      <local:ToolToggleButton x:Name="IgnoreWhitespaceChangeToggle" Image="WhitespaceIgnore" ToolTip.Tip="Ignore changes in amount of whitespace" />
-      <local:ToolToggleButton x:Name="IgnoreAllWhitespaceToggle" Image="WhitespaceIgnoreAll" ToolTip.Tip="Ignore all whitespace changes" />
-      <ComboBox x:Name="EncodingBox" Width="140" VerticalAlignment="Center" />
-      <local:ToolButton x:Name="SettingsButton" Image="Settings" ToolTip.Tip="Settings" />
+      <local:ToolToggleButton x:Name="EntireFileToggle" Image="ShowEntireFile" ToolTip.Tip="Show entire file"
+                              IsChecked="{Binding ShowEntireFile, Mode=TwoWay}" />
+      <local:ToolToggleButton x:Name="NonPrintingToggle" Image="ShowWhitespace" ToolTip.Tip="Show nonprinting characters"
+                              IsChecked="{Binding ShowNonPrintingChars, Mode=TwoWay}" />
+      <local:ToolToggleButton x:Name="SyntaxHighlightingToggle" Image="SyntaxHighlighting" ToolTip.Tip="Show syntax highlighting"
+                              IsChecked="{Binding ShowSyntaxHighlighting, Mode=TwoWay}" />
+      <local:ToolToggleButton x:Name="IgnoreWhitespaceEolToggle" Image="WhitespaceIgnoreEol" ToolTip.Tip="Ignore whitespace changes at end of line"
+                              IsChecked="{Binding IgnoreWhitespaceEol, Mode=TwoWay}" />
+      <local:ToolToggleButton x:Name="IgnoreWhitespaceChangeToggle" Image="WhitespaceIgnore" ToolTip.Tip="Ignore changes in amount of whitespace"
+                              IsChecked="{Binding IgnoreWhitespaceChange, Mode=TwoWay}" />
+      <local:ToolToggleButton x:Name="IgnoreAllWhitespaceToggle" Image="WhitespaceIgnoreAll" ToolTip.Tip="Ignore all whitespace changes"
+                              IsChecked="{Binding IgnoreAllWhitespace, Mode=TwoWay}" />
+      <ComboBox x:Name="EncodingBox" Width="140" VerticalAlignment="Center" ItemsSource="{Binding Encodings}"
+                SelectedItem="{Binding SelectedEncoding, Mode=TwoWay}" />
+      <local:ToolButton x:Name="SettingsButton" Image="Settings" ToolTip.Tip="Settings" IsVisible="{Binding IsSettingsVisible}"
+                        Command="{Binding ShowSettingsCommand}" />
     </StackPanel>
     </Panel>
   </DockPanel>

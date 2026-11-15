@@ -23,6 +23,7 @@ using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
+using GitExtensions.Xplat.Ui;
 using GitUI.ScriptsEngine;
 using GitUIPluginInterfaces;
 using Microsoft.VisualStudio.Threading;
@@ -97,6 +98,11 @@ public partial class MainWindow : Window
     public MainWindow() => InitializeComponent();
 #pragma warning restore CS8618
 
+    /// <summary>
+    ///  The browse window's command state, toolstrip texts and title.
+    /// </summary>
+    public BrowseToolbarViewModel Toolbar { get; }
+
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
@@ -117,8 +123,22 @@ public partial class MainWindow : Window
         _plugins = new PluginHost(this, _actions, plugin => Run(() => ShowSettingsAsync(plugin, pluginsPage: true)),
             ShowCommitWindow) { NewCloneWindow = NewCloneWindow };
         _plugins.BrowseRepo = this;
+        Toolbar = new BrowseToolbarViewModel(_commits, _repository, _actions, _recent, _preferences,
+            gitAvailable: _git?.Status != GitDiscoveryStatus.NotFound, UpstreamTranslation.ByText);
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
+
+        // The commands' state, the toolstrip's texts and the title (PLAN.md section 12.6 step 4). A context menu and a
+        // flyout's items get their data context only when they open (MVVM.md), so theirs are set here.
+        DataContext = Toolbar;
+        CommitContextMenu.DataContext = Toolbar;
+        if (PullButton.Flyout is MenuFlyout pullMenu)
+        {
+            foreach (Control item in pullMenu.Items.OfType<Control>())
+            {
+                item.DataContext = Toolbar;
+            }
+        }
 
         ShowSortMenus();
         ShowGridTooltips();
@@ -965,7 +985,7 @@ public partial class MainWindow : Window
                 // panel, the commit button (a clean image while no repository is open) and the stash count.
                 ShowRepoObjects();
                 LoadSubmoduleStructure();
-                UpdateCommitButton();
+                Toolbar.Refresh(RepositoryPath);
                 UpdateBranchText();
                 await _recent.AddAsync(repositoryPath);
                 if (_showUntrackedReadFor != repositoryPath)
@@ -1617,11 +1637,10 @@ public partial class MainWindow : Window
             // The date and commit button settings show on the next read.
             ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
             ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
-            ShowDefaultPullAction();
             UpdateBranchText();
             _commits.MaxCommits = _preferences.MaxRevisionGraphCommits;
             ShowArtificialChangeCounts();
-            UpdateCommitButton();
+            Toolbar.Refresh(RepositoryPath);
             ShowBuildStatusColumn();
             RefreshRepository();
         }
@@ -1962,7 +1981,7 @@ public partial class MainWindow : Window
                 ShowFilterState();
                 break;
             case nameof(CommitListViewModel.RepositoryName):
-                UpdateTitle();
+                Toolbar.Refresh(RepositoryPath);
                 break;
             case nameof(CommitListViewModel.HasMore):
                 LoadMoreButton.IsVisible = _commits.HasMore;
@@ -2005,7 +2024,7 @@ public partial class MainWindow : Window
                 break;
             case nameof(RepositoryViewModel.Changes):
             case nameof(RepositoryViewModel.ChangesRead):
-                UpdateCommitButton();
+                Toolbar.Refresh(RepositoryPath);
                 UpdateStateBanner();
                 ShowArtificialChangeCounts();
                 break;
@@ -2170,84 +2189,12 @@ public partial class MainWindow : Window
         }
     }
 
-    // Each control is enabled only when its action can run: nothing while a read or write is in progress, and
-    // the repository actions only when a repository is open. Clone and Open need no repository, only git.
+    // Each control is enabled only when its action can run: nothing while a read or write is in progress, and the repository
+    // actions only when a repository is open; clone and open need no repository, only git (Toolbar's state, bound in XAML).
     private void UpdateBusyState()
     {
-        bool busy = _commits.IsLoading || _repository.IsLoading || _actions.IsBusy;
-        bool open = !busy && RepositoryPath is not null;
-        bool gitAvailable = _git?.Status != GitDiscoveryStatus.NotFound;
-        bool hasBranch = _repository.CurrentBranch.Length > 0;
-
-        // Upstream's commit actions do not apply to the artificial working directory and index rows.
-        bool commitSelected = open && _commits.Selected is { } selectedRow &&
-                              !ArtificialCommits.IsArtificial(selectedRow.Hash);
-
-        OpenMenuItem.IsEnabled = !busy && gitAvailable;
-        InitMenuItem.IsEnabled = !busy && gitAvailable;
-        CloneMenuItem.IsEnabled = !busy && gitAvailable;
-        DashboardGroups.IsEnabled = !busy && gitAvailable;
-        CloseRepositoryMenuItem.IsEnabled = open;
-        RefreshButton.IsEnabled = open;
-        FilterToolStrip.IsEnabled = open;
-        RefreshMenuItem.IsEnabled = open;
-        LoadMoreButton.IsEnabled = !busy;
-        CommitDialogButton.IsEnabled = open;
-        CommitMenuItem.IsEnabled = open;
-        PullDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0;
-        PushDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0 &&
-                                       _repository.Branches.Any(branch => !branch.IsRemote);
-        PullButton.IsEnabled = open && hasBranch;
-        PushButton.IsEnabled = open && hasBranch;
-        OpenFolderButton.IsEnabled = open;
-        FileExplorerMenuItem.IsEnabled = open;
-        TerminalButton.IsEnabled = open;
-        TerminalMenuItem.IsEnabled = open;
-        GitGuiMenuItem.IsEnabled = GitKMenuItem.IsEnabled = UndoLastCommitMenuItem.IsEnabled = open;
-        GitAttributesMenuItem.IsEnabled = MailMapMenuItem.IsEnabled = CleanupMenuItem.IsEnabled = open;
-        GitMaintenanceMenuItem.IsEnabled =
-            ManageSubmodulesMenuItem.IsEnabled = SparseWorkingCopyMenuItem.IsEnabled = open;
-        RepositorySettingsMenuItem.IsEnabled = open;
-        FilesMenuItem.IsEnabled = open;
-        UpdateAllSubmodulesMenuItem.IsEnabled = SyncAllSubmodulesMenuItem.IsEnabled = open;
-        GitInfoExcludeMenuItem.IsEnabled = ResetChangesMenuItem.IsEnabled = open;
-        ReflogMenuItem.IsEnabled = open;
-        GitIgnoreMenuItem.IsEnabled = open;
-        WorktreesMenuItem.IsEnabled = open;
-        ResolveConflictsMenuItem.IsEnabled = open;
-        ResolveConflictsButton.IsEnabled = open;
-        UpdateToolStrip(busy, open);
-
-        CreateBranchMenuItem.IsEnabled = open;
-        MergeMenuItem.IsEnabled = open;
-        RebaseMenuItem.IsEnabled = open;
-        ContinueActionButton.IsEnabled = open;
-        AbortActionButton.IsEnabled = open;
-        MoreActionButton.IsEnabled = open;
-        BisectMoreButton.IsEnabled = open;
-        BisectMenuItem.IsEnabled = commitSelected;
-        MarkBadMenuItem.IsEnabled = commitSelected;
-        MarkGoodMenuItem.IsEnabled = commitSelected;
-        BisectSkipMenuItem.IsEnabled = commitSelected;
-        StopBisectMenuItem.IsEnabled = open;
-
-        ManageStashesCommandMenuItem.IsEnabled = open;
-        CheckoutBranchMenuItem.IsEnabled = open;
-        CheckoutRevisionMenuItem.IsEnabled = open;
-        CreateTagMenuItem.IsEnabled = open;
-
-        CherryPickMenuItem.IsEnabled = commitSelected;
-        RevertMenuItem.IsEnabled = commitSelected;
-        ArchiveMenuItem.IsEnabled = ArchiveCommitMenuItem.IsEnabled = commitSelected;
-        CherryPickCommandMenuItem.IsEnabled = commitSelected;
-        FormatPatchMenuItem.IsEnabled = ApplyPatchMenuItem.IsEnabled = ViewPatchMenuItem.IsEnabled = open;
-        ResetCurrentBranchMenuItem.IsEnabled = commitSelected;
-        RebaseOnCommitMenuItem.IsEnabled = commitSelected;
-        RebaseInteractiveMenuItem.IsEnabled = commitSelected && _actions.EditorCommand is not null;
-        CreateBranchHereMenuItem.IsEnabled = commitSelected;
-        CreateTagHereMenuItem.IsEnabled = commitSelected;
-        BrowseFilesHereMenuItem.IsEnabled = commitSelected;
-        CheckoutCommitMenuItem.IsEnabled = commitSelected;
+        Toolbar.Refresh(RepositoryPath);
+        ShowSubmodulesButton();
     }
 
     // Upstream's StashSave from the toolbar, menu and left panel: no message, untracked files as upstream's

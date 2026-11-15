@@ -76,4 +76,20 @@ internal sealed class FakeCommitHistory : ICommitHistory
         BlameOptions? options = null) => Task.FromResult(Blame);
 
     public Task<IReadOnlyList<CommitFile>> LoadFilesAsync(string repositoryPath, string hash) => Task.FromResult(Files);
+
+    /// <summary>
+    ///  The real parents of each commit, by hash; none for a commit not listed.
+    /// </summary>
+    public Dictionary<string, IReadOnlyList<string>> Parents { get; } = [];
+
+    /// <summary>
+    ///  The line a line had in the previous commit.
+    /// </summary>
+    public int PreviousLine { get; set; } = 1;
+
+    public Task<IReadOnlyList<string>> LoadParentsAsync(string repositoryPath, string hash)
+        => Task.FromResult(Parents.TryGetValue(hash, out IReadOnlyList<string>? parents) ? parents : []);
+
+    public Task<int> OriginalLineInPreviousCommitAsync(string repositoryPath, string hash, IReadOnlyList<string> parents,
+        string filePath, int line) => Task.FromResult(PreviousLine);
 }

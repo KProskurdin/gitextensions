@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -24,14 +25,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    // Upstream's pull button texts (FormBrowse's _pullMerge, _pullRebase, ... translation strings).
-    private const string PullMergeText = "Pull - merge";
-    private const string PullRebaseText = "Pull - rebase";
-    private const string PullFetchText = "Fetch";
-    private const string PullFetchAllText = "Fetch all";
-    private const string PullFetchPruneAllText = "Fetch and prune all";
-    private const string PullOpenDialogText = "Open pull dialog";
-
     // WorkingDirectoryToolStripSplitButton's texts.
     private const string ConfigureWorkingDirMenuText = "Co&nfigure this menu...";
     private const string RepositorySearchPlaceholderText = "Search repositories...";
@@ -39,14 +32,6 @@ public partial class MainWindow
         + "Left click opens the drop-down menu.\n"
         + $"Then hold {Hotkeys.CommandModifierName} in order to open the selected repository in a new instance.\n"
         + "Right click starts the \"Open repository\" dialog.";
-
-    // ToolStripPushButton's texts.
-    private const string PushText = "Push";
-
-    // Upstream's TranslatedStrings.NoBranch, the title's branch until it is known.
-    private const string NoBranchText = "no branch";
-    private const string AheadCommitsToPushText = "{0} new commit(s) will be pushed";
-    private const string BehindCommitsText = "{0} commit(s) should be integrated (or will be lost if force pushed)";
 
     // The widths the left panel and the commit info had before they were hidden by the layout toggles.
     private GridLength _leftPanelWidth = new(280);
@@ -132,7 +117,6 @@ public partial class MainWindow
         PullFetchAllMenuItem.Click += (_, _) => PullWith(GitPullAction.FetchAll);
         PullFetchPruneAllMenuItem.Click += (_, _) => PullWith(GitPullAction.FetchPruneAll);
         FillSetDefaultPullActionMenu();
-        ShowDefaultPullAction();
 
         // Upstream's stash split button opens its stash window; the new shell has none, so the button stashes.
         StashToolButton.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
@@ -141,97 +125,6 @@ public partial class MainWindow
         StashPopToolMenuItem.Click += (_, _) => PopTopStash();
         ManageStashesMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
         CreateStashMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this, manageStashes: false));
-    }
-
-    // The toolstrip's state after each read or write, as upstream's FormBrowse refreshes it.
-    private void UpdateToolStrip(bool busy, bool open)
-    {
-        bool hasBranch = _repository.CurrentBranch.Length > 0;
-        ToggleLeftPanelButton.IsEnabled = open;
-        ToggleSplitViewButton.IsEnabled = open;
-        ShowSubmodulesButton();
-        WorktreesButton.IsEnabled = open;
-        WorkingDirButton.IsEnabled = !busy && _git?.Status != GitDiscoveryStatus.NotFound;
-        BranchSelectButton.IsEnabled = open;
-        StashToolButton.IsEnabled = open;
-        PullMergeMenuItem.IsEnabled = PullRebaseMenuItem.IsEnabled = open && hasBranch;
-        PullFetchMenuItem.IsEnabled = PullFetchAllMenuItem.IsEnabled = PullFetchPruneAllMenuItem.IsEnabled = open;
-        PullOpenDialogMenuItem.IsEnabled = open && _repository.Remotes.Count > 0;
-
-        // Upstream's UpdateFetchAllVisibility: "Fetch all" only with more than one remote.
-        PullFetchAllMenuItem.IsVisible = _repository.Remotes.Count > 1;
-
-        // Upstream's RefreshContent: the caption among the recent repositories, at least RecentReposComboMinWidth wide.
-        WorkingDirButton.Text = RepositoryPath is { } path
-            ? RecentRepositoryPaths.Caption(path, [.. _recent.Items.Select(item => item.Path)],
-                _preferences.RecentRepositoryMenu.Splitter())
-            : "";
-        WorkingDirButton.MinWidth = _preferences.RecentRepositoryMenu.ComboMinWidth;
-        BranchSelectButton.Text = RepositoryPath is null ? "" : CurrentBranchName;
-        ShowPushAheadBehind();
-        UpdateTitle();
-    }
-
-    // The branch as upstream's branch drop-down and title show it: "(no branch)" on a detached head.
-    private string CurrentBranchName
-        => _repository.CurrentBranch.Length > 0 ? _repository.CurrentBranch : DetachedHeadParser.DetachedBranch;
-
-    // Upstream's FormBrowse title (AppTitleGenerator), refreshed with the revision grid.
-    private void UpdateTitle()
-        => Title = BrowseWindowTitle.Of(RepositoryPath, RepositoryPath is null ? null : CurrentBranchName,
-            UpstreamTranslation.ByText(NoBranchText), _commits.Filter.PathFilter);
-
-    // Upstream's ToolStripPushButton.DisplayAheadBehindInformation: the counts as the button's text, and the unstage
-    // image when the branch is behind.
-    private void ShowPushAheadBehind()
-    {
-        if (!_preferences.ShowAheadBehindData || _repository.CurrentBranch.Length == 0 ||
-            _repository.Sync is not { } sync)
-        {
-            PushButton.Text = null;
-            PushButton.Image = "Push";
-            ToolTip.SetTip(PushButton, PushText);
-            return;
-        }
-
-        AheadBehindData data = new(_repository.CurrentBranch, "",
-            sync.Ahead.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            sync.Behind > 0 ? sync.Behind.ToString(System.Globalization.CultureInfo.InvariantCulture) : "");
-        PushButton.Text = data.ToDisplay();
-        PushButton.Image = sync.Behind > 0 ? "Unstage" : "Push";
-        List<string> tips = [];
-        if (sync.Ahead > 0)
-        {
-            tips.Add(string.Format(AheadCommitsToPushText, sync.Ahead));
-        }
-
-        if (sync.Behind > 0)
-        {
-            tips.Add(string.Format(BehindCommitsText, sync.Behind));
-        }
-
-        ToolTip.SetTip(PushButton, tips.Count > 0 ? string.Join(Environment.NewLine, tips) : PushText);
-    }
-
-    // Upstream's RefreshDefaultPullAction: the pull button shows the default action's image and text.
-    private void ShowDefaultPullAction()
-    {
-        GitPullAction action = _preferences.DefaultPullAction;
-        (string image, string tip) = action switch
-        {
-            GitPullAction.Fetch => ("PullFetch", PullFetchText),
-            GitPullAction.FetchAll => ("PullFetchAll", PullFetchAllText),
-            GitPullAction.FetchPruneAll => ("PullFetchPruneAll", PullFetchPruneAllText),
-            GitPullAction.Merge => ("PullMerge", PullMergeText),
-            GitPullAction.Rebase => ("PullRebase", PullRebaseText),
-            _ => ("Pull", PullOpenDialogText),
-        };
-        PullButton.Image = image;
-        ToolTip.SetTip(PullButton, tip);
-        foreach (MenuItem item in SetDefaultPullActionMenuItem.Items.OfType<MenuItem>())
-        {
-            item.IsChecked = item.Tag is GitPullAction tagged && tagged == action;
-        }
     }
 
     // Upstream's FillNextPullActionAsDefaultToolStripMenuItems: the pull menu's actions again, as check items.
@@ -253,12 +146,19 @@ public partial class MainWindow
                 Icon = source.Icon is Image icon
                     ? ToolStripContent.Icon((Avalonia.Media.Imaging.Bitmap)icon.Source!)
                     : null,
+
+                // A flyout's items get their data context only when it opens (MVVM.md, Flyouts).
+                DataContext = Toolbar,
+                Command = Toolbar.SetDefaultPullActionCommand,
+                CommandParameter = action,
             };
-            item.Click += (_, _) =>
-            {
-                _preferences.DefaultPullAction = action;
-                ShowDefaultPullAction();
-            };
+
+            // Checked while the action is the default (MVVM.md, Menu check items: one way, with the command).
+            CompiledBinding isDefault = CompiledBinding.Create<BrowseToolbarViewModel, GitPullAction>(
+                toolbar => toolbar.DefaultPullAction, mode: BindingMode.OneWay);
+            isDefault.Converter = EnumEqualsConverter.Instance;
+            isDefault.ConverterParameter = action;
+            item.Bind(MenuItem.IsCheckedProperty, isDefault);
             SetDefaultPullActionMenuItem.Items.Add(item);
         }
 
@@ -682,22 +582,6 @@ public partial class MainWindow
             item.Click += (_, _) => RunOnRepository(repository => StartCheckoutBranchAsync(repository, name));
             flyout.Items.Add(item);
         }
-    }
-
-    // Upstream's Commit button image (RepoStateVisualiser) and its count of changed files.
-    private void UpdateCommitButton()
-    {
-        int count = _repository.Changes.Select(change => change.Path).Distinct(StringComparer.Ordinal).Count();
-        string commit = GitExtensions.Xplat.Ui.UpstreamTranslation.ByText("Commit");
-        CommitDialogButton.Text =
-            count == 0 || !_preferences.ShowGitStatusInBrowseToolbar ? commit : $"{commit} ({count})";
-
-        // Upstream's RepoStateVisualiser: the clean image while the toolbar shows no status, the unknown one until the
-        // status has been read.
-        CommitDialogButton.Image =
-            RepositoryPath is null || !_preferences.ShowGitStatusInBrowseToolbar ? nameof(RepoState.RepoStateClean)
-            : !_repository.ChangesRead ? nameof(RepoState.RepoStateUnknown)
-            : RepoStates.Of(_repository.Changes).ToString();
     }
 
     private static Image? UpstreamIcon(string name)

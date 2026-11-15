@@ -1,11 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
         x:Class="GitExtensions.Xplat.App.BlameWindow"
-        Title="Blame"
+        x:DataType="core:BlameWindowViewModel"
+        Title="{Binding Title}"
         Width="980" Height="620">
+  <!-- Upstream's FormBlame around the shared BlameView; bound to BlameWindowViewModel (PLAN.md principle 6), which owns the
+       blame's view model. -->
   <DockPanel Margin="12" LastChildFill="True">
-    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" Margin="0,0,0,8" />
-    <local:BlameView x:Name="Blame" />
+    <TextBlock x:Name="ErrorText" DockPanel.Dock="Top" Classes="errorText" Margin="0,0,0,8" Text="{Binding ErrorMessage}" />
+    <local:BlameView x:Name="Blame" ViewModel="{Binding Blame}" />
   </DockPanel>
 </Window>

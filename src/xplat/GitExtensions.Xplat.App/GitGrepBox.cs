@@ -14,7 +14,7 @@ namespace GitExtensions.Xplat.App;
 ///  button that shows the box, the window or both as upstream's "Using ..." choice says, and its menu of upstream's
 ///  git-grep settings; the window. The list reads its files again with the search's git-grep argument.
 /// </summary>
-public sealed class GitGrepBox
+public sealed class GitGrepBox : IFileListGitGrep
 {
     // Upstream's SearchFilterMaxLength and the typing delay of cboFindInCommitFilesGitGrep_TextUpdate.
     private const int MaxSearches = 30;
