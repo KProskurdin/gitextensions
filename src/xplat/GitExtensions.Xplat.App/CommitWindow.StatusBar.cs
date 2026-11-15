@@ -3,7 +3,7 @@ using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
 
-// Upstream FormCommit's status strip (commitStatusStrip) and window title.
+// Upstream FormCommit's status strip (commitStatusStrip) and window title; the texts are CommitViewModel's.
 public partial class CommitWindow
 {
     private const string GitConfigSettingsPage = "GitConfigSettingsPage";
@@ -11,10 +11,10 @@ public partial class CommitWindow
     private void WireStatusBar()
     {
         // Upstream reads the committer when the window opens and is activated, and when the author box is left.
-        Opened += (_, _) => Run(ShowCommitterAsync);
-        Activated += (_, _) => Run(ShowCommitterAsync);
-        CommitAuthorBox.LostFocus += (_, _) => Run(ShowCommitterAsync);
-        Opened += (_, _) => Run(ShowBranchAsync);
+        Opened += (_, _) => _ = ViewModel.ShowCommitterAsync();
+        Activated += (_, _) => _ = ViewModel.ShowCommitterAsync();
+        CommitAuthorBox.LostFocus += (_, _) => _ = ViewModel.ShowCommitterAsync();
+        Opened += (_, _) => _ = ViewModel.ShowBranchAsync();
 
         // Upstream's commitAuthorStatus: the Git config settings page, where user.name and user.email are set.
         CommitterLink.Click += (_, _) => Run(async () =>
@@ -22,7 +22,7 @@ public partial class CommitWindow
             if (_showSettings is not null)
             {
                 await _showSettings(this, GitConfigSettingsPage);
-                await ShowCommitterAsync();
+                await ViewModel.ShowCommitterAsync();
             }
         });
 
@@ -33,7 +33,7 @@ public partial class CommitWindow
             await new RemotesWindow(_repositoryPath, _preferences,
                 remote => _actions.FetchAsync(_repositoryPath, remote, prune: false),
                 preselectLocal: status.Branch.Length > 0 ? status.Branch : null).ShowDialog(this);
-            await ShowBranchAsync();
+            await ViewModel.ShowBranchAsync();
         });
         CommitMessageBox.PropertyChanged += (_, e) =>
         {
@@ -44,26 +44,7 @@ public partial class CommitWindow
         };
     }
 
-    private async Task ShowCommitterAsync()
-    {
-        CommitterText.Text = await CommitStatusBar.CommitterAsync(_repositoryPath, CommitAuthorBox.Text ?? "");
-    }
-
-    // Upstream's UpdateBranchNameDisplayAsync, which also sets the title.
-    private async Task ShowBranchAsync()
-    {
-        CommitBranchStatus status = await CommitStatusBar.BranchAsync(_repositoryPath);
-        BranchNameText.Text = status.BranchText;
-        RemoteNameText.Text = status.PushTo ?? "";
-        Title = CommitStatusBar.Title(status.Branch, _repositoryPath);
-    }
-
-    // Upstream's Staged_DataSourceChanged: staged files of all changed files.
-    private void ShowStagedCount()
-        => StagedCountText.Text = CommitStatusBar.Staged(_repository.Changes.Count(change => change.Staged),
-            _repository.Changes.Count);
-
-    // Upstream's Message_SelectionChanged.
+    // Upstream's Message_SelectionChanged: the caret's line and column, a view concern.
     private void ShowCaret()
     {
         (int line, int column) = CommitStatusBar.Caret(CommitMessageBox.Text ?? "", CommitMessageBox.CaretIndex);

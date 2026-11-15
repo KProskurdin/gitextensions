@@ -1,8 +1,8 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using GitCommands.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
@@ -13,29 +13,19 @@ using Microsoft.VisualStudio.Threading;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Stages files and commits them: the new shell's version of upstream <c>FormCommit</c>. It works on the main window's
-///  repository state and operations, so a change made here refreshes both windows.
+///  Stages files and commits them: the new shell's version of upstream <c>FormCommit</c>, bound to
+///  <see cref="CommitViewModel"/>. It works on the main window's repository state and operations, so a change made here
+///  refreshes both windows. The file lists, the diff, auto-completion, spelling and the message's menus stay here.
 /// </summary>
 public partial class CommitWindow : Window
 {
-    private const string DefaultRemote = "origin";
-
     private readonly string _repositoryPath;
     private readonly RepositoryViewModel _repository;
     private readonly RepositoryOperationsViewModel _actions;
-    private readonly IRepositoryService _repositoryService;
     private readonly IAppPreferences _preferences;
     private readonly Func<Task> _refresh;
-    private readonly ICommitMessageStore _messages;
     private readonly Func<string, bool>? _runPlugin;
     private readonly Func<Window, string, Task>? _showSettings;
-    private string _messageBeforeAmend = "";
-
-    // Upstream's _commitTemplate: git's commit.template the message started from; empty when it did not.
-    private string _commitTemplate = "";
-
-    // True while the remembered Amend state is put back; the draft is then the amend message already.
-    private bool _restoringAmend;
 
     // The file whose diff is on show, and whether it is the staged or the unstaged diff.
     private FileChange? _diffChange;
@@ -48,7 +38,6 @@ public partial class CommitWindow : Window
     private const string WordWrapBodyText = "_Word wrap (except subject line)";
     private const string SubmoduleChangesText = "Generate a list of changes in submodules";
     private const string ShowOnlyMyMessagesText = "Show only my messages";
-    private const string CommitMessageDisabledText = "Commit Message is requested during commit";
 
     // The Conventional Commits submenu as last built, and whether its types add "()" for a scope (Ctrl+Shift+T).
     private MenuItem? _conventionalCommitsItem;
@@ -59,12 +48,6 @@ public partial class CommitWindow : Window
 
     // Counts the openings of the "Commit message" menu, so a slow read does not fill a menu opened again since.
     private int _messageMenuOpenings;
-
-    // Upstream's UseFormCommitMessage, read once per window as upstream does: off, git asks for the message in its editor.
-    private readonly bool _useFormCommitMessage;
-
-    // Upstream's CommitKind: a fixup, squash or amend commit started from the grid, until it is made.
-    private CommitKind _commitKind;
 
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
@@ -87,10 +70,36 @@ public partial class CommitWindow : Window
         _repositoryPath = repositoryPath;
         _repository = repository;
         _actions = actions;
-        _repositoryService = repositoryService;
         _preferences = preferences;
         _refresh = refresh;
+        ViewModel = new CommitViewModel(new WindowDialogHost(this), repositoryPath, repository, actions,
+            repositoryService, preferences, refresh, messages, new CommitViewModelServices
+            {
+                ConfirmSuppressible = (confirmation, text, confirmText, caption)
+                    => ConfirmWindow.AskAsync(this, preferences, confirmation, text, confirmText, caption),
+                AskValidation = (question, caption)
+                    => new ConfirmWindow(question, "Yes", caption, cancelText: "No").ShowDialog<bool>(this),
+                RunScripts = scriptEvent
+                    => new ScriptHost(this, actions, runPlugin: runPlugin).RunEventAsync(scriptEvent,
+                        repositoryPath, []),
+                Push = request => new PushRejectedFlow(actions, preferences).PushAsync(() => this, repositoryPath, request,
+                    new PushOrigin(request.LocalBranch, request.LocalBranch, repository.TrackingRemote)),
+                AskResetChanges = (hasExistingFiles, hasNewFiles)
+                    => ResetChangesWindow.ShowResetDialogAsync(this, hasExistingFiles, hasNewFiles),
+                CreateBranch = () => new CreateBranchWindow(repositoryPath, actions, preferences).ShowDialog<bool>(this),
+                ShowError = (message, caption) => _ = new ErrorWindow(message) { Title = caption }.ShowDialog(this),
+                ReadModule = ReadModuleAsync,
+                StageInSuperproject = StageInSuperprojectAsync,
+            });
+        DataContext = ViewModel;
         InitializeComponent();
+
+        // A flyout's items get their data context only when it opens (MVVM.md, Context menus); the options bind to it.
+        foreach (Control item in ((MenuFlyout)OptionsButton.Flyout!).Items.OfType<Control>())
+        {
+            item.DataContext = ViewModel;
+        }
+
         WindowPlacementTracker.Attach(this, "Xplat.CommitWindow");
 
         // Upstream's RestoreSplitters ("CommitDialog"): the file lists beside the diff, unstaged above staged, and the diff
@@ -99,32 +108,20 @@ public partial class CommitWindow : Window
         splitters.Add("splitMain", SplitMainGrid, rows: false, SplitterFixedPanel.Panel1);
         splitters.Add("splitRight", SplitRightGrid, rows: true, SplitterFixedPanel.Panel2);
         splitters.Add("splitLeft", SplitLeftGrid, rows: true, SplitterFixedPanel.None, splitterWidth: 6);
-        Title = CommitStatusBar.Title(repository.CurrentBranch, repositoryPath);
-        _messages = messages;
-        Opened += (_, _) => Run(LoadMessageAsync);
-        Closing += (_, _) => SavedDraft = CommitKinds.KeepsDraft(_commitKind)
-            ? GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(() =>
-                SaveDraftAsync(CommitMessageBox.Text ?? "", AmendCheck.IsChecked == true))
+        StateText.Foreground = ThemeBrushes.Current.Warning;
+        Opened += (_, _) => _ = ViewModel.LoadAsync();
+        Closing += (_, _) => SavedDraft = ViewModel.KeepsDraft
+            ? GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(ViewModel.SaveDraftAsync)
             : null;
         modifyCommitMessageButton.Click += (_, _) =>
         {
-            SetCommitKind(CommitKind.Normal);
+            ViewModel.ModifyMessageCommand.Execute(null);
             CommitMessageBox.Focus();
         };
-        _useFormCommitMessage = preferences.UseFormCommitMessage;
-        if (!_useFormCommitMessage)
-        {
-            CommitMessageBox.IsEnabled = false;
-            CommitMessageBox.PlaceholderText = CommitMessageDisabledText;
-            CommitTemplatesButton.IsEnabled = false;
-            CommitMessageMenuButton.IsEnabled = false;
-        }
-
-        CommitAndPushButton.IsVisible = preferences.ShowCommitAndPush;
-        ResetAllButton.IsVisible = preferences.ShowResetAllChanges;
-        ResetUnstagedButton.IsVisible = preferences.ShowResetWorkTreeChanges;
-        ResetAllButton.Click += (_, _) => Run(() => ResetChangesAsync(onlyWorkTree: false));
-        ResetUnstagedButton.Click += (_, _) => Run(() => ResetChangesAsync(onlyWorkTree: true));
+        ViewModel.ProgressReported += (_, count) => Dispatcher.UIThread.Post(() =>
+            ViewModel.StageProgressValue =
+                Math.Min(ViewModel.StageProgressMaximum - 1, ViewModel.StageProgressValue + count));
+        ViewModel.PropertyChanged += OnViewModelChanged;
         CommitMessageBox.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty)
@@ -137,20 +134,14 @@ public partial class CommitWindow : Window
         WireBottomPanel();
         WireStatusBar();
 
-        StageButton.Click += (_, _) => StageSelected(staged: false);
-        UnstageButton.Click += (_, _) => StageSelected(staged: true);
         StageAllButton.Click += (_, _) => StageAll(staged: false);
         UnstageAllButton.Click += (_, _) => StageAll(staged: true);
         WireFileLists();
-        CommitButton.Click += (_, _) => Run(CommitAsync);
-        CommitAndPushButton.Click += (_, _) => Run(CommitAndPushAsync);
-        AmendCheck.IsCheckedChanged += (_, _) => Run(ToggleAmendAsync);
         ((PopulatingMenuFlyout)CommitTemplatesFlyout).Populating += (_, _) => ShowCommitTemplates();
         ((PopulatingMenuFlyout)CommitMessageFlyout).PopulateAsync = ShowPreviousMessagesAsync;
         ((PopulatingMenuFlyout)CommitMessageFlyout).ReportError = ex => ShowError(ex.Message);
         UnstagedList.SelectionChanged += (_, _) => OnFileSelected(UnstagedList, StagedList, staged: false);
         StagedList.SelectionChanged += (_, _) => OnFileSelected(StagedList, UnstagedList, staged: true);
-        Diff.LineSelectionChanged += (_, _) => UpdateState();
 
         // Upstream's FileViewer_TopScrollReached and FileViewer_BottomScrollReached: in the list of the shown file.
         Diff.TopScrollReached += (_, _) =>
@@ -170,13 +161,15 @@ public partial class CommitWindow : Window
             // Upstream's ResetSelectedLines, after its question; here for an edited file's lines.
             if (command == DiffCommand.ResetLines)
             {
-                if (Idle && Diff.SelectedRange() is { } range && _diffChange is { Kind: ChangeKind.Modified } change)
+                if (ViewModel.IsIdle && Diff.SelectedRange() is { } range &&
+                    _diffChange is { Kind: ChangeKind.Modified } change)
                 {
                     Run(async () =>
                     {
                         if (await DiffLinePatching.ResetAsync(this, _actions, _repositoryPath, range, _diffStaged))
                         {
-                            await Diff.ShowAsync(_repositoryPath, commitHash: null, change.Path, _diffStaged, change.Label);
+                            await Diff.ShowAsync(_repositoryPath, commitHash: null, change.Path, _diffStaged,
+                                change.Label);
                         }
                     });
                 }
@@ -193,18 +186,17 @@ public partial class CommitWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
         _repository.PropertyChanged += OnRepositoryChanged;
-        _actions.PropertyChanged += OnActionsChanged;
         Closed += (_, _) =>
         {
             _repository.PropertyChanged -= OnRepositoryChanged;
-            _actions.PropertyChanged -= OnActionsChanged;
+            ViewModel.Detach();
         };
 
         ShowChanges();
-        ShowCommitAndPushText();
-        ShowStagedCount();
-        UpdateState();
+        ShowCommitButtons();
     }
+
+    public CommitViewModel ViewModel { get; }
 
     /// <summary>
     ///  The save of the typed message when the window closed, so the next commit window can wait for it before it reads;
@@ -212,82 +204,13 @@ public partial class CommitWindow : Window
     /// </summary>
     public JoinableTask? SavedDraft { get; private set; }
 
-    // Like upstream, the window starts from the prepared message: git's merge message while a merge is stopped, otherwise the
-    // draft left last time (in this app or the WinForms one), otherwise git's commit.template. A message typed before the
-    // read finished is kept.
-    private async Task LoadMessageAsync()
-    {
-        string message = await _messages.LoadAsync(_repositoryPath);
-        if (_useFormCommitMessage && string.IsNullOrEmpty(CommitMessageBox.Text))
-        {
-            if (message.Length > 0)
-            {
-                CommitMessageBox.Text = message.TrimEnd();
-            }
-            else
-            {
-                await LoadCommitTemplateAsync();
-            }
-        }
-
-        // As upstream: Amend comes back checked, not while a merge is stopped, and the draft stays as it was left.
-        if (_commitKind == CommitKind.Normal && _preferences.RememberAmendCommitState && !_repository.IsMerging &&
-            await _messages.LoadAmendAsync(_repositoryPath))
-        {
-            _restoringAmend = true;
-            AmendCheck.IsChecked = true;
-            _restoringAmend = false;
-        }
-    }
-
-    // Upstream's AssignCommitMessageFromTemplate, with its error messages.
-    private async Task LoadCommitTemplateAsync()
-    {
-        CommitTemplateResult result = await GitCommitTemplate.LoadAsync(_repositoryPath);
-        if (result.Error is { } error)
-        {
-            _ = new ErrorWindow(error) { Title = result.ErrorCaption }.ShowDialog(this);
-        }
-
-        if (result.Template is { Length: > 0 } template && string.IsNullOrEmpty(CommitMessageBox.Text))
-        {
-            CommitMessageBox.Text = template;
-            _commitTemplate = template;
-        }
-    }
-
     /// <summary>
     ///  Upstream's <c>StartFixupCommitDialog</c>, <c>StartSquashCommitDialog</c> and <c>StartAmendCommitDialog</c>: the
     ///  window makes a <paramref name="kind"/> commit for the commit whose <paramref name="subject"/> and
     ///  <paramref name="fullMessage"/> are given, starting from upstream's message for it instead of the draft.
     /// </summary>
     public void StartSpecialCommit(CommitKind kind, string subject, string fullMessage)
-    {
-        SetCommitKind(kind);
-        if (_useFormCommitMessage && CommitKinds.Message(kind, subject, fullMessage) is { Length: > 0 } message)
-        {
-            CommitMessageBox.Text = message;
-        }
-    }
-
-    // Upstream's CommitKind setter: a fixup or squash message is read only, with the button that makes the commit a
-    // normal one.
-    private void SetCommitKind(CommitKind kind)
-    {
-        _commitKind = kind;
-        modifyCommitMessageButton.IsVisible = _useFormCommitMessage && !CommitKinds.MessageCanBeChanged(kind);
-        bool messageCanBeChanged = _useFormCommitMessage && CommitKinds.MessageCanBeChanged(kind);
-        CommitMessageBox.IsEnabled = messageCanBeChanged;
-        CommitTemplatesButton.IsEnabled = messageCanBeChanged;
-        CommitMessageMenuButton.IsEnabled = messageCanBeChanged;
-    }
-
-    // On close, as upstream's FormCommit: the draft and whether Amend was checked.
-    private async Task SaveDraftAsync(string message, bool amend)
-    {
-        await _messages.SaveAsync(_repositoryPath, message);
-        await _messages.SaveAmendAsync(_repositoryPath, _preferences.RememberAmendCommitState && amend);
-    }
+        => ViewModel.StartSpecialCommit(kind, subject, fullMessage);
 
     private void Run(Func<Task> action) => UiActions.Run(action, ex => ShowError(ex.Message));
 
@@ -318,7 +241,7 @@ public partial class CommitWindow : Window
         bool command = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier);
         if (e.Key == Key.Enter && command && e.Source == CommitMessageBox && CommitButton.IsEnabled)
         {
-            Run(CommitAsync);
+            ViewModel.CommitCommand.Execute(null);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -390,47 +313,38 @@ public partial class CommitWindow : Window
         return true;
     }
 
-    private void OnRepositoryChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    // The lists and auto-completion follow the repository's changes; the view model follows the rest.
+    private void OnRepositoryChanged(object? sender, PropertyChangedEventArgs e)
     {
-        switch (e.PropertyName)
+        if (e.PropertyName == nameof(RepositoryViewModel.Changes))
         {
-            case nameof(RepositoryViewModel.Changes):
-                ReadChanges();
-                RefreshAutoCompleteWords();
-                UpdateState();
-                ShowCommitAndPushText();
-                ShowStagedCount();
-                break;
-            case nameof(RepositoryViewModel.IsLoading):
-            case nameof(RepositoryViewModel.IsMerging):
-            case nameof(RepositoryViewModel.IsRebasing):
-                UpdateState();
-                break;
-            case nameof(RepositoryViewModel.CurrentBranch):
-                UpdateState();
-                Run(ShowBranchAsync);
-                break;
+            ReadChanges();
+            RefreshAutoCompleteWords();
         }
     }
 
-    private void OnActionsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    // The buttons whose content is an upstream image and text follow the view model.
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        switch (e.PropertyName)
+        if (e.PropertyName is nameof(CommitViewModel.CommitIcon) or nameof(CommitViewModel.CommitAndPushContent))
         {
-            case nameof(RepositoryOperationsViewModel.IsBusy):
-                StatusText.Text = _actions.IsBusy ? "Working..." : _actions.StatusMessage;
-                UpdateState();
-                break;
-            case nameof(RepositoryOperationsViewModel.StatusMessage):
-                StatusText.Text = _actions.StatusMessage;
-                break;
+            ShowCommitButtons();
         }
     }
 
     // Upstream shows one diff at a time, so selecting in one list clears the other.
     private void OnFileSelected(ListBox list, ListBox other, bool staged)
     {
-        UpdateState();
+        List<FileChange> selected = SelectedChanges(list);
+        if (staged)
+        {
+            ViewModel.SelectedStaged = selected;
+        }
+        else
+        {
+            ViewModel.SelectedUnstaged = selected;
+        }
+
         if (list.SelectedItems is not { Count: 1 } || list.SelectedItem is not FileChange change)
         {
             return;
@@ -445,41 +359,15 @@ public partial class CommitWindow : Window
         Run(() => Diff.ShowAsync(_repositoryPath, commitHash: null, change.Path, staged, change.Label));
     }
 
-    private void UpdateState()
-    {
-        bool idle = !_actions.IsBusy && !_repository.IsLoading;
-        List<FileChange> unstaged = SelectedChanges(UnstagedList);
-        bool hasUnstaged = _repository.Changes.Any(change => !change.Staged && change.Kind != ChangeKind.Conflict);
-        bool hasStaged = _repository.Changes.Any(change => change.Staged);
-
-        StageButton.IsEnabled = idle && unstaged.Any(change => change.Kind != ChangeKind.Conflict);
-        StageAllButton.IsEnabled = idle && hasUnstaged;
-        UnstageButton.IsEnabled = idle && SelectedChanges(StagedList).Count > 0;
-        UnstageAllButton.IsEnabled = idle && hasStaged;
-        SolveConflictsButton.IsVisible = _repository.Changes.Any(change => change.Kind == ChangeKind.Conflict);
-        CommitButton.IsEnabled = idle;
-        CommitAndPushButton.IsEnabled = idle && _repository.CurrentBranch.Length > 0;
-
-        string state = _repository.IsRebasing
-            ? "A rebase is in progress: commit continues it only after the conflicts are staged."
-            : _repository.IsMerging
-                ? "A merge is in progress: committing completes the merge."
-                : "";
-        StateText.Text = state;
-        StateText.IsVisible = state.Length > 0;
-        StateText.Foreground = ThemeBrushes.Current.Warning;
-    }
-
-    private bool Idle => !_actions.IsBusy && !_repository.IsLoading;
-
     // As upstream, lines can be staged from an edited or untracked file and unstaged from an edited or added one.
-    private bool CanStageLines => Idle && Diff.SelectedRange() is not null && !_diffStaged
+    private bool CanStageLines => ViewModel.IsIdle && Diff.SelectedRange() is not null && !_diffStaged
                                   && _diffChange is { Kind: ChangeKind.Modified or ChangeKind.Untracked };
 
-    private bool CanUnstageLines => Idle && Diff.SelectedRange() is not null && _diffStaged
+    private bool CanUnstageLines => ViewModel.IsIdle && Diff.SelectedRange() is not null && _diffStaged
                                     && _diffChange is { Kind: ChangeKind.Modified or ChangeKind.Added };
 
-    private bool CanOpenDiffTool => Idle && _diffChange is { Kind: not (ChangeKind.Untracked or ChangeKind.Conflict) };
+    private bool CanOpenDiffTool
+        => ViewModel.IsIdle && _diffChange is { Kind: not (ChangeKind.Untracked or ChangeKind.Conflict) };
 
     private static List<FileChange> SelectedChanges(ListBox list) =>
         list.SelectedItems?.OfType<FileChange>().ToList() ?? [];
@@ -510,233 +398,16 @@ public partial class CommitWindow : Window
     }
 
     private void StageSelected(bool staged)
-    {
-        List<string> paths =
-        [
-            .. SelectedChanges(staged ? StagedList : UnstagedList)
-                .Where(change => change.Kind != ChangeKind.Conflict)
-                .SelectMany(change => change.IndexPaths)
-        ];
-        if (paths.Count > 0)
-        {
-            Run(() => StageFilesAsync(staged, paths));
-        }
-    }
-
-    // Upstream's toolStripProgressBar1: shown while git runs, and full only at the end, since refreshing the lists follows.
-    private async Task StageFilesAsync(bool staged, IReadOnlyList<string> paths)
-    {
-        StageProgress.Maximum = paths.Count;
-        StageProgress.Value = 0;
-        StageProgress.IsVisible = true;
-        try
-        {
-            await (staged
-                ? _actions.UnstageAsync(_repositoryPath, paths, Processed)
-                : _actions.StageAsync(_repositoryPath, paths, Processed));
-        }
-        finally
-        {
-            StageProgress.IsVisible = false;
-        }
-
-        void Processed(int count)
-            => Dispatcher.UIThread.Post(() => StageProgress.Value = Math.Min(StageProgress.Maximum - 1, StageProgress.Value + count));
-    }
+        => (staged ? ViewModel.UnstageCommand : ViewModel.StageCommand).Execute(null);
 
     // Upstream's StageAllAccordingToFilter and UnstageAllFiles: a filtered list stages or unstages the files it shows and
     // loses its filter.
     private void StageAll(bool staged)
     {
         FileListParts parts = staged ? _staged : _unstaged;
-        IEnumerable<FileChange> changes = IsFiltered(parts)
-            ? parts.Shown
-            : _repository.Changes.Where(change => change.Staged == staged);
-        List<string> paths =
-        [
-            .. changes
-                .Where(change => change.Kind != ChangeKind.Conflict)
-                .SelectMany(change => change.IndexPaths)
-        ];
+        IReadOnlyList<FileChange>? shown = IsFiltered(parts) ? [.. parts.Shown] : null;
         parts.Filter.Text = "";
-        if (paths.Count > 0)
-        {
-            Run(() => StageFilesAsync(staged, paths));
-        }
-    }
-
-    // As upstream's FormCommit: the "before commit" scripts can stop the commit; the "after commit" ones run once it is done.
-    private async Task<bool> CommitChangesAsync()
-    {
-        // Upstream's FormCommit questions: amend rewrites history, and a commit with no branch checked out (and no rebase
-        // under way) can be lost.
-        if (AmendCheck.IsChecked == true &&
-            !await ConfirmWindow.AskAsync(this, _preferences, Confirmation.Amend, Confirmations.AmendQuestion, "Amend",
-                "Amend commit"))
-        {
-            return false;
-        }
-
-        // Upstream's IsCommitMessageValid: each failed check of the commit message settings asks whether to go on.
-        foreach (string question in _useFormCommitMessage
-                     ? CommitMessageValidation.Questions(CommitMessageBox.Text ?? "", _preferences.CommitValidation)
-                     : [])
-        {
-            if (!await new ConfirmWindow(question, "Yes", CommitMessageValidation.Caption, cancelText: "No")
-                    .ShowDialog<bool>(this))
-            {
-                return false;
-            }
-        }
-
-        bool detached = _repository.CurrentBranch.Length == 0 && !_repository.IsRebasing;
-        if (detached &&
-            !await ConfirmWindow.AskAsync(this, _preferences, Confirmation.CommitWithoutBranch,
-                Confirmations.NotOnBranchQuestion, "Continue", "Not on a branch"))
-        {
-            return false;
-        }
-
-        ScriptHost scripts = new(this, _actions, runPlugin: _runPlugin);
-        if (!await scripts.RunEventAsync(ScriptEvent.BeforeCommit, _repositoryPath, []))
-        {
-            return false;
-        }
-
-        bool committed;
-        if (_useFormCommitMessage)
-        {
-            // As upstream: the typed message is kept in the settings, so the "Commit message" menu of any repository
-            // offers it.
-            _preferences.LastCommitMessage = CommitMessageBox.Text ?? "";
-
-            // As upstream: the template left as it was is no message, and its '#' lines are comments.
-            string message = CommitMessageBox.Text == _commitTemplate
-                ? ""
-                : CommitMessageFormat.Format(CommitMessageBox.Text ?? "", _preferences.EnsureCommitMessageSecondLineEmpty,
-                    usingCommitTemplate: _commitTemplate.Length > 0);
-            committed = await _actions.CommitAsync(_repositoryPath, message, AmendCheck.IsChecked == true,
-                SignOff, CommitAuthorBox.Text ?? "", Extras);
-        }
-        else
-        {
-            committed = await _actions.CommitWithEditorAsync(_repositoryPath, AmendCheck.IsChecked == true,
-                SignOff, CommitAuthorBox.Text ?? "", Extras);
-        }
-
-        if (committed)
-        {
-            _messageBeforeAmend = "";
-            CommitMessageBox.Text = "";
-            AmendCheck.IsChecked = false;
-            NoVerifyMenuItem.IsChecked = false;
-            SetCommitKind(CommitKind.Normal);
-            await _messages.ResetAsync(_repositoryPath);
-            await scripts.RunEventAsync(ScriptEvent.AfterCommit, _repositoryPath, []);
-        }
-
-        return committed;
-    }
-
-    private async Task CommitAsync()
-    {
-        bool unstagedLeft = _repository.Changes.Any(change => !change.Staged);
-        if (await CommitChangesAsync())
-        {
-            await StageInSuperprojectAsync();
-            CloseAfterCommit(unstagedLeft);
-        }
-    }
-
-    // Upstream's DoCommit: the window closes after each commit (CloseCommitDialogAfterCommit), or after the commit that
-    // leaves no unstaged changes (CloseCommitDialogAfterLastCommit).
-    private void CloseAfterCommit(bool unstagedLeft)
-    {
-        if (_preferences.CloseCommitDialogAfterCommit
-            || (!unstagedLeft && _preferences.CloseCommitDialogAfterLastCommit))
-        {
-            Close();
-        }
-    }
-
-    // Pushes the current branch only when the commit succeeded, to the remote the branch tracks. As upstream, with nothing
-    // to commit the button is "Push" and only pushes.
-    private async Task CommitAndPushAsync()
-    {
-        string branch = _repository.CurrentBranch;
-        bool unstagedLeft = _repository.Changes.Any(change => !change.Staged);
-        bool pushOnly = PushOnly;
-
-        // Read before the commit, which clears Amend. As upstream's FormCommit: an amended commit replaces the pushed one,
-        // so with CommitAndPushForcedWhenAmend it is pushed with force-with-lease.
-        bool forced = AmendCheck.IsChecked == true && _preferences.CommitAndPushForcedWhenAmend;
-        if (branch.Length == 0 || (!pushOnly && !await CommitChangesAsync()))
-        {
-            return;
-        }
-
-        string remote = _repository.TrackingRemote ?? DefaultRemote;
-
-        // As upstream, which pushes through its push dialog: a rejected push is offered a pull or a force push.
-        bool pushed = await new PushRejectedFlow(_actions, _preferences).PushAsync(() => this, _repositoryPath,
-            forced
-                ? new PushRequest(remote, branch, branch, ForcePushOptions.ForceWithLease, Track: false)
-                : new PushRequest(remote, branch, "", ForcePushOptions.DoNotForce, Track: true),
-            new PushOrigin(branch, branch, _repository.TrackingRemote));
-        if (pushed && pushOnly && _preferences.CloseCommitDialogAfterCommit)
-        {
-            Close();
-        }
-        else if (pushed && !pushOnly)
-        {
-            await StageInSuperprojectAsync();
-            CloseAfterCommit(unstagedLeft);
-        }
-    }
-
-    // Upstream's ResetChanges (GitUICommands.StartResetChangesDialog): the question is about the unstaged files in both cases,
-    // as upstream passes them for "Reset all changes" too.
-    private async Task ResetChangesAsync(bool onlyWorkTree)
-    {
-        List<FileChange> unstaged = [.. _repository.Changes.Where(change => !change.Staged)];
-        ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
-            hasExistingFiles: unstaged.Any(change => !IsNew(change)), hasNewFiles: unstaged.Any(IsNew));
-        if (action != ResetChangesAction.Cancel)
-        {
-            await _actions.ResetAllChangesAsync(_repositoryPath,
-                clean: action == ResetChangesAction.ResetAndDelete, onlyWorkTree);
-        }
-
-        return;
-
-        static bool IsNew(FileChange change) => change.Kind is ChangeKind.Untracked or ChangeKind.Added;
-    }
-
-    // Amend starts from the HEAD message; unchecking puts back what was typed before.
-    private async Task ToggleAmendAsync()
-    {
-        if (_restoringAmend)
-        {
-            _messageBeforeAmend = CommitMessageBox.Text ?? "";
-            return;
-        }
-
-        if (AmendCheck.IsChecked != true)
-        {
-            CommitMessageBox.Text = _messageBeforeAmend;
-            return;
-        }
-
-        _messageBeforeAmend = CommitMessageBox.Text ?? "";
-        try
-        {
-            CommitMessageBox.Text = await _repositoryService.GetHeadMessageAsync(_repositoryPath);
-        }
-        catch (Exception ex)
-        {
-            AmendCheck.IsChecked = false;
-            ShowError(ex.Message);
-        }
+        _ = ViewModel.StageAllAsync(staged, shown);
     }
 
     private MenuFlyout CommitTemplatesFlyout => (MenuFlyout)CommitTemplatesButton.Flyout!;
@@ -762,11 +433,7 @@ public partial class CommitWindow : Window
         CommitMessageFlyout.Items.Add(submodules);
         CommitMessageFlyout.Items.Add(onlyMine);
 
-        int maxCount = _preferences.CommitDialogNumberOfPreviousMessages;
-        IReadOnlyList<string> messages = PreviousCommitMessages.Merge(
-            await PreviousCommitMessages.ReadAsync(_repositoryPath, maxCount,
-                _preferences.CommitDialogShowOnlyMyMessages),
-            _preferences.LastCommitMessage, maxCount);
+        IReadOnlyList<string> messages = await ViewModel.PreviousMessagesAsync();
         if (opening != _messageMenuOpenings)
         {
             return;
@@ -784,9 +451,7 @@ public partial class CommitWindow : Window
     // Upstream's generateListOfChangesInSubmodulesChangesToolStripMenuItem_Click, for the staged changes.
     private async Task InsertSubmoduleChangesAsync()
     {
-        List<string> staged = [.. _repository.Changes.Where(change => change.Staged).Select(change => change.Path)];
-        string message = await PreviousCommitMessages.SubmoduleChangesAsync(_repositoryPath, staged);
-        if (message.Length > 0)
+        if (await ViewModel.SubmoduleChangesAsync() is { } message)
         {
             ReplaceMessage(message);
         }
@@ -823,7 +488,7 @@ public partial class CommitWindow : Window
                 MenuItem item = new() { Header = new TextBlock { Text = template.Name }, Icon = IconOf(template) };
                 item.Click += (_, _) =>
                 {
-                    CommitMessageBox.Text = CommitTemplates.Apply(template, _repository.CurrentBranch);
+                    ViewModel.ApplyTemplate(template);
                     CommitMessageBox.Focus();
                 };
                 CommitTemplatesFlyout.Items.Add(item);
@@ -919,7 +584,7 @@ public partial class CommitWindow : Window
         CommitMessageBox.Focus();
     }
 
-    // Upstream FormCommit_FormatAllText: the commit message settings shape the message while it is typed.
+    // Upstream FormCommit_FormatAllText: the commit message settings shape the message while it is typed, at the caret.
     private void FormatMessage()
     {
         CommitValidationOptions options = _preferences.CommitValidation;

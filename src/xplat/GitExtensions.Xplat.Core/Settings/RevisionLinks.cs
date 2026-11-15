@@ -96,7 +96,8 @@ public sealed class RevisionLinkEditor
             SearchInParts = { ExternalLinkDefinition.RevisionPart.Message },
             RemoteSearchInParts = { ExternalLinkDefinition.RemotePart.URL },
         };
-        return AddRange([definition])[0];
+        // Upstream adds no second definition of a name already listed: the one listed is selected again.
+        return AddRange([definition]) is [{ } added, ..] ? added : Items.First(item => item.Name == definition.Name);
     }
 
     /// <summary>

@@ -38,19 +38,19 @@ internal sealed class FontsSettingsTests
         window.Show();
         SettingsWindow settings = OpenSettings(window);
 
-        settings.FontBoxes.Keys.Should().Equal(AppFont.Application, AppFont.Commit, AppFont.Code, AppFont.Monospace);
-        (ComboBox codeFamily, NumericUpDown codeSize) = settings.FontBoxes[AppFont.Code];
-        codeFamily.SelectedItem.Should().Be("Courier New", "a stored family is listed even when it is not installed");
-        (codeSize.IsEnabled, codeSize.Value).Should().Be((true, 10m));
-        (ComboBox commitFamily, NumericUpDown commitSize) = settings.FontBoxes[AppFont.Commit];
-        commitFamily.SelectedItem.Should().Be(SettingsWindow.DefaultFontChoice);
-        commitSize.IsEnabled.Should().BeFalse();
-        settings.FontBoxes[AppFont.Monospace].Family.SelectedItem.Should().Be("No Such Font");
-        settings.FontStyleBoxes[AppFont.Monospace].Bold.IsChecked.Should().BeTrue();
-        settings.FontStyleBoxes[AppFont.Commit].Bold.IsEnabled.Should().BeFalse();
-        settings.FontStyleBoxes[AppFont.Code].Italic.IsChecked = true;
+        settings.ViewModel.Fonts.Select(font => font.Font).Should()
+            .Equal(AppFont.Application, AppFont.Commit, AppFont.Code, AppFont.Monospace);
+        FontChoice code = Font(settings, AppFont.Code);
+        code.Family.Should().Be("Courier New", "a stored family is listed even when it is not installed");
+        (code.IsChosen, code.Size).Should().Be((true, 10m));
+        FontChoice commit = Font(settings, AppFont.Commit);
+        commit.Family.Should().Be(SettingsWindow.DefaultFontChoice);
+        commit.IsChosen.Should().BeFalse("its size and styles are off");
+        Font(settings, AppFont.Monospace).Family.Should().Be("No Such Font");
+        Font(settings, AppFont.Monospace).Bold.Should().BeTrue();
+        code.Italic = true;
 
-        codeSize.Value = 12;
+        code.Size = 12;
         Save(window, settings);
 
         TestAppBuilder.Preferences.GetFont(AppFont.Code).Should().Be(new FontSetting("Courier New", 12, Italic: true));
@@ -83,7 +83,7 @@ internal sealed class FontsSettingsTests
         (author.FontFamily.Name, author.FontSize).Should().Be(("Arial", 16), "the window takes Fluent's font resources");
 
         SettingsWindow settings = OpenSettings(window);
-        settings.FontBoxes[AppFont.Commit].Family.SelectedItem = SettingsWindow.DefaultFontChoice;
+        Font(settings, AppFont.Commit).Family = SettingsWindow.DefaultFontChoice;
         Save(window, settings);
 
         TestAppBuilder.Preferences.GetFont(AppFont.Commit).Should().BeNull();
@@ -98,6 +98,9 @@ internal sealed class FontsSettingsTests
         WaitUntil(() => settings.IsGitConfigLoaded);
         return settings;
     }
+
+    private static FontChoice Font(SettingsWindow settings, AppFont font)
+        => settings.ViewModel.Fonts.Single(choice => choice.Font == font);
 
     private static void Save(MainWindow window, SettingsWindow settings)
     {

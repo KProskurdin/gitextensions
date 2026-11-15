@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using GitCommands.Settings;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Settings;
@@ -10,21 +9,18 @@ namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  The Build server integration tab: the new shell's version of upstream's <c>BuildServerIntegrationSettingsPage</c>, on
-///  the repository's settings, with the build server plugin's own settings control.
+///  the repository's settings. Its values are <see cref="BuildServerPageViewModel"/>'s; the build server plugin's own
+///  settings control, a view the plugin makes, is shown here for the chosen type.
 /// </summary>
 public partial class SettingsWindow
 {
-    // Upstream's _noneItem.
-    private const string NoBuildServer = "None";
-
     // Upstream's BuildServerSettings path; the type's own settings are under "BuildServer.<type>".
     private const string BuildServerSettingsPath = "BuildServer";
 
     private IBuildServerSettingsUserControl? _buildServerControl;
     private string? _buildServerControlType;
-    private bool _buildServerPageShown;
-    private bool _showingBuildServerValues;
-    private SettingLevel _buildServerLevel = SettingLevel.Effective;
+
+    private BuildServerPageViewModel BuildServerPage => ViewModel.BuildServerPage;
 
     /// <summary>
     ///  The build server plugin's settings control on the tab, or null.
@@ -34,66 +30,34 @@ public partial class SettingsWindow
     /// <summary>
     ///  True once the build server types are listed.
     /// </summary>
-    public bool IsBuildServerPageLoaded => _buildServerPageShown;
+    public bool IsBuildServerPageLoaded => BuildServerPage.IsLoaded;
 
     // Upstream's Init and SettingsToPage: the types are read off the UI thread, since the plugins may still be loading.
     private void ShowBuildServerPage()
     {
-        EnableBuildServerCheck.IsEnabled = BuildServerTypeBox.IsEnabled = false;
-        BuildServerNoRepositoryText.IsVisible = _repositoryPath is null;
-        UiActions.Run(ShowBuildServerTypesAsync, ex => ErrorText.Text = ex.Message);
-    }
-
-    private async Task ShowBuildServerTypesAsync()
-    {
-        IReadOnlyList<BuildServerType> types = await Task.Run(() => AppServices.BuildServers.Types);
-        List<ComboBoxItem> items = [new() { Content = NoBuildServer }];
-        items.AddRange(types.Select(type => new ComboBoxItem { Content = type.DisplayName, Tag = type.Name }));
-        BuildServerTypeBox.ItemsSource = items;
-        ShowBuildServerValues();
-        ShowBuildResultPageCheck.IsEnabled = true;
-        EnableBuildServerCheck.IsEnabled = BuildServerTypeBox.IsEnabled = true;
-        BuildServerTypeBox.SelectionChanged += (_, _) =>
+        BuildServerPage.TypeChosen += (_, _) =>
+            UiActions.Run(ShowBuildServerControlAsync, ex => ViewModel.ErrorText = ex.Message);
+        UiActions.Run(async () =>
         {
-            if (!_showingBuildServerValues)
-            {
-                UiActions.Run(ShowBuildServerControlAsync, ex => ErrorText.Text = ex.Message);
-            }
-        };
-        await ShowBuildServerControlAsync();
-        _buildServerPageShown = true;
-    }
-
-    // Upstream's SettingsToPage, from the settings of the level shown.
-    private void ShowBuildServerValues()
-    {
-        SettingsSource settings = BuildServerSettingsSource;
-        string? current = BuildServerSettings.ServerName[settings];
-        _showingBuildServerValues = true;
-        BuildServerTypeBox.SelectedItem = BuildServerTypeBox.Items.OfType<ComboBoxItem>()
-            .FirstOrDefault(item => Equals(item.Tag, current)) ?? BuildServerTypeBox.Items[0];
-        _showingBuildServerValues = false;
-        EnableBuildServerCheck.IsChecked = BuildServerSettings.IntegrationEnabled[settings];
-        ShowBuildResultPageCheck.IsChecked = BuildServerSettings.ShowBuildResultPage[settings];
+            await BuildServerPage.LoadAsync();
+            await ShowBuildServerControlAsync();
+        }, ex => ViewModel.ErrorText = ex.Message);
     }
 
     // As upstream's DistributedSettingsPage.SetCurrentSettings: the page's values go to the level they were edited at, and
     // the page shows the chosen level.
     private void ChangeBuildServerLevel(SettingLevel level)
     {
-        if (!_buildServerPageShown)
+        if (!BuildServerPage.IsLoaded)
         {
-            _buildServerLevel = level;
+            BuildServerPage.SetLevel(level);
             return;
         }
 
         SaveBuildServerPage();
-        _buildServerLevel = level;
-        ShowBuildServerValues();
-        UiActions.Run(ShowBuildServerControlAsync, ex => ErrorText.Text = ex.Message);
+        BuildServerPage.ShowLevel(level);
+        UiActions.Run(ShowBuildServerControlAsync, ex => ViewModel.ErrorText = ex.Message);
     }
-
-    private string? SelectedBuildServerType => (BuildServerTypeBox.SelectedItem as ComboBoxItem)?.Tag as string;
 
     // Upstream's ActivateBuildServerSettingsControl: the plugin's control for the chosen type, given the repository's name
     // and remotes, and loaded from that type's settings.
@@ -102,13 +66,14 @@ public partial class SettingsWindow
         _buildServerControl = null;
         _buildServerControlType = null;
         BuildServerSettingsPanel.Content = null;
-        if (SelectedBuildServerType is not { } type || _repositoryPath is not { } repositoryPath)
+        if (BuildServerPage.SelectedType?.Name is not { } type || _repositoryPath is not { } repositoryPath)
         {
             return;
         }
 
         IReadOnlyList<Remote> remotes = await RevisionLinkTemplates.LoadRemotesAsync(repositoryPath);
-        if (type != SelectedBuildServerType || AppServices.BuildServers.CreateSettingsControl(type) is not { } control)
+        if (type != BuildServerPage.SelectedType?.Name
+            || AppServices.BuildServers.CreateSettingsControl(type) is not { } control)
         {
             return;
         }
@@ -123,27 +88,15 @@ public partial class SettingsWindow
         BuildServerSettingsPanel.Content = control;
     }
 
-    // Upstream's PageToSettings: an undecided check box stores nothing, so a lower level or the detection decides. The
-    // effective settings are shown read-only, so nothing is stored from them.
+    // The page's values, then the plugin control's settings of its type, at the level shown.
     private void SaveBuildServerPage()
     {
-        if (!_buildServerPageShown || _buildServerLevel == SettingLevel.Effective)
-        {
-            return;
-        }
-
-        SettingsSource settings = BuildServerSettingsSource;
-        BuildServerSettings.ServerName[settings] = SelectedBuildServerType;
-        BuildServerSettings.IntegrationEnabled[settings] = EnableBuildServerCheck.IsChecked;
-        BuildServerSettings.ShowBuildResultPage[settings] = ShowBuildResultPageCheck.IsChecked;
-        if (_buildServerControl is not null && _buildServerControlType is not null)
+        if (BuildServerPage.Save() && _buildServerControl is not null && _buildServerControlType is not null)
         {
             _buildServerControl.SaveSettings(SettingsOf(_buildServerControlType));
         }
     }
 
-    private SettingsSource BuildServerSettingsSource => DistributedSettingsAt(_buildServerLevel).Settings;
-
     private SettingsSource SettingsOf(string type)
-        => new SettingsPath(BuildServerSettingsSource, new SettingsPath(null, BuildServerSettingsPath).PathFor(type));
+        => new SettingsPath(BuildServerPage.Settings, new SettingsPath(null, BuildServerSettingsPath).PathFor(type));
 }

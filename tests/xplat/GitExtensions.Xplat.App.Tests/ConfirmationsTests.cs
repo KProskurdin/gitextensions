@@ -40,11 +40,11 @@ internal sealed class ConfirmationsTests
         WaitUntil(() => settings.IsGitConfigLoaded);
 
         // Upstream's defaults: every question is asked except the left panel checkout.
-        settings.ConfirmationChecks.Where(pair => pair.Value.IsChecked == true).Select(pair => pair.Key).Should()
+        settings.ConfirmationChecks.Where(pair => pair.Value.Asks).Select(pair => pair.Key).Should()
             .BeEquivalentTo(Enum.GetValues<Confirmation>().Where(c => c != Confirmation.BranchCheckout));
-        settings.ConfirmationChecks[Confirmation.StashDrop].Content.Should().Be("Drop stash");
-        settings.ConfirmationChecks[Confirmation.StashDrop].IsChecked = false;
-        settings.ConfirmationChecks[Confirmation.BranchCheckout].IsChecked = true;
+        settings.ConfirmationChecks[Confirmation.StashDrop].Label.Should().Be("Drop stash");
+        settings.ConfirmationChecks[Confirmation.StashDrop].Asks = false;
+        settings.ConfirmationChecks[Confirmation.BranchCheckout].Asks = true;
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 

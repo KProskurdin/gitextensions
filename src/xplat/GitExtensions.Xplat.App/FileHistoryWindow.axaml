@@ -3,10 +3,12 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
         x:Class="GitExtensions.Xplat.App.FileHistoryWindow"
-        Title="File History"
+        x:DataType="core:FileHistoryViewModel"
+        Title="{Binding Title}"
         Width="748" Height="444" MinWidth="299" MinHeight="198" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormFileHistory: the toolstrip (upstream's FilterToolBar, then Load, full history, blame options, git
-       command log), the file's revision grid with its menu, and below it the Commit, Diff, View and Blame tabs. -->
+       command log), the file's revision grid with its menu, and below it the Commit, Diff, View and Blame tabs. Bound to
+       FileHistoryViewModel (PLAN.md principle 6). -->
   <Grid RowDefinitions="Auto,*,5,*">
     <WrapPanel Orientation="Horizontal" Margin="2">
       <local:FilterToolBar x:Name="ToolStripFilters" />
@@ -15,8 +17,10 @@
         <Image Source="{local:UpstreamImage ReloadRevisions}" Width="16" Height="16" />
         <SplitButton.Flyout>
           <MenuFlyout>
-            <MenuItem x:Name="LoadHistoryOnShowMenuItem" Header="Load history on show" ToggleType="CheckBox" />
-            <MenuItem x:Name="LoadBlameOnShowMenuItem" Header="Load blame on show" ToggleType="CheckBox" />
+            <MenuItem x:Name="LoadHistoryOnShowMenuItem" IsChecked="{Binding LoadHistoryOnShow, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                      CommandParameter="{x:Static core:FileHistoryOption.LoadHistoryOnShow}" Header="Load history on show" ToggleType="CheckBox" />
+            <MenuItem x:Name="LoadBlameOnShowMenuItem" IsChecked="{Binding LoadBlameOnShow, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                      CommandParameter="{x:Static core:FileHistoryOption.LoadBlameOnShow}" Header="Load blame on show" ToggleType="CheckBox" />
           </MenuFlyout>
         </SplitButton.Flyout>
       </SplitButton>
@@ -24,12 +28,14 @@
         <Image Source="{local:UpstreamImage FileHistory}" Width="16" Height="16" />
         <DropDownButton.Flyout>
           <MenuFlyout>
-            <MenuItem x:Name="ShowFullHistoryMenuItem" Header="Show full history" ToggleType="CheckBox" />
-            <MenuItem x:Name="SimplifyMergesMenuItem" Header="Simplify merges" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowFullHistoryMenuItem" IsChecked="{Binding FullHistory, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                      CommandParameter="{x:Static core:FileHistoryOption.FullHistory}" Header="Show full history" ToggleType="CheckBox" />
+            <MenuItem x:Name="SimplifyMergesMenuItem" IsChecked="{Binding SimplifyMerges, Mode=OneWay}" Command="{Binding ToggleOptionCommand}"
+                      CommandParameter="{x:Static core:FileHistoryOption.SimplifyMerges}" IsEnabled="{Binding FullHistory}" Header="Simplify merges" ToggleType="CheckBox" />
           </MenuFlyout>
         </DropDownButton.Flyout>
       </DropDownButton>
-      <DropDownButton x:Name="BlameOptionsButton" Classes="tool" ToolTip.Tip="Blame options">
+      <DropDownButton x:Name="BlameOptionsButton" IsVisible="{Binding Dialog.HasBlame}" Classes="tool" ToolTip.Tip="Blame options">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Image Source="{local:UpstreamImage Blame}" Width="16" Height="16" />
           <TextBlock Text="Blame options" VerticalAlignment="Center" />
@@ -37,18 +43,28 @@
         <DropDownButton.Flyout>
           <MenuFlyout>
             <MenuItem Header="Blame settings:" IsEnabled="False" />
-            <MenuItem x:Name="IgnoreWhitespaceMenuItem" Header="Ignore whitespace" ToggleType="CheckBox" />
-            <MenuItem x:Name="DetectMoveInFileMenuItem" Header="Detect move and copy in this file" ToggleType="CheckBox" />
-            <MenuItem x:Name="DetectMoveInAllFilesMenuItem" Header="Detect move and copy in all files" ToggleType="CheckBox" />
+            <MenuItem x:Name="IgnoreWhitespaceMenuItem" IsChecked="{Binding BlameOptions.IgnoreWhitespace, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.IgnoreWhitespace}" Header="Ignore whitespace" ToggleType="CheckBox" />
+            <MenuItem x:Name="DetectMoveInFileMenuItem" IsChecked="{Binding BlameOptions.DetectMoveInFile, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.DetectMoveInFile}" Header="Detect move and copy in this file" ToggleType="CheckBox" />
+            <MenuItem x:Name="DetectMoveInAllFilesMenuItem" IsChecked="{Binding BlameOptions.DetectMoveInAllFiles, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.DetectMoveInAllFiles}" Header="Detect move and copy in all files" ToggleType="CheckBox" />
             <Separator />
             <MenuItem Header="Display result settings:" IsEnabled="False" />
-            <MenuItem x:Name="DisplayAuthorFirstMenuItem" Header="Display author first" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowAuthorMenuItem" Header="Show author" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Show author date" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowAuthorTimeMenuItem" Header="Show author time" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowLineNumbersMenuItem" Header="Show line numbers" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowOriginalFilePathMenuItem" Header="Show original file path" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowAuthorAvatarMenuItem" Header="Show author avatar" ToggleType="CheckBox" />
+            <MenuItem x:Name="DisplayAuthorFirstMenuItem" IsChecked="{Binding BlameOptions.DisplayAuthorFirst, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.DisplayAuthorFirst}" Header="Display author first" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorMenuItem" IsChecked="{Binding BlameOptions.ShowAuthor, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowAuthor}" Header="Show author" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorDateMenuItem" IsChecked="{Binding BlameOptions.ShowAuthorDate, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowAuthorDate}" Header="Show author date" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorTimeMenuItem" IsChecked="{Binding BlameOptions.ShowAuthorTime, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowAuthorTime}" IsEnabled="{Binding BlameOptions.ShowAuthorDate}" Header="Show author time" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowLineNumbersMenuItem" IsChecked="{Binding BlameOptions.ShowLineNumbers, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowLineNumbers}" Header="Show line numbers" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowOriginalFilePathMenuItem" IsChecked="{Binding BlameOptions.ShowOriginalFilePath, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowOriginalFilePath}" Header="Show original file path" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowAuthorAvatarMenuItem" IsChecked="{Binding BlameOptions.ShowAuthorAvatar, Mode=OneWay}"
+                      Command="{Binding ToggleBlameOptionCommand}" CommandParameter="{x:Static core:BlameOption.ShowAuthorAvatar}" Header="Show author avatar" ToggleType="CheckBox" />
           </MenuFlyout>
         </DropDownButton.Flyout>
       </DropDownButton>
@@ -56,26 +72,28 @@
         <Image Source="{local:UpstreamImage GitCommandLog}" Width="16" Height="16" />
       </Button>
     </WrapPanel>
-    <ListBox x:Name="HistoryList" Grid.Row="1" Classes="revisionGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource RevisionRowTemplate}"
-             IsVisible="False">
+    <ListBox x:Name="HistoryList" ItemsSource="{Binding Commits.VisibleRows}" Grid.Row="1" Classes="revisionGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource RevisionRowTemplate}"
+             IsVisible="{Binding IsHistoryVisible}">
       <ListBox.ContextMenu>
         <ContextMenu x:Name="HistoryContextMenu">
           <!-- Upstream's CopyContextMenuItem, filled when the menu opens. -->
-          <MenuItem x:Name="CopyToClipboardMenuItem" Header="Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
+          <MenuItem x:Name="CopyToClipboardMenuItem" IsEnabled="{Binding Menu.CopyToClipboard}" Header="Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}">
             <Separator />
           </MenuItem>
           <Separator />
-          <MenuItem x:Name="OpenWithDifftoolMenuItem" Header="Open with difftool" Icon="{local:UpstreamIcon Diff}" />
-          <MenuItem x:Name="DiffToolRemoteLocalMenuItem" Header="Difftool selected &lt; - &gt; local" />
-          <MenuItem x:Name="SaveAsMenuItem" Header="Save as" Icon="{local:UpstreamIcon SaveAs}" />
+          <MenuItem x:Name="OpenWithDifftoolMenuItem" IsEnabled="{Binding Menu.OpenWithDifftool}" Header="Open with difftool" Icon="{local:UpstreamIcon Diff}" />
+          <MenuItem x:Name="DiffToolRemoteLocalMenuItem" IsEnabled="{Binding Menu.DiffToolRemoteLocal}" Header="Difftool selected &lt; - &gt; local" />
+          <MenuItem x:Name="SaveAsMenuItem" Header="Save as" IsEnabled="{Binding Menu.SaveAs}"
+                    IsVisible="{Binding CanSaveFile}" Command="{Binding SaveAsCommand}" Icon="{local:UpstreamIcon SaveAs}" />
           <Separator />
-          <MenuItem x:Name="ManipulateCommitMenuItem" Header="Manipulate commit">
-            <MenuItem x:Name="RevertCommitMenuItem" Header="Revert commit" Icon="{local:UpstreamIcon RevertCommit}" />
-            <MenuItem x:Name="CherryPickMenuItem" Header="Cherry pick commit" Icon="{local:UpstreamIcon CherryPick}" />
+          <MenuItem x:Name="ManipulateCommitMenuItem" Header="Manipulate commit" IsEnabled="{Binding Menu.ManipulateCommit}">
+            <MenuItem x:Name="RevertCommitMenuItem" Header="Revert commit" Command="{Binding RevertCommand}" Icon="{local:UpstreamIcon RevertCommit}" />
+            <MenuItem x:Name="CherryPickMenuItem" Header="Cherry pick commit" Command="{Binding CherryPickCommand}" Icon="{local:UpstreamIcon CherryPick}" />
           </MenuItem>
           <Separator />
-          <MenuItem x:Name="FollowRenamesMenuItem" Header="Detect and follow renames" ToggleType="CheckBox" />
-          <MenuItem x:Name="FollowExactRenamesMenuItem" Header="Detect and follow - exact renames and copies only"
+          <MenuItem x:Name="FollowRenamesMenuItem" IsChecked="{Binding FollowRenames, Mode=OneWay}" Command="{Binding ToggleOptionCommand}" CommandParameter="{x:Static core:FileHistoryOption.FollowRenames}" Header="Detect and follow renames" ToggleType="CheckBox" />
+          <MenuItem x:Name="FollowExactRenamesMenuItem" IsChecked="{Binding ExactRenamesOnly, Mode=OneWay}" IsEnabled="{Binding FollowRenames}"
+                    Command="{Binding ToggleOptionCommand}" CommandParameter="{x:Static core:FileHistoryOption.ExactRenamesOnly}" Header="Detect and follow - exact renames and copies only"
                     ToggleType="CheckBox" />
           <!-- Upstream's FormBrowseMenus.InsertRevisionGridMainMenuItems: the grid's Navigate and View menus. -->
           <Separator />
@@ -146,18 +164,18 @@
       <TextBlock x:Name="QuickSearchText" FontWeight="Bold" FontSize="14" />
     </Border>
     <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
-    <TabControl x:Name="Tabs" Grid.Row="3" Padding="0,4,0,0">
-      <TabItem x:Name="CommitTab">
+    <TabControl x:Name="Tabs" Grid.Row="3" SelectedIndex="{Binding SelectedTabIndex}" Padding="0,4,0,0">
+      <TabItem x:Name="CommitTab" IsVisible="{Binding IsCommitTabVisible}">
         <TabItem.Header>
           <StackPanel Classes="tabHeader">
             <Image Source="{local:UpstreamImage CommitSummary}" />
-            <TextBlock x:Name="CommitTabText" Text="Commit" />
+            <TextBlock x:Name="CommitTabText" Text="{Binding CommitTabText}" />
           </StackPanel>
         </TabItem.Header>
         <!-- Upstream's CommitDiff: the commit's information, its changed files and the selected one's diff. -->
         <local:CommitDiffView x:Name="CommitDiffPanel" />
       </TabItem>
-      <TabItem x:Name="DiffTab">
+      <TabItem x:Name="DiffTab" IsVisible="{Binding IsDiffTabVisible}">
         <TabItem.Header>
           <StackPanel Classes="tabHeader">
             <Image Source="{local:UpstreamImage Diff}" />
@@ -166,7 +184,7 @@
         </TabItem.Header>
         <local:DiffView x:Name="Diff" />
       </TabItem>
-      <TabItem x:Name="ViewTab">
+      <TabItem x:Name="ViewTab" IsVisible="{Binding IsViewTabVisible}">
         <TabItem.Header>
           <StackPanel Classes="tabHeader">
             <Image Source="{local:UpstreamImage ViewFile}" />
@@ -175,7 +193,7 @@
         </TabItem.Header>
         <local:DiffView x:Name="View" />
       </TabItem>
-      <TabItem x:Name="BlameTab">
+      <TabItem x:Name="BlameTab" IsVisible="{Binding IsBlameTabVisible}">
         <TabItem.Header>
           <StackPanel Classes="tabHeader">
             <Image Source="{local:UpstreamImage Blame}" />

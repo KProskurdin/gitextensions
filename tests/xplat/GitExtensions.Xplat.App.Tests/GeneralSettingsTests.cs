@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitCommands;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Settings;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;

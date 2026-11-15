@@ -123,7 +123,7 @@ public partial class SettingsWindow
             }
         }
 
-        foreach (object plugin in PluginPages())
+        foreach (object plugin in ViewModel.PluginsPage.Pages)
         {
             nodes[SettingsPageTree.PluginsGroup].Add(new SettingsPageNode(PluginsTab.Name + ":" + plugin,
                 plugin.ToString()!,
@@ -218,7 +218,7 @@ public partial class SettingsWindow
         _shownPage = node;
         if (node.Plugin is { } plugin)
         {
-            ShowPlugin(plugin);
+            ViewModel.PluginsPage.Show(plugin);
         }
 
         _showingPage = true;
@@ -264,7 +264,7 @@ public partial class SettingsWindow
     private IEnumerable<string> PageTexts(SettingsPageNode node)
         => node.Plugin switch
         {
-            PluginOption { Plugin: var plugin } => PluginEditor(plugin).Rows
+            PluginOption { Plugin: var plugin } => ViewModel.PluginsPage.EditorOf(plugin).Rows
                 .SelectMany(row => (string?[])[row.Caption, row.Text]).OfType<string>(),
             SkippedPluginOption { File: var file } => [file.FileName, file.Reason],
             _ => node.Page?.Content is ILogical content ? ControlTexts(content) : [],

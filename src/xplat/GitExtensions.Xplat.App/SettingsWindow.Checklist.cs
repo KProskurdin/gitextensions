@@ -31,7 +31,7 @@ public partial class SettingsWindow
 
     private void ShowChecklistPage()
         => ChecklistRescanButton.Click +=
-            (_, _) => UiActions.Run(SaveAndRescanAsync, ex => ErrorText.Text = ex.Message);
+            (_, _) => UiActions.Run(SaveAndRescanAsync, ex => ViewModel.ErrorText = ex.Message);
 
     // Upstream's OnPageShown and the instant save notice of FormSettings.
     private void OnPageShown(TabItem page)
@@ -39,7 +39,7 @@ public partial class SettingsWindow
         InstantSaveNoticeText.IsVisible = page == ChecklistTab;
         if (page == ChecklistTab)
         {
-            UiActions.Run(RunChecklistAsync, ex => ErrorText.Text = ex.Message);
+            UiActions.Run(RunChecklistAsync, ex => ViewModel.ErrorText = ex.Message);
         }
     }
 
@@ -125,7 +125,7 @@ public partial class SettingsWindow
                 }
                 else
                 {
-                    UiActions.Run(SaveAndRescanAsync, ex => ErrorText.Text = ex.Message);
+                    UiActions.Run(SaveAndRescanAsync, ex => ViewModel.ErrorText = ex.Message);
                 }
 
                 break;
@@ -133,11 +133,11 @@ public partial class SettingsWindow
                 GoToTab(SshTab);
                 break;
             case ChecklistItem.Language:
-                UiActions.Run(ChooseLanguageAsync, ex => ErrorText.Text = ex.Message);
+                UiActions.Run(ChooseLanguageAsync, ex => ViewModel.ErrorText = ex.Message);
                 break;
             case ChecklistItem.CredentialWinStore:
                 UiActions.Run(() => Launcher.LaunchUriAsync(new Uri(SettingsChecklist.CredentialWinStoreHelp)),
-                    ex => ErrorText.Text = ex.Message);
+                    ex => ViewModel.ErrorText = ex.Message);
                 break;
         }
     }
@@ -149,7 +149,7 @@ public partial class SettingsWindow
     private async Task ChooseLanguageAsync()
     {
         await new ChooseTranslationWindow(_preferences).ShowDialog(this);
-        ShowLanguages(_preferences.Translation);
+        ViewModel.ShowLanguages(_preferences.Translation);
         await SaveAndRescanAsync();
     }
 
@@ -232,12 +232,12 @@ public partial class SettingsWindow
     }
 
     private async Task<string?> GlobalAsync(string key)
-        => await _gitConfig.GetAsync(ConfigScope.Global, key) is { Length: > 0 } value ? value : null;
+        => await AppServices.GitConfig.GetAsync(ConfigScope.Global, key) is { Length: > 0 } value ? value : null;
 
     // The repository's value, or the global one, as git takes them (the system level aside).
     private async Task<string?> EffectiveAsync(string key)
         => _repositoryPath is not null &&
-           await _gitConfig.GetAsync(ConfigScope.Local, key, _repositoryPath) is { Length: > 0 } local
+           await AppServices.GitConfig.GetAsync(ConfigScope.Local, key, _repositoryPath) is { Length: > 0 } local
             ? local
             : await GlobalAsync(key);
 

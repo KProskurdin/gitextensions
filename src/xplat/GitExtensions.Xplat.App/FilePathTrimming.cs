@@ -40,19 +40,3 @@ public static class FilePathTrimming
         }
     }
 }
-
-/// <summary>
-///  One of upstream's truncation choices, named as upstream's list names them.
-/// </summary>
-public sealed record TruncatePathOption(TruncatePathMethod Method, string Text)
-{
-    public static IReadOnlyList<TruncatePathOption> All { get; } =
-    [
-        new(TruncatePathMethod.None, "None"),
-        new(TruncatePathMethod.Compact, "Compact"),
-        new(TruncatePathMethod.TrimStart, "Trim start"),
-        new(TruncatePathMethod.FileNameOnly, "Filename only"),
-    ];
-
-    public override string ToString() => Text;
-}

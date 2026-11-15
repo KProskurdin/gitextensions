@@ -143,14 +143,15 @@ internal sealed class BuildServerUiTests
         WaitUntil(() => settingsWindow.IsGitConfigLoaded && settingsWindow.IsBuildServerPageLoaded);
 
         ComboBox types = Find<ComboBox>(settingsWindow, "BuildServerTypeBox");
-        types.Items.OfType<ComboBoxItem>().Select(item => item.Content).Should().Equal("None", Jenkins);
+        settingsWindow.ViewModel.BuildServerPage.Types.Select(type => type.DisplayName).Should()
+            .Equal("None", Jenkins);
         Find<CheckBox>(settingsWindow, "EnableBuildServerCheck").IsChecked.Should().BeNull("nothing is configured");
         Find<TabControl>(settingsWindow, "Tabs").SelectedItem = Find<TabItem>(settingsWindow, "BuildServerTab");
         Dispatcher.UIThread.RunJobs();
         types.IsEffectivelyEnabled.Should().BeFalse("upstream shows the effective settings read-only");
         settingsWindow.SourceHeaderOf(Find<TabItem>(settingsWindow, "BuildServerTab")).Level = SettingLevel.Local;
         types.IsEffectivelyEnabled.Should().BeTrue();
-        types.SelectedItem = types.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, Jenkins));
+        types.SelectedItem = settingsWindow.ViewModel.BuildServerPage.Types.Single(type => type.Name == Jenkins);
         WaitUntil(() => settingsWindow.BuildServerControl is not null);
         Control control = (Control)settingsWindow.BuildServerControl!;
         control.FindControl<TextBox>("JenkinsProjectName")!.Text.Should().Be(Path.GetFileName(_repo.Path),

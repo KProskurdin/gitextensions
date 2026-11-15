@@ -2,8 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:scripts="using:GitExtensions.Xplat.Core.Scripts"
         xmlns:settings="using:GitExtensions.Xplat.Core.Settings"
+        xmlns:plugins="using:GitExtensions.Xplat.Core.Plugins"
         xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.SettingsWindow"
+        x:DataType="settings:SettingsViewModel"
         Title="Settings"
         Width="958" Height="646" WindowStartupLocation="CenterOwner">
   <Window.Styles>
@@ -40,14 +42,14 @@
       </TreeView>
     </DockPanel>
     <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="0,6,3,3">
-      <TextBlock x:Name="ErrorText" Classes="errorText" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
+      <TextBlock x:Name="ErrorText" Text="{Binding ErrorText}" Classes="errorText" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
       <!-- Upstream's labelInstantSaveNotice, shown on the pages that save at once (the Checklist). -->
       <TextBlock x:Name="InstantSaveNoticeText" Text="{x:Static settings:SettingsChecklist.InstantSaveNotice}"
                  VerticalAlignment="Center" TextAlignment="Right" IsVisible="False" />
       <!-- Upstream's buttons in its order. -->
-      <Button x:Name="SaveButton" Content="OK" IsDefault="True" MinWidth="84" />
-      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" MinWidth="88" />
-      <Button x:Name="ApplyButton" Content="Apply" MinWidth="92" />
+      <Button x:Name="SaveButton" Command="{Binding OkCommand}" Content="OK" IsDefault="True" MinWidth="84" IsEnabled="{Binding !GitConfigPage.IsLoading}" />
+      <Button x:Name="CancelButton" Command="{Binding CancelCommand}" Content="Cancel" IsCancel="True" MinWidth="88" />
+      <Button x:Name="ApplyButton" Command="{Binding ApplyCommand}" Content="Apply" MinWidth="92" IsEnabled="{Binding !GitConfigPage.IsLoading}" />
     </StackPanel>
     <TabControl x:Name="Tabs" Grid.Row="0" Grid.Column="2" Padding="0">
       <!-- Upstream's "Checklist" page, on the Git Extensions group's node: a row per check, green when the setting is
@@ -73,15 +75,15 @@
       <TabItem x:Name="ColorsTab" Header="Colors">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Revision graph" FontWeight="SemiBold" />
-          <CheckBox x:Name="MulticolorBranches" Content="Multicolor branches" />
-          <CheckBox x:Name="chkDrawAlternateBackColor" Content="Draw alternate background" />
-          <CheckBox x:Name="DrawNonRelativesGray" Content="Draw non relatives graph gray" />
-          <CheckBox x:Name="DrawNonRelativesTextGray" Content="Draw non relatives text gray" />
-          <CheckBox x:Name="chkHighlightAuthored" Content="Highlight authored revisions" />
-          <CheckBox x:Name="chkFillRefLabels" Content="Fill git ref labels" />
+          <CheckBox x:Name="MulticolorBranches" IsChecked="{Binding MulticolorBranches}" Content="Multicolor branches" />
+          <CheckBox x:Name="chkDrawAlternateBackColor" IsChecked="{Binding RevisionGraphDrawAlternateBackColor}" Content="Draw alternate background" />
+          <CheckBox x:Name="DrawNonRelativesGray" IsChecked="{Binding RevisionGraphDrawNonRelativesGray}" Content="Draw non relatives graph gray" />
+          <CheckBox x:Name="DrawNonRelativesTextGray" IsChecked="{Binding RevisionGraphDrawNonRelativesTextGray}" Content="Draw non relatives text gray" />
+          <CheckBox x:Name="chkHighlightAuthored" IsChecked="{Binding HighlightAuthoredRevisions}" Content="Highlight authored revisions" />
+          <CheckBox x:Name="chkFillRefLabels" IsChecked="{Binding FillRefLabels}" Content="Fill git ref labels" />
           <TextBlock Text="Theme" FontWeight="SemiBold" Margin="0,8,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <ComboBox x:Name="ThemeBox" MinWidth="260" />
+            <ComboBox x:Name="ThemeBox" ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme}" MinWidth="260" />
             <!-- Upstream's sbOpenThemeFolder: the whole button drops down the two theme folders, where the user adds a theme
                  (upstream has no theme editor since 2019). -->
             <DropDownButton x:Name="sbOpenThemeFolder">
@@ -97,33 +99,33 @@
               </DropDownButton.Flyout>
             </DropDownButton>
           </StackPanel>
-          <CheckBox x:Name="ColorblindCheck" Content="Colorblind" />
+          <CheckBox x:Name="ColorblindCheck" IsChecked="{Binding Colorblind}" Content="Colorblind" />
           <TextBlock Text="Shared with Git Extensions for Windows: the same theme files (Themes folder) and setting." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
       <TabItem x:Name="AppearanceTab" Header="Appearance">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="General" FontWeight="SemiBold" />
-          <CheckBox x:Name="RelativeDateCheck" Content="Show relative date instead of full date" />
-          <CheckBox x:Name="ShowRepoBranchCheck" Content="Show current branch names in the dashboard and the recent repositories dropdown menu" />
+          <CheckBox x:Name="RelativeDateCheck" IsChecked="{Binding RelativeDate}" Content="Show relative date instead of full date" />
+          <CheckBox x:Name="ShowRepoBranchCheck" IsChecked="{Binding ShowRepoCurrentBranch}" Content="Show current branch names in the dashboard and the recent repositories dropdown menu" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Truncate long filenames" VerticalAlignment="Center" />
-            <ComboBox x:Name="TruncatePathBox" MinWidth="160" />
+            <ComboBox x:Name="TruncatePathBox" ItemsSource="{Binding TruncatePaths}" SelectedItem="{Binding SelectedTruncatePath}" MinWidth="160" />
           </StackPanel>
           <!-- Upstream's "Author images" group. -->
           <TextBlock Text="Author images" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="ShowAvatarColumnCheck" Content="Show author's avatar column in the commit graph" />
-          <CheckBox x:Name="ShowAvatarInCommitInfoCheck" Content="Show author's avatar in the commit info view" />
+          <CheckBox x:Name="ShowAvatarColumnCheck" IsChecked="{Binding ShowAuthorAvatarColumn}" Content="Show author's avatar column in the commit graph" />
+          <CheckBox x:Name="ShowAvatarInCommitInfoCheck" IsChecked="{Binding ShowAuthorAvatarInCommitInfo}" Content="Show author's avatar in the commit info view" />
           <Grid ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto">
             <TextBlock Grid.Row="0" Text="Avatar provider" VerticalAlignment="Center" />
-            <ComboBox x:Name="AvatarProviderBox" Grid.Row="0" Grid.Column="2" MinWidth="200" />
+            <ComboBox x:Name="AvatarProviderBox" ItemsSource="{Binding AvatarProviders}" SelectedItem="{Binding SelectedAvatarProvider}" Grid.Row="0" Grid.Column="2" MinWidth="200" />
             <TextBlock Grid.Row="2" Text="Fallback generated avatar style" VerticalAlignment="Center" />
-            <ComboBox x:Name="AvatarFallbackBox" Grid.Row="2" Grid.Column="2" MinWidth="200" />
+            <ComboBox x:Name="AvatarFallbackBox" ItemsSource="{Binding AvatarFallbacks}" SelectedItem="{Binding SelectedAvatarFallback}" Grid.Row="2" Grid.Column="2" MinWidth="200" />
             <TextBlock Grid.Row="4" Text="Custom avatar template" VerticalAlignment="Center" />
-            <TextBox x:Name="CustomAvatarTemplateBox" Grid.Row="4" Grid.Column="2" />
+            <TextBox x:Name="CustomAvatarTemplateBox" Text="{Binding CustomAvatarTemplate}" IsEnabled="{Binding IsCustomAvatar}" Grid.Row="4" Grid.Column="2" />
             <TextBlock Grid.Row="6" Text="Cache images (days)" VerticalAlignment="Center" />
             <StackPanel Grid.Row="6" Grid.Column="2" Orientation="Horizontal" Spacing="8">
-              <NumericUpDown x:Name="AvatarCacheDaysBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
+              <NumericUpDown x:Name="AvatarCacheDaysBox" Value="{Binding AvatarCacheDays}" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
               <Button x:Name="ClearImageCacheButton" Content="Clear image cache" />
             </StackPanel>
           </Grid>
@@ -132,14 +134,14 @@
           <TextBlock Text="Language" FontWeight="SemiBold" Margin="0,8,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Language (restart required)" VerticalAlignment="Center" />
-            <ComboBox x:Name="LanguageBox" MinWidth="200" />
+            <ComboBox x:Name="LanguageBox" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" MinWidth="200" />
             <HyperlinkButton x:Name="HelpTranslateButton" Content="Help translate" NavigateUri="https://github.com/gitextensions/gitextensions/wiki/Translations" />
           </StackPanel>
           <!-- Upstream's spelling dictionary of every repository that does not choose its own (the commit message box's menu
                chooses one for a repository). -->
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock x:Name="lblSpellingDictionary" Text="Dictionary for spelling checker" VerticalAlignment="Center" />
-            <ComboBox x:Name="Dictionary" MinWidth="200" />
+            <ComboBox x:Name="Dictionary" ItemsSource="{Binding Dictionaries}" SelectedItem="{Binding SelectedDictionary}" MinWidth="200" />
             <HyperlinkButton x:Name="downloadDictionary" Content="Download dictionary" NavigateUri="https://github.com/gitextensions/gitextensions/wiki/Spelling" />
           </StackPanel>
           <TextBlock Text="Upstream's translations of Git Extensions. Texts this app has that Git Extensions for Windows does not have stay English." Opacity="0.7" TextWrapping="Wrap" />
@@ -150,46 +152,71 @@
       <TabItem x:Name="FontsTab" Header="Fonts">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Fonts" FontWeight="SemiBold" />
-          <Grid x:Name="FontsGrid" ColumnDefinitions="Auto,8,*,8,Auto,8,Auto,8,Auto" />
-          <CheckBox x:Name="ShowEolMarkerAsGlyph" Content="Show end-of-line markers as glyph instead of &quot;\r\n&quot; etc." />
+          <!-- Each font: its family ("(default)" for the app's own), then size and styles, which apply to a chosen family. -->
+          <ItemsControl x:Name="FontsList" ItemsSource="{Binding Fonts}" Grid.IsSharedSizeScope="True">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="settings:FontChoice">
+                <Grid Margin="0,0,0,6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="FontLabel" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="2" MinWidth="220" ItemsSource="{Binding Families}" SelectedItem="{Binding Family}" />
+                  <NumericUpDown Grid.Column="4" Minimum="1" Maximum="200" Increment="1" FormatString="0.##" Width="130"
+                                 Value="{Binding Size}" IsEnabled="{Binding IsChosen}" />
+                  <CheckBox Grid.Column="6" Content="Bold" IsChecked="{Binding Bold}" IsEnabled="{Binding IsChosen}" />
+                  <CheckBox Grid.Column="8" Content="Italic" IsChecked="{Binding Italic}" IsEnabled="{Binding IsChosen}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <CheckBox x:Name="ShowEolMarkerAsGlyph" IsChecked="{Binding ShowEolMarkerAsGlyph}" Content="Show end-of-line markers as glyph instead of &quot;\r\n&quot; etc." />
           <TextBlock Text="Sizes are in points. &quot;(default)&quot; keeps this app's own font." Opacity="0.7" TextWrapping="Wrap" />
         </StackPanel>
       </TabItem>
       <TabItem x:Name="GeneralTab" Header="General">
         <StackPanel Spacing="8" Margin="4,8">
-          <CheckBox x:Name="CloseAfterCommitCheck" Content="Close the commit window after a commit" />
-          <CheckBox x:Name="CloseProcessDialogCheck" Content="Close the output window when a fetch, pull or push succeeds" />
-          <CheckBox x:Name="StartWithRecentWorkingDirCheck" Content="Open last working directory on startup" />
-          <CheckBox x:Name="FollowRenamesInFileHistoryCheck" Content="Follow renames in file history" />
-          <CheckBox x:Name="FollowRenamesExactCheck" Content="Follow exact renames and copies only" Margin="24,0,0,0" />
-          <CheckBox x:Name="UseHistogramDiffCheck" Content="Use histogram diff algorithm" />
-          <CheckBox x:Name="StashUntrackedFilesCheck" Content="Include untracked files in autostash" />
-          <CheckBox x:Name="UpdateSubmodulesCheck" Content="Update submodules on checkout" IsThreeState="True"
+          <CheckBox x:Name="CloseAfterCommitCheck" IsChecked="{Binding CloseCommitDialogAfterCommit}" Content="Close the commit window after a commit" />
+          <CheckBox x:Name="CloseProcessDialogCheck" IsChecked="{Binding CloseProcessDialog}" Content="Close the output window when a fetch, pull or push succeeds" />
+          <CheckBox x:Name="StartWithRecentWorkingDirCheck" IsChecked="{Binding StartWithRecentWorkingDir}" Content="Open last working directory on startup" />
+          <CheckBox x:Name="FollowRenamesInFileHistoryCheck" IsChecked="{Binding FollowRenames}" Content="Follow renames in file history" />
+          <CheckBox x:Name="FollowRenamesExactCheck" IsChecked="{Binding ExactRenamesOnly}" Content="Follow exact renames and copies only" Margin="24,0,0,0" />
+          <CheckBox x:Name="UseHistogramDiffCheck" IsChecked="{Binding UseHistogramDiffAlgorithm}" Content="Use histogram diff algorithm" />
+          <CheckBox x:Name="StashUntrackedFilesCheck" IsChecked="{Binding IncludeUntrackedFilesInAutoStash}" Content="Include untracked files in autostash" />
+          <CheckBox x:Name="UpdateSubmodulesCheck" IsChecked="{Binding UpdateSubmodulesOnCheckout}" Content="Update submodules on checkout" IsThreeState="True"
                     ToolTip.Tip="Undecided: ask at each checkout" />
-          <CheckBox x:Name="CheckUncommittedChangesCheck" Content="Check for uncommitted changes in checkout branch dialog" />
+          <CheckBox x:Name="CheckUncommittedChangesCheck" IsChecked="{Binding CheckForUncommittedChangesInCheckoutBranch}" Content="Check for uncommitted changes in checkout branch dialog" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Default pull action" VerticalAlignment="Center" />
-            <ComboBox x:Name="DefaultPullActionBox" MinWidth="200" />
+            <ComboBox x:Name="DefaultPullActionBox" ItemsSource="{Binding PullActions}" SelectedItem="{Binding SelectedPullAction}" MinWidth="200" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Revision grid quick search timeout [ms]" VerticalAlignment="Center" />
-            <NumericUpDown x:Name="QuickSearchTimeoutBox" Minimum="250" Maximum="10000" Increment="100" FormatString="0" Width="130" />
+            <NumericUpDown x:Name="QuickSearchTimeoutBox" Value="{Binding RevisionGridQuickSearchTimeout}" Minimum="250" Maximum="10000" Increment="100" FormatString="0" Width="130" />
           </StackPanel>
           <TextBlock Text="Performance" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="ShowCommitCountCheck" Content="Show number of changed files on commit button" />
-          <CheckBox x:Name="ShowArtificialCountCheck" Content="Show number of changed files for artificial commits" />
-          <CheckBox x:Name="ShowSubmoduleStatusCheck" Content="Show submodule status in browse menu" />
-          <CheckBox x:Name="ShowAheadBehindCheck" Content="Show ahead and behind information on status bar in browse window" />
-          <CheckBox x:Name="ShowStashCountCheck" Content="Show stash count on status bar in browse window" />
+          <CheckBox x:Name="ShowCommitCountCheck" IsChecked="{Binding ShowGitStatusInBrowseToolbar}" Content="Show number of changed files on commit button" />
+          <CheckBox x:Name="ShowArtificialCountCheck" IsChecked="{Binding ShowGitStatusForArtificialCommits}" Content="Show number of changed files for artificial commits" />
+          <CheckBox x:Name="ShowSubmoduleStatusCheck" IsChecked="{Binding ShowSubmoduleStatus}" IsEnabled="{Binding CanShowSubmoduleStatus}" Content="Show submodule status in browse menu" />
+          <CheckBox x:Name="ShowAheadBehindCheck" IsChecked="{Binding ShowAheadBehindData}" Content="Show ahead and behind information on status bar in browse window" />
+          <CheckBox x:Name="ShowStashCountCheck" IsChecked="{Binding ShowStashCount}" Content="Show stash count on status bar in browse window" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <CheckBox x:Name="CommitsLimitCheck" Content="Limit number of commits to be loaded" />
-            <NumericUpDown x:Name="CommitsLimitBox" Minimum="1" Maximum="10000000" Increment="1000" FormatString="0" Width="150" />
+            <CheckBox x:Name="CommitsLimitCheck" IsChecked="{Binding LimitCommits}" Content="Limit number of commits to be loaded" />
+            <NumericUpDown x:Name="CommitsLimitBox" Value="{Binding MaxRevisionGraphCommits}" IsEnabled="{Binding LimitCommits}" Minimum="1" Maximum="10000000" Increment="1000" FormatString="0" Width="150" />
           </StackPanel>
           <TextBlock Text="Default clone destination" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <TextBox x:Name="DefaultCloneDestinationBox" />
+          <TextBox x:Name="DefaultCloneDestinationBox" Text="{Binding DefaultCloneDestinationPath}" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Recent repositories to keep" VerticalAlignment="Center" />
-            <NumericUpDown x:Name="RecentSizeBox" Minimum="1" Maximum="200" Increment="1" FormatString="0" Width="130" />
+            <NumericUpDown x:Name="RecentSizeBox" Value="{Binding RecentRepositoriesHistorySize}" Minimum="1" Maximum="200" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
         </StackPanel>
       </TabItem>
@@ -201,26 +228,26 @@
           <TextBlock Text="Command used to run git (empty: look it up on PATH)" />
           <DockPanel>
             <Button x:Name="BrowseGitCommandButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
-            <TextBox x:Name="GitCommandBox" />
+            <TextBox x:Name="GitCommandBox" Text="{Binding GitCommand}" />
           </DockPanel>
-          <StackPanel x:Name="LinuxToolsPanel" Spacing="8">
+          <StackPanel x:Name="LinuxToolsPanel" IsVisible="{Binding IsWindows}" Spacing="8">
             <TextBlock Text="Path to linux tools (sh). Leave empty when it is in the path." />
             <DockPanel>
               <Button x:Name="BrowseLinuxToolsButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
-              <TextBox x:Name="LinuxToolsDirBox" />
+              <TextBox x:Name="LinuxToolsDirBox" Text="{Binding LinuxToolsDir}" />
             </DockPanel>
           </StackPanel>
           <TextBlock Text="Environment" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <TextBlock x:Name="HomeText" TextWrapping="Wrap" />
+          <TextBlock x:Name="HomeText" Text="{Binding HomeText}" TextWrapping="Wrap" />
           <TextBlock Text="By default, the global config file is located in the folder HOME names. (This can be overridden by setting GIT_CONFIG_GLOBAL.)" Opacity="0.7" TextWrapping="Wrap" />
-          <StackPanel x:Name="HomeChoicePanel" Spacing="6">
+          <StackPanel x:Name="HomeChoicePanel" IsVisible="{Binding IsWindows}" Spacing="6">
             <TextBlock Text="HOME" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <RadioButton x:Name="DefaultHomeRadio" GroupName="Home" />
-            <RadioButton x:Name="UserProfileHomeRadio" GroupName="Home" />
-            <RadioButton x:Name="OtherHomeRadio" GroupName="Home" Content="Other" />
+            <RadioButton x:Name="DefaultHomeRadio" Content="{Binding DefaultHomeText}" IsChecked="{Binding SelectedHomeChoice, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:HomeChoice.Default}}" GroupName="Home" />
+            <RadioButton x:Name="UserProfileHomeRadio" Content="{Binding UserProfileHomeText}" IsChecked="{Binding SelectedHomeChoice, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:HomeChoice.UserProfile}}" GroupName="Home" />
+            <RadioButton x:Name="OtherHomeRadio" IsChecked="{Binding SelectedHomeChoice, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:HomeChoice.Other}}" GroupName="Home" Content="Other" />
             <DockPanel Margin="24,0,0,0">
-              <Button x:Name="BrowseHomeButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
-              <TextBox x:Name="OtherHomeBox" />
+              <Button x:Name="BrowseHomeButton" IsEnabled="{Binding IsOtherHome}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+              <TextBox x:Name="OtherHomeBox" Text="{Binding OtherHome}" IsEnabled="{Binding IsOtherHome}" />
             </DockPanel>
           </StackPanel>
         </StackPanel>
@@ -229,29 +256,29 @@
       <TabItem x:Name="SshTab" Header="SSH">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Specify which ssh client to use" FontWeight="SemiBold" />
-          <RadioButton x:Name="OpenSshRadio" GroupName="Ssh" Content="OpenSSH" />
-          <RadioButton x:Name="PuttyRadio" GroupName="Ssh" Content="PuTTY" />
-          <RadioButton x:Name="OtherSshRadio" GroupName="Ssh" Content="Other ssh client" />
+          <RadioButton x:Name="OpenSshRadio" IsChecked="{Binding SelectedSshClient, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:SshClientKind.OpenSsh}}" GroupName="Ssh" Content="OpenSSH" />
+          <RadioButton x:Name="PuttyRadio" IsVisible="{Binding IsPuttyOffered}" IsChecked="{Binding SelectedSshClient, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:SshClientKind.Putty}}" GroupName="Ssh" Content="PuTTY" />
+          <RadioButton x:Name="OtherSshRadio" IsChecked="{Binding SelectedSshClient, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:SshClientKind.Other}}" GroupName="Ssh" Content="Other ssh client" />
           <DockPanel Margin="24,0,0,0">
-            <Button x:Name="BrowseOtherSshButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
-            <TextBox x:Name="OtherSshBox" />
+            <Button x:Name="BrowseOtherSshButton" IsEnabled="{Binding IsOtherSsh}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+            <TextBox x:Name="OtherSshBox" Text="{Binding OtherSsh}" IsEnabled="{Binding IsOtherSsh}" />
           </DockPanel>
           <TextBlock TextWrapping="Wrap" Opacity="0.7"
                      Text="OpenSSH is the ssh client git uses itself. Another client is given to git in GIT_SSH." />
-          <StackPanel x:Name="PuttyPanel" Spacing="8">
+          <StackPanel x:Name="PuttyPanel" IsVisible="{Binding IsPutty}" Spacing="8">
             <TextBlock Text="Configure PuTTY" FontWeight="SemiBold" Margin="0,8,0,0" />
             <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,6,Auto,6,Auto">
               <TextBlock Grid.Row="0" Text="Path to plink" VerticalAlignment="Center" />
-              <TextBox x:Name="PlinkBox" Grid.Row="0" Grid.Column="2" />
+              <TextBox x:Name="PlinkBox" Text="{Binding Plink}" Grid.Row="0" Grid.Column="2" />
               <Button x:Name="BrowsePlinkButton" Grid.Row="0" Grid.Column="4" Content="Browse" />
               <TextBlock Grid.Row="2" Text="Path to puttygen" VerticalAlignment="Center" />
-              <TextBox x:Name="PuttygenBox" Grid.Row="2" Grid.Column="2" />
+              <TextBox x:Name="PuttygenBox" Text="{Binding Puttygen}" Grid.Row="2" Grid.Column="2" />
               <Button x:Name="BrowsePuttygenButton" Grid.Row="2" Grid.Column="4" Content="Browse" />
               <TextBlock Grid.Row="4" Text="Path to pageant" VerticalAlignment="Center" />
-              <TextBox x:Name="PageantBox" Grid.Row="4" Grid.Column="2" />
+              <TextBox x:Name="PageantBox" Text="{Binding Pageant}" Grid.Row="4" Grid.Column="2" />
               <Button x:Name="BrowsePageantButton" Grid.Row="4" Grid.Column="4" Content="Browse" />
             </Grid>
-            <CheckBox x:Name="AutoStartPageantCheck">
+            <CheckBox x:Name="AutoStartPageantCheck" IsChecked="{Binding AutoStartPageant}">
               <TextBlock TextWrapping="Wrap" Text="Automatically start authentication client when a private key is configured for a remote" />
             </CheckBox>
           </StackPanel>
@@ -262,16 +289,16 @@
       <TabItem x:Name="BrowseRepositoryTab" Header="Browse repository window">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="General" FontWeight="SemiBold" />
-          <CheckBox x:Name="chkUseDiffViewerForBlame" Content="Show blame in diff viewer" />
-          <CheckBox x:Name="chkShowFindInCommitFilesGitGrep" Content="Show 'Find in commit files using git-grep'" />
-          <CheckBox x:Name="ShowRevisionTooltipsCheck" Content="Show revision tooltips" />
+          <CheckBox x:Name="chkUseDiffViewerForBlame" IsChecked="{Binding UseDiffViewerForBlame}" Content="Show blame in diff viewer" />
+          <CheckBox x:Name="chkShowFindInCommitFilesGitGrep" IsChecked="{Binding ShowFindInCommitFilesGitGrep}" Content="Show 'Find in commit files using git-grep'" />
+          <CheckBox x:Name="ShowRevisionTooltipsCheck" IsChecked="{Binding ShowRevisionGridTooltips}" Content="Show revision tooltips" />
           <TextBlock Text="Tabs" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="chkShowGpgInformation" Content="Show GPG information" />
+          <CheckBox x:Name="chkShowGpgInformation" IsChecked="{Binding ShowGpgInformation}" Content="Show GPG information" />
           <!-- Upstream's output history settings, read when the browse window opens and the app starts. -->
-          <CheckBox x:Name="chkShowOutputHistoryAsTab" Content="Show output history as tab (otherwise as panel)" />
+          <CheckBox x:Name="chkShowOutputHistoryAsTab" IsChecked="{Binding ShowOutputHistoryAsTab}" Content="Show output history as tab (otherwise as panel)" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock x:Name="lblOutputHistoryDepth" Text="Output history depth (0 to disable):" VerticalAlignment="Center" />
-            <NumericUpDown x:Name="OutputHistoryDepthBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
+            <NumericUpDown x:Name="OutputHistoryDepthBox" Value="{Binding OutputHistoryDepth}" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
         </StackPanel>
       </TabItem>
@@ -281,16 +308,16 @@
         <StackPanel Spacing="8" Margin="4,8">
           <StackPanel x:Name="RevisionGraphGroup" Spacing="8">
             <TextBlock Text="Revision graph" FontWeight="SemiBold" />
-            <CheckBox x:Name="MergeGraphLanesCheck" Content="Merge graph lanes having common parent" />
-            <CheckBox x:Name="GraphDiagonalsCheck" Content="Render graph with diagonals" />
-            <CheckBox x:Name="StraightenDiagonalsCheck" Content="Straighten graph diagonals" />
+            <CheckBox x:Name="MergeGraphLanesCheck" IsChecked="{Binding MergeGraphLanesHavingCommonParent}" Content="Merge graph lanes having common parent" />
+            <CheckBox x:Name="GraphDiagonalsCheck" IsChecked="{Binding RenderGraphWithDiagonals}" Content="Render graph with diagonals" />
+            <CheckBox x:Name="StraightenDiagonalsCheck" IsChecked="{Binding StraightenGraphDiagonals}" Content="Straighten graph diagonals" />
           </StackPanel>
           <TextBlock x:Name="PushWindowGB" Text="Push window" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="chkRemotesFromServer" Content="Get remote branches directly from the remote" IsThreeState="True" />
+          <CheckBox x:Name="chkRemotesFromServer" IsChecked="{Binding DetailedPage.RemotesFromServer}" Content="Get remote branches directly from the remote" IsThreeState="True" />
           <TextBlock x:Name="mergeWindowGroup" Text="Merge window" FontWeight="SemiBold" Margin="0,8,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <CheckBox x:Name="addLogMessages" Content="Add log messages" IsThreeState="True" />
-            <TextBox x:Name="nbMessages" Width="100" />
+            <CheckBox x:Name="addLogMessages" IsChecked="{Binding DetailedPage.AddMergeLogMessages}" Content="Add log messages" IsThreeState="True" />
+            <TextBox x:Name="nbMessages" Text="{Binding DetailedPage.MergeLogMessagesCount}" Width="100" />
           </StackPanel>
         </StackPanel>
       </TabItem>
@@ -298,63 +325,63 @@
       <TabItem x:Name="CommitDialogTab" Header="Commit dialog">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Behaviour" FontWeight="SemiBold" />
-          <CheckBox x:Name="ShowStagingErrorsCheck" Content="Show errors when staging files" />
-          <CheckBox x:Name="SecondLineEmptyCheck" Content="Ensure the second line of commit message is empty" />
-          <CheckBox x:Name="RememberAmendCheck" Content="Remember 'Amend commit' checkbox on commit form close" />
-          <CheckBox x:Name="AutocompleteCheck" Content="Provide auto-completion in commit dialog" />
-          <CheckBox x:Name="ComposeInWindowCheck" Content="Compose commit messages in Commit dialog (otherwise the message will be requested during commit)" />
+          <CheckBox x:Name="ShowStagingErrorsCheck" IsChecked="{Binding ShowErrorsWhenStagingFiles}" Content="Show errors when staging files" />
+          <CheckBox x:Name="SecondLineEmptyCheck" IsChecked="{Binding EnsureCommitMessageSecondLineEmpty}" Content="Ensure the second line of commit message is empty" />
+          <CheckBox x:Name="RememberAmendCheck" IsChecked="{Binding RememberAmendCommitState}" Content="Remember 'Amend commit' checkbox on commit form close" />
+          <CheckBox x:Name="AutocompleteCheck" IsChecked="{Binding ProvideAutocompletion}" Content="Provide auto-completion in commit dialog" />
+          <CheckBox x:Name="ComposeInWindowCheck" IsChecked="{Binding UseFormCommitMessage}" Content="Compose commit messages in Commit dialog (otherwise the message will be requested during commit)" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Number of previous messages in commit dialog" VerticalAlignment="Center" />
-            <NumericUpDown x:Name="PreviousMessagesBox" Minimum="1" Maximum="999" Increment="1" FormatString="0" Width="130" />
+            <NumericUpDown x:Name="PreviousMessagesBox" Value="{Binding CommitDialogNumberOfPreviousMessages}" Minimum="1" Maximum="999" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
           <TextBlock Text="Show additional buttons in commit button area" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="ShowCommitAndPushCheck" Content="Commit &amp; Push" />
-          <CheckBox x:Name="ShowResetUnstagedCheck" Content="Reset Unstaged Changes" />
-          <CheckBox x:Name="ShowResetAllCheck" Content="Reset All Changes" />
+          <CheckBox x:Name="ShowCommitAndPushCheck" IsChecked="{Binding ShowCommitAndPush}" Content="Commit &amp; Push" />
+          <CheckBox x:Name="ShowResetUnstagedCheck" IsChecked="{Binding ShowResetWorkTreeChanges}" Content="Reset Unstaged Changes" />
+          <CheckBox x:Name="ShowResetAllCheck" IsChecked="{Binding ShowResetAllChanges}" Content="Reset All Changes" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Advanced" page: the settings whose feature the new shell has. -->
       <TabItem x:Name="AdvancedTab" Header="Advanced">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Checkout" FontWeight="SemiBold" />
-          <CheckBox x:Name="AlwaysShowCheckoutDlgCheck" Content="Always show checkout dialog" />
-          <CheckBox x:Name="UseLocalChangesActionCheck">
+          <CheckBox x:Name="AlwaysShowCheckoutDlgCheck" IsChecked="{Binding AlwaysShowCheckoutBranchDlg}" Content="Always show checkout dialog" />
+          <CheckBox x:Name="UseLocalChangesActionCheck" IsChecked="{Binding UseDefaultCheckoutBranchAction}">
             <TextBlock TextWrapping="Wrap" Text="Use last chosen &quot;local changes&quot; action as default action. This action will be performed without warning while checking out branch." />
           </CheckBox>
           <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <CheckBox x:Name="AutoNormaliseCheck" Content="Auto normalise branch name" />
+            <CheckBox x:Name="AutoNormaliseCheck" IsChecked="{Binding AutoNormaliseBranchName}" Content="Auto normalise branch name" />
             <TextBlock Text="Symbol to use:" VerticalAlignment="Center" Margin="12,0,0,0" />
-            <ComboBox x:Name="NormaliseSymbolBox" MinWidth="90" />
+            <ComboBox x:Name="NormaliseSymbolBox" ItemsSource="{Binding NormaliseSymbols}" SelectedItem="{Binding SelectedNormaliseSymbol}" MinWidth="90" />
           </StackPanel>
           <TextBlock Text="Commit" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="CommitAndPushForcedCheck" Content="Push forced with lease when Commit &amp; Push action is performed with Amend option checked" />
+          <CheckBox x:Name="CommitAndPushForcedCheck" IsChecked="{Binding CommitAndPushForcedWhenAmend}" Content="Push forced with lease when Commit &amp; Push action is performed with Amend option checked" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Diff viewer" page: the settings of the diff view's choices, its ruler and the difftool list. -->
       <TabItem x:Name="DiffViewerTab" Header="Diff viewer">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Diff coloring" FontWeight="SemiBold" />
-          <CheckBox x:Name="chkUseGitColoring" Content="Git coloring" ToolTip.Tip="Use Git coloring engine to show moved code etc." />
-          <CheckBox x:Name="chkUseGEThemeGitColoring" Content="Reverse background color"
+          <CheckBox x:Name="chkUseGitColoring" IsChecked="{Binding UseGitColoring}" Content="Git coloring" ToolTip.Tip="Use Git coloring engine to show moved code etc." />
+          <CheckBox x:Name="chkUseGEThemeGitColoring" IsChecked="{Binding ReverseGitColoring}" Content="Reverse background color"
                     ToolTip.Tip="Color the background at changes (invert colors)."
                     IsEnabled="{Binding #chkUseGitColoring.IsChecked}" />
           <TextBlock Text="General" FontWeight="SemiBold" />
-          <CheckBox x:Name="RememberIgnoreWhitespaceCheck" Content="Remember the 'Ignore whitespaces' preference" />
-          <CheckBox x:Name="RememberNonPrintingCheck" Content="Remember the 'Show nonprinting characters' preference" />
-          <CheckBox x:Name="RememberEntireFileCheck" Content="Remember the 'Show entire file' preference" />
-          <CheckBox x:Name="RememberContextLinesCheck" Content="Remember the 'Number of context lines' preference" />
-          <CheckBox x:Name="RememberSyntaxHighlightingCheck" Content="Remember the 'Show syntax highlighting' preference" />
-          <CheckBox x:Name="chkRememberDiffAppearancePreference" Content="Remember the 'Diff appearance' preference"
+          <CheckBox x:Name="RememberIgnoreWhitespaceCheck" IsChecked="{Binding RememberIgnoreWhiteSpacePreference}" Content="Remember the 'Ignore whitespaces' preference" />
+          <CheckBox x:Name="RememberNonPrintingCheck" IsChecked="{Binding RememberShowNonPrintingCharsPreference}" Content="Remember the 'Show nonprinting characters' preference" />
+          <CheckBox x:Name="RememberEntireFileCheck" IsChecked="{Binding RememberShowEntireFilePreference}" Content="Remember the 'Show entire file' preference" />
+          <CheckBox x:Name="RememberContextLinesCheck" IsChecked="{Binding RememberNumberOfContextLines}" Content="Remember the 'Number of context lines' preference" />
+          <CheckBox x:Name="RememberSyntaxHighlightingCheck" IsChecked="{Binding RememberShowSyntaxHighlightingInDiff}" Content="Remember the 'Show syntax highlighting' preference" />
+          <CheckBox x:Name="chkRememberDiffAppearancePreference" IsChecked="{Binding RememberDiffDisplayAppearance}" Content="Remember the 'Diff appearance' preference"
                     ToolTip.Tip="Diff appearance: patch (default), Git word-diff or Difftastic." />
-          <CheckBox x:Name="ContScrollToNextFileOnlyWithAltCheck" Content="Enable automatic continuous scroll (without ALT button)" />
-          <CheckBox x:Name="chkOpenSubmoduleDiffInSeparateWindow" Content="Open Submodule Diff in separate window" />
-          <CheckBox x:Name="ShowDiffForAllParentsCheck" Content="Show file differences for all parents in browse dialog" />
-          <CheckBox x:Name="ShowAllDiffToolsCheck" Content="Show all available difftools"
+          <CheckBox x:Name="ContScrollToNextFileOnlyWithAltCheck" IsChecked="{Binding AutomaticContinuousScroll}" Content="Enable automatic continuous scroll (without ALT button)" />
+          <CheckBox x:Name="chkOpenSubmoduleDiffInSeparateWindow" IsChecked="{Binding OpenSubmoduleDiffInSeparateWindow}" Content="Open Submodule Diff in separate window" />
+          <CheckBox x:Name="ShowDiffForAllParentsCheck" IsChecked="{Binding ShowDiffForAllParents}" Content="Show file differences for all parents in browse dialog" />
+          <CheckBox x:Name="ShowAllDiffToolsCheck" IsChecked="{Binding ShowAvailableDiffTools}" Content="Show all available difftools"
                     ToolTip.Tip="Show all configured difftools in a dropdown.&#10;The primary difftool can still be selected by clicking the main menu entry." />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Vertical ruler position [chars]" VerticalAlignment="Center" />
-            <NumericUpDown x:Name="VerticalRulerBox" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
+            <NumericUpDown x:Name="VerticalRulerBox" Value="{Binding DiffVerticalRulerPosition}" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
           <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left"
                   ToolTip.Tip="Saves all current view settings as the default for future sessions.&#10;Note: The checkboxes 'Remember the &quot;xyz&quot; preference' only affect the running instance&#10;as long as the default has not been saved. These preference values are held in memory&#10;and must be explicitly saved to become persistent defaults." />
@@ -364,36 +391,36 @@
       <TabItem x:Name="BlameViewerTab" Header="Blame viewer">
         <StackPanel Spacing="8" Margin="4,8">
           <TextBlock Text="Blame settings" FontWeight="SemiBold" />
-          <CheckBox x:Name="BlameIgnoreWhitespaceCheck" Content="Ignore whitespace" />
-          <CheckBox x:Name="BlameDetectMoveInFileCheck" Content="Detect moved or copied lines within blamed file" />
-          <CheckBox x:Name="BlameDetectMoveInAllFilesCheck" Content="Detect moved or copied lines from all files in same commit" />
+          <CheckBox x:Name="BlameIgnoreWhitespaceCheck" IsChecked="{Binding BlameIgnoreWhitespace}" Content="Ignore whitespace" />
+          <CheckBox x:Name="BlameDetectMoveInFileCheck" IsChecked="{Binding BlameDetectMoveInFile}" Content="Detect moved or copied lines within blamed file" />
+          <CheckBox x:Name="BlameDetectMoveInAllFilesCheck" IsChecked="{Binding BlameDetectMoveInAllFiles}" Content="Detect moved or copied lines from all files in same commit" />
           <TextBlock Text="Display result settings" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <CheckBox x:Name="BlameDisplayAuthorFirstCheck" Content="Display author first" />
-          <CheckBox x:Name="BlameShowAuthorCheck" Content="Show author" />
-          <CheckBox x:Name="BlameShowAuthorDateCheck" Content="Show author date" />
-          <CheckBox x:Name="BlameShowAuthorTimeCheck" Content="Show author time" />
-          <CheckBox x:Name="BlameShowLineNumbersCheck" Content="Show line numbers" />
-          <CheckBox x:Name="BlameShowOriginalFilePathCheck" Content="Show original file path" />
-          <CheckBox x:Name="BlameShowAuthorAvatarCheck" Content="Show author avatar" />
+          <CheckBox x:Name="BlameDisplayAuthorFirstCheck" IsChecked="{Binding BlameDisplayAuthorFirst}" Content="Display author first" />
+          <CheckBox x:Name="BlameShowAuthorCheck" IsChecked="{Binding BlameShowAuthor}" Content="Show author" />
+          <CheckBox x:Name="BlameShowAuthorDateCheck" IsChecked="{Binding BlameShowAuthorDate}" Content="Show author date" />
+          <CheckBox x:Name="BlameShowAuthorTimeCheck" IsChecked="{Binding BlameShowAuthorTime}" Content="Show author time" />
+          <CheckBox x:Name="BlameShowLineNumbersCheck" IsChecked="{Binding BlameShowLineNumbers}" Content="Show line numbers" />
+          <CheckBox x:Name="BlameShowOriginalFilePathCheck" IsChecked="{Binding BlameShowOriginalFilePath}" Content="Show original file path" />
+          <CheckBox x:Name="BlameShowAuthorAvatarCheck" IsChecked="{Binding BlameShowAuthorAvatar}" Content="Show author avatar" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's "Sorting" page: the grid's commit order and the left panel's branch order. -->
       <TabItem x:Name="SortingTab" Header="Sorting">
         <Grid ColumnDefinitions="Auto,8,*,4,Auto" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto" Margin="4,8">
           <TextBlock Grid.Row="0" Text="Sort revisions by" VerticalAlignment="Center" />
-          <ComboBox x:Name="RevisionSortBox" Grid.Row="0" Grid.Column="2" MinWidth="200" />
+          <ComboBox x:Name="RevisionSortBox" ItemsSource="{Binding RevisionSorts}" SelectedItem="{Binding SelectedRevisionSort}" Grid.Row="0" Grid.Column="2" MinWidth="200" />
           <Button x:Name="RevisionSortOrderHelp" Grid.Row="0" Grid.Column="4" Content="?" Width="24" Padding="0"
                   HorizontalContentAlignment="Center" />
           <TextBlock Grid.Row="2" Text="Sort branches by" VerticalAlignment="Center" />
-          <ComboBox x:Name="BranchesSortByBox" Grid.Row="2" Grid.Column="2" MinWidth="200" />
+          <ComboBox x:Name="BranchesSortByBox" ItemsSource="{Binding RefsSortBys}" SelectedItem="{Binding SelectedRefsSortBy}" Grid.Row="2" Grid.Column="2" MinWidth="200" />
           <TextBlock Grid.Row="4" Text="Order branches" VerticalAlignment="Center" />
-          <ComboBox x:Name="BranchesOrderBox" Grid.Row="4" Grid.Column="2" MinWidth="200" />
+          <ComboBox x:Name="BranchesOrderBox" ItemsSource="{Binding RefsSortOrders}" SelectedItem="{Binding SelectedRefsSortOrder}" Grid.Row="4" Grid.Column="2" MinWidth="200" />
           <TextBlock Grid.Row="6" Text="Prioritized branches" VerticalAlignment="Center" />
-          <TextBox x:Name="PrioritizedBranchesBox" Grid.Row="6" Grid.Column="2" />
+          <TextBox x:Name="PrioritizedBranchesBox" Text="{Binding PrioritizedBranchNames}" Grid.Row="6" Grid.Column="2" />
           <Button x:Name="PrioBranchNamesHelp" Grid.Row="6" Grid.Column="4" Content="?" Width="24" Padding="0"
                   HorizontalContentAlignment="Center" />
           <TextBlock Grid.Row="8" Text="Prioritized remotes" VerticalAlignment="Center" />
-          <TextBox x:Name="PrioritizedRemotesBox" Grid.Row="8" Grid.Column="2" />
+          <TextBox x:Name="PrioritizedRemotesBox" Text="{Binding PrioritizedRemoteNames}" Grid.Row="8" Grid.Column="2" />
           <Button x:Name="PrioRemoteNamesHelp" Grid.Row="8" Grid.Column="4" Content="?" Width="24" Padding="0"
                   HorizontalContentAlignment="Center" />
         </Grid>
@@ -405,11 +432,11 @@
           <DockPanel Grid.Column="0">
             <TextBlock DockPanel.Dock="Top" Text="Categories" FontWeight="SemiBold" Margin="0,0,0,4" />
             <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,6,0,0">
-              <Button x:Name="AddRevisionLinkButton" Content="Add" HorizontalAlignment="Stretch" />
+              <Button x:Name="AddRevisionLinkButton" Content="Add" Command="{Binding RevisionLinksPage.AddCommand}" HorizontalAlignment="Stretch" />
               <StackPanel x:Name="RevisionLinkTemplateButtons" Spacing="4" />
-              <Button x:Name="RemoveRevisionLinkButton" Content="Remove" HorizontalAlignment="Stretch" />
+              <Button x:Name="RemoveRevisionLinkButton" Content="Remove" Command="{Binding RevisionLinksPage.RemoveCommand}" HorizontalAlignment="Stretch" />
             </StackPanel>
-            <ListBox x:Name="RevisionLinksList">
+            <ListBox x:Name="RevisionLinksList" ItemsSource="{Binding RevisionLinksPage.Items}" SelectedItem="{Binding RevisionLinksPage.Selected}">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="settings:RevisionLinkItem">
                   <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
@@ -480,14 +507,17 @@
           <StackPanel Spacing="8" Margin="4,8">
             <TextBlock Text="Git Extensions can integrate with build servers to supply per-commit Continuous Integration information."
                        TextWrapping="Wrap" Opacity="0.7" />
-            <CheckBox x:Name="EnableBuildServerCheck" Content="Enable build server integration" IsThreeState="True" />
-            <CheckBox x:Name="ShowBuildResultPageCheck" Content="Show build result page" IsThreeState="True" IsEnabled="False" />
+            <CheckBox x:Name="EnableBuildServerCheck" Content="Enable build server integration" IsThreeState="True"
+                      IsChecked="{Binding BuildServerPage.IntegrationEnabled}" IsEnabled="{Binding BuildServerPage.IsLoaded}" />
+            <CheckBox x:Name="ShowBuildResultPageCheck" Content="Show build result page" IsThreeState="True"
+                      IsChecked="{Binding BuildServerPage.ShowBuildResultPage}" IsEnabled="{Binding BuildServerPage.IsLoaded}" />
             <StackPanel Orientation="Horizontal" Spacing="8">
               <TextBlock Text="Build server type" VerticalAlignment="Center" />
-              <ComboBox x:Name="BuildServerTypeBox" MinWidth="220" />
+              <ComboBox x:Name="BuildServerTypeBox" MinWidth="220" ItemsSource="{Binding BuildServerPage.Types}"
+                        SelectedItem="{Binding BuildServerPage.SelectedType}" IsEnabled="{Binding BuildServerPage.IsLoaded}" />
             </StackPanel>
             <TextBlock x:Name="BuildServerNoRepositoryText" Text="Open a repository to set up its build server." Opacity="0.7"
-                       IsVisible="False" />
+                       IsVisible="{Binding !BuildServerPage.HasRepository}" />
             <ContentControl x:Name="BuildServerSettingsPanel" />
           </StackPanel>
         </ScrollViewer>
@@ -497,49 +527,49 @@
       <TabItem x:Name="GitConfigTab" Header="Config">
         <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="4,8">
           <!-- Upstream's InvalidGitPathGlobal, while git cannot be found. -->
-          <TextBlock x:Name="InvalidGitPathText" Grid.Row="0" Grid.Column="4" Grid.RowSpan="2" IsVisible="False"
-                     Text="You need to set the correct path to&#10;git before you can change&#10;global settings." />
+          <TextBlock x:Name="InvalidGitPathText" Grid.Row="0" Grid.Column="4" Grid.RowSpan="2"
+                     Text="You need to set the correct path to&#10;git before you can change&#10;global settings." IsVisible="{Binding !GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="0" Text="User name" VerticalAlignment="Center" />
-          <TextBox x:Name="UserNameBox" Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" />
+          <TextBox x:Name="UserNameBox" Grid.Row="0" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.UserName}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="1" Text="User email" VerticalAlignment="Center" />
-          <TextBox x:Name="UserEmailBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" />
-          <TextBlock x:Name="lblCredentialHelper" Grid.Row="2" Text="Credential helper" VerticalAlignment="Center" />
+          <TextBox x:Name="UserEmailBox" Grid.Row="1" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.UserEmail}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
+          <TextBlock x:Name="lblCredentialHelper" Grid.Row="2" Text="Credential helper" VerticalAlignment="Center" IsVisible="{Binding GitConfigPage.ShowsCredentialHelper}" />
           <ComboBox x:Name="CredentialHelperBox" Grid.Row="2" Grid.Column="2" IsEditable="True"
-                    HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+                    HorizontalAlignment="Stretch" Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.CredentialHelpers}" Text="{Binding GitConfigPage.CredentialHelper}" IsVisible="{Binding GitConfigPage.ShowsCredentialHelper}" IsEnabled="{Binding GitConfigPage.CanEditCredentialHelper}" />
           <TextBlock Grid.Row="3" Text="Editor" VerticalAlignment="Center" />
           <ComboBox x:Name="EditorBox" Grid.Row="3" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
-                    Margin="0,0,0,6" />
+                    Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.Editors}" Text="{Binding GitConfigPage.Editor}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="4" Text="Mergetool" VerticalAlignment="Center" />
           <ComboBox x:Name="MergeToolBox" Grid.Row="4" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
-                    Margin="0,0,0,6" />
+                    Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.MergeTools}" Text="{Binding GitConfigPage.MergeTool}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="5" Text="Path to mergetool" VerticalAlignment="Center" />
-          <TextBox x:Name="MergeToolPathBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseMergeToolButton" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to mergetool" />
+          <TextBox x:Name="MergeToolPathBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.MergeToolPath}" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
+          <Button x:Name="BrowseMergeToolButton" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to mergetool" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
           <TextBlock Grid.Row="6" Text="Mergetool command" VerticalAlignment="Center" />
-          <TextBox x:Name="MergeToolCommandBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="SuggestMergeToolButton" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Mergetool command" />
+          <TextBox x:Name="MergeToolCommandBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.MergeToolCommand}" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
+          <Button x:Name="SuggestMergeToolButton" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Mergetool command" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
           <TextBlock Grid.Row="7" Text="Difftool" VerticalAlignment="Center" />
           <ComboBox x:Name="DiffToolBox" Grid.Row="7" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
-                    Margin="0,0,0,6" />
+                    Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.DiffTools}" Text="{Binding GitConfigPage.DiffTool}" />
           <TextBlock Grid.Row="8" Text="Path to difftool" VerticalAlignment="Center" />
-          <TextBox x:Name="DiffToolPathBox" Grid.Row="8" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseDiffToolButton" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Difftool command" />
+          <TextBox x:Name="DiffToolPathBox" Grid.Row="8" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.DiffToolPath}" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
+          <Button x:Name="BrowseDiffToolButton" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Difftool command" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
           <TextBlock Grid.Row="9" Text="Difftool command" VerticalAlignment="Center" />
-          <TextBox x:Name="DiffToolCommandBox" Grid.Row="9" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="SuggestDiffToolButton" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Difftool command" />
+          <TextBox x:Name="DiffToolCommandBox" Grid.Row="9" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.DiffToolCommand}" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
+          <Button x:Name="SuggestDiffToolButton" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Difftool command" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
           <TextBlock Grid.Row="10" Text="Path to commit template" VerticalAlignment="Center" />
-          <TextBox x:Name="CommitTemplateBox" Grid.Row="10" Grid.Column="2" Margin="0,0,0,6" />
-          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to commit template" />
+          <TextBox x:Name="CommitTemplateBox" Grid.Row="10" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.CommitTemplate}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
+          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to commit template" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="11" Text="Files content encoding" VerticalAlignment="Center" />
-          <ComboBox x:Name="FilesEncodingBox" Grid.Row="11" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" />
+          <ComboBox x:Name="FilesEncodingBox" Grid.Row="11" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.Encodings}" SelectedItem="{Binding GitConfigPage.FilesEncoding}" />
           <Button x:Name="ConfigureEncodingButton" Grid.Row="11" Grid.Column="4" Content="Configure" Margin="0,0,0,6" />
           <!-- Upstream's groupBoxLineEndings. -->
           <StackPanel Grid.Row="12" Grid.ColumnSpan="5" Spacing="4" Margin="0,6,0,0">
             <TextBlock Text="Line endings" FontWeight="SemiBold" />
-            <RadioButton x:Name="AutoCrlfTrueRadio" GroupName="AutoCrlf" />
-            <RadioButton x:Name="AutoCrlfInputRadio" GroupName="AutoCrlf" />
-            <RadioButton x:Name="AutoCrlfFalseRadio" GroupName="AutoCrlf" />
-            <RadioButton x:Name="AutoCrlfNotSetRadio" GroupName="AutoCrlf" />
+            <RadioButton x:Name="AutoCrlfTrueRadio" GroupName="AutoCrlf" IsChecked="{Binding GitConfigPage.AutoCrlf, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:GitConfigPageViewModel.AutoCrlfTrue}}" />
+            <RadioButton x:Name="AutoCrlfInputRadio" GroupName="AutoCrlf" IsChecked="{Binding GitConfigPage.AutoCrlf, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:GitConfigPageViewModel.AutoCrlfInput}}" />
+            <RadioButton x:Name="AutoCrlfFalseRadio" GroupName="AutoCrlf" IsChecked="{Binding GitConfigPage.AutoCrlf, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:GitConfigPageViewModel.AutoCrlfFalse}}" />
+            <RadioButton x:Name="AutoCrlfNotSetRadio" GroupName="AutoCrlf" IsChecked="{Binding GitConfigPage.AutoCrlf, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:GitConfigPageViewModel.AutoCrlfNotSet}}" />
           </StackPanel>
         </Grid>
       </TabItem>
@@ -547,14 +577,31 @@
         <DockPanel Margin="4,8" LastChildFill="True">
           <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8" Text="Confirm actions" />
           <ScrollViewer>
-            <StackPanel x:Name="ConfirmationsPanel" Spacing="2" />
+            <!-- Upstream's ConfirmationsSettingsPage: the questions in upstream's groups; checked means the app asks. -->
+            <ItemsControl x:Name="ConfirmationsList" ItemsSource="{Binding ConfirmationGroups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="settings:ConfirmationGroup">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding Header}" Opacity="0.7" Margin="0,8,0,2" />
+                    <ItemsControl ItemsSource="{Binding Choices}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="settings:ConfirmationChoice">
+                          <CheckBox Content="{Binding Label}" IsChecked="{Binding Asks}" Margin="12,0,0,0" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </ScrollViewer>
         </DockPanel>
       </TabItem>
       <TabItem x:Name="ScriptsTab" Header="Scripts">
         <!-- As upstream's scripts settings page: the scripts in the order they run, and the selected script's values. -->
         <Grid RowDefinitions="*,Auto" ColumnDefinitions="*,8,Auto" Margin="4,8">
-          <ListBox x:Name="ScriptsList" Grid.Row="0" Grid.Column="0" MinHeight="120">
+          <ListBox x:Name="ScriptsList" Grid.Row="0" Grid.Column="0" MinHeight="120" ItemsSource="{Binding ScriptsPage.Items}"
+                   SelectedItem="{Binding ScriptsPage.Selected}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="scripts:ScriptListItem">
                 <Grid ColumnDefinitions="Auto,Auto,170,150,*" ToolTip.Tip="{Binding CommandLine}">
@@ -575,10 +622,10 @@
             </ListBox.ItemTemplate>
           </ListBox>
           <StackPanel Grid.Row="0" Grid.Column="2" Spacing="6">
-            <Button x:Name="AddScriptButton" Content="Add" HorizontalAlignment="Stretch" />
-            <Button x:Name="DeleteScriptButton" Content="Delete" HorizontalAlignment="Stretch" />
-            <Button x:Name="MoveScriptUpButton" Content="Up" HorizontalAlignment="Stretch" />
-            <Button x:Name="MoveScriptDownButton" Content="Down" HorizontalAlignment="Stretch" />
+            <Button x:Name="AddScriptButton" Content="Add" Command="{Binding ScriptsPage.AddCommand}" HorizontalAlignment="Stretch" />
+            <Button x:Name="DeleteScriptButton" Content="Delete" Command="{Binding ScriptsPage.DeleteCommand}" HorizontalAlignment="Stretch" />
+            <Button x:Name="MoveScriptUpButton" Content="Up" Command="{Binding ScriptsPage.MoveUpCommand}" HorizontalAlignment="Stretch" />
+            <Button x:Name="MoveScriptDownButton" Content="Down" Command="{Binding ScriptsPage.MoveDownCommand}" HorizontalAlignment="Stretch" />
             <Button x:Name="ScriptHelpButton" Content="?" HorizontalAlignment="Stretch" ToolTip.Tip="Arguments help" />
           </StackPanel>
           <Grid x:Name="ScriptDetails" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" x:DataType="scripts:ScriptListItem"
@@ -626,9 +673,25 @@
       <TabItem x:Name="PluginsTab" Header="Plugin">
         <Grid Margin="4,8">
           <DockPanel LastChildFill="True">
-            <TextBlock x:Name="PluginTitleText" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBlock x:Name="PluginTitleText" DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8"
+                       Text="{Binding PluginsPage.Title}" />
             <ScrollViewer>
-              <StackPanel x:Name="PluginSettingsPanel" Spacing="6" />
+              <!-- The plugin's settings, one editor per setting (PluginSettingRowTemplate), or why its file was not loaded. -->
+              <StackPanel x:Name="PluginSettingsPanel" Spacing="6">
+                <TextBlock Text="{Binding PluginsPage.SkippedText}" TextWrapping="Wrap" IsVisible="{Binding PluginsPage.IsSkipped}" />
+                <SelectableTextBlock Text="{Binding PluginsPage.SkippedPath}" Opacity="0.7" IsVisible="{Binding PluginsPage.IsSkipped}" />
+                <TextBlock Text="There are no settings available for this plugin." IsVisible="{Binding PluginsPage.HasNoSettings}" />
+                <ItemsControl x:Name="PluginSettingsList" ItemsSource="{Binding PluginsPage.Rows}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Spacing="6" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <local:PluginSettingRowTemplate />
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
             </ScrollViewer>
           </DockPanel>
         </Grid>

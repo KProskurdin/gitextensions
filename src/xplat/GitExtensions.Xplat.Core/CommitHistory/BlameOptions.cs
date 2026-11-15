@@ -5,6 +5,23 @@ using GitExtensions.Xplat.Core.Diff;
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
 /// <summary>
+///  One of the blame menu's check items (upstream's blame settings in its file history window and blame control).
+/// </summary>
+public enum BlameOption
+{
+    IgnoreWhitespace,
+    DetectMoveInFile,
+    DetectMoveInAllFiles,
+    DisplayAuthorFirst,
+    ShowAuthor,
+    ShowAuthorDate,
+    ShowAuthorTime,
+    ShowLineNumbers,
+    ShowOriginalFilePath,
+    ShowAuthorAvatar,
+}
+
+/// <summary>
 ///  Upstream's blame settings (the Blame viewer page and the blame menu of its file history window), with upstream's
 ///  defaults: how git blames (<c>IgnoreWhitespaceOnBlame</c>, <c>DetectCopyInFileOnBlame</c>, <c>DetectCopyInAllOnBlame</c>)
 ///  and what each commit's line in the gutter shows (<c>Blame.*</c>).
@@ -43,6 +60,25 @@ public sealed record BlameOptions(
 
     public BlameOptions ToggleShowAuthorDate()
         => this with { ShowAuthorDate = !ShowAuthorDate, ShowAuthor = ShowAuthor || ShowAuthorDate };
+
+    /// <summary>
+    ///  The options with <paramref name="option"/> turned over, as upstream's blame menu items do.
+    /// </summary>
+    public BlameOptions Toggle(BlameOption option)
+        => option switch
+        {
+            BlameOption.IgnoreWhitespace => this with { IgnoreWhitespace = !IgnoreWhitespace },
+            BlameOption.DetectMoveInFile => this with { DetectMoveInFile = !DetectMoveInFile },
+            BlameOption.DetectMoveInAllFiles => this with { DetectMoveInAllFiles = !DetectMoveInAllFiles },
+            BlameOption.DisplayAuthorFirst => this with { DisplayAuthorFirst = !DisplayAuthorFirst },
+            BlameOption.ShowAuthor => ToggleShowAuthor(),
+            BlameOption.ShowAuthorDate => ToggleShowAuthorDate(),
+            BlameOption.ShowAuthorTime => this with { ShowAuthorTime = !ShowAuthorTime },
+            BlameOption.ShowLineNumbers => this with { ShowLineNumbers = !ShowLineNumbers },
+            BlameOption.ShowOriginalFilePath => this with { ShowOriginalFilePath = !ShowOriginalFilePath },
+            BlameOption.ShowAuthorAvatar => this with { ShowAuthorAvatar = !ShowAuthorAvatar },
+            _ => this,
+        };
 
     /// <summary>
     ///  Upstream's <c>BlameControl.BuildAuthorLine</c>, without its padding: author and date in the chosen order, then the

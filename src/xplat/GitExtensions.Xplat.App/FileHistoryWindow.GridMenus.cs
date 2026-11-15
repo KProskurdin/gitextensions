@@ -28,12 +28,12 @@ public partial class FileHistoryWindow
     private DispatcherTimer? _quickSearchTimer;
 
     private CommitListItem? LatestSelectedItem
-        => _selection.Latest is { } latest
-            ? _commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == latest.Hash)
+        => ViewModel.Selection.Latest is { } latest
+            ? ViewModel.Commits.VisibleRows.FirstOrDefault(item => item.Row.Hash == latest.Hash)
             : null;
 
     private int LatestSelectedIndex
-        => LatestSelectedItem is { } item ? IndexOf(_commits.VisibleRows, item) : -1;
+        => LatestSelectedItem is { } item ? IndexOf(ViewModel.Commits.VisibleRows, item) : -1;
 
     private IEnumerable<(MenuItem Item, GridCommand Command)> NavigateMenuCommands() =>
     [
@@ -66,7 +66,7 @@ public partial class FileHistoryWindow
         // As upstream's OnGridViewSelectionChanged: the history follows a single selected commit.
         HistoryList.SelectionChanged += (_, _) =>
         {
-            if (_selection.Revisions is [{ } only])
+            if (ViewModel.Selection.Revisions is [{ } only])
             {
                 _navigationHistory.Push(only.Hash);
             }
@@ -82,8 +82,8 @@ public partial class FileHistoryWindow
         });
         WireQuickSearch();
         WireViewMenu();
-        _commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
-        _commits.GraphAppearanceChanged += (_, _) =>
+        ViewModel.Commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
+        ViewModel.Commits.GraphAppearanceChanged += (_, _) =>
         {
             foreach (GraphCell cell in HistoryList.GetVisualDescendants().OfType<GraphCell>())
             {
@@ -95,22 +95,22 @@ public partial class FileHistoryWindow
     // The commands of upstream RevisionGridControl's hotkeys and Navigate menu; false when one cannot run now.
     private bool RunGridCommand(GridCommand command)
     {
-        CommitRow? selected = _selection.Latest;
+        CommitRow? selected = ViewModel.Selection.Latest;
         switch (command)
         {
             case GridCommand.ToggleBetweenArtificialAndHeadCommits:
-                return SelectGridRow(_commits.IndexOfNextArtificialOrHead(selected));
+                return SelectGridRow(ViewModel.Commits.IndexOfNextArtificialOrHead(selected));
             case GridCommand.SelectCurrentRevision:
-                return SelectGridRow(_commits.IndexOfHead());
+                return SelectGridRow(ViewModel.Commits.IndexOfHead());
             case GridCommand.GoToCommit:
                 Run(GoToCommitAsync);
                 return true;
             case GridCommand.GoToChild when selected is not null:
-                return SelectGridRow(_commits.IndexOfChild(selected));
+                return SelectGridRow(ViewModel.Commits.IndexOfChild(selected));
             case GridCommand.GoToParent or GridCommand.GoToFirstParent when selected is not null:
-                return SelectGridRow(_commits.IndexOfParent(selected));
+                return SelectGridRow(ViewModel.Commits.IndexOfParent(selected));
             case GridCommand.GoToLastParent when selected is not null:
-                return SelectGridRow(_commits.IndexOfLastParent(selected));
+                return SelectGridRow(ViewModel.Commits.IndexOfLastParent(selected));
             case GridCommand.GoToMergeBase when selected is not null:
                 Run(GoToMergeBaseAsync);
                 return true;
@@ -123,7 +123,7 @@ public partial class FileHistoryWindow
             case GridCommand.PrevQuickSearch:
                 return QuickSearchNext(down: false);
             case GridCommand.ToggleHighlightSelectedBranch when selected is not null:
-                _commits.HighlightBranch(selected);
+                ViewModel.Commits.HighlightBranch(selected);
                 return true;
             case GridCommand.ShowAllBranches:
                 ToolStripFilters.ShowBranches(currentOnly: false, filtered: false);
@@ -135,13 +135,13 @@ public partial class FileHistoryWindow
                 Run(((IFilterToolBarGrid)this).ShowRevisionFilterDialogAsync);
                 return true;
             case GridCommand.ResetRevisionFilter:
-                ApplyFilter(_commits.Filter.ResetAll());
+                ApplyFilter(ViewModel.Commits.Filter.ResetAll());
                 return true;
             case GridCommand.ToggleHideMergeCommits:
-                ApplyFilter(_commits.Filter with { NoMerges = !_commits.Filter.NoMerges });
+                ApplyFilter(ViewModel.Commits.Filter with { NoMerges = !ViewModel.Commits.Filter.NoMerges });
                 return true;
             case GridCommand.ShowFirstParent:
-                ApplyFilter(_commits.Filter with { FirstParent = !_commits.Filter.FirstParent });
+                ApplyFilter(ViewModel.Commits.Filter with { FirstParent = !ViewModel.Commits.Filter.FirstParent });
                 return true;
             default:
                 return false;
@@ -150,12 +150,12 @@ public partial class FileHistoryWindow
 
     private bool SelectGridRow(int? index)
     {
-        if (index is not { } row || row < 0 || row >= _commits.VisibleRows.Count)
+        if (index is not { } row || row < 0 || row >= ViewModel.Commits.VisibleRows.Count)
         {
             return false;
         }
 
-        HistoryList.SelectedItem = _commits.VisibleRows[row];
+        HistoryList.SelectedItem = ViewModel.Commits.VisibleRows[row];
         HistoryList.ScrollIntoView(row);
         return true;
     }
@@ -169,7 +169,7 @@ public partial class FileHistoryWindow
             return false;
         }
 
-        Run(() => GoToCommitAsync(hash));
+        Run(() => ViewModel.GoToCommitAsync(hash));
         return true;
     }
 
@@ -187,13 +187,13 @@ public partial class FileHistoryWindow
             return;
         }
 
-        await GoToCommitAsync(commit.ToString());
+        await ViewModel.GoToCommitAsync(commit.ToString());
     }
 
     // Upstream's GoToMergeBase: the common ancestor of the selected commits (with HEAD for one).
     private async Task GoToMergeBaseAsync()
     {
-        string[] hashes = [.. _selection.Revisions.Select(row => row.Hash)];
+        string[] hashes = [.. ViewModel.Selection.Revisions.Select(row => row.Hash)];
         MergeBaseResult result = await Task.Run(() => GoToCommit.MergeBase(_module, hashes));
         if (result.NoCommonAncestor)
         {
@@ -201,7 +201,7 @@ public partial class FileHistoryWindow
         }
         else if (result.Hash is { } hash)
         {
-            await GoToCommitAsync(hash);
+            await ViewModel.GoToCommitAsync(hash);
         }
     }
 
@@ -258,7 +258,7 @@ public partial class FileHistoryWindow
         return true;
     }
 
-    private IReadOnlyList<CommitRow> ShownRows() => [.. _commits.VisibleRows.Select(item => item.Row)];
+    private IReadOnlyList<CommitRow> ShownRows() => [.. ViewModel.Commits.VisibleRows.Select(item => item.Row)];
 
     private void QuickSearchTo(int? index)
     {
@@ -296,12 +296,12 @@ public partial class FileHistoryWindow
         ShowCurrentBranchOnlyMenuItem.Click += (_, _) => ToolStripFilters.ShowBranches(currentOnly: true, filtered: false);
         ShowFilteredBranchesMenuItem.Click += (_, _) => ToolStripFilters.ShowBranches(currentOnly: false, filtered: true);
         ShowReflogReferencesMenuItem.Click += (_, _) =>
-            ApplyFilter(_commits.Filter with { ShowReflog = !_commits.Filter.ShowReflog });
+            ApplyFilter(ViewModel.Commits.Filter with { ShowReflog = !ViewModel.Commits.Filter.ShowReflog });
         AdvancedFilterViewMenuItem.Click += (_, _) => Run(((IFilterToolBarGrid)this).ShowRevisionFilterDialogAsync);
         DrawNonRelativesGrayMenuItem.Click += (_, _) =>
         {
             _preferences.RevisionGraphDrawNonRelativesGray = !_preferences.RevisionGraphDrawNonRelativesGray;
-            _commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
+            ViewModel.Commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
         };
         HighlightSelectedBranchMenuItem.Click += (_, _) => RunGridCommand(GridCommand.ToggleHighlightSelectedBranch);
         ShowArtificialCommitsMenuItem.Click += (_, _) => ChangePreference(() =>
@@ -360,7 +360,7 @@ public partial class FileHistoryWindow
 
     private void ShowViewMenuChecks()
     {
-        RevisionFilter filter = _commits.Filter;
+        RevisionFilter filter = ViewModel.Commits.Filter;
         ShowAllBranchesMenuItem.IsChecked = !filter.CurrentBranchOnly && !filter.ShowFilteredBranches;
         ShowCurrentBranchOnlyMenuItem.IsChecked = filter.CurrentBranchOnly;
         ShowFilteredBranchesMenuItem.IsChecked = !filter.CurrentBranchOnly && filter.ShowFilteredBranches;
@@ -418,7 +418,7 @@ public partial class FileHistoryWindow
     {
         if (HistoryList.IsVisible)
         {
-            Run(() => ApplyGridFilterAsync(_commits.Filter));
+            Run(() => ViewModel.ApplyGridFilterAsync(ViewModel.Commits.Filter));
         }
     }
 

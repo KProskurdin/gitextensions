@@ -333,12 +333,12 @@ internal sealed class FileHistoryWindowTests
     private static void Click(Window window, string name)
     {
         Control control = Find<Control>(window, name);
-        control.RaiseEvent(new RoutedEventArgs(control switch
+        UiClicks.Raise(control, control switch
         {
             MenuItem => MenuItem.ClickEvent,
             SplitButton => SplitButton.ClickEvent,
             _ => Button.ClickEvent,
-        }));
+        });
     }
 
     private static T Find<T>(Window window, string name) where T : Control

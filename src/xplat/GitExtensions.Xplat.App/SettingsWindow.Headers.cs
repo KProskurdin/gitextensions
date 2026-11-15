@@ -50,7 +50,7 @@ public partial class SettingsWindow
                 ShowReadOnly();
                 if (page == RevisionLinksTab)
                 {
-                    ChangeRevisionLinkLevel(header.Level);
+                    ViewModel.RevisionLinksPage.ChangeLevel(header.Level);
                 }
                 else if (page == BuildServerTab)
                 {
@@ -58,11 +58,11 @@ public partial class SettingsWindow
                 }
                 else if (page == PluginsTab)
                 {
-                    ChangePluginLevel(header.Level);
+                    ViewModel.PluginsPage.ChangeLevel(header.Level);
                 }
                 else if (page == DetailedTab)
                 {
-                    ChangeDetailedLevel(header.Level);
+                    ViewModel.DetailedPage.ChangeLevel(header.Level);
                 }
                 else if (page == GitConfigTab)
                 {
@@ -84,9 +84,8 @@ public partial class SettingsWindow
             }
         }
 
-        _buildServerLevel = _headers[BuildServerTab].Level;
-        _pluginLevel = _headers[PluginsTab].Level;
-        _detailedLevel = _headers[DetailedTab].Level;
-        ShowDetailedValues();
+        ViewModel.BuildServerPage.SetLevel(_headers[BuildServerTab].Level);
+        ViewModel.PluginsPage.SetLevel(_headers[PluginsTab].Level);
+        ViewModel.DetailedPage.Show(_headers[DetailedTab].Level);
     }
 }

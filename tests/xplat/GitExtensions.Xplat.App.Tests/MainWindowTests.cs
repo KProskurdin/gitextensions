@@ -2223,6 +2223,9 @@ internal sealed class MainWindowTests
         list.SelectedIndex.Should().Be(0);
         Find<TextBox>(settings, "ScriptNameBox").Text.Should().Be("Kept");
 
+        // A command-bound button is clicked only on the page shown.
+        Find<TabControl>(settings, "Tabs").SelectedItem = Find<TabItem>(settings, "ScriptsTab");
+        Dispatcher.UIThread.RunJobs();
         Click(settings, "AddScriptButton");
         Find<TextBox>(settings, "ScriptNameBox").Text = "&Status";
         Find<TextBox>(settings, "ScriptCommandBox").Text = "git";
@@ -2256,6 +2259,9 @@ internal sealed class MainWindowTests
         window.Show();
         SettingsWindow settings = OpenSettings(window);
 
+        // A command-bound button is clicked only on the page shown.
+        Find<TabControl>(settings, "Tabs").SelectedItem = Find<TabItem>(settings, "ScriptsTab");
+        Dispatcher.UIThread.RunJobs();
         Find<TextBox>(settings, "ScriptNameBox").Text = "Changed";
         Click(settings, "DeleteScriptButton");
         Click(settings, "CancelButton");

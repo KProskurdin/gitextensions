@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Avalonia.Controls;
 using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Ui;
@@ -10,28 +11,40 @@ namespace GitExtensions.Xplat.App;
 ///  A window as its view model's <see cref="IDialogHost"/>: upstream's translations by English text, the shell's message
 ///  box and error window, and closing.
 /// </summary>
-internal sealed class WindowDialogHost(Window window) : IDialogHost
+internal sealed class WindowDialogHost : IDialogHost
 {
+    private readonly Window _window;
+
+    // True once the window is closed: an error a command reports late (its repository read failing as the window went)
+    // is traced, since no window can be shown over a closed one.
+    private bool _closed;
+
+    public WindowDialogHost(Window window)
+    {
+        _window = window;
+        window.Closed += (_, _) => _closed = true;
+    }
+
     public string Translate(string english) => UpstreamTranslation.ByText(english);
 
     public string Translate(string category, string name, string english) => UpstreamTranslation.Text(category, name, english);
 
     public Task ShowMessageAsync(string text, string? caption = null)
-        => new MessageBoxWindow(text, caption ?? window.Title ?? "", MessageBoxButtons.OK).ShowDialog(window);
+        => new MessageBoxWindow(text, caption ?? _window.Title ?? "", MessageBoxButtons.OK).ShowDialog(_window);
 
     public async Task<bool> ConfirmAsync(string text, string? caption = null, bool defaultIsNo = false)
     {
-        MessageBoxWindow question = new(text, caption ?? window.Title ?? "", MessageBoxButtons.YesNo,
+        MessageBoxWindow question = new(text, caption ?? _window.Title ?? "", MessageBoxButtons.YesNo,
             defaultIsNo ? MessageBoxDefaultButton.Button2 : MessageBoxDefaultButton.Button1);
-        await question.ShowDialog(window);
+        await question.ShowDialog(_window);
         return question.Result == System.Windows.Forms.DialogResult.Yes;
     }
 
     public async Task<bool?> AskAsync(string text, string? caption = null, bool defaultIsNo = false)
     {
-        MessageBoxWindow question = new(text, caption ?? window.Title ?? "", MessageBoxButtons.YesNoCancel,
+        MessageBoxWindow question = new(text, caption ?? _window.Title ?? "", MessageBoxButtons.YesNoCancel,
             defaultIsNo ? MessageBoxDefaultButton.Button2 : MessageBoxDefaultButton.Button1);
-        await question.ShowDialog(window);
+        await question.ShowDialog(_window);
         return question.Result switch
         {
             System.Windows.Forms.DialogResult.Yes => true,
@@ -40,7 +53,16 @@ internal sealed class WindowDialogHost(Window window) : IDialogHost
         };
     }
 
-    public void ShowError(Exception exception) => _ = new ErrorWindow(exception.Message).ShowDialog(window);
+    public void ShowError(Exception exception)
+    {
+        if (_closed)
+        {
+            Trace.WriteLine($"Error after its window closed: {exception}");
+            return;
+        }
 
-    public void Close(object? result) => window.Close(result);
+        _ = new ErrorWindow(exception.Message).ShowDialog(_window);
+    }
+
+    public void Close(object? result) => _window.Close(result);
 }

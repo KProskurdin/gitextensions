@@ -120,6 +120,8 @@ internal sealed class PluginHostTests
         WaitUntil(() => settings.IsGitConfigLoaded);
         Find<TabControl>(settings, "Tabs").SelectedItem.Should().Be(Find<TabItem>(settings, "PluginsTab"));
         settings.SelectedPluginEditor!.Title.Should().Be(RecordingPlugin.PluginName);
+        // The settings' editors are the page's items, made by its layout.
+        settings.UpdateLayout();
         TextBox arguments = Find<StackPanel>(settings, "PluginSettingsPanel").GetLogicalDescendants()
             .OfType<TextBox>().First();
         arguments.Text = "fetch --prune";
@@ -154,8 +156,11 @@ internal sealed class PluginHostTests
         Find<StackPanel>(settings, "PluginSettingsPanel").IsEffectivelyEnabled.Should()
             .BeFalse("upstream shows the effective settings read-only");
         levels.Level = SettingLevel.Local;
+        settings.UpdateLayout();
         Find<StackPanel>(settings, "PluginSettingsPanel").GetLogicalDescendants().OfType<TextBox>().First().Text =
             "local only";
+        // OK is off while git config is read, which saving would write blanks over.
+        WaitUntil(() => settings.IsGitConfigLoaded);
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 

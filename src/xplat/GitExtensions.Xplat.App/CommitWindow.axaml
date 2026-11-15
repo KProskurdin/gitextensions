@@ -3,28 +3,32 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
         x:Class="GitExtensions.Xplat.App.CommitWindow"
-        Title="Commit"
+        x:DataType="repo:CommitViewModel"
+        Title="{Binding Title}"
         Width="1100" Height="720">
   <!-- Mirrors upstream FormCommit: unstaged files above staged files on the left, the selected file's diff on the right,
-       and the commit message below the diff. -->
+       and the commit message below the diff. Bound to CommitViewModel (PLAN.md principle 6); the file lists, the diff,
+       auto-completion and spelling stay in the view. -->
   <DockPanel Margin="8" LastChildFill="True">
-    <TextBlock x:Name="StateText" DockPanel.Dock="Top" Margin="0,0,0,6" FontWeight="SemiBold" IsVisible="False" />
+    <TextBlock x:Name="StateText" DockPanel.Dock="Top" Margin="0,0,0,6" FontWeight="SemiBold" Text="{Binding StateText}"
+               IsVisible="{Binding IsStateVisible}" />
     <!-- Upstream's commitStatusStrip: the committer (and author), the branch and where it pushes, the staged count, and
          the line and column of the caret in the message. The operation messages, which upstream shows in its process
          dialog, follow the committer. -->
     <DockPanel DockPanel.Dock="Bottom" Margin="1,6,11,0" MinHeight="22">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
         <!-- Upstream's toolStripProgressBar1, while files are staged or unstaged. -->
-        <ProgressBar x:Name="StageProgress" IsVisible="False" Width="150" MinWidth="150" Height="15" MinHeight="15" Minimum="0"
+        <ProgressBar x:Name="StageProgress" IsVisible="{Binding IsStageProgressVisible}" Maximum="{Binding StageProgressMaximum}"
+                     Value="{Binding StageProgressValue}" Width="150" MinWidth="150" Height="15" MinHeight="15" Minimum="0"
                      VerticalAlignment="Center" Margin="0,0,8,0" />
         <Image Source="{local:UpstreamImage Branch}" Width="16" Height="16" VerticalAlignment="Center" />
-        <TextBlock x:Name="BranchNameText" VerticalAlignment="Center" />
+        <TextBlock x:Name="BranchNameText" VerticalAlignment="Center" Text="{Binding BranchText}" />
         <!-- As upstream, where the branch pushes is a link to the branch's pull behavior in the remotes window. -->
         <HyperlinkButton x:Name="RemoteNameLink" Padding="0" VerticalAlignment="Center" Margin="0,0,25,0">
-          <TextBlock x:Name="RemoteNameText" />
+          <TextBlock x:Name="RemoteNameText" Text="{Binding PushToText}" />
         </HyperlinkButton>
         <TextBlock Text="Staged" VerticalAlignment="Center" />
-        <TextBlock x:Name="StagedCountText" Text="0" Width="40" VerticalAlignment="Center" />
+        <TextBlock x:Name="StagedCountText" Text="{Binding StagedCountText}" Width="40" VerticalAlignment="Center" />
         <TextBlock Text="Ln" VerticalAlignment="Center" />
         <TextBlock x:Name="CaretLineText" Text="0" Width="40" VerticalAlignment="Center" />
         <TextBlock Text="Col" VerticalAlignment="Center" />
@@ -33,9 +37,9 @@
       <!-- As upstream, the committer is a link to the Git config settings page. -->
       <HyperlinkButton x:Name="CommitterLink" DockPanel.Dock="Left" Padding="0" VerticalAlignment="Center"
                        ToolTip.Tip="Click to change committer information.">
-        <TextBlock x:Name="CommitterText" />
+        <TextBlock x:Name="CommitterText" Text="{Binding CommitterText}" />
       </HyperlinkButton>
-      <TextBlock x:Name="StatusText" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+      <TextBlock x:Name="StatusText" Text="{Binding StatusText}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </DockPanel>
     <Grid x:Name="SplitMainGrid" ColumnDefinitions="380,6,*">
       <Grid x:Name="SplitLeftGrid" Grid.Column="0" RowDefinitions="*,6,*">
@@ -125,12 +129,12 @@
           <!-- Upstream's toolbarStaged between the lists: Unstage all and Unstage on the left, Stage and Stage all on the
                right. -->
           <DockPanel DockPanel.Dock="Top" Margin="2,1">
-            <local:ToolButton x:Name="StageAllButton" DockPanel.Dock="Right" Image="StageAll" ToolTip.Tip="Stage all" />
+            <local:ToolButton x:Name="StageAllButton" IsEnabled="{Binding CanStageAll}" DockPanel.Dock="Right" Image="StageAll" ToolTip.Tip="Stage all" />
             <Rectangle DockPanel.Dock="Right" Classes="toolSeparator" />
-            <local:ToolButton x:Name="StageButton" DockPanel.Dock="Right" Image="Stage" Text="_Stage" />
-            <local:ToolButton x:Name="UnstageAllButton" DockPanel.Dock="Left" Image="UnstageAll" ToolTip.Tip="Unstage all" />
+            <local:ToolButton x:Name="StageButton" IsEnabled="{Binding CanStage}" Command="{Binding StageCommand}" DockPanel.Dock="Right" Image="Stage" Text="_Stage" />
+            <local:ToolButton x:Name="UnstageAllButton" IsEnabled="{Binding CanUnstageAll}" DockPanel.Dock="Left" Image="UnstageAll" ToolTip.Tip="Unstage all" />
             <Rectangle DockPanel.Dock="Left" Classes="toolSeparator" />
-            <local:ToolButton x:Name="UnstageButton" DockPanel.Dock="Left" Image="Unstage" Text="_Unstage" />
+            <local:ToolButton x:Name="UnstageButton" IsEnabled="{Binding CanUnstage}" Command="{Binding UnstageCommand}" DockPanel.Dock="Left" Image="Unstage" Text="_Unstage" />
             <Panel />
           </DockPanel>
           <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
@@ -216,7 +220,7 @@
           <!-- Upstream's SolveMergeconflicts button, over the diff while conflicts are unresolved. -->
           <Panel>
             <local:DiffView x:Name="Diff" />
-            <Button x:Name="SolveConflictsButton" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Button x:Name="SolveConflictsButton" IsVisible="{Binding HasConflicts}" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="14,12" Width="188" Height="42" BorderThickness="0" CornerRadius="0">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Image Source="{local:UpstreamImage SolveMerge}" Width="16" Height="16" />
@@ -238,44 +242,50 @@
                 <Setter Property="MinHeight" Value="26" />
               </Style>
             </StackPanel.Styles>
-            <Button x:Name="CommitButton" ToolTip.Tip="{local:CommandShortcutText 'Commit the staged changes ({0}+Enter)'}" />
-            <Button x:Name="CommitAndPushButton" />
-            <CheckBox x:Name="StageInSuperprojectCheck" Content="Stage _in Superproject" IsVisible="False"
+            <Button x:Name="CommitButton" IsEnabled="{Binding IsIdle}" Command="{Binding CommitCommand}"
+                    ToolTip.Tip="{local:CommandShortcutText 'Commit the staged changes ({0}+Enter)'}" />
+            <Button x:Name="CommitAndPushButton" IsVisible="{Binding ShowCommitAndPush}" IsEnabled="{Binding CanCommitAndPush}"
+                    Command="{Binding CommitAndPushCommand}" />
+            <CheckBox x:Name="StageInSuperprojectCheck" Content="Stage _in Superproject" IsVisible="{Binding IsStageInSuperprojectVisible}"
+                      IsChecked="{Binding StageInSuperproject}"
                       ToolTip.Tip="Stage current submodule in superproject after commit" />
-            <CheckBox x:Name="AmendCheck" Content="_Amend commit" />
+            <CheckBox x:Name="AmendCheck" Content="_Amend commit" IsChecked="{Binding Amend}" />
             <!-- Upstream's AmendPanel, shown while Amend is checked. -->
-            <StackPanel x:Name="AmendPanel" Margin="12,0,0,0" Spacing="6" IsVisible="{Binding #AmendCheck.IsChecked}">
-              <CheckBox x:Name="ResetAuthorCheck" Content="R_eset author" />
-              <Button x:Name="ResetSoftButton"
+            <StackPanel x:Name="AmendPanel" Margin="12,0,0,0" Spacing="6" IsVisible="{Binding Amend}">
+              <CheckBox x:Name="ResetAuthorCheck" Content="R_eset author" IsChecked="{Binding ResetAuthor}" />
+              <Button x:Name="ResetSoftButton" IsEnabled="{Binding CanResetSoft}" Command="{Binding ResetSoftCommand}"
                       ToolTip.Tip="Perform a soft reset to the previous commit; leaves working directory and index untouched" />
             </StackPanel>
-            <Button x:Name="StashStagedButton" />
-            <Button x:Name="ResetAllButton" />
-            <Button x:Name="ResetUnstagedButton" />
+            <Button x:Name="StashStagedButton" IsVisible="{Binding IsStashStagedVisible}" Command="{Binding StashStagedCommand}" />
+            <Button x:Name="ResetAllButton" IsVisible="{Binding ShowResetAll}" IsEnabled="{Binding HasChanges}"
+                    Command="{Binding ResetChangesCommand}" CommandParameter="{x:False}" />
+            <Button x:Name="ResetUnstagedButton" IsVisible="{Binding ShowResetUnstaged}" Command="{Binding ResetChangesCommand}"
+                    CommandParameter="{x:True}" />
           </StackPanel>
           <!-- Upstream's toolbarCommit: Commit message, Commit templates and Create branch, with Options on the right. -->
           <DockPanel Grid.Column="1" Margin="1,1,2,1">
             <local:ToolDropDownButton x:Name="OptionsButton" DockPanel.Dock="Right" Text="_Options">
               <local:ToolDropDownButton.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="CloseAfterEachCommitMenuItem" Header="Close dialog after each commit" ToggleType="CheckBox" />
-                  <MenuItem x:Name="CloseAfterAllCommittedMenuItem" Header="Close dialog when all changes are committed" ToggleType="CheckBox" />
-                  <MenuItem x:Name="RefreshOnFocusMenuItem" Header="Refresh dialog on form focus" ToggleType="CheckBox" />
-                  <MenuItem x:Name="SelectStagedOnEnterMessageMenuItem" Header="Select staged on entering message editor" ToggleType="CheckBox" />
+                  <MenuItem x:Name="CloseAfterEachCommitMenuItem" IsChecked="{Binding CloseAfterEachCommit, Mode=TwoWay}" Header="Close dialog after each commit" ToggleType="CheckBox" />
+                  <MenuItem x:Name="CloseAfterAllCommittedMenuItem" IsChecked="{Binding CloseAfterAllCommitted, Mode=TwoWay}" Header="Close dialog when all changes are committed" ToggleType="CheckBox" />
+                  <MenuItem x:Name="RefreshOnFocusMenuItem" IsChecked="{Binding RefreshOnFocus, Mode=TwoWay}" Header="Refresh dialog on form focus" ToggleType="CheckBox" />
+                  <MenuItem x:Name="SelectStagedOnEnterMessageMenuItem" IsChecked="{Binding SelectStagedOnEnterMessage, Mode=TwoWay}" Header="Select staged on entering message editor" ToggleType="CheckBox" />
                   <Separator />
-                  <MenuItem x:Name="SignOffMenuItem" Header="Sign-off commit" ToggleType="CheckBox" />
+                  <MenuItem x:Name="SignOffMenuItem" IsChecked="{Binding SignOff, Mode=TwoWay}" Header="Sign-off commit" ToggleType="CheckBox" />
                   <!-- Upstream's author label: checked and enabled while an author is set; clicking it clears the author. -->
-                  <MenuItem x:Name="AuthorLabelMenuItem" Header="Author: (Format: &quot;name &lt;mail&gt;&quot;)" ToggleType="CheckBox" IsEnabled="False" />
+                  <MenuItem x:Name="AuthorLabelMenuItem" Header="Author: (Format: &quot;name &lt;mail&gt;&quot;)" ToggleType="CheckBox"
+                            IsChecked="{Binding IsAuthorSet, Mode=OneWay}" IsEnabled="{Binding IsAuthorSet}" Command="{Binding ClearAuthorCommand}" />
                   <MenuItem StaysOpenOnClick="True">
                     <MenuItem.Header>
-                      <TextBox x:Name="CommitAuthorBox" Width="260" />
+                      <TextBox x:Name="CommitAuthorBox" Width="260" Text="{Binding Author}" />
                     </MenuItem.Header>
                   </MenuItem>
-                  <MenuItem x:Name="NoVerifyMenuItem" Header="No verify" ToggleType="CheckBox" />
+                  <MenuItem x:Name="NoVerifyMenuItem" IsChecked="{Binding NoVerify, Mode=TwoWay}" Header="No verify" ToggleType="CheckBox" />
                   <Separator />
                   <MenuItem StaysOpenOnClick="True">
                     <MenuItem.Header>
-                      <ComboBox x:Name="GpgSignComboBox" Width="260" SelectedIndex="0">
+                      <ComboBox x:Name="GpgSignComboBox" Width="260" SelectedIndex="{Binding GpgSignIndex}">
                         <ComboBoxItem Content="Git default GPG signing" />
                         <ComboBoxItem Content="Do not sign commit" />
                         <ComboBoxItem Content="Sign with default GPG" />
@@ -283,9 +293,9 @@
                       </ComboBox>
                     </MenuItem.Header>
                   </MenuItem>
-                  <MenuItem x:Name="GpgKeyMenuItem" StaysOpenOnClick="True" IsVisible="False">
+                  <MenuItem x:Name="GpgKeyMenuItem" StaysOpenOnClick="True" IsVisible="{Binding IsGpgKeyVisible}">
                     <MenuItem.Header>
-                      <TextBox x:Name="GpgKeyBox" Width="260" />
+                      <TextBox x:Name="GpgKeyBox" Width="260" Text="{Binding GpgKey}" />
                     </MenuItem.Header>
                   </MenuItem>
                 </MenuFlyout>
@@ -293,18 +303,18 @@
             </local:ToolDropDownButton>
             <StackPanel Classes="toolStrip">
               <!-- Upstream's "Commit message" menu: earlier messages, the submodule change list and "Show only my messages". -->
-              <local:ToolDropDownButton x:Name="CommitMessageMenuButton" Image="WorkingDirChanges" Text="Commit _message">
+              <local:ToolDropDownButton x:Name="CommitMessageMenuButton" IsEnabled="{Binding CanChangeMessage}" Image="WorkingDirChanges" Text="Commit _message">
                 <local:ToolDropDownButton.Flyout>
                   <local:PopulatingMenuFlyout Placement="BottomEdgeAlignedLeft" />
                 </local:ToolDropDownButton.Flyout>
               </local:ToolDropDownButton>
               <!-- Upstream's "Commit templates" menu: the plugins' templates, then the user's own. -->
-              <local:ToolDropDownButton x:Name="CommitTemplatesButton" Image="CommitTemplates" Text="Commit _templates">
+              <local:ToolDropDownButton x:Name="CommitTemplatesButton" IsEnabled="{Binding CanChangeMessage}" Image="CommitTemplates" Text="Commit _templates">
                 <local:ToolDropDownButton.Flyout>
                   <local:PopulatingMenuFlyout Placement="BottomEdgeAlignedLeft" />
                 </local:ToolDropDownButton.Flyout>
               </local:ToolDropDownButton>
-              <local:ToolButton x:Name="CreateBranchButton" Image="BranchCreate" Text="Create _branch" />
+              <local:ToolButton x:Name="CreateBranchButton" Image="BranchCreate" Text="Create _branch" Command="{Binding CreateBranchCommand}" />
             </StackPanel>
           </DockPanel>
           <Panel Grid.Column="1" Grid.Row="1">
@@ -314,10 +324,11 @@
               <ListBox x:Name="AutoCompleteList" MaxHeight="200" MinWidth="120" Focusable="False" />
             </Popup>
             <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
-                     FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="Enter commit message" />
+                     FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="{Binding MessagePlaceholder}"
+                     Text="{Binding Message}" IsEnabled="{Binding CanChangeMessage}" />
             <!-- Upstream's modifyCommitMessageButton, over the read-only message of a fixup or squash commit. -->
             <Button x:Name="modifyCommitMessageButton" Content="Modify the commit m_essage" MinWidth="149" MinHeight="25"
-                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsModifyMessageVisible}" />
           </Panel>
         </Grid>
       </Grid>

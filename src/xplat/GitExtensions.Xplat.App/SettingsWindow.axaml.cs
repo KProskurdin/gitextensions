@@ -41,9 +41,7 @@ public partial class SettingsWindow : Window
         """;
 
     private readonly IAppPreferences _preferences;
-    private readonly IGitConfigService _gitConfig;
     private readonly string? _repositoryPath;
-    private readonly Dictionary<(ConfigScope, string), string> _loaded = [];
     private readonly HotkeyEditor<BrowseCommand> _browseHotkeys = new(Hotkeys.Browse);
     private readonly HotkeyEditor<CommitCommand> _commitHotkeys = new(Hotkeys.Commit);
     private readonly HotkeyEditor<GridCommand> _gridHotkeys = new(Hotkeys.Grid);
@@ -54,29 +52,14 @@ public partial class SettingsWindow : Window
     private readonly HotkeyEditor<StashCommand> _stashHotkeys = new(Hotkeys.Stash);
     private readonly HotkeyEditor<int> _scriptHotkeys = new(Hotkeys.Scripts);
     private bool _hotkeysReset;
-    private IReadOnlyList<ScriptDefinition> _loadedScripts;
-    private readonly ScriptListEditor _scripts;
     private HelpWindow? _scriptHelp;
-    private readonly IReadOnlyList<IGitPlugin> _plugins;
-    private readonly Dictionary<IGitPlugin, PluginSettingsEditor> _pluginEditors = [];
 
-    // The plugin page shown: a PluginOption or a SkippedPluginOption.
-    private object? _selectedPlugin;
-    private bool _saved;
-    private readonly Dictionary<SettingLevel, SettingsSource> _pluginSources = [];
-    private SettingLevel _pluginLevel = SettingLevel.Effective;
-    private readonly Dictionary<Confirmation, CheckBox> _confirmationChecks = [];
     private readonly DistributedSettings _revisionLinkSettings;
-    private RevisionLinkEditor _revisionLinks;
 
     // The definitions edited at each settings level so far, all stored on OK.
     private readonly Dictionary<SettingLevel, (DistributedSettings Settings, RevisionLinkEditor Editor)>
         _revisionLinkLevels =
             [];
-
-    private readonly Dictionary<AppFont, (ComboBox Family, NumericUpDown Size)> _fontBoxes = [];
-    private readonly Dictionary<AppFont, (CheckBox Bold, CheckBox Italic)> _fontStyleBoxes = [];
-    private readonly Dictionary<AppFont, FontSetting?> _loadedFonts = [];
 
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
@@ -90,24 +73,51 @@ public partial class SettingsWindow : Window
         IReadOnlyList<IGitPlugin>? plugins = null, IGitPlugin? selectedPlugin = null, bool pluginsPage = false)
     {
         _preferences = preferences;
-        _gitConfig = AppServices.GitConfig;
         _repositoryPath = repositoryPath;
-        _loadedScripts = AppServices.Scripts.Load();
-        _scripts = new ScriptListEditor(_loadedScripts);
         _revisionLinkSettings = AppServices.RevisionLinks.Open(repositoryPath);
-        _revisionLinks = new RevisionLinkEditor(_revisionLinkSettings);
-        _revisionLinkLevels[SettingLevel.Effective] = (_revisionLinkSettings, _revisionLinks);
+        _revisionLinkLevels[SettingLevel.Effective] = (_revisionLinkSettings, new RevisionLinkEditor(_revisionLinkSettings));
+        ViewModel = new SettingsViewModel(new WindowDialogHost(this), preferences, new SettingsViewModelServices
+        {
+            Themes = AppServices.Themes.GetThemeIds(),
+            Dictionaries = CommitSpellChecker.Dictionaries(AppServices.DictionaryFolder),
+            FontFamilies =
+            [
+                .. FontManager.Current.SystemFonts.Select(family => family.Name).Distinct()
+                    .Order(StringComparer.CurrentCultureIgnoreCase),
+            ],
+            Scripts = AppServices.Scripts.Load(),
+            RevisionLinkEditorAt = level => DistributedSettingsAt(level).Editor,
+            LoadRemotes = () => RevisionLinkTemplates.LoadRemotesAsync(repositoryPath),
+            SettingsAt = level => DistributedSettingsAt(level).Settings,
+            Plugins = plugins ?? [],
+            SkippedPlugins = AppServices.Plugins.Skipped,
+            PluginSettingsAt = level => AppServices.PluginSettings.Open(repositoryPath, level),
+            BuildServerTypes = () => Task.Run(() => AppServices.BuildServers.Types),
+            HasRepository = repositoryPath is not null,
+            RepositoryPath = repositoryPath,
+            GitConfig = AppServices.GitConfig,
+            CanFindGit = AppServices.CanFindGit,
+            DiffMergeTools = AppServices.DiffMergeTools,
+            Translations = () => Translator.GetAllTranslations(),
+            SavePagesBeforeStore = SavePagesBeforeStore,
+            SavePagesAfterStore = SavePagesAfterStoreAsync,
+        }, OperatingSystem.IsWindows());
+        ViewModel.GitPageRequested += (_, _) => Tabs.SelectedItem = GitTab;
+        ViewModel.PluginsPage.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PluginsPageViewModel.IsSkipped) && _headers.ContainsKey(PluginsTab))
+            {
+                SourceHeaderOf(PluginsTab).IsVisible = !ViewModel.PluginsPage.IsSkipped;
+            }
+        };
         InitializeComponent();
+        DataContext = ViewModel;
         AddPageHeaders();
-
-        ShowThemes(preferences.Theme);
-        ShowEolMarkerAsGlyph.IsChecked = preferences.ShowEolMarkerAsGlyph;
 
         // Upstream's SortingSettingsPage help pictures.
         RevisionSortOrderHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-author-date")());
         PrioBranchNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-branches")());
         PrioRemoteNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-remotes")());
-        ColorblindCheck.IsChecked = preferences.ThemeVariations.Contains(ThemeVariations.Colorblind);
 
         // Upstream's ShowAppThemesDirectory and ShowUserThemesDirectory; the user folder is made first, as upstream makes it.
         // A portable app has no user folder, where upstream's item does nothing; here it is off.
@@ -121,112 +131,31 @@ public partial class SettingsWindow : Window
                 AppServices.FileManager.OpenFolder(folder);
             }
         };
-        MulticolorBranches.IsChecked = preferences.MulticolorBranches;
-        chkDrawAlternateBackColor.IsChecked = preferences.RevisionGraphDrawAlternateBackColor;
-        DrawNonRelativesGray.IsChecked = preferences.RevisionGraphDrawNonRelativesGray;
-        DrawNonRelativesTextGray.IsChecked = preferences.RevisionGraphDrawNonRelativesTextGray;
-        chkHighlightAuthored.IsChecked = preferences.HighlightAuthoredRevisions;
-        chkFillRefLabels.IsChecked = preferences.FillRefLabels;
-        CloseAfterCommitCheck.IsChecked = preferences.CloseCommitDialogAfterCommit;
-        CloseProcessDialogCheck.IsChecked = preferences.CloseProcessDialog;
-        StartWithRecentWorkingDirCheck.IsChecked = preferences.StartWithRecentWorkingDir;
-        FollowRenamesInFileHistoryCheck.IsChecked = preferences.FileHistory.FollowRenames;
-        FollowRenamesExactCheck.IsChecked = preferences.FileHistory.ExactRenamesOnly;
-        UseHistogramDiffCheck.IsChecked = preferences.UseHistogramDiffAlgorithm;
-        StashUntrackedFilesCheck.IsChecked = preferences.IncludeUntrackedFilesInAutoStash;
-        UpdateSubmodulesCheck.IsChecked = preferences.UpdateSubmodulesOnCheckout;
-        CheckUncommittedChangesCheck.IsChecked = preferences.CheckForUncommittedChangesInCheckoutBranch;
-        DefaultPullActionBox.ItemsSource = PullActionOption.All;
 
-        // Upstream shows a stored "Default" as "Open pull dialog".
-        DefaultPullActionBox.SelectedItem = PullActionOption.All.FirstOrDefault(option =>
-            option.Action == preferences.DefaultPullAction) ?? PullActionOption.All[0];
-        QuickSearchTimeoutBox.Value = preferences.RevisionGridQuickSearchTimeout;
-        ShowArtificialCountCheck.IsChecked = preferences.ShowGitStatusForArtificialCommits;
-        LoadAppearanceSettings();
-        ShowAheadBehindCheck.IsChecked = preferences.ShowAheadBehindData;
-        ShowStashCountCheck.IsChecked = preferences.ShowStashCount;
-        CommitsLimitCheck.IsChecked = preferences.MaxRevisionGraphCommits != 0;
-        CommitsLimitBox.Value = preferences.MaxRevisionGraphCommits;
-        CommitsLimitBox.IsEnabled = preferences.MaxRevisionGraphCommits != 0;
-        CommitsLimitCheck.IsCheckedChanged += (_, _) => CommitsLimitBox.IsEnabled = CommitsLimitCheck.IsChecked == true;
-        ShowCommitCountCheck.IsChecked = preferences.ShowGitStatusInBrowseToolbar;
+        WireAppearancePage();
 
-        // Upstream's SetSubmoduleStatus: the submodule status is read with the git status, so it is offered only while the
-        // git status is shown on the commit button or the artificial commits.
-        ShowSubmoduleStatusCheck.IsChecked = preferences.ShowSubmoduleStatus;
-        SetSubmoduleStatus();
-        ShowCommitCountCheck.IsCheckedChanged += (_, _) => SetSubmoduleStatus();
-        ShowArtificialCountCheck.IsCheckedChanged += (_, _) => SetSubmoduleStatus();
-        ShowRevisionTooltipsCheck.IsChecked = preferences.ShowRevisionGridTooltips;
-        chkShowFindInCommitFilesGitGrep.IsChecked = preferences.ShowFindInCommitFilesGitGrep;
-        chkShowGpgInformation.IsChecked = preferences.ShowGpgInformation;
-        chkShowOutputHistoryAsTab.IsChecked = preferences.ShowOutputHistoryAsTab;
-        OutputHistoryDepthBox.Value = Math.Clamp(preferences.OutputHistoryDepth, 0, 1000);
         ToolTip.SetTip(chkShowOutputHistoryAsTab, string.Format(CultureInfo.CurrentCulture, OutputHistoryTooltip,
             Hotkeys.GestureFor(BrowseCommand.FocusOutputHistoryAndToggleIfPanel)?.ToString() ?? ""));
-        MergeGraphLanesCheck.IsChecked = preferences.MergeGraphLanesHavingCommonParent;
-        GraphDiagonalsCheck.IsChecked = preferences.RenderGraphWithDiagonals;
-        StraightenDiagonalsCheck.IsChecked = preferences.StraightenGraphDiagonals;
-        DefaultCloneDestinationBox.Text = preferences.DefaultCloneDestinationPath;
-        RelativeDateCheck.IsChecked = preferences.RelativeDate;
-        ShowLanguages(preferences.Translation);
-        ShowDictionaries(preferences.Dictionary);
-        AlwaysShowCheckoutDlgCheck.IsChecked = preferences.AlwaysShowCheckoutBranchDlg;
-        UseLocalChangesActionCheck.IsChecked = preferences.UseDefaultCheckoutBranchAction;
-        AutoNormaliseCheck.IsChecked = preferences.AutoNormaliseBranchName;
-        ShowNormaliseSymbols(preferences.AutoNormaliseSymbol);
-        CommitAndPushForcedCheck.IsChecked = preferences.CommitAndPushForcedWhenAmend;
-        SecondLineEmptyCheck.IsChecked = preferences.EnsureCommitMessageSecondLineEmpty;
-        RememberAmendCheck.IsChecked = preferences.RememberAmendCommitState;
-        PreviousMessagesBox.Value = preferences.CommitDialogNumberOfPreviousMessages;
-        ShowCommitAndPushCheck.IsChecked = preferences.ShowCommitAndPush;
-        ShowResetUnstagedCheck.IsChecked = preferences.ShowResetWorkTreeChanges;
-        ShowResetAllCheck.IsChecked = preferences.ShowResetAllChanges;
-        ShowStagingErrorsCheck.IsChecked = preferences.ShowErrorsWhenStagingFiles;
-        AutocompleteCheck.IsChecked = preferences.ProvideAutocompletion;
-        ComposeInWindowCheck.IsChecked = preferences.UseFormCommitMessage;
-        RememberIgnoreWhitespaceCheck.IsChecked = preferences.RememberIgnoreWhiteSpacePreference;
-        RememberEntireFileCheck.IsChecked = preferences.RememberShowEntireFilePreference;
-        RememberContextLinesCheck.IsChecked = preferences.RememberNumberOfContextLines;
-        RememberNonPrintingCheck.IsChecked = preferences.RememberShowNonPrintingCharsPreference;
-        RememberSyntaxHighlightingCheck.IsChecked = preferences.RememberShowSyntaxHighlightingInDiff;
-        ContScrollToNextFileOnlyWithAltCheck.IsChecked = preferences.AutomaticContinuousScroll;
-        chkUseDiffViewerForBlame.IsChecked = preferences.UseDiffViewerForBlame;
-        chkOpenSubmoduleDiffInSeparateWindow.IsChecked = preferences.OpenSubmoduleDiffInSeparateWindow;
-        chkRememberDiffAppearancePreference.IsChecked = preferences.RememberDiffDisplayAppearance;
-        chkUseGitColoring.IsChecked = preferences.UseGitColoring;
-        chkUseGEThemeGitColoring.IsChecked = preferences.ReverseGitColoring;
-        ShowAllDiffToolsCheck.IsChecked = preferences.ShowAvailableDiffTools;
 
         // Upstream's DiffViewerSettingsPage sets its runtime tooltip.
-        ShowDiffForAllParentsCheck.IsChecked = preferences.ShowDiffForAllParents;
         ToolTip.SetTip(ShowDiffForAllParentsCheck, UpstreamTranslation.ByText(ShowDiffForAllParentsTooltip));
-        VerticalRulerBox.Value = preferences.DiffVerticalRulerPosition;
 
         // As upstream, the button saves at once, not with OK.
         SaveDiffDefaultsButton.Click += (_, _) => preferences.SaveDiffOptionsAsDefault();
-        RecentSizeBox.Value = preferences.RecentRepositoriesHistorySize;
-        ShowFonts();
-        ShowBlameOptions(preferences.BlameOptions);
+        ShowBlameTooltips();
         ShowSortingPage();
         ShowGitPage();
         ShowSshPage();
         ShowGitConfigPage();
         ShowHotkeyRows();
-        ShowConfirmations();
         ShowScripts();
         ShowRevisionLinks();
         ShowBuildServerPage();
-        _plugins = plugins ?? [];
         ShowChecklistPage();
         ShowPageTree(pluginsPage ? selectedPlugin ?? (object)PluginsTab : null);
-
-        // As upstream, the window reports a save made with Apply even when it is then closed with Cancel.
-        CancelButton.Click += (_, _) => Close(_saved);
-        SaveButton.Click += (_, _) => UiActions.Run(() => SaveAsync(close: true), ex => ErrorText.Text = ex.Message);
-        ApplyButton.Click += (_, _) => UiActions.Run(() => SaveAsync(close: false), ex => ErrorText.Text = ex.Message);
     }
+
+    public SettingsViewModel ViewModel { get; }
 
     /// <summary>
     ///  The browse window's hotkey boxes by command, for tests and for the key capture.
@@ -246,40 +175,19 @@ public partial class SettingsWindow : Window
     /// <summary>
     ///  The script list being edited; stored on OK.
     /// </summary>
-    public ScriptListEditor ScriptEditor => _scripts;
+    public ScriptListEditor ScriptEditor => ViewModel.ScriptsPage.Editor;
 
     /// <summary>
     ///  The Confirmations tab's check boxes; checked means the app asks first.
     /// </summary>
-    public IReadOnlyDictionary<Confirmation, CheckBox> ConfirmationChecks => _confirmationChecks;
+    public IReadOnlyDictionary<Confirmation, ConfirmationChoice> ConfirmationChecks
+        => ViewModel.ConfirmationChoices.ToDictionary(choice => choice.Confirmation);
 
     /// <summary>
     ///  The text of a font list's first choice: no font stored, so the app's own applies.
     /// </summary>
-    public const string DefaultFontChoice = "(default)";
+    public const string DefaultFontChoice = FontChoice.DefaultChoice;
 
-    // Upstream's font dialog names the styles so.
-    private const string BoldText = "Bold";
-    private const string ItalicText = "Italic";
-
-    // Upstream's labels, in upstream's order.
-    private static readonly (AppFont Font, string Label)[] _fontLabels =
-    [
-        (AppFont.Application, "Application font"), (AppFont.Commit, "Commit font"), (AppFont.Code, "Code font"),
-        (AppFont.Monospace, "Monospace font"),
-    ];
-
-    /// <summary>
-    ///  The Fonts tab's family list and size box of each font.
-    /// </summary>
-    public IReadOnlyDictionary<AppFont, (ComboBox Family, NumericUpDown Size)> FontBoxes => _fontBoxes;
-
-    /// <summary>
-    ///  The Fonts tab's bold and italic check boxes, by font.
-    /// </summary>
-    public IReadOnlyDictionary<AppFont, (CheckBox Bold, CheckBox Italic)> FontStyleBoxes => _fontStyleBoxes;
-
-    // Upstream's default sizes (its code font is 10 points, the others 9), for a family chosen where none was stored.
     // Upstream's TranslatedStrings.ShowDiffForAllParentsTooltip.
     internal const string ShowDiffForAllParentsTooltip =
         "Show all differences between the selected commits, not limiting to only one difference.\n\n"
@@ -293,131 +201,15 @@ public partial class SettingsWindow : Window
         + "- For more than four selected commits, show the difference from the first to\n"
         + "the last selected commit.";
 
-    private static float DefaultFontSize(AppFont font) => font == AppFont.Code ? 10 : 9;
-
-    private void SetSubmoduleStatus()
-    {
-        ShowSubmoduleStatusCheck.IsEnabled = ShowCommitCountCheck.IsChecked == true || ShowArtificialCountCheck.IsChecked == true;
-        ShowSubmoduleStatusCheck.IsChecked = ShowSubmoduleStatusCheck.IsEnabled && ShowSubmoduleStatusCheck.IsChecked == true;
-    }
-
-    private void ShowFonts()
-    {
-        string[] installed =
-        [
-            .. FontManager.Current.SystemFonts.Select(family => family.Name).Distinct()
-                .Order(StringComparer.CurrentCultureIgnoreCase),
-        ];
-        foreach ((AppFont font, string label) in _fontLabels)
-        {
-            FontSetting? current = _preferences.GetFont(font);
-            _loadedFonts[font] = current;
-
-            // A stored family that is not installed here is listed too, so saving keeps it.
-            List<string> families = [DefaultFontChoice, .. installed];
-            if (current is not null && !families.Contains(current.Family))
-            {
-                families.Insert(1, current.Family);
-            }
-
-            ComboBox family = new()
-            {
-                ItemsSource = families,
-                SelectedItem = current?.Family ?? DefaultFontChoice,
-                MinWidth = 220,
-                Margin = new Avalonia.Thickness(0, 0, 0, 6),
-            };
-            NumericUpDown size = new()
-            {
-                Minimum = 1,
-                Maximum = 200,
-                Increment = 1,
-                FormatString = "0.##",
-                Width = 130,
-                Value = (decimal)(current?.Size ?? DefaultFontSize(font)),
-                IsEnabled = current is not null,
-                Margin = new Avalonia.Thickness(0, 0, 0, 6),
-            };
-
-            // Upstream's font dialog sets the style too; here it is two check boxes beside the size.
-            CheckBox bold = new()
-            {
-                Content = BoldText,
-                IsChecked = current?.Bold == true,
-                IsEnabled = current is not null,
-                Margin = new Avalonia.Thickness(0, 0, 0, 6),
-            };
-            CheckBox italic = new()
-            {
-                Content = ItalicText,
-                IsChecked = current?.Italic == true,
-                IsEnabled = current is not null,
-                Margin = new Avalonia.Thickness(0, 0, 0, 6),
-            };
-            family.SelectionChanged += (_, _) =>
-            {
-                bool chosen = family.SelectedItem as string != DefaultFontChoice;
-                size.IsEnabled = chosen;
-                bold.IsEnabled = chosen;
-                italic.IsEnabled = chosen;
-            };
-
-            int row = FontsGrid.RowDefinitions.Count;
-            FontsGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            TextBlock caption = new() { Text = label, VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetRow(caption, row);
-            Grid.SetRow(family, row);
-            Grid.SetColumn(family, 2);
-            Grid.SetRow(size, row);
-            Grid.SetColumn(size, 4);
-            Grid.SetRow(bold, row);
-            Grid.SetColumn(bold, 6);
-            Grid.SetRow(italic, row);
-            Grid.SetColumn(italic, 8);
-            FontsGrid.Children.Add(caption);
-            FontsGrid.Children.Add(family);
-            FontsGrid.Children.Add(size);
-            FontsGrid.Children.Add(bold);
-            FontsGrid.Children.Add(italic);
-            _fontBoxes[font] = (family, size);
-            _fontStyleBoxes[font] = (bold, italic);
-        }
-    }
-
-    // Only a font the user changed is written; "(default)" removes the stored one.
-    private void SaveFonts()
-    {
-        foreach ((AppFont font, (ComboBox family, NumericUpDown size)) in _fontBoxes)
-        {
-            FontSetting? loaded = _loadedFonts[font];
-            FontSetting? chosen = family.SelectedItem is string name && name != DefaultFontChoice
-                ? (loaded ?? new FontSetting(name, DefaultFontSize(font))) with
-                {
-                    Family = name,
-                    Size = (float)(size.Value ?? (decimal)DefaultFontSize(font)),
-                    Bold = _fontStyleBoxes[font].Bold.IsChecked == true,
-                    Italic = _fontStyleBoxes[font].Italic.IsChecked == true,
-                }
-                : null;
-            if (chosen != loaded)
-            {
-                _preferences.SetFont(font, chosen);
-            }
-        }
-    }
-
     /// <summary>
     ///  The Revision links tab's definitions; stored on OK.
     /// </summary>
-    public RevisionLinkEditor RevisionLinkEditor => _revisionLinks;
+    public RevisionLinkEditor RevisionLinkEditor => ViewModel.RevisionLinksPage.Editor;
 
     // Upstream's Revision links page: the categories on the left, the selected one's fields on the right. Upstream's "Add"
     // button drops down the templates; here they are buttons of their own.
     private void ShowRevisionLinks()
     {
-        RevisionLinksList.ItemsSource = _revisionLinks.Items;
-        RevisionLinksList.SelectionChanged += (_, _) => ShowSelectedRevisionLink();
-        AddRevisionLinkButton.Click += (_, _) => RevisionLinksList.SelectedItem = _revisionLinks.Add();
         foreach (ICloudProviderExternalLinkDefinitionExtractor template in RevisionLinkTemplates.All)
         {
             Button button = new()
@@ -439,41 +231,27 @@ public partial class SettingsWindow : Window
                 },
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
-            button.Click += (_, _) =>
-                UiActions.Run(() => AddRevisionLinkTemplatesAsync(template), ex => ErrorText.Text = ex.Message);
+            button.Click += (_, _) => UiActions.Run(
+                () => ViewModel.RevisionLinksPage.AddTemplateCommand.ExecuteAsync(template),
+                ex => ViewModel.ErrorText = ex.Message);
             RevisionLinkTemplateButtons.Children.Add(button);
         }
 
-        RemoveRevisionLinkButton.Click += (_, _) =>
-        {
-            if (RevisionLinksList.SelectedItem is RevisionLinkItem item)
-            {
-                int index = RevisionLinksList.SelectedIndex;
-                _revisionLinks.Remove(item);
-                RevisionLinksList.SelectedIndex = Math.Min(index, _revisionLinks.Items.Count - 1);
-            }
-        };
-        AddRevisionLinkFormatButton.Click +=
-            (_, _) => (RevisionLinksList.SelectedItem as RevisionLinkItem)?.AddFormat();
+        AddRevisionLinkFormatButton.Command = ViewModel.RevisionLinksPage.AddFormatCommand;
         RevisionLinkFormatsList.AddHandler(Button.ClickEvent, (_, e) =>
         {
-            if (e.Source is Button { Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format }
-                && RevisionLinksList.SelectedItem is RevisionLinkItem item)
+            if (e.Source is Button { Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format })
             {
-                item.Formats.Remove(format);
+                ViewModel.RevisionLinksPage.RemoveFormat(format);
             }
         });
-        RevisionLinksList.SelectedIndex = _revisionLinks.Items.Count > 0 ? 0 : -1;
-        ShowSelectedRevisionLink();
-    }
-
-    // As upstream's settings page header: the page shows the definitions stored at the chosen level; what was edited at
-    // the other levels is stored too on OK.
-    private void ChangeRevisionLinkLevel(SettingLevel level)
-    {
-        _revisionLinks = DistributedSettingsAt(level).Editor;
-        RevisionLinksList.ItemsSource = _revisionLinks.Items;
-        RevisionLinksList.SelectedIndex = _revisionLinks.Items.Count > 0 ? 0 : -1;
+        ViewModel.RevisionLinksPage.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(RevisionLinksPageViewModel.Selected))
+            {
+                ShowSelectedRevisionLink();
+            }
+        };
         ShowSelectedRevisionLink();
     }
 
@@ -505,37 +283,16 @@ public partial class SettingsWindow : Window
         _ => null,
     };
 
+    // The selected definition's fields; the details declare their own data type, so their data context is set here.
     private void ShowSelectedRevisionLink()
     {
-        RevisionLinkItem? item = RevisionLinksList.SelectedItem as RevisionLinkItem;
-        RevisionLinkDetails.DataContext = item;
-        RevisionLinkDetails.IsEnabled = item is not null;
-        RemoveRevisionLinkButton.IsEnabled = item is not null;
-    }
-
-    private async Task AddRevisionLinkTemplatesAsync(ICloudProviderExternalLinkDefinitionExtractor template)
-    {
-        IReadOnlyList<Remote> remotes = await RevisionLinkTemplates.LoadRemotesAsync(_repositoryPath);
-        IReadOnlyList<RevisionLinkItem> added = _revisionLinks.AddTemplates(template, remotes);
-        if (added.Count > 0)
-        {
-            RevisionLinksList.SelectedItem = added[0];
-        }
+        RevisionLinkDetails.DataContext = ViewModel.RevisionLinksPage.Selected;
+        RevisionLinkDetails.IsEnabled = ViewModel.RevisionLinksPage.HasSelection;
     }
 
     // Upstream's Blame viewer page; as upstream, the moved-lines options carry a warning.
-    private void ShowBlameOptions(BlameOptions options)
+    private void ShowBlameTooltips()
     {
-        BlameIgnoreWhitespaceCheck.IsChecked = options.IgnoreWhitespace;
-        BlameDetectMoveInFileCheck.IsChecked = options.DetectMoveInFile;
-        BlameDetectMoveInAllFilesCheck.IsChecked = options.DetectMoveInAllFiles;
-        BlameDisplayAuthorFirstCheck.IsChecked = options.DisplayAuthorFirst;
-        BlameShowAuthorCheck.IsChecked = options.ShowAuthor;
-        BlameShowAuthorDateCheck.IsChecked = options.ShowAuthorDate;
-        BlameShowAuthorTimeCheck.IsChecked = options.ShowAuthorTime;
-        BlameShowLineNumbersCheck.IsChecked = options.ShowLineNumbers;
-        BlameShowOriginalFilePathCheck.IsChecked = options.ShowOriginalFilePath;
-        BlameShowAuthorAvatarCheck.IsChecked = options.ShowAuthorAvatar;
         ToolTip.SetTip(BlameDetectMoveInFileCheck, BlameMoveWarning);
         ToolTip.SetTip(BlameDetectMoveInAllFilesCheck, BlameMoveWarning);
     }
@@ -550,52 +307,16 @@ public partial class SettingsWindow : Window
     // upstream shows beside them is the tooltip.
     private void ShowSortingPage()
     {
-        ShowChoices(RevisionSortBox, _preferences.RevisionSortOrder);
-        ShowChoices(BranchesSortByBox, _preferences.RefsSortBy);
-        ShowChoices(BranchesOrderBox, _preferences.RefsSortOrder);
-        PrioritizedBranchesBox.Text = _preferences.PrioritizedBranchNames;
-        PrioritizedRemotesBox.Text = _preferences.PrioritizedRemoteNames;
         ToolTip.SetTip(RevisionSortBox, SortingTexts.RevisionSortWarning);
         ToolTip.SetTip(PrioritizedBranchesBox, SortingTexts.PrioritizedBranchNames);
         ToolTip.SetTip(PrioritizedRemotesBox, SortingTexts.PrioritizedRemoteNames);
     }
-
-    private static void ShowChoices<T>(ComboBox box, T current) where T : struct, Enum
-    {
-        List<EnumOption<T>> options = [.. Enum.GetValues<T>().Select(value => new EnumOption<T>(value))];
-        box.ItemsSource = options;
-        box.SelectedItem = options.FirstOrDefault(option => EqualityComparer<T>.Default.Equals(option.Value, current));
-    }
-
-    private static T Chosen<T>(ComboBox box, T current) where T : struct, Enum
-        => box.SelectedItem is EnumOption<T> option ? option.Value : current;
 
     // Upstream's Git page. Its "Change HOME" choices (FormFixHome) are offered on Windows only, where upstream checks HOME:
     // elsewhere HOME is always set, and changing it in the app would also move the app's own settings folders. The Linux
     // tools folder is Git for Windows' sh; upstream clears it on other OSes.
     private void ShowGitPage()
     {
-        bool windows = OperatingSystem.IsWindows();
-        GitCommandBox.Text = _preferences.GitCommand;
-        LinuxToolsPanel.IsVisible = windows;
-        LinuxToolsDirBox.Text = _preferences.LinuxToolsDir;
-
-        EnvironmentConfiguration.SetEnvironmentVariables();
-        HomeText.Text = HomeSettings.Describe(
-            EnvironmentConfiguration.GetEnvironmentVariable(HomeSettings.GitConfigGlobalVariable),
-            EnvironmentConfiguration.GetHomeDir(), windows);
-        HomeChoicePanel.IsVisible = windows;
-        DefaultHomeRadio.Content = $"Use default for HOME ({EnvironmentConfiguration.GetDefaultHomeDir()})";
-        UserProfileHomeRadio.Content =
-            $"Set HOME to USERPROFILE ({Environment.GetEnvironmentVariable("USERPROFILE")})";
-        HomeChoice home = HomeSettings.ChoiceOf(_preferences.CustomHomeDir, _preferences.UserProfileHomeDir);
-        DefaultHomeRadio.IsChecked = home == HomeChoice.Default;
-        UserProfileHomeRadio.IsChecked = home == HomeChoice.UserProfile;
-        OtherHomeRadio.IsChecked = home == HomeChoice.Other;
-        OtherHomeBox.Text = _preferences.CustomHomeDir;
-        OtherHomeRadio.IsCheckedChanged += (_, _) => EnableHomeOptions();
-        EnableHomeOptions();
-
         BrowseGitCommandButton.Click +=
             (_, _) => Browse(() => BrowseFileAsync(GitCommandBox, "Command used to run git"));
         BrowseLinuxToolsButton.Click +=
@@ -603,88 +324,27 @@ public partial class SettingsWindow : Window
         BrowseHomeButton.Click += (_, _) => Browse(() => BrowseFolderAsync(OtherHomeBox, "HOME"));
     }
 
-    private void EnableHomeOptions()
-    {
-        OtherHomeBox.IsEnabled = OtherHomeRadio.IsChecked == true;
-        BrowseHomeButton.IsEnabled = OtherHomeRadio.IsChecked == true;
-    }
-
     /// <summary>
     ///  The HOME choice on the Git tab.
     /// </summary>
-    public HomeChoice SelectedHomeChoice
-        => OtherHomeRadio.IsChecked == true ? HomeChoice.Other
-            : UserProfileHomeRadio.IsChecked == true ? HomeChoice.UserProfile
-            : HomeChoice.Default;
+    public HomeChoice SelectedHomeChoice => ViewModel.SelectedHomeChoice;
 
     // Upstream's SSH page. PuTTY is offered on Windows, where upstream looks for it and recognises plink.exe; elsewhere
     // plink is an "other ssh client" (upstream's rule would read a stored "/usr/bin/plink" back as one anyway).
     private void ShowSshPage()
     {
-        PlinkBox.Text = _preferences.Plink;
-        PuttygenBox.Text = _preferences.Puttygen;
-        PageantBox.Text = _preferences.Pageant;
-        AutoStartPageantCheck.IsChecked = _preferences.AutoStartPageant;
-        SshClientKind kind = SshClients.KindOf(_preferences.SshPath);
-        PuttyRadio.IsVisible = OperatingSystem.IsWindows() || kind == SshClientKind.Putty;
-        OpenSshRadio.IsChecked = kind == SshClientKind.OpenSsh;
-        PuttyRadio.IsChecked = kind == SshClientKind.Putty;
-        OtherSshRadio.IsChecked = kind == SshClientKind.Other;
-        if (kind == SshClientKind.Other)
-        {
-            OtherSshBox.Text = _preferences.SshPath;
-        }
-
-        PuttyRadio.IsCheckedChanged += (_, _) =>
-        {
-            if (PuttyRadio.IsChecked == true)
-            {
-                FindPutty();
-            }
-
-            EnableSshOptions();
-        };
-        OtherSshRadio.IsCheckedChanged += (_, _) => EnableSshOptions();
-        EnableSshOptions();
-
         BrowseOtherSshButton.Click += (_, _) => Browse(() => BrowseFileAsync(OtherSshBox, "Other ssh client"));
         BrowsePlinkButton.Click += (_, _) => Browse(() => BrowseFileAsync(PlinkBox, "Path to plink"));
         BrowsePuttygenButton.Click += (_, _) => Browse(() => BrowseFileAsync(PuttygenBox, "Path to puttygen"));
         BrowsePageantButton.Click += (_, _) => Browse(() => BrowseFileAsync(PageantBox, "Path to pageant"));
     }
 
-    private void EnableSshOptions()
-    {
-        bool other = OtherSshRadio.IsChecked == true;
-        OtherSshBox.IsEnabled = other;
-        BrowseOtherSshButton.IsEnabled = other;
-        PuttyPanel.IsVisible = PuttyRadio.IsChecked == true;
-    }
-
-    private void FindPutty()
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
-        PuttyPaths found = SshClients.FindPutty(
-            new PuttyPaths(PlinkBox.Text ?? "", PuttygenBox.Text ?? "", PageantBox.Text ?? ""),
-            SshClients.PuttyLocations(Environment.GetEnvironmentVariable, Environment.Is64BitProcess), File.Exists);
-        PlinkBox.Text = found.Plink;
-        PuttygenBox.Text = found.Puttygen;
-        PageantBox.Text = found.Pageant;
-    }
-
     /// <summary>
     ///  The ssh client choice on the SSH tab.
     /// </summary>
-    public SshClientKind SelectedSshClient
-        => PuttyRadio.IsChecked == true ? SshClientKind.Putty
-            : OtherSshRadio.IsChecked == true ? SshClientKind.Other
-            : SshClientKind.OpenSsh;
+    public SshClientKind SelectedSshClient => ViewModel.SelectedSshClient;
 
-    private void Browse(Func<Task> browse) => UiActions.Run(browse, ex => ErrorText.Text = ex.Message);
+    private void Browse(Func<Task> browse) => UiActions.Run(browse, ex => ViewModel.ErrorText = ex.Message);
 
     private async Task BrowseFileAsync(TextBox target, string title)
     {
@@ -704,97 +364,6 @@ public partial class SettingsWindow : Window
         {
             target.Text = path;
         }
-    }
-
-    // Upstream's FormFixHome checks before it closes: another folder must be typed, and HOME must then exist.
-    private string? ValidateHome()
-    {
-        if (!HomeChoicePanel.IsVisible)
-        {
-            return null;
-        }
-
-        string other = OtherHomeBox.Text?.Trim() ?? "";
-        HomeChoice choice = SelectedHomeChoice;
-        return HomeSettings.Validate(choice, other,
-            HomeSettings.HomeFor(choice, other, Environment.GetEnvironmentVariable),
-            Directory.Exists);
-    }
-
-    private void SaveGitAndSshPages()
-    {
-        _preferences.GitCommand = GitCommandBox.Text?.Trim() ?? "";
-        if (LinuxToolsPanel.IsVisible)
-        {
-            _preferences.LinuxToolsDir = LinuxToolsDirBox.Text?.Trim() ?? "";
-        }
-
-        if (HomeChoicePanel.IsVisible)
-        {
-            HomeChoice choice = SelectedHomeChoice;
-            _preferences.CustomHomeDir = choice == HomeChoice.Other ? OtherHomeBox.Text?.Trim() ?? "" : "";
-            _preferences.UserProfileHomeDir = choice == HomeChoice.UserProfile;
-        }
-
-        _preferences.Plink = PlinkBox.Text?.Trim() ?? "";
-        _preferences.Puttygen = PuttygenBox.Text?.Trim() ?? "";
-        _preferences.Pageant = PageantBox.Text?.Trim() ?? "";
-        _preferences.AutoStartPageant = AutoStartPageantCheck.IsChecked == true;
-
-        // As upstream's page: the setting and the variable git reads, so the next git started uses the client.
-        string sshPath = SshClients.PathFor(SelectedSshClient, _preferences.Plink, OtherSshBox.Text?.Trim() ?? "");
-        _preferences.SshPath = sshPath;
-        SshClients.Apply(sshPath);
-    }
-
-    // Upstream's Advanced page lists "_", "-" and "(none)"; a symbol stored otherwise is shown too, so saving keeps it.
-    private void ShowNormaliseSymbols(string current)
-    {
-        List<NormaliseSymbolOption> options =
-            [.. BranchNames.Symbols.Select(symbol => new NormaliseSymbolOption(symbol.Label, symbol.Symbol))];
-        if (!options.Any(option => option.Symbol == current))
-        {
-            options.Add(new NormaliseSymbolOption(current, current));
-        }
-
-        NormaliseSymbolBox.ItemsSource = options;
-        NormaliseSymbolBox.SelectedItem = options.First(option => option.Symbol == current);
-    }
-
-    // Upstream's ConfirmationsSettingsPage, with the questions whose action the new shell has, in upstream's groups.
-    private void ShowConfirmations()
-    {
-        foreach (IGrouping<string, ConfirmationOption> group in Confirmations.Options.GroupBy(option => option.Group))
-        {
-            ConfirmationsPanel.Children.Add(new TextBlock
-            {
-                Text = group.Key + ":", Opacity = 0.7, Margin = new Avalonia.Thickness(0, 8, 0, 2),
-            });
-            foreach (ConfirmationOption option in group)
-            {
-                CheckBox check = new()
-                {
-                    Content = option.Label,
-                    IsChecked = _preferences.Asks(option.Confirmation),
-                    Margin = new Avalonia.Thickness(12, 0, 0, 0),
-                };
-                _confirmationChecks[option.Confirmation] = check;
-                ConfirmationsPanel.Children.Add(check);
-            }
-        }
-    }
-
-    // The current theme is listed even when its file is gone, so opening and saving the page does not change it.
-    private void ShowThemes(ThemeId current)
-    {
-        List<ThemeOption> options = [.. AppServices.Themes.GetThemeIds().Select(id => new ThemeOption(id))];
-        if (!options.Any(option => option.Id == current))
-        {
-            options.Add(new ThemeOption(current));
-        }
-
-        ThemeBox.ItemsSource = options;
-        ThemeBox.SelectedItem = options.First(option => option.Id == current);
     }
 
     private void ShowHotkeyRows()
@@ -829,7 +398,6 @@ public partial class SettingsWindow : Window
 
     private void ShowScripts()
     {
-        ScriptsList.ItemsSource = _scripts.Items;
         ScriptEventBox.ItemsSource = Enum.GetValues<ScriptEvent>();
 
         // Upstream's icon list: no icon, then its images by name, each shown with its picture.
@@ -852,31 +420,27 @@ public partial class SettingsWindow : Window
                 },
             });
         ScriptIconFileButton.Click +=
-            (_, _) => UiActions.Run(PickScriptIconFileAsync, ex => ErrorText.Text = ex.Message);
-        ScriptsList.SelectionChanged += (_, _) => ShowSelectedScript();
-        AddScriptButton.Click += (_, _) =>
+            (_, _) => UiActions.Run(PickScriptIconFileAsync, ex => ViewModel.ErrorText = ex.Message);
+        ScriptHelpButton.Click += (_, _) => ShowScriptHelp();
+        Closed += (_, _) => _scriptHelp?.Close();
+        ViewModel.ScriptsPage.PropertyChanged += (_, e) =>
         {
-            ScriptsList.SelectedItem = _scripts.Add();
+            if (e.PropertyName == nameof(ScriptsPageViewModel.Selected))
+            {
+                ShowSelectedScript();
+            }
+        };
+        ViewModel.ScriptsPage.ScriptAdded += (_, _) =>
+        {
             ScriptNameBox.Focus();
             ScriptNameBox.SelectAll();
         };
-        DeleteScriptButton.Click += (_, _) => ChangeSelectedScript(item =>
-        {
-            int index = _scripts.Items.IndexOf(item);
-            _scripts.Remove(item);
-            ScriptsList.SelectedIndex = Math.Min(index, _scripts.Items.Count - 1);
-        });
-        MoveScriptUpButton.Click += (_, _) => ChangeSelectedScript(item => Reselect(item, _scripts.MoveUp));
-        MoveScriptDownButton.Click += (_, _) => ChangeSelectedScript(item => Reselect(item, _scripts.MoveDown));
-        ScriptHelpButton.Click += (_, _) => ShowScriptHelp();
-        Closed += (_, _) => _scriptHelp?.Close();
-        ScriptsList.SelectedIndex = _scripts.Items.Count > 0 ? 0 : -1;
         ShowSelectedScript();
     }
 
     private async Task PickScriptIconFileAsync()
     {
-        if (ScriptsList.SelectedItem is not ScriptListItem item)
+        if (ViewModel.ScriptsPage.Selected is not { } item)
         {
             return;
         }
@@ -892,30 +456,11 @@ public partial class SettingsWindow : Window
         }
     }
 
+    // The selected script's values; the details declare their own data type, so their data context is set here.
     private void ShowSelectedScript()
     {
-        ScriptListItem? item = ScriptsList.SelectedItem as ScriptListItem;
-        ScriptDetails.DataContext = item;
-        ScriptDetails.IsEnabled = item is not null;
-        DeleteScriptButton.IsEnabled = item is not null;
-        MoveScriptUpButton.IsEnabled = item is not null && _scripts.CanMoveUp(item);
-        MoveScriptDownButton.IsEnabled = item is not null && _scripts.CanMoveDown(item);
-    }
-
-    private void ChangeSelectedScript(Action<ScriptListItem> change)
-    {
-        if (ScriptsList.SelectedItem is ScriptListItem item)
-        {
-            change(item);
-        }
-    }
-
-    // Moving an item in the list can drop the list's selection.
-    private void Reselect(ScriptListItem item, Action<ScriptListItem> move)
-    {
-        move(item);
-        ScriptsList.SelectedItem = item;
-        ShowSelectedScript();
+        ScriptDetails.DataContext = ViewModel.ScriptsPage.Selected;
+        ScriptDetails.IsEnabled = ViewModel.ScriptsPage.HasSelection;
     }
 
     // Not modal, as upstream: the help stays open beside the page while the arguments are typed.
@@ -934,368 +479,16 @@ public partial class SettingsWindow : Window
     /// <summary>
     ///  The settings of the plugin whose page is shown, or null.
     /// </summary>
-    public PluginSettingsEditor? SelectedPluginEditor =>
-        _selectedPlugin is PluginOption option ? _pluginEditors.GetValueOrDefault(option.Plugin) : null;
+    public PluginSettingsEditor? SelectedPluginEditor => ViewModel.PluginsPage.Editor;
 
-    // As upstream's settings tree: the plugins that have settings, by title; then the files upstream's loader passed over
-    // (WinForms plugins, other interface versions), with the reason.
-    private IReadOnlyList<object> PluginPages()
-        =>
-        [
-            .. _plugins.Where(plugin => plugin.HasSettings).Select(plugin => new PluginOption(plugin))
-                .OrderBy(option => option.ToString(), StringComparer.CurrentCultureIgnoreCase),
-            .. AppServices.Plugins.Skipped.Select(file => new SkippedPluginOption(file)),
-        ];
+    private void SavePluginSettings() => ViewModel.PluginsPage.Save(AppServices.PluginSettings.Save);
 
-    private void ShowPlugin(object plugin)
+    // OK and Apply, as the checklist's "Save and rescan" runs them.
+    private Task SaveAsync(bool close) => ViewModel.SaveAsync(close);
+
+    // The pages whose editors the window drives, stored before the preferences are written.
+    private void SavePagesBeforeStore()
     {
-        _selectedPlugin = plugin;
-        ShowSelectedPlugin();
-    }
-
-    private void ShowSelectedPlugin()
-    {
-        PluginSettingsPanel.Children.Clear();
-        SourceHeaderOf(PluginsTab).IsVisible = _selectedPlugin is not SkippedPluginOption;
-        if (_selectedPlugin is SkippedPluginOption { File: var file })
-        {
-            PluginTitleText.Text = file.FileName;
-            PluginSettingsPanel.Children.Add(new TextBlock
-            {
-                Text = $"This plugin is not loaded. {file.Reason}", TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            });
-            PluginSettingsPanel.Children.Add(new SelectableTextBlock { Text = file.Path, Opacity = 0.7 });
-            return;
-        }
-
-        if (_selectedPlugin is not PluginOption { Plugin: var plugin })
-        {
-            PluginTitleText.Text = "";
-            return;
-        }
-
-        PluginSettingsEditor editor = PluginEditor(plugin);
-        PluginTitleText.Text = editor.Title;
-        if (editor.Rows.Count == 0)
-        {
-            PluginSettingsPanel.Children.Add(
-                new TextBlock { Text = "There are no settings available for this plugin." });
-        }
-
-        foreach (PluginSettingRow row in editor.Rows)
-        {
-            PluginSettingsPanel.Children.Add(CreateSettingControl(row));
-        }
-    }
-
-    // One editor per plugin, at the settings source chosen when it was first shown.
-    private PluginSettingsEditor PluginEditor(IGitPlugin plugin)
-    {
-        if (!_pluginEditors.TryGetValue(plugin, out PluginSettingsEditor? editor))
-        {
-            editor = new PluginSettingsEditor(plugin, PluginSource(_pluginLevel));
-            _pluginEditors[plugin] = editor;
-        }
-
-        return editor;
-    }
-
-    // One editor per upstream setting type, as upstream's SettingControlBindingsProvider chooses them.
-    private static Control CreateSettingControl(PluginSettingRow row)
-    {
-        switch (row.Kind)
-        {
-            case PluginSettingKind.Bool:
-                CheckBox check = new() { Content = row.Caption, IsThreeState = true, IsChecked = row.Checked };
-                check.IsCheckedChanged += (_, _) => row.Checked = check.IsChecked;
-                return check;
-            case PluginSettingKind.Choice:
-                ComboBox choice = new() { ItemsSource = row.Choices, SelectedItem = row.Text, MinWidth = 200 };
-                choice.SelectionChanged += (_, _) => row.Text = choice.SelectedItem as string;
-                return Labeled(row.Caption, choice);
-            case PluginSettingKind.Text or PluginSettingKind.Password or PluginSettingKind.Number:
-                TextBox text = new() { Text = row.Text, PlaceholderText = row.Placeholder };
-                if (row.Kind == PluginSettingKind.Password)
-                {
-                    text.PasswordChar = '●';
-                }
-
-                // Not TextChanged: it is raised later, so OK pressed right after typing would save the old text.
-                text.PropertyChanged += (_, e) =>
-                {
-                    if (e.Property != TextBox.TextProperty)
-                    {
-                        return;
-                    }
-
-                    row.Text = text.Text;
-
-                    // Upstream colors a number box red while its text is not a number.
-                    text.Classes.Set("errorText", !row.IsValid);
-                };
-                return Labeled(row.Caption, text);
-            case PluginSettingKind.Credentials:
-                // Upstream's CredentialsControl: a user name and a password.
-                if (!row.IsEditable)
-                {
-                    return Labeled(row.Caption, new TextBlock
-                    {
-                        Text = row.NotEditableReason ?? "Not available at this settings source.",
-                        Opacity = 0.7,
-                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                        VerticalAlignment = VerticalAlignment.Center,
-                    });
-                }
-
-                TextBox user = new() { Text = row.Text, PlaceholderText = "User name" };
-                TextBox password = new() { Text = row.Password, PasswordChar = '●', PlaceholderText = "Password" };
-                user.PropertyChanged += (_, e) =>
-                {
-                    if (e.Property == TextBox.TextProperty)
-                    {
-                        row.Text = user.Text;
-                    }
-                };
-                password.PropertyChanged += (_, e) =>
-                {
-                    if (e.Property == TextBox.TextProperty)
-                    {
-                        row.Password = password.Text;
-                    }
-                };
-                return Labeled(row.Caption, new StackPanel { Spacing = 4, Children = { user, password } });
-            case PluginSettingKind.Link:
-                HyperlinkButton link = new() { Content = row.Text };
-                link.Click += (_, _) => row.Click?.Invoke();
-                return link;
-            case PluginSettingKind.Note:
-                return new TextBlock
-                {
-                    Text = row.Text, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Opacity = 0.8
-                };
-            default:
-                return Labeled(row.Caption,
-                    new TextBlock
-                    {
-                        Text = "This setting cannot be edited in this version yet.",
-                        Opacity = 0.7,
-                        VerticalAlignment = VerticalAlignment.Center,
-                    });
-        }
-    }
-
-    private static Control Labeled(string caption, Control editor)
-    {
-        Grid grid = new() { ColumnDefinitions = new ColumnDefinitions("220,*") };
-        TextBlock label = new()
-        {
-            Text = caption,
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Avalonia.Thickness(0, 0, 8, 0),
-        };
-        Grid.SetColumn(editor, 1);
-        grid.Children.Add(label);
-        grid.Children.Add(editor);
-        return grid;
-    }
-
-    private void SavePluginSettings()
-    {
-        foreach (PluginSettingsEditor editor in _pluginEditors.Values)
-        {
-            editor.Save();
-        }
-
-        foreach (SettingsSource source in _pluginSources.Values)
-        {
-            AppServices.PluginSettings.Save(source);
-        }
-    }
-
-    private SettingsSource PluginSource(SettingLevel level)
-    {
-        if (!_pluginSources.TryGetValue(level, out SettingsSource? source))
-        {
-            _pluginSources[level] = source = AppServices.PluginSettings.Open(_repositoryPath, level);
-        }
-
-        return source;
-    }
-
-    // As upstream's settings page header: the values edited so far go to the source they were edited in (written to disk on
-    // OK), and the page shows the newly chosen source.
-    private void ChangePluginLevel(SettingLevel level)
-    {
-        foreach (PluginSettingsEditor editor in _pluginEditors.Values)
-        {
-            editor.Save();
-        }
-
-        _pluginEditors.Clear();
-        _pluginLevel = level;
-        ShowSelectedPlugin();
-    }
-
-    // Upstream's appearance page: "None", then the dictionaries next to the app; a dictionary whose file is missing shows as
-    // "None", as upstream's.
-    private void ShowDictionaries(string current)
-    {
-        List<string> dictionaries = [CommitSpellChecker.NoDictionary, .. CommitSpellChecker.Dictionaries(AppServices.DictionaryFolder)];
-        Dictionary.ItemsSource = dictionaries;
-        Dictionary.SelectedItem = dictionaries.Skip(1)
-            .FirstOrDefault(name => string.Equals(name, current, StringComparison.OrdinalIgnoreCase)) ?? dictionaries[0];
-    }
-
-    // As upstream's appearance page: English, then the translations in the Translation folder; the current one stays
-    // selected even when its file is missing.
-    private void ShowLanguages(string current)
-    {
-        List<string> languages = ["English", .. Translator.GetAllTranslations()];
-        if (current.Length > 0 && !languages.Contains(current))
-        {
-            languages.Add(current);
-        }
-
-        LanguageBox.ItemsSource = languages;
-        LanguageBox.SelectedItem = current.Length > 0 ? current : "English";
-    }
-
-    private async Task SaveAsync(bool close)
-    {
-        ErrorText.Text = "";
-        if (ValidateHome() is { } homeError)
-        {
-            Tabs.SelectedItem = GitTab;
-            ErrorText.Text = homeError;
-            return;
-        }
-
-        if (ThemeBox.SelectedItem is ThemeOption theme)
-        {
-            _preferences.Theme = theme.Id;
-        }
-
-        _preferences.ThemeVariations = ColorblindCheck.IsChecked == true ? [ThemeVariations.Colorblind] : [];
-        _preferences.MulticolorBranches = MulticolorBranches.IsChecked == true;
-        _preferences.RevisionGraphDrawAlternateBackColor = chkDrawAlternateBackColor.IsChecked == true;
-        _preferences.RevisionGraphDrawNonRelativesGray = DrawNonRelativesGray.IsChecked == true;
-        _preferences.RevisionGraphDrawNonRelativesTextGray = DrawNonRelativesTextGray.IsChecked == true;
-        _preferences.HighlightAuthoredRevisions = chkHighlightAuthored.IsChecked == true;
-        _preferences.FillRefLabels = chkFillRefLabels.IsChecked == true;
-        _preferences.CloseCommitDialogAfterCommit = CloseAfterCommitCheck.IsChecked == true;
-        _preferences.CloseProcessDialog = CloseProcessDialogCheck.IsChecked == true;
-        _preferences.StartWithRecentWorkingDir = StartWithRecentWorkingDirCheck.IsChecked == true;
-        _preferences.FileHistory = _preferences.FileHistory with
-        {
-            FollowRenames = FollowRenamesInFileHistoryCheck.IsChecked == true,
-            ExactRenamesOnly = FollowRenamesExactCheck.IsChecked == true,
-        };
-        _preferences.UseHistogramDiffAlgorithm = UseHistogramDiffCheck.IsChecked == true;
-        _preferences.IncludeUntrackedFilesInAutoStash = StashUntrackedFilesCheck.IsChecked == true;
-        _preferences.UpdateSubmodulesOnCheckout = UpdateSubmodulesCheck.IsChecked;
-        _preferences.CheckForUncommittedChangesInCheckoutBranch = CheckUncommittedChangesCheck.IsChecked == true;
-        if (DefaultPullActionBox.SelectedItem is PullActionOption pullAction)
-        {
-            _preferences.DefaultPullAction = pullAction.Action;
-        }
-
-        _preferences.RevisionGridQuickSearchTimeout = (int)(QuickSearchTimeoutBox.Value ?? 4000);
-        _preferences.ShowGitStatusForArtificialCommits = ShowArtificialCountCheck.IsChecked == true;
-        SaveAppearanceSettings();
-        _preferences.ShowAheadBehindData = ShowAheadBehindCheck.IsChecked == true;
-        _preferences.ShowStashCount = ShowStashCountCheck.IsChecked == true;
-
-        // As upstream: an unchecked limit is stored as 0, no limit.
-        _preferences.MaxRevisionGraphCommits =
-            CommitsLimitCheck.IsChecked == true ? (int)(CommitsLimitBox.Value ?? 0) : 0;
-        _preferences.ShowGitStatusInBrowseToolbar = ShowCommitCountCheck.IsChecked == true;
-        _preferences.ShowSubmoduleStatus = ShowSubmoduleStatusCheck.IsChecked == true;
-        _preferences.ShowRevisionGridTooltips = ShowRevisionTooltipsCheck.IsChecked == true;
-        _preferences.ShowFindInCommitFilesGitGrep = chkShowFindInCommitFilesGitGrep.IsChecked == true;
-        _preferences.ShowGpgInformation = chkShowGpgInformation.IsChecked == true;
-
-        // Upstream's FormBrowseRepoSettingsPage: a changed choice also shows the panel when the history is a panel.
-        int outputHistoryDepth = (int)(OutputHistoryDepthBox.Value ?? 0);
-        bool asTab = chkShowOutputHistoryAsTab.IsChecked == true;
-        if (_preferences.ShowOutputHistoryAsTab != asTab || _preferences.OutputHistoryDepth != outputHistoryDepth)
-        {
-            _preferences.ShowOutputHistoryAsTab = asTab;
-            _preferences.OutputHistoryDepth = outputHistoryDepth;
-            _preferences.OutputHistoryPanelVisible = !asTab && outputHistoryDepth > 0;
-        }
-
-        _preferences.MergeGraphLanesHavingCommonParent = MergeGraphLanesCheck.IsChecked == true;
-        _preferences.RenderGraphWithDiagonals = GraphDiagonalsCheck.IsChecked == true;
-        _preferences.StraightenGraphDiagonals = StraightenDiagonalsCheck.IsChecked == true;
-        _preferences.DefaultCloneDestinationPath = DefaultCloneDestinationBox.Text?.Trim() ?? "";
-        _preferences.RelativeDate = RelativeDateCheck.IsChecked == true;
-        if (LanguageBox.SelectedItem is string language)
-        {
-            _preferences.Translation = language;
-        }
-
-        // Upstream stores "none" for its first item.
-        if (Dictionary.SelectedItem is string dictionary)
-        {
-            _preferences.Dictionary = Dictionary.SelectedIndex == 0 ? "none" : dictionary;
-        }
-
-        _preferences.AlwaysShowCheckoutBranchDlg = AlwaysShowCheckoutDlgCheck.IsChecked == true;
-        _preferences.UseDefaultCheckoutBranchAction = UseLocalChangesActionCheck.IsChecked == true;
-        _preferences.AutoNormaliseBranchName = AutoNormaliseCheck.IsChecked == true;
-        if (NormaliseSymbolBox.SelectedItem is NormaliseSymbolOption symbol)
-        {
-            _preferences.AutoNormaliseSymbol = symbol.Symbol;
-        }
-
-        _preferences.CommitAndPushForcedWhenAmend = CommitAndPushForcedCheck.IsChecked == true;
-        _preferences.EnsureCommitMessageSecondLineEmpty = SecondLineEmptyCheck.IsChecked == true;
-        _preferences.RememberAmendCommitState = RememberAmendCheck.IsChecked == true;
-        _preferences.CommitDialogNumberOfPreviousMessages =
-            (int)(PreviousMessagesBox.Value ?? _preferences.CommitDialogNumberOfPreviousMessages);
-        _preferences.ShowCommitAndPush = ShowCommitAndPushCheck.IsChecked == true;
-        _preferences.ShowResetWorkTreeChanges = ShowResetUnstagedCheck.IsChecked == true;
-        _preferences.ShowResetAllChanges = ShowResetAllCheck.IsChecked == true;
-        _preferences.ShowErrorsWhenStagingFiles = ShowStagingErrorsCheck.IsChecked == true;
-        _preferences.ProvideAutocompletion = AutocompleteCheck.IsChecked == true;
-        _preferences.UseFormCommitMessage = ComposeInWindowCheck.IsChecked == true;
-        _preferences.RememberIgnoreWhiteSpacePreference = RememberIgnoreWhitespaceCheck.IsChecked == true;
-        _preferences.RememberShowEntireFilePreference = RememberEntireFileCheck.IsChecked == true;
-        _preferences.RememberNumberOfContextLines = RememberContextLinesCheck.IsChecked == true;
-        _preferences.RememberShowNonPrintingCharsPreference = RememberNonPrintingCheck.IsChecked == true;
-        _preferences.RememberShowSyntaxHighlightingInDiff = RememberSyntaxHighlightingCheck.IsChecked == true;
-        _preferences.AutomaticContinuousScroll = ContScrollToNextFileOnlyWithAltCheck.IsChecked == true;
-        _preferences.UseDiffViewerForBlame = chkUseDiffViewerForBlame.IsChecked == true;
-        _preferences.OpenSubmoduleDiffInSeparateWindow = chkOpenSubmoduleDiffInSeparateWindow.IsChecked == true;
-        _preferences.RememberDiffDisplayAppearance = chkRememberDiffAppearancePreference.IsChecked == true;
-        _preferences.UseGitColoring = chkUseGitColoring.IsChecked == true;
-        _preferences.ReverseGitColoring = chkUseGEThemeGitColoring.IsChecked == true;
-        _preferences.ShowAvailableDiffTools = ShowAllDiffToolsCheck.IsChecked == true;
-        _preferences.ShowDiffForAllParents = ShowDiffForAllParentsCheck.IsChecked == true;
-        _preferences.DiffVerticalRulerPosition = (int)(VerticalRulerBox.Value ?? 0);
-        _preferences.RecentRepositoriesHistorySize =
-            (int)(RecentSizeBox.Value ?? _preferences.RecentRepositoriesHistorySize);
-        SaveGitAndSshPages();
-        SaveFonts();
-        _preferences.BlameOptions = new BlameOptions(BlameIgnoreWhitespaceCheck.IsChecked == true,
-            BlameDetectMoveInFileCheck.IsChecked == true, BlameDetectMoveInAllFilesCheck.IsChecked == true,
-            BlameDisplayAuthorFirstCheck.IsChecked == true, BlameShowAuthorCheck.IsChecked == true,
-            BlameShowAuthorDateCheck.IsChecked == true, BlameShowAuthorTimeCheck.IsChecked == true,
-            BlameShowLineNumbersCheck.IsChecked == true, BlameShowOriginalFilePathCheck.IsChecked == true,
-            BlameShowAuthorAvatarCheck.IsChecked == true);
-        _preferences.RevisionSortOrder = Chosen(RevisionSortBox, _preferences.RevisionSortOrder);
-        _preferences.RefsSortBy = Chosen(BranchesSortByBox, _preferences.RefsSortBy);
-        _preferences.RefsSortOrder = Chosen(BranchesOrderBox, _preferences.RefsSortOrder);
-        _preferences.PrioritizedBranchNames = PrioritizedBranchesBox.Text ?? "";
-        _preferences.PrioritizedRemoteNames = PrioritizedRemotesBox.Text ?? "";
-        foreach ((Confirmation confirmation, CheckBox check) in _confirmationChecks)
-        {
-            _preferences.SetAsks(confirmation, check.IsChecked == true);
-        }
-
-        _preferences.ShowEolMarkerAsGlyph = ShowEolMarkerAsGlyph.IsChecked == true;
-
         string? hotkeys = _hotkeysReset ? null : _preferences.SerializedHotkeys;
         hotkeys = _browseHotkeys.Apply(hotkeys);
         hotkeys = _commitHotkeys.Apply(hotkeys);
@@ -1308,21 +501,15 @@ public partial class SettingsWindow : Window
         hotkeys = _scriptHotkeys.Apply(hotkeys);
         _preferences.SerializedHotkeys = hotkeys;
 
-        // Upstream stores the page's scripts on every save; this one only when they changed, to keep the file untouched.
-        IReadOnlyList<ScriptDefinition> scripts = _scripts.Scripts;
-        if (ScriptsXml.Write(scripts) != ScriptsXml.Write(_loadedScripts))
-        {
-            AppServices.Scripts.Save(scripts);
-            _loadedScripts = scripts;
-        }
+        ViewModel.ScriptsPage.StoreIfChanged(AppServices.Scripts.Save);
 
         // After the scripts, so the scripts' hotkeys follow a renamed, added or deleted script.
         Hotkeys.Load(hotkeys);
+    }
 
-        _preferences.Save();
-
-        // HOME and the Linux tools folder as the next git gets them; upstream sets them before every git start too.
-        EnvironmentConfiguration.SetEnvironmentVariables();
+    // The pages with their own stores, after the preferences are written; Apply reads git config again.
+    private async Task SavePagesAfterStoreAsync(bool close)
+    {
         SavePluginSettings();
         foreach ((DistributedSettings settings, RevisionLinkEditor editor) in _revisionLinkLevels.Values)
         {
@@ -1330,94 +517,17 @@ public partial class SettingsWindow : Window
         }
 
         SaveBuildServerPage();
-        SaveDetailedPage();
+        ViewModel.DetailedPage.Save();
         foreach ((DistributedSettings settings, RevisionLinkEditor _) in _revisionLinkLevels.Values)
         {
             AppServices.RevisionLinks.Save(settings);
         }
 
         await SaveGitConfigAsync();
-
-        _saved = true;
         if (!close && !IsGitConfigLoaded)
         {
             // Apply may have just stored a git command that works.
             await LoadGitConfigAsync();
         }
-
-        if (close)
-        {
-            Close(true);
-        }
     }
-}
-
-/// <summary>
-///  One of upstream's <c>core.autocrlf</c> choices; an empty value is "Not set".
-/// </summary>
-public sealed record AutoCrlfOption(string Value, string Text)
-{
-    public override string ToString() => Text;
-}
-
-/// <summary>
-///  A choice of an upstream settings enum, named by its description as upstream's pages name them.
-/// </summary>
-public sealed record EnumOption<T>(T Value) where T : struct, Enum
-{
-    public override string ToString() => Value.GetDescription();
-}
-
-/// <summary>
-///  A branch name normaliser symbol, named as upstream's Advanced page names it.
-/// </summary>
-public sealed record NormaliseSymbolOption(string Label, string Symbol)
-{
-    public override string ToString() => Label;
-}
-
-/// <summary>
-///  A plugin in the Plugins tab's list, by name.
-/// </summary>
-public sealed record PluginOption(IGitPlugin Plugin)
-{
-    public override string ToString() => Plugin.Name ?? "";
-}
-
-/// <summary>
-///  A plugin file that could not be loaded, listed after the plugins.
-/// </summary>
-public sealed record SkippedPluginOption(SkippedPlugin File)
-{
-    public override string ToString() => $"{File.FileName} (not loaded)";
-}
-
-/// <summary>
-///  A theme in the list, named as upstream's appearance page names them.
-/// </summary>
-public sealed record ThemeOption(ThemeId Id)
-{
-    public override string ToString()
-        => Id == ThemeId.WindowsAppColorModeId ? "Follow the operating system"
-            : Id == ThemeId.DefaultLight ? "light (default)"
-            : Id.IsBuiltin ? Id.Name
-            : $"{Id.Name} (user)";
-}
-
-/// <summary>
-///  One of upstream's default pull actions, named as upstream's General page names it.
-/// </summary>
-public sealed record PullActionOption(GitPullAction Action, string Text)
-{
-    public static IReadOnlyList<PullActionOption> All { get; } =
-    [
-        new(GitPullAction.None, "Open pull dialog"),
-        new(GitPullAction.Merge, "Pull - merge"),
-        new(GitPullAction.Rebase, "Pull - rebase"),
-        new(GitPullAction.Fetch, "Fetch"),
-        new(GitPullAction.FetchAll, "Fetch all"),
-        new(GitPullAction.FetchPruneAll, "Fetch and prune all"),
-    ];
-
-    public override string ToString() => Text;
 }

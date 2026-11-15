@@ -14,7 +14,7 @@ public partial class FileHistoryWindow : IFilterToolBarGrid
 {
     string? IFilterToolBarGrid.RepositoryPath => _repositoryPath;
 
-    RevisionFilter IFilterToolBarGrid.Filter => _commits.Filter;
+    RevisionFilter IFilterToolBarGrid.Filter => ViewModel.Commits.Filter;
 
     /// <summary>
     ///  The filter toolstrip, for tests.
@@ -26,17 +26,17 @@ public partial class FileHistoryWindow : IFilterToolBarGrid
     Task IFilterToolBarGrid.ApplyFilterAsync(RevisionFilter filter)
     {
         StoredRevisionFilter.Store(filter, _preferences);
-        return ApplyGridFilterAsync(StoredRevisionFilter.WithStoredHistory(filter, _preferences));
+        return ViewModel.ApplyGridFilterAsync(StoredRevisionFilter.WithStoredHistory(filter, _preferences));
     }
 
     // Upstream's ShowRevisionFilterDialog, with FormRevisionFilter's stored choices.
     async Task IFilterToolBarGrid.ShowRevisionFilterDialogAsync()
     {
-        if (await new FilterWindow(_commits.Filter, _preferences.MaxRevisionGraphCommits)
+        if (await new FilterWindow(ViewModel.Commits.Filter, _preferences.MaxRevisionGraphCommits)
                 .ShowDialog<RevisionFilter?>(this) is { } filter)
         {
             StoredRevisionFilter.StoreDialogChoice(filter, _preferences);
-            ShowOptionChecks();
+            ViewModel.RefreshOptions();
             await ((IFilterToolBarGrid)this).ApplyFilterAsync(filter);
         }
     }
@@ -56,7 +56,6 @@ public partial class FileHistoryWindow : IFilterToolBarGrid
 
     private void WireFilterToolStrip(string? revision, bool filterByRevision)
     {
-        _ = _commits.ApplyFilterAsync(StoredRevisionFilter.Initial(_preferences));
         ToolStripFilters.Bind(this, _preferences);
 
         // Upstream's filterByRevision (the command line's "filterbyrevision"): the commit in the "Filter:" box.
@@ -64,30 +63,5 @@ public partial class FileHistoryWindow : IFilterToolBarGrid
         {
             ToolStripFilters.SetRevisionFilter(revision);
         }
-    }
-
-    // The grid reads the filter once it shows, and selects the caller's commit at first, then the one selected before
-    // (upstream's grid keeps its selection), else the newest.
-    private async Task ApplyGridFilterAsync(RevisionFilter filter)
-    {
-        await _commits.ApplyFilterAsync(filter);
-        if (!HistoryList.IsVisible)
-        {
-            return;
-        }
-
-        if (_commits.RepositoryPath is null)
-        {
-            await _commits.OpenAsync(_repositoryPath);
-        }
-
-        Run(LaunchBuildServerAsync);
-        string? select = _selectedOnce ? _selectedHash : _revision;
-        _selectedOnce = true;
-        CommitListItem? selected = select is null
-            ? null
-            : _commits.VisibleRows.FirstOrDefault(item =>
-                item.Row.Hash.StartsWith(select, StringComparison.OrdinalIgnoreCase));
-        HistoryList.SelectedItem = selected ?? _commits.VisibleRows.FirstOrDefault();
     }
 }

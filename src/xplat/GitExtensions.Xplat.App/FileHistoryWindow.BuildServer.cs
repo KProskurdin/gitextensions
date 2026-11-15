@@ -84,8 +84,8 @@ public partial class FileHistoryWindow
             AppServices.BuildServers,
             AppServices.BuildServerCredentials,
             new BuildServerWatcherHost(
-                _commits.IsLoaded,
-                info => Dispatcher.UIThread.Post(() => _commits.ApplyBuildInfo(info)),
+                ViewModel.Commits.IsLoaded,
+                info => Dispatcher.UIThread.Post(() => ViewModel.Commits.ApplyBuildInfo(info)),
                 () => Dispatcher.UIThread.Post(() =>
                 {
                     if (ShowSettings is { } showSettings)
@@ -124,7 +124,7 @@ public partial class FileHistoryWindow
     private void FollowSelectedBuild()
     {
         _reportedBuild?.PropertyChanged -= OnReportedBuildChanged;
-        _reportedBuild = _selection.Revisions.Count == 1 ? LatestSelectedItem?.Build : null;
+        _reportedBuild = ViewModel.Selection.Revisions.Count == 1 ? LatestSelectedItem?.Build : null;
         _reportedBuild?.PropertyChanged += OnReportedBuildChanged;
         ShowBuildReportTab();
     }
@@ -143,7 +143,7 @@ public partial class FileHistoryWindow
         bool show = _showBuildReport && !string.IsNullOrEmpty(_reportedBuild?.Url);
         if (!show && Tabs.SelectedItem == BuildReportTab)
         {
-            Tabs.SelectedItem = TabFor(FileHistoryTab.Diff).IsVisible ? TabFor(FileHistoryTab.Diff) : CommitTab;
+            Tabs.SelectedItem = ViewModel.IsDiffTabVisible ? DiffTab : CommitTab;
         }
 
         BuildReportTab.IsVisible = show;

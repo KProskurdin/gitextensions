@@ -50,6 +50,9 @@ internal sealed class RevisionLinksSettingsTests
                 button => ((StackPanel)button.Content!).Children.OfType<Image>().Single().Source != null,
                 "upstream's menu shows the service's icon");
 
+        // A command-bound button is clicked only on the page shown.
+        Find<TabControl>(settings, "Tabs").SelectedItem = Find<TabItem>(settings, "RevisionLinksTab");
+        Dispatcher.UIThread.RunJobs();
         Click(settings, "AddRevisionLinkButton");
         Find<TextBox>(settings, "RevisionLinkNameBox").Text.Should().Be("<new>");
         Find<TextBox>(settings, "RevisionLinkNameBox").Text = "Issues";
@@ -80,6 +83,9 @@ internal sealed class RevisionLinksSettingsTests
 
         SettingsWindow again = OpenSettings(window);
         Find<TextBox>(again, "RevisionLinkNameBox").Text.Should().Be("Issues");
+        // A command-bound button is clicked only on the page shown.
+        Find<TabControl>(again, "Tabs").SelectedItem = Find<TabItem>(again, "RevisionLinksTab");
+        Dispatcher.UIThread.RunJobs();
         Click(again, "RemoveRevisionLinkButton");
         Find<ListBox>(again, "RevisionLinksList").ItemCount.Should().Be(0);
         Click(again, "SaveButton");

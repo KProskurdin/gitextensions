@@ -237,6 +237,41 @@ internal sealed class PluginTests
         store.Open("/repo", SettingLevel.Local).Should().BeSameAs(store.Open("/repo", SettingLevel.Local));
     }
 
+    [Test]
+    public void PluginsPage_should_list_the_plugins_with_settings_by_name_then_the_skipped_files()
+    {
+        PluginsPageViewModel page = new([new SamplePlugin("Zeta"), new SamplePlugin("Alpha"),
+                new SamplePlugin("None", hasSettings: false)],
+            [new SkippedPlugin("Old.dll", "/plugins/Old.dll", "Built for Windows.")], level => new InMemorySettingsSource(level));
+
+        page.Pages.Select(option => option.ToString()).Should().Equal("Alpha", "Zeta", "Old.dll (not loaded)");
+
+        page.Show(page.Pages[2]);
+
+        (page.IsSkipped, page.Title, page.Rows.Count).Should().Be((true, "Old.dll", 0));
+        page.SkippedText.Should().Be("This plugin is not loaded. Built for Windows.");
+    }
+
+    [Test]
+    public void PluginsPage_should_store_the_values_edited_at_each_source_on_save()
+    {
+        Dictionary<SettingLevel, InMemorySettingsSource> sources = [];
+        PluginsPageViewModel page = new([new SamplePlugin("Sample")], [],
+            level => sources[level] = new InMemorySettingsSource(level));
+        page.SetLevel(SettingLevel.Global);
+        page.Show(page.Pages[0]);
+        page.Rows[0].Text = "global";
+
+        page.ChangeLevel(SettingLevel.Local);
+        page.Rows[0].Text = "local";
+        List<SettingsSource> stored = [];
+        page.Save(stored.Add);
+
+        stored.Should().BeEquivalentTo([sources[SettingLevel.Global], sources[SettingLevel.Local]]);
+        sources[SettingLevel.Global].Values[$"{_pluginId}.Arguments"].Should().Be("global");
+        sources[SettingLevel.Local].Values[$"{_pluginId}.Arguments"].Should().Be("local");
+    }
+
     private sealed class SamplePlugin : GitPluginBase
     {
         private readonly StringSetting _arguments = new("Arguments", "fetch --all");

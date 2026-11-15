@@ -1,49 +1,69 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.ConflictsWindow"
+        x:DataType="vm:ConflictsViewModel"
         Title="Resolve merge conflicts"
         Width="619" Height="392" MinWidth="450" MinHeight="299" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormResolveConflicts: the unresolved files with their menu, the selected one's description and Merge
-       button, the buttons on the right, the local, base and remote names, and the help link. -->
+       button, the buttons on the right, the local, base and remote names, and the help link. Bound to ConflictsViewModel
+       (PLAN.md principle 6). -->
   <Grid Margin="4" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto,30">
     <Grid RowDefinitions="Auto,*,Auto,20">
       <TextBlock Text="Unresolved merge conflicts" Margin="3" />
       <DockPanel Grid.Row="1" Margin="3">
         <TextBlock DockPanel.Dock="Top" Text="Filename" FontWeight="SemiBold" Margin="4,0" />
-        <ListBox x:Name="ConflictList" SelectionMode="Multiple">
+        <ListBox x:Name="ConflictList" SelectionMode="Multiple" ItemsSource="{Binding Rows}"
+                 SelectedIndex="{Binding SelectedIndex}">
           <ListBox.ContextMenu>
             <ContextMenu x:Name="ConflictMenu">
-              <MenuItem x:Name="OpenMergeToolMenuItem" Header="Open in mergetool" />
-              <MenuItem x:Name="CustomMergeToolMenuItem" Header="Open in _mergetool" />
-              <MenuItem x:Name="MarkAsSolvedMenuItem" Header="Mark conflict as solved" />
+              <MenuItem x:Name="OpenMergeToolMenuItem" Header="{Binding OpenInText}" Command="{Binding MergeCommand}"
+                        IsEnabled="{Binding CanOpenMergeTool}" />
+              <MenuItem x:Name="CustomMergeToolMenuItem" Header="Open in _mergetool" IsEnabled="{Binding HasOneFile}" />
+              <MenuItem x:Name="MarkAsSolvedMenuItem" Header="Mark conflict as solved" Command="{Binding MarkAsSolvedCommand}" />
               <Separator />
-              <MenuItem x:Name="ChooseLocalMenuItem" Header="Choose local" InputGesture="{local:CommandGesture D1}" />
-              <MenuItem x:Name="ChooseRemoteMenuItem" Header="Choose remote" InputGesture="{local:CommandGesture D2}" />
-              <MenuItem x:Name="ChooseBaseMenuItem" Header="Choose base" InputGesture="{local:CommandGesture D3}" />
+              <MenuItem x:Name="ChooseLocalMenuItem" Header="{Binding ChooseLocalText}" ToolTip.Tip="{Binding ChooseLocalTooltip}"
+                        InputGesture="{local:CommandGesture D1}" Command="{Binding ChooseCommand}"
+                        CommandParameter="{x:Static vm:ConflictsDialog.Local}" />
+              <MenuItem x:Name="ChooseRemoteMenuItem" Header="{Binding ChooseRemoteText}" ToolTip.Tip="{Binding ChooseRemoteTooltip}"
+                        InputGesture="{local:CommandGesture D2}" Command="{Binding ChooseCommand}"
+                        CommandParameter="{x:Static vm:ConflictsDialog.Remote}" />
+              <MenuItem x:Name="ChooseBaseMenuItem" Header="Choose base" ToolTip.Tip="{Binding ChooseBaseTooltip}"
+                        InputGesture="{local:CommandGesture D3}" Command="{Binding ChooseCommand}"
+                        CommandParameter="{x:Static vm:ConflictsDialog.Base}" />
               <Separator />
-              <MenuItem x:Name="OpenLocalWithMenuItem" Header="Open local with" />
-              <MenuItem x:Name="OpenRemoteWithMenuItem" Header="Open remote with" />
-              <MenuItem x:Name="OpenBaseWithMenuItem" Header="Open base with" />
+              <MenuItem x:Name="OpenLocalWithMenuItem" Header="Open local with" IsEnabled="{Binding CanUseLocal}"
+                        Command="{Binding OpenSideWithCommand}" CommandParameter="{x:Static vm:ConflictsDialog.Local}" />
+              <MenuItem x:Name="OpenRemoteWithMenuItem" Header="Open remote with" IsEnabled="{Binding CanUseRemote}"
+                        Command="{Binding OpenSideWithCommand}" CommandParameter="{x:Static vm:ConflictsDialog.Remote}" />
+              <MenuItem x:Name="OpenBaseWithMenuItem" Header="Open base with" IsEnabled="{Binding CanUseBase}"
+                        Command="{Binding OpenSideWithCommand}" CommandParameter="{x:Static vm:ConflictsDialog.Base}" />
               <Separator />
-              <MenuItem x:Name="SaveLocalAsMenuItem" Header="Save local as" />
-              <MenuItem x:Name="SaveRemoteAsMenuItem" Header="Save remote as" />
-              <MenuItem x:Name="SaveBaseAsMenuItem" Header="Save base as" />
+              <MenuItem x:Name="SaveLocalAsMenuItem" Header="Save local as" IsEnabled="{Binding CanUseLocal}"
+                        Command="{Binding SaveSideCommand}" CommandParameter="{x:Static vm:ConflictsDialog.Local}" />
+              <MenuItem x:Name="SaveRemoteAsMenuItem" Header="Save remote as" IsEnabled="{Binding CanUseRemote}"
+                        Command="{Binding SaveSideCommand}" CommandParameter="{x:Static vm:ConflictsDialog.Remote}" />
+              <MenuItem x:Name="SaveBaseAsMenuItem" Header="Save base as" IsEnabled="{Binding CanUseBase}"
+                        Command="{Binding SaveSideCommand}" CommandParameter="{x:Static vm:ConflictsDialog.Base}" />
               <Separator />
-              <MenuItem x:Name="OpenMenuItem" Header="Open" />
-              <MenuItem x:Name="OpenWithMenuItem" Header="Open With" />
-              <MenuItem x:Name="ShowInFolderMenuItem" Header="Show in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}" />
+              <MenuItem x:Name="OpenMenuItem" Header="Open" IsEnabled="{Binding HasOneFile}" Command="{Binding OpenFileCommand}" />
+              <MenuItem x:Name="OpenWithMenuItem" Header="Open With" IsEnabled="{Binding HasOneFile}"
+                        Command="{Binding OpenFileCommand}" />
+              <MenuItem x:Name="ShowInFolderMenuItem" Header="Show in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}"
+                        IsEnabled="{Binding HasOneFile}" Command="{Binding ShowInFolderCommand}" />
               <Separator />
-              <MenuItem x:Name="FileHistoryMenuItem" Header="File history" />
+              <MenuItem x:Name="FileHistoryMenuItem" Header="File history" IsEnabled="{Binding HasOneFile}"
+                        Command="{Binding ShowFileHistoryCommand}" />
             </ContextMenu>
           </ListBox.ContextMenu>
         </ListBox>
       </DockPanel>
       <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="3">
         <Image Source="{local:UpstreamImage Information}" Width="16" Height="16" VerticalAlignment="Center" />
-        <TextBlock x:Name="ConflictDescriptionText" Grid.Column="1" Text="Select file" TextWrapping="Wrap"
+        <TextBlock x:Name="ConflictDescriptionText" Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap"
                    VerticalAlignment="Center" Margin="6,0" />
-        <Button x:Name="MergeButton" Grid.Column="2" MinWidth="130" IsDefault="True">
+        <Button x:Name="MergeButton" Grid.Column="2" MinWidth="130" IsDefault="True" Command="{Binding MergeCommand}">
           <StackPanel Orientation="Horizontal" Spacing="4">
             <Image Source="{local:UpstreamImage SelectBranch}" Width="16" Height="16" />
             <TextBlock Text="Merge" VerticalAlignment="Center" />
@@ -52,21 +72,27 @@
       </Grid>
     </Grid>
     <StackPanel Grid.Column="1" Spacing="3" Margin="3">
-      <Button x:Name="OpenMergeToolButton" Content="Open in mergetool" MinWidth="140" HorizontalAlignment="Stretch" />
-      <Button x:Name="StartMergeToolButton" Content="Start mergetool" MinWidth="140" HorizontalAlignment="Stretch" />
-      <Button x:Name="RescanButton" Content="Rescan merge conflicts" MinWidth="140" HorizontalAlignment="Stretch" />
-      <Button x:Name="ResetButton" MinWidth="140" HorizontalAlignment="Stretch">
+      <Button x:Name="OpenMergeToolButton" Content="{Binding OpenInText}" MinWidth="140" HorizontalAlignment="Stretch"
+              IsEnabled="{Binding CanOpenMergeTool}" Command="{Binding MergeCommand}" />
+      <Button x:Name="StartMergeToolButton" Content="Start mergetool" MinWidth="140" HorizontalAlignment="Stretch"
+              Command="{Binding StartMergeToolCommand}" />
+      <Button x:Name="RescanButton" Content="Rescan merge conflicts" MinWidth="140" HorizontalAlignment="Stretch"
+              Command="{Binding RescanCommand}" />
+      <Button x:Name="ResetButton" MinWidth="140" HorizontalAlignment="Stretch" Command="{Binding ResetCommand}">
         <AccessText Text="_Reset" />
       </Button>
-      <ProgressBar x:Name="Progress" IsVisible="False" Minimum="0" />
+      <ProgressBar x:Name="Progress" Minimum="0" IsVisible="{Binding IsProgressVisible}"
+                   Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" />
     </StackPanel>
     <Grid Grid.Row="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="3">
-      <TextBlock x:Name="LocalLabelText" Text="Local/current" Margin="0,2,12,2" />
-      <SelectableTextBlock x:Name="LocalNameText" Grid.Column="1" Text="..." Margin="0,2" />
+      <TextBlock x:Name="LocalLabelText" Text="{Binding LocalLabel}" ToolTip.Tip="{Binding LocalLabelTooltip}"
+                 Margin="0,2,12,2" />
+      <SelectableTextBlock x:Name="LocalNameText" Grid.Column="1" Text="{Binding LocalName}" Margin="0,2" />
       <TextBlock Grid.Row="1" Text="Base" Margin="0,2,12,2" />
-      <SelectableTextBlock x:Name="BaseNameText" Grid.Row="1" Grid.Column="1" Text="..." Margin="0,2" />
-      <TextBlock x:Name="RemoteLabelText" Grid.Row="2" Text="Remote/incoming" Margin="0,2,12,2" />
-      <SelectableTextBlock x:Name="RemoteNameText" Grid.Row="2" Grid.Column="1" Text="..." Margin="0,2" />
+      <SelectableTextBlock x:Name="BaseNameText" Grid.Row="1" Grid.Column="1" Text="{Binding BaseName}" Margin="0,2" />
+      <TextBlock x:Name="RemoteLabelText" Grid.Row="2" Text="{Binding RemoteLabel}" ToolTip.Tip="{Binding RemoteLabelTooltip}"
+                 Margin="0,2,12,2" />
+      <SelectableTextBlock x:Name="RemoteNameText" Grid.Row="2" Grid.Column="1" Text="{Binding RemoteName}" Margin="0,2" />
     </Grid>
     <HyperlinkButton x:Name="HelpLink" Grid.Row="2" Content="Help" Padding="3,0" VerticalAlignment="Bottom" />
   </Grid>
