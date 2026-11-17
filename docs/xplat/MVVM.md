@@ -108,6 +108,8 @@ Edit existing `.cs` files with scripts, not the IDE edit hook, which reformats w
 
 ## Windows
 
+Every window below has its view model. MVVM everywhere (actions as commands, menus built in code as listed entries) is done in `MainWindow` only, as of 2026-11-17: about 135 click handlers are left in the other windows and shared controls. `PLAN.md` section 12.6 step 5 has the count by area and the order.
+
 | Window | View model | State |
 |---|---|---|
 | `CreateBranchWindow` | `Operations/CreateBranchViewModel.cs` | Done 2026-11-13 (pilot): code-behind 209 to 67 lines, 10 view model tests run in milliseconds. |

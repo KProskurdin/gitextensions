@@ -1170,5 +1170,28 @@ Steps:
    items a view model lists; code-behind keeps only what cannot be bound (focus, key capture, measuring text, opening a
    window through an interface the view model calls, such as `IBrowseWindow`). Started with the browse window's main menu,
    toolstrip, action bar and grid menu commands (`BrowseToolbarViewModel.Commands.cs`); `MVVM.md` lists what is done.
+
+   *Where it stands, 2026-11-17:* every window has a view model, but MVVM everywhere is done only in `MainWindow`. Its
+   click handlers went from about 250 to 2. The first is the difftool item, whose tool submenu is the shared
+   `CustomDiffTools`. The second is the dashboard's "Actions" link, which only opens its menu. Menus built in code are
+   `MenuEntry` lists from the view models, rendered by `MenuEntries.Fill` (the left panel's, the grid's, the toolstrip's
+   drop-downs, the Start menu's, the dashboard's). About 135 click handlers are left in the rest of the app (counted
+   with `grep -E '\.Click \+=|Click="'`):
+
+   | Area | Handlers |
+   |---|---|
+   | Filter toolbar (`FilterToolBar`, shared by the browse and file history windows) | 19 |
+   | Settings window (main file, Git config page, Appearance page) | 21 |
+   | Commit window (main file, file lists, spelling, status bar, bottom, auto-complete, XAML) | 31 |
+   | Shared controls: git grep box, revision file list, file tree rows, `CustomDiffTools`, script menus, copy paths menu, the diff view's find and toolbar, the file list toolbar, difftool choices | about 21 |
+   | Dialogs: About, Stash, Recent repositories settings, Git ignore, Conflicts, Merge branch, Delete tag, Go to commit, message box, commit picker, editor find, dialog help | about 25 |
+   | File history window (with its grid menus and build server) | 5 |
+   | Other: the macOS application menu, help images, plugin setting rows, toolbar overflow | about 7 |
+
+   Order: `CustomDiffTools` with the file history window and `FileStatusListMenu`, which share it; then the filter
+   toolbar, the Settings window, the commit window, the shared controls and the dialogs. Some handlers may stay because
+   they are only view concerns (a link that opens its menu, the macOS application menu, the toolbar overflow); each is
+   decided with its window and noted in `MVVM.md`. Done when no button or menu action is left in code-behind except
+   those, and the full suite and the view model tests pass.
 6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
    upstream is not affected.
