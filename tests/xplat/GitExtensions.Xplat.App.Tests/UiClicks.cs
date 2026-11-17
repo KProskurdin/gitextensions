@@ -28,6 +28,17 @@ internal static class UiClicks
             return;
         }
 
+        // A split button runs its command from its own primary part, not from a raised click event.
+        if (routedEvent == SplitButton.ClickEvent && control is SplitButton { Command: { } splitCommand } split)
+        {
+            if (split.IsEffectivelyEnabled && splitCommand.CanExecute(split.CommandParameter))
+            {
+                splitCommand.Execute(split.CommandParameter);
+            }
+
+            return;
+        }
+
         // A menu item's own click handling runs its command and marks the click handled; the command runs here only when
         // it did not, so it never runs twice.
         RoutedEventArgs args = new(routedEvent);
@@ -42,34 +53,44 @@ internal static class UiClicks
 
     private static void MouseClick(Button button)
     {
-        TopLevel window = TopLevel.GetTopLevel(button) ??
-                          throw new InvalidOperationException($"{button.Name} is not shown");
+        // A window a test never shows has no place to click (nor, without its template, a tree); its enabled button runs
+        // its command, as a click would.
+        if (TopLevel.GetTopLevel(button) is not { IsVisible: true } window)
+        {
+            RunCommand(button);
+            return;
+        }
 
         // A command that just finished (a message box was closed a moment ago) re-enables its button only once its
         // continuation has run, and a window shown a moment ago may not be laid out yet; the click goes to the button's
         // place.
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
-        Point middle = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)
-                       ?? throw new InvalidOperationException($"{button.Name} is not in its window");
+        Point? place = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window);
 
-        // The headless fonts are wider than a desktop's, so a row can put a button outside the window or under its
-        // neighbour, where no mouse reaches it; the click then runs the command as the button would (a hidden button stays
-        // unclickable).
-        if (!new Rect(window.ClientSize).Contains(middle)
+        // The headless fonts are wider than a desktop's, so a row can put a button outside the window, under its neighbour
+        // or into the toolbar's overflow, where no mouse reaches it, and a list's item may be between its containers; the
+        // click then runs the command as the button would (a button hidden itself stays unclickable).
+        if (place is not { } middle
+            || !new Rect(window.ClientSize).Contains(middle)
             || window.InputHitTest(middle) is not Visual hit
             || (hit != button && !button.IsVisualAncestorOf(hit)))
         {
-            if (button.IsEffectivelyVisible && button.IsEffectivelyEnabled
-                && button.Command!.CanExecute(button.CommandParameter))
-            {
-                button.Command.Execute(button.CommandParameter);
-            }
-
+            RunCommand(button);
             return;
         }
 
         window.MouseDown(middle, MouseButton.Left);
         window.MouseUp(middle, MouseButton.Left);
+    }
+
+    // As a click: its event (a toolbar's overflow closes on it), then the command.
+    private static void RunCommand(Button button)
+    {
+        if (button.IsVisible && button.IsEffectivelyEnabled && button.Command!.CanExecute(button.CommandParameter))
+        {
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            button.Command.Execute(button.CommandParameter);
+        }
     }
 }

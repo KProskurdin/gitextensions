@@ -34,31 +34,8 @@ public partial class MainWindow
 
     private void WireCommandsMenu()
     {
-        UndoLastCommitMenuItem.Click += (_, _) => RunOnRepository(UndoLastCommitAsync);
-        ArchiveMenuItem.Click += (_, _) => ArchiveSelectedRevision();
-        CherryPickCommandMenuItem.Click += (_, _) => CherryPickSelectedRevision();
-        FormatPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
-            Run(() => new FormatPatchWindow(path, _preferences).ShowDialog(this)));
-        ApplyPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(ShowApplyPatch);
-        ViewPatchMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
-            Run(() => new ViewPatchWindow(path, patchFile: null).ShowDialog(this)));
-        ArchiveCommitMenuItem.Click += (_, _) => ArchiveSelectedRevision();
-        CleanupMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
-            Run(() => new CleanupRepositoryWindow(path, RefreshRepository).ShowDialog(this)));
-        GitGuiMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => GitModules.Open(path).RunGui());
-        GitKMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => GitModules.Open(path).RunGitK());
+        // The items' actions are the toolbar view model's commands (bound in XAML); PuTTY is Windows'.
         PuttySeparator.IsVisible = PuttyMenuItem.IsVisible = OperatingSystem.IsWindows();
-        StartAuthenticationAgentMenuItem.Click += (_, _) => StartPuttyProgram(_preferences.Pageant);
-        GenerateOrImportKeyMenuItem.Click += (_, _) => StartPuttyProgram(_preferences.Puttygen);
-        GitAttributesMenuItem.Click += (_, _) =>
-            RunOnRepository(path => EditRepositoryFileAsync(path, RepositoryTextFiles.GitAttributes));
-        MailMapMenuItem.Click += (_, _) =>
-            RunOnRepository(path => EditRepositoryFileAsync(path, RepositoryTextFiles.MailMap));
-        WireMaintenanceMenu();
-        WireSubmodulesMenu();
-        SparseWorkingCopyMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => Run(() =>
-            new SparseWorkingCopyWindow(path, arguments => RunGitWithOutputAsync(path, arguments)).ShowDialog(this)));
-        RepositorySettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(page: GitConfigSettingsPage));
     }
 
     // Upstream's undoLastCommitToolStripMenuItem_Click: after its suppressible question, a soft reset to HEAD~1 keeps

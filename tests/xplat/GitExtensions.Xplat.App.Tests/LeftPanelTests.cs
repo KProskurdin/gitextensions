@@ -167,6 +167,12 @@ internal sealed class LeftPanelTests
         folder.IsExpanded.Should().BeTrue();
         BranchNode(tree, "team/found")!.IsSearchMatch.Should().BeTrue("upstream highlights every match");
 
+        // Refresh is off while the window is busy; the queued work runs first.
+        WaitUntil(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            return !window.IsBusy;
+        });
         Click(window, "RefreshButton");
         WaitUntil(() => !window.IsBusy && BranchNode(tree, "team/found") is { IsSearchMatch: true });
         Find<AutoCompleteBox>(window, "LeftPanelSearchBox").Text = "";

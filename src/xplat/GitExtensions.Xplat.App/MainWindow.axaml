@@ -3,6 +3,11 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+        xmlns:git="using:GitCommands.Git"
+        xmlns:gc="using:GitCommands"
+        xmlns:ext="using:GitExtensions.Extensibility.Git"
+        xmlns:diff="using:GitExtensions.Xplat.Core.Diff"
+        xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.MainWindow"
         x:DataType="repo:BrowseToolbarViewModel"
         Title="{Binding Title, FallbackValue=Git Extensions}"
@@ -15,190 +20,191 @@
       <!-- Upstream's menus (FormBrowse.Designer and its Menus folder) in its order, with its texts, access keys and images,
            and the items the new shell has. -->
       <MenuItem Header="_Start">
-        <MenuItem x:Name="InitMenuItem" Header="_Create new repository..." Icon="{local:UpstreamIcon RepoCreate}" IsEnabled="{Binding CanStartRepository}" />
-        <MenuItem x:Name="OpenMenuItem" Header="_Open..." Icon="{local:UpstreamIcon RepoOpen}" IsEnabled="{Binding CanStartRepository}" />
-        <MenuItem x:Name="FavouritesMenu" Header="_Favorite repositories" Icon="{local:UpstreamIcon Star}" />
+        <MenuItem x:Name="InitMenuItem" Command="{Binding InitRepositoryCommand}" Header="_Create new repository..." Icon="{local:UpstreamIcon RepoCreate}" IsEnabled="{Binding CanStartRepository}" />
+        <MenuItem x:Name="OpenMenuItem" Command="{Binding OpenRepositoryCommand}" Header="_Open..." Icon="{local:UpstreamIcon RepoOpen}" IsEnabled="{Binding CanStartRepository}" />
+        <MenuItem x:Name="FavouritesMenu" Header="_Favorite repositories" Icon="{local:UpstreamImage Star}" />
         <MenuItem x:Name="RecentMenu" Header="_Recent repositories" Icon="{local:UpstreamIcon RecentRepositories}" />
         <Separator />
-        <MenuItem x:Name="CloneMenuItem" Header="C_lone repository..." Icon="{local:UpstreamIcon CloneRepoGit}" IsEnabled="{Binding CanStartRepository}" />
+        <MenuItem x:Name="CloneMenuItem" Command="{Binding CloneCommand}" Header="C_lone repository..." Icon="{local:UpstreamIcon CloneRepoGit}" IsEnabled="{Binding CanStartRepository}" />
         <Separator />
-        <MenuItem x:Name="ExitMenuItem" Header="E_xit" />
+        <MenuItem x:Name="ExitMenuItem" Command="{Binding ExitCommand}" Header="E_xit" />
       </MenuItem>
       <!-- Shown instead of Repository, View, Commands and Plugins while the dashboard shows, as upstream's. -->
-      <MenuItem x:Name="DashboardMenu" Header="_Dashboard">
-        <MenuItem x:Name="DashboardRefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
+      <MenuItem x:Name="DashboardMenu" IsVisible="{Binding !IsRepositoryShown}" Header="_Dashboard">
+        <MenuItem x:Name="DashboardRefreshMenuItem" Command="{Binding RefreshDashboardCommand}" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" />
         <!-- Upstream's UserRepositoriesList adds its mnuConfigure here when it loads. -->
-        <MenuItem x:Name="DashboardRecentReposSettingsMenuItem" Header="Recent repositories _settings" Icon="{local:UpstreamIcon Settings}" />
+        <MenuItem x:Name="DashboardRecentReposSettingsMenuItem" Command="{Binding ConfigureRecentRepositoriesCommand}" Header="Recent repositories _settings" Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
       <!-- "Browse files..." is the new shell's own. -->
-      <MenuItem x:Name="RepositoryMainMenu" Header="_Repository">
-        <MenuItem x:Name="RefreshMenuItem" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="FileExplorerMenuItem" Header="File E_xplorer" Icon="{local:UpstreamIcon BrowseFileExplorer}" IsEnabled="{Binding IsOpen}" />
+      <MenuItem x:Name="RepositoryMainMenu" IsVisible="{Binding IsRepositoryShown}" Header="_Repository">
+        <MenuItem x:Name="RefreshMenuItem" Command="{Binding RefreshRepositoryCommand}" Header="_Refresh" Icon="{local:UpstreamIcon ReloadRevisions}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="FileExplorerMenuItem" Command="{Binding OpenFolderCommand}" Header="File E_xplorer" Icon="{local:UpstreamIcon BrowseFileExplorer}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="RemoteRepositoriesMenuItem" Header="Remo_te repositories..." Icon="{local:UpstreamIcon Remotes}" />
+        <MenuItem x:Name="RemoteRepositoriesMenuItem" Command="{Binding ManageRemotesCommand}" Header="Remo_te repositories..." Icon="{local:UpstreamIcon Remotes}" />
         <Separator />
-        <MenuItem x:Name="ManageSubmodulesMenuItem" Header="Manage _submodules..." Icon="{local:UpstreamIcon SubmodulesManage}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="UpdateAllSubmodulesMenuItem" Header="_Update all submodules" Icon="{local:UpstreamIcon SubmodulesUpdate}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="SyncAllSubmodulesMenuItem" Header="Synchronize all su_bmodules" Icon="{local:UpstreamIcon SubmodulesSync}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="ManageSubmodulesMenuItem" Command="{Binding ManageSubmodulesCommand}" Header="Manage _submodules..." Icon="{local:UpstreamIcon SubmodulesManage}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="UpdateAllSubmodulesMenuItem" Command="{Binding UpdateAllSubmodulesCommand}" Header="_Update all submodules" Icon="{local:UpstreamIcon SubmodulesUpdate}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="SyncAllSubmodulesMenuItem" Command="{Binding SyncAllSubmodulesCommand}" Header="Synchronize all su_bmodules" Icon="{local:UpstreamIcon SubmodulesSync}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="WorktreesMenuItem" Header="Manage _worktrees..." Icon="{local:UpstreamIcon WorkTree}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="WorktreesMenuItem" Command="{Binding ManageWorktreesCommand}" Header="Manage _worktrees..." Icon="{local:UpstreamIcon WorkTree}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="GitIgnoreMenuItem" Header="Edit .git_ignore" Icon="{local:UpstreamIcon EditGitIgnore}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="GitInfoExcludeMenuItem" Header="Edit .git/info/_exclude" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="GitAttributesMenuItem" Header="Edit .git_attributes" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="MailMapMenuItem" Header="Edit ._mailmap" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="SparseWorkingCopyMenuItem" Header="Sparse Wor_king Copy" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="GitIgnoreMenuItem" Command="{Binding EditGitIgnoreCommand}" Header="Edit .git_ignore" Icon="{local:UpstreamIcon EditGitIgnore}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="GitInfoExcludeMenuItem" Command="{Binding EditGitInfoExcludeCommand}" Header="Edit .git/info/_exclude" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="GitAttributesMenuItem" Command="{Binding EditGitAttributesCommand}" Header="Edit .git_attributes" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="MailMapMenuItem" Command="{Binding EditMailMapCommand}" Header="Edit ._mailmap" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="SparseWorkingCopyMenuItem" Command="{Binding SparseWorkingCopyCommand}" Header="Sparse Wor_king Copy" IsEnabled="{Binding IsOpen}" />
         <Separator />
         <MenuItem x:Name="GitMaintenanceMenuItem" Header="_Git maintenance" Icon="{local:UpstreamIcon Maintenance}" IsEnabled="{Binding IsOpen}">
-          <MenuItem x:Name="CompressGitDatabaseMenuItem" Header="_Compress git database" Icon="{local:UpstreamIcon CompressGitDatabase}" />
-          <MenuItem x:Name="RecoverLostObjectsMenuItem" Header="_Recover lost objects..." Icon="{local:UpstreamIcon RecoverLostObjects}" />
-          <MenuItem x:Name="DeleteIndexLockMenuItem" Header="_Delete index.lock" Icon="{local:UpstreamIcon DeleteIndexLock}" />
-          <MenuItem x:Name="EditLocalGitConfigMenuItem" Header="_Edit .git/config" Icon="{local:UpstreamIcon EditGitConfig}" />
+          <MenuItem x:Name="CompressGitDatabaseMenuItem" Command="{Binding CompressGitDatabaseCommand}" Header="_Compress git database" Icon="{local:UpstreamIcon CompressGitDatabase}" />
+          <MenuItem x:Name="RecoverLostObjectsMenuItem" Command="{Binding RecoverLostObjectsCommand}" Header="_Recover lost objects..." Icon="{local:UpstreamIcon RecoverLostObjects}" />
+          <MenuItem x:Name="DeleteIndexLockMenuItem" Command="{Binding DeleteIndexLockCommand}" Header="_Delete index.lock" Icon="{local:UpstreamIcon DeleteIndexLock}" />
+          <MenuItem x:Name="EditLocalGitConfigMenuItem" Command="{Binding EditLocalGitConfigCommand}" Header="_Edit .git/config" Icon="{local:UpstreamIcon EditGitConfig}" />
         </MenuItem>
-        <MenuItem x:Name="RepositorySettingsMenuItem" Header="Rep_ository settings..." Icon="{local:UpstreamIcon Settings}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="RepositorySettingsMenuItem" Command="{Binding RepositorySettingsCommand}" Header="Rep_ository settings..." Icon="{local:UpstreamIcon Settings}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="FilesMenuItem" Header="Browse _files..." IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="FilesMenuItem" Command="{Binding BrowseFilesCommand}" Header="Browse _files..." IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="CloseRepositoryMenuItem" Header="_Close (go to Dashboard)" Icon="{local:UpstreamIcon DashboardFolderGit}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="CloseRepositoryMenuItem" Command="{Binding CloseRepositoryCommand}" Header="_Close (go to Dashboard)" Icon="{local:UpstreamIcon DashboardFolderGit}" IsEnabled="{Binding IsOpen}" />
       </MenuItem>
       <!-- Upstream's Navigate menu (RevisionGridMenuCommands.CreateNavigateMenuCommands). -->
-      <MenuItem x:Name="NavigateMenu" Header="_Navigate">
-        <MenuItem x:Name="ToggleArtificialAndHeadMenuItem" Header="_Toggle between artificial and HEAD commits"
+      <MenuItem x:Name="NavigateMenu" IsVisible="{Binding IsRepositoryShown}" Header="_Navigate">
+        <MenuItem x:Name="ToggleArtificialAndHeadMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.ToggleBetweenArtificialAndHeadCommits}" Header="_Toggle between artificial and HEAD commits"
                   Icon="{local:UpstreamIcon WorkingDirChanges}" />
-        <MenuItem x:Name="GoToCurrentRevisionMenuItem" Header="Go to c_urrent revision" Icon="{local:UpstreamIcon GotoCurrentRevision}" />
-        <MenuItem x:Name="GoToCommitMenuItem" Header="Go to _commit..." Icon="{local:UpstreamIcon GotoCommit}" />
+        <MenuItem x:Name="GoToCurrentRevisionMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.SelectCurrentRevision}" Header="Go to c_urrent revision" Icon="{local:UpstreamIcon GotoCurrentRevision}" />
+        <MenuItem x:Name="GoToCommitMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.GoToCommit}" Header="Go to _commit..." Icon="{local:UpstreamIcon GotoCommit}" />
         <Separator />
-        <MenuItem x:Name="GoToChildMenuItem" Header="Go to c_hild commit" Icon="{local:UpstreamIcon GoToChildCommit}" />
-        <MenuItem x:Name="GoToParentMenuItem" Header="Go to _parent commit" Icon="{local:UpstreamIcon GoToParentCommit}" />
-        <MenuItem x:Name="GoToFirstParentMenuItem" Header="Go to f_irst parent commit" Icon="{local:UpstreamIcon GoToFirstParentCommit}" />
-        <MenuItem x:Name="GoToLastParentMenuItem" Header="Go to _last parent commit" Icon="{local:UpstreamIcon GoToLastParentCommit}" />
-        <MenuItem x:Name="GoToMergeBaseMenuItem" Header="Go to common _ancestor (merge base)"
+        <MenuItem x:Name="GoToChildMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.GoToChild}" Header="Go to c_hild commit" Icon="{local:UpstreamIcon GoToChildCommit}" />
+        <MenuItem x:Name="GoToParentMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.GoToParent}" Header="Go to _parent commit" Icon="{local:UpstreamIcon GoToParentCommit}" />
+        <MenuItem x:Name="GoToFirstParentMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.GoToFirstParent}" Header="Go to f_irst parent commit" Icon="{local:UpstreamIcon GoToFirstParentCommit}" />
+        <MenuItem x:Name="GoToLastParentMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.GoToLastParent}" Header="Go to _last parent commit" Icon="{local:UpstreamIcon GoToLastParentCommit}" />
+        <MenuItem x:Name="GoToMergeBaseMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.GoToMergeBase}" Header="Go to common _ancestor (merge base)"
                   Icon="{local:UpstreamIcon GoToMergeBaseCommit}"
                   ToolTip.Tip="Selects the common ancestor commit (merge base), which is the most recent shared ancestor of the selected commits (or if only one commit is selected, between it and the checked out commit (HEAD))" />
         <Separator />
-        <MenuItem x:Name="NavigateBackwardMenuItem" Header="Navigate _backward" Icon="{local:UpstreamIcon NavigateBackward}" />
-        <MenuItem x:Name="NavigateForwardMenuItem" Header="Navigate _forward" Icon="{local:UpstreamIcon NavigateForward}" />
+        <MenuItem x:Name="NavigateBackwardMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.NavigateBackward}" Header="Navigate _backward" Icon="{local:UpstreamIcon NavigateBackward}" />
+        <MenuItem x:Name="NavigateForwardMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.NavigateForward}" Header="Navigate _forward" Icon="{local:UpstreamIcon NavigateForward}" />
         <Separator />
-        <MenuItem x:Name="QuickSearchMenuItem" Header="_Quick search" ToolTip.Tip="Start typing in revision grid to start quick search." />
-        <MenuItem x:Name="PrevQuickSearchMenuItem" Header="Quick search p_revious" />
-        <MenuItem x:Name="NextQuickSearchMenuItem" Header="Quick search _next" />
+        <MenuItem x:Name="QuickSearchMenuItem" Command="{Binding QuickSearchHelpCommand}" Header="_Quick search" ToolTip.Tip="Start typing in revision grid to start quick search." />
+        <MenuItem x:Name="PrevQuickSearchMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.PrevQuickSearch}" Header="Quick search p_revious" />
+        <MenuItem x:Name="NextQuickSearchMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.NextQuickSearch}" Header="Quick search _next" />
       </MenuItem>
       <!-- Upstream's View menu (RevisionGridMenuCommands.GetViewMenuCommands) in its order and groups, with the items the new
            shell has. -->
-      <MenuItem x:Name="ViewMenu" Header="_View">
+      <MenuItem x:Name="ViewMenu" DataContext="{x:Null}" Header="_View" x:DataType="core:GridViewMenuViewModel"
+                IsVisible="{Binding $parent[Window].((repo:BrowseToolbarViewModel)DataContext).IsRepositoryShown}">
         <MenuItem Classes="groupHeader" Header="Branches" IsEnabled="False" />
-        <MenuItem x:Name="ShowAllBranchesMenuItem" Header="Show _all branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchLocal}" />
-        <MenuItem x:Name="ShowCurrentBranchOnlyMenuItem" Header="Show _current branch only" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
-        <MenuItem x:Name="ShowFilteredBranchesMenuItem" Header="Show _filtered branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
-        <MenuItem x:Name="ShowReflogReferencesMenuItem" Header="Show _reflog references" ToggleType="CheckBox" Icon="{local:UpstreamIcon Book}" />
+        <MenuItem x:Name="ShowAllBranchesMenuItem" Header="Show _all branches" ToggleType="Radio" IsChecked="{Binding ShowAllBranches}" Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static core:BranchesShown.All}" Icon="{local:UpstreamIcon BranchLocal}" />
+        <MenuItem x:Name="ShowCurrentBranchOnlyMenuItem" Header="Show _current branch only" ToggleType="Radio" IsChecked="{Binding ShowCurrentBranchOnly}" Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static core:BranchesShown.CurrentOnly}" Icon="{local:UpstreamIcon BranchFilter}" />
+        <MenuItem x:Name="ShowFilteredBranchesMenuItem" Header="Show _filtered branches" ToggleType="Radio" IsChecked="{Binding ShowFilteredBranches}" Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static core:BranchesShown.Filtered}" Icon="{local:UpstreamIcon BranchFilter}" />
+        <MenuItem x:Name="ShowReflogReferencesMenuItem" Header="Show _reflog references" ToggleType="CheckBox" IsChecked="{Binding ShowReflog}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.Reflog}" Icon="{local:UpstreamIcon Book}" />
         <Separator />
-        <MenuItem x:Name="AdvancedFilterViewMenuItem" Header="Advanced filter..." Icon="{local:UpstreamIcon EditFilter}" />
+        <MenuItem x:Name="AdvancedFilterViewMenuItem" Command="{Binding EditFilterCommand}" Header="Advanced filter..." Icon="{local:UpstreamIcon EditFilter}" />
         <Separator />
         <!-- Upstream's graph styles: gray lanes for commits that are not relatives of the checked-out one, and the selected
              commit's ancestry in color until the next refresh (also Alt+click). -->
-        <MenuItem x:Name="DrawNonRelativesGrayMenuItem" Header="Draw non relatives gra_y" ToggleType="CheckBox" />
-        <MenuItem x:Name="HighlightSelectedBranchMenuItem" Header="Highlight selected branch (until refresh)" />
+        <MenuItem x:Name="DrawNonRelativesGrayMenuItem" Header="Draw non relatives gra_y" ToggleType="CheckBox" IsChecked="{Binding DrawNonRelativesGray}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.DrawNonRelativesGray}" />
+        <MenuItem x:Name="HighlightSelectedBranchMenuItem" Command="{Binding HighlightSelectedBranchCommand}" Header="Highlight selected branch (until refresh)" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Commits" IsEnabled="False" />
-        <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowGitNotesMenuItem" Header="Show git _notes" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowSessionCheckpointsMenuItem" Header="Show session checkpoints" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" IsChecked="{Binding ShowArtificialCommits}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.ArtificialCommits}" />
+        <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" IsChecked="{Binding ShowStashes}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.Stashes}" />
+        <MenuItem x:Name="ShowGitNotesMenuItem" Header="Show git _notes" ToggleType="CheckBox" IsChecked="{Binding ShowGitNotes}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.GitNotes}" />
+        <MenuItem x:Name="ShowSessionCheckpointsMenuItem" Header="Show session checkpoints" ToggleType="CheckBox" IsChecked="{Binding ShowSessionCheckpoints}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.SessionCheckpoints}" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
-        <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowTagsMenuItem" Header="Show _tags" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowSuperprojectTagsMenuItem" Header="Show su_perproject tags" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowSuperprojectRemoteBranchesMenuItem" Header="Show superpro_ject remote branches" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowSuperprojectBranchesMenuItem" Header="Show sup_erproject branches" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" IsChecked="{Binding ShowRemoteBranches}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.RemoteBranches}" />
+        <MenuItem x:Name="ShowTagsMenuItem" Header="Show _tags" ToggleType="CheckBox" IsChecked="{Binding ShowTags}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.Tags}" />
+        <MenuItem x:Name="ShowSuperprojectTagsMenuItem" Header="Show su_perproject tags" ToggleType="CheckBox" IsChecked="{Binding ShowSuperprojectTags}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.SuperprojectTags}" />
+        <MenuItem x:Name="ShowSuperprojectRemoteBranchesMenuItem" Header="Show superpro_ject remote branches" ToggleType="CheckBox" IsChecked="{Binding ShowSuperprojectRemoteBranches}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.SuperprojectRemoteBranches}" />
+        <MenuItem x:Name="ShowSuperprojectBranchesMenuItem" Header="Show sup_erproject branches" ToggleType="CheckBox" IsChecked="{Binding ShowSuperprojectBranches}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.SuperprojectBranches}" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Grid info" IsEnabled="False" />
-        <MenuItem x:Name="ShowBuildStatusIconMenuItem" Header="Show build status _icon" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowBuildStatusTextMenuItem" Header="Show build status te_xt" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowCommitBodyMenuItem" Header="Show commit message body" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowBuildStatusIconMenuItem" Header="Show build status _icon" ToggleType="CheckBox" IsChecked="{Binding ShowBuildStatusIcon}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.BuildStatusIcon}" />
+        <MenuItem x:Name="ShowBuildStatusTextMenuItem" Header="Show build status te_xt" ToggleType="CheckBox" IsChecked="{Binding ShowBuildStatusText}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.BuildStatusText}" />
+        <MenuItem x:Name="ShowCommitBodyMenuItem" Header="Show commit message body" ToggleType="CheckBox" IsChecked="{Binding ShowCommitBody}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.CommitBody}" />
+        <MenuItem x:Name="ShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" IsChecked="{Binding ShowAuthorDate}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AuthorDate}" />
+        <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" IsChecked="{Binding ShowRelativeDate}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.RelativeDate}" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Columns" IsEnabled="False" />
-        <MenuItem x:Name="ShowGraphColumnMenuItem" Header="Show revision _graph column" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowGitNotesColumnMenuItem" Header="Show Git _notes column" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAvatarColumnMenuItem" Header="Show aut_hor avatar column" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowAuthorNameColumnMenuItem" Header="Show a_uthor name column" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowDateColumnMenuItem" Header="Show _date column" ToggleType="CheckBox" />
-        <MenuItem x:Name="ShowObjectIdColumnMenuItem" Header="Show SHA_-1 column" ToggleType="CheckBox" />
+        <MenuItem x:Name="ShowGraphColumnMenuItem" Header="Show revision _graph column" ToggleType="CheckBox" IsChecked="{Binding ShowGraphColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.GraphColumn}" />
+        <MenuItem x:Name="ShowGitNotesColumnMenuItem" Header="Show Git _notes column" ToggleType="CheckBox" IsChecked="{Binding ShowNotesColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.NotesColumn}" />
+        <MenuItem x:Name="ShowAvatarColumnMenuItem" Header="Show aut_hor avatar column" ToggleType="CheckBox" IsChecked="{Binding ShowAvatarColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AvatarColumn}" />
+        <MenuItem x:Name="ShowAuthorNameColumnMenuItem" Header="Show a_uthor name column" ToggleType="CheckBox" IsChecked="{Binding ShowAuthorNameColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AuthorNameColumn}" />
+        <MenuItem x:Name="ShowDateColumnMenuItem" Header="Show _date column" ToggleType="CheckBox" IsChecked="{Binding ShowDateColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.DateColumn}" />
+        <MenuItem x:Name="ShowObjectIdColumnMenuItem" Header="Show SHA_-1 column" ToggleType="CheckBox" IsChecked="{Binding ShowObjectIdColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.ObjectIdColumn}" />
         <Separator />
         <MenuItem Classes="groupHeader" Header="Sorting" IsEnabled="False" />
-        <MenuItem x:Name="AuthorDateSortMenuItem" Header="_Sort commits by author date" ToggleType="CheckBox" />
-        <MenuItem x:Name="TopoOrderMenuItem" Header="Arrange c_ommits by topo order (ancestor order)" ToggleType="CheckBox" />
+        <MenuItem x:Name="AuthorDateSortMenuItem" Header="_Sort commits by author date" ToggleType="CheckBox" IsChecked="{Binding SortByAuthorDate}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AuthorDateSort}" />
+        <MenuItem x:Name="TopoOrderMenuItem" Header="Arrange c_ommits by topo order (ancestor order)" ToggleType="CheckBox" IsChecked="{Binding TopoOrder}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.TopoOrder}" />
       </MenuItem>
-      <MenuItem x:Name="CommandsMenu" Header="_Commands">
-        <MenuItem x:Name="CommitMenuItem" Header="_Commit..." Icon="{local:UpstreamIcon RepoStateClean}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="UndoLastCommitMenuItem" Header="_Undo last commit..." Icon="{local:UpstreamIcon ResetFileTo}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="PullDialogMenuItem" Header="Pull_/Fetch..." Icon="{local:UpstreamIcon Pull}" IsEnabled="{Binding CanOpenPullDialog}" />
-        <MenuItem x:Name="PushDialogMenuItem" Header="_Push..." Icon="{local:UpstreamIcon Push}" IsEnabled="{Binding CanOpenPushDialog}" />
+      <MenuItem x:Name="CommandsMenu" IsVisible="{Binding IsRepositoryShown}" Header="_Commands">
+        <MenuItem x:Name="CommitMenuItem" Command="{Binding CommitCommand}" Header="_Commit..." Icon="{local:UpstreamIcon RepoStateClean}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="UndoLastCommitMenuItem" Command="{Binding UndoLastCommitCommand}" Header="_Undo last commit..." Icon="{local:UpstreamIcon ResetFileTo}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="PullDialogMenuItem" Command="{Binding PullDialogCommand}" Header="Pull_/Fetch..." Icon="{local:UpstreamIcon Pull}" IsEnabled="{Binding CanOpenPullDialog}" />
+        <MenuItem x:Name="PushDialogMenuItem" Command="{Binding PushDialogCommand}" Header="_Push..." Icon="{local:UpstreamIcon Push}" IsEnabled="{Binding CanOpenPushDialog}" />
         <Separator />
-        <MenuItem x:Name="ManageStashesCommandMenuItem" Header="Ma_nage stashes..." Icon="{local:UpstreamIcon Stash}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="ResetChangesMenuItem" Header="_Reset changes..." Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="CleanupMenuItem" Header="Clean _working directory..." Icon="{local:UpstreamIcon CleanupRepo}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="ManageStashesCommandMenuItem" Command="{Binding ManageStashesCommand}" Header="Ma_nage stashes..." Icon="{local:UpstreamIcon Stash}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="ResetChangesMenuItem" Command="{Binding ResetChangesCommand}" Header="_Reset changes..." Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="CleanupMenuItem" Command="{Binding CleanupCommand}" Header="Clean _working directory..." Icon="{local:UpstreamIcon CleanupRepo}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="CreateBranchMenuItem" Header="Create _branch..." Icon="{local:UpstreamIcon BranchCreate}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="DeleteBranchMenuItem" Header="De_lete branch..." Icon="{local:UpstreamIcon BranchDelete}" />
-        <MenuItem x:Name="CheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="MergeMenuItem" Header="_Merge branches..." Icon="{local:UpstreamIcon Merge}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="RebaseMenuItem" Header="R_ebase..." Icon="{local:UpstreamIcon Rebase}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="ResolveConflictsMenuItem" Header="_Solve merge conflicts..." Icon="{local:UpstreamIcon Unmerged}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="CreateBranchMenuItem" Command="{Binding CreateBranchCommand}" Header="Create _branch..." Icon="{local:UpstreamIcon BranchCreate}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="DeleteBranchMenuItem" Command="{Binding DeleteBranchCommand}" Header="De_lete branch..." Icon="{local:UpstreamIcon BranchDelete}" />
+        <MenuItem x:Name="CheckoutBranchMenuItem" Command="{Binding CheckoutBranchCommand}" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="MergeMenuItem" Command="{Binding MergeCommand}" Header="_Merge branches..." Icon="{local:UpstreamIcon Merge}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="RebaseMenuItem" Command="{Binding RebaseCommand}" Header="R_ebase..." Icon="{local:UpstreamIcon Rebase}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="ResolveConflictsMenuItem" Command="{Binding ResolveConflictsCommand}" Header="_Solve merge conflicts..." Icon="{local:UpstreamIcon Unmerged}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="CreateTagMenuItem" Header="Create _tag..." Icon="{local:UpstreamIcon TagCreate}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="DeleteTagMenuItem" Header="_Delete tag..." Icon="{local:UpstreamIcon TagDelete}" />
+        <MenuItem x:Name="CreateTagMenuItem" Command="{Binding CreateTagCommand}" Header="Create _tag..." Icon="{local:UpstreamIcon TagCreate}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="DeleteTagMenuItem" Command="{Binding DeleteTagCommand}" Header="_Delete tag..." Icon="{local:UpstreamIcon TagDelete}" />
         <Separator />
-        <MenuItem x:Name="CherryPickCommandMenuItem" Header="Cherr_y pick..." Icon="{local:UpstreamIcon CherryPick}" IsEnabled="{Binding IsCommitSelected}" />
-        <MenuItem x:Name="ArchiveMenuItem" Header="Archi_ve revision..." Icon="{local:UpstreamIcon ArchiveRevision}" IsEnabled="{Binding IsCommitSelected}" />
-        <MenuItem x:Name="CheckoutRevisionMenuItem" Header="Check_out revision..." Icon="{local:UpstreamIcon Checkout}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="BisectMenuItem" Header="B_isect..." Icon="{local:UpstreamIcon Bisect}" IsEnabled="{Binding IsCommitSelected}" />
-        <MenuItem x:Name="ReflogMenuItem" Header="Show reflo_g..." Icon="{local:UpstreamIcon Book}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="CherryPickCommandMenuItem" Command="{Binding CherryPickCommand}" Header="Cherr_y pick..." Icon="{local:UpstreamIcon CherryPick}" IsEnabled="{Binding IsCommitSelected}" />
+        <MenuItem x:Name="ArchiveMenuItem" Command="{Binding ArchiveCommand}" Header="Archi_ve revision..." Icon="{local:UpstreamIcon ArchiveRevision}" IsEnabled="{Binding IsCommitSelected}" />
+        <MenuItem x:Name="CheckoutRevisionMenuItem" Command="{Binding CheckoutRevisionCommand}" Header="Check_out revision..." Icon="{local:UpstreamIcon Checkout}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="BisectMenuItem" Command="{Binding BisectCommand}" Header="B_isect..." Icon="{local:UpstreamIcon Bisect}" IsEnabled="{Binding IsCommitSelected}" />
+        <MenuItem x:Name="ReflogMenuItem" Command="{Binding ShowReflogCommand}" Header="Show reflo_g..." Icon="{local:UpstreamIcon Book}" IsEnabled="{Binding IsOpen}" />
         <Separator />
-        <MenuItem x:Name="FormatPatchMenuItem" Header="_Format patch..." Icon="{local:UpstreamIcon PatchFormat}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="ApplyPatchMenuItem" Header="_Apply patch..." Icon="{local:UpstreamIcon PatchApply}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="ViewPatchMenuItem" Header="View patc_h file..." Icon="{local:UpstreamIcon PatchView}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="FormatPatchMenuItem" Command="{Binding FormatPatchCommand}" Header="_Format patch..." Icon="{local:UpstreamIcon PatchFormat}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="ApplyPatchMenuItem" Command="{Binding ApplyPatchCommand}" Header="_Apply patch..." Icon="{local:UpstreamIcon PatchApply}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="ViewPatchMenuItem" Command="{Binding ViewPatchCommand}" Header="View patc_h file..." Icon="{local:UpstreamIcon PatchView}" IsEnabled="{Binding IsOpen}" />
       </MenuItem>
       <!-- Upstream's "(Repository hosts)" menu: named after the repository host plugin, shown when one is loaded. -->
       <MenuItem x:Name="RepositoryHostsMenu" Header="(Repository hosts)" IsVisible="False">
-        <MenuItem x:Name="ForkCloneRepositoryMenuItem" Header="_Fork/Clone repository..." />
-        <MenuItem x:Name="ViewPullRequestsMenuItem" Header="View _pull requests..." />
-        <MenuItem x:Name="CreatePullRequestsMenuItem" Header="_Create pull requests..." />
-        <MenuItem x:Name="AddUpstreamRemoteMenuItem" Header="_Add upstream remote" />
+        <MenuItem x:Name="ForkCloneRepositoryMenuItem" Command="{Binding ForkCloneRepositoryCommand}" Header="_Fork/Clone repository..." />
+        <MenuItem x:Name="ViewPullRequestsMenuItem" Command="{Binding ViewPullRequestsCommand}" Header="View _pull requests..." />
+        <MenuItem x:Name="CreatePullRequestsMenuItem" Command="{Binding CreatePullRequestCommand}" Header="_Create pull requests..." />
+        <MenuItem x:Name="AddUpstreamRemoteMenuItem" Command="{Binding AddUpstreamRemoteCommand}" Header="_Add upstream remote" />
       </MenuItem>
-      <MenuItem x:Name="PluginsMenu" Header="_Plugins">
+      <MenuItem x:Name="PluginsMenu" IsVisible="{Binding IsRepositoryShown}" Header="_Plugins">
         <MenuItem x:Name="PluginsLoadingMenuItem" Header="Loading..." IsEnabled="False" />
         <Separator />
-        <MenuItem x:Name="PluginSettingsMenuItem" Header="Plugins _settings..." Icon="{local:UpstreamIcon Settings}" />
+        <MenuItem x:Name="PluginSettingsMenuItem" Command="{Binding PluginSettingsCommand}" Header="Plugins _settings..." Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
       <MenuItem Header="_Tools">
-        <MenuItem x:Name="TerminalMenuItem" Header="Git _bash" Icon="{local:UpstreamIcon GitForWindows}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="GitGuiMenuItem" Header="Git _GUI" Icon="{local:UpstreamIcon GitGui}" IsEnabled="{Binding IsOpen}" />
-        <MenuItem x:Name="GitKMenuItem" Header="Git_K" Icon="{local:UpstreamIcon Gitk}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="TerminalMenuItem" Command="{Binding OpenTerminalCommand}" Header="Git _bash" Icon="{local:UpstreamIcon GitForWindows}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="GitGuiMenuItem" Command="{Binding GitGuiCommand}" Header="Git _GUI" Icon="{local:UpstreamIcon GitGui}" IsEnabled="{Binding IsOpen}" />
+        <MenuItem x:Name="GitKMenuItem" Command="{Binding GitKCommand}" Header="Git_K" Icon="{local:UpstreamIcon Gitk}" IsEnabled="{Binding IsOpen}" />
         <!-- Upstream shows PuTTY only on Windows (ToolsToolStripMenuItem). -->
         <Separator x:Name="PuttySeparator" />
         <MenuItem x:Name="PuttyMenuItem" Header="_PuTTY" Icon="{local:UpstreamIcon Putty}">
-          <MenuItem x:Name="StartAuthenticationAgentMenuItem" Header="Start authentication agent" Icon="{local:UpstreamIcon Pageant16}" />
-          <MenuItem x:Name="GenerateOrImportKeyMenuItem" Header="Generate or import key" Icon="{local:UpstreamIcon PuttyGen}" />
+          <MenuItem x:Name="StartAuthenticationAgentMenuItem" Command="{Binding StartAuthenticationAgentCommand}" Header="Start authentication agent" Icon="{local:UpstreamIcon Pageant16}" />
+          <MenuItem x:Name="GenerateOrImportKeyMenuItem" Command="{Binding GenerateOrImportKeyCommand}" Header="Generate or import key" Icon="{local:UpstreamIcon PuttyGen}" />
         </MenuItem>
         <Separator />
-        <MenuItem x:Name="CommandLogMenuItem" Header="Git _command log" Icon="{local:UpstreamIcon GitCommandLog}" />
+        <MenuItem x:Name="CommandLogMenuItem" Command="{Binding ShowCommandLogCommand}" Header="Git _command log" Icon="{local:UpstreamIcon GitCommandLog}" />
         <Separator />
-        <MenuItem x:Name="SettingsMenuItem" Header="_Settings..." Icon="{local:UpstreamIcon Settings}" />
+        <MenuItem x:Name="SettingsMenuItem" Command="{Binding OpenSettingsCommand}" Header="_Settings..." Icon="{local:UpstreamIcon Settings}" />
       </MenuItem>
       <!-- Left out on purpose (decided 2026-10-31): the telemetry choice, as the fork sends no telemetry, and Check for
            updates, as upstream's releases and Windows installer are not the fork's builds. -->
       <MenuItem Header="_Help">
-        <MenuItem x:Name="UserManualMenuItem" Header="User _manual" Icon="{local:UpstreamIcon GotoManual}" />
-        <MenuItem x:Name="ChangelogMenuItem" Header="_Changelog" Icon="{local:UpstreamIcon Changelog}" />
+        <MenuItem x:Name="UserManualMenuItem" Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static gc:AppSettings.DocumentationBaseUrl}" Header="User _manual" Icon="{local:UpstreamIcon GotoManual}" />
+        <MenuItem x:Name="ChangelogMenuItem" Command="{Binding ShowChangeLogCommand}" Header="_Changelog" Icon="{local:UpstreamIcon Changelog}" />
         <Separator />
-        <MenuItem x:Name="TranslateMenuItem" Header="_Translate" Icon="{local:UpstreamIcon Translate}" />
+        <MenuItem x:Name="TranslateMenuItem" Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static repo:BrowseToolbarViewModel.TranslateUrl}" Header="_Translate" Icon="{local:UpstreamIcon Translate}" />
         <Separator />
-        <MenuItem x:Name="DonateMenuItem" Header="_Donate" Icon="{local:UpstreamIcon DollarSign}" />
-        <MenuItem x:Name="ReportIssueMenuItem" Header="_Report an issue" Icon="{local:UpstreamIcon BugReport}" />
-        <MenuItem x:Name="AboutMenuItem" Header="_About" Icon="{local:UpstreamIcon Information}" />
+        <MenuItem x:Name="DonateMenuItem" Command="{Binding DonateCommand}" Header="_Donate" Icon="{local:UpstreamIcon DollarSign}" />
+        <MenuItem x:Name="ReportIssueMenuItem" Command="{Binding ReportIssueCommand}" Header="_Report an issue" Icon="{local:UpstreamIcon BugReport}" />
+        <MenuItem x:Name="AboutMenuItem" Command="{Binding AboutCommand}" Header="_About" Icon="{local:UpstreamIcon Information}" />
       </MenuItem>
     </Menu>
 
@@ -208,23 +214,24 @@
       <WrapPanel>
         <!-- Upstream's ToolStripMain overflows: the items that do not fit go into the "»" drop-down. -->
         <local:OverflowToolStrip x:Name="MainToolStrip" Classes="toolStrip">
-          <local:ToolButton x:Name="RefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh" IsEnabled="{Binding IsOpen}" />
+          <local:ToolButton x:Name="RefreshButton" Command="{Binding RefreshRepositoryCommand}" Image="ReloadRevisions" ToolTip.Tip="Refresh" IsEnabled="{Binding IsOpen}" />
           <Rectangle Classes="toolSeparator" />
-          <local:ToolToggleButton x:Name="ToggleLeftPanelButton" Image="LayoutSidebarLeft" ToolTip.Tip="Toggle left panel" IsChecked="True" IsEnabled="{Binding IsOpen}" />
-          <local:ToolToggleButton x:Name="ToggleSplitViewButton" Image="LayoutFooter" ToolTip.Tip="Toggle split view layout" IsEnabled="{Binding IsOpen}" />
+          <local:ToolToggleButton x:Name="ToggleLeftPanelButton" Command="{Binding ToggleLeftPanelCommand}" Image="LayoutSidebarLeft" ToolTip.Tip="Toggle left panel" IsChecked="True" IsEnabled="{Binding IsOpen}" />
+          <local:ToolToggleButton x:Name="ToggleSplitViewButton" Command="{Binding ToggleSplitViewCommand}" Image="LayoutFooter" ToolTip.Tip="Toggle split view layout" IsEnabled="{Binding IsOpen}" />
           <!-- The image and tooltip follow the chosen position, as upstream's RefreshLayoutToggleButtonStates sets them. -->
-          <local:ToolSplitButton x:Name="CommitInfoPositionButton" Image="LayoutFooterTab" ToolTip.Tip="Commit info position">
+          <local:ToolSplitButton x:Name="CommitInfoPositionButton" Command="{Binding NextCommitInfoPositionCommand}" Image="LayoutFooterTab" ToolTip.Tip="Commit info position">
             <local:ToolSplitButton.Flyout>
               <MenuFlyout>
-                <MenuItem x:Name="CommitInfoBelowMenuItem" Header="Commit info _below graph" Icon="{local:UpstreamIcon LayoutFooterTab}" />
-                <MenuItem x:Name="CommitInfoLeftwardMenuItem" Header="Commit info _left of graph" Icon="{local:UpstreamIcon LayoutSidebarTopLeft}" />
-                <MenuItem x:Name="CommitInfoRightwardMenuItem" Header="Commit info _right of graph" Icon="{local:UpstreamIcon LayoutSidebarTopRight}" />
+                <MenuItem x:Name="CommitInfoBelowMenuItem" Command="{Binding SetCommitInfoPositionCommand}" CommandParameter="{x:Static gc:CommitInfoPosition.BelowList}" Header="Commit info _below graph" Icon="{local:UpstreamIcon LayoutFooterTab}" />
+                <MenuItem x:Name="CommitInfoLeftwardMenuItem" Command="{Binding SetCommitInfoPositionCommand}" CommandParameter="{x:Static gc:CommitInfoPosition.LeftwardFromList}" Header="Commit info _left of graph" Icon="{local:UpstreamIcon LayoutSidebarTopLeft}" />
+                <MenuItem x:Name="CommitInfoRightwardMenuItem" Command="{Binding SetCommitInfoPositionCommand}" CommandParameter="{x:Static gc:CommitInfoPosition.RightwardFromList}" Header="Commit info _right of graph" Icon="{local:UpstreamIcon LayoutSidebarTopRight}" />
               </MenuFlyout>
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <Rectangle Classes="toolSeparator" />
           <!-- Upstream's toolStripButtonLevelUp: in a submodule the button opens the superproject, else the drop-down. -->
-          <local:ToolSplitButton x:Name="SubmodulesButton" Image="SubmodulesManage" ToolTip.Tip="Submodules">
+          <local:ToolSplitButton x:Name="SubmodulesButton" Command="{Binding SubmodulesCommand}" Image="{Binding SubmodulesButtonImage}"
+                                 ToolTip.Tip="{Binding SubmodulesButtonTip}" IsEnabled="{Binding CanUseSubmodules}">
             <local:ToolSplitButton.Flyout>
               <local:PopulatingMenuFlyout />
             </local:ToolSplitButton.Flyout>
@@ -247,44 +254,44 @@
           </local:ToolDropDownButton>
           <Rectangle Classes="toolSeparator" />
           <!-- The image and tooltip follow the default pull action, as upstream's RefreshDefaultPullAction sets them. -->
-          <local:ToolSplitButton x:Name="PullButton" Image="{Binding PullButtonImage}" ToolTip.Tip="{Binding PullButtonTip}" IsEnabled="{Binding CanPullOrPush}">
+          <local:ToolSplitButton x:Name="PullButton" Command="{Binding PullCommand}" Image="{Binding PullButtonImage}" ToolTip.Tip="{Binding PullButtonTip}" IsEnabled="{Binding CanPullOrPush}">
             <local:ToolSplitButton.Flyout>
               <MenuFlyout>
-                <MenuItem x:Name="PullMergeMenuItem" Header="Pull - _merge" Icon="{local:UpstreamIcon PullMerge}" IsEnabled="{Binding CanPullOrPush}" />
-                <MenuItem x:Name="PullRebaseMenuItem" Header="Pull - _rebase" Icon="{local:UpstreamIcon PullRebase}" IsEnabled="{Binding CanPullOrPush}" />
-                <MenuItem x:Name="PullFetchMenuItem" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" ToolTip.Tip="Fetch branches and tags" IsEnabled="{Binding IsOpen}" />
-                <MenuItem x:Name="PullOpenDialogMenuItem" Header="Open _pull dialog..." Icon="{local:UpstreamIcon Pull}" IsEnabled="{Binding CanOpenPullDialog}" />
-                <MenuItem x:Name="PullFetchAllMenuItem" Header="Fetch _all" Icon="{local:UpstreamIcon PullFetchAll}" ToolTip.Tip="Fetch branches and tags from all remote repositories" IsEnabled="{Binding IsOpen}" IsVisible="{Binding IsFetchAllVisible}" />
-                <MenuItem x:Name="PullFetchPruneAllMenuItem" Header="F_etch and prune all" Icon="{local:UpstreamIcon PullFetchPruneAll}" ToolTip.Tip="Fetch branches and tags from all remote repositories also prune deleted branches" IsEnabled="{Binding IsOpen}" />
+                <MenuItem x:Name="PullMergeMenuItem" Command="{Binding PullWithCommand}" CommandParameter="{x:Static ext:GitPullAction.Merge}" Header="Pull - _merge" Icon="{local:UpstreamIcon PullMerge}" IsEnabled="{Binding CanPullOrPush}" />
+                <MenuItem x:Name="PullRebaseMenuItem" Command="{Binding PullWithCommand}" CommandParameter="{x:Static ext:GitPullAction.Rebase}" Header="Pull - _rebase" Icon="{local:UpstreamIcon PullRebase}" IsEnabled="{Binding CanPullOrPush}" />
+                <MenuItem x:Name="PullFetchMenuItem" Command="{Binding PullWithCommand}" CommandParameter="{x:Static ext:GitPullAction.Fetch}" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" ToolTip.Tip="Fetch branches and tags" IsEnabled="{Binding IsOpen}" />
+                <MenuItem x:Name="PullOpenDialogMenuItem" Command="{Binding PullWithCommand}" CommandParameter="{x:Static ext:GitPullAction.None}" Header="Open _pull dialog..." Icon="{local:UpstreamIcon Pull}" IsEnabled="{Binding CanOpenPullDialog}" />
+                <MenuItem x:Name="PullFetchAllMenuItem" Command="{Binding PullWithCommand}" CommandParameter="{x:Static ext:GitPullAction.FetchAll}" Header="Fetch _all" Icon="{local:UpstreamIcon PullFetchAll}" ToolTip.Tip="Fetch branches and tags from all remote repositories" IsEnabled="{Binding IsOpen}" IsVisible="{Binding IsFetchAllVisible}" />
+                <MenuItem x:Name="PullFetchPruneAllMenuItem" Command="{Binding PullWithCommand}" CommandParameter="{x:Static ext:GitPullAction.FetchPruneAll}" Header="F_etch and prune all" Icon="{local:UpstreamIcon PullFetchPruneAll}" ToolTip.Tip="Fetch branches and tags from all remote repositories also prune deleted branches" IsEnabled="{Binding IsOpen}" />
                 <Separator />
                 <MenuItem x:Name="SetDefaultPullActionMenuItem" Header="Set _default Pull button action" />
               </MenuFlyout>
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <!-- Upstream shows the ahead and behind counts as the push button's text. -->
-          <local:ToolButton x:Name="PushButton" IsEnabled="{Binding CanPullOrPush}" Text="{Binding PushButtonText}" Image="{Binding PushButtonImage}" ToolTip.Tip="{Binding PushButtonTip}" />
-          <local:ToolButton x:Name="CommitDialogButton" IsEnabled="{Binding IsOpen}" Text="{Binding CommitButtonText}" Image="{Binding CommitButtonImage}" />
-          <local:ToolSplitButton x:Name="StashToolButton" Image="Stash" ToolTip.Tip="Manage stashes" IsEnabled="{Binding IsOpen}">
+          <local:ToolButton x:Name="PushButton" Command="{Binding PushCommand}" IsEnabled="{Binding CanPullOrPush}" Text="{Binding PushButtonText}" Image="{Binding PushButtonImage}" ToolTip.Tip="{Binding PushButtonTip}" />
+          <local:ToolButton x:Name="CommitDialogButton" Command="{Binding CommitCommand}" IsEnabled="{Binding IsOpen}" Text="{Binding CommitButtonText}" Image="{Binding CommitButtonImage}" />
+          <local:ToolSplitButton x:Name="StashToolButton" Command="{Binding ManageStashesCommand}" Image="Stash" ToolTip.Tip="Manage stashes" IsEnabled="{Binding IsOpen}">
             <local:ToolSplitButton.Flyout>
               <MenuFlyout>
-                <MenuItem x:Name="StashChangesMenuItem" Header="_Stash" ToolTip.Tip="Stash changes" />
-                <MenuItem x:Name="StashStagedMenuItem" Header="S_tash staged" ToolTip.Tip="Stash staged changes" />
-                <MenuItem x:Name="StashPopToolMenuItem" Header="Stash _pop" ToolTip.Tip="Apply and drop single stash" />
+                <MenuItem x:Name="StashChangesMenuItem" Command="{Binding StashChangesCommand}" Header="_Stash" ToolTip.Tip="Stash changes" />
+                <MenuItem x:Name="StashStagedMenuItem" Command="{Binding StashStagedCommand}" Header="S_tash staged" ToolTip.Tip="Stash staged changes" />
+                <MenuItem x:Name="StashPopToolMenuItem" Command="{Binding PopStashCommand}" Header="Stash _pop" ToolTip.Tip="Apply and drop single stash" />
                 <Separator />
-                <MenuItem x:Name="ManageStashesMenuItem" Header="_Manage stashes..." ToolTip.Tip="Manage stashes" />
-                <MenuItem x:Name="CreateStashMenuItem" Header="_Create a stash..." />
+                <MenuItem x:Name="ManageStashesMenuItem" Command="{Binding ManageStashesCommand}" Header="_Manage stashes..." ToolTip.Tip="Manage stashes" />
+                <MenuItem x:Name="CreateStashMenuItem" Command="{Binding CreateStashCommand}" Header="_Create a stash..." />
               </MenuFlyout>
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <Rectangle Classes="toolSeparator" />
-          <local:ToolButton x:Name="OpenFolderButton" Image="BrowseFileExplorer" ToolTip.Tip="File Explorer" IsEnabled="{Binding IsOpen}" />
+          <local:ToolButton x:Name="OpenFolderButton" Command="{Binding OpenFolderCommand}" Image="BrowseFileExplorer" ToolTip.Tip="File Explorer" IsEnabled="{Binding IsOpen}" />
           <!-- Upstream's userShell: the default terminal, the others in the drop-down (FillUserShells). -->
-          <local:ToolSplitButton x:Name="TerminalButton" Image="GitForWindows" ToolTip.Tip="Git bash" IsEnabled="{Binding IsOpen}">
+          <local:ToolSplitButton x:Name="TerminalButton" Command="{Binding OpenTerminalCommand}" Image="GitForWindows" ToolTip.Tip="Git bash" IsEnabled="{Binding IsOpen}">
             <local:ToolSplitButton.Flyout>
               <MenuFlyout />
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
-          <local:ToolButton x:Name="EditSettingsButton" Image="Settings" ToolTip.Tip="Settings" />
+          <local:ToolButton x:Name="EditSettingsButton" Command="{Binding OpenSettingsCommand}" Image="Settings" ToolTip.Tip="Settings" />
         </local:OverflowToolStrip>
         <!-- Upstream's FilterToolBar. -->
         <local:FilterToolBar x:Name="FilterToolStrip" IsEnabled="{Binding IsOpen}" />
@@ -295,12 +302,12 @@
 
     <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,1,0,0" Padding="8,3">
       <DockPanel LastChildFill="True">
-        <TextBlock x:Name="BranchText" DockPanel.Dock="Left" FontWeight="SemiBold" Margin="0,0,16,0" />
-        <TextBlock x:Name="StatusText" DockPanel.Dock="Left" Margin="0,0,16,0" />
-        <Button x:Name="LoadMoreButton" DockPanel.Dock="Left" Content="Load more" IsVisible="False" Padding="6,0" MinHeight="0" Margin="0,0,16,0" IsEnabled="{Binding CanLoadMore}" />
+        <TextBlock x:Name="BranchText" Text="{Binding StatusBranchText}" DockPanel.Dock="Left" FontWeight="SemiBold" Margin="0,0,16,0" />
+        <TextBlock x:Name="StatusText" Text="{Binding GridStatusText}" DockPanel.Dock="Left" Margin="0,0,16,0" />
+        <Button x:Name="LoadMoreButton" Command="{Binding LoadMoreCommand}" DockPanel.Dock="Left" Content="Load more" IsVisible="{Binding HasMoreCommits}" Padding="6,0" MinHeight="0" Margin="0,0,16,0" IsEnabled="{Binding CanLoadMore}" />
         <!-- Upstream's stash count (Settings > General, "Show stash count on status bar in browse window"). -->
-        <TextBlock x:Name="StashCountText" DockPanel.Dock="Left" Margin="0,0,16,0" IsVisible="False" />
-        <TextBlock x:Name="OperationStatusText" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="StashCountText" DockPanel.Dock="Left" Margin="0,0,16,0" IsVisible="{Binding IsStashCountVisible}" Text="{Binding StashCountText}" />
+        <TextBlock x:Name="OperationStatusText" Text="{Binding OperationStatusText}" TextTrimming="CharacterEllipsis" />
       </DockPanel>
     </Border>
 
@@ -308,25 +315,29 @@
 
     <!-- Upstream's two notification bars above the grid (InteractiveGitActionControl): a bisect in progress, and a stopped
          rebase, merge or patch or unresolved conflicts. Texts, buttons and their order come from the core's GitActionBanner. -->
-    <Border x:Name="BisectBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
+    <Border x:Name="BisectBanner" DockPanel.Dock="Top" IsVisible="{Binding BisectBanner, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Background="{Binding BisectBanner, Converter={x:Static local:BannerBrushConverter.Background}}" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
       <DockPanel>
-        <Button x:Name="BisectMoreButton" DockPanel.Dock="Right" Content="M_ore..." IsEnabled="{Binding IsOpen}" />
+        <Button x:Name="BisectMoreButton" Command="{Binding BisectCommand}" DockPanel.Dock="Right" Content="M_ore..." IsEnabled="{Binding IsOpen}" />
         <!-- Upstream's IconBox: 28 pixels wide, the picture centered. -->
-        <Image x:Name="BisectBannerIcon" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
-        <TextBlock x:Name="BisectBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
+        <Image x:Name="BisectBannerIcon" Source="{Binding BisectBanner.Image, FallbackValue={x:Null}, Converter={x:Static local:UpstreamImageConverter.Instance}}" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
+        <TextBlock x:Name="BisectBannerText" Text="{Binding BisectBanner.Text, FallbackValue={x:Null}}"
+                   Foreground="{Binding BisectBanner, Converter={x:Static local:BannerBrushConverter.Text}}" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
-    <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="False" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
+    <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="{Binding ActionBanner, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Background="{Binding ActionBanner, Converter={x:Static local:BannerBrushConverter.Background}}" Padding="8,4" Margin="6,4,6,0" CornerRadius="3">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
-          <Button x:Name="ResolveConflictsButton" Content="Resolve..." IsEnabled="{Binding IsOpen}" />
-          <Button x:Name="ContinueActionButton" Content="Continue" IsEnabled="{Binding IsOpen}" />
-          <Button x:Name="AbortActionButton" Content="Abort" IsEnabled="{Binding IsOpen}" />
+          <Button x:Name="ResolveConflictsButton" Command="{Binding ResolveConflictsCommand}" IsVisible="{Binding ShowsResolveButton}" Content="Resolve..." IsEnabled="{Binding IsOpen}" />
+          <Button x:Name="ContinueActionButton" Command="{Binding ContinueActionCommand}" IsVisible="{Binding ShowsContinueButton}" Content="Continue" IsEnabled="{Binding IsOpen}" />
+          <Button x:Name="AbortActionButton" Command="{Binding AbortActionCommand}" IsVisible="{Binding ShowsAbortButton}" Content="Abort" IsEnabled="{Binding IsOpen}" />
           <!-- Upstream's More... opens FormRebase (the rebase window here) or FormApplyPatch, whose extra step the new shell offers here. -->
-          <Button x:Name="MoreActionButton" Content="M_ore..." IsEnabled="{Binding IsOpen}" />
+          <Button x:Name="MoreActionButton" Command="{Binding MoreActionCommand}" IsVisible="{Binding ShowsMoreButton}" Content="M_ore..." IsEnabled="{Binding IsOpen}" />
         </StackPanel>
-        <Image x:Name="StateBannerIcon" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
-        <TextBlock x:Name="StateBannerText" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
+        <Image x:Name="StateBannerIcon" Source="{Binding ActionBanner.Image, FallbackValue={x:Null}, Converter={x:Static local:UpstreamImageConverter.Instance}}" DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
+        <TextBlock x:Name="StateBannerText" Text="{Binding ActionBanner.Text, FallbackValue={x:Null}}"
+                   Foreground="{Binding ActionBanner, Converter={x:Static local:BannerBrushConverter.Text}}" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
 
@@ -334,18 +345,18 @@
       <!-- Upstream's left panel (RepoObjectsTree.Designer): the toolstrip that collapses the tree and shows or hides each of
            its trees, the search box, and one tree. Its context menu is filled for the node it opens on (upstream's
            contextMenu_Opening), from RepoObjectsTree.ContextActions. -->
-      <DockPanel x:Name="LeftPanel" Grid.Column="0">
+      <DockPanel x:Name="LeftPanel" IsVisible="{Binding IsRepositoryShown}" Grid.Column="0">
         <StackPanel x:Name="LeftPanelToolStrip" DockPanel.Dock="Top" Classes="toolStrip">
-          <local:ToolButton x:Name="CollapseAllButton" Image="CollapseAll" ToolTip.Tip="Collapse all subnodes" />
-          <local:ToolToggleButton x:Name="ShowBranchesTreeButton" Image="BranchLocalRoot" ToolTip.Tip="Branches" />
-          <local:ToolToggleButton x:Name="ShowRemotesTreeButton" Image="BranchRemoteRoot" ToolTip.Tip="Remotes" />
-          <local:ToolToggleButton x:Name="ShowWorktreesTreeButton" Image="WorkTree" ToolTip.Tip="Worktrees" />
-          <local:ToolToggleButton x:Name="ShowTagsTreeButton" Image="TagHorizontal" ToolTip.Tip="Tags" />
-          <local:ToolToggleButton x:Name="ShowSubmodulesTreeButton" Image="FolderSubmodule" ToolTip.Tip="Submodules" />
-          <local:ToolToggleButton x:Name="ShowStashesTreeButton" Image="Stash" ToolTip.Tip="Stashes" />
+          <local:ToolButton x:Name="CollapseAllButton" Command="{Binding TreeMenu.RunCollapseAllCommand}" Image="CollapseAll" ToolTip.Tip="Collapse all subnodes" />
+          <local:ToolToggleButton x:Name="ShowBranchesTreeButton" IsChecked="{Binding ShowsBranchesTree, Mode=OneWay}" Command="{Binding ToggleTreeCommand}" CommandParameter="{x:Static repo:RepoObjectKind.BranchesRoot}" Image="BranchLocalRoot" ToolTip.Tip="Branches" />
+          <local:ToolToggleButton x:Name="ShowRemotesTreeButton" IsChecked="{Binding ShowsRemotesTree, Mode=OneWay}" Command="{Binding ToggleTreeCommand}" CommandParameter="{x:Static repo:RepoObjectKind.RemotesRoot}" Image="BranchRemoteRoot" ToolTip.Tip="Remotes" />
+          <local:ToolToggleButton x:Name="ShowWorktreesTreeButton" IsChecked="{Binding ShowsWorktreesTree, Mode=OneWay}" Command="{Binding ToggleTreeCommand}" CommandParameter="{x:Static repo:RepoObjectKind.WorktreesRoot}" Image="WorkTree" ToolTip.Tip="Worktrees" />
+          <local:ToolToggleButton x:Name="ShowTagsTreeButton" IsChecked="{Binding ShowsTagsTree, Mode=OneWay}" Command="{Binding ToggleTreeCommand}" CommandParameter="{x:Static repo:RepoObjectKind.TagsRoot}" Image="TagHorizontal" ToolTip.Tip="Tags" />
+          <local:ToolToggleButton x:Name="ShowSubmodulesTreeButton" IsChecked="{Binding ShowsSubmodulesTree, Mode=OneWay}" Command="{Binding ToggleTreeCommand}" CommandParameter="{x:Static repo:RepoObjectKind.SubmodulesRoot}" Image="FolderSubmodule" ToolTip.Tip="Submodules" />
+          <local:ToolToggleButton x:Name="ShowStashesTreeButton" IsChecked="{Binding ShowsStashesTree, Mode=OneWay}" Command="{Binding ToggleTreeCommand}" CommandParameter="{x:Static repo:RepoObjectKind.StashesRoot}" Image="Stash" ToolTip.Tip="Stashes" />
         </StackPanel>
         <DockPanel DockPanel.Dock="Top" Margin="2,0,2,2">
-          <local:ToolButton x:Name="LeftPanelSearchButton" DockPanel.Dock="Right" Image="Preview" ToolTip.Tip="Search" />
+          <local:ToolButton x:Name="LeftPanelSearchButton" Command="{Binding SearchRepoObjectsCommand}" DockPanel.Dock="Right" Image="Preview" ToolTip.Tip="Search" />
           <AutoCompleteBox x:Name="LeftPanelSearchBox" FilterMode="ContainsOrdinal" MinimumPrefixLength="1" />
         </DockPanel>
         <!-- Upstream's output history as a panel below the left panel (OutputHistoryPanelController), with
@@ -356,102 +367,102 @@
           <TreeView.ContextMenu>
             <!-- Upstream's menuMain in its order; MainWindow.LeftPanel shows the items that apply to the node. -->
             <ContextMenu x:Name="BranchTreeContextMenu">
-              <MenuItem x:Name="TreeCopyMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}" />
-              <MenuItem x:Name="TreeFilterMenuItem" Header="_Filter for selected" Icon="{local:UpstreamIcon ShowThisBranchOnly}"
+              <MenuItem x:Name="TreeCopyMenuItem" IsVisible="{Binding TreeMenu.Copy.IsVisible}" IsEnabled="{Binding TreeMenu.Copy.IsEnabled}" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}" />
+              <MenuItem x:Name="TreeFilterMenuItem" Command="{Binding TreeMenu.RunFilterSelectedCommand}" IsVisible="{Binding TreeMenu.Filter.IsVisible}" IsEnabled="{Binding TreeMenu.Filter.IsEnabled}" Header="_Filter for selected" Icon="{local:UpstreamIcon ShowThisBranchOnly}"
                         ToolTip.Tip="Filter the revision grid to show selected (underlined) refs (branches and tags) only.&#10;Hold CTRL while clicking to de/select multiple and include descendant tree nodes by additionally holding SHIFT.&#10;Reset the filter via View &gt; Show all branches." />
               <Separator />
-              <MenuItem x:Name="TreeCheckoutMenuItem" Icon="{local:UpstreamIcon BranchCheckout}" />
-              <MenuItem x:Name="TreeMergeMenuItem" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" />
-              <MenuItem x:Name="TreeRebaseMenuItem" Icon="{local:UpstreamIcon Rebase}" />
-              <MenuItem x:Name="TreeCreateBranchMenuItem" Header="Create _branch..." Icon="{local:UpstreamIcon Branch}" />
-              <MenuItem x:Name="TreeResetMenuItem" Header="Re_set current branch to here..." Icon="{local:UpstreamIcon ResetCurrentBranchToHere}"
+              <MenuItem x:Name="TreeCheckoutMenuItem" Command="{Binding TreeMenu.RunCheckoutRefCommand}" IsVisible="{Binding TreeMenu.Checkout.IsVisible}" IsEnabled="{Binding TreeMenu.Checkout.IsEnabled}" Header="{Binding TreeMenu.Checkout.Text}" ToolTip.Tip="{Binding TreeMenu.Checkout.Tip}" Icon="{local:UpstreamIcon BranchCheckout}" />
+              <MenuItem x:Name="TreeMergeMenuItem" Command="{Binding TreeMenu.RunMergeRefCommand}" IsVisible="{Binding TreeMenu.Merge.IsVisible}" IsEnabled="{Binding TreeMenu.Merge.IsEnabled}" ToolTip.Tip="{Binding TreeMenu.Merge.Tip}" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" />
+              <MenuItem x:Name="TreeRebaseMenuItem" Command="{Binding TreeMenu.RunRebaseOnRefCommand}" IsVisible="{Binding TreeMenu.Rebase.IsVisible}" IsEnabled="{Binding TreeMenu.Rebase.IsEnabled}" Header="{Binding TreeMenu.Rebase.Text}" ToolTip.Tip="{Binding TreeMenu.Rebase.Tip}" Icon="{local:UpstreamIcon Rebase}" />
+              <MenuItem x:Name="TreeCreateBranchMenuItem" Command="{Binding TreeMenu.RunCreateBranchFromRefCommand}" IsVisible="{Binding TreeMenu.CreateBranch.IsVisible}" IsEnabled="{Binding TreeMenu.CreateBranch.IsEnabled}" ToolTip.Tip="{Binding TreeMenu.CreateBranch.Tip}" Header="Create _branch..." Icon="{local:UpstreamIcon Branch}" />
+              <MenuItem x:Name="TreeResetMenuItem" Command="{Binding TreeMenu.RunResetToRefCommand}" IsVisible="{Binding TreeMenu.Reset.IsVisible}" IsEnabled="{Binding TreeMenu.Reset.IsEnabled}" Header="Re_set current branch to here..." Icon="{local:UpstreamIcon ResetCurrentBranchToHere}"
                         ToolTip.Tip="Reset current branch to here" />
               <Separator />
-              <MenuItem x:Name="TreeRenameBranchMenuItem" Header="R_ename branch..." Icon="{local:UpstreamIcon Renamed}"
+              <MenuItem x:Name="TreeRenameBranchMenuItem" Command="{Binding TreeMenu.RunRenameBranchCommand}" IsVisible="{Binding TreeMenu.RenameBranch.IsVisible}" IsEnabled="{Binding TreeMenu.RenameBranch.IsEnabled}" Header="R_ename branch..." Icon="{local:UpstreamIcon Renamed}"
                         ToolTip.Tip="Rename this branch" />
-              <MenuItem x:Name="TreeDeleteMenuItem" Icon="{local:UpstreamIcon BranchDelete}" />
+              <MenuItem x:Name="TreeDeleteMenuItem" Command="{Binding TreeMenu.RunDeleteRefCommand}" IsVisible="{Binding TreeMenu.Delete.IsVisible}" IsEnabled="{Binding TreeMenu.Delete.IsEnabled}" Header="{Binding TreeMenu.Delete.Text}" ToolTip.Tip="{Binding TreeMenu.Delete.Tip}" Icon="{local:UpstreamIcon BranchDelete}" />
               <!-- The new shell's: upstream deletes a remote tag from its push dialog, which the new shell does not have. -->
-              <MenuItem x:Name="TreeDeleteRemoteTagMenuItem" Header="Delete on _remote..." Icon="{local:UpstreamIcon BranchDelete}" />
+              <MenuItem x:Name="TreeDeleteRemoteTagMenuItem" Command="{Binding TreeMenu.RunDeleteRemoteTagCommand}" IsVisible="{Binding TreeMenu.DeleteRemoteTag.IsVisible}" IsEnabled="{Binding TreeMenu.DeleteRemoteTag.IsEnabled}" Header="Delete on _remote..." Icon="{local:UpstreamIcon BranchDelete}" />
               <Separator />
-              <MenuItem x:Name="TreeManageRemotesMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
-              <MenuItem x:Name="TreeFetchAllRemotesMenuItem" Header="Fetch all remotes" Icon="{local:UpstreamIcon PullFetchAll}" />
-              <MenuItem x:Name="TreePruneAllRemotesMenuItem" Header="Fetch and prune all remotes" Icon="{local:UpstreamIcon PullFetchPruneAll}" />
+              <MenuItem x:Name="TreeManageRemotesMenuItem" Command="{Binding TreeMenu.RunManageRemotesCommand}" IsVisible="{Binding TreeMenu.ManageRemotes.IsVisible}" IsEnabled="{Binding TreeMenu.ManageRemotes.IsEnabled}" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
+              <MenuItem x:Name="TreeFetchAllRemotesMenuItem" Command="{Binding TreeMenu.RunFetchAllRemotesCommand}" IsVisible="{Binding TreeMenu.FetchAllRemotes.IsVisible}" IsEnabled="{Binding TreeMenu.FetchAllRemotes.IsEnabled}" Header="Fetch all remotes" Icon="{local:UpstreamIcon PullFetchAll}" />
+              <MenuItem x:Name="TreePruneAllRemotesMenuItem" Command="{Binding TreeMenu.RunPruneAllRemotesCommand}" IsVisible="{Binding TreeMenu.PruneAllRemotes.IsVisible}" IsEnabled="{Binding TreeMenu.PruneAllRemotes.IsEnabled}" Header="Fetch and prune all remotes" Icon="{local:UpstreamIcon PullFetchPruneAll}" />
               <Separator />
-              <MenuItem x:Name="TreeManageRemoteMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
-              <MenuItem x:Name="TreeActivateRemoteMenuItem" Header="_Activate" Icon="{local:UpstreamIcon EyeOpened}" />
-              <MenuItem x:Name="TreeActivateAndFetchRemoteMenuItem" Header="A_ctivate and fetch" Icon="{local:UpstreamIcon RemoteEnableAndFetch}" />
-              <MenuItem x:Name="TreeDeactivateRemoteMenuItem" Header="_Deactivate" Icon="{local:UpstreamIcon EyeClosed}" />
-              <MenuItem x:Name="TreeFetchRemoteMenuItem" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" />
-              <MenuItem x:Name="TreePruneRemoteMenuItem" Header="Fetch and _prune" Icon="{local:UpstreamIcon PullFetchPrune}" />
-              <MenuItem x:Name="TreeOpenRemoteUrlMenuItem" Header="Open remote Url" Icon="{local:UpstreamIcon Globe}"
+              <MenuItem x:Name="TreeManageRemoteMenuItem" Command="{Binding TreeMenu.RunManageRemoteCommand}" IsVisible="{Binding TreeMenu.ManageRemote.IsVisible}" IsEnabled="{Binding TreeMenu.ManageRemote.IsEnabled}" Header="_Manage..." Icon="{local:UpstreamIcon Remotes}" ToolTip.Tip="Manage remotes" />
+              <MenuItem x:Name="TreeActivateRemoteMenuItem" Command="{Binding TreeMenu.RunActivateRemoteCommand}" IsVisible="{Binding TreeMenu.ActivateRemote.IsVisible}" IsEnabled="{Binding TreeMenu.ActivateRemote.IsEnabled}" Header="_Activate" Icon="{local:UpstreamIcon EyeOpened}" />
+              <MenuItem x:Name="TreeActivateAndFetchRemoteMenuItem" Command="{Binding TreeMenu.RunActivateAndFetchRemoteCommand}" IsVisible="{Binding TreeMenu.ActivateAndFetchRemote.IsVisible}" IsEnabled="{Binding TreeMenu.ActivateAndFetchRemote.IsEnabled}" Header="A_ctivate and fetch" Icon="{local:UpstreamIcon RemoteEnableAndFetch}" />
+              <MenuItem x:Name="TreeDeactivateRemoteMenuItem" Command="{Binding TreeMenu.RunDeactivateRemoteCommand}" IsVisible="{Binding TreeMenu.DeactivateRemote.IsVisible}" IsEnabled="{Binding TreeMenu.DeactivateRemote.IsEnabled}" Header="_Deactivate" Icon="{local:UpstreamIcon EyeClosed}" />
+              <MenuItem x:Name="TreeFetchRemoteMenuItem" Command="{Binding TreeMenu.RunFetchRemoteCommand}" IsVisible="{Binding TreeMenu.FetchRemote.IsVisible}" IsEnabled="{Binding TreeMenu.FetchRemote.IsEnabled}" Header="_Fetch" Icon="{local:UpstreamIcon PullFetch}" />
+              <MenuItem x:Name="TreePruneRemoteMenuItem" Command="{Binding TreeMenu.RunPruneRemoteCommand}" IsVisible="{Binding TreeMenu.PruneRemote.IsVisible}" IsEnabled="{Binding TreeMenu.PruneRemote.IsEnabled}" Header="Fetch and _prune" Icon="{local:UpstreamIcon PullFetchPrune}" />
+              <MenuItem x:Name="TreeOpenRemoteUrlMenuItem" Command="{Binding TreeMenu.RunOpenRemoteUrlCommand}" IsVisible="{Binding TreeMenu.OpenRemoteUrl.IsVisible}" IsEnabled="{Binding TreeMenu.OpenRemoteUrl.IsEnabled}" Header="Open remote Url" Icon="{local:UpstreamIcon Globe}"
                         ToolTip.Tip="Redirects you to the actual repository page" />
               <Separator />
-              <MenuItem x:Name="TreeOpenSubmoduleMenuItem" Header="_Open" Icon="{local:UpstreamIcon FolderOpen}"
+              <MenuItem x:Name="TreeOpenSubmoduleMenuItem" Command="{Binding TreeMenu.RunOpenSubmoduleProjectCommand}" IsVisible="{Binding TreeMenu.OpenSubmodule.IsVisible}" IsEnabled="{Binding TreeMenu.OpenSubmodule.IsEnabled}" Header="_Open" Icon="{local:UpstreamIcon FolderOpen}"
                         ToolTip.Tip="Open selected submodule" />
-              <MenuItem x:Name="TreeOpenSubmoduleNewInstanceMenuItem" Header="O_pen" Icon="{local:UpstreamIcon GitExtensionsLogo16}"
+              <MenuItem x:Name="TreeOpenSubmoduleNewInstanceMenuItem" Command="{Binding TreeMenu.RunOpenSubmoduleInNewInstanceCommand}" IsVisible="{Binding TreeMenu.OpenSubmoduleNewInstance.IsVisible}" IsEnabled="{Binding TreeMenu.OpenSubmoduleNewInstance.IsEnabled}" Header="O_pen" Icon="{local:UpstreamIcon GitExtensionsLogo16}"
                         ToolTip.Tip="Open selected submodule in a new instance" />
-              <MenuItem x:Name="TreeManageSubmodulesMenuItem" Header="_Manage..." Icon="{local:UpstreamIcon SubmodulesManage}"
+              <MenuItem x:Name="TreeManageSubmodulesMenuItem" Command="{Binding TreeMenu.RunManageSubmodulesCommand}" IsVisible="{Binding TreeMenu.ManageSubmodules.IsVisible}" IsEnabled="{Binding TreeMenu.ManageSubmodules.IsEnabled}" Header="_Manage..." Icon="{local:UpstreamIcon SubmodulesManage}"
                         ToolTip.Tip="Manage submodules" />
-              <MenuItem x:Name="TreeUpdateSubmoduleMenuItem" Header="_Update" Icon="{local:UpstreamIcon SubmodulesUpdate}"
+              <MenuItem x:Name="TreeUpdateSubmoduleMenuItem" Command="{Binding TreeMenu.RunUpdateSubmoduleCommand}" IsVisible="{Binding TreeMenu.UpdateSubmodule.IsVisible}" IsEnabled="{Binding TreeMenu.UpdateSubmodule.IsEnabled}" Header="_Update" Icon="{local:UpstreamIcon SubmodulesUpdate}"
                         ToolTip.Tip="Update selected submodule recursively" />
-              <MenuItem x:Name="TreeSynchronizeSubmoduleMenuItem" Header="Synchronize" Icon="{local:UpstreamIcon SubmodulesSync}"
+              <MenuItem x:Name="TreeSynchronizeSubmoduleMenuItem" Command="{Binding TreeMenu.RunSynchronizeSubmodulesCommand}" IsVisible="{Binding TreeMenu.SynchronizeSubmodule.IsVisible}" IsEnabled="{Binding TreeMenu.SynchronizeSubmodule.IsEnabled}" Header="Synchronize" Icon="{local:UpstreamIcon SubmodulesSync}"
                         ToolTip.Tip="Synchronize selected submodule recursively" />
-              <MenuItem x:Name="TreeResetSubmoduleMenuItem" Header="_Reset" Icon="{local:UpstreamIcon ResetWorkingDirChanges}"
+              <MenuItem x:Name="TreeResetSubmoduleMenuItem" Command="{Binding TreeMenu.RunResetSubmoduleCommand}" IsVisible="{Binding TreeMenu.ResetSubmodule.IsVisible}" IsEnabled="{Binding TreeMenu.ResetSubmodule.IsEnabled}" Header="_Reset" Icon="{local:UpstreamIcon ResetWorkingDirChanges}"
                         ToolTip.Tip="Reset selected submodule" />
-              <MenuItem x:Name="TreeStashSubmoduleMenuItem" Header="_Stash" Icon="{local:UpstreamIcon Stash}"
+              <MenuItem x:Name="TreeStashSubmoduleMenuItem" Command="{Binding TreeMenu.RunStashSubmoduleCommand}" IsVisible="{Binding TreeMenu.StashSubmodule.IsVisible}" IsEnabled="{Binding TreeMenu.StashSubmodule.IsEnabled}" Header="_Stash" Icon="{local:UpstreamIcon Stash}"
                         ToolTip.Tip="Stash changes in selected submodule" />
-              <MenuItem x:Name="TreeCommitSubmoduleMenuItem" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}"
+              <MenuItem x:Name="TreeCommitSubmoduleMenuItem" Command="{Binding TreeMenu.RunCommitSubmoduleCommand}" IsVisible="{Binding TreeMenu.CommitSubmodule.IsVisible}" IsEnabled="{Binding TreeMenu.CommitSubmodule.IsEnabled}" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirtySubmodules}"
                         ToolTip.Tip="Commit changes in selected submodule" />
               <Separator />
-              <MenuItem x:Name="TreeFetchAndCheckoutMenuItem" Header="_Fetch &amp; Checkout" Icon="{local:UpstreamIcon BranchCheckout}"
+              <MenuItem x:Name="TreeFetchAndCheckoutMenuItem" Command="{Binding TreeMenu.RunFetchAndCheckoutCommand}" IsVisible="{Binding TreeMenu.FetchAndCheckout.IsVisible}" IsEnabled="{Binding TreeMenu.FetchAndCheckout.IsEnabled}" Header="_Fetch &amp; Checkout" Icon="{local:UpstreamIcon BranchCheckout}"
                         ToolTip.Tip="Fetch then checkout this remote branch" />
-              <MenuItem x:Name="TreeFetchAndMergeMenuItem" Header="Fetch &amp; Merge (_Pull)" Icon="{local:UpstreamIcon Pull}"
+              <MenuItem x:Name="TreeFetchAndMergeMenuItem" Command="{Binding TreeMenu.RunFetchAndMergeCommand}" IsVisible="{Binding TreeMenu.FetchAndMerge.IsVisible}" IsEnabled="{Binding TreeMenu.FetchAndMerge.IsEnabled}" Header="Fetch &amp; Merge (_Pull)" Icon="{local:UpstreamIcon Pull}"
                         ToolTip.Tip="Fetch then merge this remote branch into current branch" />
-              <MenuItem x:Name="TreeFetchAndRebaseMenuItem" Header="Fetch &amp; Re_base" Icon="{local:UpstreamIcon Rebase}"
+              <MenuItem x:Name="TreeFetchAndRebaseMenuItem" Command="{Binding TreeMenu.RunFetchAndRebaseCommand}" IsVisible="{Binding TreeMenu.FetchAndRebase.IsVisible}" IsEnabled="{Binding TreeMenu.FetchAndRebase.IsEnabled}" Header="Fetch &amp; Re_base" Icon="{local:UpstreamIcon Rebase}"
                         ToolTip.Tip="Fetch then rebase current branch on this remote branch" />
-              <MenuItem x:Name="TreeFetchAndCreateBranchMenuItem" Header="Fetc_h &amp; Create Branch" Icon="{local:UpstreamIcon Branch}"
+              <MenuItem x:Name="TreeFetchAndCreateBranchMenuItem" Command="{Binding TreeMenu.RunFetchAndCreateBranchCommand}" IsVisible="{Binding TreeMenu.FetchAndCreateBranch.IsVisible}" IsEnabled="{Binding TreeMenu.FetchAndCreateBranch.IsEnabled}" Header="Fetc_h &amp; Create Branch" Icon="{local:UpstreamIcon Branch}"
                         ToolTip.Tip="Fetch then create a local branch from the remote branch" />
-              <MenuItem x:Name="TreeFetchBranchMenuItem" Header="Fe_tch" Icon="{local:UpstreamIcon Stage}"
+              <MenuItem x:Name="TreeFetchBranchMenuItem" Command="{Binding TreeMenu.RunFetchBranchCommand}" IsVisible="{Binding TreeMenu.FetchBranch.IsVisible}" IsEnabled="{Binding TreeMenu.FetchBranch.IsEnabled}" Header="Fe_tch" Icon="{local:UpstreamIcon Stage}"
                         ToolTip.Tip="Fetch this remote branch" />
               <Separator />
-              <MenuItem x:Name="TreeCreateBranchInFolderMenuItem" Header="Create Branch..." Icon="{local:UpstreamIcon BranchCreate}"
+              <MenuItem x:Name="TreeCreateBranchInFolderMenuItem" Command="{Binding TreeMenu.RunCreateBranchInFolderCommand}" IsVisible="{Binding TreeMenu.CreateBranchInFolder.IsVisible}" IsEnabled="{Binding TreeMenu.CreateBranchInFolder.IsEnabled}" Header="Create Branch..." Icon="{local:UpstreamIcon BranchCreate}"
                         ToolTip.Tip="Create a local branch" />
-              <MenuItem x:Name="TreeDeleteAllBranchesMenuItem" Header="Delete All" Icon="{local:UpstreamIcon BranchDelete}"
+              <MenuItem x:Name="TreeDeleteAllBranchesMenuItem" Command="{Binding TreeMenu.RunDeleteAllBranchesCommand}" IsVisible="{Binding TreeMenu.DeleteAllBranches.IsVisible}" IsEnabled="{Binding TreeMenu.DeleteAllBranches.IsEnabled}" Header="Delete All" Icon="{local:UpstreamIcon BranchDelete}"
                         ToolTip.Tip="Delete all child branches, which must all be fully merged in its upstream branch or in HEAD" />
               <Separator />
-              <MenuItem x:Name="TreeStashAllMenuItem" Header="_Stash" />
-              <MenuItem x:Name="TreeStashStagedMenuItem" Header="S_tash staged" />
-              <MenuItem x:Name="TreeManageStashesMenuItem" Header="_Manage stashes..." />
+              <MenuItem x:Name="TreeStashAllMenuItem" Command="{Binding TreeMenu.RunStashAllCommand}" IsVisible="{Binding TreeMenu.StashAll.IsVisible}" IsEnabled="{Binding TreeMenu.StashAll.IsEnabled}" Header="_Stash" />
+              <MenuItem x:Name="TreeStashStagedMenuItem" Command="{Binding TreeMenu.RunStashStagedCommand}" IsVisible="{Binding TreeMenu.StashStaged.IsVisible}" IsEnabled="{Binding TreeMenu.StashStaged.IsEnabled}" Header="S_tash staged" />
+              <MenuItem x:Name="TreeManageStashesMenuItem" Command="{Binding TreeMenu.RunManageStashesCommand}" IsVisible="{Binding TreeMenu.ManageStashes.IsVisible}" IsEnabled="{Binding TreeMenu.ManageStashes.IsEnabled}" Header="_Manage stashes..." />
               <Separator />
-              <MenuItem x:Name="TreeOpenStashMenuItem" Header="_Open stash" ToolTip.Tip="Open this stash" />
-              <MenuItem x:Name="TreeApplyStashMenuItem" Header="_Apply stash" ToolTip.Tip="Apply this stash" />
-              <MenuItem x:Name="TreePopStashMenuItem" Header="_Pop stash" ToolTip.Tip="Pop this stash" />
-              <MenuItem x:Name="TreeDropStashMenuItem" Header="_Drop stash..." ToolTip.Tip="Drop this stash" />
+              <MenuItem x:Name="TreeOpenStashMenuItem" Command="{Binding TreeMenu.RunOpenStashCommand}" IsVisible="{Binding TreeMenu.OpenStash.IsVisible}" IsEnabled="{Binding TreeMenu.OpenStash.IsEnabled}" Header="_Open stash" ToolTip.Tip="Open this stash" />
+              <MenuItem x:Name="TreeApplyStashMenuItem" Command="{Binding TreeMenu.RunApplyStashCommand}" IsVisible="{Binding TreeMenu.ApplyStash.IsVisible}" IsEnabled="{Binding TreeMenu.ApplyStash.IsEnabled}" Header="_Apply stash" ToolTip.Tip="Apply this stash" />
+              <MenuItem x:Name="TreePopStashMenuItem" Command="{Binding TreeMenu.RunPopStashCommand}" IsVisible="{Binding TreeMenu.PopStash.IsVisible}" IsEnabled="{Binding TreeMenu.PopStash.IsEnabled}" Header="_Pop stash" ToolTip.Tip="Pop this stash" />
+              <MenuItem x:Name="TreeDropStashMenuItem" Command="{Binding TreeMenu.RunDropStashCommand}" IsVisible="{Binding TreeMenu.DropStash.IsVisible}" IsEnabled="{Binding TreeMenu.DropStash.IsEnabled}" Header="_Drop stash..." ToolTip.Tip="Drop this stash" />
               <Separator />
-              <MenuItem x:Name="TreeCreateWorktreeMenuItem" Header="_Create worktree..." />
-              <MenuItem x:Name="TreePruneWorktreesMenuItem" Header="_Prune worktrees" />
-              <MenuItem x:Name="TreeManageWorktreesMenuItem" Header="_Manage worktrees..." />
+              <MenuItem x:Name="TreeCreateWorktreeMenuItem" Command="{Binding TreeMenu.RunCreateWorktreeCommand}" IsVisible="{Binding TreeMenu.CreateWorktree.IsVisible}" IsEnabled="{Binding TreeMenu.CreateWorktree.IsEnabled}" Header="_Create worktree..." />
+              <MenuItem x:Name="TreePruneWorktreesMenuItem" Command="{Binding TreeMenu.RunPruneWorktreesCommand}" IsVisible="{Binding TreeMenu.PruneWorktrees.IsVisible}" IsEnabled="{Binding TreeMenu.PruneWorktrees.IsEnabled}" Header="_Prune worktrees" />
+              <MenuItem x:Name="TreeManageWorktreesMenuItem" Command="{Binding TreeMenu.RunManageWorktreesCommand}" IsVisible="{Binding TreeMenu.ManageWorktrees.IsVisible}" IsEnabled="{Binding TreeMenu.ManageWorktrees.IsEnabled}" Header="_Manage worktrees..." />
               <Separator />
-              <MenuItem x:Name="TreeOpenWorktreeMenuItem" Header="_Open worktree" Icon="{local:UpstreamIcon FolderOpen}"
+              <MenuItem x:Name="TreeOpenWorktreeMenuItem" Command="{Binding TreeMenu.RunOpenWorktreeCommand}" IsVisible="{Binding TreeMenu.OpenWorktree.IsVisible}" IsEnabled="{Binding TreeMenu.OpenWorktree.IsEnabled}" Header="_Open worktree" Icon="{local:UpstreamIcon FolderOpen}"
                         ToolTip.Tip="Open this worktree" />
-              <MenuItem x:Name="TreeDeleteWorktreeMenuItem" Header="_Delete worktree..." ToolTip.Tip="Delete this worktree" />
+              <MenuItem x:Name="TreeDeleteWorktreeMenuItem" Command="{Binding TreeMenu.RunDeleteWorktreeCommand}" IsVisible="{Binding TreeMenu.DeleteWorktree.IsVisible}" IsEnabled="{Binding TreeMenu.DeleteWorktree.IsEnabled}" Header="_Delete worktree..." ToolTip.Tip="Delete this worktree" />
               <Separator />
-              <MenuItem x:Name="TreeCopyWorktreePathMenuItem" Header="Copy _path" Icon="{local:UpstreamIcon CopyToClipboard}"
+              <MenuItem x:Name="TreeCopyWorktreePathMenuItem" Command="{Binding TreeMenu.RunCopyWorktreePathCommand}" IsVisible="{Binding TreeMenu.CopyWorktreePath.IsVisible}" IsEnabled="{Binding TreeMenu.CopyWorktreePath.IsEnabled}" Header="Copy _path" Icon="{local:UpstreamIcon CopyToClipboard}"
                         ToolTip.Tip="Copy the worktree path to clipboard" />
-              <MenuItem x:Name="TreeShowWorktreeInFolderMenuItem" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}"
+              <MenuItem x:Name="TreeShowWorktreeInFolderMenuItem" Command="{Binding TreeMenu.RunShowWorktreeInFolderCommand}" IsVisible="{Binding TreeMenu.ShowWorktreeInFolder.IsVisible}" IsEnabled="{Binding TreeMenu.ShowWorktreeInFolder.IsEnabled}" Header="Show _in folder" Icon="{local:UpstreamIcon BrowseFileExplorer}"
                         ToolTip.Tip="Show the worktree in File Explorer" />
               <Separator />
-              <MenuItem x:Name="TreeCollapseMenuItem" Header="Collapse" Icon="{local:UpstreamIcon CollapseAll}" ToolTip.Tip="Collapse all subnodes" />
-              <MenuItem x:Name="TreeExpandMenuItem" Header="Expand" Icon="{local:UpstreamIcon ExpandAll}" ToolTip.Tip="Expand all subnodes" />
+              <MenuItem x:Name="TreeCollapseMenuItem" Command="{Binding TreeMenu.RunCollapseNodesCommand}" IsVisible="{Binding TreeMenu.Collapse.IsVisible}" IsEnabled="{Binding TreeMenu.Collapse.IsEnabled}" Header="Collapse" Icon="{local:UpstreamIcon CollapseAll}" ToolTip.Tip="Collapse all subnodes" />
+              <MenuItem x:Name="TreeExpandMenuItem" Command="{Binding TreeMenu.RunExpandNodesCommand}" IsVisible="{Binding TreeMenu.Expand.IsVisible}" IsEnabled="{Binding TreeMenu.Expand.IsEnabled}" Header="Expand" Icon="{local:UpstreamIcon ExpandAll}" ToolTip.Tip="Expand all subnodes" />
               <Separator />
-              <MenuItem x:Name="TreeMoveUpMenuItem" Header="Move Up" Icon="{local:UpstreamIcon ArrowUp}" ToolTip.Tip="Move node up" />
-              <MenuItem x:Name="TreeMoveDownMenuItem" Header="Move Down" Icon="{local:UpstreamIcon ArrowDown}" ToolTip.Tip="Move node down" />
+              <MenuItem x:Name="TreeMoveUpMenuItem" Command="{Binding TreeMenu.RunMoveTreeUpCommand}" IsVisible="{Binding TreeMenu.MoveUp.IsVisible}" IsEnabled="{Binding TreeMenu.MoveUp.IsEnabled}" Header="Move Up" Icon="{local:UpstreamIcon ArrowUp}" ToolTip.Tip="Move node up" />
+              <MenuItem x:Name="TreeMoveDownMenuItem" Command="{Binding TreeMenu.RunMoveTreeDownCommand}" IsVisible="{Binding TreeMenu.MoveDown.IsVisible}" IsEnabled="{Binding TreeMenu.MoveDown.IsEnabled}" Header="Move Down" Icon="{local:UpstreamIcon ArrowDown}" ToolTip.Tip="Move node down" />
               <Separator />
               <!-- Upstream's left panel sort menus (GitRefsSortByContextMenuItem, GitRefsSortOrderContextMenuItem). -->
-              <MenuItem x:Name="SortByMenuItem" Header="_Sort by" />
-              <MenuItem x:Name="SortOrderMenuItem" Header="Sort _order" />
+              <MenuItem x:Name="SortByMenuItem" IsVisible="{Binding TreeMenu.SortBy.IsVisible}" IsEnabled="{Binding TreeMenu.SortBy.IsEnabled}" Header="_Sort by" />
+              <MenuItem x:Name="SortOrderMenuItem" IsVisible="{Binding TreeMenu.SortOrder.IsVisible}" IsEnabled="{Binding TreeMenu.SortOrder.IsEnabled}" Header="Sort _order" />
               <Separator />
-              <MenuItem x:Name="TreeRunScriptMenuItem" Header="Run script" Icon="{local:UpstreamIcon Console}" />
+              <MenuItem x:Name="TreeRunScriptMenuItem" IsVisible="{Binding TreeMenu.RunScript.IsVisible}" Header="Run script" Icon="{local:UpstreamIcon Console}" />
             </ContextMenu>
           </TreeView.ContextMenu>
           <TreeView.Styles>
@@ -507,7 +518,7 @@
              links, the Contribute links at the bottom) and the repository list (UserRepositoriesList: a header with the
              title, the search box, the recent repositories and the favourites grouped by category, as tiles), with 7%
              margins on both sides. Colors as upstream's DashboardTheme, light or dark (ThemeApplier). -->
-        <Grid x:Name="DashboardPanel" Background="{DynamicResource CommitInfoBackgroundBrush}">
+        <Grid x:Name="DashboardPanel" IsVisible="{Binding !IsRepositoryShown}" Background="{DynamicResource CommitInfoBackgroundBrush}">
           <Grid.Styles>
             <Style Selector="TextBlock.dashboardHeading">
               <Setter Property="FontSize" Value="19" />
@@ -565,36 +576,88 @@
                       Padding="20,20,20,30">
                 <StackPanel x:Name="DashboardContribute">
                   <TextBlock Classes="dashboardHeading" Text="Contribute" Margin="2,0,2,8" />
-                  <Button x:Name="DashboardDevelopLink" Classes="dashboardLink" Tag="Develop" Content="Develop" />
-                  <Button x:Name="DashboardDonateLink" Classes="dashboardLink" Tag="DollarSign" Content="Donate" />
-                  <Button x:Name="DashboardTranslateLink" Classes="dashboardLink" Tag="Translate" Content="Translate" />
-                  <Button x:Name="DashboardIssuesLink" Classes="dashboardLink" Tag="Bug" Content="Issues" />
+                  <Button x:Name="DashboardDevelopLink" Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static repo:BrowseToolbarViewModel.DevelopUrl}" Classes="dashboardLink" Tag="Develop" Content="Develop" />
+                  <Button x:Name="DashboardDonateLink" Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static repo:BrowseToolbarViewModel.DonationUrl}" Classes="dashboardLink" Tag="DollarSign" Content="Donate" />
+                  <Button x:Name="DashboardTranslateLink" Command="{Binding OpenUrlCommand}" CommandParameter="{x:Static repo:BrowseToolbarViewModel.TranslateUrl}" Classes="dashboardLink" Tag="Translate" Content="Translate" />
+                  <Button x:Name="DashboardIssuesLink" Command="{Binding ReportIssueCommand}" Classes="dashboardLink" Tag="Bug" Content="Issues" />
                 </StackPanel>
               </Border>
               <Border Background="{DynamicResource DashboardStartBrush}" Margin="2" Padding="20">
                 <StackPanel x:Name="DashboardStart">
-                  <Button x:Name="DashboardCreateLink" Classes="dashboardLink" Tag="RepoCreate" Content="Create new repository" />
-                  <Button x:Name="DashboardOpenLink" Classes="dashboardLink" Tag="RepoOpen" Content="Open repository" />
-                  <Button x:Name="DashboardCloneLink" Classes="dashboardLink" Tag="CloneRepoGit" Content="Clone repository" />
+                  <Button x:Name="DashboardCreateLink" Command="{Binding InitRepositoryCommand}" Classes="dashboardLink" Tag="RepoCreate" Content="Create new repository" />
+                  <Button x:Name="DashboardOpenLink" Command="{Binding OpenRepositoryCommand}" Classes="dashboardLink" Tag="RepoOpen" Content="Open repository" />
+                  <Button x:Name="DashboardCloneLink" Command="{Binding CloneCommand}" Classes="dashboardLink" Tag="CloneRepoGit" Content="Clone repository" />
                 </StackPanel>
               </Border>
             </DockPanel>
-            <DockPanel x:Name="DashboardRepositories" Grid.Column="2" MinWidth="450">
+            <!-- Upstream's UserRepositoriesList, bound to DashboardViewModel (MVVM.md): a group per category and the recent
+                 repositories, a tile per repository; the tiles' and the groups' menus are the view model's entries. -->
+            <DockPanel x:Name="DashboardRepositories" DataContext="{x:Null}" Grid.Column="2" MinWidth="450" x:DataType="repo:DashboardViewModel">
               <Border DockPanel.Dock="Top" Height="68" Background="{DynamicResource DashboardHeaderBrush}" Padding="20,0,20,11">
                 <TextBlock Classes="dashboardHeading" Text="Recent repositories" VerticalAlignment="Bottom" />
               </Border>
               <DockPanel Margin="20,18,20,3">
                 <TextBox x:Name="DashboardSearchBox" DockPanel.Dock="Top" PlaceholderText="Search repositories..." Margin="0,0,0,12"
-                         Background="{DynamicResource DashboardSearchBrush}" />
+                         Background="{DynamicResource DashboardSearchBrush}" Text="{Binding SearchText}" />
                 <ScrollViewer>
-                  <StackPanel x:Name="DashboardGroups" Spacing="8" IsEnabled="{Binding CanStartRepository}" />
+                  <ItemsControl x:Name="DashboardGroups" ItemsSource="{Binding Groups}"
+                                IsEnabled="{Binding $parent[Window].((repo:BrowseToolbarViewModel)DataContext).CanStartRepository}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Spacing="8" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="repo:DashboardGroup">
+                        <StackPanel>
+                          <DockPanel Margin="0,4,0,2">
+                            <Button DockPanel.Dock="Right" Classes="dashboardLink" Margin="0"
+                                    Content="{DynamicResource DashboardActionsText}" Click="DashboardGroupActions_Click" />
+                            <TextBlock Classes="dashboardGroup" Text="{Binding Header}" VerticalAlignment="Center" />
+                          </DockPanel>
+                          <ItemsControl ItemsSource="{Binding Repositories}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <WrapPanel />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="repo:DashboardRepository">
+                                <Button Classes="dashboardTile" Width="{DynamicResource DashboardTileWidth}" MinHeight="50"
+                                        Tag="{Binding}" ToolTip.Tip="{Binding Path}"
+                                        Command="{Binding $parent[ItemsControl;1].((repo:DashboardViewModel)DataContext).OpenTileCommand}"
+                                        CommandParameter="{Binding}"
+                                        DataContextChanged="DashboardTile_DataContextChanged"
+                                        AttachedToLogicalTree="DashboardTile_AttachedToLogicalTree">
+                                  <Grid ColumnDefinitions="Auto,*">
+                                    <Panel VerticalAlignment="Top" Margin="0,2,6,0">
+                                      <Image Source="{Binding FolderImage, Converter={x:Static local:UpstreamImageConverter.Instance}}"
+                                             Stretch="None" />
+                                      <!-- Upstream draws a star on the tile of a repository in a category. -->
+                                      <Image Source="{local:UpstreamImage Star}" Width="16" Height="16" HorizontalAlignment="Right"
+                                             VerticalAlignment="Top" Margin="0,-6,-6,0" IsVisible="{Binding HasCategory}" />
+                                    </Panel>
+                                    <StackPanel Grid.Column="1" Spacing="1">
+                                      <TextBlock Text="{Binding Caption}" TextTrimming="CharacterEllipsis" />
+                                      <TextBlock Classes="branch" Text="{Binding Branch}" IsVisible="{Binding HasBranch}"
+                                                 FontSize="{DynamicResource DashboardBranchFontSize}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                  </Grid>
+                                </Button>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
                 </ScrollViewer>
               </DockPanel>
             </DockPanel>
           </Grid>
         </Grid>
 
-        <Grid x:Name="BrowsePanel" RowDefinitions="*,5,300" IsVisible="False">
+        <Grid x:Name="BrowsePanel" RowDefinitions="*,5,300" IsVisible="{Binding IsRepositoryShown}">
           <!-- Upstream's RevisionsSplitContainer: the grid, and the commit info beside it when CommitInfoPosition puts it
                left or right of the grid (LayoutRevisionInfo sets the columns). -->
           <Grid x:Name="RevisionsSplitGrid" Grid.Row="0" ColumnDefinitions="*,0,0">
@@ -607,66 +670,66 @@
                          (MainWindow.GridMenu.cs), and items that do not apply are hidden, as upstream's. For a
                          right-clicked label, the "advanced" items move under "Other actions". "Browse files at this
                          commit..." is the new shell's own. -->
-                    <MenuItem x:Name="GridResetChangesMenuItem" Header="_Reset changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsVisible="{Binding GridMenu.IsArtificialItemVisible}" IsEnabled="{Binding GridMenu.IsArtificialItemVisible}" />
-                    <MenuItem x:Name="GridCommitMenuItem" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirty}" IsVisible="{Binding GridMenu.IsArtificialItemVisible}" IsEnabled="{Binding GridMenu.IsArtificialItemVisible}" />
-                    <MenuItem x:Name="MarkBadMenuItem" Header="Mark revision as bad" Icon="{local:UpstreamIcon BisectBad}" IsVisible="False" IsEnabled="{Binding IsCommitSelected}" />
-                    <MenuItem x:Name="MarkGoodMenuItem" Header="Mark revision as good" Icon="{local:UpstreamIcon BisectGood}" IsVisible="False" IsEnabled="{Binding IsCommitSelected}" />
-                    <MenuItem x:Name="BisectSkipMenuItem" Header="Skip revision" Icon="{local:UpstreamIcon BisectSkip}" IsVisible="False" IsEnabled="{Binding IsCommitSelected}" />
-                    <MenuItem x:Name="StopBisectMenuItem" Header="Stop bisect" Icon="{local:UpstreamIcon BisectStop}" IsVisible="False" IsEnabled="{Binding IsOpen}" />
-                    <Separator x:Name="BisectSeparator" IsVisible="False" />
+                    <MenuItem x:Name="GridResetChangesMenuItem" Command="{Binding ResetChangesCommand}" Header="_Reset changes" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsVisible="{Binding GridMenu.IsArtificialItemVisible}" IsEnabled="{Binding GridMenu.IsArtificialItemVisible}" />
+                    <MenuItem x:Name="GridCommitMenuItem" Command="{Binding CommitCommand}" Header="_Commit" Icon="{local:UpstreamIcon RepoStateDirty}" IsVisible="{Binding GridMenu.IsArtificialItemVisible}" IsEnabled="{Binding GridMenu.IsArtificialItemVisible}" />
+                    <MenuItem x:Name="MarkBadMenuItem" Command="{Binding MarkBisectCommand}" CommandParameter="{x:Static git:GitBisectOption.Bad}" Header="Mark revision as bad" Icon="{local:UpstreamIcon BisectBad}" IsVisible="{Binding IsBisecting}" IsEnabled="{Binding IsCommitSelected}" />
+                    <MenuItem x:Name="MarkGoodMenuItem" Command="{Binding MarkBisectCommand}" CommandParameter="{x:Static git:GitBisectOption.Good}" Header="Mark revision as good" Icon="{local:UpstreamIcon BisectGood}" IsVisible="{Binding IsBisecting}" IsEnabled="{Binding IsCommitSelected}" />
+                    <MenuItem x:Name="BisectSkipMenuItem" Command="{Binding MarkBisectCommand}" CommandParameter="{x:Static git:GitBisectOption.Skip}" Header="Skip revision" Icon="{local:UpstreamIcon BisectSkip}" IsVisible="{Binding IsBisecting}" IsEnabled="{Binding IsCommitSelected}" />
+                    <MenuItem x:Name="StopBisectMenuItem" Command="{Binding StopBisectCommand}" Header="Stop bisect" Icon="{local:UpstreamIcon BisectStop}" IsVisible="{Binding IsBisecting}" IsEnabled="{Binding IsOpen}" />
+                    <Separator x:Name="BisectSeparator" IsVisible="{Binding IsBisecting}" />
                     <MenuItem x:Name="CopyToClipboardMenuItem" Header="_Copy to clipboard" Icon="{local:UpstreamIcon CopyToClipboard}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" IsEnabled="{Binding GridMenu.IsCommitItemVisible}">
                       <MenuItem Header="-" />
                     </MenuItem>
                     <Separator x:Name="CopySeparator" />
-                    <MenuItem x:Name="ApplyStashMenuItem" Header="Appl_y stash" Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding GridMenu.IsStashItemVisible}" IsEnabled="{Binding GridMenu.IsStashItemVisible}" />
-                    <MenuItem x:Name="PopStashMenuItem" Header="Pop _stash" Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding GridMenu.IsStashItemVisible}" IsEnabled="{Binding GridMenu.IsStashItemVisible}" />
-                    <MenuItem x:Name="GridDropStashMenuItem" Header="_Drop stash..." Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding GridMenu.IsStashItemVisible}" IsEnabled="{Binding GridMenu.IsStashItemVisible}" />
+                    <MenuItem x:Name="ApplyStashMenuItem" Command="{Binding ApplySelectedStashCommand}" Header="Appl_y stash" Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding GridMenu.IsStashItemVisible}" IsEnabled="{Binding GridMenu.IsStashItemVisible}" />
+                    <MenuItem x:Name="PopStashMenuItem" Command="{Binding PopSelectedStashCommand}" Header="Pop _stash" Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding GridMenu.IsStashItemVisible}" IsEnabled="{Binding GridMenu.IsStashItemVisible}" />
+                    <MenuItem x:Name="GridDropStashMenuItem" Command="{Binding DropSelectedStashCommand}" Header="_Drop stash..." Icon="{local:UpstreamIcon Stash}" IsVisible="{Binding GridMenu.IsStashItemVisible}" IsEnabled="{Binding GridMenu.IsStashItemVisible}" />
                     <Separator x:Name="StashSeparator" />
                     <MenuItem x:Name="GridCheckoutBranchMenuItem" Header="Chec_kout branch..." Icon="{local:UpstreamIcon BranchCheckout}" IsVisible="{Binding GridMenu.IsCheckoutBranchVisible}" IsEnabled="{Binding GridMenu.IsCheckoutBranchVisible}" />
                     <MenuItem x:Name="GridPushBranchMenuItem" Header="Pus_h branch..." Icon="{local:UpstreamIcon Push}" IsVisible="{Binding GridMenu.IsPushBranchVisible}" IsEnabled="{Binding GridMenu.IsPushBranchVisible}" />
                     <MenuItem x:Name="GridMergeBranchMenuItem" Header="_Merge into current branch..." Icon="{local:UpstreamIcon Merge}" IsVisible="{Binding GridMenu.IsMergeBranchVisible}" IsEnabled="{Binding GridMenu.IsMergeBranchVisible}" />
                     <MenuItem x:Name="GridRebaseOnMenuItem" Header="_Rebase current branch on" Icon="{local:UpstreamIcon Rebase}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" IsEnabled="{Binding GridMenu.IsCommitItemVisible}">
-                      <MenuItem x:Name="RebaseOnCommitMenuItem" Header="_Selected commit" IsEnabled="{Binding GridMenu.CanRebaseOn}" />
-                      <MenuItem x:Name="RebaseInteractiveMenuItem" Header="Selected commit _interactively..." IsEnabled="{Binding GridMenu.CanRebaseInteractive}" />
-                      <MenuItem x:Name="RebaseAdvancedMenuItem" Header="Selected commit with _advanced options..." IsEnabled="{Binding GridMenu.CanRebaseOn}" />
+                      <MenuItem x:Name="RebaseOnCommitMenuItem" Command="{Binding RebaseOnCommitCommand}" Header="_Selected commit" IsEnabled="{Binding GridMenu.CanRebaseOn}" />
+                      <MenuItem x:Name="RebaseInteractiveMenuItem" Command="{Binding RebaseInteractiveCommand}" Header="Selected commit _interactively..." IsEnabled="{Binding GridMenu.CanRebaseInteractive}" />
+                      <MenuItem x:Name="RebaseAdvancedMenuItem" Command="{Binding RebaseAdvancedCommand}" Header="Selected commit with _advanced options..." IsEnabled="{Binding GridMenu.CanRebaseOn}" />
                     </MenuItem>
-                    <MenuItem x:Name="ResetCurrentBranchMenuItem" Header="Reset c_urrent branch to here..."
+                    <MenuItem x:Name="ResetCurrentBranchMenuItem" Command="{Binding ResetCurrentBranchCommand}" Header="Reset c_urrent branch to here..."
                               Icon="{local:UpstreamIcon ResetCurrentBranchToHere}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
                     <Separator x:Name="BranchSeparator" />
-                    <MenuItem x:Name="GridSelectInLeftPanelMenuItem" Header="Se_lect in left panel" Icon="{local:UpstreamIcon FileTree}" IsVisible="{Binding GridMenu.IsSelectInLeftPanelVisible}" IsEnabled="{Binding GridMenu.IsSelectInLeftPanelVisible}" />
-                    <MenuItem x:Name="CreateBranchHereMenuItem" Header="Create new branch here (_x)..." Icon="{local:UpstreamIcon BranchCreate}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
-                    <MenuItem x:Name="ResetAnotherBranchMenuItem" Header="Reset an_other branch to here..."
+                    <MenuItem x:Name="GridSelectInLeftPanelMenuItem" Command="{Binding SelectInLeftPanelCommand}" CommandParameter="{Binding GridMenu.SingleSelectInLeftPanel}" Header="Se_lect in left panel" Icon="{local:UpstreamIcon FileTree}" IsVisible="{Binding GridMenu.IsSelectInLeftPanelVisible}" IsEnabled="{Binding GridMenu.IsSelectInLeftPanelVisible}" />
+                    <MenuItem x:Name="CreateBranchHereMenuItem" Command="{Binding CreateBranchCommand}" Header="Create new branch here (_x)..." Icon="{local:UpstreamIcon BranchCreate}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
+                    <MenuItem x:Name="ResetAnotherBranchMenuItem" Command="{Binding ResetAnotherBranchCommand}" Header="Reset an_other branch to here..."
                               Icon="{local:UpstreamIcon ResetAnotherBranchToHere}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" IsEnabled="{Binding GridMenu.IsCommitItemVisible}" />
                     <MenuItem x:Name="GridRenameBranchMenuItem" Header="R_ename branch..." Icon="{local:UpstreamIcon Renamed}" IsVisible="{Binding GridMenu.IsRenameBranchVisible}" IsEnabled="{Binding GridMenu.IsRenameBranchVisible}" />
                     <MenuItem x:Name="GridDeleteBranchMenuItem" Header="_Delete branch..." Icon="{local:UpstreamIcon BranchDelete}" IsVisible="{Binding GridMenu.IsDeleteBranchVisible}" IsEnabled="{Binding GridMenu.CanDeleteBranch}" />
                     <Separator x:Name="BranchModificationSeparator" />
-                    <MenuItem x:Name="CreateTagHereMenuItem" Header="Create new ta_g here..." Icon="{local:UpstreamIcon TagCreate}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
+                    <MenuItem x:Name="CreateTagHereMenuItem" Command="{Binding CreateTagCommand}" Header="Create new ta_g here..." Icon="{local:UpstreamIcon TagCreate}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
                     <MenuItem x:Name="GridDeleteTagMenuItem" Header="_Delete tag..." Icon="{local:UpstreamIcon TagDelete}" IsVisible="{Binding GridMenu.IsDeleteTagVisible}" IsEnabled="{Binding GridMenu.IsDeleteTagVisible}" />
                     <Separator x:Name="CommitSeparator" />
-                    <MenuItem x:Name="CheckoutCommitMenuItem" Header="Checkout _this commit..." Icon="{local:UpstreamIcon Checkout}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
-                    <MenuItem x:Name="RevertMenuItem" Header="Re_vert this commit..." Icon="{local:UpstreamIcon RevertCommit}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
-                    <MenuItem x:Name="CherryPickMenuItem" Header="Cherr_y pick this commit..."
+                    <MenuItem x:Name="CheckoutCommitMenuItem" Command="{Binding CheckoutCommitCommand}" Header="Checkout _this commit..." Icon="{local:UpstreamIcon Checkout}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
+                    <MenuItem x:Name="RevertMenuItem" Command="{Binding RevertCommand}" Header="Re_vert this commit..." Icon="{local:UpstreamIcon RevertCommit}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
+                    <MenuItem x:Name="CherryPickMenuItem" Command="{Binding CherryPickCommand}" Header="Cherr_y pick this commit..."
                               Icon="{local:UpstreamIcon CherryPick}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
-                    <MenuItem x:Name="ArchiveCommitMenuItem" Header="Arch_ive this commit..."
+                    <MenuItem x:Name="ArchiveCommitMenuItem" Command="{Binding ArchiveCommand}" Header="Arch_ive this commit..."
                               Icon="{local:UpstreamIcon ArchiveRevision}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
                     <MenuItem x:Name="GridAdvancedMenuItem" Header="_Advanced" Icon="{local:UpstreamIcon Advanced}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" IsEnabled="{Binding GridMenu.IsCommitItemVisible}">
-                      <MenuItem x:Name="EditCommitMenuItem" Header="_Edit commit" />
-                      <MenuItem x:Name="RewordCommitMenuItem" Header="_Reword commit" />
-                      <MenuItem x:Name="FixupCommitMenuItem" Header="Create a _fixup commit..." />
-                      <MenuItem x:Name="SquashCommitMenuItem" Header="Create a _squash commit..." />
-                      <MenuItem x:Name="AmendCommitMenuItem" Header="Create an _amend commit..." IsVisible="{Binding GridMenu.IsAmendVisible}" IsEnabled="{Binding GridMenu.IsAmendVisible}" />
-                      <MenuItem x:Name="AdvancedHelpMenuItem" Header="Get _help on how to use these features" />
+                      <MenuItem x:Name="EditCommitMenuItem" Command="{Binding RewriteSelectedCommitCommand}" CommandParameter="{x:Static ops:RewriteCommit.Edit}" Header="_Edit commit" />
+                      <MenuItem x:Name="RewordCommitMenuItem" Command="{Binding RewriteSelectedCommitCommand}" CommandParameter="{x:Static ops:RewriteCommit.Reword}" Header="_Reword commit" />
+                      <MenuItem x:Name="FixupCommitMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CreateFixupCommit}" Header="Create a _fixup commit..." />
+                      <MenuItem x:Name="SquashCommitMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CreateSquashCommit}" Header="Create a _squash commit..." />
+                      <MenuItem x:Name="AmendCommitMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CreateAmendCommit}" Header="Create an _amend commit..." IsVisible="{Binding GridMenu.IsAmendVisible}" IsEnabled="{Binding GridMenu.IsAmendVisible}" />
+                      <MenuItem x:Name="AdvancedHelpMenuItem" Command="{Binding RewriteCommitHelpCommand}" Header="Get _help on how to use these features" />
                     </MenuItem>
                     <Separator x:Name="CompareSeparator" />
                     <MenuItem x:Name="GridCompareMenuItem" Header="Com_pare" Icon="{local:UpstreamIcon Diff}">
                       <MenuItem x:Name="OpenCommitsWithDiffToolMenuItem" Header="Open selected commits with _difftool" />
                       <Separator />
-                      <MenuItem x:Name="CompareToBranchMenuItem" Header="Compare _to branch..." />
-                      <MenuItem x:Name="CompareWithCurrentBranchMenuItem" Header="Compare with _current branch" />
-                      <MenuItem x:Name="SelectAsBaseMenuItem" Header="Select _as BASE to compare" />
-                      <MenuItem x:Name="CompareToBaseMenuItem" Header="Compare to _BASE" IsEnabled="False" />
-                      <MenuItem x:Name="CompareToWorkingDirectoryMenuItem" Header="Compare to _working directory" />
-                      <MenuItem x:Name="CompareSelectedCommitsMenuItem" Header="Compare _selected commits" />
+                      <MenuItem x:Name="CompareToBranchMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareToBranch}" Header="Compare _to branch..." />
+                      <MenuItem x:Name="CompareWithCurrentBranchMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareToCurrentBranch}" Header="Compare with _current branch" IsEnabled="{Binding GridMenu.CanCompareWithCurrentBranch}" />
+                      <MenuItem x:Name="SelectAsBaseMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.SelectAsBaseToCompare}" Header="Select _as BASE to compare" />
+                      <MenuItem x:Name="CompareToBaseMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareToBase}" Header="Compare to _BASE" IsEnabled="{Binding GridMenu.CanCompareToBase}" />
+                      <MenuItem x:Name="CompareToWorkingDirectoryMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareToWorkingDirectory}" Header="Compare to _working directory" IsEnabled="{Binding GridMenu.CanCompareToWorkingDirectory}" />
+                      <MenuItem x:Name="CompareSelectedCommitsMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareSelectedCommits}" Header="Compare _selected commits" IsEnabled="{Binding GridMenu.CanCompareSelectedCommits}" />
                     </MenuItem>
                     <Separator x:Name="NavigateSeparator" />
                     <MenuItem x:Name="GridNavigateMenuItem" Header="_Navigate" Icon="{local:UpstreamIcon GotoCommit}">
@@ -676,9 +739,9 @@
                       <MenuItem Header="-" />
                     </MenuItem>
                     <MenuItem x:Name="RunScriptMenuItem" Header="Run _script" Icon="{local:UpstreamIcon Console}" />
-                    <MenuItem x:Name="OpenBuildReportMenuItem" Header="View _build report in a browser" Icon="{local:UpstreamIcon Integration}" IsVisible="{Binding GridMenu.IsBuildReportVisible}" IsEnabled="{Binding GridMenu.IsBuildReportVisible}" />
-                    <MenuItem x:Name="OpenPullRequestPageMenuItem" Header="Vie_w pull request in a browser" Icon="{local:UpstreamIcon PullRequest}" IsVisible="{Binding GridMenu.IsPullRequestVisible}" IsEnabled="{Binding GridMenu.IsPullRequestVisible}" />
-                    <MenuItem x:Name="BrowseFilesHereMenuItem" Header="Browse files at this commit..." IsEnabled="{Binding IsCommitSelected}" />
+                    <MenuItem x:Name="OpenBuildReportMenuItem" Command="{Binding OpenBuildReportCommand}" Header="View _build report in a browser" Icon="{local:UpstreamIcon Integration}" IsVisible="{Binding GridMenu.IsBuildReportVisible}" IsEnabled="{Binding GridMenu.IsBuildReportVisible}" />
+                    <MenuItem x:Name="OpenPullRequestPageMenuItem" Command="{Binding OpenPullRequestPageCommand}" Header="Vie_w pull request in a browser" Icon="{local:UpstreamIcon PullRequest}" IsVisible="{Binding GridMenu.IsPullRequestVisible}" IsEnabled="{Binding GridMenu.IsPullRequestVisible}" />
+                    <MenuItem x:Name="BrowseFilesHereMenuItem" Command="{Binding BrowseFilesCommand}" Header="Browse files at this commit..." IsEnabled="{Binding IsCommitSelected}" />
                     <MenuItem x:Name="OtherActionsMenuItem" Header="_Other actions" IsVisible="False" />
                   </ContextMenu>
                 </ListBox.ContextMenu>
@@ -719,10 +782,10 @@
                     <!-- Upstream's list of all diff tools (difftools.showavailable). -->
                     <Button x:Name="CommitDiffToolChoiceButton" DockPanel.Dock="Right" Content="&#x25BE;" Padding="4,2"
                             ToolTip.Tip="Open in another diff tool" IsEnabled="{Binding #CommitDiffToolButton.IsEnabled}" />
-                    <Button x:Name="CommitDiffToolButton" Content="Open in diff tool" HorizontalAlignment="Stretch"
+                    <Button x:Name="CommitDiffToolButton" Command="{Binding OpenCommitFileInDiffToolCommand}" Content="Open in diff tool" HorizontalAlignment="Stretch"
                             ToolTip.Tip="Show the selected file's change in the diff tool configured in Settings (diff.tool)" />
                   </DockPanel>
-                  <Button x:Name="ShowCommitDiffButton" DockPanel.Dock="Bottom" Content="Open in window" Margin="0,4,0,0"
+                  <Button x:Name="ShowCommitDiffButton" Command="{Binding ShowCommitDiffCommand}" DockPanel.Dock="Bottom" Content="Open in window" Margin="0,4,0,0"
                           ToolTip.Tip="Show the selected file's diff in its own window" />
                   <!-- Upstream's FileStatusList (RevisionDiffControl's DiffFiles): the group-by buttons, the filter box, the
                        files with their status images, and the NoFiles text (RevisionFileList). -->
@@ -787,19 +850,24 @@
                     <local:ToolDropDownButton x:Name="DiffFilesSettingsButton" Image="Settings" ToolTip.Tip="Settings">
                       <local:ToolDropDownButton.Flyout>
                         <MenuFlyout>
-                          <MenuItem x:Name="DiffFilesShowSkipWorktreeMenuItem" Header="Show s_kip-worktree files" ToggleType="CheckBox" />
+                          <MenuItem x:Name="DiffFilesShowSkipWorktreeMenuItem" Header="Show s_kip-worktree files" ToggleType="CheckBox"
+                                    x:DataType="diff:DiffFilesSettingsViewModel" IsChecked="{Binding ShowSkipWorktree, Mode=TwoWay}"
+                                    IsEnabled="{Binding IsWorkTreeSelected}" />
                           <MenuItem x:Name="DiffFilesShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox"
-                                    IsChecked="True" />
+                                    x:DataType="diff:DiffFilesSettingsViewModel" IsChecked="{Binding ShowUntracked, Mode=TwoWay}"
+                                    IsEnabled="{Binding IsWorkTreeSelected}" />
                           <Separator />
-                          <MenuItem x:Name="DiffFilesEditGitIgnoreMenuItem" Header="_Edit ignored files"
+                          <MenuItem x:Name="DiffFilesEditGitIgnoreMenuItem" x:DataType="diff:DiffFilesSettingsViewModel" Command="{Binding EditGitIgnoreCommand}" Header="_Edit ignored files"
                                     Icon="{local:UpstreamIcon EditGitIgnore}" />
-                          <MenuItem x:Name="DiffFilesEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files"
+                          <MenuItem x:Name="DiffFilesEditLocallyIgnoredMenuItem" x:DataType="diff:DiffFilesSettingsViewModel" Command="{Binding EditLocallyIgnoredCommand}" Header="Edit _locally ignored files"
                                     Icon="{local:UpstreamIcon EditGitIgnore}" />
                           <Separator />
                           <MenuItem x:Name="DiffFilesRefreshOnFormFocusMenuItem" Header="_Refresh artificial commits on form focus"
-                                    ToggleType="CheckBox" />
+                                    ToggleType="CheckBox" x:DataType="diff:DiffFilesSettingsViewModel"
+                                    IsChecked="{Binding RefreshOnFormFocus, Mode=TwoWay}" />
                           <MenuItem x:Name="DiffFilesShowDiffForAllParentsMenuItem" Header="_Show file differences for all parents"
-                                    ToggleType="CheckBox" />
+                                    ToggleType="CheckBox" x:DataType="diff:DiffFilesSettingsViewModel"
+                                    IsChecked="{Binding ShowDiffForAllParents, Mode=TwoWay}" />
                         </MenuFlyout>
                       </local:ToolDropDownButton.Flyout>
                     </local:ToolDropDownButton>
@@ -938,7 +1006,7 @@
                  page" is on and the selected commit's build has a report. Upstream embeds a browser for some servers; the
                  new shell has none, so it shows upstream's "Open report" link, as upstream does for the other servers. -->
             <TabItem x:Name="BuildReportTab" Header="Build Report" IsVisible="False">
-              <HyperlinkButton x:Name="OpenBuildReportLink" Content="Open report" FontSize="16"
+              <HyperlinkButton x:Name="OpenBuildReportLink" Command="{Binding OpenReportedBuildCommand}" Content="Open report" FontSize="16"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
             </TabItem>
           </TabControl>

@@ -20,15 +20,9 @@ public partial class MainWindow
     // Upstream's _baseCommitToCompare, with the repository it belongs to.
     private (string Path, CommitRow Row)? _baseCommitToCompare;
 
+    // The compare items run the grid's commands (bound in XAML), as their hotkeys do.
     private void WireCompareMenu()
     {
-        CompareToBranchMenuItem.Click += (_, _) => CompareToBranch();
-        CompareWithCurrentBranchMenuItem.Click += (_, _) => CompareWithCurrentBranch();
-        SelectAsBaseMenuItem.Click += (_, _) => SelectAsBaseToCompare();
-        CompareToBaseMenuItem.Click += (_, _) => CompareToBase();
-        CompareToWorkingDirectoryMenuItem.Click += (_, _) => CompareToWorkingDirectory();
-        CompareSelectedCommitsMenuItem.Click += (_, _) => CompareSelectedCommits();
-
         // Upstream's diffSelectedCommitsMenuItem_Click: the item opens the default tool, its submenu (when there are
         // several tools) a chosen one; a click on a sub-item also reaches the item, hence the source check.
         OpenCommitsWithDiffToolMenuItem.Click += (_, e) =>
@@ -51,15 +45,17 @@ public partial class MainWindow
             [(OpenCommitsWithDiffToolMenuItem, tool => DiffSelectedCommitsWithDifftool(tool))], diff: true, _preferences);
     }
 
-    // Upstream's OnGridViewSelectionChanged settings of the compare items, for the selected commit.
-    private void ShowCompareMenu(CommitRow row)
+    // What the compare items can compare, for the grid menu's view model.
+    private GridCompareState CompareState()
     {
-        CompareToWorkingDirectoryMenuItem.IsEnabled = row.Hash != ArtificialCommits.WorkTreeHash;
-        CompareWithCurrentBranchMenuItem.IsEnabled = _repository.CurrentBranch.Length > 0;
         (string? first, CommitRow? selected) = GridSelection.FirstAndSelected(SelectedRevisions);
-        CompareSelectedCommitsMenuItem.IsEnabled = first is not null && selected is not null;
-        OpenCommitsWithDiffToolMenuItem.IsEnabled = first is not null && selected is not null;
-        CompareToBaseMenuItem.IsEnabled = BaseToCompare() is not null;
+        return new GridCompareState(HasCurrentBranch: _repository.CurrentBranch.Length > 0,
+            HasFirstAndSelected: first is not null && selected is not null, HasBase: BaseToCompare() is not null);
+    }
+
+    private void ShowCompareMenu()
+    {
+        OpenCommitsWithDiffToolMenuItem.IsEnabled = Toolbar.GridMenu.CanCompareSelectedCommits;
         if (!_gridDiffToolsLoaded)
         {
             Run(LoadGridDiffToolsAsync);
@@ -163,7 +159,7 @@ public partial class MainWindow
         }
 
         _baseCommitToCompare = (path, row);
-        CompareToBaseMenuItem.IsEnabled = true;
+        Toolbar.GridMenu.BaseSelected();
         return true;
     }
 

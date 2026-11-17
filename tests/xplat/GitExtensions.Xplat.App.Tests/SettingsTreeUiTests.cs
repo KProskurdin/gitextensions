@@ -167,16 +167,20 @@ internal sealed class SettingsTreeUiTests
             ]);
             settings.ChecklistEntries.Single(entry => entry.Item == ChecklistItem.MergeTool).Text.Should()
                 .Be("There is a mergetool configured: meld", "git starts meld itself");
-            Grid rows = Find<Grid>(settings, "ChecklistGrid");
-            int diffRow = Grid.GetRow(rows.Children.OfType<Button>()
-                .Single(button => Equals(button.Tag, ChecklistItem.DiffTool)));
-            Button repair = rows.Children.OfType<Button>()
-                .Single(button =>
-                    Grid.GetRow(button) == diffRow && Equals(button.Content, SettingsChecklist.RepairText));
-            rows.Children.OfType<Button>().Where(button => Equals(button.Content, SettingsChecklist.RepairText))
+            ItemsControl rows = Find<ItemsControl>(settings, "ChecklistGrid");
+            WaitUntil(() =>
+            {
+                settings.UpdateLayout();
+                return RepairButtons(rows).Any();
+            });
+            Button repair = RepairButtons(rows)
+                .Single(button => button.DataContext is ChecklistRow { Item: ChecklistItem.DiffTool });
+            RepairButtons(rows).Where(button => button.IsVisible)
                 .Should().HaveCount(settings.ChecklistEntries.Count(entry => entry.State != ChecklistState.Set));
+            rows.GetLogicalDescendants().OfType<Button>().Count(button => button.Tag is ChecklistItem).Should()
+                .Be(settings.ChecklistEntries.Count);
 
-            UiClicks.Raise(repair, Button.ClickEvent);
+            UiClicks.Click(repair);
 
             settings.SelectedPage!.Title.Should().Be("Config");
             Find<TextBlock>(settings, "InstantSaveNoticeText").IsVisible.Should().BeFalse();
@@ -213,6 +217,10 @@ internal sealed class SettingsTreeUiTests
 
     private static IEnumerable<SettingsPageNode> Descendants(IEnumerable<SettingsPageNode> nodes)
         => nodes.SelectMany(node => (IEnumerable<SettingsPageNode>)[node, .. Descendants(node.Children)]);
+
+    private static IEnumerable<Button> RepairButtons(ItemsControl rows)
+        => rows.GetLogicalDescendants().OfType<Button>()
+            .Where(button => Equals(button.Content, SettingsChecklist.RepairText));
 
     private static void PressEnter(TextBox box)
         => box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.Enter });

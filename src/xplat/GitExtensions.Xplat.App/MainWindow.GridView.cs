@@ -15,72 +15,25 @@ public partial class MainWindow
     // The author whose commits the grid tints: the selected commit's, or the user's while none is selected.
     private string _highlightedAuthorEmail = "";
 
+    // Upstream's View menu, whose state and choices are the view model's (MVVM.md); what a choice changes in the window.
+    private GridViewMenuViewModel NewGridViewMenu() => new(_preferences, _commits, new GridViewMenuServices
+    {
+        ShowBranches = ShowBranches,
+        ApplyFilter = ApplyFilter,
+        EditFilter = EditRevisionFilterAsync,
+        RefreshRepository = RefreshRepository,
+        ShowGridView = ShowGridView,
+        ShowAvatarColumn = ShowAvatarSettings,
+        ShowBuildStatusColumn = ShowBuildStatusColumn,
+        HighlightSelectedBranch = HighlightSelectedBranch,
+        ShowError = ex => ShowError(ex.Message),
+    });
+
     private void WireGridView()
     {
-        ShowAllBranchesMenuItem.Click += (_, _) => ShowBranches(currentOnly: false, filtered: false);
-        ShowCurrentBranchOnlyMenuItem.Click += (_, _) => ShowBranches(currentOnly: true, filtered: false);
-        ShowFilteredBranchesMenuItem.Click += (_, _) => ShowBranches(currentOnly: false, filtered: true);
-        ShowReflogReferencesMenuItem.Click += (_, _) =>
-            ApplyFilter(_commits.Filter with { ShowReflog = !_commits.Filter.ShowReflog });
-        AdvancedFilterViewMenuItem.Click += (_, _) => Run(EditRevisionFilterAsync);
-
-        ShowRemoteBranchesMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
-        {
-            ShowRemoteBranches = !_preferences.GridViewOptions.ShowRemoteBranches,
-        });
-        ShowTagsMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
-        {
-            ShowTags = !_preferences.GridViewOptions.ShowTags,
-        });
-        ShowCommitBodyMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
-        {
-            ShowCommitBody = !_preferences.GridViewOptions.ShowCommitBody,
-        });
-
-        // Upstream's ToggleShowGitNotes and ToggleShowGitNotesColumn read the history again (the notes come with it).
-        ShowGitNotesMenuItem.Click += (_, _) =>
-        {
-            SetGridViewOptions(_preferences.GridViewOptions with { ShowGitNotes = !_preferences.GridViewOptions.ShowGitNotes });
-            RefreshRepository();
-        };
-        ShowGitNotesColumnMenuItem.Click += (_, _) =>
-        {
-            SetGridViewOptions(_preferences.GridViewOptions with
-            {
-                NotesInSeparateColumn = !_preferences.GridViewOptions.NotesInSeparateColumn,
-            });
-            RefreshRepository();
-        };
-
-        ShowGraphColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            Graph = !_preferences.GridColumns.Graph,
-        });
-        ShowAvatarColumnMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowAuthorAvatarColumn = !_preferences.ShowAuthorAvatarColumn;
-            ShowAvatarSettings();
-        };
-        ShowAuthorNameColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            AuthorName = !_preferences.GridColumns.AuthorName,
-        });
-        ShowDateColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            Date = !_preferences.GridColumns.Date,
-        });
-        ShowObjectIdColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            ObjectId = !_preferences.GridColumns.ObjectId,
-        });
-
-        // Upstream's ToggleAuthorDateSort and ToggleTopoOrder: each turns its order on, or back to git's default.
-        AuthorDateSortMenuItem.Click += (_, _) => SetRevisionSortOrder(RevisionSortOrder.AuthorDate);
-        TopoOrderMenuItem.Click += (_, _) => SetRevisionSortOrder(RevisionSortOrder.Topology);
-
         if (ShowAllBranchesMenuItem.Parent is MenuItem view)
         {
-            view.SubmenuOpened += (_, _) => ShowViewMenuChecks();
+            view.SubmenuOpened += (_, _) => GridViewMenu.Refresh();
         }
 
         CommitList.ContainerPrepared += (_, e) => ShowAuthoredHighlight(e.Container);
@@ -101,7 +54,6 @@ public partial class MainWindow
         };
 
         ShowGridView();
-        ShowViewMenuChecks();
     }
 
     // The grid as the View menu and upstream's appearance settings say: the columns, the labels' fill, the alternating rows
@@ -119,56 +71,11 @@ public partial class MainWindow
         CommitList.Classes.Set("alternate", _preferences.RevisionGraphDrawAlternateBackColor);
         _commits.ViewOptions = _preferences.GridViewOptions;
         _commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
-        DrawNonRelativesGrayMenuItem.IsChecked = _commits.DrawNonRelativesGray;
         _commits.DrawNonRelativesTextGray = _preferences.RevisionGraphDrawNonRelativesTextGray;
         foreach (Control container in CommitList.GetRealizedContainers())
         {
             ShowAuthoredHighlight(container);
         }
-    }
-
-    private void ShowViewMenuChecks()
-    {
-        RevisionFilter filter = _commits.Filter;
-        ShowAllBranchesMenuItem.IsChecked = !filter.CurrentBranchOnly && !filter.ShowFilteredBranches;
-        ShowCurrentBranchOnlyMenuItem.IsChecked = filter.CurrentBranchOnly;
-        ShowFilteredBranchesMenuItem.IsChecked = !filter.CurrentBranchOnly && filter.ShowFilteredBranches;
-        ShowReflogReferencesMenuItem.IsChecked = filter.ShowReflog;
-        GridViewOptions options = _preferences.GridViewOptions;
-        ShowRemoteBranchesMenuItem.IsChecked = options.ShowRemoteBranches;
-        ShowTagsMenuItem.IsChecked = options.ShowTags;
-        ShowCommitBodyMenuItem.IsChecked = options.ShowCommitBody;
-        ShowGitNotesMenuItem.IsChecked = options.ShowGitNotes;
-        ShowGitNotesColumnMenuItem.IsChecked = options.NotesInSeparateColumn;
-        GridColumns columns = _preferences.GridColumns;
-        ShowGraphColumnMenuItem.IsChecked = columns.Graph;
-        ShowAvatarColumnMenuItem.IsChecked = _preferences.ShowAuthorAvatarColumn;
-        ShowAuthorNameColumnMenuItem.IsChecked = columns.AuthorName;
-        ShowDateColumnMenuItem.IsChecked = columns.Date;
-        ShowObjectIdColumnMenuItem.IsChecked = columns.ObjectId;
-        AuthorDateSortMenuItem.IsChecked = _preferences.RevisionSortOrder == RevisionSortOrder.AuthorDate;
-        TopoOrderMenuItem.IsChecked = _preferences.RevisionSortOrder == RevisionSortOrder.Topology;
-    }
-
-    private void SetGridViewOptions(GridViewOptions options)
-    {
-        _preferences.GridViewOptions = options;
-        ShowGridView();
-        ShowViewMenuChecks();
-    }
-
-    private void SetGridColumns(GridColumns columns)
-    {
-        _preferences.GridColumns = columns;
-        ShowGridView();
-        ShowViewMenuChecks();
-    }
-
-    private void SetRevisionSortOrder(RevisionSortOrder order)
-    {
-        _preferences.RevisionSortOrder = _preferences.RevisionSortOrder == order ? RevisionSortOrder.GitDefault : order;
-        ShowViewMenuChecks();
-        RefreshRepository();
     }
 
     // Upstream's ProcessRevisionSelectionChange: the selected commit's author, or the user's own commits without a selection.

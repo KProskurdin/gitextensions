@@ -1163,8 +1163,12 @@ Steps:
    window's data context: what can run (from the busy state, the open repository, git, the branch, the remotes and the
    selected commit; about 80 menu items and buttons), the toolstrip's texts (working directory, branch, push's ahead and
    behind, the commit count and state image) and the title. It reads the grid's, the repository's and the actions' view
-   models, which `UpdateBusyState` refreshes as before. The window's other parts follow in `MVVM.md`.
+   models, which `UpdateBusyState` refreshes as before. The window's other parts follow in `MVVM.md`. *Done 2026-11-17:* the rest of the window's state (the View menu, the left panel's and the Diff tab's menus, the dashboard, the status bar, the panels and the banners) is bound to view models; `MVVM.md` lists them.
 5. What stays in code-behind: the menus built from upstream's designers (`MainMenuParityTests`), plugin and script items, the
-   toolbar overflow and the nested frame of a message box.
+   toolbar overflow and the nested frame of a message box. *Changed 2026-11-17 (the user): MVVM everywhere.* The actions
+   behind buttons and menu items move to view model commands too, and a menu built in code from the core's rules becomes
+   items a view model lists; code-behind keeps only what cannot be bound (focus, key capture, measuring text, opening a
+   window through an interface the view model calls, such as `IBrowseWindow`). Started with the browse window's main menu,
+   toolstrip, action bar and grid menu commands (`BrowseToolbarViewModel.Commands.cs`); `MVVM.md` lists what is done.
 6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
    upstream is not affected.

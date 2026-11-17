@@ -6,14 +6,14 @@
         xmlns:local="using:GitExtensions.Xplat.App"
         x:Class="GitExtensions.Xplat.App.SettingsWindow"
         x:DataType="settings:SettingsViewModel"
-        Title="Settings"
+        Title="{Binding PageTree.Title}"
         Width="958" Height="646" WindowStartupLocation="CenterOwner">
   <Window.Styles>
     <!-- The pages are the tab control's items; the tree chooses them, so the tab strip is not shown. -->
     <Style Selector="TabControl#Tabs /template/ ItemsPresenter">
       <Setter Property="IsVisible" Value="False" />
     </Style>
-    <Style Selector="TreeView#SettingsTree TreeViewItem" x:DataType="local:SettingsPageNode">
+    <Style Selector="TreeView#SettingsTree TreeViewItem" x:DataType="settings:SettingsPageNode">
       <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
       <Setter Property="MinHeight" Value="20" />
     </Style>
@@ -29,10 +29,12 @@
        the page, and the buttons under the page. -->
   <Grid Margin="3" ColumnDefinitions="200,6,*" RowDefinitions="*,Auto">
     <DockPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="0">
-      <TextBox x:Name="SettingsSearchBox" DockPanel.Dock="Top" Margin="0,8" />
-      <TreeView x:Name="SettingsTree">
+      <TextBox x:Name="SettingsSearchBox" DockPanel.Dock="Top" Margin="0,8" Text="{Binding PageTree.SearchText}"
+               PlaceholderText="{Binding PageTree.SearchPlaceholder}" />
+      <TreeView x:Name="SettingsTree" ItemsSource="{Binding PageTree.Roots}"
+                SelectedItem="{Binding PageTree.SelectedNode, Mode=TwoWay}">
         <TreeView.ItemTemplate>
-          <TreeDataTemplate x:DataType="local:SettingsPageNode" ItemsSource="{Binding Children}">
+          <TreeDataTemplate x:DataType="settings:SettingsPageNode" ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal" Spacing="4" Classes.found="{Binding IsFound}">
               <Image Source="{Binding Icon}" Width="16" Height="16" VerticalAlignment="Center" />
               <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
@@ -45,7 +47,7 @@
       <TextBlock x:Name="ErrorText" Text="{Binding ErrorText}" Classes="errorText" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="380" />
       <!-- Upstream's labelInstantSaveNotice, shown on the pages that save at once (the Checklist). -->
       <TextBlock x:Name="InstantSaveNoticeText" Text="{x:Static settings:SettingsChecklist.InstantSaveNotice}"
-                 VerticalAlignment="Center" TextAlignment="Right" IsVisible="False" />
+                 VerticalAlignment="Center" TextAlignment="Right" IsVisible="{Binding PageTree.IsInstantSavePage}" />
       <!-- Upstream's buttons in its order. -->
       <Button x:Name="SaveButton" Command="{Binding OkCommand}" Content="OK" IsDefault="True" MinWidth="84" IsEnabled="{Binding !GitConfigPage.IsLoading}" />
       <Button x:Name="CancelButton" Command="{Binding CancelCommand}" Content="Cancel" IsCancel="True" MinWidth="88" />
@@ -53,13 +55,33 @@
     </StackPanel>
     <TabControl x:Name="Tabs" Grid.Row="0" Grid.Column="2" Padding="0">
       <!-- Upstream's "Checklist" page, on the Git Extensions group's node: a row per check, green when the setting is
-           right, red or yellow with a Repair button when not (rows built by SettingsWindow.Checklist). -->
+           right, red or yellow with a Repair button when not. Upstream's rows are flat buttons that repair as Repair does. -->
       <TabItem x:Name="ChecklistTab" Header="Checklist">
         <StackPanel Spacing="4" Margin="4,8">
           <TextBlock Text="{x:Static settings:SettingsChecklist.Introduction}" TextWrapping="Wrap" Margin="0,0,0,6" />
-          <Grid x:Name="ChecklistGrid" ColumnDefinitions="*,6,Auto" />
+          <ItemsControl x:Name="ChecklistGrid" ItemsSource="{Binding Checklist.Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="settings:ChecklistRow">
+                <Grid ColumnDefinitions="*,6,Auto">
+                  <Button Tag="{Binding Item}"
+                          Background="{Binding Background, Converter={x:Static local:DrawingColorBrushConverter.Instance}}"
+                          Foreground="{Binding Foreground, Converter={x:Static local:DrawingColorBrushConverter.Instance}}"
+                          BorderThickness="0" CornerRadius="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                          Margin="0,0,0,4"
+                          Command="{Binding $parent[TabItem].((settings:SettingsViewModel)DataContext).Checklist.RepairCommand}"
+                          CommandParameter="{Binding}">
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                  </Button>
+                  <Button Grid.Column="2" Content="{x:Static settings:SettingsChecklist.RepairText}" VerticalAlignment="Top"
+                          IsVisible="{Binding NeedsRepair}"
+                          Command="{Binding $parent[TabItem].((settings:SettingsViewModel)DataContext).Checklist.RepairCommand}"
+                          CommandParameter="{Binding}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <Button x:Name="ChecklistRescanButton" Content="{x:Static settings:SettingsChecklist.SaveAndRescanText}"
-                  HorizontalAlignment="Left" Margin="0,6,0,0" />
+                  HorizontalAlignment="Left" Margin="0,6,0,0" Command="{Binding Checklist.SaveAndRescanCommand}" />
         </StackPanel>
       </TabItem>
       <!-- Upstream's root pages: the Git and Plugins groups' introductions. -->
@@ -445,7 +467,7 @@
             </ListBox>
           </DockPanel>
           <ScrollViewer Grid.Column="2">
-            <StackPanel x:Name="RevisionLinkDetails" Spacing="6" x:DataType="settings:RevisionLinkItem">
+            <StackPanel x:Name="RevisionLinkDetails" DataContext="{x:Null}" Spacing="6" x:DataType="settings:RevisionLinkItem">
               <Grid ColumnDefinitions="Auto,8,*,12,Auto">
                 <TextBlock Text="Name" VerticalAlignment="Center" />
                 <TextBox x:Name="RevisionLinkNameBox" Grid.Column="2" Text="{Binding Name}" />
@@ -628,7 +650,7 @@
             <Button x:Name="MoveScriptDownButton" Content="Down" Command="{Binding ScriptsPage.MoveDownCommand}" HorizontalAlignment="Stretch" />
             <Button x:Name="ScriptHelpButton" Content="?" HorizontalAlignment="Stretch" ToolTip.Tip="Arguments help" />
           </StackPanel>
-          <Grid x:Name="ScriptDetails" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" x:DataType="scripts:ScriptListItem"
+          <Grid x:Name="ScriptDetails" DataContext="{x:Null}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" x:DataType="scripts:ScriptListItem"
                 ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Name" VerticalAlignment="Center" />
             <TextBox x:Name="ScriptNameBox" Grid.Row="0" Grid.Column="2" Text="{Binding Name}" Margin="0,0,0,6"
@@ -663,9 +685,36 @@
         <DockPanel Margin="4,8" LastChildFill="True">
           <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8"
                      Text="Click a box and press the new key combination. Shared with Git Extensions for Windows; Ctrl is Cmd on macOS. Script hotkeys list the saved scripts." />
-          <Button x:Name="bResetToDefaults" DockPanel.Dock="Bottom" Margin="0,8,0,0" Content="Reset all Hotkeys to defaults" />
+          <Button x:Name="bResetToDefaults" DockPanel.Dock="Bottom" Margin="0,8,0,0" Content="Reset all Hotkeys to defaults"
+                  Command="{Binding Hotkeys.ResetToDefaultsCommand}" />
+          <!-- Per window its name, then per command its name, the keys (press a new combination in the box) and a button
+               that removes them. -->
           <ScrollViewer>
-            <StackPanel x:Name="HotkeysPanel" Spacing="4" />
+            <ItemsControl x:Name="HotkeysPanel" ItemsSource="{Binding Hotkeys.Groups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="settings:HotkeyGroup">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="0,8,0,2" />
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Spacing="4" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="settings:HotkeyRow">
+                          <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Description}" Width="200" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" Width="220" KeyDown="HotkeyBox_KeyDown" />
+                            <Button Content="None" Margin="6,0,0,0" Command="{Binding ClearCommand}" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </ScrollViewer>
         </DockPanel>
       </TabItem>

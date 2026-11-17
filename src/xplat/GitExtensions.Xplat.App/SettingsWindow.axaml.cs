@@ -1,7 +1,9 @@
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Data;
+using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using GitCommands;
@@ -42,16 +44,6 @@ public partial class SettingsWindow : Window
 
     private readonly IAppPreferences _preferences;
     private readonly string? _repositoryPath;
-    private readonly HotkeyEditor<BrowseCommand> _browseHotkeys = new(Hotkeys.Browse);
-    private readonly HotkeyEditor<CommitCommand> _commitHotkeys = new(Hotkeys.Commit);
-    private readonly HotkeyEditor<GridCommand> _gridHotkeys = new(Hotkeys.Grid);
-    private readonly HotkeyEditor<DiffCommand> _diffHotkeys = new(Hotkeys.Diff);
-    private readonly HotkeyEditor<LeftPanelCommand> _leftPanelHotkeys = new(Hotkeys.LeftPanel);
-    private readonly HotkeyEditor<ConflictsCommand> _conflictsHotkeys = new(Hotkeys.Conflicts);
-    private readonly HotkeyEditor<BrowseDiffCommand> _browseDiffHotkeys = new(Hotkeys.BrowseDiff);
-    private readonly HotkeyEditor<StashCommand> _stashHotkeys = new(Hotkeys.Stash);
-    private readonly HotkeyEditor<int> _scriptHotkeys = new(Hotkeys.Scripts);
-    private bool _hotkeysReset;
     private HelpWindow? _scriptHelp;
 
     private readonly DistributedSettings _revisionLinkSettings;
@@ -101,8 +93,23 @@ public partial class SettingsWindow : Window
             Translations = () => Translator.GetAllTranslations(),
             SavePagesBeforeStore = SavePagesBeforeStore,
             SavePagesAfterStore = SavePagesAfterStoreAsync,
+            PageTree = PageTreeServices(PageTexts),
+            Hotkeys =
+            [
+                HotkeyEditor.Group(Hotkeys.Browse, "Browse window"),
+                HotkeyEditor.Group(Hotkeys.Commit, "Commit window"),
+                HotkeyEditor.Group(Hotkeys.Grid, "Revision grid"),
+                HotkeyEditor.Group(Hotkeys.Diff, "Diff viewer"),
+                HotkeyEditor.Group(Hotkeys.LeftPanel, "Left panel"),
+                HotkeyEditor.Group(Hotkeys.Conflicts, "Resolve conflicts"),
+                HotkeyEditor.Group(Hotkeys.BrowseDiff, "Diff tab files"),
+                HotkeyEditor.Group(Hotkeys.Stash, "Stashes"),
+                HotkeyEditor.Group(Hotkeys.Scripts, "Scripts"),
+            ],
+            ChooseLanguage = ChooseLanguageAsync,
+            OpenUri = uri => Launcher.LaunchUriAsync(uri),
+            DarkBackground = DarkEditorBackground,
         }, OperatingSystem.IsWindows());
-        ViewModel.GitPageRequested += (_, _) => Tabs.SelectedItem = GitTab;
         ViewModel.PluginsPage.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(PluginsPageViewModel.IsSkipped) && _headers.ContainsKey(PluginsTab))
@@ -147,30 +154,29 @@ public partial class SettingsWindow : Window
         ShowGitPage();
         ShowSshPage();
         ShowGitConfigPage();
-        ShowHotkeyRows();
+
         ShowScripts();
         ShowRevisionLinks();
         ShowBuildServerPage();
-        ShowChecklistPage();
-        ShowPageTree(pluginsPage ? selectedPlugin ?? (object)PluginsTab : null);
+        ShowPageTree(pluginsPage, selectedPlugin);
     }
 
     public SettingsViewModel ViewModel { get; }
 
     /// <summary>
-    ///  The browse window's hotkey boxes by command, for tests and for the key capture.
+    ///  The browse window's hotkey boxes by command, for tests; the Hotkeys page must be shown.
     /// </summary>
-    public IReadOnlyDictionary<BrowseCommand, TextBox> HotkeyBoxes => _browseHotkeys.Boxes;
+    public IReadOnlyDictionary<BrowseCommand, TextBox> HotkeyBoxes => HotkeyBoxesOf<BrowseCommand>();
 
     /// <summary>
-    ///  The commit window's hotkey boxes by command.
+    ///  The commit window's hotkey boxes by command; the Hotkeys page must be shown.
     /// </summary>
-    public IReadOnlyDictionary<CommitCommand, TextBox> CommitHotkeyBoxes => _commitHotkeys.Boxes;
+    public IReadOnlyDictionary<CommitCommand, TextBox> CommitHotkeyBoxes => HotkeyBoxesOf<CommitCommand>();
 
     /// <summary>
-    ///  The scripts' hotkey boxes by the scripts' hotkey identifiers.
+    ///  The scripts' hotkey boxes by the scripts' hotkey identifiers; the Hotkeys page must be shown.
     /// </summary>
-    public IReadOnlyDictionary<int, TextBox> ScriptHotkeyBoxes => _scriptHotkeys.Boxes;
+    public IReadOnlyDictionary<int, TextBox> ScriptHotkeyBoxes => HotkeyBoxesOf<int>();
 
     /// <summary>
     ///  The script list being edited; stored on OK.
@@ -366,35 +372,20 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void ShowHotkeyRows()
+    // The keys pressed in a hotkey row's box.
+    private void HotkeyBox_KeyDown(object? sender, KeyEventArgs e)
     {
-        _browseHotkeys.AddRows(HotkeysPanel, "Browse window");
-        _commitHotkeys.AddRows(HotkeysPanel, "Commit window");
-        _gridHotkeys.AddRows(HotkeysPanel, "Revision grid");
-        _diffHotkeys.AddRows(HotkeysPanel, "Diff viewer");
-        _leftPanelHotkeys.AddRows(HotkeysPanel, "Left panel");
-        _conflictsHotkeys.AddRows(HotkeysPanel, "Resolve conflicts");
-        _browseDiffHotkeys.AddRows(HotkeysPanel, "Diff tab files");
-        _stashHotkeys.AddRows(HotkeysPanel, "Stashes");
-        _scriptHotkeys.AddRows(HotkeysPanel, "Scripts");
-        bResetToDefaults.Click += (_, _) => ResetHotkeysToDefaults();
+        if (sender is TextBox { DataContext: HotkeyRow row })
+        {
+            HotkeyEditor.Capture(row, e);
+        }
     }
 
-    // Upstream's bResetToDefaults_Click: nothing stored is kept, not even the hotkeys of what the shell does not have; only
-    // Save stores it, as upstream's page.
-    private void ResetHotkeysToDefaults()
-    {
-        _hotkeysReset = true;
-        _browseHotkeys.ShowDefaults();
-        _commitHotkeys.ShowDefaults();
-        _gridHotkeys.ShowDefaults();
-        _diffHotkeys.ShowDefaults();
-        _leftPanelHotkeys.ShowDefaults();
-        _conflictsHotkeys.ShowDefaults();
-        _browseDiffHotkeys.ShowDefaults();
-        _stashHotkeys.ShowDefaults();
-        _scriptHotkeys.ShowDefaults();
-    }
+    private Dictionary<TCommand, TextBox> HotkeyBoxesOf<TCommand>()
+        where TCommand : struct
+        => HotkeysPanel.GetLogicalDescendants().OfType<TextBox>()
+            .Where(box => box.DataContext is HotkeyRow { Command: TCommand })
+            .ToDictionary(box => (TCommand)((HotkeyRow)box.DataContext!).Command);
 
     private void ShowScripts()
     {
@@ -489,16 +480,7 @@ public partial class SettingsWindow : Window
     // The pages whose editors the window drives, stored before the preferences are written.
     private void SavePagesBeforeStore()
     {
-        string? hotkeys = _hotkeysReset ? null : _preferences.SerializedHotkeys;
-        hotkeys = _browseHotkeys.Apply(hotkeys);
-        hotkeys = _commitHotkeys.Apply(hotkeys);
-        hotkeys = _gridHotkeys.Apply(hotkeys);
-        hotkeys = _diffHotkeys.Apply(hotkeys);
-        hotkeys = _leftPanelHotkeys.Apply(hotkeys);
-        hotkeys = _conflictsHotkeys.Apply(hotkeys);
-        hotkeys = _browseDiffHotkeys.Apply(hotkeys);
-        hotkeys = _stashHotkeys.Apply(hotkeys);
-        hotkeys = _scriptHotkeys.Apply(hotkeys);
+        string? hotkeys = ViewModel.Hotkeys.Apply(_preferences.SerializedHotkeys);
         _preferences.SerializedHotkeys = hotkeys;
 
         ViewModel.ScriptsPage.StoreIfChanged(AppServices.Scripts.Save);

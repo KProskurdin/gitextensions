@@ -70,7 +70,6 @@ public partial class MainWindow : Window
     private readonly IFileManager _fileManager;
     private CommitWindow? _commitWindow;
     private ProcessWindow? _processWindow;
-    private GitActionBanner? _actionBanner;
 
     private ScriptHost? _scriptHost;
     private readonly PluginHost _plugins;
@@ -103,6 +102,11 @@ public partial class MainWindow : Window
     /// </summary>
     public BrowseToolbarViewModel Toolbar { get; }
 
+    /// <summary>
+    ///  The View menu's check marks and choices.
+    /// </summary>
+    public GridViewMenuViewModel GridViewMenu { get; }
+
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
@@ -124,14 +128,26 @@ public partial class MainWindow : Window
             ShowCommitWindow) { NewCloneWindow = NewCloneWindow };
         _plugins.BrowseRepo = this;
         Toolbar = new BrowseToolbarViewModel(_commits, _repository, _actions, _recent, _preferences,
-            gitAvailable: _git?.Status != GitDiscoveryStatus.NotFound, UpstreamTranslation.ByText);
+            gitAvailable: _git?.Status != GitDiscoveryStatus.NotFound, UpstreamTranslation.ByText)
+        {
+            Window = this, AccessKeyText = UpstreamTranslation.WithAccessKey,
+        };
+        GridViewMenu = NewGridViewMenu();
         InitializeComponent();
         WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
+
+        // The parts bound to another view model get it before the window's is set, so their compiled bindings never see
+        // the toolbar's (a binding of another type throws).
+        ViewMenu.DataContext = GridViewMenu;
+        DashboardRepositories.DataContext = Dashboard;
 
         // The commands' state, the toolstrip's texts and the title (PLAN.md section 12.6 step 4). A context menu and a
         // flyout's items get their data context only when they open (MVVM.md), so theirs are set here.
         DataContext = Toolbar;
         CommitContextMenu.DataContext = Toolbar;
+        BranchTreeContextMenu.DataContext = Toolbar;
+        Toolbar.TreeMenu.Attach(_actions, this);
+        Toolbar.TreeMenu.Read = RepoObjectMenuState;
         if (PullButton.Flyout is MenuFlyout pullMenu)
         {
             foreach (Control item in pullMenu.Items.OfType<Control>())
@@ -166,7 +182,7 @@ public partial class MainWindow : Window
             StopBuildServer();
         };
         WireBuildStatus();
-        WireRepositoryHosts();
+
         _plugins.PostRepositoryChanged += (_, _) => RefreshRepository();
         ShowGitProblem();
         Hotkeys.Load(_preferences.SerializedHotkeys);
@@ -184,101 +200,21 @@ public partial class MainWindow : Window
 
     private void WireToolbar()
     {
-        RefreshButton.Click += (_, _) => RefreshRepository();
-        CommitDialogButton.Click += (_, _) => ShowCommitWindow();
-        PullButton.Click += (_, _) => Pull();
-        PushButton.Click += (_, _) => Push();
-        OpenFolderButton.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
         WireMainToolStrip();
         TrackSplitters();
         WireFilterToolStrip();
-        LoadMoreButton.Click += (_, _) => Run(_commits.LoadMoreAsync);
-        ResolveConflictsButton.Click += (_, _) => ShowConflicts();
-        ContinueActionButton.Click += (_, _) => ContinueAction();
-        AbortActionButton.Click += (_, _) => AbortAction();
-        MoreActionButton.Click += (_, _) =>
-        {
-            // Upstream's More... of a rebase opens FormRebase (StartTheContinueRebaseDialog), of a patch FormApplyPatch
-            // (StartApplyPatchDialog), which shows the stopped git am's patches with Skip, Resolved and Abort.
-            switch (_actionBanner?.Action)
-            {
-                case GitAction.Rebase:
-                    RunOnRepository(path => ShowRebaseAsync(path, onto: null));
-                    break;
-                case GitAction.Patch:
-                    RunOnRepositoryFolder(ShowApplyPatch);
-                    break;
-            }
-        };
-        BisectMoreButton.Click += (_, _) => Run(ShowBisectAsync);
     }
 
     private void WireMenus()
     {
-        OpenMenuItem.Click += (_, _) => Run(PickAndOpenRepositoryAsync);
-        CloneMenuItem.Click += (_, _) => Run(CloneAsync);
-        InitMenuItem.Click += (_, _) => Run(PickAndInitRepositoryAsync);
-        CloseRepositoryMenuItem.Click += (_, _) => CloseRepository();
-        ExitMenuItem.Click += (_, _) => Close();
-        RefreshMenuItem.Click += (_, _) => RefreshRepository();
-        RemoteRepositoriesMenuItem.Click += (_, _) => Run(() => ShowRemotesAsync(this));
-        FileExplorerMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => _fileManager.OpenFolder(path));
-        TerminalMenuItem.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
-        FilesMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
-        ReflogMenuItem.Click += (_, _) => Run(ShowReflogAsync);
-        GitIgnoreMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: false));
-        GitInfoExcludeMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: true));
-        UpdateAllSubmodulesMenuItem.Click += (_, _) => RunOnRepository(path => UpdateSubmodulesAsync(path, null));
-        SyncAllSubmodulesMenuItem.Click += (_, _) =>
-            RunOnRepository(path => _actions.SyncSubmodulesAsync(path, path: null));
-        WorktreesMenuItem.Click += (_, _) => Run(ShowWorktreesAsync);
-        CommitMenuItem.Click += (_, _) => ShowCommitWindow();
-        PullDialogMenuItem.Click += (_, _) => Run(ShowPullDialogAsync);
-        PushDialogMenuItem.Click += (_, _) => Run(() => ShowPushDialogAsync());
-        ManageStashesCommandMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
-        ResetChangesMenuItem.Click += (_, _) => RunOnRepository(ResetChangesAsync);
-        CreateBranchMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
-        CheckoutBranchMenuItem.Click += (_, _) => RunOnRepository(path => StartCheckoutBranchAsync(path));
-        CheckoutRevisionMenuItem.Click +=
-            (_, _) => RunOnRepository(path => ShowCheckoutRevisionAsync(path, revision: null));
-        MergeMenuItem.Click += (_, _) => RunOnRepository(path => ShowMergeAsync(path, branch: null));
-        RebaseMenuItem.Click += (_, _) => ShowRebaseOnSelectedCommit();
-        CreateTagMenuItem.Click += (_, _) => Run(() => ShowCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
-        BisectMenuItem.Click += (_, _) => Run(ShowBisectAsync);
-        ResolveConflictsMenuItem.Click += (_, _) => ShowConflicts();
-        CommandLogMenuItem.Click += (_, _) => CommandLogWindow.ShowFor(this);
-        SettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync());
         WireStartMenu();
-        WireDeleteRefs();
+
         WireCommandsMenu();
-        foreach ((MenuItem item, GridCommand command) in NavigateMenuCommands())
-        {
-            item.Click += (_, _) => RunGridHotkey(command);
-        }
 
-        PluginSettingsMenuItem.Click += (_, _) => Run(() => ShowSettingsAsync(pluginsPage: true));
-
-        // Upstream's View menu toggles for the grid's date column.
-        ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
-        ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
-        ShowAuthorDateMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowAuthorDate = !_preferences.ShowAuthorDate;
-            ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
-            RefreshRepository();
-        };
-        ShowRelativeDateMenuItem.Click += (_, _) =>
-        {
-            _preferences.RelativeDate = !_preferences.RelativeDate;
-            ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
-            RefreshRepository();
-        };
         WireGraphStyles();
-        WireSuperprojectLabels();
         WireOutputHistory();
         WireQuickSearch();
         WireMouseNavigation();
-        AboutMenuItem.Click += (_, _) => ShowAbout();
     }
 
     private void WireLeftPanel()
@@ -339,27 +275,8 @@ public partial class MainWindow : Window
                 RunBrowseDiffHotkey(BrowseDiffCommand.ShowHistory);
             }
         };
-        ShowCommitDiffButton.Click += (_, _) => ShowCommitDiff();
-        CommitDiffToolButton.Click += (_, _) => Run(OpenCommitFileInDiffToolAsync);
         DiffToolChoices.Attach(CommitDiffToolChoiceButton, tool => OpenCommitFileInDiffToolAsync(tool),
             message => ShowError(message));
-        CreateBranchHereMenuItem.Click += (_, _) => Run(() => PromptCreateBranchAsync(_commits.Selected?.Hash));
-        CreateTagHereMenuItem.Click += (_, _) => Run(() => ShowCreateTagAsync(_commits.Selected?.Hash ?? "HEAD"));
-        BrowseFilesHereMenuItem.Click += (_, _) => ShowFiles(_commits.Selected?.Hash ?? "HEAD");
-        CheckoutCommitMenuItem.Click +=
-            (_, _) => RunOnSelectedCommit((path, row) => ShowCheckoutRevisionAsync(path, row.Hash));
-        CherryPickMenuItem.Click += (_, _) => CherryPickSelectedRevision();
-        RevertMenuItem.Click += (_, _) => RevertSelectedRevision();
-        ResetCurrentBranchMenuItem.Click += (_, _) =>
-            RunOnSelectedCommit((path, row) => ShowResetCurrentBranchAsync(this, path, row.Hash, ResetMode.Soft));
-        RebaseOnCommitMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: false));
-        RebaseInteractiveMenuItem.Click += (_, _) => Run(() => RebaseOnSelectedCommitAsync(interactive: true));
-        RebaseAdvancedMenuItem.Click += (_, _) =>
-            RunOnSelectedCommit((path, row) => ShowRebaseAsync(path, row.Hash, from: RebaseRangeStart()));
-        MarkBadMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Bad);
-        MarkGoodMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Good);
-        BisectSkipMenuItem.Click += (_, _) => MarkSelectedForBisect(GitBisectOption.Skip);
-        StopBisectMenuItem.Click += (_, _) => RunOnRepository(path => _actions.StopBisectAsync(path));
     }
 
     // The File tree tab follows the selected commit (HEAD when none is selected), and is read only while it is on show.
@@ -1028,19 +945,9 @@ public partial class MainWindow : Window
         StopBuildServer();
     }
 
-    // The dashboard of recent repositories stands in for the grid while no repository is open.
-    private void ShowRepositoryPanels()
-    {
-        bool open = RepositoryPath is not null;
-        BrowsePanel.IsVisible = open;
-        DashboardPanel.IsVisible = !open;
-        LeftPanel.IsVisible = open;
-
-        // Upstream's menus for the dashboard: its Dashboard menu instead of the repository's menus.
-        DashboardMenu.IsVisible = !open;
-        RepositoryMainMenu.IsVisible = NavigateMenu.IsVisible = ViewMenu.IsVisible = open;
-        CommandsMenu.IsVisible = PluginsMenu.IsVisible = open;
-    }
+    // The dashboard of recent repositories stands in for the grid while no repository is open, with its Dashboard menu
+    // instead of the repository's menus (bound to the toolbar view model's IsRepositoryShown).
+    private void ShowRepositoryPanels() => Toolbar.Refresh(RepositoryPath);
 
     private void OnRecentChanged(string? propertyName)
     {
@@ -1224,33 +1131,17 @@ public partial class MainWindow : Window
     // Upstream's branch sort (RefsSortBy, RefsSortOrder, done by git) and priorities, read at each refresh.
     private RefSorting RefSorting() => CommitInfoView.UserRefSorting(_preferences);
 
-    // Upstream's left panel menus list every choice by its description and check the current one; a choice applies at once.
+    // The left panel's sort menus are the view model's entries, checked again as the menu opens.
     private void ShowSortMenus()
     {
-        foreach (GitRefsSortBy sortBy in Enum.GetValues<GitRefsSortBy>())
-        {
-            SortByMenuItem.Items.Add(SortMenuItem(sortBy.GetDescription(), () => _preferences.RefsSortBy == sortBy,
-                () => _preferences.RefsSortBy = sortBy));
-        }
-
-        foreach (GitRefsSortOrder order in Enum.GetValues<GitRefsSortOrder>())
-        {
-            SortOrderMenuItem.Items.Add(SortMenuItem(order.GetDescription(), () => _preferences.RefsSortOrder == order,
-                () => _preferences.RefsSortOrder = order));
-        }
+        FillSortMenus();
+        BranchTreeContextMenu.Opening += (_, _) => FillSortMenus();
     }
 
-    private MenuItem SortMenuItem(string header, Func<bool> isCurrent, Action choose)
+    private void FillSortMenus()
     {
-        MenuItem item = new() { Header = header, ToggleType = MenuItemToggleType.Radio, IsChecked = isCurrent() };
-        BranchTreeContextMenu.Opening += (_, _) => item.IsChecked = isCurrent();
-        item.Click += (_, _) =>
-        {
-            choose();
-            _preferences.Save();
-            RefreshRepository();
-        };
-        return item;
+        MenuEntries.Fill(SortByMenuItem.Items, Toolbar.TreeMenu.SortByMenu(_preferences.RefsSortBy), this);
+        MenuEntries.Fill(SortOrderMenuItem.Items, Toolbar.TreeMenu.SortOrderMenu(_preferences.RefsSortOrder), this);
     }
 
     private void ShowUserScripts()
@@ -1274,8 +1165,8 @@ public partial class MainWindow : Window
                 };
             }
 
-            button.Click += (_, _) =>
-                RunOnRepository(path => Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions()));
+            button.Command = Toolbar.RunUserScriptCommand;
+            button.CommandParameter = script;
             UserScriptsPanel.Children.Add(button);
         }
 
@@ -1635,8 +1526,7 @@ public partial class MainWindow : Window
             await _recent.LoadAsync();
 
             // The date and commit button settings show on the next read.
-            ShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
-            ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
+            GridViewMenu.Refresh();
             UpdateBranchText();
             _commits.MaxCommits = _preferences.MaxRevisionGraphCommits;
             ShowArtificialChangeCounts();
@@ -1667,7 +1557,8 @@ public partial class MainWindow : Window
                 item.Icon = new Image { Source = icon, Width = 16, Height = 16 };
             }
 
-            item.Click += (_, _) => ExecutePlugin(plugin);
+            item.Command = Toolbar.ExecutePluginCommand;
+            item.CommandParameter = plugin;
             PluginsMenu.Items.Insert(index++, item);
         }
 
@@ -1938,11 +1829,7 @@ public partial class MainWindow : Window
         switch (propertyName)
         {
             case nameof(RepositoryOperationsViewModel.IsBusy):
-                OperationStatusText.Text = _actions.IsBusy ? "Working..." : _actions.StatusMessage;
                 UpdateBusyState();
-                break;
-            case nameof(RepositoryOperationsViewModel.StatusMessage):
-                OperationStatusText.Text = _actions.StatusMessage;
                 break;
             case nameof(RepositoryOperationsViewModel.ErrorMessage):
                 if (_actions.ErrorMessage is { } message)
@@ -1974,18 +1861,14 @@ public partial class MainWindow : Window
             case nameof(CommitListViewModel.VisibleRows):
                 ShowGridRows();
                 break;
-            case nameof(CommitListViewModel.Status):
-                StatusText.Text = _commits.Status;
-                break;
+
             case nameof(CommitListViewModel.Filter):
                 ShowFilterState();
                 break;
             case nameof(CommitListViewModel.RepositoryName):
                 Toolbar.Refresh(RepositoryPath);
                 break;
-            case nameof(CommitListViewModel.HasMore):
-                LoadMoreButton.IsVisible = _commits.HasMore;
-                break;
+
             case nameof(CommitListViewModel.IsLoading):
                 UpdateBusyState();
                 ShowHiddenRepoObjects();
@@ -2063,77 +1946,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // Upstream's FormBrowse refreshes both notification bars with the repository (RefreshBisect, RefreshGitAction).
-    private void UpdateStateBanner()
-    {
-        bool conflicts = _repository.Changes.Any(change => change.Kind == ChangeKind.Conflict);
-        _actionBanner = GitActionBanner.ForRepository(_repository.IsRebasing, _repository.IsMerging,
-            _repository.IsApplyingPatch, conflicts);
-        ShowBanner(StateBanner, StateBannerText, StateBannerIcon, _actionBanner);
-        IReadOnlyList<GitActionButton> buttons = _actionBanner?.Buttons ?? [];
-        ResolveConflictsButton.IsVisible = buttons.Contains(GitActionButton.Resolve);
-        ContinueActionButton.IsVisible = buttons.Contains(GitActionButton.Continue);
-        AbortActionButton.IsVisible = buttons.Contains(GitActionButton.Abort);
-        MoreActionButton.IsVisible = buttons.Contains(GitActionButton.More);
-
-        ShowBanner(BisectBanner, BisectBannerText, BisectBannerIcon, GitActionBanner.ForBisect(_repository.IsBisecting));
-        foreach (Control item in new Control[]
-                 {
-                     MarkBadMenuItem, MarkGoodMenuItem, BisectSkipMenuItem, StopBisectMenuItem, BisectSeparator,
-                 })
-        {
-            item.IsVisible = _repository.IsBisecting;
-        }
-    }
-
-    // Upstream's IconBox: the information picture, or the solve merge one while there are conflicts.
-    private static void ShowBanner(Border banner, TextBlock text, Image icon, GitActionBanner? state)
-    {
-        banner.IsVisible = state is not null;
-        if (state is null)
-        {
-            return;
-        }
-
-        text.Text = state.Text;
-        text.Foreground = ThemeBrushes.Current.Context;
-        icon.Source = UpstreamImages.Named(state.HasConflicts ? "SolveMerge" : "information");
-        banner.Background = state.HasConflicts ? ThemeBrushes.Current.ConflictBanner : ThemeBrushes.Current.InfoBanner;
-    }
-
-    // Upstream's ContinueButton_Click: the action's own continue command.
-    private void ContinueAction()
-    {
-        switch (_actionBanner?.Action)
-        {
-            case GitAction.Rebase:
-                RunOnRepository(path => _actions.ContinueRebaseAsync(path));
-                break;
-            case GitAction.Merge:
-                RunOnRepository(path => _actions.ContinueMergeAsync(path));
-                break;
-            case GitAction.Patch:
-                RunOnRepository(path => _actions.ContinuePatchAsync(path));
-                break;
-        }
-    }
-
-    // Upstream's AbortButton_Click: the command runs at once.
-    private void AbortAction()
-    {
-        switch (_actionBanner?.Action)
-        {
-            case GitAction.Rebase:
-                RunOnRepository(_actions.AbortRebaseAsync);
-                break;
-            case GitAction.Merge:
-                RunOnRepository(_actions.AbortMergeAsync);
-                break;
-            case GitAction.Patch:
-                RunOnRepository(_actions.AbortPatchAsync);
-                break;
-        }
-    }
+    // Upstream's FormBrowse refreshes both notification bars with the repository (RefreshBisect, RefreshGitAction); their
+    // state is the toolbar view model's.
+    private void UpdateStateBanner() => Toolbar.Refresh(RepositoryPath);
 
     // Upstream's FormBisect, from Commands > Bisect... or the bar's More...: the window starts the bisect itself and returns
     // the step to run next.
@@ -2457,20 +2272,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateBranchText()
-    {
-        string branch = _repository.CurrentBranch;
-        string state = _repository.IsRebasing ? " (rebase in progress)" :
-            _repository.IsMerging ? " (merge in progress)" : "";
-
-        // Upstream's "Show ahead and behind information on status bar in browse window".
-        string sync = _preferences.ShowAheadBehindData && _repository.Sync is { } status
-            ? $" [ahead {status.Ahead}, behind {status.Behind}]"
-            : "";
-        BranchText.Text = branch.Length == 0 ? "" : $"Branch: {branch}{state}{sync}";
-        StashCountText.IsVisible = _preferences.ShowStashCount && RepositoryPath is not null;
-        StashCountText.Text = $"Stashes: {_repository.Stashes.Count}";
-    }
+    // The status bar's branch and stash count are the toolbar view model's.
+    private void UpdateBranchText() => Toolbar.Refresh(RepositoryPath);
 
     private void ShowFiles(string hash)
     {

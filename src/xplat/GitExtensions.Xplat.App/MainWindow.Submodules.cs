@@ -14,10 +14,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    private void WireSubmodulesMenu()
-        => ManageSubmodulesMenuItem.Click +=
-            (_, _) => RunOnRepositoryFolder(path => Run(() => ManageSubmodulesAsync(path)));
-
     // Upstream's StartSubmodulesDialog, then UpdateSubmodulesStructure: the repository is read again.
     private async Task ManageSubmodulesAsync(string path)
     {

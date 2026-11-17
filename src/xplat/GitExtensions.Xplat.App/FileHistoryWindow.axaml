@@ -118,42 +118,42 @@
             <MenuItem x:Name="PrevQuickSearchMenuItem" Header="Quick search p_revious" />
             <MenuItem x:Name="NextQuickSearchMenuItem" Header="Quick search _next" />
           </MenuItem>
-          <MenuItem x:Name="ViewMenuItem" Header="View" Icon="{local:UpstreamIcon AdvancedSettings}">
+          <MenuItem x:Name="ViewMenuItem" DataContext="{x:Null}" Header="View" x:DataType="core:GridViewMenuViewModel" Icon="{local:UpstreamIcon AdvancedSettings}">
             <MenuItem Classes="groupHeader" Header="Branches" IsEnabled="False" />
-            <MenuItem x:Name="ShowAllBranchesMenuItem" Header="Show _all branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchLocal}" />
-            <MenuItem x:Name="ShowCurrentBranchOnlyMenuItem" Header="Show _current branch only" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
-            <MenuItem x:Name="ShowFilteredBranchesMenuItem" Header="Show _filtered branches" ToggleType="Radio" Icon="{local:UpstreamIcon BranchFilter}" />
-            <MenuItem x:Name="ShowReflogReferencesMenuItem" Header="Show _reflog references" ToggleType="CheckBox" Icon="{local:UpstreamIcon Book}" />
+            <MenuItem x:Name="ShowAllBranchesMenuItem" Header="Show _all branches" ToggleType="Radio" IsChecked="{Binding ShowAllBranches}" Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static core:BranchesShown.All}" Icon="{local:UpstreamIcon BranchLocal}" />
+            <MenuItem x:Name="ShowCurrentBranchOnlyMenuItem" Header="Show _current branch only" ToggleType="Radio" IsChecked="{Binding ShowCurrentBranchOnly}" Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static core:BranchesShown.CurrentOnly}" Icon="{local:UpstreamIcon BranchFilter}" />
+            <MenuItem x:Name="ShowFilteredBranchesMenuItem" Header="Show _filtered branches" ToggleType="Radio" IsChecked="{Binding ShowFilteredBranches}" Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static core:BranchesShown.Filtered}" Icon="{local:UpstreamIcon BranchFilter}" />
+            <MenuItem x:Name="ShowReflogReferencesMenuItem" Header="Show _reflog references" ToggleType="CheckBox" IsChecked="{Binding ShowReflog}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.Reflog}" Icon="{local:UpstreamIcon Book}" />
             <Separator />
-            <MenuItem x:Name="AdvancedFilterViewMenuItem" Header="Advanced filter..." Icon="{local:UpstreamIcon EditFilter}" />
+            <MenuItem x:Name="AdvancedFilterViewMenuItem" Command="{Binding EditFilterCommand}" Header="Advanced filter..." Icon="{local:UpstreamIcon EditFilter}" />
             <Separator />
-            <MenuItem x:Name="DrawNonRelativesGrayMenuItem" Header="Draw non relatives gra_y" ToggleType="CheckBox" />
-            <MenuItem x:Name="HighlightSelectedBranchMenuItem" Header="Highlight selected branch (until refresh)" />
+            <MenuItem x:Name="DrawNonRelativesGrayMenuItem" Header="Draw non relatives gra_y" ToggleType="CheckBox" IsChecked="{Binding DrawNonRelativesGray}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.DrawNonRelativesGray}" />
+            <MenuItem x:Name="HighlightSelectedBranchMenuItem" Command="{Binding HighlightSelectedBranchCommand}" Header="Highlight selected branch (until refresh)" />
             <Separator />
             <MenuItem Classes="groupHeader" Header="Commits" IsEnabled="False" />
-            <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowSessionCheckpointsMenuItem" Header="Show session checkpoints" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowArtificialCommitsMenuItem" Header="Show artificial commits" ToggleType="CheckBox" IsChecked="{Binding ShowArtificialCommits}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.ArtificialCommits}" />
+            <MenuItem x:Name="ShowStashesMenuItem" Header="Show stashes" ToggleType="CheckBox" IsChecked="{Binding ShowStashes}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.Stashes}" />
+            <MenuItem x:Name="ShowSessionCheckpointsMenuItem" Header="Show session checkpoints" ToggleType="CheckBox" IsChecked="{Binding ShowSessionCheckpoints}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.SessionCheckpoints}" />
             <Separator />
             <MenuItem Classes="groupHeader" Header="Grid labels" IsEnabled="False" />
-            <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowTagsMenuItem" Header="Show _tags" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowRemoteBranchesMenuItem" Header="Show remote _branches" ToggleType="CheckBox" IsChecked="{Binding ShowRemoteBranches}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.RemoteBranches}" />
+            <MenuItem x:Name="ShowTagsMenuItem" Header="Show _tags" ToggleType="CheckBox" IsChecked="{Binding ShowTags}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.Tags}" />
             <Separator />
             <MenuItem Classes="groupHeader" Header="Grid info" IsEnabled="False" />
-            <MenuItem x:Name="ShowCommitBodyMenuItem" Header="Show commit message body" ToggleType="CheckBox" />
-            <MenuItem x:Name="GridShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowCommitBodyMenuItem" Header="Show commit message body" ToggleType="CheckBox" IsChecked="{Binding ShowCommitBody}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.CommitBody}" />
+            <MenuItem x:Name="GridShowAuthorDateMenuItem" Header="Sho_w author date" ToggleType="CheckBox" IsChecked="{Binding ShowAuthorDate}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AuthorDate}" />
+            <MenuItem x:Name="ShowRelativeDateMenuItem" Header="Show relati_ve date" ToggleType="CheckBox" IsChecked="{Binding ShowRelativeDate}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.RelativeDate}" />
             <Separator />
             <MenuItem Classes="groupHeader" Header="Columns" IsEnabled="False" />
-            <MenuItem x:Name="ShowGraphColumnMenuItem" Header="Show revision _graph column" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowAvatarColumnMenuItem" Header="Show aut_hor avatar column" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowAuthorNameColumnMenuItem" Header="Show a_uthor name column" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowDateColumnMenuItem" Header="Show _date column" ToggleType="CheckBox" />
-            <MenuItem x:Name="ShowObjectIdColumnMenuItem" Header="Show SHA_-1 column" ToggleType="CheckBox" />
+            <MenuItem x:Name="ShowGraphColumnMenuItem" Header="Show revision _graph column" ToggleType="CheckBox" IsChecked="{Binding ShowGraphColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.GraphColumn}" />
+            <MenuItem x:Name="ShowAvatarColumnMenuItem" Header="Show aut_hor avatar column" ToggleType="CheckBox" IsChecked="{Binding ShowAvatarColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AvatarColumn}" />
+            <MenuItem x:Name="ShowAuthorNameColumnMenuItem" Header="Show a_uthor name column" ToggleType="CheckBox" IsChecked="{Binding ShowAuthorNameColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AuthorNameColumn}" />
+            <MenuItem x:Name="ShowDateColumnMenuItem" Header="Show _date column" ToggleType="CheckBox" IsChecked="{Binding ShowDateColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.DateColumn}" />
+            <MenuItem x:Name="ShowObjectIdColumnMenuItem" Header="Show SHA_-1 column" ToggleType="CheckBox" IsChecked="{Binding ShowObjectIdColumn}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.ObjectIdColumn}" />
             <Separator />
             <MenuItem Classes="groupHeader" Header="Sorting" IsEnabled="False" />
-            <MenuItem x:Name="AuthorDateSortMenuItem" Header="_Sort commits by author date" ToggleType="CheckBox" />
-            <MenuItem x:Name="TopoOrderMenuItem" Header="Arrange c_ommits by topo order (ancestor order)" ToggleType="CheckBox" />
+            <MenuItem x:Name="AuthorDateSortMenuItem" Header="_Sort commits by author date" ToggleType="CheckBox" IsChecked="{Binding SortByAuthorDate}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.AuthorDateSort}" />
+            <MenuItem x:Name="TopoOrderMenuItem" Header="Arrange c_ommits by topo order (ancestor order)" ToggleType="CheckBox" IsChecked="{Binding TopoOrder}" Command="{Binding ToggleCommand}" CommandParameter="{x:Static core:GridViewToggle.TopoOrder}" />
           </MenuItem>
         </ContextMenu>
       </ListBox.ContextMenu>

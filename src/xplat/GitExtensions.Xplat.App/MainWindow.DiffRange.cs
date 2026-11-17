@@ -45,8 +45,8 @@ public partial class MainWindow
         int version = ++_diffGroupsVersion;
         IReadOnlyList<CommitRow> selected = SelectedRevisions;
         string grep = _gitGrep;
-        bool showSkipWorktree = DiffFilesShowSkipWorktreeMenuItem.IsChecked;
-        bool showUntracked = DiffFilesShowUntrackedMenuItem.IsChecked;
+        bool showSkipWorktree = DiffFilesSettings.ShowSkipWorktree;
+        bool showUntracked = DiffFilesSettings.ShowUntracked;
         if (RepositoryPath is not { } path || !(UsesDiffGroups(selected) || (grep.Length > 0 && selected.Count > 0)
                 || (showSkipWorktree && selected.Any(row => row.Hash == ArtificialCommits.WorkTreeHash))))
         {

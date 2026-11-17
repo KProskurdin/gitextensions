@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
@@ -12,10 +13,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    // Git's setting of upstream's initial "Show untracked files", and its value that turns them off.
-    private const string ShowUntrackedFilesSetting = "status.showuntrackedfiles";
-    private const string NoUntrackedFiles = "no";
-
     // Git's status letter of an untracked file in the Diff tab's list.
     private const string UntrackedStatus = "?";
 
@@ -26,51 +23,46 @@ public partial class MainWindow
     // reads it once per window).
     private string? _showUntrackedReadFor;
 
+    private DiffFilesSettingsViewModel? _diffFilesSettings;
+
+    /// <summary>
+    ///  The state of the settings menu over the Diff tab's files.
+    /// </summary>
+    public DiffFilesSettingsViewModel DiffFilesSettings
+        => _diffFilesSettings ??= new DiffFilesSettingsViewModel(_preferences, new DiffFilesSettingsServices
+        {
+            RefreshFiles = RefreshDiffFilesFromSettings,
+            ShowFiles = ShowSelectedCommitFiles,
+            RecalculateGroups = ShowSelectionDiff,
+            EditIgnoredFiles = EditGitIgnoreAsync,
+            ShowError = ex => ShowError(ex.Message),
+        });
+
+    // The menu's checks are the view model's (MVVM.md); its items get their data context here, as a flyout's items do not
+    // inherit it. The ignored files' editors are its commands too, which ask the window for the editor.
     private void WireDiffFileSettings()
     {
-        FileListToolbar.Attach(DiffFilesSettingsButton, _preferences, (MenuFlyout)DiffFilesSettingsButton.Flyout!);
-        DiffFilesShowUntrackedMenuItem.Click += (_, _) => RefreshDiffFilesFromSettings();
-        DiffFilesShowSkipWorktreeMenuItem.Click += (_, _) => RefreshDiffFilesFromSettings();
-        DiffFilesEditGitIgnoreMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: false));
-        DiffFilesEditLocallyIgnoredMenuItem.Click += (_, _) => Run(() => EditGitIgnoreAsync(localExclude: true));
-        ((MenuFlyout)DiffFilesSettingsButton.Flyout!).Opening += (_, _) =>
+        MenuFlyout menu = (MenuFlyout)DiffFilesSettingsButton.Flyout!;
+        FileListToolbar.Attach(DiffFilesSettingsButton, _preferences, menu);
+        foreach (Control item in menu.Items.OfType<Control>())
         {
-            // Upstream's UpdateToolbar(revisions): untracked files only for the working directory.
-            DiffFilesShowUntrackedMenuItem.IsEnabled = SelectedRevisions.Any(row => row.Hash == ArtificialCommits.WorkTreeHash);
-            DiffFilesShowSkipWorktreeMenuItem.IsEnabled = DiffFilesShowUntrackedMenuItem.IsEnabled;
-            DiffFilesRefreshOnFormFocusMenuItem.IsChecked = _preferences.RefreshCommitDialogOnFocus;
-            DiffFilesShowDiffForAllParentsMenuItem.IsChecked = _preferences.ShowDiffForAllParents;
-            ToolTip.SetTip(DiffFilesShowDiffForAllParentsMenuItem,
-                Ui.UpstreamTranslation.ByText(SettingsWindow.ShowDiffForAllParentsTooltip));
-        };
-        DiffFilesRefreshOnFormFocusMenuItem.Click += (_, _) =>
-        {
-            _preferences.RefreshCommitDialogOnFocus = DiffFilesRefreshOnFormFocusMenuItem.IsChecked;
-            _preferences.Save();
-        };
+            item.DataContext = DiffFilesSettings;
+        }
 
-        // Upstream's ShowDiffForAllParents_Click: the groups are calculated again.
-        DiffFilesShowDiffForAllParentsMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowDiffForAllParents = DiffFilesShowDiffForAllParentsMenuItem.IsChecked;
-            _preferences.Save();
-            ShowSelectionDiff();
-        };
+        ToolTip.SetTip(DiffFilesShowDiffForAllParentsMenuItem,
+            Ui.UpstreamTranslation.ByText(SettingsWindow.ShowDiffForAllParentsTooltip));
+        menu.Opening += (_, _) =>
+            DiffFilesSettings.Refresh(SelectedRevisions.Any(row => row.Hash == ArtificialCommits.WorkTreeHash));
     }
 
     // Upstream's BindContextMenu: "Show untracked files" starts as git says, read when a repository opens.
-    private async Task ReadShowUntrackedFilesAsync(string path)
-    {
-        string value = await Task.Run(() => GitModules.Open(path).GetEffectiveSetting(ShowUntrackedFilesSetting));
-        DiffFilesShowUntrackedMenuItem.IsChecked = value != NoUntrackedFiles;
-        ShowSelectedCommitFiles();
-    }
+    private Task ReadShowUntrackedFilesAsync(string path) => DiffFilesSettings.ReadShowUntrackedAsync(path);
 
     // The selected row's own files, without the untracked ones while "Show untracked files" is off.
     private IReadOnlyList<CommitFile>? SelectedCommitFiles()
         => _commits.Selected is null
             ? null
-            : DiffFilesShowUntrackedMenuItem.IsChecked
+            : DiffFilesSettings.ShowUntracked
                 ? _commits.CommitFiles
                 : [.. _commits.CommitFiles.Where(file => file.Status != UntrackedStatus)];
 

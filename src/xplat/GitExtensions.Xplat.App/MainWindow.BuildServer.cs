@@ -43,20 +43,9 @@ public partial class MainWindow
     private void WireBuildStatus()
     {
         ShowBuildStatusColumn();
-        ShowBuildStatusIconMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowBuildStatusIconColumn = !_preferences.ShowBuildStatusIconColumn;
-            ShowBuildStatusColumn();
-        };
-        ShowBuildStatusTextMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowBuildStatusTextColumn = !_preferences.ShowBuildStatusTextColumn;
-            ShowBuildStatusColumn();
-        };
-        OpenBuildReportMenuItem.Click += (_, _) => OpenBuildLink(SelectedBuildStatus()?.Url);
-        OpenBuildReportLink.Click += (_, _) => OpenBuildLink(_reportedBuild?.Url);
+
         CommitList.SelectionChanged += (_, _) => FollowSelectedBuild();
-        OpenPullRequestPageMenuItem.Click += (_, _) => OpenBuildLink(SelectedBuildStatus()?.PullRequestUrl);
+
         // As upstream, a click on a build status opens the build report.
         CommitList.AddHandler(PointerReleasedEvent, (_, e) =>
         {
@@ -78,8 +67,7 @@ public partial class MainWindow
     {
         bool showIcon = _preferences.ShowBuildStatusIconColumn;
         bool showText = _preferences.ShowBuildStatusTextColumn;
-        ShowBuildStatusIconMenuItem.IsChecked = showIcon;
-        ShowBuildStatusTextMenuItem.IsChecked = showText;
+
         Resources["BuildStatusShowIcon"] = showIcon;
         Resources["BuildStatusShowText"] = showText;
         Resources["BuildStatusColumnWidth"] = _buildServerType is null || !(showIcon || showText) ? 0.0

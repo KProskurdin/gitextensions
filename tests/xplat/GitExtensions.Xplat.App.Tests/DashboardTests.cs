@@ -66,8 +66,8 @@ internal sealed class DashboardTests
         WaitUntil(() => TileButton(window, _repo.Path, favourite: true) is not null);
 
         Button missing = TileButton(window, _missing, favourite: true)!;
-        missing.ContextMenu!.Items.OfType<MenuItem>().Single(item => item.Header as string == "Remove project from the list")
-            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Click(missing.ContextMenu!.Items.OfType<MenuItem>()
+            .Single(item => item.Header as string == "Remove project from the list"));
 
         WaitUntil(() => TileButton(window, _missing, favourite: true) is null);
         TileButton(window, _missing, favourite: false).Should().NotBeNull("only the favourite was removed");
@@ -77,7 +77,9 @@ internal sealed class DashboardTests
     public void Clicking_a_tile_opens_the_repository()
     {
         MainWindow window = OpenWindow();
-        WaitUntil(() => TileButton(window, _repo.Path, favourite: false) is not null);
+
+        // The tiles are made again once the folders' states are read; the click goes to the tile then shown.
+        WaitUntil(() => Tile(window, _repo.Path) is { HasBranch: true });
 
         UiClicks.Raise(TileButton(window, _repo.Path, favourite: false)!, Button.ClickEvent);
 
@@ -99,8 +101,8 @@ internal sealed class DashboardTests
     private static IReadOnlyList<string> Groups(Window window)
         =>
         [
-            .. Find<StackPanel>(window, "DashboardGroups").Children.OfType<StackPanel>()
-                .Select(group => group.Name ?? "")
+            .. Find<ItemsControl>(window, "DashboardGroups").Items.OfType<DashboardGroup>()
+                .Select(group => group.Header)
         ];
 
     private static DashboardRepository? Tile(Window window, string path)
@@ -112,9 +114,13 @@ internal sealed class DashboardTests
                                                 && repository.IsFavourite == favourite
                                                 && RecentRepositoryPaths.Same(repository.Path, path));
 
+    // The tiles are templates, made once the window is laid out.
     private static IEnumerable<Button> Tiles(Window window)
-        => Find<StackPanel>(window, "DashboardGroups").GetLogicalDescendants().OfType<Button>()
+    {
+        window.UpdateLayout();
+        return Find<ItemsControl>(window, "DashboardGroups").GetLogicalDescendants().OfType<Button>()
             .Where(button => button.Classes.Contains("dashboardTile"));
+    }
 
     private static MainWindow OpenWindow()
     {

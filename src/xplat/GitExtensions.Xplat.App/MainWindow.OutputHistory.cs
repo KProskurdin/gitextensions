@@ -12,9 +12,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    private const string CopyText = "Copy";
-    private const string ClearText = "Clear";
-
     private TextBox? _outputHistoryText;
 
     /// <summary>
@@ -41,11 +38,12 @@ public partial class MainWindow
         };
         text.Bind(TextBox.FontFamilyProperty, this.GetResourceObservable("MonospaceFontFamily"));
         text.Bind(TextBox.FontSizeProperty, this.GetResourceObservable("MonospaceFontSize"));
-        MenuItem copy = new() { Header = CopyText };
-        copy.Click += (_, _) => Run(() => CopyTextAsync(text.SelectedText is { Length: > 0 } selected ? selected : text.Text));
-        MenuItem clear = new() { Header = ClearText };
-        clear.Click += (_, _) => history.Clear();
-        text.ContextMenu = new ContextMenu { Items = { copy, clear } };
+        // The menu's items are the view model's; Copy takes the selection, else the whole history, as the menu opens.
+        ContextMenu menu = new();
+        MenuEntries.Fill(menu.Items, Toolbar.OutputHistoryMenu(text.Text), this);
+        menu.Opening += (_, _) => MenuEntries.Fill(menu.Items,
+            Toolbar.OutputHistoryMenu(text.SelectedText is { Length: > 0 } selected ? selected : text.Text), this);
+        text.ContextMenu = menu;
         _outputHistoryText = text;
 
         if (_preferences.ShowOutputHistoryAsTab)

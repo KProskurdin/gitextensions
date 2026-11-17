@@ -19,10 +19,13 @@ public partial class MainWindow
     private readonly QuickSearch _quickSearch = new();
     private DispatcherTimer? _quickSearchTimer;
 
+    // Upstream's quick search help, from the Navigate menu.
+    private Task ShowQuickSearchHelpAsync()
+        => new MessageBoxWindow(UpstreamTranslation.ByText(QuickSearchHelpText), "Information", MessageBoxButtons.OK)
+            .ShowDialog(this);
+
     private void WireQuickSearch()
     {
-        QuickSearchMenuItem.Click += (_, _) => Run(() => new MessageBoxWindow(
-            UpstreamTranslation.ByText(QuickSearchHelpText), "Information", MessageBoxButtons.OK).ShowDialog(this));
         CommitList.AddHandler(TextInputEvent, (_, e) =>
         {
             if (e.Text is { Length: > 0 } text && !text.Any(char.IsControl))

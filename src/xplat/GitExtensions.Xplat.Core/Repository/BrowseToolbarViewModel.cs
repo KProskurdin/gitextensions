@@ -37,6 +37,14 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
     public const string PullFetchPruneAllText = "Fetch and prune all";
     public const string PullOpenDialogText = "Open pull dialog";
 
+    // The status bar's texts.
+    public const string WorkingText = "Working...";
+    public const string RebaseInProgressText = " (rebase in progress)";
+    public const string MergeInProgressText = " (merge in progress)";
+
+    // Upstream's FormBrowse.Designer tooltip of toolStripButtonLevelUp.
+    public const string SubmodulesText = "Submodules";
+
     private readonly CommitListViewModel _commits;
     private readonly RepositoryViewModel _repository;
     private readonly RepositoryOperationsViewModel _actions;
@@ -45,6 +53,7 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
     private readonly bool _gitAvailable;
     private readonly Func<string, string> _translate;
     private string? _repositoryPath;
+    private SubmoduleStructure? _submodules;
 
     /// <param name="gitAvailable">Whether git was found; without it only the settings and help work.</param>
     /// <param name="translate">Upstream's translation of an English text.</param>
@@ -59,6 +68,27 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
         _preferences = preferences;
         _gitAvailable = gitAvailable;
         _translate = translate ?? (text => text);
+        TreeMenu = new RepoObjectMenuViewModel(_translate);
+        _commits.PropertyChanged += (_, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(CommitListViewModel.Status):
+                    OnPropertyChanged(nameof(GridStatusText));
+                    break;
+                case nameof(CommitListViewModel.HasMore):
+                    OnPropertyChanged(nameof(HasMoreCommits));
+                    break;
+            }
+        };
+        _actions.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(RepositoryOperationsViewModel.IsBusy)
+                or nameof(RepositoryOperationsViewModel.StatusMessage))
+            {
+                OnPropertyChanged(nameof(OperationStatusText));
+            }
+        };
     }
 
     /// <summary>
@@ -67,9 +97,106 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
     public GridMenuViewModel GridMenu { get; } = new(() => GitVersion.Current.SupportAmendCommits);
 
     /// <summary>
+    ///  The left panel's context menu.
+    /// </summary>
+    public RepoObjectMenuViewModel TreeMenu { get; }
+
+    /// <summary>
     ///  A read or write is in progress; the commands wait for it.
     /// </summary>
     public bool IsBusy => _commits.IsLoading || _repository.IsLoading || _actions.IsBusy;
+
+    /// <summary>
+    ///  A repository is shown: the browse panels and the repository's menus show, else the dashboard and its menu.
+    /// </summary>
+    public bool IsRepositoryShown => _repositoryPath is not null;
+
+    /// <summary>
+    ///  The status bar's branch with the action in progress and, when upstream's "Show ahead and behind information on
+    ///  status bar" is on, the counts.
+    /// </summary>
+    public string StatusBranchText
+    {
+        get
+        {
+            string branch = _repository.CurrentBranch;
+            if (branch.Length == 0)
+            {
+                return "";
+            }
+
+            string state = _repository.IsRebasing ? RebaseInProgressText
+                : _repository.IsMerging ? MergeInProgressText
+                : "";
+            string sync = _preferences.ShowAheadBehindData && _repository.Sync is { } status
+                ? $" [ahead {status.Ahead}, behind {status.Behind}]"
+                : "";
+            return $"Branch: {branch}{state}{sync}";
+        }
+    }
+
+    /// <summary>
+    ///  Upstream's "Show stash count on status bar in browse window", for a shown repository.
+    /// </summary>
+    public bool IsStashCountVisible => _preferences.ShowStashCount && _repositoryPath is not null;
+
+    public string StashCountText => $"Stashes: {_repository.Stashes.Count}";
+
+    /// <summary>
+    ///  The grid's read: the commits shown, or the error.
+    /// </summary>
+    public string GridStatusText => _commits.Status;
+
+    /// <summary>
+    ///  The grid stopped at its page size: "Load more" reads the next page.
+    /// </summary>
+    public bool HasMoreCommits => _commits.HasMore;
+
+    /// <summary>
+    ///  Upstream's notification bar for a stopped rebase, merge or patch or for unresolved conflicts (FormBrowse's
+    ///  <c>RefreshGitAction</c>); null when there is nothing to show.
+    /// </summary>
+    public GitActionBanner? ActionBanner
+        => GitActionBanner.ForRepository(_repository.IsRebasing, _repository.IsMerging, _repository.IsApplyingPatch,
+            _repository.Changes.Any(change => change.Kind == ChangeKind.Conflict));
+
+    public bool ShowsResolveButton => ShowsActionButton(GitActionButton.Resolve);
+
+    public bool ShowsContinueButton => ShowsActionButton(GitActionButton.Continue);
+
+    public bool ShowsAbortButton => ShowsActionButton(GitActionButton.Abort);
+
+    public bool ShowsMoreButton => ShowsActionButton(GitActionButton.More);
+
+    /// <summary>
+    ///  Upstream's bisect bar (<c>RefreshBisect</c>); null while no bisect runs.
+    /// </summary>
+    public GitActionBanner? BisectBanner => GitActionBanner.ForBisect(_repository.IsBisecting);
+
+    /// <summary>
+    ///  A bisect runs: the grid's menu offers its marks and its stop.
+    /// </summary>
+    public bool IsBisecting => _repository.IsBisecting;
+
+    /// <summary>
+    ///  The left panel's toolstrip: which trees show.
+    /// </summary>
+    public bool ShowsBranchesTree => _preferences.ShowsRepoObjectsTree(RepoObjectKind.BranchesRoot);
+
+    public bool ShowsRemotesTree => _preferences.ShowsRepoObjectsTree(RepoObjectKind.RemotesRoot);
+
+    public bool ShowsWorktreesTree => _preferences.ShowsRepoObjectsTree(RepoObjectKind.WorktreesRoot);
+
+    public bool ShowsTagsTree => _preferences.ShowsRepoObjectsTree(RepoObjectKind.TagsRoot);
+
+    public bool ShowsSubmodulesTree => _preferences.ShowsRepoObjectsTree(RepoObjectKind.SubmodulesRoot);
+
+    public bool ShowsStashesTree => _preferences.ShowsRepoObjectsTree(RepoObjectKind.StashesRoot);
+
+    /// <summary>
+    ///  The last action's message, or that one is running.
+    /// </summary>
+    public string OperationStatusText => _actions.IsBusy ? WorkingText : _actions.StatusMessage;
 
     /// <summary>
     ///  A repository is open and nothing is in progress: the repository's commands can run.
@@ -221,6 +348,23 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
             _ => ("Pull", PullOpenDialogText),
         };
 
+    /// <summary>
+    ///  The open repository is a submodule: upstream's toolStripButtonLevelUp then goes up to the superproject.
+    /// </summary>
+    public bool IsInSubmodule => _submodules?.SuperProject is not null;
+
+    public string SubmodulesButtonImage => IsInSubmodule ? "NavigateUp" : "SubmodulesManage";
+
+    public string SubmodulesButtonTip
+        => _translate(IsInSubmodule ? SubmoduleStructure.GoToSuperprojectText : SubmodulesText);
+
+    /// <summary>
+    ///  Upstream disables the submodules button in a bare repository.
+    /// </summary>
+    public bool CanUseSubmodules => IsOpen && _submodules?.IsBareRepository is not true;
+
+    private bool ShowsActionButton(GitActionButton button) => ActionBanner?.Buttons.Contains(button) == true;
+
     // The ahead and behind counts the push button shows (upstream's ShowAheadBehindData, on a branch).
     private SyncStatus? ShownSync
         => _preferences.ShowAheadBehindData && _repository.CurrentBranch.Length > 0 ? _repository.Sync : null;
@@ -235,6 +379,18 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
         OnPropertyChanged(nameof(DefaultPullAction));
         OnPropertyChanged(nameof(PullButtonImage));
         OnPropertyChanged(nameof(PullButtonTip));
+    }
+
+    /// <summary>
+    ///  The open repository's submodules, as the left panel read them; null until they are read.
+    /// </summary>
+    public void ShowSubmodules(SubmoduleStructure? structure)
+    {
+        _submodules = structure;
+        OnPropertyChanged(nameof(IsInSubmodule));
+        OnPropertyChanged(nameof(SubmodulesButtonImage));
+        OnPropertyChanged(nameof(SubmodulesButtonTip));
+        OnPropertyChanged(nameof(CanUseSubmodules));
     }
 
     /// <summary>

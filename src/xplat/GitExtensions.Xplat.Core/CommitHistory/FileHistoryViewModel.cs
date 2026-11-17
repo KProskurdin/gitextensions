@@ -73,6 +73,11 @@ public sealed record FileHistoryViewModelServices
     ///  The grid's commits; null reads them with git as the settings say.
     /// </summary>
     public ICommitHistory? History { get; init; }
+
+    /// <summary>
+    ///  Puts a text on the clipboard.
+    /// </summary>
+    public Func<string, Task>? CopyText { get; init; }
 }
 
 /// <summary>
@@ -511,4 +516,9 @@ public sealed partial class FileHistoryViewModel : DialogViewModel
 
     private string FileNameIn(CommitRow row)
         => Commits.FilePaths.TryGetValue(row.Hash, out string? name) ? name : Dialog.FileName;
+
+    // The copy submenu's entries (upstream's CopyContextMenuItem): an entry's value on the clipboard.
+    [RelayCommand]
+    private Task CopyTextAsync(string? text)
+        => text is not null && _services.CopyText is { } copy ? copy(text) : Task.CompletedTask;
 }

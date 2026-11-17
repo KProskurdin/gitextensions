@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using GitCommands;
 using GitCommands.UserRepositoryHistory;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.Core.Tests;
@@ -125,7 +127,91 @@ internal sealed class DashboardViewModelTests
         (await _store.LoadAsync()).Should().BeEmpty();
     }
 
-    private DashboardViewModel New()
+    [Test]
+    public async Task The_recent_groups_header_should_be_translated_and_a_missing_folder_should_show_the_error_image()
+    {
+        await _store.AddAsync(_alpha);
+        await _store.AddAsync(_beta);
+        _missing.Add(_beta);
+        DashboardViewModel dashboard = New(text => "T:" + text);
+
+        await dashboard.LoadAsync();
+
+        dashboard.Groups.Single().Header.Should().Be("T:" + DashboardViewModel.RecentGroupHeader);
+        dashboard.Groups.Single().Repositories.Select(repository => (repository.Path, repository.FolderImage)).Should()
+            .Equal((_beta, "DashboardFolderError"), (_alpha, "DashboardFolderGit"));
+    }
+
+    [Test]
+    public async Task A_tiles_menu_should_list_the_categories_and_put_the_repository_in_the_one_clicked()
+    {
+        await _store.AddAsync(_beta);
+        await _store.AddAsync(_alpha);
+        await _store.AssignCategoryAsync(_gamma, "Work");
+        _missing.Add(_beta);
+        IDashboardWindow window = Substitute.For<IDashboardWindow>();
+        DashboardViewModel dashboard = New();
+        dashboard.Window = window;
+        await dashboard.LoadAsync();
+        DashboardRepository alpha = dashboard.Groups[0].Repositories.Single(repository => repository.Path == _alpha);
+
+        IReadOnlyList<MenuEntry> menu = dashboard.RepositoryMenu(alpha);
+
+        menu.Where(entry => !entry.IsSeparator).Select(entry => entry.Text).Should().Equal(
+            DashboardViewModel.ShowInFolderText, DashboardViewModel.CategoriesText, DashboardViewModel.RemoveText,
+            DashboardViewModel.RemoveMissingText);
+        menu[^1].IsVisible.Should().BeTrue("a shown folder is no longer a repository");
+        IReadOnlyList<MenuEntry> categories = menu[2].Children;
+        categories.Select(entry => (entry.Text, entry.IsEnabled)).Should().Equal(
+            (DashboardViewModel.NoCategoryText, false), ("Work", true), ("", true), (DashboardViewModel.AddCategoryText, true));
+
+        menu[0].Command!.Execute(menu[0].CommandParameter);
+        categories[1].Command!.Execute(categories[1].CommandParameter);
+        await WaitForAsync(() => window.ReceivedCalls().Any(call =>
+            call.GetMethodInfo().Name == nameof(IDashboardWindow.RepositoriesChangedAsync)));
+
+        window.Received(1).OpenFolder(_alpha);
+        dashboard.CountIn("Work").Should().Be(2);
+    }
+
+    [Test]
+    public async Task A_groups_menu_should_delete_its_category_only_when_confirmed()
+    {
+        await _store.AssignCategoryAsync(_alpha, "Work");
+        await _store.AddAsync(_beta);
+        IDashboardWindow window = Substitute.For<IDashboardWindow>();
+        window.AskAsync(default!, default!).ReturnsForAnyArgs(false, true);
+        DashboardViewModel dashboard = New(text => "T:" + text);
+        dashboard.Window = window;
+        await dashboard.LoadAsync();
+        DashboardGroup work = dashboard.Groups.Single(group => group.Category == "Work");
+
+        IReadOnlyList<MenuEntry> recentMenu = dashboard.GroupMenu(dashboard.Groups[0]);
+        IReadOnlyList<MenuEntry> menu = dashboard.GroupMenu(work);
+
+        recentMenu.Select(entry => entry.IsVisible).Should().Equal(false, false, true);
+        menu.Select(entry => entry.IsVisible).Should().Equal(true, true, false);
+        menu[1].Command!.Execute(menu[1].CommandParameter);
+        await window.Received(1).AskAsync(
+            string.Format("T:" + DashboardViewModel.DeleteCategoryQuestion, "Work", 1), "T:" + DashboardViewModel.DeleteCategoryCaption);
+        dashboard.CountIn("Work").Should().Be(1, "the question was answered no");
+
+        menu[1].Command!.Execute(menu[1].CommandParameter);
+        await WaitForAsync(() => dashboard.Groups.All(group => group.Category != "Work"));
+        await window.Received(1).RepositoriesChangedAsync();
+    }
+
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!condition())
+        {
+            DateTime.UtcNow.Should().BeBefore(deadline, "the command should finish");
+            await Task.Delay(10);
+        }
+    }
+
+    private DashboardViewModel New(Func<string, string>? translate = null)
         => new(_store, path => _missing.Contains(path)
                 ? new DashboardRepositoryState(false, null)
                 : new DashboardRepositoryState(true, "main"),
@@ -137,7 +223,7 @@ internal sealed class DashboardViewModelTests
                 SortTopRepos = false,
                 SortRecentRepos = false,
                 RecentReposComboMinWidth = 0,
-            });
+            }, translate);
 
     // A path on a drive or root of its own, so it is never under the user's home folder.
     private static string Rooted(string name)

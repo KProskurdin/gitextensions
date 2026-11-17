@@ -18,12 +18,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    private void WireDeleteRefs()
-    {
-        DeleteBranchMenuItem.Click += (_, _) => RunOnRepository(path => ShowDeleteBranchAsync(path, []));
-        DeleteTagMenuItem.Click += (_, _) => RunOnRepository(path => ShowDeleteTagAsync(path, tag: null));
-    }
-
     private async Task<bool> ShowDeleteBranchAsync(string path, IReadOnlyList<string> defaultBranches,
         Window? owner = null)
     {

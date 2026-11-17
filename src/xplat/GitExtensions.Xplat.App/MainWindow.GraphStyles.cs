@@ -16,34 +16,10 @@ public partial class MainWindow
 
     private void WireGraphStyles()
     {
+        // "Draw non relatives gray", "Show artificial commits" and "Show stashes" are the View menu's view model's.
         _commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
         _commits.MaxCommits = _preferences.MaxRevisionGraphCommits;
-        DrawNonRelativesGrayMenuItem.IsChecked = _commits.DrawNonRelativesGray;
-        DrawNonRelativesGrayMenuItem.Click += (_, _) =>
-        {
-            _preferences.RevisionGraphDrawNonRelativesGray = !_preferences.RevisionGraphDrawNonRelativesGray;
-            _commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
-            DrawNonRelativesGrayMenuItem.IsChecked = _commits.DrawNonRelativesGray;
-        };
-        HighlightSelectedBranchMenuItem.Click += (_, _) => HighlightSelectedBranch();
 
-        // Upstream's "Show artificial commits": the working directory and index rows above HEAD.
-        ShowArtificialCommitsMenuItem.IsChecked = _preferences.RevisionGraphShowArtificialCommits;
-        ShowArtificialCommitsMenuItem.Click += (_, _) =>
-        {
-            _preferences.RevisionGraphShowArtificialCommits = !_preferences.RevisionGraphShowArtificialCommits;
-            ShowArtificialCommitsMenuItem.IsChecked = _preferences.RevisionGraphShowArtificialCommits;
-            RefreshRepository();
-        };
-
-        // Upstream's "Show stashes" (ToggleShowStashes): the stash rows in the grid.
-        ShowStashesMenuItem.IsChecked = _preferences.ShowStashes;
-        ShowStashesMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowStashes = !_preferences.ShowStashes;
-            ShowStashesMenuItem.IsChecked = _preferences.ShowStashes;
-            RefreshRepository();
-        };
         _commits.GraphAppearanceChanged += (_, _) => RedrawGraph();
 
         // Upstream: Alt+click on a commit highlights its branch.

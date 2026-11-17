@@ -109,8 +109,14 @@ internal sealed class AppearanceUiTests
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
         WaitUntil(() => TestAppBuilder.Preferences.TruncatePathMethod == TruncatePathMethod.FileNameOnly);
 
-        WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
+        // Saved settings load the repository again, once the queued work runs; the commit button waits for it.
+        WaitUntil(() =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            return !window.IsBusy && Find<Button>(window, "CommitDialogButton").IsEnabled;
+        });
         Click(window, "CommitDialogButton");
+
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
         WaitUntil(() => Find<ListBox>(commit, "StagedList").GetVisualDescendants().OfType<TextBlock>()

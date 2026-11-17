@@ -292,125 +292,20 @@ public partial class FileHistoryWindow
     // has; its settings are the browse window's, so a change shows there on its next refresh.
     private void WireViewMenu()
     {
-        ShowAllBranchesMenuItem.Click += (_, _) => ToolStripFilters.ShowBranches(currentOnly: false, filtered: false);
-        ShowCurrentBranchOnlyMenuItem.Click += (_, _) => ToolStripFilters.ShowBranches(currentOnly: true, filtered: false);
-        ShowFilteredBranchesMenuItem.Click += (_, _) => ToolStripFilters.ShowBranches(currentOnly: false, filtered: true);
-        ShowReflogReferencesMenuItem.Click += (_, _) =>
-            ApplyFilter(ViewModel.Commits.Filter with { ShowReflog = !ViewModel.Commits.Filter.ShowReflog });
-        AdvancedFilterViewMenuItem.Click += (_, _) => Run(((IFilterToolBarGrid)this).ShowRevisionFilterDialogAsync);
-        DrawNonRelativesGrayMenuItem.Click += (_, _) =>
+        ViewMenuItem.DataContext = new GridViewMenuViewModel(_preferences, ViewModel.Commits, new GridViewMenuServices
         {
-            _preferences.RevisionGraphDrawNonRelativesGray = !_preferences.RevisionGraphDrawNonRelativesGray;
-            ViewModel.Commits.DrawNonRelativesGray = _preferences.RevisionGraphDrawNonRelativesGray;
-        };
-        HighlightSelectedBranchMenuItem.Click += (_, _) => RunGridCommand(GridCommand.ToggleHighlightSelectedBranch);
-        ShowArtificialCommitsMenuItem.Click += (_, _) => ChangePreference(() =>
-            _preferences.RevisionGraphShowArtificialCommits = !_preferences.RevisionGraphShowArtificialCommits);
-        ShowStashesMenuItem.Click += (_, _) => ChangePreference(() => _preferences.ShowStashes = !_preferences.ShowStashes);
-        ShowSessionCheckpointsMenuItem.Click += (_, _) =>
-            ChangePreference(() => _preferences.ShowSessionRefs = !_preferences.ShowSessionRefs);
-        ShowRemoteBranchesMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
-        {
-            ShowRemoteBranches = !_preferences.GridViewOptions.ShowRemoteBranches,
-        });
-        ShowTagsMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
-        {
-            ShowTags = !_preferences.GridViewOptions.ShowTags,
-        });
-        ShowCommitBodyMenuItem.Click += (_, _) => SetGridViewOptions(_preferences.GridViewOptions with
-        {
-            ShowCommitBody = !_preferences.GridViewOptions.ShowCommitBody,
-        });
-        GridShowAuthorDateMenuItem.Click += (_, _) =>
-            ChangePreference(() => _preferences.ShowAuthorDate = !_preferences.ShowAuthorDate);
-        ShowRelativeDateMenuItem.Click += (_, _) =>
-        {
-            _preferences.RelativeDate = !_preferences.RelativeDate;
-            ShowGridColumns();
-            ReloadGrid();
-        };
-        ShowGraphColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            Graph = !_preferences.GridColumns.Graph,
-        });
-        ShowAvatarColumnMenuItem.Click += (_, _) =>
-        {
-            _preferences.ShowAuthorAvatarColumn = !_preferences.ShowAuthorAvatarColumn;
-            ShowGridColumns();
-        };
-        ShowAuthorNameColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            AuthorName = !_preferences.GridColumns.AuthorName,
-        });
-        ShowDateColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            Date = !_preferences.GridColumns.Date,
-        });
-        ShowObjectIdColumnMenuItem.Click += (_, _) => SetGridColumns(_preferences.GridColumns with
-        {
-            ObjectId = !_preferences.GridColumns.ObjectId,
+            ShowBranches = (currentOnly, filtered) => ToolStripFilters.ShowBranches(currentOnly, filtered),
+            ApplyFilter = ApplyFilter,
+            EditFilter = ((IFilterToolBarGrid)this).ShowRevisionFilterDialogAsync,
+            RefreshRepository = ReloadGrid,
+            ShowGridView = ShowGridColumns,
+            ShowAvatarColumn = ShowGridColumns,
+            ShowBuildStatusColumn = () => { },
+            HighlightSelectedBranch = () => RunGridCommand(GridCommand.ToggleHighlightSelectedBranch),
+            ShowError = ex => ShowError(ex.Message),
         });
 
-        // Upstream's ToggleAuthorDateSort and ToggleTopoOrder: each turns its order on, or back to git's default.
-        AuthorDateSortMenuItem.Click += (_, _) => SetRevisionSortOrder(RevisionSortOrder.AuthorDate);
-        TopoOrderMenuItem.Click += (_, _) => SetRevisionSortOrder(RevisionSortOrder.Topology);
-        ViewMenuItem.SubmenuOpened += (_, _) => ShowViewMenuChecks();
-        ShowViewMenuChecks();
-    }
-
-    private void ShowViewMenuChecks()
-    {
-        RevisionFilter filter = ViewModel.Commits.Filter;
-        ShowAllBranchesMenuItem.IsChecked = !filter.CurrentBranchOnly && !filter.ShowFilteredBranches;
-        ShowCurrentBranchOnlyMenuItem.IsChecked = filter.CurrentBranchOnly;
-        ShowFilteredBranchesMenuItem.IsChecked = !filter.CurrentBranchOnly && filter.ShowFilteredBranches;
-        ShowReflogReferencesMenuItem.IsChecked = filter.ShowReflog;
-        DrawNonRelativesGrayMenuItem.IsChecked = _preferences.RevisionGraphDrawNonRelativesGray;
-        ShowArtificialCommitsMenuItem.IsChecked = _preferences.RevisionGraphShowArtificialCommits;
-        ShowStashesMenuItem.IsChecked = _preferences.ShowStashes;
-        ShowSessionCheckpointsMenuItem.IsChecked = _preferences.ShowSessionRefs;
-        GridViewOptions options = _preferences.GridViewOptions;
-        ShowRemoteBranchesMenuItem.IsChecked = options.ShowRemoteBranches;
-        ShowTagsMenuItem.IsChecked = options.ShowTags;
-        ShowCommitBodyMenuItem.IsChecked = options.ShowCommitBody;
-        GridShowAuthorDateMenuItem.IsChecked = _preferences.ShowAuthorDate;
-        ShowRelativeDateMenuItem.IsChecked = _preferences.RelativeDate;
-        GridColumns columns = _preferences.GridColumns;
-        ShowGraphColumnMenuItem.IsChecked = columns.Graph;
-        ShowAvatarColumnMenuItem.IsChecked = _preferences.ShowAuthorAvatarColumn;
-        ShowAuthorNameColumnMenuItem.IsChecked = columns.AuthorName;
-        ShowDateColumnMenuItem.IsChecked = columns.Date;
-        ShowObjectIdColumnMenuItem.IsChecked = columns.ObjectId;
-        AuthorDateSortMenuItem.IsChecked = _preferences.RevisionSortOrder == RevisionSortOrder.AuthorDate;
-        TopoOrderMenuItem.IsChecked = _preferences.RevisionSortOrder == RevisionSortOrder.Topology;
-    }
-
-    private void ChangePreference(Action change)
-    {
-        change();
-        ShowViewMenuChecks();
-        ReloadGrid();
-    }
-
-    private void SetGridViewOptions(GridViewOptions options)
-    {
-        _preferences.GridViewOptions = options;
-        ShowGridColumns();
-        ShowViewMenuChecks();
-    }
-
-    private void SetGridColumns(GridColumns columns)
-    {
-        _preferences.GridColumns = columns;
-        ShowGridColumns();
-        ShowViewMenuChecks();
-    }
-
-    private void SetRevisionSortOrder(RevisionSortOrder order)
-    {
-        _preferences.RevisionSortOrder = _preferences.RevisionSortOrder == order ? RevisionSortOrder.GitDefault : order;
-        ShowViewMenuChecks();
-        ReloadGrid();
+        ViewMenuItem.SubmenuOpened += (_, _) => ((GridViewMenuViewModel)ViewMenuItem.DataContext!).Refresh();
     }
 
     // The grid reads its rows again with the changed settings, once it shows.

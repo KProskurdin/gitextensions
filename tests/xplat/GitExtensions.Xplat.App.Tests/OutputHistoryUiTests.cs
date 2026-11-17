@@ -54,8 +54,7 @@ internal sealed class OutputHistoryUiTests
         Find<TabControl>(window, "DetailTabs").SelectedItem.Should().Be(Find<TabItem>(window, "OutputHistoryTab"));
 
         TextBox text = (TextBox)Find<TabItem>(window, "OutputHistoryTab").Content!;
-        text.ContextMenu!.Items.OfType<MenuItem>().Single(item => item.Header as string == "Clear")
-            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        UiClicks.Click(text.ContextMenu!.Items.OfType<MenuItem>().Single(item => item.Header as string == "Clear"));
         WaitUntil(() => !window.OutputHistoryText!.Contains("Fetch origin", StringComparison.Ordinal));
         window.Close();
     }

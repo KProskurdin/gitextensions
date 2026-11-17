@@ -11,6 +11,33 @@ internal sealed class GridMenuViewModelTests
     private static readonly GridRefMenus _noRefs = new([], [], [], RebaseOnTopOf: null, [], [], [], [], IsHeadOfCurrentBranch: false);
 
     [Test]
+    public void The_compare_items_and_select_in_left_panel_should_follow_the_selection()
+    {
+        GridMenuViewModel viewModel = new();
+        GridMenuRef tag = new("v1", IsRemote: false);
+
+        viewModel.Refresh(Row(Hash), _noRefs with { SelectInLeftPanel = [tag] }, editorAvailable: true,
+            hasBuildReport: false, hasPullRequest: false,
+            new GridCompareState(HasCurrentBranch: true, HasFirstAndSelected: false, HasBase: true));
+
+        viewModel.SingleSelectInLeftPanel.Should().Be(tag);
+        viewModel.CanCompareToWorkingDirectory.Should().BeTrue();
+        viewModel.CanCompareWithCurrentBranch.Should().BeTrue();
+        viewModel.CanCompareSelectedCommits.Should().BeFalse();
+        viewModel.CanCompareToBase.Should().BeTrue();
+
+        viewModel.Refresh(Row(ArtificialCommits.WorkTreeHash), _noRefs with { SelectInLeftPanel = [tag, tag] },
+            editorAvailable: true, hasBuildReport: false, hasPullRequest: false);
+
+        viewModel.SingleSelectInLeftPanel.Should().BeNull("several refs are a submenu");
+        viewModel.CanCompareToWorkingDirectory.Should().BeFalse("the working directory is not compared to itself");
+        viewModel.CanCompareToBase.Should().BeFalse();
+
+        viewModel.BaseSelected();
+        viewModel.CanCompareToBase.Should().BeTrue();
+    }
+
+    [Test]
     public void A_commit_should_offer_its_actions_and_hide_the_working_directorys()
     {
         GridMenuViewModel viewModel = new(supportsAmend: () => true);

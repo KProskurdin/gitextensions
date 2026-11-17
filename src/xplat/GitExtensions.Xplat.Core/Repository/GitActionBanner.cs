@@ -30,6 +30,11 @@ public enum GitActionButton
 /// </summary>
 public sealed record GitActionBanner(GitAction Action, bool HasConflicts, string Text, IReadOnlyList<GitActionButton> Buttons)
 {
+    /// <summary>
+    ///  Upstream's IconBox: the information picture, or the solve merge one while there are conflicts.
+    /// </summary>
+    public string Image => HasConflicts ? "SolveMerge" : "information";
+
     private const string ProgressMessage = "{0} is currently in progress.";
     private const string ConflictsMessage = "There are unresolved merge conflicts.";
     private const string ProgressWithConflictsMessage = "{0} is currently in progress with merge conflicts.";

@@ -17,8 +17,8 @@ namespace GitExtensions.Xplat.Core.Settings;
 
 /// <summary>
 ///  What <see cref="SettingsViewModel"/> asks of its window besides <see cref="IDialogHost"/>: the lists the app reads,
-///  and the pages whose editors the window still drives (fonts, hotkeys, scripts, confirmations, plugins, revision links,
-///  build server, detailed settings and git config).
+///  the stores of the pages that have their own, and the parts of the pages only the view can give (pictures, controls'
+///  texts, key gestures, other windows).
 /// </summary>
 public sealed record SettingsViewModelServices
 {
@@ -122,6 +122,34 @@ public sealed record SettingsViewModelServices
     ///  Puts the ssh client in the variable git reads (upstream's <c>GIT_SSH</c>).
     /// </summary>
     public Action<string> ApplySshPath { get; init; } = SshClients.Apply;
+
+    /// <summary>
+    ///  The pages the window has and how the tree shows them.
+    /// </summary>
+    public SettingsPageTreeServices PageTree { get; init; } =
+        new() { Pages = SettingsPageTree.Entries.Select(entry => entry.Page).ToHashSet() };
+
+    /// <summary>
+    ///  The windows' hotkeys the Hotkeys page changes.
+    /// </summary>
+    public IReadOnlyList<HotkeyGroup> Hotkeys { get; init; } = [];
+
+    /// <summary>
+    ///  What the Checklist page checks; by default read by <see cref="ChecklistFactsReader"/>.
+    /// </summary>
+    public Func<Task<ChecklistFacts>>? ReadChecklistFacts { get; init; }
+
+    /// <summary>
+    ///  Upstream's FormChooseTranslation, which the Checklist's language row opens.
+    /// </summary>
+    public Func<Task> ChooseLanguage { get; init; } = () => Task.CompletedTask;
+
+    public Func<Uri, Task> OpenUri { get; init; } = _ => Task.CompletedTask;
+
+    /// <summary>
+    ///  The editor background of a dark theme, toward which the Checklist dims its rows; null in a light theme.
+    /// </summary>
+    public Func<System.Drawing.Color?> DarkBackground { get; init; } = () => null;
 }
 
 /// <summary>
@@ -146,6 +174,13 @@ public sealed partial class SettingsViewModel : DialogViewModel
         (AppFont.Monospace, "Monospace font"),
     ];
     private const int MaxOutputHistoryDepth = 1000;
+
+    /// <summary>
+    ///  Upstream's type of the Git page (Paths), shown when OK finds an error on it.
+    /// </summary>
+    public const string GitPage = "GitSettingsPage";
+
+    private const string HotkeysPage = "HotkeysSettingsPage";
 
     private readonly IAppPreferences _preferences;
     private readonly SettingsViewModelServices _services;
@@ -221,9 +256,54 @@ public sealed partial class SettingsViewModel : DialogViewModel
             .. Confirmations.Options.GroupBy(option => option.Group).Select(group => new ConfirmationGroup(group.Key + ":",
                 [.. group.Select(option => new ConfirmationChoice(option, preferences.Asks(option.Confirmation)))]))
         ];
+        Hotkeys = new HotkeysPageViewModel(services.Hotkeys);
+        Checklist = new ChecklistPageViewModel(new ChecklistPageServices
+        {
+            ReadFacts = services.ReadChecklistFacts ?? new ChecklistFactsReader(preferences, services.GitConfig,
+                services.DiffMergeTools ?? new GitDiffMergeToolCatalog(), services.RepositoryPath, isWindows).ReadAsync,
+            Save = () => SaveAsync(close: false),
+            GoToPage = GoToPage,
+            ChooseLanguage = async () =>
+            {
+                await services.ChooseLanguage();
+                ShowLanguages(preferences.Translation);
+            },
+            OpenUri = services.OpenUri,
+            DarkBackground = services.DarkBackground,
+            ShowError = ex => ErrorText = ex.Message,
+        });
+        PageTree = new SettingsPageTreeViewModel(services.PageTree with { PageTexts = PageTexts }, PluginsPage.Pages);
+        PageTree.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsPageTreeViewModel.ShownNode) && PageTree.ShownNode is { } node)
+            {
+                OnPageShown(node);
+            }
+        };
         LoadValues();
         LoadGitAndSshPages();
         _loading = false;
+        return;
+
+        // Upstream's GetSearchKeywords: the texts of the page's visible controls; a plugin's page, its settings' captions.
+        IEnumerable<string> PageTexts(SettingsPageNode node)
+            => node.Plugin switch
+            {
+                PluginOption { Plugin: var plugin } => PluginsPage.EditorOf(plugin).Rows
+                    .SelectMany(row => (string?[])[row.Caption, row.Text]).OfType<string>(),
+                SkippedPluginOption { File: var file } => [file.FileName, file.Reason],
+
+                // The rows are shown by templates, which the view makes only for the page shown.
+                _ when node.Page == HotkeysPage =>
+                [
+                    .. services.PageTree.PageTexts(node),
+                    .. Hotkeys.Groups.SelectMany(group =>
+                        group.Rows.SelectMany(row => (string[])[row.Description, row.Text]).Prepend(group.Title)),
+                ],
+                _ when node.Page == SettingsPageTreeViewModel.ChecklistPage =>
+                    [.. services.PageTree.PageTexts(node), .. Checklist.Rows.Select(row => row.Text)],
+                _ => services.PageTree.PageTexts(node),
+            };
     }
 
     /// <summary>
@@ -262,6 +342,21 @@ public sealed partial class SettingsViewModel : DialogViewModel
     ///  The Config page: git's own settings.
     /// </summary>
     public GitConfigPageViewModel GitConfigPage { get; }
+
+    /// <summary>
+    ///  The page tree, the page shown, the search box and the window title.
+    /// </summary>
+    public SettingsPageTreeViewModel PageTree { get; }
+
+    /// <summary>
+    ///  Upstream's Checklist page.
+    /// </summary>
+    public ChecklistPageViewModel Checklist { get; }
+
+    /// <summary>
+    ///  Upstream's Hotkeys page.
+    /// </summary>
+    public HotkeysPageViewModel Hotkeys { get; }
 
     /// <summary>
     ///  The Fonts page's fonts.
@@ -661,11 +756,6 @@ public sealed partial class SettingsViewModel : DialogViewModel
     public partial string? OtherSsh { get; set; }
 
     /// <summary>
-    ///  Raised when OK finds an error on the Git page, so the window shows that page.
-    /// </summary>
-    public event EventHandler? GitPageRequested;
-
-    /// <summary>
     ///  As upstream's appearance page: English, then the translations in the Translation folder; the current one stays
     ///  selected even when its file is missing. Read again after the translation window chose one.
     /// </summary>
@@ -706,7 +796,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
         {
             if (ValidateHome() is { } homeError)
             {
-                GitPageRequested?.Invoke(this, EventArgs.Empty);
+                PageTree.GoToPage(GitPage);
                 ErrorText = homeError;
                 return false;
             }
@@ -736,6 +826,22 @@ public sealed partial class SettingsViewModel : DialogViewModel
     partial void OnShowGitStatusForArtificialCommitsChanged(bool value) => ClampSubmoduleStatus();
 
     partial void OnShowGitStatusInBrowseToolbarChanged(bool value) => ClampSubmoduleStatus();
+
+    private void GoToPage(string page) => PageTree.GoToPage(page);
+
+    // Upstream's OnPageShown: a plugin's page shows the plugin's settings, and the Checklist checks again.
+    private void OnPageShown(SettingsPageNode node)
+    {
+        if (node.Plugin is { } plugin)
+        {
+            PluginsPage.Show(plugin);
+        }
+
+        if (node.Page == SettingsPageTreeViewModel.ChecklistPage)
+        {
+            Checklist.Start();
+        }
+    }
 
     // Upstream's GitPath_TextChanged: what is typed is tried, and the Config page follows it.
     partial void OnGitCommandChanged(string? value)

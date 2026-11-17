@@ -51,8 +51,12 @@ internal sealed class SplitterTrackerTests
     {
         TestAppBuilder.Splitters.Store("FormBrowse", "MainSplitContainer",
             new SplitterSettings(1000, 96, 350, Panel1Collapsed: true, Panel2Collapsed: false));
+        // The layout buttons act on an open repository's panels.
+        using TestRepository repository = new();
         MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
         window.Show();
+        window.OpenRepository(repository.Path);
+        WaitUntil(() => !window.IsBusy);
         ToggleButton toggle = Find<ToggleButton>(window, "ToggleLeftPanelButton");
 
         WaitUntil(() => toggle.IsChecked == false);

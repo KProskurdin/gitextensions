@@ -14,21 +14,6 @@ public partial class MainWindow
     // Upstream's text.
     public const string IndexLockCantDelete = "Failed to delete index.lock";
 
-    // Upstream's argument for "Compress git database".
-    private const string CompressGitDatabaseArguments = "gc";
-
-    private void WireMaintenanceMenu()
-    {
-        CompressGitDatabaseMenuItem.Click += (_, _) => RunOnRepositoryFolder(path =>
-            Run(() => RunGitWithOutputAsync(path, CompressGitDatabaseArguments)));
-        RecoverLostObjectsMenuItem.Click +=
-            (_, _) => RunOnRepositoryFolder(path => Run(() => VerifyDatabaseAsync(path)));
-        DeleteIndexLockMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => Run(() => DeleteIndexLockAsync(path)));
-        EditLocalGitConfigMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => Run(() =>
-            new EditorWindow(GitModules.Open(path).ResolveGitInternalPath("config"), showWarning: true)
-                .ShowDialog(this)));
-    }
-
     // Upstream's StartVerifyDatabaseDialog: the repository is read again afterwards, as recovering adds tags.
     private async Task VerifyDatabaseAsync(string path)
     {

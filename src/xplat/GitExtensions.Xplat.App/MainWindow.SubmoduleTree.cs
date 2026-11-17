@@ -21,9 +21,6 @@ public partial class MainWindow
     private const string CannotOpenSubmoduleCaption = "Cannot open submodule";
     private const string DirectoryDoesNotExistText = "The directory \"{0}\" does not exist.";
 
-    // Upstream's FormBrowse.Designer tooltip of toolStripButtonLevelUp.
-    private const string SubmodulesText = "Submodules";
-
     // The last structure read, shown (for its repository only) each time the tree is filled again.
     private SubmoduleStructure? _submoduleStructure;
     private string? _submoduleStructureRepository;
@@ -76,31 +73,9 @@ public partial class MainWindow
         });
     }
 
-    // Upstream's toolStripButtonLevelUp: in a submodule its image goes up and it opens the superproject; it is disabled in a
-    // bare repository.
+    // Upstream's toolStripButtonLevelUp (its state is the toolbar view model's): the structure of the repository shown.
     private void ShowSubmodulesButton()
-    {
-        SubmoduleStructure? structure = RepositoryPath is { } path ? ShownSubmoduleStructure(path) : null;
-        bool inSubmodule = structure?.SuperProject is not null;
-        SubmodulesButton.Image = inSubmodule ? "NavigateUp" : "SubmodulesManage";
-        ToolTip.SetTip(SubmodulesButton,
-            UpstreamTranslation.ByText(inSubmodule ? SubmoduleStructure.GoToSuperprojectText : SubmodulesText));
-        SubmodulesButton.IsEnabled = !(_commits.IsLoading || _repository.IsLoading || _actions.IsBusy)
-                                     && RepositoryPath is not null && structure?.IsBareRepository is not true;
-    }
-
-    // Upstream's toolStripButtonLevelUp_ButtonClick: the superproject, else the drop-down.
-    private void OnSubmodulesButtonClick()
-    {
-        if (RepositoryPath is { } path && ShownSubmoduleStructure(path)?.SuperProject is { } superproject)
-        {
-            Run(() => OpenSubmoduleProjectAsync(superproject));
-        }
-        else
-        {
-            SubmodulesButton.Flyout?.ShowAt(SubmodulesButton);
-        }
-    }
+        => Toolbar.ShowSubmodules(RepositoryPath is { } path ? ShownSubmoduleStructure(path) : null);
 
     // Upstream's SubmoduleToolStripButtonClick: a project of the drop-down opens as the browse window's repository.
     private async Task OpenSubmoduleProjectAsync(SubmoduleProject project)
@@ -129,41 +104,6 @@ public partial class MainWindow
     // Another repository's structure is not shown for this one.
     private SubmoduleStructure? ShownSubmoduleStructure(string path)
         => _submoduleStructureRepository == path ? _submoduleStructure : null;
-
-    private void WireSubmoduleTreeMenu()
-    {
-        TreeOpenSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleProject>(OpenSubmodule);
-        TreeOpenSubmoduleNewInstanceMenuItem.Click += (_, _) => OnSelected<SubmoduleProject>(OpenSubmoduleInNewInstance);
-        TreeManageSubmodulesMenuItem.Click += (_, _) => RunOnRepositoryFolder(path => Run(() => ManageSubmodulesAsync(path)));
-        TreeUpdateSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleProject>(submodule =>
-            Run(() => InSubmoduleRepositoryAsync(FolderOf(submodule.SuperPath), superPath => UpdateSubmodulesAsync(superPath,
-                submodule.LocalPath.Length == 0 ? null : submodule.LocalPath))));
-        TreeSynchronizeSubmoduleMenuItem.Click += (_, _) =>
-            RunOnRepository(path => _actions.SyncSubmodulesAsync(path, path: null));
-        TreeResetSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleProject>(submodule =>
-            Run(() => ResetSubmoduleAsync(FolderOf(submodule.Path))));
-        TreeStashSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleProject>(submodule =>
-            Run(() => InSubmoduleRepositoryAsync(FolderOf(submodule.Path), path =>
-                _actions.StashAsync(path, "", _preferences.IncludeUntrackedFilesInManualStash, keepIndex: false))));
-        TreeCommitSubmoduleMenuItem.Click += (_, _) => OnSelected<SubmoduleProject>(submodule =>
-            Run(() => CommitSubmoduleAsync(FolderOf(submodule.Path))));
-    }
-
-    // Upstream's EnableSubmoduleContextMenu: Open for a project other than the shown one; Manage and Synchronize for the
-    // shown one; Reset, Stash and Commit unless the shown repository is bare.
-    private void ShowSubmoduleTreeMenu(RepoObjectKind? kind, RepoObjectNode? node)
-    {
-        SubmoduleProject? project = kind == RepoObjectKind.Submodule ? node?.Item as SubmoduleProject : null;
-        bool bare = ShownSubmoduleStructure(RepositoryPath ?? "")?.IsBareRepository ?? false;
-        Show(TreeOpenSubmoduleMenuItem, project is { IsCurrent: false });
-        Show(TreeOpenSubmoduleNewInstanceMenuItem, project is not null);
-        Show(TreeManageSubmodulesMenuItem, project is { IsCurrent: true } && !bare);
-        Show(TreeUpdateSubmoduleMenuItem, project is not null);
-        Show(TreeSynchronizeSubmoduleMenuItem, project is { IsCurrent: true } && !bare);
-        Show(TreeResetSubmoduleMenuItem, project is not null && !bare);
-        Show(TreeStashSubmoduleMenuItem, project is not null && !bare);
-        Show(TreeCommitSubmoduleMenuItem, project is not null && !bare);
-    }
 
     // Upstream's SubmoduleNode.OnDoubleClick: the shown project opens in a new instance, another one here.
     private void OpenSubmoduleOnDoubleClick(SubmoduleProject project)

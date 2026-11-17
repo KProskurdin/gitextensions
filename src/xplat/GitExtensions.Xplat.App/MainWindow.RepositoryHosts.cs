@@ -13,26 +13,18 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    private void WireRepositoryHosts()
+    // Upstream's Fork or clone repository: the host's dialog, or upstream's error without a host plugin.
+    private void ForkCloneRepository()
     {
-        ForkCloneRepositoryMenuItem.Click += (_, _) =>
+        if (_loadedPlugins?.OfType<IRepositoryHostPlugin>().FirstOrDefault() is { } host)
         {
-            if (_loadedPlugins?.OfType<IRepositoryHostPlugin>().FirstOrDefault() is { } host)
-            {
-                _plugins.StartCloneForkFromHoster(_plugins.Owner, host, gitModuleChanged: null);
-            }
-            else
-            {
-                MessageBoxes.ShowError(_plugins.Owner, RepositoryHostTexts.NoReposHostPluginLoaded,
-                    RepositoryHostTexts.Error);
-            }
-        };
-        ViewPullRequestsMenuItem.Click += (_, _) =>
-            WithRepositoryHost(host => _plugins.StartPullRequestsDialog(_plugins.Owner, host));
-        CreatePullRequestsMenuItem.Click += (_, _) =>
-            WithRepositoryHost(host => _plugins.StartCreatePullRequest(_plugins.Owner, host));
-        AddUpstreamRemoteMenuItem.Click += (_, _) =>
-            WithRepositoryHost(host => _plugins.AddUpstreamRemote(_plugins.Owner, host));
+            _plugins.StartCloneForkFromHoster(_plugins.Owner, host, gitModuleChanged: null);
+        }
+        else
+        {
+            MessageBoxes.ShowError(_plugins.Owner, RepositoryHostTexts.NoReposHostPluginLoaded,
+                RepositoryHostTexts.Error);
+        }
     }
 
     // Upstream's UpdateRepositoryHostsMenu, once the plugins are loaded.

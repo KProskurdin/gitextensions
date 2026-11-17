@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using GitCommands;
 using GitExtensions.Xplat.Core.Platform;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 
@@ -15,7 +16,8 @@ namespace GitExtensions.Xplat.App;
 // the recent list's "Clear list".
 public partial class MainWindow
 {
-    private const string ClearListText = "Clear list";
+    // Whether the click on a recent repository held Ctrl (Cmd on macOS).
+    private bool _openRecentInNewInstance;
 
     // The history the repository menus show last, for the working directory drop-down, which builds its items when it
     // opens.
@@ -31,13 +33,7 @@ public partial class MainWindow
 
     private void WireStartMenu()
     {
-        UserManualMenuItem.Click += (_, _) => OpenUrl(AppSettings.DocumentationBaseUrl);
-        TranslateMenuItem.Click += (_, _) => OpenUrl(TranslateUrl);
-        ReportIssueMenuItem.Click += (_, _) => Run(ReportIssueAsync);
-        ChangelogMenuItem.Click += (_, _) => _ = new ChangeLogWindow().ShowDialog(this);
-        DonateMenuItem.Click += (_, _) => _ = new DonateWindow(OpenUrl).ShowDialog(this);
-        DashboardRefreshMenuItem.Click += (_, _) => Run(Dashboard.LoadAsync);
-        DashboardRecentReposSettingsMenuItem.Click += (_, _) => Run(ConfigureRecentRepositoriesAsync);
+        // The items' actions are the toolbar view model's commands (bound in XAML).
     }
 
     // The recent list changed: the menus show it at once, then again with the history's pins and the favourites.
@@ -54,112 +50,44 @@ public partial class MainWindow
         });
     }
 
-    // The Start menu's recent repositories, then upstream's separator and "Clear list".
+    // The Start menu's recent repositories, then upstream's separator and "Clear list" (the toolbar view model's entries).
     private void ShowRecentRepositories(IReadOnlyList<RepositoryEntry> recent)
     {
-        List<Control> items = RecentRepositoryItems(recent);
-        if (items.Count > 0)
-        {
-            MenuItem clear = new() { Header = UpstreamTranslation.ByText(ClearListText) };
-            clear.Click += (_, _) => Run(ClearRecentRepositoriesAsync);
-            items.Add(new Separator());
-            items.Add(clear);
-        }
-
-        RecentMenu.ItemsSource = items;
-        RecentMenu.IsEnabled = items.Count > 0;
-    }
-
-    // Upstream's PopulateRecentRepositoriesMenu: the top repositories, a separator, the others.
-    private List<Control> RecentRepositoryItems(IReadOnlyList<RepositoryEntry> recent)
-    {
-        (IReadOnlyList<RepositoryMenuEntry> top, IReadOnlyList<RepositoryMenuEntry> rest) =
-            RepositoryMenus.Recent(recent, _preferences.RecentRepositoryMenu.Splitter());
-        List<Control> items = [.. top.Select(RepositoryMenuItem)];
-        if (rest.Count > 0 && top.Count > 0)
-        {
-            items.Add(new Separator());
-        }
-
-        items.AddRange(rest.Select(RepositoryMenuItem));
-        return items;
+        IReadOnlyList<MenuEntry> entries = Toolbar.RecentRepositoriesMenu(recent, withClear: true);
+        MenuEntries.Fill(RecentMenu.Items, entries, this, TrackNewInstanceClick);
+        RecentMenu.IsEnabled = entries.Count > 0;
     }
 
     private void ShowFavouriteRepositories(IReadOnlyList<RepositoryEntry> favourites)
     {
-        List<MenuItem> groups = FavouriteRepositoryItems(favourites);
-        FavouritesMenu.ItemsSource = groups;
-        FavouritesMenu.IsEnabled = groups.Count > 0;
+        IReadOnlyList<MenuEntry> entries = Toolbar.FavouriteRepositoriesMenu(favourites);
+        MenuEntries.Fill(FavouritesMenu.Items, entries, this, TrackNewInstanceClick);
+        FavouritesMenu.IsEnabled = entries.Count > 0;
     }
 
-    // Upstream's PopulateFavouriteRepositoriesMenu: a submenu per category.
-    private List<MenuItem> FavouriteRepositoryItems(IReadOnlyList<RepositoryEntry> favourites)
-        => [.. RepositoryMenus.Favourites(favourites, _preferences.RecentRepositoryMenu.Splitter())
-            .Select(group => new MenuItem
-            {
-                Header = group.Category, ItemsSource = group.Entries.Select(RepositoryMenuItem).ToList()
-            })];
-
-    // Upstream's AddRecentRepositories: the number as the access key of the first ten. The item's text is its tag, for
-    // the working directory drop-down's search box.
-    private MenuItem RepositoryMenuItem(RepositoryMenuEntry entry)
+    // Upstream's OpenRepo: with Ctrl (Cmd on macOS) held the repository opens in a new instance. A click gives no modifiers,
+    // so the release that makes it is read first.
+    private void TrackNewInstanceClick(MenuItem item, MenuEntry entry)
     {
-        string number = entry.Number switch
+        if (entry.Command == Toolbar.OpenRecentRepositoryCommand)
         {
-            < 10 => $"_{entry.Number}",
-            10 => "1_0",
-            _ => $"{entry.Number}",
-        };
-        string? branch = _recent.Items.FirstOrDefault(item => RecentRepositoryPaths.Same(item.Path, entry.Path))
-            ?.Branch;
-        DockPanel header = new() { LastChildFill = true };
-        if (branch is not null)
-        {
-            TextBlock branchText = new() { Text = branch, Margin = new Avalonia.Thickness(24, 0, 0, 0), Opacity = 0.7 };
-            DockPanel.SetDock(branchText, Dock.Right);
-            header.Children.Add(branchText);
+            item.AddHandler(PointerReleasedEvent,
+                (_, e) => _openRecentInNewInstance = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier),
+                RoutingStrategies.Tunnel, handledEventsToo: true);
         }
-
-        header.Children.Add(new AccessText
-        {
-            Text = $"{number}: {entry.Caption.Replace("_", "__", StringComparison.Ordinal)}",
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        MenuItem item = new()
-        {
-            Header = header,
-            Icon = entry.Anchored ? UpstreamIcon("Pin") : null,
-            Tag = $"{entry.Number}: {entry.Caption}",
-        };
-        ToolTip.SetTip(item, entry.Tooltip);
-
-        // Upstream's OpenRepo: with Ctrl (Cmd on macOS) held the repository opens in a new instance. A click gives no modifiers, so
-        // the release that makes it is read first.
-        bool newInstance = false;
-        item.AddHandler(PointerReleasedEvent, (_, e) => newInstance = e.KeyModifiers.HasFlag(Hotkeys.CommandModifier),
-            RoutingStrategies.Tunnel, handledEventsToo: true);
-        item.Click += (_, _) =>
-        {
-            if (newInstance)
-            {
-                NewInstanceCommand.Start(_launcher, entry.Path);
-            }
-            else
-            {
-                Run(() => OpenRepositoryAsync(entry.Path));
-            }
-
-            newInstance = false;
-        };
-        return item;
     }
 
-    // Upstream's tsmiRecentRepositoriesClear_Click empties the recent list without a question.
-    private async Task ClearRecentRepositoriesAsync()
+    private void OpenRecentRepository(string path)
     {
-        foreach (RecentRepository recent in _recent.Items.ToList())
+        if (_openRecentInNewInstance)
         {
-            await _recent.RemoveAsync(recent.Path);
+            NewInstanceCommand.Start(_launcher, path);
         }
+        else
+        {
+            Run(() => OpenRepositoryAsync(path));
+        }
+
+        _openRecentInNewInstance = false;
     }
 }

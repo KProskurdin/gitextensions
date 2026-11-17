@@ -102,14 +102,13 @@ internal sealed class SettingsViewModelTests
     public async Task Another_HOME_without_a_folder_should_show_the_Git_page_and_store_nothing()
     {
         SettingsViewModel viewModel = New(new FakeDialogHost(), isWindows: true);
-        bool gitPageShown = false;
-        viewModel.GitPageRequested += (_, _) => gitPageShown = true;
+        viewModel.PageTree.GoToPage("GeneralSettingsPage");
 
         viewModel.SelectedHomeChoice = HomeChoice.Other;
         viewModel.OtherHome = "";
         await viewModel.OkCommand.ExecuteAsync(null);
 
-        gitPageShown.Should().BeTrue();
+        viewModel.PageTree.ShownNode!.Page.Should().Be(SettingsViewModel.GitPage);
         viewModel.ErrorText.Should().NotBeEmpty();
         _steps.Should().BeEmpty();
         _preferences.SaveCount.Should().Be(0);

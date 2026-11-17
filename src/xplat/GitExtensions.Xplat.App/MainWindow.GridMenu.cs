@@ -84,28 +84,7 @@ public partial class MainWindow
         ArrangeGridMenu(focused: false);
         CommitList.AddHandler(PointerPressedEvent, OnCommitListPointerPressed, RoutingStrategies.Tunnel);
         CommitContextMenu.Opening += (_, e) => e.Cancel = !ShowGridMenu();
-        GridResetChangesMenuItem.Click += (_, _) => RunOnRepository(ResetChangesAsync);
-        GridCommitMenuItem.Click += (_, _) => ShowCommitWindow();
-        ResetAnotherBranchMenuItem.Click += (_, _) => RunOnSelectedCommit(ShowResetAnotherBranchAsync);
         WireCompareMenu();
-
-        // Upstream's ApplyStashToolStripMenuItemClick (by the stash's commit), PopStashToolStripMenuItemClick and
-        // DropStashToolStripMenuItemClick (by its selector, the drop after upstream's suppressible question).
-        ApplyStashMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => _actions.ApplyStashAsync(path, row.Hash));
-        PopStashMenuItem.Click += (_, _) => RunOnSelectedCommit((path, row) => row.StashLabel is { } stash
-            ? _actions.PopStashAsync(path, stash)
-            : Task.FromResult(false));
-        GridDropStashMenuItem.Click += (_, _) => RunOnSelectedCommit(async (path, row) =>
-            row.StashLabel is { } stash
-            && await ConfirmAsync(Confirmation.StashDrop, Confirmations.StashDropQuestion, "Drop", "Drop Stash Confirmation")
-            && await _actions.DropStashAsync(path, stash));
-        EditCommitMenuItem.Click += (_, _) => RewriteSelectedCommit(RewriteCommit.Edit);
-        RewordCommitMenuItem.Click += (_, _) => RewriteSelectedCommit(RewriteCommit.Reword);
-        FixupCommitMenuItem.Click += (_, _) => StartSpecialCommit(CommitKind.Fixup);
-        SquashCommitMenuItem.Click += (_, _) => StartSpecialCommit(CommitKind.Squash);
-        AmendCommitMenuItem.Click += (_, _) => StartSpecialCommit(CommitKind.Amend);
-        AdvancedHelpMenuItem.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(
-            GitUI.UserManual.UserManual.UrlFor(RewriteCommit.HelpSubfolder, RewriteCommit.HelpAnchor));
     }
 
     // Upstream's FixupCommitToolStripMenuItemClick, SquashCommitToolStripMenuItemClick and
@@ -128,18 +107,10 @@ public partial class MainWindow
         return true;
     }
 
-    // Upstream's editCommitToolStripMenuItem_Click and rewordCommitToolStripMenuItem_Click (LaunchRebase).
-    private void RewriteSelectedCommit(string command) => RunOnSelectedCommit((path, row) =>
-        _actions.RewriteCommitAsync(path,
-            RewriteCommit.Arguments(
-                row.ParentHashes is [{ } first, ..] && ObjectId.TryParse(first, out ObjectId parent) ? parent : null,
-                GitVersion.Current.SupportRebaseMerges),
-            command));
-
     // Upstream's ResetAnotherBranchToHereToolStripMenuItemClick: FormResetAnotherBranch on the commit, its update-ref with
     // the output shown (which reads the repository again), then the checkout window on the branch when asked.
-    private Task<bool> ShowResetAnotherBranchAsync(string path, CommitRow row)
-        => new ResetAnotherBranchWindow(path, row.Hash, _preferences,
+    private Task<bool> ShowResetAnotherBranchAsync(string path, string revision)
+        => new ResetAnotherBranchWindow(path, revision, _preferences,
                 (_, arguments) => RunGitWithOutputAsync(path, arguments.ToString()),
                 (owner, branch) => CheckoutFlow().StartAsync(owner, path, branch, remote: false))
             .ShowDialog<bool>(this);
@@ -166,26 +137,24 @@ public partial class MainWindow
             new HashSet<string>(_repository.Tags.Where(localBranches.Contains)), keep);
 
         FillCopyMenu(CopyToClipboardMenuItem, SelectedRevisions, keep);
-        Fill(GridCheckoutBranchMenuItem, menus.Checkout,
-            branch => Run(() => StartCheckoutBranchAsync(path, branch.Name, branch.IsRemote)));
-        Fill(GridPushBranchMenuItem, menus.Push, branch => Run(() => ShowPushDialogAsync(branch.Name)));
-        Fill(GridMergeBranchMenuItem, menus.Merge, branch => Run(() => ShowMergeAsync(path, branch.Target)));
-        Fill(GridRenameBranchMenuItem, menus.Rename, branch => Run(() => RenameBranchAsync(branch.Name)));
-        Fill(GridDeleteBranchMenuItem, menus.Delete, branch => Run(() => branch.IsRemote
-            ? ShowDeleteRemoteBranchAsync(path, branch.Name)
-            : ShowDeleteBranchAsync(path, [branch.Name])));
-        Fill(GridDeleteTagMenuItem, menus.DeleteTags, tag => Run(() => ShowDeleteTagAsync(path, tag.Name)));
-        FillSelectInLeftPanel(menus.SelectInLeftPanel);
+        GridRefMenuEntries entries = Toolbar.GridRefEntries(menus);
+        MenuEntries.Fill(GridCheckoutBranchMenuItem.Items, entries.Checkout, this);
+        MenuEntries.Fill(GridPushBranchMenuItem.Items, entries.Push, this);
+        MenuEntries.Fill(GridMergeBranchMenuItem.Items, entries.Merge, this);
+        MenuEntries.Fill(GridRenameBranchMenuItem.Items, entries.Rename, this);
+        MenuEntries.Fill(GridDeleteBranchMenuItem.Items, entries.Delete, this);
+        MenuEntries.Fill(GridDeleteTagMenuItem.Items, entries.DeleteTags, this);
+        MenuEntries.Fill(GridSelectInLeftPanelMenuItem.Items, entries.SelectInLeftPanel, this);
         FillFromMenu(GridNavigateMenuItem, NavigateMenu);
-        ShowViewMenuChecks();
+        GridViewMenu.Refresh();
         FillFromMenu(GridViewMenuItem, ViewMenu);
 
         // Upstream's SetEnabled calls: an item that does not apply is hidden (the view model's state, bound in XAML), then
         // the separators left alone.
         Toolbar.GridMenu.Refresh(row, menus, editorAvailable: _actions.EditorCommand is not null,
             hasBuildReport: SelectedBuildStatus()?.Url is not null,
-            hasPullRequest: SelectedBuildStatus()?.PullRequestUrl is not null);
-        ShowCompareMenu(row);
+            hasPullRequest: SelectedBuildStatus()?.PullRequestUrl is not null, CompareState());
+        ShowCompareMenu();
         UpdateGridMenuSeparators();
         return true;
     }
@@ -226,7 +195,7 @@ public partial class MainWindow
 
     // Upstream's CopyContextMenuItem.OnDropDownOpening, for the grid's menu and the left panel's.
     private void FillCopyMenu(MenuItem host, IReadOnlyList<CommitRow> rows, Func<RefLabel, bool>? keep)
-        => CopyMenus.Fill(host, rows, keep, value => Run(() => CopyTextAsync(value)));
+        => CopyMenus.Fill(host, rows, keep, Toolbar.CopyTextCommand);
 
     private async Task CopyTextAsync(string? text)
     {
@@ -236,51 +205,8 @@ public partial class MainWindow
         }
     }
 
-    // Upstream's AddBranchMenuItem for each entry; a null entry is a separator.
-    private static void Fill(MenuItem parent, IReadOnlyList<GridMenuRef?> refs, Action<GridMenuRef> click)
-    {
-        parent.Items.Clear();
-        foreach (GridMenuRef? gitRef in refs)
-        {
-            if (gitRef is null)
-            {
-                parent.Items.Add(new Separator());
-                continue;
-            }
-
-            MenuItem item = new() { Header = new TextBlock { Text = gitRef.Name }, Icon = UpstreamIcon(gitRef.Image) };
-            item.Click += (_, _) => click(gitRef);
-            parent.Items.Add(item);
-        }
-    }
-
-    // Upstream's tsmiSelectInLeftPanel: one ref selects it at once, several are a submenu.
-    private void FillSelectInLeftPanel(IReadOnlyList<GridMenuRef> refs)
-    {
-        GridSelectInLeftPanelMenuItem.Items.Clear();
-        GridSelectInLeftPanelMenuItem.Click -= OnSelectSingleInLeftPanel;
-        _selectInLeftPanel = refs.Count == 1 ? refs[0] : null;
-        if (refs.Count == 1)
-        {
-            GridSelectInLeftPanelMenuItem.Click += OnSelectSingleInLeftPanel;
-            return;
-        }
-
-        Fill(GridSelectInLeftPanelMenuItem, refs, SelectInLeftPanel);
-    }
-
-    private GridMenuRef? _selectInLeftPanel;
-
-    private void OnSelectSingleInLeftPanel(object? sender, RoutedEventArgs e)
-    {
-        if (e.Source == GridSelectInLeftPanelMenuItem && _selectInLeftPanel is { } gitRef)
-        {
-            SelectInLeftPanel(gitRef);
-        }
-    }
-
     // Upstream's FormBrowse.SelectInLeftPanel: the left panel shown, then the ref's node selected.
-    private void SelectInLeftPanel(GridMenuRef gitRef)
+    private void SelectInLeftPanel(string name, bool isRemote)
     {
         if (ToggleLeftPanelButton.IsChecked != true)
         {
@@ -289,8 +215,8 @@ public partial class MainWindow
 
         RepoObjectNode? node = _repoObjects.SelectMany(root => root.Descendants()).FirstOrDefault(node =>
             node.Kind == RepoObjectKind.Tag
-                ? node.Item as string == gitRef.Name
-                : node.Branch is { } branch && branch.Name == gitRef.Name && branch.IsRemote == gitRef.IsRemote);
+                ? node.Item as string == name
+                : node.Branch is { } branch && branch.Name == name && branch.IsRemote == isRemote);
         if (node is null)
         {
             return;
@@ -309,8 +235,8 @@ public partial class MainWindow
         }, DispatcherPriority.Loaded);
     }
 
-    // Upstream's grid Navigate and View submenus have the main menus' commands (its FillMenuFromMenuCommands); here they
-    // forward to the main menus' items, showing their state.
+    // Upstream's grid Navigate and View submenus have the main menus' commands (its FillMenuFromMenuCommands): copies of the
+    // main menus' items, showing their state and running their commands (the group headers have none).
     private static void FillFromMenu(MenuItem target, MenuItem menu)
     {
         target.Items.Clear();
@@ -330,11 +256,14 @@ public partial class MainWindow
                 IsVisible = source.IsVisible,
                 ToggleType = source.ToggleType,
                 IsChecked = source.IsChecked,
+
+                // An item bound to a view model's command runs it from the copy too.
+                Command = source.Command,
+                CommandParameter = source.CommandParameter,
                 Icon = source.Icon is Image { Source: { } picture } ? new Image { Source = picture, Width = 16, Height = 16 } : null,
             };
             item.Classes.AddRange(source.Classes.Where(name => !name.StartsWith(':')));
             ToolTip.SetTip(item, ToolTip.GetTip(source));
-            item.Click += (_, _) => source.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             target.Items.Add(item);
         }
     }

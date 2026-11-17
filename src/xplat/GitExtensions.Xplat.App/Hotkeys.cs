@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Avalonia.Input;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
 using WinFormsKeys = System.Windows.Forms.Keys;
@@ -58,44 +59,6 @@ public enum CommitCommand
     SelectPreviousAlternativeHotkey2,
     ConventionalCommitPrefixMessage,
     ConventionalCommitPrefixMessageWithScope,
-}
-
-/// <summary>
-///  The revision grid's commands that have a hotkey (upstream <c>RevisionGridControl.Command</c>); they act while the grid
-///  has the focus.
-/// </summary>
-public enum GridCommand
-{
-    GoToParent,
-    GoToChild,
-    SelectCurrentRevision,
-    RevisionFilter,
-    ResetRevisionFilter,
-    ResetRevisionPathFilter,
-    ShowAllBranches,
-    ShowCurrentBranchOnly,
-    ToggleHideMergeCommits,
-    ShowFirstParent,
-    ToggleHighlightSelectedBranch,
-    NextQuickSearch,
-    PrevQuickSearch,
-    GoToFirstParent,
-    GoToLastParent,
-    ToggleBetweenArtificialAndHeadCommits,
-    NavigateBackward,
-    NavigateForward,
-    GoToCommit,
-    GoToMergeBase,
-    CreateFixupCommit,
-    CreateSquashCommit,
-    CreateAmendCommit,
-    SelectAsBaseToCompare,
-    CompareToBase,
-    CompareToWorkingDirectory,
-    CompareToCurrentBranch,
-    CompareToBranch,
-    CompareSelectedCommits,
-    OpenCommitsWithDifftool,
 }
 
 /// <summary>

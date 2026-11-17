@@ -9,6 +9,7 @@ using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Platform;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
@@ -26,7 +27,6 @@ namespace GitExtensions.Xplat.App;
 public partial class MainWindow
 {
     // WorkingDirectoryToolStripSplitButton's texts.
-    private const string ConfigureWorkingDirMenuText = "Co&nfigure this menu...";
     private const string RepositorySearchPlaceholderText = "Search repositories...";
     private static readonly string WorkingDirToolTipText = "Change working directory\n"
         + "Left click opens the drop-down menu.\n"
@@ -68,29 +68,25 @@ public partial class MainWindow
 
     private void WireMainToolStrip()
     {
-        ToggleLeftPanelButton.Click += (_, _) => ToggleLeftPanel();
-        ToggleSplitViewButton.Click += (_, _) =>
+        // The buttons' and the fixed items' actions are the toolbar view model's commands (bound in XAML); the flyouts'
+        // items get its data context here, as a flyout's items do not inherit it.
+        foreach (SplitButton button in (SplitButton[])[CommitInfoPositionButton, StashToolButton])
         {
-            _preferences.ShowSplitViewLayout = !_preferences.ShowSplitViewLayout;
-            ShowSplitViewLayout();
-        };
+            if (button.Flyout is MenuFlyout menu)
+            {
+                foreach (Control item in menu.Items.OfType<Control>())
+                {
+                    item.DataContext = Toolbar;
+                }
+            }
+        }
 
-        // Upstream's CommitInfoPositionClick: the button moves to the next position, the menu to the chosen one.
-        CommitInfoPositionButton.Click += (_, _) => SetCommitInfoPosition(
-            (CommitInfoPosition)(((int)_preferences.CommitInfoPosition + 1) %
-                                 Enum.GetValues<CommitInfoPosition>().Length));
-        CommitInfoBelowMenuItem.Click += (_, _) => SetCommitInfoPosition(CommitInfoPosition.BelowList);
-        CommitInfoLeftwardMenuItem.Click += (_, _) => SetCommitInfoPosition(CommitInfoPosition.LeftwardFromList);
-        CommitInfoRightwardMenuItem.Click += (_, _) => SetCommitInfoPosition(CommitInfoPosition.RightwardFromList);
         LayoutRevisionInfo();
         ShowSplitViewLayout();
         FillTerminals();
-        TerminalButton.Click += (_, _) => OpenTerminal(TerminalButton.Tag as TerminalChoice);
-        EditSettingsButton.Click += (_, _) => Run(() => ShowSettingsAsync());
 
         // The menus are built before they open: Avalonia shows a menu whose items change while it opens as a thin line.
         ((PopulatingMenuFlyout)SubmodulesButton.Flyout!).Populating += (_, _) => ShowSubmodulesMenu();
-        SubmodulesButton.Click += (_, _) => OnSubmodulesButtonClick();
         PopulatingMenuFlyout worktrees = (PopulatingMenuFlyout)WorktreesButton.Flyout!;
         worktrees.PopulateAsync = ShowWorktreesMenuAsync;
         worktrees.ReportError = ex => ShowError(ex.Message);
@@ -110,21 +106,7 @@ public partial class MainWindow
         branches.PopulateAsync = ShowBranchSelectMenuAsync;
         branches.ReportError = ex => ShowError(ex.Message);
 
-        PullMergeMenuItem.Click += (_, _) => PullWith(GitPullAction.Merge);
-        PullRebaseMenuItem.Click += (_, _) => PullWith(GitPullAction.Rebase);
-        PullFetchMenuItem.Click += (_, _) => PullWith(GitPullAction.Fetch);
-        PullOpenDialogMenuItem.Click += (_, _) => PullWith(GitPullAction.None);
-        PullFetchAllMenuItem.Click += (_, _) => PullWith(GitPullAction.FetchAll);
-        PullFetchPruneAllMenuItem.Click += (_, _) => PullWith(GitPullAction.FetchPruneAll);
         FillSetDefaultPullActionMenu();
-
-        // Upstream's stash split button opens its stash window; the new shell has none, so the button stashes.
-        StashToolButton.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
-        StashChangesMenuItem.Click += (_, _) => Run(() => StashAsync());
-        StashStagedMenuItem.Click += (_, _) => RunOnRepository(path => _actions.StashStagedAsync(path));
-        StashPopToolMenuItem.Click += (_, _) => PopTopStash();
-        ManageStashesMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
-        CreateStashMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this, manageStashes: false));
     }
 
     // Upstream's FillNextPullActionAsDefaultToolStripMenuItems: the pull menu's actions again, as check items.
@@ -336,16 +318,7 @@ public partial class MainWindow
     {
         IReadOnlyList<TerminalChoice> choices = TerminalChoices.For(HostPlatform.Current,
             Environment.GetEnvironmentVariable("TERMINAL"), PathUtil.TryFindShellPath);
-        MenuFlyout flyout = (MenuFlyout)TerminalButton.Flyout!;
-        flyout.Items.Clear();
-        foreach (TerminalChoice choice in choices)
-        {
-            MenuItem item = new() { Header = new TextBlock { Text = choice.Name }, Icon = UpstreamIcon(choice.Image) };
-            ToolTip.SetTip(item, choice.Name);
-            item.Click += (_, _) => OpenTerminal(choice);
-            flyout.Items.Add(item);
-        }
-
+        MenuEntries.Fill(((MenuFlyout)TerminalButton.Flyout!).Items, Toolbar.TerminalMenu(choices), this);
         if (TerminalChoices.Default(choices, TerminalChoices.DefaultName) is { } terminal)
         {
             TerminalButton.Image = terminal.Image;
@@ -368,58 +341,8 @@ public partial class MainWindow
     // Upstream's submodule drop-down (PopulateToolbar, from the structure the left panel's submodule tree reads), with
     // "Loading..." until it is read.
     private void ShowSubmodulesMenu()
-    {
-        MenuFlyout flyout = (MenuFlyout)SubmodulesButton.Flyout!;
-        flyout.Items.Clear();
-        if (RepositoryPath is not { } path)
-        {
-            return;
-        }
-
-        if (ShownSubmoduleStructure(path) is not { } structure)
-        {
-            flyout.Items.Add(new MenuItem { Header = new TextBlock { Text = UpstreamTranslation.ByText(SubmoduleStructure.LoadingText) } });
-            return;
-        }
-
-        foreach (SubmoduleMenuItem entry in structure.MenuItems(UpstreamTranslation.ByText))
-        {
-            flyout.Items.Add(SubmoduleMenuItem(entry, structure));
-        }
-    }
-
-    private Control SubmoduleMenuItem(SubmoduleMenuItem entry, SubmoduleStructure structure)
-    {
-        if (entry.Kind == SubmoduleMenuItemKind.Separator)
-        {
-            return new Separator();
-        }
-
-        MenuItem item = new();
-        switch (entry)
-        {
-            case { Kind: SubmoduleMenuItemKind.Project, Project: { } project }:
-                item.Header = new TextBlock { Text = entry.Text, FontWeight = project.IsCurrent ? FontWeight.Bold : FontWeight.Normal };
-                item.Icon = UpstreamIcon(project.Image);
-                item.Click += (_, _) => Run(() => OpenSubmoduleProjectAsync(project));
-                break;
-            case { Kind: SubmoduleMenuItemKind.UpdateAll }:
-                item.Header = UpstreamTranslation.WithAccessKey(entry.Text);
-                item.Icon = UpstreamIcon("SubmodulesUpdate");
-                item.Click += (_, _) => RunOnRepository(repository => UpdateSubmodulesAsync(repository, null));
-                break;
-            case { Kind: SubmoduleMenuItemKind.UpdateCurrent }:
-                item.Header = new TextBlock { Text = entry.Text };
-                item.Icon = UpstreamIcon("FolderSubmodule");
-                item.Click += (_, _) => Run(() => UpdateCurrentSubmoduleAsync(structure));
-                break;
-            default:
-                item.Header = new TextBlock { Text = entry.Text };
-                break;
-        }
-
-        return item;
-    }
+        => MenuEntries.Fill(((MenuFlyout)SubmodulesButton.Flyout!).Items,
+            Toolbar.SubmodulesMenu(RepositoryPath is { } path ? ShownSubmoduleStructure(path) : null), this);
 
     // Upstream's toolStripWorktrees_DropDownOpening: every worktree by its folder's name (the open one checked, those
     // whose folders are gone disabled), then Create worktree..., Prune worktrees and Manage worktrees....
@@ -433,34 +356,7 @@ public partial class MainWindow
         }
 
         IReadOnlyList<WorktreeInfo> worktrees = await _repositoryService.GetWorktreesAsync(path);
-        foreach (WorktreeInfo worktree in worktrees)
-        {
-            bool current = ManageWorktreeDialog.IsCurrent(worktree, path);
-            MenuItem item = new()
-            {
-                Header = new TextBlock { Text = ManageWorktreeDialog.MenuText(worktree) },
-                Icon = UpstreamIcon("WorkTree"),
-                ToggleType = current ? MenuItemToggleType.CheckBox : MenuItemToggleType.None,
-                IsChecked = current,
-                IsEnabled = !current && !worktree.IsDeleted,
-            };
-            item.Click += (_, _) => Run(() => OpenWorktreeFolderAsync(worktree.Path));
-            flyout.Items.Add(item);
-        }
-
-        flyout.Items.Add(new Separator());
-        MenuItem create = new()
-        {
-            Header = UpstreamTranslation.ByText(ManageWorktreeDialog.CreateWorktree), Icon = UpstreamIcon("WorkTree"),
-        };
-        create.Click += (_, _) => Run(CreateWorktreeAsync);
-        MenuItem prune = new() { Header = UpstreamTranslation.ByText(ManageWorktreeDialog.PruneWorktrees) };
-        prune.Click += (_, _) => RunOnRepository(repository => WorktreeFlow().PruneAsync(repository));
-        MenuItem manage = new() { Header = UpstreamTranslation.ByText(ManageWorktreeDialog.ManageWorktrees) };
-        manage.Click += (_, _) => Run(ShowWorktreesAsync);
-        flyout.Items.Add(create);
-        flyout.Items.Add(prune);
-        flyout.Items.Add(manage);
+        MenuEntries.Fill(flyout.Items, Toolbar.WorktreesMenu(worktrees, path), this);
     }
 
     // Upstream's WorktreeToolStripMenuItem_Click: opens the worktree at once, or says its folder is gone.
@@ -485,53 +381,16 @@ public partial class MainWindow
         {
             Name = "WorkingDirFilterBox", PlaceholderText = UpstreamTranslation.ByText(RepositorySearchPlaceholderText),
         };
-        List<Control> recent = RecentRepositoryItems(_menuHistory.Recent);
-        List<Control> items = [new MenuItem { Header = filter, StaysOpenOnClick = true }, new Separator()];
-        List<MenuItem> favourites = FavouriteRepositoryItems(_menuHistory.Favourites);
-        if (favourites.Count > 0)
-        {
-            items.Add(new MenuItem
-            {
-                Header = FavouritesMenu.Header, Icon = UpstreamIcon("Star"), ItemsSource = favourites
-            });
-        }
-
-        items.AddRange(recent);
-        MenuItem open = new()
-        {
-            Header = OpenMenuItem.Header, Icon = UpstreamIcon("RepoOpen"), InputGesture = OpenMenuItem.InputGesture,
-        };
-        open.Click += (_, _) => Run(PickAndOpenRepositoryAsync);
-        MenuItem close = new()
-        {
-            Header = CloseRepositoryMenuItem.Header, Icon = UpstreamIcon("DashboardFolderGit"),
-            InputGesture = CloseRepositoryMenuItem.InputGesture, IsEnabled = CloseRepositoryMenuItem.IsEnabled,
-        };
-        close.Click += (_, _) => CloseRepository();
-        MenuItem configure = new()
-        {
-            Name = "ConfigureWorkingDirMenuItem",
-            Header = UpstreamTranslation.WithAccessKey(UpstreamTranslation.ByText(ConfigureWorkingDirMenuText)),
-        };
-        configure.Click += (_, _) => Run(ConfigureRecentRepositoriesAsync);
-        items.AddRange([new Separator(), open, close, new Separator(), configure]);
+        IReadOnlyList<MenuEntry> entries = Toolbar.WorkingDirMenu(_menuHistory, (string)FavouritesMenu.Header!,
+            (string)OpenMenuItem.Header!, OpenMenuItem.InputGesture, (string)CloseRepositoryMenuItem.Header!,
+            CloseRepositoryMenuItem.InputGesture);
+        MenuFlyout flyout = (MenuFlyout)WorkingDirButton.Flyout!;
+        MenuEntries.Fill(flyout.Items, entries, this, TrackNewInstanceClick);
+        flyout.Items.Insert(0, new Separator());
+        flyout.Items.Insert(0, new MenuItem { Header = filter, StaysOpenOnClick = true });
 
         // Upstream's filter: the repositories whose text has the search text, case ignored; the separators stay.
-        filter.TextChanged += (_, _) =>
-        {
-            foreach (MenuItem item in recent.OfType<MenuItem>())
-            {
-                item.IsVisible = string.IsNullOrWhiteSpace(filter.Text)
-                                 || (item.Tag as string)?.Contains(filter.Text,
-                                     StringComparison.CurrentCultureIgnoreCase) is true;
-            }
-        };
-        MenuFlyout flyout = (MenuFlyout)WorkingDirButton.Flyout!;
-        flyout.Items.Clear();
-        foreach (Control item in items)
-        {
-            flyout.Items.Add(item);
-        }
+        filter.TextChanged += (_, _) => BrowseToolbarViewModel.FilterRepositories(entries, filter.Text);
     }
 
     // Upstream's _tsmiRecentReposSettings_Click: the settings window, then the menus and the button's caption again.
@@ -556,32 +415,8 @@ public partial class MainWindow
 
         IReadOnlyList<(string Name, string Hash)> branches =
             await GitRepositoryService.GetBranchMenuBranchesAsync(path, RefSorting());
-        MenuItem checkout = new()
-        {
-            Header = CheckoutBranchMenuItem.Header,
-            Icon = UpstreamIcon("BranchCheckout"),
-            InputGesture = Hotkeys.GestureFor(BrowseCommand.CheckoutBranch),
-        };
-        checkout.Click += (_, _) => RunOnRepository(repository => StartCheckoutBranchAsync(repository));
-        flyout.Items.Add(checkout);
-        flyout.Items.Add(new Separator());
-        foreach ((string name, string hash) in branches)
-        {
-            bool visible = _commits.IndexOfHash(hash) is not null;
-            TextBlock text = new() { Text = name };
-            if (!visible)
-            {
-                text.Bind(TextBlock.ForegroundProperty, this.GetResourceObservable(ThemeApplier.DisabledTextKey));
-            }
-
-            MenuItem item = new()
-            {
-                Header = text,
-                Icon = UpstreamIcon(visible ? "Branch" : "EyeClosed"),
-            };
-            item.Click += (_, _) => RunOnRepository(repository => StartCheckoutBranchAsync(repository, name));
-            flyout.Items.Add(item);
-        }
+        MenuEntries.Fill(flyout.Items, Toolbar.BranchesMenu(branches, (string)CheckoutBranchMenuItem.Header!,
+            Hotkeys.GestureFor(BrowseCommand.CheckoutBranch)), this);
     }
 
     private static Image? UpstreamIcon(string name)

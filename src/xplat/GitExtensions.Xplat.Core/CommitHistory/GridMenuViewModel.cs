@@ -3,6 +3,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace GitExtensions.Xplat.Core.CommitHistory;
 
 /// <summary>
+///  What the grid menu's compare items can compare (upstream's <c>OnGridViewSelectionChanged</c> settings of them): the
+///  current branch, a first and a selected commit, and a commit selected as BASE.
+/// </summary>
+public readonly record struct GridCompareState(bool HasCurrentBranch, bool HasFirstAndSelected, bool HasBase);
+
+/// <summary>
 ///  The revision grid's context menu state (upstream's <c>RevisionGridControl.ContextMenuOpening</c> and its
 ///  <c>SetEnabled</c> calls, PLAN.md principle 6): which items apply to the selected commit, from the commit (an artificial
 ///  row, a stash), its ref submenus (<see cref="GridMenus"/>), the editor and the build server's links. An item that does
@@ -16,6 +22,7 @@ public sealed class GridMenuViewModel : ObservableObject
     private bool _editorAvailable;
     private bool _hasBuildReport;
     private bool _hasPullRequest;
+    private GridCompareState _compare;
 
     /// <param name="supportsAmend">Whether git can make an amend commit (upstream's <c>SupportAmendCommits</c>).</param>
     public GridMenuViewModel(Func<bool>? supportsAmend = null)
@@ -76,12 +83,37 @@ public sealed class GridMenuViewModel : ObservableObject
     public bool IsPullRequestVisible => _hasPullRequest;
 
     /// <summary>
+    ///  The ref the "Select in left panel" item selects itself; null when it has a submenu.
+    /// </summary>
+    public GridMenuRef? SingleSelectInLeftPanel => _menus is { SelectInLeftPanel: [var only] } ? only : null;
+
+    public bool CanCompareToWorkingDirectory => _row is { } row && row.Hash != ArtificialCommits.WorkTreeHash;
+
+    public bool CanCompareWithCurrentBranch => _compare.HasCurrentBranch;
+
+    public bool CanCompareSelectedCommits => _compare.HasFirstAndSelected;
+
+    public bool CanCompareToBase => _compare.HasBase;
+
+    /// <summary>
+    ///  Upstream's selectAsBaseToolStripMenuItem_Click enables "Compare to BASE" at once.
+    /// </summary>
+    public void BaseSelected()
+    {
+        _compare = _compare with { HasBase = true };
+        OnPropertyChanged(nameof(CanCompareToBase));
+    }
+
+    /// <summary>
     ///  The state for the selected commit as the menu opens.
     /// </summary>
     /// <param name="hasBuildReport">The commit's build has a report page.</param>
     /// <param name="hasPullRequest">The commit's build has a pull request page.</param>
-    public void Refresh(CommitRow row, GridRefMenus menus, bool editorAvailable, bool hasBuildReport, bool hasPullRequest)
+    /// <param name="compare">What the compare items can compare.</param>
+    public void Refresh(CommitRow row, GridRefMenus menus, bool editorAvailable, bool hasBuildReport, bool hasPullRequest,
+        GridCompareState compare = default)
     {
+        _compare = compare;
         _row = row;
         _menus = menus;
         _editorAvailable = editorAvailable;

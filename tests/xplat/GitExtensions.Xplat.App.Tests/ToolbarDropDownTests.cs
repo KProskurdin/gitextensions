@@ -94,8 +94,7 @@ internal sealed class ToolbarDropDownTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         MainWindow window = OpenWindow();
         WaitUntil(() => window.FindControl<Button>("CommitDialogButton")!.IsEnabled);
-        window.FindControl<Button>("CommitDialogButton")!.RaiseEvent(
-            new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Click(window.FindControl<Button>("CommitDialogButton")!);
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         CommitWindow commit = window.OwnedWindows.OfType<CommitWindow>().Single();
         Button button = commit.FindControl<Button>(name)!;

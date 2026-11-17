@@ -145,6 +145,84 @@ internal sealed class BrowseToolbarViewModelTests
             nameof(BrowseToolbarViewModel.PullButtonImage), nameof(BrowseToolbarViewModel.PullButtonTip)]);
     }
 
+    [Test]
+    public void In_a_submodule_the_submodules_button_should_go_up_and_in_a_bare_repository_it_should_be_off()
+    {
+        BrowseToolbarViewModel viewModel = NewViewModel();
+        viewModel.Refresh(RepositoryPath);
+        SubmoduleProject super = new("super", "/work/", IsCurrent: false, "", "/work/");
+        SubmoduleProject repo = new("repo", RepositoryPath + "/", IsCurrent: true, "repo", "/work/");
+        (viewModel.SubmodulesButtonImage, viewModel.CanUseSubmodules).Should().Be(("SubmodulesManage", true),
+            "the button works before the submodules are read");
+
+        viewModel.ShowSubmodules(new SubmoduleStructure(super, [repo], IsBareRepository: false) { SuperProject = super });
+
+        viewModel.IsInSubmodule.Should().BeTrue();
+        viewModel.SubmodulesButtonImage.Should().Be("NavigateUp");
+        viewModel.SubmodulesButtonTip.Should().Be(FakeDialogHost.TranslatedMark + SubmoduleStructure.GoToSuperprojectText);
+
+        viewModel.ShowSubmodules(new SubmoduleStructure(repo, [], IsBareRepository: true));
+
+        viewModel.IsInSubmodule.Should().BeFalse();
+        viewModel.SubmodulesButtonTip.Should().Be(FakeDialogHost.TranslatedMark + BrowseToolbarViewModel.SubmodulesText);
+        viewModel.CanUseSubmodules.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task The_status_bar_should_show_the_branch_with_the_rebase_and_the_counts_and_the_stash_count()
+    {
+        _preferences.ShowStashCount = true;
+        BrowseToolbarViewModel viewModel = NewViewModel();
+        viewModel.Refresh(null);
+        (viewModel.IsRepositoryShown, viewModel.IsStashCountVisible, viewModel.StatusBranchText).Should()
+            .Be((false, false, ""));
+
+        await LoadAsync(new RepositorySnapshot("main", [new BranchInfo("main", false, true)], [], false,
+            [new StashInfo("stash@{0}", "wip")], [], IsRebasing: true, Sync: new SyncStatus(Ahead: 2, Behind: 1)));
+        viewModel.Refresh(RepositoryPath);
+
+        viewModel.IsRepositoryShown.Should().BeTrue();
+        viewModel.StatusBranchText.Should().Be("Branch: main" + BrowseToolbarViewModel.RebaseInProgressText
+                                               + " [ahead 2, behind 1]");
+        (viewModel.IsStashCountVisible, viewModel.StashCountText).Should().Be((true, "Stashes: 1"));
+    }
+
+    [Test]
+    public void The_grid_status_should_follow_the_grid_without_a_refresh()
+    {
+        CommitListViewModel commits = new(new FakeCommitHistory());
+        BrowseToolbarViewModel viewModel = new(commits, _repository,
+            new RepositoryOperationsViewModel(new FakeGitOperations()),
+            new RecentRepositoriesViewModel(new InMemoryRecentRepositoryStore()), _preferences, gitAvailable: true);
+        List<string?> changed = [];
+        viewModel.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        _ = commits.OpenAsync(RepositoryPath);
+
+        viewModel.GridStatusText.Should().Be("Loading...");
+        changed.Should().Contain(nameof(viewModel.GridStatusText));
+        viewModel.HasMoreCommits.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task A_stopped_rebase_with_conflicts_and_a_bisect_should_show_both_bars_with_their_buttons()
+    {
+        BrowseToolbarViewModel viewModel = NewViewModel();
+        viewModel.Refresh(null);
+        (viewModel.ActionBanner, viewModel.BisectBanner, viewModel.IsBisecting).Should().Be((null, null, false));
+
+        await LoadAsync(new RepositorySnapshot("main", [], [new FileChange("a.txt", ChangeKind.Conflict, Staged: false)],
+            false, [], [], IsRebasing: true, IsBisecting: true));
+        viewModel.Refresh(RepositoryPath);
+
+        GitActionBanner banner = viewModel.ActionBanner!;
+        (banner.Action, banner.HasConflicts, banner.Image).Should().Be((GitAction.Rebase, true, "SolveMerge"));
+        (viewModel.ShowsResolveButton, viewModel.ShowsContinueButton, viewModel.ShowsAbortButton, viewModel.ShowsMoreButton)
+            .Should().Be((true, false, true, true));
+        viewModel.BisectBanner!.Image.Should().Be("information");
+        viewModel.IsBisecting.Should().BeTrue();
+    }
+
     private async Task LoadAsync(RepositorySnapshot snapshot)
     {
         Task refresh = _repository.RefreshAsync(RepositoryPath);

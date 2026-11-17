@@ -62,6 +62,7 @@ public partial class FileHistoryWindow : Window
                 ChangeBlameOptions = options => Blame.ChangeOptionsAsync(options),
                 PickSaveFile = PickSaveFileAsync,
                 GridReloaded = () => Run(LaunchBuildServerAsync),
+                CopyText = CopyTextAsync,
             });
         InitializeComponent();
 
@@ -119,8 +120,7 @@ public partial class FileHistoryWindow : Window
         HistoryContextMenu.Opening += (_, _) =>
         {
             ViewModel.UpdateMenu();
-            CopyMenus.Fill(CopyToClipboardMenuItem, ViewModel.Selection.Revisions, keep: null,
-                value => Run(() => CopyTextAsync(value)));
+            CopyMenus.Fill(CopyToClipboardMenuItem, ViewModel.Selection.Revisions, keep: null, ViewModel.CopyTextCommand);
         };
         CustomDiffTools.OnClick(OpenWithDifftoolMenuItem,
             tool => _ = ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool));

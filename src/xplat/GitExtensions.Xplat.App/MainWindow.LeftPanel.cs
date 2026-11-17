@@ -25,29 +25,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class MainWindow
 {
-    // Upstream's texts that depend on the kind of ref (BranchMenuItemsStrings, RemoteBranchMenuItemsStrings and
-    // TagMenuItemsStrings).
-    private const string CheckoutBranchText = "Chec_kout branch...";
-    private const string CheckoutRemoteBranchText = "Chec_kout remote branch...";
-    private const string CheckoutTagText = "Chec_kout tag revision...";
-    private const string RebaseOnBranchText = "_Rebase current branch on this branch...";
-    private const string RebaseOnRemoteBranchText = "_Rebase current branch on this remote branch...";
-    private const string RebaseOnTagText = "_Rebase current branch on this tag revision...";
-    private const string DeleteBranchText = "_Delete branch...";
-    private const string DeleteRemoteBranchText = "_Delete remote branch...";
-    private const string DeleteTagText = "_Delete tag...";
-    private const string CheckoutBranchTooltip = "Checkout this branch";
-    private const string CheckoutTagTooltip = "Checkout this tag revision";
-    private const string MergeBranchTooltip = "Merge this branch into current branch";
-    private const string MergeTagTooltip = "Merge this tag into current branch";
-    private const string CreateFromBranchTooltip = "Create a local branch from this branch";
-    private const string CreateFromTagTooltip = "Create a local branch from this tag";
-    private const string RebaseOnBranchTooltip = "Rebase current branch on this branch";
-    private const string RebaseOnTagTooltip = "Rebase current branch on this tag";
-    private const string DeleteBranchTooltip = "Delete the branch, which must be fully merged in its upstream branch or in HEAD";
-    private const string DeleteRemoteBranchTooltip = "Delete the branch from the remote";
-    private const string DeleteTagTooltip = "Delete this tag";
-
     private readonly RepoObjectSearch _repoObjectSearch = new();
     private IReadOnlyList<RepoObjectNode> _repoObjects = [];
 
@@ -108,24 +85,6 @@ public partial class MainWindow
         }, RoutingStrategies.Tunnel);
         BranchTreeContextMenu.Opening += (_, e) => e.Cancel = !ShowRepoObjectMenu();
 
-        CollapseAllButton.Click += (_, _) =>
-        {
-            foreach (RepoObjectNode node in _repoObjects.SelectMany(root => root.Descendants()))
-            {
-                node.IsExpanded = false;
-            }
-        };
-        foreach ((ToolToggleButton button, RepoObjectKind root) in TreeToggles())
-        {
-            button.IsChecked = _preferences.ShowsRepoObjectsTree(root);
-            button.Click += (_, _) =>
-            {
-                _preferences.ShowRepoObjectsTree(root, !_preferences.ShowsRepoObjectsTree(root));
-                button.IsChecked = _preferences.ShowsRepoObjectsTree(root);
-                ShowRepoObjects();
-            };
-        }
-
         LeftPanelSearchBox.GotFocus += (_, _) => LeftPanelSearchBox.ItemsSource = RepoObjectSearch.Candidates(_repoObjects);
         LeftPanelSearchBox.TextChanged += (_, _) => _repoObjectSearch.CriteriaChanged();
         LeftPanelSearchBox.AddHandler(KeyUpEvent, (_, e) =>
@@ -135,17 +94,7 @@ public partial class MainWindow
                 SearchRepoObjects();
             }
         }, RoutingStrategies.Bubble, handledEventsToo: true);
-        LeftPanelSearchButton.Click += (_, _) => SearchRepoObjects();
-
-        WireRepoObjectMenu();
     }
-
-    private (ToolToggleButton Button, RepoObjectKind Root)[] TreeToggles() =>
-    [
-        (ShowBranchesTreeButton, RepoObjectKind.BranchesRoot), (ShowRemotesTreeButton, RepoObjectKind.RemotesRoot),
-        (ShowWorktreesTreeButton, RepoObjectKind.WorktreesRoot), (ShowTagsTreeButton, RepoObjectKind.TagsRoot),
-        (ShowSubmodulesTreeButton, RepoObjectKind.SubmodulesRoot), (ShowStashesTreeButton, RepoObjectKind.StashesRoot),
-    ];
 
     // Upstream's trees refill after each refresh; the expanded nodes and the selection stay.
     private void ShowRepoObjects()
@@ -301,127 +250,22 @@ public partial class MainWindow
         }
     }
 
-    // Upstream's contextMenu_Opening: the items that apply to the selected node are shown, enabled when they can run now,
-    // and the separators between empty groups are hidden. The menu does not open without an enabled item.
+    // Upstream's contextMenu_Opening: which items apply and can run is the toolbar view model's TreeMenu (bound in XAML);
+    // here the copy and script submenus are filled and the separators between empty groups hidden. The menu does not open
+    // without an enabled item.
     private bool ShowRepoObjectMenu()
     {
         RepoObjectNode? node = SelectedRepoObject;
-        bool open = RepositoryPath is not null && !IsBusy && node is not null;
-
-        // Upstream's hasSingleSelection: with several marked nodes only the items for all of them are offered.
-        bool multiple = open && RepoObjectSelection.Selected(_repoObjects).Count > 1;
-        RepoObjectKind? kind = open && !multiple ? node!.Kind : null;
-        bool isRef = kind is RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch or RepoObjectKind.Tag;
-        bool isCurrent = node?.Branch is { IsCurrent: true };
-        bool isTag = kind == RepoObjectKind.Tag;
-        bool isRemoteBranch = kind == RepoObjectKind.RemoteBranch;
-
-        foreach (MenuItem item in BranchTreeContextMenu.Items.OfType<MenuItem>())
-        {
-            item.IsVisible = false;
-            item.IsEnabled = true;
-        }
-
-        // Upstream's copyContextMenuItem: the grid's selected commits, for a branch or a stash the grid shows.
-        bool copy = kind is RepoObjectKind.LocalBranch or RepoObjectKind.RemoteBranch or RepoObjectKind.Stash
-                    && node?.IsHidden is false && SelectedRevisions.Count > 0;
-        Show(TreeCopyMenuItem, copy);
-        if (copy)
+        bool offered = Toolbar.TreeMenu.Refresh(RepoObjectMenuState());
+        if (Toolbar.TreeMenu.Copy.IsVisible)
         {
             FillCopyMenu(TreeCopyMenuItem, SelectedRevisions, keep: null);
         }
 
-        Show(TreeFilterMenuItem, open && RepoObjectSelection.RefsFilter(RepoObjectMenuTargets()) is not null);
-
-        // Upstream's MenuItemsGenerator: the ref items with the texts of the ref's kind; the checked-out branch can only be
-        // branched from and renamed.
-        Show(TreeCheckoutMenuItem, isRef, enabled: !isCurrent);
-        Show(TreeMergeMenuItem, isRef, enabled: !isCurrent);
-        Show(TreeRebaseMenuItem, isRef, enabled: !isCurrent);
-        Show(TreeCreateBranchMenuItem, isRef);
-        Show(TreeResetMenuItem, isRef, enabled: !isCurrent);
-        Show(TreeRenameBranchMenuItem, kind == RepoObjectKind.LocalBranch);
-        Show(TreeDeleteMenuItem, isRef, enabled: !isCurrent);
-        Show(TreeDeleteRemoteTagMenuItem, isTag && _repository.Remotes.Count > 0);
-        if (isRef)
-        {
-            SetText(TreeCheckoutMenuItem, isTag ? CheckoutTagText : isRemoteBranch ? CheckoutRemoteBranchText : CheckoutBranchText,
-                isTag ? CheckoutTagTooltip : CheckoutBranchTooltip);
-            SetText(TreeRebaseMenuItem, isTag ? RebaseOnTagText : isRemoteBranch ? RebaseOnRemoteBranchText : RebaseOnBranchText,
-                isTag ? RebaseOnTagTooltip : RebaseOnBranchTooltip);
-            SetText(TreeDeleteMenuItem, isTag ? DeleteTagText : isRemoteBranch ? DeleteRemoteBranchText : DeleteBranchText,
-                isTag ? DeleteTagTooltip : isRemoteBranch ? DeleteRemoteBranchTooltip : DeleteBranchTooltip);
-            ToolTip.SetTip(TreeMergeMenuItem, UpstreamTranslation.ByText(isTag ? MergeTagTooltip : MergeBranchTooltip));
-            ToolTip.SetTip(TreeCreateBranchMenuItem,
-                UpstreamTranslation.ByText(isTag ? CreateFromTagTooltip : CreateFromBranchTooltip));
-        }
-
-        bool remotesRoot = kind == RepoObjectKind.RemotesRoot;
-        Show(TreeManageRemotesMenuItem, remotesRoot);
-        Show(TreeFetchAllRemotesMenuItem, remotesRoot);
-        Show(TreePruneAllRemotesMenuItem, remotesRoot);
-
-        bool remote = kind == RepoObjectKind.Remote;
-        Show(TreeManageRemoteMenuItem, remote);
-        bool activeRemote = remote && !node!.IsInactive;
-        Show(TreeActivateRemoteMenuItem, remote && !activeRemote);
-        Show(TreeActivateAndFetchRemoteMenuItem, remote && !activeRemote);
-        Show(TreeDeactivateRemoteMenuItem, activeRemote);
-        Show(TreeFetchRemoteMenuItem, activeRemote);
-        Show(TreePruneRemoteMenuItem, activeRemote);
-        Show(TreeOpenRemoteUrlMenuItem, remote, enabled: RemoteWebUrl(node) is not null);
-
-        ShowSubmoduleTreeMenu(kind, node);
-
-        Show(TreeFetchAndCheckoutMenuItem, isRemoteBranch);
-        Show(TreeFetchAndMergeMenuItem, isRemoteBranch);
-        Show(TreeFetchAndRebaseMenuItem, isRemoteBranch);
-        Show(TreeFetchAndCreateBranchMenuItem, isRemoteBranch);
-        Show(TreeFetchBranchMenuItem, isRemoteBranch);
-
-        bool branchFolder = kind == RepoObjectKind.Folder && RootOf(node!)?.Kind == RepoObjectKind.BranchesRoot;
-        Show(TreeCreateBranchInFolderMenuItem, branchFolder);
-        Show(TreeDeleteAllBranchesMenuItem, branchFolder);
-
-        Show(TreeStashAllMenuItem, kind == RepoObjectKind.StashesRoot);
-        Show(TreeStashStagedMenuItem, kind == RepoObjectKind.StashesRoot);
-        Show(TreeManageStashesMenuItem, kind == RepoObjectKind.StashesRoot);
-        bool stash = kind == RepoObjectKind.Stash;
-        Show(TreeOpenStashMenuItem, stash);
-        Show(TreeApplyStashMenuItem, stash);
-        Show(TreePopStashMenuItem, stash);
-        Show(TreeDropStashMenuItem, stash);
-
-        Show(TreeCreateWorktreeMenuItem, kind == RepoObjectKind.WorktreesRoot);
-        Show(TreePruneWorktreesMenuItem, kind == RepoObjectKind.WorktreesRoot);
-        Show(TreeManageWorktreesMenuItem, kind == RepoObjectKind.WorktreesRoot);
-        bool worktree = kind == RepoObjectKind.Worktree;
-        bool otherWorktree = worktree && node is { IsBold: false, Item: WorktreeInfo { IsDeleted: false } };
-        Show(TreeOpenWorktreeMenuItem, worktree, enabled: otherWorktree);
-        Show(TreeDeleteWorktreeMenuItem, worktree, enabled: otherWorktree);
-        Show(TreeCopyWorktreePathMenuItem, worktree);
-        Show(TreeShowWorktreeInFolderMenuItem, worktree,
-            enabled: node?.Item is WorktreeInfo { Path: var worktreePath } && Directory.Exists(worktreePath));
-
-        // Upstream's EnableExpandCollapseContextMenu (the menu's nodes with children: Expand for a collapsed one, Collapse
-        // for an expanded one) and EnableMoveTreeUpDownContexMenu.
-        RepoObjectNode[] parents = open ? [.. RepoObjectMenuTargets().Where(target => target.Children.Count > 0)] : [];
-        Show(TreeCollapseMenuItem, parents.Length > 0, enabled: parents.Any(target => target.IsExpanded));
-        Show(TreeExpandMenuItem, parents.Length > 0, enabled: parents.Any(target => !target.IsExpanded));
-        bool root = open && !multiple && node!.IsRoot;
-        int index = root ? _repoObjects.ToList().IndexOf(node!) : -1;
-        Show(TreeMoveUpMenuItem, root, enabled: index > 0);
-        Show(TreeMoveDownMenuItem, root, enabled: index >= 0 && index < _repoObjects.Count - 1);
-
-        // Upstream's EnableSortContextMenu: the order only matters when the refs are not in git's order.
-        Show(SortByMenuItem, isRef);
-        Show(SortOrderMenuItem, isRef, enabled: _preferences.RefsSortBy != GitRefsSortBy.Default);
-
         // Upstream's AddUserScripts for a local branch the grid shows: the scripts of the grid's menu, run on the grid's
         // selection.
-        if (kind == RepoObjectKind.LocalBranch && node?.IsHidden is false)
+        if (Toolbar.TreeMenu.RunScript.IsVisible)
         {
-            TreeRunScriptMenuItem.IsVisible = true;
             ScriptMenus.Fill(BranchTreeContextMenu, TreeRunScriptMenuItem, script => script.AddToRevisionGridContextMenu,
                 script => RunOnSelectedCommit((path, _) =>
                     Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
@@ -432,19 +276,7 @@ public partial class MainWindow
         }
 
         ToggleSeparators();
-        return BranchTreeContextMenu.Items.OfType<MenuItem>().Any(item => item.IsVisible && item.IsEnabled);
-
-        static void Show(MenuItem item, bool visible, bool enabled = true)
-        {
-            item.IsVisible = visible;
-            item.IsEnabled = visible && enabled;
-        }
-
-        static void SetText(MenuItem item, string text, string tooltip)
-        {
-            item.Header = UpstreamTranslation.ByText(text);
-            ToolTip.SetTip(item, UpstreamTranslation.ByText(tooltip));
-        }
+        return offered || (TreeRunScriptMenuItem.IsVisible && TreeRunScriptMenuItem.IsEnabled);
     }
 
     // Upstream's ToggleSeparators: a separator shows only between two groups that both have a visible item.
@@ -472,168 +304,6 @@ public partial class MainWindow
                 itemBefore = true;
             }
         }
-    }
-
-    // Upstream's RegisterContextActions, with the new shell's actions.
-    private void WireRepoObjectMenu()
-    {
-        TreeFilterMenuItem.Click += (_, _) =>
-        {
-            if (RepoObjectSelection.RefsFilter(RepoObjectMenuTargets()) is { } name)
-            {
-                _preferences.ShowCurrentBranchOnly = false;
-                ApplyFilter(_commits.Filter with { CurrentBranchOnly = false, ShowFilteredBranches = true, BranchFilter = name });
-            }
-        };
-
-        TreeCheckoutMenuItem.Click += (_, _) => OnSelectedRef(CheckoutSelectedBranch,
-            tag => RunOnRepository(path => ShowCheckoutRevisionAsync(path, tag)));
-        TreeMergeMenuItem.Click += (_, _) =>
-        {
-            if (RefName(SelectedRepoObject) is { } name)
-            {
-                RunOnRepository(path => ShowMergeAsync(path, name));
-            }
-        };
-        TreeRebaseMenuItem.Click += (_, _) => OnSelectedRef(RebaseOnSelectedBranch,
-            tag => RunOnRepository(path => ShowRebaseAsync(path, tag)));
-        TreeCreateBranchMenuItem.Click += (_, _) =>
-        {
-            if (RefName(SelectedRepoObject) is { } name)
-            {
-                Run(() => PromptCreateBranchAsync(name));
-            }
-        };
-        TreeResetMenuItem.Click += (_, _) =>
-        {
-            if (RefName(SelectedRepoObject) is { } name)
-            {
-                RunOnRepository(path => ShowResetCurrentBranchAsync(this, path, name, ResetMode.Soft));
-            }
-        };
-        TreeRenameBranchMenuItem.Click += (_, _) =>
-        {
-            if (SelectedBranch is { IsRemote: false } branch)
-            {
-                Run(() => RenameBranchAsync(branch.Name));
-            }
-        };
-        TreeDeleteMenuItem.Click += (_, _) => DeleteSelectedRepoObject();
-        TreeDeleteRemoteTagMenuItem.Click += (_, _) =>
-        {
-            if (SelectedRepoObject is { Kind: RepoObjectKind.Tag, Item: string tag })
-            {
-                RunOnRepository(path => DeleteRemoteTagAfterConfirmAsync(path, tag));
-            }
-        };
-
-        TreeManageRemotesMenuItem.Click += (_, _) => Run(() => ShowRemotesAsync(this));
-        TreeFetchAllRemotesMenuItem.Click += (_, _) => Fetch(remote: "--all", prune: false);
-        TreePruneAllRemotesMenuItem.Click += (_, _) => Fetch(remote: "--all", prune: true);
-        TreeManageRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Run(() => ShowRemotesAsync(this, name)));
-        TreeActivateRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => SetRemoteActive(name, active: true));
-        TreeActivateAndFetchRemoteMenuItem.Click += (_, _) =>
-            OnSelectedRemoteName(name => SetRemoteActive(name, active: true, fetch: true));
-        TreeDeactivateRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => SetRemoteActive(name, active: false));
-        TreeFetchRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Fetch(remote: name, prune: false));
-        TreePruneRemoteMenuItem.Click += (_, _) => OnSelectedRemoteName(name => Fetch(remote: name, prune: true));
-        TreeOpenRemoteUrlMenuItem.Click += (_, _) =>
-        {
-            if (RemoteWebUrl(SelectedRepoObject) is { } url)
-            {
-                Run(() => Launcher.LaunchUriAsync(url));
-            }
-        };
-
-        WireSubmoduleTreeMenu();
-
-        // Upstream's RemoteBranchNode actions; the new shell fetches the whole remote.
-        TreeFetchAndCheckoutMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, branch) =>
-            FetchThenAsync(path, remote, () => StartCheckoutBranchAsync(path, branch.Name, remote: true)));
-        TreeFetchAndMergeMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, name, _) =>
-            PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, remote, name, rebase: false), remote));
-        TreeFetchAndRebaseMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, name, _) =>
-            PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, remote, name, rebase: true), remote));
-        TreeFetchAndCreateBranchMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, branch) =>
-            FetchThenAsync(path, remote, async () =>
-            {
-                await PromptCreateBranchAsync(branch.Name);
-                return true;
-            }));
-        TreeFetchBranchMenuItem.Click += (_, _) => OnSelectedRemoteBranch((path, remote, _, _) =>
-            _actions.FetchAsync(path, remote, prune: false));
-
-        TreeCreateBranchInFolderMenuItem.Click += (_, _) =>
-        {
-            if (SelectedRepoObject is { Kind: RepoObjectKind.Folder, Item: string folder })
-            {
-                Run(() => PromptCreateBranchAsync(startPoint: null, namePrefix: $"{folder}/"));
-            }
-        };
-        TreeDeleteAllBranchesMenuItem.Click += (_, _) =>
-        {
-            if (SelectedRepoObject is { Kind: RepoObjectKind.Folder } folder)
-            {
-                List<string> branches =
-                [
-                    .. folder.Descendants().Select(node => node.Branch)
-                        .OfType<BranchInfo>().Where(branch => !branch.IsCurrent).Select(branch => branch.Name)
-                ];
-
-                // Upstream's BranchPathNode.DeleteAll: upstream's delete branch window with the folder's branches.
-                RunOnRepository(path => ShowDeleteBranchAsync(path, branches));
-            }
-        };
-
-        TreeStashAllMenuItem.Click += (_, _) => Run(StashAsync);
-        TreeStashStagedMenuItem.Click += (_, _) => RunOnRepository(path => _actions.StashStagedAsync(path));
-        TreeManageStashesMenuItem.Click += (_, _) => Run(() => ShowStashWindowAsync(this));
-        TreeOpenStashMenuItem.Click += (_, _) =>
-            OnSelected<StashInfo>(stash => Run(() => ShowStashWindowAsync(this, initialStash: stash.Name)));
-        TreeApplyStashMenuItem.Click += (_, _) => OnSelected<StashInfo>(stash =>
-            RunOnRepository(path => _actions.ApplyStashAsync(path, stash.Name)));
-        TreePopStashMenuItem.Click += (_, _) => OnSelected<StashInfo>(stash =>
-            RunOnRepository(path => _actions.PopStashAsync(path, stash.Name)));
-        TreeDropStashMenuItem.Click += (_, _) => OnSelected<StashInfo>(stash =>
-            RunOnRepository(async path =>
-                await ConfirmAsync(Confirmation.StashDrop, Confirmations.StashDropQuestion, "Drop", "Drop Stash Confirmation")
-                && await _actions.DropStashAsync(path, stash.Name)));
-
-        TreeCreateWorktreeMenuItem.Click += (_, _) => Run(CreateWorktreeAsync);
-        TreePruneWorktreesMenuItem.Click += (_, _) => RunOnRepository(path => WorktreeFlow().PruneAsync(path));
-        TreeManageWorktreesMenuItem.Click += (_, _) => Run(ShowWorktreesAsync);
-        TreeOpenWorktreeMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(OpenWorktree);
-        TreeDeleteWorktreeMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(worktree =>
-            RunOnRepository(path => WorktreeFlow().DeleteAsync(this, path, worktree.Path)));
-        TreeCopyWorktreePathMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(worktree => Run(async () =>
-        {
-            if (GetTopLevel(this)?.Clipboard is { } clipboard)
-            {
-                await clipboard.SetTextAsync(worktree.Path);
-            }
-        }));
-        TreeShowWorktreeInFolderMenuItem.Click += (_, _) => OnSelected<WorktreeInfo>(worktree =>
-            RunOnRepositoryFolder(_ => _fileManager.OpenFolder(worktree.Path)));
-
-        TreeCollapseMenuItem.Click += (_, _) =>
-        {
-            foreach (RepoObjectNode target in RepoObjectMenuTargets().Where(target => target.IsExpanded))
-            {
-                target.IsExpanded = false;
-            }
-        };
-
-        // Upstream's ExpandAll of each collapsed one.
-        TreeExpandMenuItem.Click += (_, _) =>
-        {
-            foreach (RepoObjectNode node in RepoObjectMenuTargets().Where(target => target.Children.Count > 0 && !target.IsExpanded)
-                         .SelectMany(target => target.Descendants()).ToList())
-            {
-                node.IsExpanded = true;
-            }
-        };
-        TreeMoveUpMenuItem.Click += (_, _) => MoveSelectedTree(up: true);
-        TreeMoveDownMenuItem.Click += (_, _) => MoveSelectedTree(up: false);
     }
 
     // Upstream's ReorderTreeNode: the tree swaps places with the shown tree above or below it, and the order is kept.
@@ -724,12 +394,9 @@ public partial class MainWindow
         => await _actions.FetchAsync(path, remote, prune: false) && await then();
 
     // Upstream's "Filter for selected" path of a ref: the branch name with its remote, or the tag name.
-    // The nodes "Filter for selected", Expand and Collapse act on: the marked ones while there are several, else the
-    // selected one. Upstream takes the marked ones always, so its menu opened from the keyboard acts on the node clicked
-    // last, or offers nothing when none was; the new shell does not copy that.
+    // The nodes "Filter for selected", Expand and Collapse act on (RepoObjectMenuViewModel.Targets).
     private IReadOnlyList<RepoObjectNode> RepoObjectMenuTargets()
-        => RepoObjectSelection.Selected(_repoObjects) is { Count: > 1 } marked ? marked
-            : SelectedRepoObject is { } node ? [node] : [];
+        => RepoObjectMenuViewModel.Targets(_repoObjects, SelectedRepoObject);
 
     private static string? RefName(RepoObjectNode? node)
         => node switch

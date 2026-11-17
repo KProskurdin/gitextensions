@@ -21,6 +21,11 @@ public sealed record DashboardRepository(string Path, string Caption, string? Ca
     public bool HasCategory => !string.IsNullOrWhiteSpace(Category);
 
     public bool HasBranch => !string.IsNullOrEmpty(Branch);
+
+    /// <summary>
+    ///  Upstream's tile image: the git folder, or the error folder for a folder that is no longer a repository.
+    /// </summary>
+    public string FolderImage => IsValid ? "DashboardFolderGit" : "DashboardFolderError";
 }
 
 /// <summary>
@@ -41,7 +46,7 @@ public readonly record struct DashboardRepositoryState(bool IsValid, string? Bra
 ///  repositories in one group and the favourites grouped by category, filtered by the search text, with upstream's
 ///  category and removal actions. Holds no UI types; create and use it on the UI thread.
 /// </summary>
-public sealed class DashboardViewModel : ObservableObject
+public sealed partial class DashboardViewModel : ObservableObject
 {
     /// <summary>
     ///  Upstream's <c>_groupRecentRepositories</c>.
@@ -51,6 +56,7 @@ public sealed class DashboardViewModel : ObservableObject
     private readonly IRecentRepositoryStore _store;
     private readonly Func<string, DashboardRepositoryState> _readState;
     private readonly Func<RecentRepoSplitter> _splitter;
+    private readonly Func<string, string> _translate;
     private readonly Dictionary<string, DashboardRepositoryState> _states = new(StringComparer.Ordinal);
     private RepositoryHistory _history = new([], []);
     private IReadOnlyList<DashboardGroup> _groups = [];
@@ -60,12 +66,14 @@ public sealed class DashboardViewModel : ObservableObject
     /// <param name="readState">Whether a folder is a repository and its checked out branch, read off the UI thread after
     ///  the list shows (upstream's <c>IsValidGitWorkingDir</c> and <c>GetCurrentBranchName</c>).</param>
     /// <param name="splitter">Upstream's splitter with the recent repositories settings; upstream's settings when null.</param>
+    /// <param name="translate">Upstream's translation of an English text, for the recent group's header.</param>
     public DashboardViewModel(IRecentRepositoryStore store, Func<string, DashboardRepositoryState> readState,
-        Func<RecentRepoSplitter>? splitter = null)
+        Func<RecentRepoSplitter>? splitter = null, Func<string, string>? translate = null)
     {
         _store = store;
         _readState = readState;
         _splitter = splitter ?? (() => new RecentRepoSplitter());
+        _translate = translate ?? (text => text);
     }
 
     public IReadOnlyList<DashboardGroup> Groups
@@ -207,7 +215,7 @@ public sealed class DashboardViewModel : ObservableObject
         List<DashboardGroup> groups = [];
         if (recent.Count > 0)
         {
-            groups.Add(new DashboardGroup(RecentGroupHeader, null, recent));
+            groups.Add(new DashboardGroup(_translate(RecentGroupHeader), null, recent));
         }
 
         IEnumerable<string> categories = recent.Concat(favourites)

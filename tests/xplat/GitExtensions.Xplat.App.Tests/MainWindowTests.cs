@@ -58,6 +58,21 @@ internal sealed class MainWindowTests
         _repo.Dispose();
     }
 
+    // A part bound to another view model never takes the window's: a compiled binding cast to another type throws on it.
+    [AvaloniaTest]
+    public void The_parts_with_their_own_view_model_never_take_the_windows()
+    {
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+
+        window.Toolbar.Refresh(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Find<MenuItem>(window, "ViewMenu").DataContext.Should().BeOfType<GridViewMenuViewModel>();
+        Find<DockPanel>(window, "DashboardRepositories").DataContext.Should().BeOfType<DashboardViewModel>();
+        window.Close();
+    }
+
     [AvaloniaTest]
     public void Shows_install_message_and_disables_open_when_git_is_missing()
     {
@@ -115,7 +130,9 @@ internal sealed class MainWindowTests
     [AvaloniaTest]
     public void Opening_a_repository_adds_it_to_the_recent_list_and_closing_shows_the_dashboard()
     {
+        // Shown, as the dashboard's tiles are made by templates.
         MainWindow window = NewWindow();
+        window.Show();
         Open(window, _repo.Path);
 
         Click(window, "CloseRepositoryMenuItem");
@@ -133,6 +150,7 @@ internal sealed class MainWindowTests
     public void Enter_in_the_dashboard_search_opens_the_first_repository_shown()
     {
         MainWindow window = NewWindow();
+        window.Show();
         Open(window, _repo.Path);
         Click(window, "CloseRepositoryMenuItem");
         TextBox search = Find<TextBox>(window, "DashboardSearchBox");
@@ -145,10 +163,13 @@ internal sealed class MainWindowTests
         Find<Grid>(window, "BrowsePanel").IsVisible.Should().BeTrue();
     }
 
-    // The repository tiles of the dashboard.
+    // The repository tiles of the dashboard: templates, made once the window is laid out.
     private static IEnumerable<Button> DashboardTiles(Window window)
-        => Find<StackPanel>(window, "DashboardGroups").GetLogicalDescendants().OfType<Button>()
+    {
+        window.UpdateLayout();
+        return Find<ItemsControl>(window, "DashboardGroups").GetLogicalDescendants().OfType<Button>()
             .Where(button => button.Classes.Contains("dashboardTile"));
+    }
 
     [AvaloniaTest]
     public void A_closed_window_reopens_with_its_size_and_maximized_state()
@@ -761,7 +782,9 @@ internal sealed class MainWindowTests
     [AvaloniaTest]
     public void ToggleSplitViewButton_should_hide_the_tabs_below_the_grid_and_remember_it()
     {
+        // The layout buttons act on an open repository's panels.
         MainWindow window = NewWindow();
+        Open(window, _repo.Path);
         Find<ToolToggleButton>(window, "ToggleSplitViewButton").IsChecked.Should().BeTrue();
 
         Click(window, "ToggleSplitViewButton");
@@ -1767,9 +1790,7 @@ internal sealed class MainWindowTests
         // Back to the default theme, so the colors of the next tests do not depend on this one.
         TestAppBuilder.Preferences.Theme = ThemeId.DefaultLight;
         TestAppBuilder.Preferences.ThemeVariations = [];
-        Click(window, "SettingsMenuItem");
-        WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
-        Click(window.OwnedWindows.OfType<SettingsWindow>().Single(), "SaveButton");
+        Click(OpenSettings(window), "SaveButton");
         WaitUntil(() => Avalonia.Application.Current!.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light);
     }
 
@@ -1872,6 +1893,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
+        ShowHotkeysPage(settings);
 
         settings.HotkeyBoxes[BrowseCommand.Commit].RaiseEvent(new KeyEventArgs
         {
@@ -1882,6 +1904,9 @@ internal sealed class MainWindowTests
 
         TestAppBuilder.Preferences.SerializedHotkeys.Should().Contain("Name=\"Commit\"").And
             .Contain("KeyData=\"K Control\"");
+
+        // Saved settings load the repository again, and a busy window opens no commit window.
+        WaitUntil(() => !window.IsBusy);
         window.RaiseEvent(new KeyEventArgs
         {
             RoutedEvent = InputElement.KeyDownEvent, Key = Key.K, KeyModifiers = Hotkeys.CommandModifier
@@ -1905,6 +1930,7 @@ internal sealed class MainWindowTests
             WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
             SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
             WaitUntil(() => settings.IsGitConfigLoaded);
+            ShowHotkeysPage(settings);
             settings.HotkeyBoxes[BrowseCommand.Commit].Text.Should().Contain("K");
 
             Click(settings, "bResetToDefaults");
@@ -1934,6 +1960,7 @@ internal sealed class MainWindowTests
         WaitUntil(() => window.OwnedWindows.OfType<SettingsWindow>().Any());
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
+        ShowHotkeysPage(settings);
 
         settings.CommitHotkeyBoxes[CommitCommand.StageAll].RaiseEvent(new KeyEventArgs
         {
@@ -2288,6 +2315,7 @@ internal sealed class MainWindowTests
         window.Show();
         Open(window, _repo.Path);
         SettingsWindow settings = OpenSettings(window);
+        ShowHotkeysPage(settings);
 
         settings.ScriptHotkeyBoxes[9003]
             .RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F7 });
@@ -2412,9 +2440,14 @@ internal sealed class MainWindowTests
         UiClicks.Raise(item, MenuItem.ClickEvent);
     }
 
+    // The queued work runs first: a reload it starts (after saved settings) disables the button until it ends.
     private static CommitWindow OpenCommitWindow(MainWindow window)
     {
-        WaitUntil(() => Find<Button>(window, "CommitDialogButton").IsEnabled);
+        WaitUntil(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            return !window.IsBusy && Find<Button>(window, "CommitDialogButton").IsEnabled;
+        });
         Click(window, "CommitDialogButton");
         WaitUntil(() => window.OwnedWindows.OfType<CommitWindow>().Any());
         return window.OwnedWindows.OfType<CommitWindow>().Single();
@@ -2543,6 +2576,17 @@ internal sealed class MainWindowTests
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
         return settings;
+    }
+
+    // The hotkey rows are made by templates, for the page shown.
+    private static void ShowHotkeysPage(SettingsWindow settings)
+    {
+        settings.GoToPage("HotkeysSettingsPage");
+        WaitUntil(() =>
+        {
+            settings.UpdateLayout();
+            return settings.HotkeyBoxes.Count > 0;
+        });
     }
 
     private static T Find<T>(Window window, string name) where T : Control
