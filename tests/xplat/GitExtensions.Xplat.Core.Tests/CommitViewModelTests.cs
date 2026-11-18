@@ -20,6 +20,7 @@ internal sealed class CommitViewModelTests
     private IRepositoryService _service = null!;
     private InMemoryAppPreferences _preferences = null!;
     private bool _beforeCommitPasses;
+    private bool _confirms;
 
     [SetUp]
     public void SetUp()
@@ -31,6 +32,7 @@ internal sealed class CommitViewModelTests
         _service = Substitute.For<IRepositoryService>();
         _preferences = new InMemoryAppPreferences();
         _beforeCommitPasses = true;
+        _confirms = true;
     }
 
     [Test]
@@ -112,9 +114,35 @@ internal sealed class CommitViewModelTests
         (viewModel.CanChangeMessage, viewModel.IsModifyMessageVisible, viewModel.KeepsDraft).Should()
             .Be((false, true, false));
 
+        int focused = 0;
+        viewModel.MessageFocusRequested += (_, _) => focused++;
+
         viewModel.ModifyMessageCommand.Execute(null);
 
         (viewModel.CanChangeMessage, viewModel.IsModifyMessageVisible).Should().Be((true, false));
+        focused.Should().Be(1, "the message is next, as upstream focuses it");
+    }
+
+    [TestCase(true, 1)]
+    [TestCase(false, 0)]
+    public async Task ResetSoft_should_focus_the_message_only_after_the_reset(bool confirms, int focused)
+    {
+        CommitViewModel viewModel = New(new FakeDialogHost());
+        int requests = 0;
+        viewModel.MessageFocusRequested += (_, _) => requests++;
+        _confirms = confirms;
+
+        Task reset = viewModel.ResetSoftCommand.ExecuteAsync(null);
+        if (confirms)
+        {
+            _operations.ArgumentsAt(0).Should().Be("repo parent Soft");
+            _operations.Complete(0);
+        }
+
+        await reset;
+
+        requests.Should().Be(focused);
+        _operations.Count.Should().Be(confirms ? 1 : 0);
     }
 
     [Test]
@@ -136,7 +164,7 @@ internal sealed class CommitViewModelTests
                 ConfirmSuppressible = (confirmation, _, _, _) =>
                 {
                     _confirmations.Add(confirmation);
-                    return Task.FromResult(true);
+                    return Task.FromResult(_confirms);
                 },
                 AskValidation = (_, _) => Task.FromResult(true),
                 RunScripts = scriptEvent =>

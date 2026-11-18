@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.Core.Diff;
@@ -48,14 +49,41 @@ public sealed partial class FileListMenuViewModel : ObservableObject
 
     /// <param name="isWindows">Upstream's "with..." and Visual Studio items show on Windows only.</param>
     /// <param name="withAccessKey">Upstream's menu text with its access key.</param>
+    /// <param name="diffMergeTools">The diff tools offered under the difftool items.</param>
     public FileListMenuViewModel(IAppPreferences preferences, bool isWindows, Func<bool>? visualStudioInstalled = null,
-        Func<string, string>? withAccessKey = null)
+        Func<string, string>? withAccessKey = null, IDiffMergeToolCatalog? diffMergeTools = null)
     {
         _preferences = preferences;
         _isWindows = isWindows;
         _visualStudioInstalled = visualStudioInstalled ?? (() => false);
         _withAccessKey = withAccessKey ?? (text => text.Replace('&', '_'));
+
+        // Upstream's LoadCustomDifftools: these items, each with what opens the selection in a given tool.
+        DiffTools = new CustomDiffToolsViewModel(preferences, diffMergeTools ?? new GitDiffMergeToolCatalog());
+        DiffFirstToSelectedTools = DiffTools.Add(tool => GuardAsync(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool)));
+        DiffSelectedToLocalTools = DiffTools.Add(tool => GuardAsync(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool)));
+        DiffFirstToLocalTools = DiffTools.Add(tool => GuardAsync(() => OpenWithDifftoolAsync(RevisionDiffKind.DiffALocal, tool)));
+        DiffWithRememberedTools = DiffTools.Add(tool => GuardAsync(() => DiffWithRememberedAsync(tool)));
+        DiffTwoSelectedTools = DiffTools.Add(tool => GuardAsync(() => DiffTwoSelectedAsync(tool)));
     }
+
+    /// <summary>
+    ///  The diff tools under the difftool items, read when the menu first opens (<see cref="CustomDiffToolsViewModel.LoadAsync"/>).
+    /// </summary>
+    public CustomDiffToolsViewModel DiffTools { get; }
+
+    /// <summary>
+    ///  "First -> Second" and its tools; also what "Open with difftool" itself runs (upstream's <c>OpenFilesWithDiffTool</c>).
+    /// </summary>
+    public CustomDiffToolMenu DiffFirstToSelectedTools { get; }
+
+    public CustomDiffToolMenu DiffSelectedToLocalTools { get; }
+
+    public CustomDiffToolMenu DiffFirstToLocalTools { get; }
+
+    public CustomDiffToolMenu DiffWithRememberedTools { get; }
+
+    public CustomDiffToolMenu DiffTwoSelectedTools { get; }
 
     public bool HasSelection => _state is not null;
 

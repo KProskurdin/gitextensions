@@ -81,9 +81,7 @@ public sealed class PluginSettingRowTemplate : IDataTemplate
                 };
                 return Labeled(row.Caption, new StackPanel { Spacing = 4, Children = { user, password } });
             case PluginSettingKind.Link:
-                HyperlinkButton link = new() { Content = row.Text };
-                link.Click += (_, _) => row.Click?.Invoke();
-                return link;
+                return new HyperlinkButton { Content = row.Text, Command = row.ClickCommand };
             case PluginSettingKind.Note:
                 return new TextBlock
                 {

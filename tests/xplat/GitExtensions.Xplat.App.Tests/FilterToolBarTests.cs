@@ -48,6 +48,21 @@ internal sealed class FilterToolBarTests
         window.Close();
     }
 
+    // The browse window gives its toolbar view model to its content before the toolbar is bound; the toolbar's compiled
+    // bindings must not take it, or showing the window fails on the cast (seen 2026-11-18 on macOS).
+    [AvaloniaTest]
+    public void The_toolbar_shows_in_a_window_with_another_data_context_before_it_is_bound()
+    {
+        FilterToolBar toolBar = new();
+        Window window = new() { DataContext = "not the toolbar's view model", Content = toolBar };
+
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        toolBar.FindControl<StackPanel>("LayoutRoot")!.DataContext.Should().BeNull();
+        window.Close();
+    }
+
     private static void WaitUntil(Func<bool> condition)
     {
         DateTime deadline = DateTime.UtcNow + _timeout;

@@ -1,5 +1,6 @@
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using GitCommands;
 using GitCommands.Config;
 using GitExtensions.Extensibility.Settings;
@@ -284,6 +285,10 @@ public sealed partial class GitConfigPageViewModel : ObservableObject
             await CheckGitCommandAsync();
         }
     }
+
+    // The Suggest buttons.
+    [RelayCommand]
+    private void Suggest(bool diff) => SuggestToolCommand(diff);
 
     /// <summary>
     ///  Upstream's suggested command line for the tool and its path.

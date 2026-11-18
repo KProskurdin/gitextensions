@@ -147,6 +147,54 @@ public sealed record SettingsViewModelServices
     public Func<Uri, Task> OpenUri { get; init; } = _ => Task.CompletedTask;
 
     /// <summary>
+    ///  The file picker: its title, and true to offer images first; the path chosen, or null.
+    /// </summary>
+    public Func<string, bool, Task<string?>> PickFile { get; init; } = (_, _) => Task.FromResult<string?>(null);
+
+    /// <summary>
+    ///  The folder picker with its title; the path chosen, or null.
+    /// </summary>
+    public Func<string, Task<string?>> PickFolder { get; init; } = _ => Task.FromResult<string?>(null);
+
+    /// <summary>
+    ///  Opens a web page (upstream's user manual) in the browser.
+    /// </summary>
+    public Action<string> OpenUrl { get; init; } = _ => { };
+
+    /// <summary>
+    ///  Upstream's <c>UserManual.UrlFor</c>: a section's address (subfolder, anchor), from the version's documentation
+    ///  address the app sets at start-up.
+    /// </summary>
+    public Func<string, string, string> ManualUrl { get; init; } = GitUI.UserManual.UserManual.UrlFor;
+
+    /// <summary>
+    ///  Shows a folder in the system's file manager.
+    /// </summary>
+    public Action<string> OpenFolder { get; init; } = _ => { };
+
+    /// <summary>
+    ///  The application's themes folder, and the user's (null for a portable app, which has none).
+    /// </summary>
+    public string? AppThemesFolder { get; init; }
+
+    public string? UserThemesFolder { get; init; }
+
+    /// <summary>
+    ///  Empties the author images' cache.
+    /// </summary>
+    public Func<Task> ClearAvatarCache { get; init; } = () => Task.CompletedTask;
+
+    /// <summary>
+    ///  Upstream's FormAvailableEncodings; true when the encodings were changed.
+    /// </summary>
+    public Func<Task<bool>> ConfigureEncodings { get; init; } = () => Task.FromResult(false);
+
+    /// <summary>
+    ///  The scripts' arguments help window.
+    /// </summary>
+    public Action ShowScriptHelp { get; init; } = () => { };
+
+    /// <summary>
     ///  The editor background of a dark theme, toward which the Checklist dims its rows; null in a light theme.
     /// </summary>
     public Func<System.Drawing.Color?> DarkBackground { get; init; } = () => null;

@@ -62,6 +62,7 @@ public sealed partial class RevisionLinksPageViewModel : ObservableObject
     /// <summary>
     ///  Removes one of the selected definition's links.
     /// </summary>
+    [RelayCommand]
     public void RemoveFormat(RevisionLinkFormatItem format) => Selected?.Formats.Remove(format);
 
     [RelayCommand]

@@ -63,6 +63,10 @@ public partial class FileHistoryWindow : Window
                 PickSaveFile = PickSaveFileAsync,
                 GridReloaded = () => Run(LaunchBuildServerAsync),
                 CopyText = CopyTextAsync,
+                DiffMergeTools = AppServices.DiffMergeTools,
+                RunGridCommand = command => RunGridCommand(command),
+                ShowCommandLog = () => CommandLogWindow.ShowFor(this),
+                OpenReportedBuild = () => OpenBuildLink(_reportedBuild?.Url),
             });
         InitializeComponent();
 
@@ -116,16 +120,11 @@ public partial class FileHistoryWindow : Window
 
         // A split button's own part runs no command when a test raises its click, so the view runs it.
         LoadButton.Click += (_, _) => ViewModel.LoadHistoryCommand.Execute(null);
-        CommandLogButton.Click += (_, _) => CommandLogWindow.ShowFor(this);
         HistoryContextMenu.Opening += (_, _) =>
         {
             ViewModel.UpdateMenu();
             CopyMenus.Fill(CopyToClipboardMenuItem, ViewModel.Selection.Revisions, keep: null, ViewModel.CopyTextCommand);
         };
-        CustomDiffTools.OnClick(OpenWithDifftoolMenuItem,
-            tool => _ = ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool));
-        CustomDiffTools.OnClick(DiffToolRemoteLocalMenuItem,
-            tool => _ = ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool));
         WireGridMenus();
         WireBuildServer();
         KeyDown += (_, e) =>
@@ -138,7 +137,7 @@ public partial class FileHistoryWindow : Window
         Opened += (_, _) =>
         {
             _ = ViewModel.LoadAsync();
-            Run(LoadCustomDifftoolsAsync);
+            Run(ViewModel.DiffTools.LoadAsync);
         };
     }
 
@@ -229,15 +228,6 @@ public partial class FileHistoryWindow : Window
             await clipboard.SetTextAsync(text);
         }
     }
-
-    // Upstream's LoadCustomDifftools: the diff tools under both difftool items.
-    private Task LoadCustomDifftoolsAsync()
-        => CustomDiffTools.LoadAsync(
-        [
-            (OpenWithDifftoolMenuItem, tool => _ = ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool)),
-            (DiffToolRemoteLocalMenuItem,
-                tool => _ = ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool)),
-        ], diff: true, _preferences);
 
     // The grid as the browse window's View menu and upstream's appearance settings say.
     private void ShowGridColumns()

@@ -128,7 +128,7 @@ public partial class MainWindow : Window
             ShowCommitWindow) { NewCloneWindow = NewCloneWindow };
         _plugins.BrowseRepo = this;
         Toolbar = new BrowseToolbarViewModel(_commits, _repository, _actions, _recent, _preferences,
-            gitAvailable: _git?.Status != GitDiscoveryStatus.NotFound, UpstreamTranslation.ByText)
+            gitAvailable: _git?.Status != GitDiscoveryStatus.NotFound, UpstreamTranslation.ByText, AppServices.DiffMergeTools)
         {
             Window = this, AccessKeyText = UpstreamTranslation.WithAccessKey,
         };

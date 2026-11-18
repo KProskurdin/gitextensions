@@ -20,31 +20,6 @@ public partial class MainWindow
     // Upstream's _baseCommitToCompare, with the repository it belongs to.
     private (string Path, CommitRow Row)? _baseCommitToCompare;
 
-    // The compare items run the grid's commands (bound in XAML), as their hotkeys do.
-    private void WireCompareMenu()
-    {
-        // Upstream's diffSelectedCommitsMenuItem_Click: the item opens the default tool, its submenu (when there are
-        // several tools) a chosen one; a click on a sub-item also reaches the item, hence the source check.
-        OpenCommitsWithDiffToolMenuItem.Click += (_, e) =>
-        {
-            if (e.Source == OpenCommitsWithDiffToolMenuItem)
-            {
-                DiffSelectedCommitsWithDifftool(tool: null);
-            }
-        };
-    }
-
-    private bool _gridDiffToolsLoaded;
-
-    // Upstream's LoadCustomDifftools (CustomDiffMergeToolProvider): the diff tools under the item when there are several
-    // and "Show all available difftools" is on, the default bold, then "Disable this dropdown".
-    private Task LoadGridDiffToolsAsync()
-    {
-        _gridDiffToolsLoaded = true;
-        return CustomDiffTools.LoadAsync(
-            [(OpenCommitsWithDiffToolMenuItem, tool => DiffSelectedCommitsWithDifftool(tool))], diff: true, _preferences);
-    }
-
     // What the compare items can compare, for the grid menu's view model.
     private GridCompareState CompareState()
     {
@@ -53,14 +28,8 @@ public partial class MainWindow
             HasFirstAndSelected: first is not null && selected is not null, HasBase: BaseToCompare() is not null);
     }
 
-    private void ShowCompareMenu()
-    {
-        OpenCommitsWithDiffToolMenuItem.IsEnabled = Toolbar.GridMenu.CanCompareSelectedCommits;
-        if (!_gridDiffToolsLoaded)
-        {
-            Run(LoadGridDiffToolsAsync);
-        }
-    }
+    // Upstream's LoadCustomDifftools for "Open selected commits with difftool", when the menu first opens.
+    private void ShowCompareMenu() => Run(Toolbar.GridDiffTools.LoadAsync);
 
     // Upstream's compareSelectedCommitsMenuItem_Click: the first and the selected commit in the diff window, the first
     // shown by its subject when the grid has it.

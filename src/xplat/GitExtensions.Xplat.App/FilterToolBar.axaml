@@ -1,59 +1,81 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:GitExtensions.Xplat.App"
+             xmlns:vm="using:GitExtensions.Xplat.Core.CommitHistory"
              x:Class="GitExtensions.Xplat.App.FilterToolBar">
-  <!-- Upstream's FilterToolBar (FilterToolBar.Designer), in its order; the browse window and the file history show it. -->
-  <StackPanel Classes="toolStrip">
+  <!-- Upstream's FilterToolBar (FilterToolBar.Designer), in its order; the browse window and the file history show it. Its
+       state and actions are FilterToolBarViewModel's (MVVM.md), the data context of the panel, set by Bind; until then the panel
+       has none (x:Null), as it would otherwise take the window's and its compiled bindings would fail on that type; the
+       flyouts' items get it in code, as a flyout gives its items a data context only when it opens. -->
+  <StackPanel x:Name="LayoutRoot" DataContext="{x:Null}" Classes="toolStrip" x:DataType="vm:FilterToolBarViewModel">
     <!-- The image and tooltip say whether a filter is on, as upstream's revisionGridFilter_FilterChanged sets them. -->
-    <local:ToolSplitButton x:Name="AdvancedFilterButton" Image="FunnelPencil" ToolTip.Tip="Advanced filter"
-                           AutomationProperties.Name="Advanced filter">
+    <local:ToolSplitButton x:Name="AdvancedFilterButton" Image="{Binding AdvancedFilterImage}" ToolTip.Tip="{Binding AdvancedFilterTip}"
+                           AutomationProperties.Name="Advanced filter" Command="{Binding AdvancedFilterCommand}">
       <local:ToolSplitButton.Flyout>
         <MenuFlyout>
-          <MenuItem x:Name="ResetPathFilterMenuItem" Header="Reset _path filter" />
-          <MenuItem x:Name="ResetRevisionFiltersMenuItem" Header="_Reset revision filters" />
+          <MenuItem x:Name="ResetPathFilterMenuItem" Header="Reset _path filter"
+                    IsEnabled="{Binding CanResetPathFilter}" Command="{Binding ResetPathFilterCommand}" />
+          <MenuItem x:Name="ResetRevisionFiltersMenuItem" Header="_Reset revision filters"
+                    IsEnabled="{Binding CanResetRevisionFilters}" Command="{Binding ResetRevisionFiltersCommand}" />
           <Separator />
-          <MenuItem x:Name="AdvancedFilterMenuItem" Header="_Advanced filter" />
+          <MenuItem x:Name="AdvancedFilterMenuItem" Header="_Advanced filter"
+                    Command="{Binding EditAdvancedFilterCommand}" />
         </MenuFlyout>
       </local:ToolSplitButton.Flyout>
     </local:ToolSplitButton>
-    <local:ToolToggleButton x:Name="ShowReflogButton" Image="Book" ToolTip.Tip="Show all reflog references" />
-    <!-- The image, text and tooltip are the chosen item's, as upstream's SelectShowBranchesFilterOption sets them. -->
-    <local:ToolSplitButton x:Name="ShowBranchesButton" Image="BranchLocal" Text="All branches" ToolTip.Tip="Show all branches">
+    <local:ToolToggleButton x:Name="ShowReflogButton" Image="Book" ToolTip.Tip="Show all reflog references"
+                            IsChecked="{Binding ShowReflog, Mode=OneWay}" Command="{Binding ToggleReflogCommand}" />
+    <!-- The image, text and tooltip are the chosen item's, as upstream's SelectShowBranchesFilterOption sets them; the
+         text and tooltip are taken from the translated item by the view. -->
+    <local:ToolSplitButton x:Name="ShowBranchesButton" Image="{Binding BranchesImage}" Text="All branches" ToolTip.Tip="Show all branches">
       <local:ToolSplitButton.Flyout>
         <MenuFlyout>
-          <MenuItem x:Name="ShowBranchesAllMenuItem" Header="_All branches" Icon="{local:UpstreamIcon BranchLocal}" ToolTip.Tip="Show all branches" />
-          <MenuItem x:Name="ShowBranchesCurrentMenuItem" Header="_Current branch only" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show current branch only" />
-          <MenuItem x:Name="ShowBranchesFilteredMenuItem" Header="_Filtered branches" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show filtered branches" />
+          <MenuItem x:Name="ShowBranchesAllMenuItem" Header="_All branches" Icon="{local:UpstreamIcon BranchLocal}" ToolTip.Tip="Show all branches"
+                    Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static vm:BranchesShown.All}" />
+          <MenuItem x:Name="ShowBranchesCurrentMenuItem" Header="_Current branch only" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show current branch only"
+                    Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static vm:BranchesShown.CurrentOnly}" />
+          <MenuItem x:Name="ShowBranchesFilteredMenuItem" Header="_Filtered branches" Icon="{local:UpstreamIcon BranchFilter}" ToolTip.Tip="Show filtered branches"
+                    Command="{Binding ShowBranchesCommand}" CommandParameter="{x:Static vm:BranchesShown.Filtered}" />
         </MenuFlyout>
       </local:ToolSplitButton.Flyout>
     </local:ToolSplitButton>
     <Label x:Name="BranchFilterLabel" Content="_Branches:" Target="{Binding #BranchFilterBox}" ToolTip.Tip="Branch filter"
            VerticalAlignment="Center" Padding="4,0,2,0" />
-    <AutoCompleteBox x:Name="BranchFilterBox" Width="100" MinimumPrefixLength="0"
-                     VerticalAlignment="Center" />
+    <AutoCompleteBox x:Name="BranchFilterBox" Width="100" MinimumPrefixLength="0" VerticalAlignment="Center"
+                     ItemsSource="{Binding BranchFilterItems}" Text="{Binding BranchFilterText}" />
     <local:ToolDropDownButton x:Name="BranchTypeButton" Image="EditFilter" ToolTip.Tip="Branch type">
       <local:ToolDropDownButton.Flyout>
         <MenuFlyout>
-          <MenuItem x:Name="BranchLocalMenuItem" Header="_Local" ToggleType="CheckBox" IsChecked="True" />
-          <MenuItem x:Name="BranchRemoteMenuItem" Header="_Remote" ToggleType="CheckBox" />
-          <MenuItem x:Name="BranchTagMenuItem" Header="_Tag" ToggleType="CheckBox" />
+          <MenuItem x:Name="BranchLocalMenuItem" Header="_Local" ToggleType="CheckBox"
+                    IsChecked="{Binding OfferLocalBranches, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.LocalBranches}" />
+          <MenuItem x:Name="BranchRemoteMenuItem" Header="_Remote" ToggleType="CheckBox"
+                    IsChecked="{Binding OfferRemoteBranches, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.RemoteBranches}" />
+          <MenuItem x:Name="BranchTagMenuItem" Header="_Tag" ToggleType="CheckBox"
+                    IsChecked="{Binding OfferTags, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.Tags}" />
         </MenuFlyout>
       </local:ToolDropDownButton.Flyout>
     </local:ToolDropDownButton>
     <Rectangle Classes="toolSeparator" />
     <Label x:Name="RevisionFilterLabel" Content="_Filter:" Target="{Binding #RevisionFilterBox}" ToolTip.Tip="Text filter"
            VerticalAlignment="Center" Padding="4,0,2,0" />
-    <ComboBox x:Name="RevisionFilterBox" IsEditable="True" Width="100" VerticalAlignment="Center" />
+    <!-- IsEditable before the Text binding (MVVM.md, Editable lists). -->
+    <ComboBox x:Name="RevisionFilterBox" IsEditable="True" Width="100" VerticalAlignment="Center"
+              ItemsSource="{Binding RevisionFilterItems}" Text="{Binding RevisionFilterText}" />
     <local:ToolDropDownButton x:Name="RevisionFilterTypeButton" Image="EditFilter" ToolTip.Tip="Filter type">
       <local:ToolDropDownButton.Flyout>
         <MenuFlyout>
-          <MenuItem x:Name="CommitFilterMenuItem" Header="Commit _message" ToggleType="CheckBox" IsChecked="True" />
-          <MenuItem x:Name="CommitterFilterMenuItem" Header="_Committer" ToggleType="CheckBox" />
-          <MenuItem x:Name="AuthorFilterMenuItem" Header="_Author" ToggleType="CheckBox" />
-          <MenuItem x:Name="DiffContainsFilterMenuItem" Header="_Diff contains (SLOW)" ToggleType="CheckBox" />
+          <MenuItem x:Name="CommitFilterMenuItem" Header="Commit _message" ToggleType="CheckBox"
+                    IsChecked="{Binding FilterByMessage, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.Message}" />
+          <MenuItem x:Name="CommitterFilterMenuItem" Header="_Committer" ToggleType="CheckBox"
+                    IsChecked="{Binding FilterByCommitter, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.Committer}" />
+          <MenuItem x:Name="AuthorFilterMenuItem" Header="_Author" ToggleType="CheckBox"
+                    IsChecked="{Binding FilterByAuthor, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.Author}" />
+          <MenuItem x:Name="DiffContainsFilterMenuItem" Header="_Diff contains (SLOW)" ToggleType="CheckBox"
+                    IsChecked="{Binding FilterByDiffContent, Mode=OneWay}" Command="{Binding ToggleCheckCommand}" CommandParameter="{x:Static vm:FilterToolBarCheck.DiffContent}" />
         </MenuFlyout>
       </local:ToolDropDownButton.Flyout>
     </local:ToolDropDownButton>
-    <local:ToolToggleButton x:Name="ShowFirstParentButton" Image="ShowOnlyFirstParent" ToolTip.Tip="Show only first parent" />
+    <local:ToolToggleButton x:Name="ShowFirstParentButton" Image="ShowOnlyFirstParent" ToolTip.Tip="Show only first parent"
+                            IsChecked="{Binding FirstParent, Mode=OneWay}" Command="{Binding ToggleFirstParentCommand}" />
   </StackPanel>
 </UserControl>

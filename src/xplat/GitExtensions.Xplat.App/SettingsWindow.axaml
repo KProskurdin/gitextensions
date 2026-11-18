@@ -115,8 +115,8 @@
               </StackPanel>
               <DropDownButton.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="tsmiApplicationFolder" Header="Application folder" />
-                  <MenuItem x:Name="tsmiUserFolder" Header="User folder" />
+                  <MenuItem x:Name="tsmiApplicationFolder" Header="Application folder" Command="{Binding OpenThemesFolderCommand}" CommandParameter="{x:False}" />
+                  <MenuItem x:Name="tsmiUserFolder" Header="User folder" Command="{Binding OpenThemesFolderCommand}" CommandParameter="{x:True}" IsEnabled="{Binding CanOpenUserThemesFolder}" />
                 </MenuFlyout>
               </DropDownButton.Flyout>
             </DropDownButton>
@@ -148,7 +148,7 @@
             <TextBlock Grid.Row="6" Text="Cache images (days)" VerticalAlignment="Center" />
             <StackPanel Grid.Row="6" Grid.Column="2" Orientation="Horizontal" Spacing="8">
               <NumericUpDown x:Name="AvatarCacheDaysBox" Value="{Binding AvatarCacheDays}" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
-              <Button x:Name="ClearImageCacheButton" Content="Clear image cache" />
+              <Button x:Name="ClearImageCacheButton" Command="{Binding ClearImageCacheCommand}" Content="Clear image cache" />
             </StackPanel>
           </Grid>
           <!-- Upstream's "Language" group: upstream's translations (Translation folder), shared with Git Extensions for
@@ -249,13 +249,13 @@
           <TextBlock Text="Paths" FontWeight="SemiBold" />
           <TextBlock Text="Command used to run git (empty: look it up on PATH)" />
           <DockPanel>
-            <Button x:Name="BrowseGitCommandButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+            <Button x:Name="BrowseGitCommandButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.GitCommand}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
             <TextBox x:Name="GitCommandBox" Text="{Binding GitCommand}" />
           </DockPanel>
           <StackPanel x:Name="LinuxToolsPanel" IsVisible="{Binding IsWindows}" Spacing="8">
             <TextBlock Text="Path to linux tools (sh). Leave empty when it is in the path." />
             <DockPanel>
-              <Button x:Name="BrowseLinuxToolsButton" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+              <Button x:Name="BrowseLinuxToolsButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.LinuxToolsDir}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
               <TextBox x:Name="LinuxToolsDirBox" Text="{Binding LinuxToolsDir}" />
             </DockPanel>
           </StackPanel>
@@ -268,7 +268,7 @@
             <RadioButton x:Name="UserProfileHomeRadio" Content="{Binding UserProfileHomeText}" IsChecked="{Binding SelectedHomeChoice, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:HomeChoice.UserProfile}}" GroupName="Home" />
             <RadioButton x:Name="OtherHomeRadio" IsChecked="{Binding SelectedHomeChoice, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:HomeChoice.Other}}" GroupName="Home" Content="Other" />
             <DockPanel Margin="24,0,0,0">
-              <Button x:Name="BrowseHomeButton" IsEnabled="{Binding IsOtherHome}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+              <Button x:Name="BrowseHomeButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.OtherHome}" IsEnabled="{Binding IsOtherHome}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
               <TextBox x:Name="OtherHomeBox" Text="{Binding OtherHome}" IsEnabled="{Binding IsOtherHome}" />
             </DockPanel>
           </StackPanel>
@@ -282,7 +282,7 @@
           <RadioButton x:Name="PuttyRadio" IsVisible="{Binding IsPuttyOffered}" IsChecked="{Binding SelectedSshClient, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:SshClientKind.Putty}}" GroupName="Ssh" Content="PuTTY" />
           <RadioButton x:Name="OtherSshRadio" IsChecked="{Binding SelectedSshClient, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static settings:SshClientKind.Other}}" GroupName="Ssh" Content="Other ssh client" />
           <DockPanel Margin="24,0,0,0">
-            <Button x:Name="BrowseOtherSshButton" IsEnabled="{Binding IsOtherSsh}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
+            <Button x:Name="BrowseOtherSshButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.OtherSsh}" IsEnabled="{Binding IsOtherSsh}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
             <TextBox x:Name="OtherSshBox" Text="{Binding OtherSsh}" IsEnabled="{Binding IsOtherSsh}" />
           </DockPanel>
           <TextBlock TextWrapping="Wrap" Opacity="0.7"
@@ -292,13 +292,13 @@
             <Grid ColumnDefinitions="Auto,8,*,8,Auto" RowDefinitions="Auto,6,Auto,6,Auto">
               <TextBlock Grid.Row="0" Text="Path to plink" VerticalAlignment="Center" />
               <TextBox x:Name="PlinkBox" Text="{Binding Plink}" Grid.Row="0" Grid.Column="2" />
-              <Button x:Name="BrowsePlinkButton" Grid.Row="0" Grid.Column="4" Content="Browse" />
+              <Button x:Name="BrowsePlinkButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.Plink}" Grid.Row="0" Grid.Column="4" Content="Browse" />
               <TextBlock Grid.Row="2" Text="Path to puttygen" VerticalAlignment="Center" />
               <TextBox x:Name="PuttygenBox" Text="{Binding Puttygen}" Grid.Row="2" Grid.Column="2" />
-              <Button x:Name="BrowsePuttygenButton" Grid.Row="2" Grid.Column="4" Content="Browse" />
+              <Button x:Name="BrowsePuttygenButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.Puttygen}" Grid.Row="2" Grid.Column="4" Content="Browse" />
               <TextBlock Grid.Row="4" Text="Path to pageant" VerticalAlignment="Center" />
               <TextBox x:Name="PageantBox" Text="{Binding Pageant}" Grid.Row="4" Grid.Column="2" />
-              <Button x:Name="BrowsePageantButton" Grid.Row="4" Grid.Column="4" Content="Browse" />
+              <Button x:Name="BrowsePageantButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.Pageant}" Grid.Row="4" Grid.Column="4" Content="Browse" />
             </Grid>
             <CheckBox x:Name="AutoStartPageantCheck" IsChecked="{Binding AutoStartPageant}">
               <TextBlock TextWrapping="Wrap" Text="Automatically start authentication client when a private key is configured for a remote" />
@@ -405,7 +405,7 @@
             <TextBlock Text="Vertical ruler position [chars]" VerticalAlignment="Center" />
             <NumericUpDown x:Name="VerticalRulerBox" Value="{Binding DiffVerticalRulerPosition}" Minimum="0" Maximum="1000" Increment="1" FormatString="0" Width="130" />
           </StackPanel>
-          <Button x:Name="SaveDiffDefaultsButton" Content="Save current view settings as default" HorizontalAlignment="Left"
+          <Button x:Name="SaveDiffDefaultsButton" Command="{Binding SaveDiffDefaultsCommand}" Content="Save current view settings as default" HorizontalAlignment="Left"
                   ToolTip.Tip="Saves all current view settings as the default for future sessions.&#10;Note: The checkboxes 'Remember the &quot;xyz&quot; preference' only affect the running instance&#10;as long as the default has not been saved. These preference values are held in memory&#10;and must be explicitly saved to become persistent defaults." />
         </StackPanel>
       </TabItem>
@@ -431,7 +431,7 @@
         <Grid ColumnDefinitions="Auto,8,*,4,Auto" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto" Margin="4,8">
           <TextBlock Grid.Row="0" Text="Sort revisions by" VerticalAlignment="Center" />
           <ComboBox x:Name="RevisionSortBox" ItemsSource="{Binding RevisionSorts}" SelectedItem="{Binding SelectedRevisionSort}" Grid.Row="0" Grid.Column="2" MinWidth="200" />
-          <Button x:Name="RevisionSortOrderHelp" Grid.Row="0" Grid.Column="4" Content="?" Width="24" Padding="0"
+          <Button x:Name="RevisionSortOrderHelp" Command="{Binding OpenManualCommand}" CommandParameter="sorting-sort-author-date" Grid.Row="0" Grid.Column="4" Content="?" Width="24" Padding="0"
                   HorizontalContentAlignment="Center" />
           <TextBlock Grid.Row="2" Text="Sort branches by" VerticalAlignment="Center" />
           <ComboBox x:Name="BranchesSortByBox" ItemsSource="{Binding RefsSortBys}" SelectedItem="{Binding SelectedRefsSortBy}" Grid.Row="2" Grid.Column="2" MinWidth="200" />
@@ -439,11 +439,11 @@
           <ComboBox x:Name="BranchesOrderBox" ItemsSource="{Binding RefsSortOrders}" SelectedItem="{Binding SelectedRefsSortOrder}" Grid.Row="4" Grid.Column="2" MinWidth="200" />
           <TextBlock Grid.Row="6" Text="Prioritized branches" VerticalAlignment="Center" />
           <TextBox x:Name="PrioritizedBranchesBox" Text="{Binding PrioritizedBranchNames}" Grid.Row="6" Grid.Column="2" />
-          <Button x:Name="PrioBranchNamesHelp" Grid.Row="6" Grid.Column="4" Content="?" Width="24" Padding="0"
+          <Button x:Name="PrioBranchNamesHelp" Command="{Binding OpenManualCommand}" CommandParameter="sorting-sort-prioritized-branches" Grid.Row="6" Grid.Column="4" Content="?" Width="24" Padding="0"
                   HorizontalContentAlignment="Center" />
           <TextBlock Grid.Row="8" Text="Prioritized remotes" VerticalAlignment="Center" />
           <TextBox x:Name="PrioritizedRemotesBox" Text="{Binding PrioritizedRemoteNames}" Grid.Row="8" Grid.Column="2" />
-          <Button x:Name="PrioRemoteNamesHelp" Grid.Row="8" Grid.Column="4" Content="?" Width="24" Padding="0"
+          <Button x:Name="PrioRemoteNamesHelp" Command="{Binding OpenManualCommand}" CommandParameter="sorting-sort-prioritized-remotes" Grid.Row="8" Grid.Column="4" Content="?" Width="24" Padding="0"
                   HorizontalContentAlignment="Center" />
         </Grid>
       </TabItem>
@@ -510,7 +510,8 @@
                     <Grid ColumnDefinitions="150,8,*,8,Auto" Margin="0,0,0,4">
                       <TextBox Text="{Binding Caption}" />
                       <TextBox Grid.Column="2" Text="{Binding Format}" />
-                      <Button Grid.Column="4" x:Name="RemoveRevisionLinkFormatButton" Content="Remove" />
+                      <Button Grid.Column="4" x:Name="RemoveRevisionLinkFormatButton" Content="Remove"
+                              Command="{Binding $parent[Window].((settings:SettingsViewModel)DataContext).RevisionLinksPage.RemoveFormatCommand}" CommandParameter="{Binding}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -566,25 +567,25 @@
                     Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.MergeTools}" Text="{Binding GitConfigPage.MergeTool}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="5" Text="Path to mergetool" VerticalAlignment="Center" />
           <TextBox x:Name="MergeToolPathBox" Grid.Row="5" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.MergeToolPath}" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
-          <Button x:Name="BrowseMergeToolButton" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to mergetool" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
+          <Button x:Name="BrowseMergeToolButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.MergeToolPath}" Grid.Row="5" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to mergetool" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
           <TextBlock Grid.Row="6" Text="Mergetool command" VerticalAlignment="Center" />
           <TextBox x:Name="MergeToolCommandBox" Grid.Row="6" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.MergeToolCommand}" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
-          <Button x:Name="SuggestMergeToolButton" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Mergetool command" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
+          <Button x:Name="SuggestMergeToolButton" Command="{Binding GitConfigPage.SuggestCommand}" CommandParameter="{x:False}" Grid.Row="6" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Mergetool command" IsEnabled="{Binding GitConfigPage.HasMergeTool}" />
           <TextBlock Grid.Row="7" Text="Difftool" VerticalAlignment="Center" />
           <ComboBox x:Name="DiffToolBox" Grid.Row="7" Grid.Column="2" IsEditable="True" HorizontalAlignment="Stretch"
                     Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.DiffTools}" Text="{Binding GitConfigPage.DiffTool}" />
           <TextBlock Grid.Row="8" Text="Path to difftool" VerticalAlignment="Center" />
           <TextBox x:Name="DiffToolPathBox" Grid.Row="8" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.DiffToolPath}" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
-          <Button x:Name="BrowseDiffToolButton" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Difftool command" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
+          <Button x:Name="BrowseDiffToolButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.DiffToolPath}" Grid.Row="8" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Difftool command" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
           <TextBlock Grid.Row="9" Text="Difftool command" VerticalAlignment="Center" />
           <TextBox x:Name="DiffToolCommandBox" Grid.Row="9" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.DiffToolCommand}" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
-          <Button x:Name="SuggestDiffToolButton" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Difftool command" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
+          <Button x:Name="SuggestDiffToolButton" Command="{Binding GitConfigPage.SuggestCommand}" CommandParameter="{x:True}" Grid.Row="9" Grid.Column="4" Content="Suggest" Margin="0,0,0,6" AutomationProperties.Name="Suggest Difftool command" IsEnabled="{Binding GitConfigPage.HasDiffTool}" />
           <TextBlock Grid.Row="10" Text="Path to commit template" VerticalAlignment="Center" />
           <TextBox x:Name="CommitTemplateBox" Grid.Row="10" Grid.Column="2" Margin="0,0,0,6" Text="{Binding GitConfigPage.CommitTemplate}" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
-          <Button x:Name="BrowseCommitTemplateButton" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to commit template" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
+          <Button x:Name="BrowseCommitTemplateButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.CommitTemplate}" Grid.Row="10" Grid.Column="4" Content="Browse" Margin="0,0,0,6" AutomationProperties.Name="Browse Path to commit template" IsEnabled="{Binding GitConfigPage.IsGitFound}" />
           <TextBlock Grid.Row="11" Text="Files content encoding" VerticalAlignment="Center" />
           <ComboBox x:Name="FilesEncodingBox" Grid.Row="11" Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,0,6" ItemsSource="{Binding GitConfigPage.Encodings}" SelectedItem="{Binding GitConfigPage.FilesEncoding}" />
-          <Button x:Name="ConfigureEncodingButton" Grid.Row="11" Grid.Column="4" Content="Configure" Margin="0,0,0,6" />
+          <Button x:Name="ConfigureEncodingButton" Command="{Binding ConfigureEncodingsCommand}" Grid.Row="11" Grid.Column="4" Content="Configure" Margin="0,0,0,6" />
           <!-- Upstream's groupBoxLineEndings. -->
           <StackPanel Grid.Row="12" Grid.ColumnSpan="5" Spacing="4" Margin="0,6,0,0">
             <TextBlock Text="Line endings" FontWeight="SemiBold" />
@@ -648,7 +649,7 @@
             <Button x:Name="DeleteScriptButton" Content="Delete" Command="{Binding ScriptsPage.DeleteCommand}" HorizontalAlignment="Stretch" />
             <Button x:Name="MoveScriptUpButton" Content="Up" Command="{Binding ScriptsPage.MoveUpCommand}" HorizontalAlignment="Stretch" />
             <Button x:Name="MoveScriptDownButton" Content="Down" Command="{Binding ScriptsPage.MoveDownCommand}" HorizontalAlignment="Stretch" />
-            <Button x:Name="ScriptHelpButton" Content="?" HorizontalAlignment="Stretch" ToolTip.Tip="Arguments help" />
+            <Button x:Name="ScriptHelpButton" Command="{Binding ShowScriptHelpCommand}" Content="?" HorizontalAlignment="Stretch" ToolTip.Tip="Arguments help" />
           </StackPanel>
           <Grid x:Name="ScriptDetails" DataContext="{x:Null}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" x:DataType="scripts:ScriptListItem"
                 ColumnDefinitions="Auto,8,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
@@ -668,7 +669,8 @@
               <ComboBox x:Name="ScriptIconBox" Grid.Column="0" MinWidth="200" SelectedValue="{Binding Icon}" MaxDropDownHeight="300" />
               <TextBox x:Name="ScriptIconFileBox" Grid.Column="2" Text="{Binding IconFilePath}"
                        PlaceholderText="Icon or associated file path (an image file)" />
-              <Button x:Name="ScriptIconFileButton" Grid.Column="4" Content="Browse..." />
+              <Button x:Name="ScriptIconFileButton" Grid.Column="4" Content="Browse..."
+                      Command="{Binding $parent[Window].((settings:SettingsViewModel)DataContext).PickScriptIconFileCommand}" />
             </Grid>
             <WrapPanel Grid.Row="5" Grid.Column="2">
               <CheckBox x:Name="ScriptEnabledCheck" Content="Enabled" IsChecked="{Binding Enabled}" Margin="0,0,12,0" />

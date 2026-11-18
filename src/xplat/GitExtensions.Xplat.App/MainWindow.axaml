@@ -722,7 +722,8 @@
                     </MenuItem>
                     <Separator x:Name="CompareSeparator" />
                     <MenuItem x:Name="GridCompareMenuItem" Header="Com_pare" Icon="{local:UpstreamIcon Diff}">
-                      <MenuItem x:Name="OpenCommitsWithDiffToolMenuItem" Header="Open selected commits with _difftool" />
+                      <MenuItem x:Name="OpenCommitsWithDiffToolMenuItem" Header="Open selected commits with _difftool" IsEnabled="{Binding GridMenu.CanCompareSelectedCommits}"
+                                Command="{Binding GridDiffToolsMenu.OpenCommand}" ItemsSource="{Binding GridDiffToolsMenu.Entries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
                       <Separator />
                       <MenuItem x:Name="CompareToBranchMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareToBranch}" Header="Compare _to branch..." />
                       <MenuItem x:Name="CompareWithCurrentBranchMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CompareToCurrentBranch}" Header="Compare with _current branch" IsEnabled="{Binding GridMenu.CanCompareWithCurrentBranch}" />

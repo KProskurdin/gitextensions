@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Settings;
 
@@ -57,9 +58,10 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
 
     /// <param name="gitAvailable">Whether git was found; without it only the settings and help work.</param>
     /// <param name="translate">Upstream's translation of an English text.</param>
+    /// <param name="diffMergeTools">The diff tools offered under the grid's "Open selected commits with difftool".</param>
     public BrowseToolbarViewModel(CommitListViewModel commits, RepositoryViewModel repository,
         RepositoryOperationsViewModel actions, RecentRepositoriesViewModel recent, IAppPreferences preferences,
-        bool gitAvailable, Func<string, string>? translate = null)
+        bool gitAvailable, Func<string, string>? translate = null, IDiffMergeToolCatalog? diffMergeTools = null)
     {
         _commits = commits;
         _repository = repository;
@@ -69,6 +71,15 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
         _gitAvailable = gitAvailable;
         _translate = translate ?? (text => text);
         TreeMenu = new RepoObjectMenuViewModel(_translate);
+
+        // Upstream's diffSelectedCommitsMenuItem and its LoadCustomDifftools: the directory diff tool from the first to the
+        // selected commit, in git's tool or a chosen one.
+        GridDiffTools = new CustomDiffToolsViewModel(preferences, diffMergeTools ?? new GitDiffMergeToolCatalog());
+        GridDiffToolsMenu = GridDiffTools.Add(tool =>
+        {
+            BrowseWindow.OpenSelectedCommitsWithDifftool(tool);
+            return Task.CompletedTask;
+        });
         _commits.PropertyChanged += (_, e) =>
         {
             switch (e.PropertyName)
@@ -90,6 +101,16 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
             }
         };
     }
+
+    /// <summary>
+    ///  The diff tools under the grid's "Open selected commits with difftool", read when its menu first opens.
+    /// </summary>
+    public CustomDiffToolsViewModel GridDiffTools { get; }
+
+    /// <summary>
+    ///  "Open selected commits with difftool" and its tools.
+    /// </summary>
+    public CustomDiffToolMenu GridDiffToolsMenu { get; }
 
     /// <summary>
     ///  The revision grid's context menu, whose items take the window's state too.

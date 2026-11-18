@@ -688,6 +688,9 @@ internal sealed class MainWindowTests
         Open(window, _repo.Path);
 
         Click(window, "ShowFirstParentButton");
+
+        // The toolbar is off while the grid reads the commits again, as for a user.
+        WaitUntil(() => Find<ToolToggleButton>(window, "ShowReflogButton").IsEffectivelyEnabled);
         Click(window, "ShowReflogButton");
 
         WaitUntil(() => Find<ToolToggleButton>(window, "ShowFirstParentButton").IsChecked == true);

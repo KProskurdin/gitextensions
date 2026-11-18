@@ -40,9 +40,6 @@ public partial class CommitWindow
         StashStagedButton.Content = ToolStripContent.Build("Stash", StashStagedText);
         ResetAllButton.Content = ToolStripContent.Build("ResetWorkingDirChanges", ResetAllText);
         ResetUnstagedButton.Content = ToolStripContent.Build("ResetWorkingDirChanges", ResetUnstagedText);
-
-        // After a soft reset Amend is unchecked, and the message is next.
-        ResetSoftButton.Click += (_, _) => CommitMessageBox.Focus();
         ((MenuFlyout)OptionsButton.Flyout!).Opening += (_, _) => ViewModel.RefreshOptions();
         Activated += (_, _) => ViewModel.RefreshOnActivation();
         CommitMessageBox.GotFocus += (_, _) => SelectStagedOnEnterMessage();

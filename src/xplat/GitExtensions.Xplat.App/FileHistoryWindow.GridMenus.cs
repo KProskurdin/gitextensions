@@ -9,7 +9,6 @@ using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
-using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
 
@@ -20,9 +19,6 @@ namespace GitExtensions.Xplat.App;
 /// </summary>
 public partial class FileHistoryWindow
 {
-    // Upstream RevisionGridMenuCommands' _quickSearchQuickHelp, shown by Navigate > Quick search.
-    private const string QuickSearchHelpText = "Start typing in revision grid to start quick search.";
-
     private readonly NavigationHistory _navigationHistory = new();
     private readonly QuickSearch _quickSearch = new();
     private DispatcherTimer? _quickSearchTimer;
@@ -53,15 +49,13 @@ public partial class FileHistoryWindow
 
     private void WireGridMenus()
     {
+        // The items run the grid's commands (bound in XAML); their hotkeys are shown here.
         foreach ((MenuItem item, GridCommand command) in NavigateMenuCommands())
         {
             item.InputGesture = Hotkeys.Grid.GestureFor(command);
-            item.Click += (_, _) => RunGridCommand(command);
         }
 
         HighlightSelectedBranchMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ToggleHighlightSelectedBranch);
-        QuickSearchMenuItem.Click += (_, _) => Run(() => new MessageBoxWindow(
-            UpstreamTranslation.ByText(QuickSearchHelpText), "Information", MessageBoxButtons.OK).ShowDialog(this));
 
         // As upstream's OnGridViewSelectionChanged: the history follows a single selected commit.
         HistoryList.SelectionChanged += (_, _) =>

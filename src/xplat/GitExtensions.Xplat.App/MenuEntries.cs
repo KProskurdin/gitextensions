@@ -16,7 +16,7 @@ namespace GitExtensions.Xplat.App;
 internal static class MenuEntries
 {
     /// <param name="decorate">The view's own handling of an item, such as the keys held when it is clicked.</param>
-    public static void Fill(ItemCollection items, IEnumerable<MenuEntry> entries, Control resources,
+    public static void Fill(ItemCollection items, IEnumerable<MenuEntry> entries, IResourceHost resources,
         Action<MenuItem, MenuEntry>? decorate = null)
     {
         items.Clear();
@@ -26,7 +26,7 @@ internal static class MenuEntries
         }
     }
 
-    public static Control Item(MenuEntry entry, Control resources, Action<MenuItem, MenuEntry>? decorate = null)
+    public static Control Item(MenuEntry entry, IResourceHost resources, Action<MenuItem, MenuEntry>? decorate = null)
     {
         if (entry.IsSeparator)
         {
@@ -76,7 +76,7 @@ internal static class MenuEntries
     }
 
     // An access key's text is the header itself, as upstream's menus show it; other texts show as they are.
-    private static object Header(MenuEntry entry, Control resources)
+    private static object Header(MenuEntry entry, IResourceHost resources)
     {
         if (entry.HasAccessKey && !entry.HasPanelHeader && entry.SecondaryText is null)
         {

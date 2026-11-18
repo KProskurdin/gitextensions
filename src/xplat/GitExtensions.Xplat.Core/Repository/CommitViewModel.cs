@@ -67,6 +67,17 @@ public sealed record CommitViewModelServices
     ///  Resolves a revision to a commit (for "Reset soft"); null when it names none.
     /// </summary>
     public Func<string, Task<string?>>? ResolveCommit { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>commitAuthorStatus</c> link: the Git config settings page, where user.name and user.email are set.
+    /// </summary>
+    public Func<Task>? ShowGitConfigSettings { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>remoteNameLabel</c> link: the remotes window on the pull behavior of the local branch given, or of
+    ///  none.
+    /// </summary>
+    public Func<string?, Task>? ShowRemotes { get; init; }
 }
 
 /// <summary>
@@ -156,6 +167,11 @@ public sealed partial class CommitViewModel : DialogViewModel
     ///  to <see cref="StageProgressValue"/> on its own thread.
     /// </summary>
     public event EventHandler<int>? ProgressReported;
+
+    /// <summary>
+    ///  Upstream's <c>Message.Focus()</c> after "Modify the commit message" and a soft reset: the window focuses the message.
+    /// </summary>
+    public event EventHandler? MessageFocusRequested;
 
     public bool UseFormCommitMessage { get; }
 
@@ -502,6 +518,34 @@ public sealed partial class CommitViewModel : DialogViewModel
     public Task ShowCommitterAsync()
         => GuardAsync(async () => CommitterText = await CommitStatusBar.CommitterAsync(_repositoryPath, Author));
 
+    // Upstream's commitAuthorStatus_Click: the settings, then the committer read again.
+    [RelayCommand]
+    private async Task OpenCommitterSettingsAsync()
+    {
+        if (_services.ShowGitConfigSettings is { } show)
+        {
+            await GuardAsync(show);
+            await ShowCommitterAsync();
+        }
+    }
+
+    // Upstream's remoteNameLabel_Click: the remotes window on the branch's pull behavior, then the branch read again.
+    [RelayCommand]
+    private async Task OpenRemotesAsync()
+    {
+        if (_services.ShowRemotes is not { } show)
+        {
+            return;
+        }
+
+        await GuardAsync(async () =>
+        {
+            CommitBranchStatus status = await CommitStatusBar.BranchAsync(_repositoryPath);
+            await show(status.Branch.Length > 0 ? status.Branch : null);
+        });
+        await ShowBranchAsync();
+    }
+
     partial void OnSelectedUnstagedChanged(IReadOnlyList<FileChange> value) => ShowRepositoryState();
 
     partial void OnSelectedStagedChanged(IReadOnlyList<FileChange> value) => ShowRepositoryState();
@@ -594,6 +638,7 @@ public sealed partial class CommitViewModel : DialogViewModel
             && await _actions.ResetAsync(_repositoryPath, previous, ResetMode.Soft))
         {
             Amend = false;
+            MessageFocusRequested?.Invoke(this, EventArgs.Empty);
         }
     });
 
@@ -604,9 +649,13 @@ public sealed partial class CommitViewModel : DialogViewModel
     [RelayCommand]
     private Task CreateBranchAsync() => GuardAsync(_services.CreateBranch);
 
-    // Upstream's modifyCommitMessageButton: the fixup or squash commit becomes a normal one.
+    // Upstream's modifyCommitMessageButton: the fixup or squash commit becomes a normal one, and the message is next.
     [RelayCommand]
-    private void ModifyMessage() => Kind = CommitKind.Normal;
+    private void ModifyMessage()
+    {
+        Kind = CommitKind.Normal;
+        MessageFocusRequested?.Invoke(this, EventArgs.Empty);
+    }
 
     [RelayCommand]
     private void ClearAuthor() => Author = "";

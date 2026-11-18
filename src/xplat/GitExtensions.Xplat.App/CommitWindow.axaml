@@ -24,7 +24,8 @@
         <Image Source="{local:UpstreamImage Branch}" Width="16" Height="16" VerticalAlignment="Center" />
         <TextBlock x:Name="BranchNameText" VerticalAlignment="Center" Text="{Binding BranchText}" />
         <!-- As upstream, where the branch pushes is a link to the branch's pull behavior in the remotes window. -->
-        <HyperlinkButton x:Name="RemoteNameLink" Padding="0" VerticalAlignment="Center" Margin="0,0,25,0">
+        <HyperlinkButton x:Name="RemoteNameLink" Padding="0" VerticalAlignment="Center" Margin="0,0,25,0"
+                         Command="{Binding OpenRemotesCommand}">
           <TextBlock x:Name="RemoteNameText" Text="{Binding PushToText}" />
         </HyperlinkButton>
         <TextBlock Text="Staged" VerticalAlignment="Center" />
@@ -36,6 +37,7 @@
       </StackPanel>
       <!-- As upstream, the committer is a link to the Git config settings page. -->
       <HyperlinkButton x:Name="CommitterLink" DockPanel.Dock="Left" Padding="0" VerticalAlignment="Center"
+                       Command="{Binding OpenCommitterSettingsCommand}"
                        ToolTip.Tip="Click to change committer information.">
         <TextBlock x:Name="CommitterText" Text="{Binding CommitterText}" />
       </HyperlinkButton>
@@ -328,7 +330,8 @@
                      Text="{Binding Message}" IsEnabled="{Binding CanChangeMessage}" />
             <!-- Upstream's modifyCommitMessageButton, over the read-only message of a fixup or squash commit. -->
             <Button x:Name="modifyCommitMessageButton" Content="Modify the commit m_essage" MinWidth="149" MinHeight="25"
-                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsModifyMessageVisible}" />
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsModifyMessageVisible}"
+                    Command="{Binding ModifyMessageCommand}" />
           </Panel>
         </Grid>
       </Grid>

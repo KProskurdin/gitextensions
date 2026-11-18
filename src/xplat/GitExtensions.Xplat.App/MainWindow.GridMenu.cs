@@ -84,7 +84,6 @@ public partial class MainWindow
         ArrangeGridMenu(focused: false);
         CommitList.AddHandler(PointerPressedEvent, OnCommitListPointerPressed, RoutingStrategies.Tunnel);
         CommitContextMenu.Opening += (_, e) => e.Cancel = !ShowGridMenu();
-        WireCompareMenu();
     }
 
     // Upstream's FixupCommitToolStripMenuItemClick, SquashCommitToolStripMenuItemClick and

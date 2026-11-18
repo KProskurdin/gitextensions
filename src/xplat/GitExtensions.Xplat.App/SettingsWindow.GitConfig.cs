@@ -4,7 +4,7 @@ using GitExtensions.Xplat.Core.Settings;
 namespace GitExtensions.Xplat.App;
 
 // Upstream's GitConfigSettingsPage, bound to GitConfigPageViewModel: git's own settings at the level its header chooses.
-// The pickers, the encodings window and the path boxes' focus events stay here.
+// The tool path boxes' focus and typing events stay here; the Browse, Suggest and Configure buttons are commands.
 public partial class SettingsWindow
 {
     private GitConfigPageViewModel GitConfigPage => ViewModel.GitConfigPage;
@@ -27,24 +27,13 @@ public partial class SettingsWindow
             radio.Content = option.Text;
         }
 
-        BrowseCommitTemplateButton.Click +=
-            (_, _) => Browse(() => BrowseFileAsync(CommitTemplateBox, "Path to commit template"));
-        ConfigureEncodingButton.Click += (_, _) => Browse(ConfigureEncodingsAsync);
-        WireToolRow(MergeToolBox, MergeToolPathBox, BrowseMergeToolButton, SuggestMergeToolButton, diff: false);
-        WireToolRow(DiffToolBox, DiffToolPathBox, BrowseDiffToolButton, SuggestDiffToolButton, diff: true);
+        WireToolPath(MergeToolPathBox, diff: false);
+        WireToolPath(DiffToolPathBox, diff: true);
         Opened += (_, _) => UiActions.Run(LoadGitConfigAsync, ex => ViewModel.ErrorText = ex.Message);
     }
 
-    private void WireToolRow(ComboBox tool, TextBox path, Button browse, Button suggest, bool diff)
+    private void WireToolPath(TextBox path, bool diff)
     {
-        // Upstream's btnDiffToolBrowse_Click and btnMergeToolBrowse_Click, which also suggest the command for the new path.
-        browse.Click += (_, _) => Browse(async () =>
-        {
-            await BrowseFileAsync(path, tool.Text ?? "");
-            GitConfigPage.SuggestToolCommand(diff);
-        });
-        suggest.Click += (_, _) => GitConfigPage.SuggestToolCommand(diff);
-
         // Upstream's LostFocus and TextChanged of the path boxes; only what the user types suggests a command.
         path.LostFocus += (_, _) => GitConfigPage.NormaliseToolPath(diff);
         path.TextChanged += (_, _) =>
@@ -54,15 +43,6 @@ public partial class SettingsWindow
                 GitConfigPage.ToolPathTyped(diff);
             }
         };
-    }
-
-    // Upstream's ConfigureEncoding_Click.
-    private async Task ConfigureEncodingsAsync()
-    {
-        if (await new AvailableEncodingsWindow().ShowDialog<bool>(this))
-        {
-            GitConfigPage.RefreshEncodings();
-        }
     }
 
     private Task LoadGitConfigAsync() => GitConfigPage.LoadAsync(SourceHeaderOf(GitConfigTab).Level);

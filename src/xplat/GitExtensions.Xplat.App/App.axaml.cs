@@ -23,6 +23,10 @@ public partial class App : Application
         // The shared core marshals work onto the thread that created this context, i.e. the UI thread.
         GitUI.ThreadHelper.JoinableTaskContext = new Microsoft.VisualStudio.Threading.JoinableTaskContext();
 
+        // Before any git command: upstream's default output encoding is a lazy that is not thread-safe, and the browse
+        // window's first git commands run on two threads at once (GitOutputEncodingWarmUp; PLAN.md section 5, upstream defects).
+        GitExtensions.Xplat.Core.Platform.GitOutputEncodingWarmUp.Run();
+
         // As upstream at startup (Program.Main): the user manual's links need the version's documentation address.
         if (!_documentationBaseUrlSet)
         {

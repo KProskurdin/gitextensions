@@ -26,7 +26,6 @@ public partial class CommitWindow : Window
     private readonly IAppPreferences _preferences;
     private readonly Func<Task> _refresh;
     private readonly Func<string, bool>? _runPlugin;
-    private readonly Func<Window, string, Task>? _showSettings;
 
     // The file whose diff is on show, and whether it is the staged or the unstaged diff.
     private FileChange? _diffChange;
@@ -63,9 +62,6 @@ public partial class CommitWindow : Window
         ICommitMessageStore messages, Func<string, bool>? runPlugin = null,
         Func<Window, string, Task>? showSettings = null)
     {
-        // Opens the browse window's settings over this one on an upstream page.
-        _showSettings = showSettings;
-
         // Runs a plugin named by a script's plugin command, as the browse window does.
         _runPlugin = runPlugin;
         _repositoryPath = repositoryPath;
@@ -91,6 +87,11 @@ public partial class CommitWindow : Window
                 ShowError = (message, caption) => _ = new ErrorWindow(message) { Title = caption }.ShowDialog(this),
                 ReadModule = ReadModuleAsync,
                 StageInSuperproject = StageInSuperprojectAsync,
+                // The browse window's settings over this one, on the Git config page.
+                ShowGitConfigSettings = showSettings is null ? null : () => showSettings(this, GitConfigSettingsPage),
+                ShowRemotes = local => new RemotesWindow(repositoryPath, preferences,
+                    remote => actions.FetchAsync(repositoryPath, remote, prune: false),
+                    preselectLocal: local).ShowDialog(this),
             });
         DataContext = ViewModel;
         InitializeComponent();
@@ -114,11 +115,7 @@ public partial class CommitWindow : Window
         Closing += (_, _) => SavedDraft = ViewModel.KeepsDraft
             ? GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(ViewModel.SaveDraftAsync)
             : null;
-        modifyCommitMessageButton.Click += (_, _) =>
-        {
-            ViewModel.ModifyMessageCommand.Execute(null);
-            CommitMessageBox.Focus();
-        };
+        ViewModel.MessageFocusRequested += (_, _) => CommitMessageBox.Focus();
         ViewModel.ProgressReported += (_, count) => Dispatcher.UIThread.Post(() =>
             ViewModel.StageProgressValue =
                 Math.Min(ViewModel.StageProgressMaximum - 1, ViewModel.StageProgressValue + count));

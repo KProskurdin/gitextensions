@@ -6,8 +6,8 @@
              x:Class="GitExtensions.Xplat.App.FileStatusListMenu"
              x:DataType="vm:FileListMenuViewModel">
   <!-- Upstream FileStatusList's ItemContextMenu, in its order and with its names, for the items the new shell has. Its
-       state and actions are bound to FileListMenuViewModel (PLAN.md principle 6); the items with sub-items, the custom
-       difftools and the scripts keep their click handlers in the view. -->
+       state and actions are bound to FileListMenuViewModel (PLAN.md principle 6), the custom difftools included; the
+       scripts are filled by the view. -->
   <!-- Upstream's open submodule item, inserted at the very top for a selected submodule. -->
   <MenuItem x:Name="openSubmoduleMenuItem" Header="_Open with Git Extensions" Icon="{local:UpstreamIcon GitExtensionsLogo16}" IsVisible="{Binding IsOpenSubmoduleVisible}" Command="{Binding OpenSubmoduleCommand}" />
   <!-- Upstream's tree items (FileStatusList.TreeContextMenu.cs), inserted first, for a list shown as a tree. -->
@@ -22,7 +22,7 @@
   <Separator x:Name="sepSubmodule" IsVisible="{Binding AreSubmoduleItemsVisible}" />
   <MenuItem x:Name="tsmiStageFile" Header="_Stage selected" Icon="{local:UpstreamIcon Stage}" IsVisible="{Binding IsStageVisible}" Command="{Binding StageCommand}" />
   <MenuItem x:Name="tsmiUnstageFile" Header="_Unstage selected" Icon="{local:UpstreamIcon Unstage}" IsVisible="{Binding IsUnstageVisible}" Command="{Binding UnstageCommand}" />
-  <MenuItem x:Name="tsmiResetFileTo" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsResetFileToEnabled}">
+  <MenuItem x:Name="tsmiResetFileTo" Header="_Reset file(s) to" Icon="{local:UpstreamIcon ResetWorkingDirChanges}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsResetFileToEnabled}" Command="{Binding ResetFileToCommand}">
     <MenuItem x:Name="tsmiResetFileToSelected" IsVisible="{Binding IsResetToSecondVisible}" Header="{Binding ResetToSecondHeader}" Command="{Binding ResetToSelectedCommand}" />
     <MenuItem x:Name="tsmiResetFileToParent" IsVisible="{Binding IsResetToFirstVisible}" Header="{Binding ResetToFirstHeader}" Command="{Binding ResetToParentCommand}" />
   </MenuItem>
@@ -30,16 +30,16 @@
   <MenuItem x:Name="tsmiInteractiveAdd" Header="Interactive add..." IsVisible="{Binding IsInteractivePatchVisible}" Command="{Binding InteractivePatchCommand}" CommandParameter="{x:False}" />
   <MenuItem x:Name="tsmiCherryPickChanges" Header="Cherr_y pick changes" Icon="{local:UpstreamIcon CherryPick}" IsVisible="{Binding IsCherryPickVisible}" Command="{Binding CherryPickCommand}" />
   <Separator x:Name="sepGit" IsVisible="{Binding HasSelection}" />
-  <MenuItem x:Name="tsmiOpenWithDifftool" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsOpenWithDifftoolEnabled}">
+  <MenuItem x:Name="tsmiOpenWithDifftool" Header="Open with _difftool" Icon="{local:UpstreamIcon Diff}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsOpenWithDifftoolEnabled}" Command="{Binding DiffFirstToSelectedTools.OpenCommand}">
     <MenuItem x:Name="tsmiSecondDiffCaption" IsEnabled="False" Header="{Binding DiffSecondCaption}" />
     <MenuItem x:Name="tsmiFirstDiffCaption" IsEnabled="False" Header="{Binding DiffFirstCaption}" />
     <Separator />
-    <MenuItem x:Name="tsmiDiffFirstToSelected" Header="_First -&gt; Second" IsEnabled="{Binding IsDiffFirstToSelectedEnabled}" />
-    <MenuItem x:Name="tsmiDiffSelectedToLocal" Header="_Second -&gt; Working directory" IsVisible="{Binding IsToLocalVisible}" IsEnabled="{Binding IsDiffSelectedToLocalEnabled}" />
-    <MenuItem x:Name="tsmiDiffFirstToLocal" Header="First -&gt; _Working directory" IsVisible="{Binding IsToLocalVisible}" IsEnabled="{Binding IsDiffFirstToLocalEnabled}" />
+    <MenuItem x:Name="tsmiDiffFirstToSelected" Header="_First -&gt; Second" IsEnabled="{Binding IsDiffFirstToSelectedEnabled}" Command="{Binding DiffFirstToSelectedTools.OpenCommand}" ItemsSource="{Binding DiffFirstToSelectedTools.Entries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
+    <MenuItem x:Name="tsmiDiffSelectedToLocal" Header="_Second -&gt; Working directory" IsVisible="{Binding IsToLocalVisible}" IsEnabled="{Binding IsDiffSelectedToLocalEnabled}" Command="{Binding DiffSelectedToLocalTools.OpenCommand}" ItemsSource="{Binding DiffSelectedToLocalTools.Entries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
+    <MenuItem x:Name="tsmiDiffFirstToLocal" Header="First -&gt; _Working directory" IsVisible="{Binding IsToLocalVisible}" IsEnabled="{Binding IsDiffFirstToLocalEnabled}" Command="{Binding DiffFirstToLocalTools.OpenCommand}" ItemsSource="{Binding DiffFirstToLocalTools.Entries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
     <Separator x:Name="sepDifftoolRemember" IsVisible="{Binding IsRememberSeparatorVisible}" />
-    <MenuItem x:Name="tsmiDiffTwoSelected" Header="_Diff the selected files" IsVisible="{Binding IsDiffTwoSelectedVisible}" IsEnabled="{Binding IsDiffTwoSelectedEnabled}" />
-    <MenuItem x:Name="tsmiDiffWithRemembered" IsVisible="{Binding IsDiffWithRememberedVisible}" IsEnabled="{Binding IsDiffWithRememberedEnabled}" Header="{Binding DiffWithRememberedHeader}" />
+    <MenuItem x:Name="tsmiDiffTwoSelected" Header="_Diff the selected files" IsVisible="{Binding IsDiffTwoSelectedVisible}" IsEnabled="{Binding IsDiffTwoSelectedEnabled}" Command="{Binding DiffTwoSelectedTools.OpenCommand}" ItemsSource="{Binding DiffTwoSelectedTools.Entries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
+    <MenuItem x:Name="tsmiDiffWithRemembered" IsVisible="{Binding IsDiffWithRememberedVisible}" IsEnabled="{Binding IsDiffWithRememberedEnabled}" Header="{Binding DiffWithRememberedHeader}" Command="{Binding DiffWithRememberedTools.OpenCommand}" ItemsSource="{Binding DiffWithRememberedTools.Entries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
     <MenuItem x:Name="tsmiRememberSecondRevDiff" Header="_Remember Second for diff" IsVisible="{Binding IsRememberSecondVisible}" IsEnabled="{Binding IsRememberSecondEnabled}" Command="{Binding RememberCommand}" CommandParameter="{x:False}" />
     <MenuItem x:Name="tsmiRememberFirstRevDiff" Header="R_emember First for diff" IsVisible="{Binding IsRememberFirstVisible}" IsEnabled="{Binding IsRememberFirstEnabled}" Command="{Binding RememberCommand}" CommandParameter="{x:True}" />
   </MenuItem>

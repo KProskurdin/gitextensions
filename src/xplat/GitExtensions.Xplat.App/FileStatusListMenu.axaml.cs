@@ -20,8 +20,8 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  Upstream FileStatusList's item menu (<c>FileStatusList.ContextMenu.cs</c>) for a list of the files between two
 ///  revisions: the browse window's Diff tab and FormDiff. Its state and actions are <see cref="FileListMenuViewModel"/>'s
-///  (rules in core <see cref="DiffFileMenu"/>); the view keeps the bold default items, the custom difftools, the scripts,
-///  the hotkeys and the windows the actions open (its <see cref="IFileListMenuHost"/>). What a window adds is its
+///  (rules in core <see cref="DiffFileMenu"/>); the view keeps the bold default items, the scripts, the hotkeys and the
+///  windows the actions open (its <see cref="IFileListMenuHost"/>). What a window adds is its
 ///  <see cref="FileStatusListMenuBinding"/>, as upstream's <c>BindContextMenu</c>.
 /// </summary>
 public partial class FileStatusListMenu : ContextMenu
@@ -42,7 +42,6 @@ public partial class FileStatusListMenu : ContextMenu
         new SystemFileManager(new SystemProcessLauncher(), HostPlatform.Current);
 
     private FileStatusListMenuBinding? _binding;
-    private bool _customDiffToolsLoaded;
 
     public FileStatusListMenu()
     {
@@ -51,7 +50,8 @@ public partial class FileStatusListMenu : ContextMenu
 
         // After the translation pass, so the bound texts are the view model's (MVVM.md, Translation).
         ViewModel = new FileListMenuViewModel(AppServices.Preferences, OperatingSystem.IsWindows(),
-            () => OperatingSystem.IsWindows() && VisualStudio.IsInstalled, UpstreamTranslation.WithAccessKey);
+            () => OperatingSystem.IsWindows() && VisualStudio.IsInstalled, UpstreamTranslation.WithAccessKey,
+            AppServices.DiffMergeTools);
         DataContext = ViewModel;
 
         // Upstream FileStatusList's OnRuntimeLoad starts looking for Visual Studio.
@@ -63,40 +63,10 @@ public partial class FileStatusListMenu : ContextMenu
         Opening += (_, _) =>
         {
             Refresh();
-            if (!_customDiffToolsLoaded)
-            {
-                _customDiffToolsLoaded = true;
-                Run(LoadCustomDifftoolsAsync);
-            }
+            Run(ViewModel.DiffTools.LoadAsync);
         };
         ToolTip.SetTip(tsmiSkipWorktree, UpstreamTranslation.ByText(SkipWorktreeToolTip));
         ToolTip.SetTip(tsmiAssumeUnchanged, UpstreamTranslation.ByText(AssumeUnchangedToolTip));
-
-        // Upstream's ResetFile_Click: the parent item resets to the first revision when it can; its sub-items' clicks reach
-        // it too, so it has no command.
-        tsmiResetFileTo.Click += (_, e) =>
-        {
-            if (e.Source == tsmiResetFileTo && ViewModel.IsResetToFirstVisible)
-            {
-                ViewModel.ResetToParentCommand.Execute(null);
-            }
-        };
-
-        // Upstream's OpenFilesWithDiffTool: the parent item runs First -> Second, as above.
-        tsmiOpenWithDifftool.Click += (_, e) =>
-        {
-            if (e.Source == tsmiOpenWithDifftool)
-            {
-                Run(() => ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffAB));
-            }
-        };
-
-        // The custom difftools' items: the item itself in git's difftool, its sub-items in theirs.
-        foreach ((MenuItem item, Action<string?> open) in CustomDiffToolItems())
-        {
-            CustomDiffTools.OnClick(item, open);
-        }
-
         tsmiCopyPaths.ItemsSource = CopyPathsMenu.Items(ViewModel.CopiedPaths, () => _binding?.RepositoryPath(),
             CopyTextAsync);
     }
@@ -279,20 +249,6 @@ public partial class FileStatusListMenu : ContextMenu
         tsmiBlame.ToggleType = ViewModel.IsBlameCheckable ? MenuItemToggleType.CheckBox : MenuItemToggleType.None;
         ShowScripts();
     }
-
-    // Upstream's LoadCustomDifftools: these items, each with what opens the selection in a given tool.
-    private IReadOnlyList<(MenuItem Item, Action<string?> Open)> CustomDiffToolItems()
-        =>
-        [
-            (tsmiDiffFirstToSelected, tool => Run(() => ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool))),
-            (tsmiDiffSelectedToLocal, tool => Run(() => ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool))),
-            (tsmiDiffFirstToLocal, tool => Run(() => ViewModel.OpenWithDifftoolAsync(RevisionDiffKind.DiffALocal, tool))),
-            (tsmiDiffWithRemembered, tool => Run(() => ViewModel.DiffWithRememberedAsync(tool))),
-            (tsmiDiffTwoSelected, tool => Run(() => ViewModel.DiffTwoSelectedAsync(tool))),
-        ];
-
-    private Task LoadCustomDifftoolsAsync()
-        => CustomDiffTools.LoadAsync(CustomDiffToolItems(), diff: true, AppServices.Preferences);
 
     // Upstream's AddUserScripts: the scripts shown in file lists are items of the menu, the others under "Run script".
     private void ShowScripts()

@@ -210,6 +210,8 @@ public partial class MainWindow : IBrowseWindow
 
     bool IBrowseWindow.RunGridCommand(GridCommand command) => RunGridHotkey(command);
 
+    void IBrowseWindow.OpenSelectedCommitsWithDifftool(string? tool) => DiffSelectedCommitsWithDifftool(tool);
+
     Task IBrowseWindow.PushBranchAsync(string branch) => ShowPushDialogAsync(branch);
 
     Task<bool> IBrowseWindow.DeleteRemoteBranchAsync(string path, string branch) => ShowDeleteRemoteBranchAsync(path, branch);

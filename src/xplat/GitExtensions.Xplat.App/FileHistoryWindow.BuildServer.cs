@@ -45,7 +45,6 @@ public partial class FileHistoryWindow
     private void WireBuildServer()
     {
         HistoryList.SelectionChanged += (_, _) => FollowSelectedBuild();
-        OpenBuildReportLink.Click += (_, _) => OpenBuildLink(_reportedBuild?.Url);
 
         // As upstream's grid, a click on a build status opens the build report.
         HistoryList.AddHandler(PointerReleasedEvent, (_, e) =>

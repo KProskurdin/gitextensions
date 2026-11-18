@@ -223,9 +223,114 @@ internal sealed class SettingsViewModelTests
         BuildServerSettings.IntegrationEnabled[levels[SettingLevel.Local]].Should().BeTrue();
     }
 
-    private SettingsViewModel New(FakeDialogHost host, bool isWindows = false)
+    [Test]
+    public async Task BrowsePath_should_put_the_chosen_path_in_its_box_and_keep_it_when_cancelled()
     {
-        SettingsViewModel viewModel = new(host, _preferences, new SettingsViewModelServices
+        List<string> titles = [];
+        string? chosen = "/usr/bin/git";
+        SettingsViewModel viewModel = New(new FakeDialogHost(), services: services => services with
+        {
+            PickFile = (title, _) =>
+            {
+                titles.Add(title);
+                return Task.FromResult<string?>(chosen);
+            },
+            PickFolder = title =>
+            {
+                titles.Add(title);
+                return Task.FromResult<string?>(chosen);
+            },
+        });
+
+        await viewModel.BrowsePathCommand.ExecuteAsync(SettingsPathField.GitCommand);
+        chosen = "/opt/home";
+        await viewModel.BrowsePathCommand.ExecuteAsync(SettingsPathField.OtherHome);
+        chosen = null;
+        await viewModel.BrowsePathCommand.ExecuteAsync(SettingsPathField.GitCommand);
+        viewModel.GitConfigPage.DiffTool = "meld";
+        chosen = "/usr/bin/meld";
+        await viewModel.BrowsePathCommand.ExecuteAsync(SettingsPathField.DiffToolPath);
+
+        viewModel.GitCommand.Should().Be("/usr/bin/git", "a cancelled picker leaves the box");
+        viewModel.OtherHome.Should().Be("/opt/home");
+        viewModel.GitConfigPage.DiffToolPath.Should().Be("/usr/bin/meld");
+        titles.Should().Equal(SettingsViewModel.GitCommandTitle, SettingsViewModel.HomeTitle,
+            SettingsViewModel.GitCommandTitle, "meld");
+    }
+
+    [Test]
+    public async Task A_failing_picker_should_show_its_error_in_the_window()
+    {
+        SettingsViewModel viewModel = New(new FakeDialogHost(), services: services => services with
+        {
+            PickFile = (_, _) => throw new IOException("no picker"),
+        });
+
+        await viewModel.BrowsePathCommand.ExecuteAsync(SettingsPathField.Plink);
+
+        viewModel.ErrorText.Should().Be("no picker");
+    }
+
+    [Test]
+    public void The_help_and_folder_commands_should_open_the_manual_and_the_theme_folders()
+    {
+        List<string> opened = [];
+        string user = Path.Combine(Path.GetTempPath(), "xplat-themes-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            SettingsViewModel viewModel = New(new FakeDialogHost(), services: services => services with
+            {
+                OpenUrl = opened.Add,
+                ManualUrl = (subfolder, anchor) => $"https://manual/{subfolder}#{anchor}",
+                OpenFolder = opened.Add,
+                AppThemesFolder = "/app/Themes",
+                UserThemesFolder = user,
+            });
+
+            viewModel.OpenManualCommand.Execute("sorting-sort-author-date");
+            viewModel.OpenThemesFolderCommand.Execute(false);
+            viewModel.OpenThemesFolderCommand.Execute(true);
+
+            opened[0].Should().Be("https://manual/settings#sorting-sort-author-date");
+            opened.Skip(1).Should().Equal("/app/Themes", user);
+            Directory.Exists(user).Should().BeTrue("upstream makes the user's folder before it shows it");
+            viewModel.CanOpenUserThemesFolder.Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(user))
+            {
+                Directory.Delete(user);
+            }
+        }
+
+        New(new FakeDialogHost()).CanOpenUserThemesFolder.Should().BeFalse("a portable app has no user folder");
+    }
+
+    [Test]
+    public async Task PickScriptIconFile_should_set_the_selected_scripts_icon_file()
+    {
+        bool? images = null;
+        SettingsViewModel viewModel = New(new FakeDialogHost(), services: services => services with
+        {
+            PickFile = (_, imagesFirst) =>
+            {
+                images = imagesFirst;
+                return Task.FromResult<string?>("/icons/run.png");
+            },
+        });
+        viewModel.ScriptsPage.Selected = viewModel.ScriptsPage.Items[1];
+
+        await viewModel.PickScriptIconFileCommand.ExecuteAsync(null);
+
+        viewModel.ScriptsPage.Items[1].IconFilePath.Should().Be("/icons/run.png");
+        images.Should().BeTrue("upstream's picker offers images first");
+    }
+
+    private SettingsViewModel New(FakeDialogHost host, bool isWindows = false,
+        Func<SettingsViewModelServices, SettingsViewModelServices>? services = null)
+    {
+        SettingsViewModelServices defaults = new()
         {
             Themes = [ThemeId.DefaultLight],
             Dictionaries = ["en-US"],
@@ -244,7 +349,8 @@ internal sealed class SettingsViewModelTests
             },
             SetEnvironment = () => _steps.Add("environment"),
             ApplySshPath = _ => { },
-        }, isWindows);
+        };
+        SettingsViewModel viewModel = new(host, _preferences, services is null ? defaults : services(defaults), isWindows);
 
         // Showing the Git page sets the environment once; the tests look at what saving does.
         _steps.Clear();

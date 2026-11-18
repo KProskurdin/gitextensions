@@ -269,6 +269,12 @@ public interface IBrowseWindow
     bool RunGridCommand(GridCommand command);
 
     /// <summary>
+    ///  Upstream's <c>DiffSelectedCommitsWithDifftool</c>: the directory diff from the first to the selected commit, in
+    ///  <paramref name="tool"/> or git's.
+    /// </summary>
+    void OpenSelectedCommitsWithDifftool(string? tool);
+
+    /// <summary>
     ///  Upstream's push window with <paramref name="branch"/> chosen.
     /// </summary>
     Task PushBranchAsync(string branch);

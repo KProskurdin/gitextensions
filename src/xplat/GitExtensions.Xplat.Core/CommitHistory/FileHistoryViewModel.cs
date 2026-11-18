@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
@@ -78,6 +79,27 @@ public sealed record FileHistoryViewModelServices
     ///  Puts a text on the clipboard.
     /// </summary>
     public Func<string, Task>? CopyText { get; init; }
+
+    /// <summary>
+    ///  The diff tools offered under the difftool items; null asks git.
+    /// </summary>
+    public IDiffMergeToolCatalog? DiffMergeTools { get; init; }
+
+    /// <summary>
+    ///  Runs one of the grid's commands (upstream's Navigate menu, as its hotkeys) on the window's grid; false when it
+    ///  cannot run now.
+    /// </summary>
+    public Func<GridCommand, bool>? RunGridCommand { get; init; }
+
+    /// <summary>
+    ///  Upstream's git command log window.
+    /// </summary>
+    public Action? ShowCommandLog { get; init; }
+
+    /// <summary>
+    ///  Opens the build report of the commit the Build Report tab follows.
+    /// </summary>
+    public Action? OpenReportedBuild { get; init; }
 }
 
 /// <summary>
@@ -91,6 +113,10 @@ public sealed partial class FileHistoryViewModel : DialogViewModel
     // Upstream's MessageBoxes.RevisionFilteredInGrid texts.
     public const string RevisionFiltered = "Revision \"{0}\" is not visible in the revision grid. Remove the revision filter.";
     public const string RevisionFilteredCaption = "Cannot find revision";
+
+    // Upstream RevisionGridMenuCommands' _quickSearchQuickHelp, shown by Navigate > Quick search.
+    public const string QuickSearchHelpText = "Start typing in revision grid to start quick search.";
+    public const string QuickSearchHelpCaption = "Information";
 
     /// <summary>
     ///  The Build Report tab's place after the four tabs of <see cref="FileHistoryTab"/>.
@@ -129,7 +155,27 @@ public sealed partial class FileHistoryViewModel : DialogViewModel
         CommitTabText = host.Translate(FileHistoryDialog.CommitTabText);
         SelectedTabIndex = (int)Dialog.InitialTab(showBlame);
         _ = Commits.ApplyFilterAsync(StoredRevisionFilter.Initial(preferences));
+
+        // Upstream's LoadCustomDifftools: the diff tools under both difftool items.
+        DiffTools = new CustomDiffToolsViewModel(preferences, services.DiffMergeTools ?? new GitDiffMergeToolCatalog());
+        OpenWithDifftoolTools = DiffTools.Add(tool => OpenWithDifftoolAsync(RevisionDiffKind.DiffAB, tool));
+        DiffToolRemoteLocalTools = DiffTools.Add(tool => OpenWithDifftoolAsync(RevisionDiffKind.DiffBLocal, tool));
     }
+
+    /// <summary>
+    ///  The diff tools under the difftool items, read when the window opens.
+    /// </summary>
+    public CustomDiffToolsViewModel DiffTools { get; }
+
+    /// <summary>
+    ///  "Open with difftool" (the selected commits) and its tools.
+    /// </summary>
+    public CustomDiffToolMenu OpenWithDifftoolTools { get; }
+
+    /// <summary>
+    ///  "Difftool selected &lt; - &gt; local" and its tools.
+    /// </summary>
+    public CustomDiffToolMenu DiffToolRemoteLocalTools { get; }
 
     /// <summary>
     ///  The rules.
@@ -421,6 +467,21 @@ public sealed partial class FileHistoryViewModel : DialogViewModel
 
     [RelayCommand]
     private Task RevertAsync() => RunOnSelectedAsync(_services.Revert);
+
+    // The Navigate menu's items run the grid's commands, as their hotkeys do.
+    [RelayCommand]
+    private void RunGrid(GridCommand command) => _services.RunGridCommand?.Invoke(command);
+
+    // Upstream's quickSearchToolStripMenuItem: how the grid's quick search works.
+    [RelayCommand]
+    private Task QuickSearchHelpAsync()
+        => GuardAsync(() => Host.ShowMessageAsync(Host.Translate(QuickSearchHelpText), QuickSearchHelpCaption));
+
+    [RelayCommand]
+    private void ShowCommandLog() => _services.ShowCommandLog?.Invoke();
+
+    [RelayCommand]
+    private void OpenReportedBuild() => _services.OpenReportedBuild?.Invoke();
 
     private Task RunOnSelectedAsync(Func<string, string, Task> action) => GuardAsync(async () =>
     {

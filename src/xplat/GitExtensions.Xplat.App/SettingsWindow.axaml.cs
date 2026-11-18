@@ -109,6 +109,15 @@ public partial class SettingsWindow : Window
             ChooseLanguage = ChooseLanguageAsync,
             OpenUri = uri => Launcher.LaunchUriAsync(uri),
             DarkBackground = DarkEditorBackground,
+            PickFile = PickFileAsync,
+            PickFolder = PickFolderAsync,
+            OpenUrl = url => DialogHelp.Open(url),
+            OpenFolder = folder => AppServices.FileManager.OpenFolder(folder),
+            AppThemesFolder = AppServices.ThemePaths.AppThemesDirectory,
+            UserThemesFolder = AppServices.ThemePaths.UserThemesDirectory,
+            ClearAvatarCache = () => AppServices.Avatars.ClearCacheAsync(),
+            ConfigureEncodings = () => new AvailableEncodingsWindow().ShowDialog<bool>(this),
+            ShowScriptHelp = ShowScriptHelp,
         }, OperatingSystem.IsWindows());
         ViewModel.PluginsPage.PropertyChanged += (_, e) =>
         {
@@ -121,25 +130,11 @@ public partial class SettingsWindow : Window
         DataContext = ViewModel;
         AddPageHeaders();
 
-        // Upstream's SortingSettingsPage help pictures.
-        RevisionSortOrderHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-author-date")());
-        PrioBranchNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-branches")());
-        PrioRemoteNamesHelp.Click += (_, _) => DialogHelp.Open(DialogHelp.Manual("settings", "sorting-sort-prioritized-remotes")());
-
-        // Upstream's ShowAppThemesDirectory and ShowUserThemesDirectory; the user folder is made first, as upstream makes it.
-        // A portable app has no user folder, where upstream's item does nothing; here it is off.
-        tsmiApplicationFolder.Click += (_, _) => AppServices.FileManager.OpenFolder(AppServices.ThemePaths.AppThemesDirectory);
-        tsmiUserFolder.IsEnabled = AppServices.ThemePaths.UserThemesDirectory is not null;
-        tsmiUserFolder.Click += (_, _) =>
+        // The theme folders' menu is a flyout, which gives its items a data context only when it opens (MVVM.md, Flyouts).
+        foreach (Control item in ((MenuFlyout)sbOpenThemeFolder.Flyout!).Items.OfType<Control>())
         {
-            if (AppServices.ThemePaths.UserThemesDirectory is { } folder)
-            {
-                Directory.CreateDirectory(folder);
-                AppServices.FileManager.OpenFolder(folder);
-            }
-        };
-
-        WireAppearancePage();
+            item.DataContext = ViewModel;
+        }
 
         ToolTip.SetTip(chkShowOutputHistoryAsTab, string.Format(CultureInfo.CurrentCulture, OutputHistoryTooltip,
             Hotkeys.GestureFor(BrowseCommand.FocusOutputHistoryAndToggleIfPanel)?.ToString() ?? ""));
@@ -147,12 +142,8 @@ public partial class SettingsWindow : Window
         // Upstream's DiffViewerSettingsPage sets its runtime tooltip.
         ToolTip.SetTip(ShowDiffForAllParentsCheck, UpstreamTranslation.ByText(ShowDiffForAllParentsTooltip));
 
-        // As upstream, the button saves at once, not with OK.
-        SaveDiffDefaultsButton.Click += (_, _) => preferences.SaveDiffOptionsAsDefault();
         ShowBlameTooltips();
         ShowSortingPage();
-        ShowGitPage();
-        ShowSshPage();
         ShowGitConfigPage();
 
         ShowScripts();
@@ -237,20 +228,12 @@ public partial class SettingsWindow : Window
                 },
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
-            button.Click += (_, _) => UiActions.Run(
-                () => ViewModel.RevisionLinksPage.AddTemplateCommand.ExecuteAsync(template),
-                ex => ViewModel.ErrorText = ex.Message);
+            button.Command = ViewModel.AddRevisionLinkTemplateCommand;
+            button.CommandParameter = template;
             RevisionLinkTemplateButtons.Children.Add(button);
         }
 
         AddRevisionLinkFormatButton.Command = ViewModel.RevisionLinksPage.AddFormatCommand;
-        RevisionLinkFormatsList.AddHandler(Button.ClickEvent, (_, e) =>
-        {
-            if (e.Source is Button { Name: "RemoveRevisionLinkFormatButton", DataContext: RevisionLinkFormatItem format })
-            {
-                ViewModel.RevisionLinksPage.RemoveFormat(format);
-            }
-        });
         ViewModel.RevisionLinksPage.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(RevisionLinksPageViewModel.Selected))
@@ -321,14 +304,6 @@ public partial class SettingsWindow : Window
     // Upstream's Git page. Its "Change HOME" choices (FormFixHome) are offered on Windows only, where upstream checks HOME:
     // elsewhere HOME is always set, and changing it in the app would also move the app's own settings folders. The Linux
     // tools folder is Git for Windows' sh; upstream clears it on other OSes.
-    private void ShowGitPage()
-    {
-        BrowseGitCommandButton.Click +=
-            (_, _) => Browse(() => BrowseFileAsync(GitCommandBox, "Command used to run git"));
-        BrowseLinuxToolsButton.Click +=
-            (_, _) => Browse(() => BrowseFolderAsync(LinuxToolsDirBox, "Path to linux tools"));
-        BrowseHomeButton.Click += (_, _) => Browse(() => BrowseFolderAsync(OtherHomeBox, "HOME"));
-    }
 
     /// <summary>
     ///  The HOME choice on the Git tab.
@@ -337,39 +312,29 @@ public partial class SettingsWindow : Window
 
     // Upstream's SSH page. PuTTY is offered on Windows, where upstream looks for it and recognises plink.exe; elsewhere
     // plink is an "other ssh client" (upstream's rule would read a stored "/usr/bin/plink" back as one anyway).
-    private void ShowSshPage()
-    {
-        BrowseOtherSshButton.Click += (_, _) => Browse(() => BrowseFileAsync(OtherSshBox, "Other ssh client"));
-        BrowsePlinkButton.Click += (_, _) => Browse(() => BrowseFileAsync(PlinkBox, "Path to plink"));
-        BrowsePuttygenButton.Click += (_, _) => Browse(() => BrowseFileAsync(PuttygenBox, "Path to puttygen"));
-        BrowsePageantButton.Click += (_, _) => Browse(() => BrowseFileAsync(PageantBox, "Path to pageant"));
-    }
 
     /// <summary>
     ///  The ssh client choice on the SSH tab.
     /// </summary>
     public SshClientKind SelectedSshClient => ViewModel.SelectedSshClient;
 
-    private void Browse(Func<Task> browse) => UiActions.Run(browse, ex => ViewModel.ErrorText = ex.Message);
-
-    private async Task BrowseFileAsync(TextBox target, string title)
+    // The pickers the view model's Browse buttons ask for (SettingsViewModelServices).
+    private async Task<string?> PickFileAsync(string title, bool images)
     {
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(
-            new FilePickerOpenOptions { Title = title, AllowMultiple = false });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            target.Text = path;
-        }
+            Title = title,
+            AllowMultiple = false,
+            FileTypeFilter = images ? [FilePickerFileTypes.ImageAll, FilePickerFileTypes.All] : null,
+        });
+        return files is [var file, ..] ? file.TryGetLocalPath() : null;
     }
 
-    private async Task BrowseFolderAsync(TextBox target, string title)
+    private async Task<string?> PickFolderAsync(string title)
     {
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
             new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
-        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
-        {
-            target.Text = path;
-        }
+        return folders is [var folder, ..] ? folder.TryGetLocalPath() : null;
     }
 
     // The keys pressed in a hotkey row's box.
@@ -410,9 +375,6 @@ public partial class SettingsWindow : Window
                     new TextBlock { Text = choice is { Name.Length: > 0 } ? choice.Name : "(none)" },
                 },
             });
-        ScriptIconFileButton.Click +=
-            (_, _) => UiActions.Run(PickScriptIconFileAsync, ex => ViewModel.ErrorText = ex.Message);
-        ScriptHelpButton.Click += (_, _) => ShowScriptHelp();
         Closed += (_, _) => _scriptHelp?.Close();
         ViewModel.ScriptsPage.PropertyChanged += (_, e) =>
         {
@@ -427,24 +389,6 @@ public partial class SettingsWindow : Window
             ScriptNameBox.SelectAll();
         };
         ShowSelectedScript();
-    }
-
-    private async Task PickScriptIconFileAsync()
-    {
-        if (ViewModel.ScriptsPage.Selected is not { } item)
-        {
-            return;
-        }
-
-        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Icon or associated file path",
-            FileTypeFilter = [FilePickerFileTypes.ImageAll, FilePickerFileTypes.All],
-        });
-        if (files is [var file, ..] && file.TryGetLocalPath() is { } path)
-        {
-            item.IconFilePath = path;
-        }
     }
 
     // The selected script's values; the details declare their own data type, so their data context is set here.

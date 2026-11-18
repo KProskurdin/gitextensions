@@ -77,6 +77,18 @@ internal sealed class CommitStatusBarUiTests
         commit.Close();
     }
 
+    [AvaloniaTest]
+    public void The_remote_link_opens_the_remotes_window()
+    {
+        CommitWindow commit = OpenCommitWindow();
+
+        UiClicks.Raise(Find<HyperlinkButton>(commit, "RemoteNameLink"), Button.ClickEvent);
+
+        WaitUntil(() => commit.OwnedWindows.OfType<RemotesWindow>().Any());
+        commit.OwnedWindows.OfType<RemotesWindow>().Single().Close();
+        commit.Close();
+    }
+
     private static string? Text(Window window, string name) => Find<TextBlock>(window, name).Text;
 
     private CommitWindow OpenCommitWindow()

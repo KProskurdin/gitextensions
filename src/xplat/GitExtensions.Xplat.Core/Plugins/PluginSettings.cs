@@ -1,5 +1,6 @@
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Settings;
@@ -241,6 +242,11 @@ public sealed class PluginSettingRow : ObservableObject
     ///  What clicking a <see cref="PluginSettingKind.Link"/> does.
     /// </summary>
     public Action? Click { get; private init; }
+
+    /// <summary>
+    ///  Runs <see cref="Click"/>, for the link the row shows.
+    /// </summary>
+    public IRelayCommand ClickCommand => field ??= new RelayCommand(() => Click?.Invoke());
 
     internal void Load(SettingsSource settings) => _load(this, settings);
 

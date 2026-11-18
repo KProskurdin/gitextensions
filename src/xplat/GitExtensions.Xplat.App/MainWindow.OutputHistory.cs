@@ -38,6 +38,7 @@ public partial class MainWindow
         };
         text.Bind(TextBox.FontFamilyProperty, this.GetResourceObservable("MonospaceFontFamily"));
         text.Bind(TextBox.FontSizeProperty, this.GetResourceObservable("MonospaceFontSize"));
+
         // The menu's items are the view model's; Copy takes the selection, else the whole history, as the menu opens.
         ContextMenu menu = new();
         MenuEntries.Fill(menu.Items, Toolbar.OutputHistoryMenu(text.Text), this);

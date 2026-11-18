@@ -151,6 +151,15 @@ merge. Listed 2026-11-13, when a review found them; nothing listed them before.
 | `.gitignore` | One line appended, `/.claude` (`735c6ae4d`, 2026-10-17) | Low: only an upstream change at the file's end conflicts | Keep and accept, or move the line to each clone's `.git/info/exclude`. User's choice |
 | `CLAUDE.md` | Added at the root by the fork | Add/add conflict if upstream ever adds one (upstream has none on 2026-10-09) | Keep; on such a conflict, merge the fork's rules into upstream's file |
 
+### Upstream defects worked around in fork code
+
+Not seams either: upstream's file stays as it is and fork code avoids the defect. Each is an upstream candidate, and the
+workaround goes when upstream fixes it. Added 2026-11-18.
+
+| Defect | Effect | Workaround | Upstream candidate |
+|---|---|---|---|
+| `src/app/GitCommands/Git/ExecutableExtensions.cs`: `_defaultOutputEncoding` is `new Lazy<Encoding>(() => GitModule.SystemEncoding, false)`, not thread-safe | When a process's first two git commands run on two threads at once (the browse window reads the refs and the commits in parallel when it opens), the second throws "ValueFactory attempted to access the Value property of this instance": an error window, and the repository does not load. Seen in `AdvancedSettingsTests` (the first test class of a full run) failing about half the time | `Core/Platform/GitOutputEncodingWarmUp.cs`, called first in `App.OnFrameworkInitializationCompleted` (the app and the headless tests): it creates the value on the UI thread through `GetOutputAsync` with an executable that throws instead of starting, so no process runs. If upstream's method stops reading the encoding before starting the executable, the warm-up throws at start-up instead of leaving the race open again | Yes: make the lazy thread-safe (drop `false`); upstream's WinForms app hits the same race when two threads run the first git commands |
+
 ## 6. Mapping WinForms to the new shell
 
 For every upstream form or control that gets ported, the port is recorded in
@@ -1180,12 +1189,12 @@ Steps:
 
    | Area | Handlers |
    |---|---|
-   | Filter toolbar (`FilterToolBar`, shared by the browse and file history windows) | 19 |
-   | Settings window (main file, Git config page, Appearance page) | 21 |
+   | Filter toolbar (`FilterToolBar`, shared by the browse and file history windows) | 1 (done; see below) |
+   | Settings window (main file, Git config page, Appearance page) | 0 (done; see below) |
    | Commit window (main file, file lists, spelling, status bar, bottom, auto-complete, XAML) | 31 |
-   | Shared controls: git grep box, revision file list, file tree rows, `CustomDiffTools`, script menus, copy paths menu, the diff view's find and toolbar, the file list toolbar, difftool choices | about 21 |
+   | Shared controls: git grep box, revision file list, file tree rows, script menus, copy paths menu, the diff view's find and toolbar, the file list toolbar, difftool choices | about 18 |
    | Dialogs: About, Stash, Recent repositories settings, Git ignore, Conflicts, Merge branch, Delete tag, Go to commit, message box, commit picker, editor find, dialog help | about 25 |
-   | File history window (with its grid menus and build server) | 5 |
+   | File history window (with its grid menus and build server) | 1 (done; see below) |
    | Other: the macOS application menu, help images, plugin setting rows, toolbar overflow | about 7 |
 
    Order: `CustomDiffTools` with the file history window and `FileStatusListMenu`, which share it; then the filter
@@ -1193,5 +1202,25 @@ Steps:
    they are only view concerns (a link that opens its menu, the macOS application menu, the toolbar overflow); each is
    decided with its window and noted in `MVVM.md`. Done when no button or menu action is left in code-behind except
    those, and the full suite and the view model tests pass.
+
+   *2026-11-17, later:* the first item of the order is done. The custom difftools are core `Diff/CustomDiffToolsViewModel.cs`
+   (one `CustomDiffToolMenu` per item: its tools as `MenuEntry`s, bound through `MenuEntriesConverter`, and `OpenCommand`,
+   which the item itself runs with no tool), owned by `FileListMenuViewModel`, `FileHistoryViewModel` and
+   `BrowseToolbarViewModel`; the App's `CustomDiffTools` is gone. The file list menu's parent items ("Reset file(s) to",
+   "Open with difftool") and the browse window's difftool item are commands, so `FileStatusListMenu` and `MainWindow`'s
+   compare items have no click handler left (`MainWindow` keeps only the dashboard's "Actions" link). The file history
+   window's Navigate items, Quick search help, command log button and build report link are commands; its Load split
+   button keeps its handler (a raised click on a split button runs no command). 10 handlers fewer; 8 view model tests.
+   Then the filter toolbar: core `CommitHistory/FilterToolBarViewModel.cs` (with `IFilterToolBarGrid`, moved to Core) holds
+   the kinds of text and refs, the boxes' texts and lists, the toggles, the advanced button's image and summary, and the
+   commands; the view keeps the keys, the focus, the hotkeys shown in the advanced menu, the branch button's translated
+   text and its click, which only opens its menu (a view concern). 18 handlers fewer; 12 view model tests.
+   *2026-11-18:* the Settings window: its Browse buttons (one `BrowsePathCommand` with a `SettingsPathField`), the sorting
+   help buttons, the theme folders' menu, "Clear image cache", "Save current view settings as default", Configure
+   encodings, the Suggest buttons, the script icon picker and arguments help, the revision link template and Remove buttons
+   and a plugin setting's link are commands (`Settings/SettingsViewModel.Actions.cs`); the pickers, the browser, the file
+   manager and the windows they open are `SettingsViewModelServices` the window supplies. No click handler is left in it.
+   21 handlers fewer (and one routed handler); 5 view model tests. About 100 are left (counted as above, without the
+   plugins).
 6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
    upstream is not affected.

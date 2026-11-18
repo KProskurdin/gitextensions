@@ -341,6 +341,17 @@ public sealed partial class FileListMenuViewModel
     [RelayCommand]
     private Task ResetToParentAsync() => GuardAsync(() => ResetAsync(toFirst: true));
 
+    // Upstream's ResetFile_Click: the parent item resets to the first revision when it can. Its sub-items' clicks reach it
+    // too, but their own commands mark them handled first.
+    [RelayCommand]
+    private void ResetFileTo()
+    {
+        if (IsResetToFirstVisible)
+        {
+            ResetToParentCommand.Execute(null);
+        }
+    }
+
     // Upstream's CherryPickChanges_Click (the viewer's CherryPickAllChanges): the whole diff applied to the working
     // directory and the index.
     [RelayCommand]
