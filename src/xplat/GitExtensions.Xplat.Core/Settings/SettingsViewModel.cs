@@ -93,6 +93,11 @@ public sealed record SettingsViewModelServices
     public Func<string?, Task<bool>> CanFindGit { get; init; } = GitConfigChoices.CanFindGitAsync;
 
     /// <summary>
+    ///  Whether git has <c>rebase.updateRefs</c> (2.38), which the Git > Advanced page shows only then, as upstream.
+    /// </summary>
+    public bool SupportsUpdateRefs { get; init; } = true;
+
+    /// <summary>
     ///  Git's diff and merge tools, for the Config page's lists.
     /// </summary>
     public IDiffMergeToolCatalog? DiffMergeTools { get; init; }
@@ -295,6 +300,8 @@ public sealed partial class SettingsViewModel : DialogViewModel
         BuildServerPage = new BuildServerPageViewModel(services.SettingsAt, services.BuildServerTypes, services.HasRepository);
         GitConfigPage = new GitConfigPageViewModel(services.GitConfig, services.RepositoryPath, () => GitCommand,
             services.CanFindGit, services.DiffMergeTools ?? new GitDiffMergeToolCatalog(), message => ErrorText = message);
+        GitConfigAdvancedPage = new GitConfigAdvancedPageViewModel(services.GitConfig, services.RepositoryPath,
+            services.SupportsUpdateRefs, host.Translate);
         Fonts = [.. _fontLabels.Select(font =>
             new FontChoice(font.Font, host.Translate(font.Label), services.FontFamilies, preferences.GetFont(font.Font)))];
 
@@ -390,6 +397,11 @@ public sealed partial class SettingsViewModel : DialogViewModel
     ///  The Config page: git's own settings.
     /// </summary>
     public GitConfigPageViewModel GitConfigPage { get; }
+
+    /// <summary>
+    ///  Upstream's Git > Advanced page.
+    /// </summary>
+    public GitConfigAdvancedPageViewModel GitConfigAdvancedPage { get; }
 
     /// <summary>
     ///  The page tree, the page shown, the search box and the window title.

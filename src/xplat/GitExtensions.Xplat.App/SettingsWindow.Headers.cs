@@ -29,7 +29,7 @@ public partial class SettingsWindow
             : [SettingLevel.Effective, SettingLevel.Local, SettingLevel.Global, SettingLevel.SystemWide];
         foreach (TabItem page in Tabs.Items.OfType<TabItem>().Except(withoutHeader))
         {
-            SettingsSourceHeader header = new(page == GitConfigTab ? gitConfigLevels
+            SettingsSourceHeader header = new(page == GitConfigTab || page == GitConfigAdvancedTab ? gitConfigLevels
                 : repositoryPages.Contains(page) ? repositoryLevels
                 : [SettingLevel.Global]);
             Control body = (Control)page.Content!;
@@ -67,6 +67,11 @@ public partial class SettingsWindow
                 else if (page == GitConfigTab)
                 {
                     ChangeGitConfigLevel(header.Level);
+                }
+                else if (page == GitConfigAdvancedTab)
+                {
+                    UiActions.Run(() => ViewModel.GitConfigAdvancedPage.ChangeLevelAsync(header.Level),
+                        ex => ViewModel.ErrorText = ex.Message);
                 }
             };
 

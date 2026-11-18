@@ -31,7 +31,7 @@ internal sealed class SettingsTreeUiTests
         Child(settings, 0, "Advanced").Children.Select(node => node.Title).Should().Equal("Confirmations");
         Child(settings, 0, "Detailed").Children.Select(node => node.Title).Should()
             .Equal("Browse repository window", "Commit dialog", "Diff viewer", "Blame viewer");
-        settings.PageTree[1].Children.Select(node => node.Title).Should().Equal("Paths", "Config");
+        settings.PageTree[1].Children.Select(node => node.Title).Should().Equal("Paths", "Config", "Advanced");
         Descendants(settings.PageTree).Where(node => node.Plugin is null).Should()
             .OnlyContain(node => node.Icon != null);
         settings.Close();

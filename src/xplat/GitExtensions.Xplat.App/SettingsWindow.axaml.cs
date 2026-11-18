@@ -89,6 +89,7 @@ public partial class SettingsWindow : Window
             RepositoryPath = repositoryPath,
             GitConfig = AppServices.GitConfig,
             CanFindGit = AppServices.CanFindGit,
+            SupportsUpdateRefs = GitCommands.Git.GitVersion.Current.SupportUpdateRefs,
             DiffMergeTools = AppServices.DiffMergeTools,
             Translations = () => Translator.GetAllTranslations(),
             SavePagesBeforeStore = SavePagesBeforeStore,

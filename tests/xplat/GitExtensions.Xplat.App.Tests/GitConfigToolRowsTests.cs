@@ -187,6 +187,30 @@ internal sealed class GitConfigToolRowsTests
         owner.Close();
     }
 
+    [AvaloniaTest]
+    public void The_git_advanced_page_shows_the_settings_and_writes_only_what_was_changed()
+    {
+        TestAppBuilder.GitConfig.Set(ConfigScope.Global, "pull.rebase", "yes");
+        TestAppBuilder.GitConfig.Set(ConfigScope.Global, "rerere.enabled", "sometimes");
+        SettingsWindow settings = OpenSettings(out MainWindow window);
+        WaitUntil(() => settings.ViewModel.GitConfigAdvancedPage.IsLoaded);
+        settings.GoToPage("GitConfigAdvancedSettingsPage");
+        Dispatcher.UIThread.RunJobs();
+
+        Find<TabControl>(settings, "Tabs").SelectedItem.Should().Be(Find<TabItem>(settings, "GitConfigAdvancedTab"));
+        CheckBox pullRebase = Find<CheckBox>(settings, "checkBoxPullRebase");
+        (pullRebase.IsChecked, Find<CheckBox>(settings, "checkBoxReReReEnabled").IsChecked).Should().Be((true, null));
+        pullRebase.Content.Should().Be("Rebase local branch when pulling (instead of merge) [pull.rebase]");
+
+        Find<CheckBox>(settings, "checkBoxFetchPrune").IsChecked = true;
+        Save(window, settings);
+
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "fetch.prune").Should().Be("true");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "pull.rebase").Should().Be("yes", "a setting left as it was is not rewritten");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "rerere.enabled").Should().Be("sometimes");
+        TestAppBuilder.GitConfig.Get(ConfigScope.Global, "merge.autostash").Should().BeEmpty("upstream would write false here");
+    }
+
     private static SettingsWindow OpenSettings(out MainWindow window, bool waitForGitConfig = true)
     {
         window = new MainWindow(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));

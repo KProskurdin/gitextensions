@@ -37,6 +37,7 @@ public partial class SettingsWindow
         ["SshSettingsPage"] = nameof(SshTab),
         ["GitSettingsPage"] = nameof(GitTab),
         ["GitConfigSettingsPage"] = nameof(GitConfigTab),
+        ["GitConfigAdvancedSettingsPage"] = nameof(GitConfigAdvancedTab),
         ["GitRootIntroductionPage"] = nameof(GitRootTab),
         ["PluginRootIntroductionPage"] = nameof(PluginsRootTab),
         [SettingsPageTreeViewModel.PluginPage] = nameof(PluginsTab),

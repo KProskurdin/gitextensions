@@ -751,6 +751,26 @@ toolbar icons with upstream's `ToolTipText`.
   the dubious ownership report, Enter and Escape in three dialogs with a test over every ported form, and accessible names
   for the tool buttons. The shim's task dialog gained WinForms' `TaskDialogCommandLinkButton.DescriptionText` and the
   `TaskDialogButton.Close` and `Help` buttons (3 members). See the notes in `PORTING-MAP.md`.
+- 2026-11-18, on macOS, a second audit of every `partial` row of `PORTING-MAP.md` (each note ends with an "Audit 2026-11-18"
+  line), with a script that compares upstream's settings pages' designer texts and `HotkeySettingsManager`'s hotkeys with the
+  shell. Docs only, no code changed. Many 2026-11-07 lines had been done since: five rows are now `ported` (FileStatusList,
+  FormBlame, FormSettings, GitConfigSettingsPage, the FormBrowse menus) and FormPull's note matches its row; 22 stay
+  `partial`. The comparison also found gaps no audit had named. What is left, by where it can be done:
+  - **Portable, checkable on any OS:** ~~the Git > Advanced settings page (eight git config values; the page tree lists it
+    without a page)~~ done the same day (see GitConfigAdvancedSettingsPage in `PORTING-MAP.md`); "Check settings at startup" and upstream's startup check; the Advanced page's "Don't show help images"
+    and "Always show advanced options" check boxes (both settings are read already); "Show file history in the main window";
+    "Omit uninteresting changes from combined diff"; the Confirmations page's two stash pop check boxes and upstream's
+    question after a pull that stashed (the shell lets git's own autostash pop at once); FormCommit's selection filter
+    toolbar; FormLog, which a double-click on the grid with no selection opens; 31 hotkeys of features the shell has (the
+    focus commands, the grid's View toggles, delete and rename ref, stash staged and others, listed in the
+    HotkeySettingsManager note); the auto-completion's tooltip while its words are read.
+  - **Waiting for a viewer with text selection or an editor control:** next and previous occurrence, git-grep's selected
+    text, "Add selection to commit message", the rebase todo highlighting and line numbers.
+  - **Waiting for a decision:** `RunCommand`, the command line verbs (`searchfile` among them) and the `Start...Dialog`
+    methods that throw (not ported for now, 2026-11-09).
+  - **Windows only:** the Console tab, its settings and shell (ConEmu); the PuTTY prompts and retry; "Download Git", the
+    HOME check and FormFixHome; "Show console window when executing git process"; the Shell extension and Console style
+    pages; the checklist's installer rows; "Show current branch in Visual Studio".
 
 ### Continuing on macOS
 

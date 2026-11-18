@@ -596,6 +596,29 @@
           </StackPanel>
         </Grid>
       </TabItem>
+      <!-- Upstream's "Advanced" page under Git (GitConfigAdvancedSettingsPage): boolean git settings at the level the page
+           header chooses, three-state as upstream's (checked true, unchecked false or not set, neither for another value);
+           each text ends with its key, as upstream adds it. -->
+      <TabItem x:Name="GitConfigAdvancedTab" Header="Advanced">
+        <StackPanel x:Name="GitConfigAdvancedPanel" Margin="4,8" Spacing="6" IsEnabled="{Binding GitConfigPage.IsGitFound}">
+          <CheckBox x:Name="checkBoxPullRebase" Content="{Binding GitConfigAdvancedPage.PullRebase.Text}" IsChecked="{Binding GitConfigAdvancedPage.PullRebase.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.PullRebase.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkBoxFetchPrune" Content="{Binding GitConfigAdvancedPage.FetchPrune.Text}" IsChecked="{Binding GitConfigAdvancedPage.FetchPrune.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.FetchPrune.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkboxMergeAutoStash" Content="{Binding GitConfigAdvancedPage.MergeAutoStash.Text}" IsChecked="{Binding GitConfigAdvancedPage.MergeAutoStash.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.MergeAutoStash.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkBoxRebaseAutostash" Content="{Binding GitConfigAdvancedPage.RebaseAutoStash.Text}" IsChecked="{Binding GitConfigAdvancedPage.RebaseAutoStash.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.RebaseAutoStash.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkBoxRebaseAutosquash" Content="{Binding GitConfigAdvancedPage.RebaseAutoSquash.Text}" IsChecked="{Binding GitConfigAdvancedPage.RebaseAutoSquash.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.RebaseAutoSquash.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkBoxUpdateRefs" Content="{Binding GitConfigAdvancedPage.RebaseUpdateRefs.Text}" IsChecked="{Binding GitConfigAdvancedPage.RebaseUpdateRefs.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.RebaseUpdateRefs.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkBoxReReReEnabled" Content="{Binding GitConfigAdvancedPage.RerereEnabled.Text}" IsChecked="{Binding GitConfigAdvancedPage.RerereEnabled.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.RerereEnabled.IsVisible}" IsThreeState="True" />
+          <CheckBox x:Name="checkBoxReReReAutoUpdate" Content="{Binding GitConfigAdvancedPage.RerereAutoUpdate.Text}" IsChecked="{Binding GitConfigAdvancedPage.RerereAutoUpdate.IsChecked}"
+                    IsVisible="{Binding GitConfigAdvancedPage.RerereAutoUpdate.IsVisible}" IsThreeState="True" />
+        </StackPanel>
+      </TabItem>
       <TabItem x:Name="ConfirmationsTab" Header="Confirmations">
         <DockPanel Margin="4,8" LastChildFill="True">
           <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Margin="0,0,0,8" Text="Confirm actions" />

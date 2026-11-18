@@ -3,7 +3,8 @@ using GitExtensions.Xplat.Core.Settings;
 
 namespace GitExtensions.Xplat.App;
 
-// Upstream's GitConfigSettingsPage, bound to GitConfigPageViewModel: git's own settings at the level its header chooses.
+// Upstream's GitConfigSettingsPage, bound to GitConfigPageViewModel: git's own settings at the level its header chooses;
+// and upstream's GitConfigAdvancedSettingsPage, bound to GitConfigAdvancedPageViewModel.
 // The tool path boxes' focus and typing events stay here; the Browse, Suggest and Configure buttons are commands.
 public partial class SettingsWindow
 {
@@ -45,10 +46,23 @@ public partial class SettingsWindow
         };
     }
 
-    private Task LoadGitConfigAsync() => GitConfigPage.LoadAsync(SourceHeaderOf(GitConfigTab).Level);
+    // The Config page first: it finds out whether git can be run. The Advanced page (upstream's
+    // GitConfigAdvancedSettingsPage) is read once it can.
+    private async Task LoadGitConfigAsync()
+    {
+        await GitConfigPage.LoadAsync(SourceHeaderOf(GitConfigTab).Level);
+        if (GitConfigPage.IsGitFound && !ViewModel.GitConfigAdvancedPage.IsLoaded)
+        {
+            await ViewModel.GitConfigAdvancedPage.LoadAsync(SourceHeaderOf(GitConfigAdvancedTab).Level);
+        }
+    }
 
     private void ChangeGitConfigLevel(Extensibility.Settings.SettingLevel level)
         => UiActions.Run(() => GitConfigPage.ChangeLevelAsync(level), ex => ViewModel.ErrorText = ex.Message);
 
-    private Task SaveGitConfigAsync() => GitConfigPage.SaveAsync();
+    private async Task SaveGitConfigAsync()
+    {
+        await GitConfigPage.SaveAsync();
+        await ViewModel.GitConfigAdvancedPage.SaveAsync();
+    }
 }
