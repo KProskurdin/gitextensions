@@ -55,9 +55,7 @@ public partial class MergeBranchWindow : Window
             }
         };
         ViewModel.Dialog.PropertyChanged += OnDialogChanged;
-        StrategyHelpLink.Click += (_, _) =>
-            OsShellUtil.OpenUrlInDefaultBrowser(
-                GitUI.UserManual.UserManual.UrlFor("branches", "advanced-merge-options"));
+        StrategyHelpLink.CommandParameter = GitUI.UserManual.UserManual.UrlFor("branches", "advanced-merge-options");
         Opened += (_, _) => _ = ShowAsync();
     }
 

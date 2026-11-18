@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -24,16 +25,16 @@ public partial class App
     public const string DockIconAsset = "avares://GitExtensions/Assets/git-extensions-logo-512px.png";
 
     /// <summary>
-    ///  The application menu's own items, before the ones macOS adds (Services, Hide, Quit).
+    ///  The application menu's own items, before the ones macOS adds (Services, Hide, Quit): the browse window's About and
+    ///  Settings commands.
     /// </summary>
-    public static NativeMenu ApplicationMenu(KeyGesture? settingsGesture, Action showAbout, Action showSettings)
-    {
-        NativeMenuItem about = new(AboutText);
-        about.Click += (_, _) => showAbout();
-        NativeMenuItem settings = new(SettingsText) { Gesture = settingsGesture };
-        settings.Click += (_, _) => showSettings();
-        return new NativeMenu { about, new NativeMenuItemSeparator(), settings };
-    }
+    public static NativeMenu ApplicationMenu(KeyGesture? settingsGesture, ICommand about, ICommand settings)
+        => new()
+        {
+            new NativeMenuItem(AboutText) { Command = about },
+            new NativeMenuItemSeparator(),
+            new NativeMenuItem(SettingsText) { Gesture = settingsGesture, Command = settings },
+        };
 
     /// <summary>
     ///  Shows the logo in the Dock on macOS, where the windows' icon (the style in App.axaml) does nothing; see
@@ -62,9 +63,9 @@ public partial class App
             return;
         }
 
-        NativeMenu.SetMenu(this, ApplicationMenu(Hotkeys.GestureFor(BrowseCommand.Settings),
-            () => (desktop.MainWindow as MainWindow)?.ShowAbout(),
-            () => (desktop.MainWindow as MainWindow)?.ShowSettings()));
+        MainWindow main = (MainWindow)desktop.MainWindow;
+        NativeMenu.SetMenu(this, ApplicationMenu(Hotkeys.GestureFor(BrowseCommand.Settings), main.Toolbar.AboutCommand,
+            main.Toolbar.OpenSettingsCommand));
 
         if (this.TryGetFeature<IActivatableLifetime>() is { } activatable)
         {

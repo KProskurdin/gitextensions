@@ -1,4 +1,6 @@
+using System.Windows.Input;
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Scripts;
 
 namespace GitExtensions.Xplat.App;
@@ -19,15 +21,15 @@ internal static class ScriptMenus
     ///  Replaces the script items of <paramref name="menu"/> and <paramref name="host"/> with the current scripts; true when
     ///  any were added. Call it when the menu opens, so changed scripts show up.
     /// </summary>
-    public static bool Fill(ContextMenu menu, MenuItem host, Func<ScriptDefinition, bool> addDirect,
-        Action<ScriptDefinition> run)
+    /// <param name="run">A view model's command that runs the script it is given.</param>
+    public static bool Fill(ContextMenu menu, MenuItem host, Func<ScriptDefinition, bool> addDirect, ICommand run)
     {
         Remove(menu, host);
         int index = menu.Items.IndexOf(host);
         bool added = false;
         foreach (ScriptDefinition script in AppServices.Scripts.Load().Where(script => script.Enabled))
         {
-            MenuItem item = Create(script, run);
+            MenuItem item = Create(script, run, menu);
             if (addDirect(script) && index >= 0)
             {
                 item.Classes.Add(ScriptItemClass);
@@ -59,20 +61,16 @@ internal static class ScriptMenus
         }
     }
 
-    private static MenuItem Create(ScriptDefinition script, Action<ScriptDefinition> run)
+    // The name as it is: an & in it is upstream's access key, which Avalonia does not read; DisplayName drops it.
+    private static MenuItem Create(ScriptDefinition script, ICommand run, ContextMenu menu)
     {
-        // The name as it is: an & in it is upstream's access key, which Avalonia does not read; DisplayName drops it.
-        MenuItem item = new()
-        {
-            Header = new TextBlock { Text = script.DisplayName },
-            InputGesture = Hotkeys.Scripts.GestureFor(script.HotkeyCommandIdentifier),
-        };
+        MenuItem item = (MenuItem)MenuEntries.Item(new MenuEntry(script.DisplayName, run, script), menu);
+        item.InputGesture = Hotkeys.Scripts.GestureFor(script.HotkeyCommandIdentifier);
         if (ScriptIcons.For(script) is { } icon)
         {
             item.Icon = new Image { Source = icon, Width = IconSize, Height = IconSize };
         }
 
-        item.Click += (_, _) => run(script);
         return item;
     }
 }

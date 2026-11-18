@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.Input;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.Scripts;
 
 namespace GitExtensions.Xplat.Core.Diff;
 
@@ -26,6 +27,10 @@ public sealed partial class FileListMenuViewModel
         _source = source;
         _host = host;
     }
+
+    // Upstream's AddUserScripts items: the script on the list's selection.
+    [RelayCommand]
+    private void RunScript(ScriptDefinition script) => _source?.RunScript?.Invoke(script);
 
     /// <summary>
     ///  Whether the window gave a stage and unstage of its own (upstream makes both items bold then).

@@ -34,14 +34,10 @@ public partial class GoToCommitWindow : Window
         InitialFocus.Attach(this, () => textboxCommitExpression);
 
         // View concerns: the focused control supplies the revision (upstream's SetSelectedRevisionByFocusedControl), a ref
-        // picked in a drop-down goes at once (upstream's SelectionChangeCommitted), Enter in a list goes, and the link
-        // opens the browser.
+        // picked in a drop-down goes at once (upstream's SelectionChangeCommitted) and Enter in a list goes.
         textboxCommitExpression.GotFocus += (_, _) => ViewModel.Source = GoToCommitSource.Expression;
         TrackDropDown(comboBoxTags, GoToCommitSource.Tag);
         TrackDropDown(comboBoxBranches, GoToCommitSource.Branch);
-        linkGitRevParse.Click += (_, _) =>
-            UiActions.Run(() => Launcher.LaunchUriAsync(new Uri(GoToCommit.GitRevParseUrl)),
-                ex => _ = new ErrorWindow(ex.Message).ShowDialog(this));
         Opened += (_, _) => _ = ShowAsync();
     }
 

@@ -42,7 +42,7 @@
             <ComboBox x:Name="StrategyBox" MinWidth="120" IsVisible="{Binding Dialog.UseStrategy}"
                       ItemsSource="{x:Static vm:MergeBranchViewModel.Strategies}" SelectedItem="{Binding Dialog.Strategy}" />
             <HyperlinkButton x:Name="StrategyHelpLink" Content="Help" IsVisible="{Binding Dialog.UseStrategy}"
-                             VerticalAlignment="Center" />
+                             VerticalAlignment="Center" Command="{Binding OpenUrlCommand}" />
           </StackPanel>
           <CheckBox x:Name="SquashCheck" Grid.Row="1" Grid.ColumnSpan="2" Content="Squash commits" Margin="3"
                     IsChecked="{Binding Dialog.Squash}" IsEnabled="{Binding Dialog.CanSquash}" />

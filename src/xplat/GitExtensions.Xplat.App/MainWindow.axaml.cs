@@ -1198,8 +1198,7 @@ public partial class MainWindow : Window
     // enabled script is under "Run script".
     private void ShowGridScripts()
         => ScriptMenus.Fill(CommitContextMenu, RunScriptMenuItem, script => script.AddToRevisionGridContextMenu,
-            script => RunOnSelectedCommit((path, _) =>
-                Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
+            Toolbar.RunGridScriptCommand);
 
     // A script's navigateTo: output names a commit or ref; it is selected when it is among the loaded commits.
     private async Task SelectRefAsync(string target)

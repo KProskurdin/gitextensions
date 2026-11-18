@@ -118,8 +118,6 @@ public partial class FileHistoryWindow : Window
         Blame.OptionsChanged += (_, _) => ViewModel.RefreshOptions();
         Blame.ErrorOccurred += (_, message) => ShowError(message);
 
-        // A split button's own part runs no command when a test raises its click, so the view runs it.
-        LoadButton.Click += (_, _) => ViewModel.LoadHistoryCommand.Execute(null);
         HistoryContextMenu.Opening += (_, _) =>
         {
             ViewModel.UpdateMenu();

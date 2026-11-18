@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 
@@ -20,7 +21,6 @@ public static class FileListToolbar
     /// </summary>
     public const string HiddenClass = "toolHiddenByUser";
 
-    private const string ToolbarMenuText = "_Toolbar";
     private const string SeparatorText = "Separator '{0}'";
 
     // Upstream's name of each item, by the end of the fork's control name, and of the separator before it.
@@ -47,43 +47,45 @@ public static class FileListToolbar
     public static IReadOnlyList<FileListToolbarItem> Attach(Control anyItem, IAppPreferences preferences, MenuFlyout? settingsMenu = null)
     {
         IReadOnlyList<FileListToolbarItem> items = ItemsOf(anyItem);
+        FileListToolbarChoicesViewModel choices = new(preferences,
+            [.. items.Select(item => new FileListToolbarChoice(item.UpstreamName, item.Text, item.Image, item.IsSettingsButton))]);
         foreach (FileListToolbarItem item in items)
         {
-            Show(item, preferences.IsFileListToolbarItemVisible(item.UpstreamName));
+            Show(item, choices.IsVisible(item.UpstreamName));
         }
 
+        choices.ItemShown += (_, shown) =>
+        {
+            if (items.FirstOrDefault(item => item.UpstreamName == shown.UpstreamName) is { } item)
+            {
+                Show(item, shown.Visible);
+            }
+        };
         if (settingsMenu is not null)
         {
             settingsMenu.Items.Add(new Separator());
-            settingsMenu.Items.Add(NewMenu(items, preferences));
+            settingsMenu.Items.Add(MenuEntries.Item(choices.MenuEntry(UpstreamTranslation.ByText(
+                FileListToolbarChoicesViewModel.ToolbarMenuText)), anyItem));
         }
 
         return items;
     }
 
-    private static MenuItem NewMenu(IReadOnlyList<FileListToolbarItem> items, IAppPreferences preferences)
+    /// <summary>
+    ///  Binds a file list's toolbar to its view model (its own data context, MVVM.md); the tree button's menu gets it in
+    ///  code, as a flyout's items have none until it opens.
+    /// </summary>
+    public static void Bind(Panel toolbar, FileListToolbarViewModel viewModel)
     {
-        MenuItem menu = new() { Header = UpstreamTranslation.ByText(ToolbarMenuText) };
-        foreach (FileListToolbarItem item in items)
+        toolbar.DataContext = viewModel;
+        foreach (ToolSplitButton button in toolbar.Children.OfType<ToolSplitButton>()
+                     .Where(button => button.Name?.EndsWith("AsTreeButton", StringComparison.Ordinal) == true))
         {
-            MenuItem entry = new()
+            foreach (Control item in ((MenuFlyout)button.Flyout!).Items.OfType<Control>())
             {
-                Header = item.Text,
-                ToggleType = MenuItemToggleType.CheckBox,
-                IsChecked = preferences.IsFileListToolbarItemVisible(item.UpstreamName),
-                IsEnabled = !item.IsSettingsButton,
-                Icon = item.Image is { } image && UpstreamImages.Named(image) is { } picture ? ToolStripContent.Icon(picture) : null,
-            };
-            entry.Click += (_, _) =>
-            {
-                preferences.SetFileListToolbarItemVisible(item.UpstreamName, entry.IsChecked);
-                preferences.Save();
-                Show(item, entry.IsChecked);
-            };
-            menu.Items.Add(entry);
+                item.DataContext = viewModel;
+            }
         }
-
-        return menu;
     }
 
     private static void Show(FileListToolbarItem item, bool visible) => item.Control.Classes.Set(HiddenClass, !visible && !item.IsSettingsButton);

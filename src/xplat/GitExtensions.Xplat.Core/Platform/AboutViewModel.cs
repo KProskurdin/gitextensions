@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using GitExtensions.Xplat.Core.Presentation;
 
 namespace GitExtensions.Xplat.Core.Platform;
@@ -38,6 +39,16 @@ public sealed partial class AboutViewModel : DialogViewModel
     public string ProductName { get; }
 
     /// <summary>
+    ///  Upstream's <c>FormContributors</c>, opened by a click on the contributor thanked.
+    /// </summary>
+    public Func<Task>? ShowContributors { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>UserEnvironmentInformation.CopyInformation</c>: the environment information on the clipboard.
+    /// </summary>
+    public Func<Task>? CopyInformation { get; init; }
+
+    /// <summary>
     ///  The contributor thanked at the moment.
     /// </summary>
     [ObservableProperty]
@@ -64,4 +75,11 @@ public sealed partial class AboutViewModel : DialogViewModel
     ///  Shows upstream's <c>UserEnvironmentInformation.GetInformation</c>, which the window reads for its screen.
     /// </summary>
     public void ShowInformation(string information) => EnvironmentInfo = information.Replace(LineMark, "");
+
+    [RelayCommand]
+    private Task ShowContributorsWindowAsync() => ShowContributors is { } show ? GuardAsync(show) : Task.CompletedTask;
+
+    [RelayCommand]
+    private Task CopyEnvironmentInformationAsync()
+        => CopyInformation is { } copy ? GuardAsync(copy) : Task.CompletedTask;
 }

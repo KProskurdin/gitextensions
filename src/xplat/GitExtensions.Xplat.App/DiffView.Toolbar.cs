@@ -22,16 +22,6 @@ public partial class DiffView
             ViewModel.RefreshMenu();
         };
 
-        // Upstream's ResetPatchAppearance: a click on the item itself goes back to the patch; its sub-items' clicks reach
-        // it too, so it has no command.
-        DiffAppearanceMenuItem.Click += (_, e) =>
-        {
-            if (e.Source == DiffAppearanceMenuItem)
-            {
-                ViewModel.ChangeAppearanceCommand.Execute(DiffDisplayAppearance.Patch);
-            }
-        };
-
         // As upstream, the toolbar shows while the pointer is on the viewer; the settings button opens the settings over
         // this viewer's window, when the app can.
         PointerEntered += (_, _) =>

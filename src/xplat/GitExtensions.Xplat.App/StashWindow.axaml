@@ -1,5 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fl="using:GitExtensions.Xplat.Core.Diff"
+        xmlns:fgc="using:GitCommands"
+        xmlns:fext="using:GitExtensions.Extensibility.Git"
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:ops="using:GitExtensions.Xplat.Core.Operations"
         x:Class="GitExtensions.Xplat.App.StashWindow"
@@ -24,34 +27,58 @@
       <!-- Upstream's Stashed file list: grouped by commit index and working directory for the working directory's changes;
            above it upstream FileStatusList's toolbar (collapse, tree and group-by buttons) and filter box. -->
       <DockPanel Grid.Row="1">
-        <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
-          <local:ToolButton x:Name="FilesCollapseGroupsButton" Image="CollapseAll"
+        <StackPanel x:Name="FilesToolbar" DockPanel.Dock="Top" Classes="toolStrip" x:DataType="fl:FileListToolbarViewModel"
+                    DataContext="{x:Null}">
+          <local:ToolButton x:Name="FilesCollapseGroupsButton" Command="{Binding CollapseGroupsCommand}" IsVisible="{Binding IsCollapseGroupsVisible}" Image="CollapseAll"
                             ToolTip.Tip="Collapse all groups, otherwise expand the selected group" />
           <Rectangle Classes="toolSeparator" IsVisible="{Binding #FilesCollapseGroupsButton.IsVisible}" />
-          <local:ToolSplitButton x:Name="FilesAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+          <local:ToolSplitButton x:Name="FilesAsTreeButton" Image="{Binding Grouping.TreeImage}" Command="{Binding Grouping.ToggleTreeCommand}" ToolTip.Tip="Toggle flat list / tree">
             <local:ToolSplitButton.Flyout>
               <MenuFlyout>
-                <MenuItem x:Name="FilesPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                <MenuItem x:Name="FilesPathTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FilePath}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FilePath}"
+                    Header="Group by file _path - tree" ToggleType="CheckBox"
                           Icon="{local:UpstreamIcon FolderClosed}" />
-                <MenuItem x:Name="FilesPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
-                <MenuItem x:Name="FilesExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                <MenuItem x:Name="FilesPathFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FilePathFlat}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FilePathFlat}"
+                    Header="Group by _file path - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="FilesExtensionTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileExtension}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileExtension}"
+                    Header="Group by file _extension - tree" ToggleType="CheckBox"
                           Icon="{local:UpstreamIcon File}" />
-                <MenuItem x:Name="FilesExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
-                <MenuItem x:Name="FilesStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                <MenuItem x:Name="FilesExtensionFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileExtensionFlat}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileExtensionFlat}"
+                    Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="FilesStatusTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileStatus}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileStatus}"
+                    Header="Group by file _status - tree" ToggleType="CheckBox"
                           Icon="{local:UpstreamIcon FileStatusModified}" />
-                <MenuItem x:Name="FilesStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="FilesStatusFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileStatusFlat}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileStatusFlat}"
+                    Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
                 <Separator />
-                <MenuItem x:Name="FilesDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                <MenuItem x:Name="FilesDenseTreeMenuItem" IsChecked="{Binding Grouping.DenseTree, Mode=OneWay}"
+                    IsEnabled="{Binding Grouping.CanDenseTree}" Command="{Binding Grouping.ToggleDenseTreeCommand}"
+                    Header="_Dense tree (merge single item with its folder node)"
                           ToggleType="CheckBox" />
-                <MenuItem x:Name="FilesGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                <MenuItem x:Name="FilesGroupNodesInFlatListMenuItem" IsChecked="{Binding Grouping.ShowGroupNodesInFlatList, Mode=OneWay}"
+                    IsEnabled="{Binding Grouping.CanShowGroupNodesInFlatList}"
+                    Command="{Binding Grouping.ToggleShowGroupNodesInFlatListCommand}"
+                    Header="Show _group nodes in flat list (if multiple)"
                           ToggleType="CheckBox" />
               </MenuFlyout>
             </local:ToolSplitButton.Flyout>
           </local:ToolSplitButton>
           <Rectangle Classes="toolSeparator" />
-          <local:ToolToggleButton x:Name="FilesByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
-          <local:ToolToggleButton x:Name="FilesByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
-          <local:ToolToggleButton x:Name="FilesByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+          <local:ToolToggleButton x:Name="FilesByPathButton" IsChecked="{Binding Grouping.IsByPath, Mode=OneWay}"
+                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FilePath}"
+                    Image="FolderClosed" ToolTip.Tip="Group by file path" />
+          <local:ToolToggleButton x:Name="FilesByExtensionButton" IsChecked="{Binding Grouping.IsByExtension, Mode=OneWay}"
+                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileExtension}"
+                    Image="File" ToolTip.Tip="Group by file type (extension)" />
+          <local:ToolToggleButton x:Name="FilesByStatusButton" IsChecked="{Binding Grouping.IsByStatus, Mode=OneWay}"
+                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileStatus}"
+                    Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
         </StackPanel>
         <local:FileFilterBox x:Name="FilesFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
       <Panel>

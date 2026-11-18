@@ -1,5 +1,7 @@
 using AwesomeAssertions;
+using CommunityToolkit.Mvvm.Input;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitUI.ScriptsEngine;
@@ -8,7 +10,8 @@ using NUnit.Framework;
 
 namespace GitExtensions.Xplat.Core.Tests;
 
-// The file lists, the diff and the message's menus are the window's; these cover the message, amend and the commit.
+// The lists' trees, the diff and the spelling check are the window's; these cover the message, amend, the commit, what the
+// lists list and the menus.
 internal sealed class CommitViewModelTests
 {
     private const string RepositoryPath = "repo";
@@ -156,26 +159,191 @@ internal sealed class CommitViewModelTests
         viewModel.CommitIcon.Should().Be("Key");
     }
 
-    private CommitViewModel New(FakeDialogHost host)
-        => new(host, RepositoryPath, new RepositoryViewModel(new FakeRepositoryService()),
-            new RepositoryOperationsViewModel(_operations), _service, _preferences, () => Task.CompletedTask, _messages,
-            new CommitViewModelServices
+    [Test]
+    public async Task StageAllFiles_should_stage_only_the_files_a_filtered_list_shows_and_clear_its_filter()
+    {
+        CommitViewModel viewModel = New(new FakeDialogHost());
+        List<bool> cleared = [];
+        viewModel.FilterClearRequested += (_, staged) => cleared.Add(staged);
+        viewModel.StageAllImage.Should().Be("StageAll");
+
+        viewModel.SetShown(staged: false, [new FileChange("notes.md", ChangeKind.Untracked, Staged: false)], filtered: true);
+
+        (viewModel.StageAllImage, viewModel.StageAllTip).Should()
+            .Be(("StageAllFiltered", FakeDialogHost.TranslatedMark + CommitViewModel.StageFilteredText));
+
+        Task stage = viewModel.StageAllFilesCommand.ExecuteAsync(false);
+        _operations.Complete(0);
+        await stage;
+
+        _operations.NameAt(0).Should().Be("Stage");
+        _operations.ArgumentsAt(0).Should().Be("repo notes.md");
+        cleared.Should().Equal(false);
+    }
+
+    [Test]
+    public async Task The_list_settings_should_list_the_working_directory_read_with_the_flags_checked()
+    {
+        List<(bool Ignored, bool AssumeUnchanged, bool SkipWorktree)> reads = [];
+        IReadOnlyList<FileChange> flagged = [new FileChange("build.log", ChangeKind.Untracked, Staged: false)];
+        CommitViewModel viewModel = New(new FakeDialogHost(), services => services with
+        {
+            ReadWorkTreeChanges = (ignored, assumeUnchanged, skipWorktree) =>
             {
-                ConfirmSuppressible = (confirmation, _, _, _) =>
-                {
-                    _confirmations.Add(confirmation);
-                    return Task.FromResult(_confirms);
-                },
-                AskValidation = (_, _) => Task.FromResult(true),
-                RunScripts = scriptEvent =>
-                {
-                    _scripts.Add(scriptEvent);
-                    return Task.FromResult(scriptEvent != ScriptEvent.BeforeCommit || _beforeCommitPasses);
-                },
-                Push = _ => Task.FromResult(true),
-                AskResetChanges = (_, _) => Task.FromResult(ResetChangesAction.Cancel),
-                CreateBranch = () => Task.CompletedTask,
-                ShowError = (_, _) => { },
-                ResolveCommit = _ => Task.FromResult<string?>("parent"),
-            });
+                reads.Add((ignored, assumeUnchanged, skipWorktree));
+                return Task.FromResult(flagged);
+            },
+        });
+        List<string?> raised = [];
+        viewModel.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        viewModel.ToggleListSettingCommand.Execute(CommitListSetting.ShowIgnored);
+        await Task.Yield();
+
+        reads.Should().Equal((true, false, false));
+        viewModel.ListedChanges.Should().BeSameAs(flagged);
+        raised.Should().Contain(nameof(CommitViewModel.ListedChanges));
+
+        viewModel.ToggleListSettingCommand.Execute(CommitListSetting.ShowIgnored);
+
+        viewModel.ListedChanges.Should().BeEmpty("the repository's changes are listed again");
+        reads.Should().HaveCount(1);
+
+        viewModel.ToggleListSettingCommand.Execute(CommitListSetting.ShowUntracked);
+
+        viewModel.ShowUntracked.Should().BeFalse();
+        reads.Should().HaveCount(1, "untracked files are only hidden");
+    }
+
+    [Test]
+    public async Task LoadAsync_should_read_show_untracked_files_and_the_dictionary_as_the_repository_has_them()
+    {
+        List<string> keys = [];
+        _messages.LoadAsync(RepositoryPath).Returns(Task.FromResult(""));
+        CommitViewModel viewModel = New(new FakeDialogHost(), services => services with
+        {
+            ReadGitSetting = key =>
+            {
+                keys.Add(key);
+                return Task.FromResult("no");
+            },
+            LoadDictionary = () => Task.FromResult("de-DE"),
+        });
+        viewModel.Message = "typed";
+
+        await viewModel.LoadAsync();
+
+        keys.Should().Equal("status.showuntrackedfiles");
+        viewModel.ShowUntracked.Should().BeFalse();
+        viewModel.SpellingDictionary.Should().Be("de-DE");
+    }
+
+    [Test]
+    public void The_templates_menu_should_list_the_templates_then_conventional_commits_and_the_settings()
+    {
+        _preferences.CommitTemplates = CommitTemplates.Serialize([new CommitTemplate("Mine", "my text", false)]);
+        CommitViewModel viewModel = New(new FakeDialogHost());
+
+        IReadOnlyList<MenuEntry> entries = viewModel.TemplateMenuEntries();
+
+        entries.Select(entry => entry.IsSeparator ? null : entry.Text).Should().Equal("Mine", null,
+            FakeDialogHost.TranslatedMark + CommitViewModel.ConventionalCommitText, null,
+            FakeDialogHost.TranslatedMark + CommitViewModel.TemplateSettingsText);
+        entries[2].Name.Should().Be(CommitViewModel.ConventionalCommitsName);
+        entries[2].Children.Select(entry => entry.Text).Should().Contain(["feat", "fix", "BREAKING CHANGE", "[skip ci]"]);
+
+        int focused = 0;
+        viewModel.MessageFocusRequested += (_, _) => focused++;
+        entries[0].Command!.Execute(entries[0].CommandParameter);
+
+        viewModel.Message.Should().Be("my text");
+        focused.Should().Be(1);
+    }
+
+    [Test]
+    public void A_conventional_commit_type_should_go_before_the_subject_and_put_the_caret_after_it()
+    {
+        CommitViewModel viewModel = New(new FakeDialogHost());
+        viewModel.Message = "my text";
+        viewModel.MessageCaret = 3;
+        List<int> carets = [];
+        viewModel.CaretRequested += (_, caret) => carets.Add(caret);
+
+        viewModel.ApplyConventionalTypeCommand.Execute("fix");
+
+        viewModel.Message.Should().Be("fix: my text");
+        carets.Should().ContainSingle();
+
+        viewModel.AppendFooterCommand.Execute("[skip ci]");
+
+        viewModel.Message.Should().EndWith(Environment.NewLine + "[skip ci]");
+        carets[1].Should().Be(3, "upstream's skip ci footer leaves the caret where it is");
+    }
+
+    [Test]
+    public async Task A_dictionary_chosen_in_the_menu_should_be_checked_and_kept_for_the_repository()
+    {
+        List<string> saved = [];
+        CommitViewModel viewModel = New(new FakeDialogHost(), services => services with
+        {
+            SaveDictionary = dictionary =>
+            {
+                saved.Add(dictionary);
+                return Task.CompletedTask;
+            },
+        });
+
+        MenuEntry menu = viewModel.DictionaryEntry(["None", "de-DE", "en-US"]);
+        menu.Children.Single(entry => entry.IsChecked == true).Text.Should().Be("None");
+        await ((IAsyncRelayCommand<string>)menu.Children[1].Command!).ExecuteAsync("de-DE");
+
+        viewModel.SpellingDictionary.Should().Be("de-DE");
+        saved.Should().Equal("de-DE");
+        viewModel.DictionaryEntry(["None", "de-DE"]).Children.Single(entry => entry.IsChecked == true).Text.Should()
+            .Be("de-DE");
+    }
+
+    [Test]
+    public void The_message_box_settings_should_turn_their_preferences_on_and_off()
+    {
+        _preferences.MarkIllFormedLinesInCommitMsg = true;
+        _preferences.ProvideAutocompletion = true;
+        CommitViewModel viewModel = New(new FakeDialogHost());
+        List<string?> raised = [];
+        viewModel.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        IReadOnlyList<MenuEntry> entries = viewModel.MessageBoxSettingEntries();
+        entries.Select(entry => entry.IsChecked).Should().Equal(true, true);
+
+        entries[0].Command!.Execute(null);
+        entries[1].Command!.Execute(null);
+
+        (_preferences.MarkIllFormedLinesInCommitMsg, _preferences.ProvideAutocompletion).Should().Be((false, false));
+        raised.Should().Equal(nameof(CommitViewModel.MarkIllFormedLines), nameof(CommitViewModel.ProvideAutoCompletion));
+    }
+
+    private CommitViewModel New(FakeDialogHost host, Func<CommitViewModelServices, CommitViewModelServices>? with = null)
+    {
+        CommitViewModelServices services = new()
+        {
+            ConfirmSuppressible = (confirmation, _, _, _) =>
+            {
+                _confirmations.Add(confirmation);
+                return Task.FromResult(_confirms);
+            },
+            AskValidation = (_, _) => Task.FromResult(true),
+            RunScripts = scriptEvent =>
+            {
+                _scripts.Add(scriptEvent);
+                return Task.FromResult(scriptEvent != ScriptEvent.BeforeCommit || _beforeCommitPasses);
+            },
+            Push = _ => Task.FromResult(true),
+            AskResetChanges = (_, _) => Task.FromResult(ResetChangesAction.Cancel),
+            CreateBranch = () => Task.CompletedTask,
+            ShowError = (_, _) => { },
+            ResolveCommit = _ => Task.FromResult<string?>("parent"),
+        };
+        return new CommitViewModel(host, RepositoryPath, new RepositoryViewModel(new FakeRepositoryService()),
+            new RepositoryOperationsViewModel(_operations), _service, _preferences, () => Task.CompletedTask, _messages,
+            with is null ? services : with(services));
+    }
 }

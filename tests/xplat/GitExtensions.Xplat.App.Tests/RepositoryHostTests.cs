@@ -11,6 +11,7 @@ using GitExtensions.Extensibility.Plugins;
 using GitExtensions.Xplat.App.RepositoryHosts;
 using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
+using GitExtensions.Xplat.Core.RepositoryHosts;
 using GitUI;
 using GitUIPluginInterfaces.RepositoryHosts;
 using NUnit.Framework;

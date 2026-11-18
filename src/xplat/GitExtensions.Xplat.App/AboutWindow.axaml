@@ -17,25 +17,30 @@
       <TextBlock x:Name="label2" Text="Git Extensions is open source. Get involved!" TextWrapping="Wrap"
                  TextAlignment="Center" MaxWidth="133" Margin="12,4" />
       <Button x:Name="pictureDonate" Width="145" Height="32" Margin="6,12,6,4" Padding="0" Background="Transparent"
-              BorderThickness="0" Cursor="Hand">
+              BorderThickness="0" Cursor="Hand" Command="{Binding OpenUrlCommand}"
+              CommandParameter="{x:Static vm:DonateViewModel.DonationUrl}">
         <Image Source="{local:UpstreamImage DonateBadge}" Stretch="Uniform" />
       </Button>
     </StackPanel>
     <StackPanel x:Name="tableLayoutPanel1" Margin="12,24,12,12">
       <HyperlinkButton x:Name="_NO_TRANSLATE_labelProductName" HorizontalAlignment="Center" Padding="0"
-                       FontSize="16" FontWeight="Bold" Content="{Binding ProductName}" />
+                       FontSize="16" FontWeight="Bold" Content="{Binding ProductName}" Command="{Binding OpenUrlCommand}"
+                       CommandParameter="{x:Static vm:Contributors.ProjectUrl}" />
       <TextBlock x:Name="_NO_TRANSLATE_labelProductDescription" HorizontalAlignment="Center" FontWeight="Bold"
                  FontSize="11" Text="Visual Studio and Shell Explorer Extensions for Git" />
       <TextBlock x:Name="_NO_TRANSLATE_labelCopyright" Margin="0,8,0,0" Text="Proudly presented by Git Extensions team" />
-      <HyperlinkButton x:Name="_NO_TRANSLATE_ThanksTo" Padding="0" FontSize="11" HorizontalAlignment="Left">
+      <HyperlinkButton x:Name="_NO_TRANSLATE_ThanksTo" Padding="0" FontSize="11" HorizontalAlignment="Left"
+                       Command="{Binding ShowContributorsWindowCommand}">
         <TextBlock x:Name="ThanksToText" TextTrimming="CharacterEllipsis" Text="{Binding ThanksText}" />
       </HyperlinkButton>
       <HyperlinkButton x:Name="linkLabelIcons" Padding="0" FontSize="11" HorizontalAlignment="Left"
-                       Content="Some icons by Yusuke Kamiyamane (CCA3)" />
+                       Content="Some icons by Yusuke Kamiyamane (CCA3)" Command="{Binding OpenUrlCommand}"
+                       CommandParameter="{x:Static vm:Contributors.IconsUrl}" />
       <DockPanel x:Name="environmentInfo" Margin="3,12,3,4">
         <Separator x:Name="lblSeparatorTop" DockPanel.Dock="Top" Margin="0" />
         <Separator x:Name="lblSeparatorBottom" DockPanel.Dock="Bottom" Margin="0" />
         <Button x:Name="copyButton" DockPanel.Dock="Right" Width="25" Height="26" Padding="0" VerticalAlignment="Top"
+                Command="{Binding CopyEnvironmentInformationCommand}"
                 Margin="6,3,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
           <Image Source="{local:UpstreamImage CopyToClipboard}" Width="16" Height="16" />
         </Button>

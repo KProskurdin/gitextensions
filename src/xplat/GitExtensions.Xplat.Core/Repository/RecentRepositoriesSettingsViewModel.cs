@@ -96,6 +96,55 @@ public sealed partial class RecentRepositoriesSettingsViewModel : DialogViewMode
         _loaded.TrySetResult();
     });
 
+    // Upstream's contextMenuStrip1 texts.
+    public const string AnchorToTopText = "Anchor to top repositories";
+    public const string AnchorToRecentText = "Anchor to recent repositories";
+    public const string RemoveAnchorText = "Remove anchor";
+    public const string RemoveRecentText = "Remove from recent repositories";
+
+    /// <summary>
+    ///  Upstream's contextMenuStrip1, shared by both lists: the anchors and the removal, for the repositories
+    ///  <paramref name="rows"/> gives (the list's selection when an item runs). The items' names start with
+    ///  <paramref name="namePrefix"/>, the list's name; their texts are plain headers, as upstream's.
+    /// </summary>
+    public IReadOnlyList<MenuEntry> MenuEntries(string namePrefix, Func<IReadOnlyList<RecentRepositorySettingsRow>> rows) =>
+    [
+        new(Host.Translate(AnchorToTopText), AnchorMenuRowsCommand,
+            new RecentRepositoriesMenuTarget(rows, HistoryEntry.RepositoryAnchor.AnchoredInTop))
+        {
+            HasAccessKey = true, Name = namePrefix + "AnchorToTopMenuItem",
+        },
+        new(Host.Translate(AnchorToRecentText), AnchorMenuRowsCommand,
+            new RecentRepositoriesMenuTarget(rows, HistoryEntry.RepositoryAnchor.AnchoredInRecent))
+        {
+            HasAccessKey = true, Name = namePrefix + "AnchorToRecentMenuItem",
+        },
+        new(Host.Translate(RemoveAnchorText), AnchorMenuRowsCommand,
+            new RecentRepositoriesMenuTarget(rows, HistoryEntry.RepositoryAnchor.None))
+        {
+            HasAccessKey = true, Name = namePrefix + "RemoveAnchorMenuItem",
+        },
+        new(Host.Translate(RemoveRecentText), RemoveMenuRowsCommand, rows)
+        {
+            HasAccessKey = true, Name = namePrefix + "RemoveRecentMenuItem",
+        },
+    ];
+
+    /// <summary>
+    ///  As the menu of <see cref="MenuEntries"/> opens: false when it does not open (no selection); otherwise the anchors
+    ///  the last selected repository does not have are enabled.
+    /// </summary>
+    public bool RefreshMenu(IReadOnlyList<MenuEntry> entries, IReadOnlyList<RecentRepositorySettingsRow> rows)
+    {
+        if (MenuState(rows) is not { } state)
+        {
+            return false;
+        }
+
+        (entries[0].IsEnabled, entries[1].IsEnabled, entries[2].IsEnabled) = state;
+        return true;
+    }
+
     /// <summary>
     ///  Upstream's menu state for the last selected repository: which anchors it offers.
     /// </summary>
@@ -204,4 +253,16 @@ public sealed partial class RecentRepositoriesSettingsViewModel : DialogViewMode
 
     [RelayCommand]
     private void Cancel() => Host.Close(false);
+
+    [RelayCommand]
+    private void AnchorMenuRows(RecentRepositoriesMenuTarget target) => Anchor(target.Rows(), target.Anchor);
+
+    [RelayCommand]
+    private Task RemoveMenuRowsAsync(Func<IReadOnlyList<RecentRepositorySettingsRow>> rows) => RemoveAsync(rows());
 }
+
+/// <summary>
+///  What an anchor item of the recent repositories' menu acts on: the list's selection, read when it runs, and the anchor.
+/// </summary>
+public sealed record RecentRepositoriesMenuTarget(Func<IReadOnlyList<RecentRepositorySettingsRow>> Rows,
+    HistoryEntry.RepositoryAnchor Anchor);

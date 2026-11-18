@@ -20,6 +20,8 @@ public partial class CommitWindow
         {
             if (e.Property == TextBox.CaretIndexProperty || e.Property == TextBox.TextProperty)
             {
+                // Conventional Commits' items insert at the caret.
+                ViewModel.MessageCaret = CommitMessageBox.CaretIndex;
                 ShowCaret();
             }
         };

@@ -13,7 +13,7 @@
     <WrapPanel Orientation="Horizontal" Margin="2">
       <local:FilterToolBar x:Name="ToolStripFilters" />
       <Rectangle Classes="toolSeparator" />
-      <SplitButton x:Name="LoadButton" Classes="tool" ToolTip.Tip="Load file history">
+      <SplitButton x:Name="LoadButton" Classes="tool" ToolTip.Tip="Load file history" Command="{Binding LoadHistoryCommand}">
         <Image Source="{local:UpstreamImage ReloadRevisions}" Width="16" Height="16" />
         <SplitButton.Flyout>
           <MenuFlyout>

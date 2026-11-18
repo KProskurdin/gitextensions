@@ -22,22 +22,9 @@ public partial class MainWindow
 
     // Upstream's FileStatusList over the Diff tab's files.
     private void WireDiffFileList()
-        => _diffFiles = new RevisionFileList<CommitFile>(CommitFilesList, DiffFilesFilterBox, DiffFilesByPathButton,
-            DiffFilesByExtensionButton, DiffFilesByStatusButton, DiffFilesNoFilesText, _preferences, file => file.Path,
-            file => file.Status, file => file.Group, new FileListTreeButtons(DiffFilesCollapseGroupsButton,
-                DiffFilesAsTreeButton,
-                [
-                    (DiffFilesPathTreeMenuItem, DiffListSortType.FilePath),
-                    (DiffFilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
-                    (DiffFilesExtensionTreeMenuItem, DiffListSortType.FileExtension),
-                    (DiffFilesExtensionFlatMenuItem, DiffListSortType.FileExtensionFlat),
-                    (DiffFilesStatusTreeMenuItem, DiffListSortType.FileStatus),
-                    (DiffFilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
-                ],
-                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem),
-            file => file.DiffFile?.DiffStatus ?? DiffBranchStatus.Unknown,
-            new DiffStatusButtons(DiffFilesUnequalChangeButton, DiffFilesOnlyBButton, DiffFilesOnlyAButton,
-                DiffFilesSameChangeButton, DiffFilesStatusFilterSeparator), oldPath: file => file.DiffFile?.OldPath);
+        => _diffFiles = new RevisionFileList<CommitFile>(CommitFilesList, DiffFilesFilterBox, DiffFilesToolbar,
+            DiffFilesNoFilesText, _preferences, file => file.Path, file => file.Status, file => file.Group,
+            file => file.DiffFile?.DiffStatus ?? DiffBranchStatus.Unknown, oldPath: file => file.DiffFile?.OldPath);
 
     // Called on each selection change, after the selection is tracked.
     private void ShowSelectionDiff()

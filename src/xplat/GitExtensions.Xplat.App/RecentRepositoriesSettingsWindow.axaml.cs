@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Media;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
@@ -18,10 +19,6 @@ namespace GitExtensions.Xplat.App;
 public partial class RecentRepositoriesSettingsWindow : Window
 {
     // Upstream's context menu.
-    private const string AnchorToTopText = "Anchor to top repositories";
-    private const string AnchorToRecentText = "Anchor to recent repositories";
-    private const string RemoveAnchorText = "Remove anchor";
-    private const string RemoveRecentText = "Remove from recent repositories";
 
     private readonly IBrush _missingBrush;
 
@@ -101,39 +98,10 @@ public partial class RecentRepositoriesSettingsWindow : Window
     // selected repository does not have.
     private ContextMenu RepositoryMenu(ListBox list)
     {
-        MenuItem anchorToTop = new()
-        {
-            Name = list.Name + "AnchorToTopMenuItem", Header = UpstreamTranslation.ByText(AnchorToTopText)
-        };
-        MenuItem anchorToRecent = new()
-        {
-            Name = list.Name + "AnchorToRecentMenuItem", Header = UpstreamTranslation.ByText(AnchorToRecentText)
-        };
-        MenuItem removeAnchor = new()
-        {
-            Name = list.Name + "RemoveAnchorMenuItem", Header = UpstreamTranslation.ByText(RemoveAnchorText)
-        };
-        MenuItem removeRecent = new()
-        {
-            Name = list.Name + "RemoveRecentMenuItem", Header = UpstreamTranslation.ByText(RemoveRecentText)
-        };
-        anchorToTop.Click += (_, _) =>
-            ViewModel.Anchor(SelectedRows(list), HistoryEntry.RepositoryAnchor.AnchoredInTop);
-        anchorToRecent.Click += (_, _) =>
-            ViewModel.Anchor(SelectedRows(list), HistoryEntry.RepositoryAnchor.AnchoredInRecent);
-        removeAnchor.Click += (_, _) => ViewModel.Anchor(SelectedRows(list), HistoryEntry.RepositoryAnchor.None);
-        removeRecent.Click += (_, _) => _ = ViewModel.RemoveAsync(SelectedRows(list));
-        ContextMenu menu = new() { ItemsSource = new[] { anchorToTop, anchorToRecent, removeAnchor, removeRecent } };
-        menu.Opening += (_, e) =>
-        {
-            if (ViewModel.MenuState(SelectedRows(list)) is not { } state)
-            {
-                e.Cancel = true;
-                return;
-            }
-
-            (anchorToTop.IsEnabled, anchorToRecent.IsEnabled, removeAnchor.IsEnabled) = state;
-        };
+        ContextMenu menu = new();
+        IReadOnlyList<MenuEntry> entries = ViewModel.MenuEntries(list.Name ?? "", () => SelectedRows(list));
+        MenuEntries.Fill(menu.Items, entries, this);
+        menu.Opening += (_, e) => e.Cancel = !ViewModel.RefreshMenu(entries, SelectedRows(list));
         return menu;
     }
 }

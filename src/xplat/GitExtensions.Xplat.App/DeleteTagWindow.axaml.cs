@@ -35,9 +35,9 @@ public partial class DeleteTagWindow : Window
         UpstreamTranslation.Apply(this, DeleteTagViewModel.Category);
         InitialFocus.Attach(this, () => Tags);
 
-        // View concern: the user manual's link opens the browser.
+        // The user manual's address, which the link's command opens.
         string url = GitUI.UserManual.UserManual.UrlFor(HelpSubfolder, HelpAnchor);
         ToolTip.SetTip(HelpLink, string.Format(UpstreamTranslation.ByText(HelpTooltip), url));
-        HelpLink.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(url);
+        HelpLink.CommandParameter = url;
     }
 }

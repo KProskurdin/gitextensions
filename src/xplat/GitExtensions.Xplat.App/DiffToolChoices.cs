@@ -1,10 +1,11 @@
 using Avalonia.Controls;
+using GitExtensions.Xplat.Core.Diff;
 
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
 ///  Upstream's "Show all available difftools" (<c>difftools.showavailable</c>): beside "Open in diff tool", a menu of every
-///  diff tool git can start here, read when it opens.
+///  diff tool git can start here, read when it opens (<see cref="DiffToolChoicesViewModel"/>).
 /// </summary>
 internal static class DiffToolChoices
 {
@@ -13,25 +14,17 @@ internal static class DiffToolChoices
     /// <param name="showError">Shows a failure to the user.</param>
     public static void Attach(Button button, Func<string, Task> open, Action<string> showError)
     {
+        DiffToolChoicesViewModel viewModel = new(() => AppServices.DiffMergeTools.GetAvailableAsync(diff: true), open,
+            showError);
+
         // Built before it opens: Avalonia shows a menu whose items change while it opens as a thin line.
         PopulatingMenuFlyout flyout = new()
         {
             ReportError = ex => showError(ex.Message),
         };
-        flyout.PopulateAsync = () => FillAsync(flyout, open, showError);
+        flyout.PopulateAsync = async () => MenuEntries.Fill(flyout.Items, await viewModel.EntriesAsync(), button);
         button.Flyout = flyout;
         Show(button);
-    }
-
-    private static async Task FillAsync(MenuFlyout flyout, Func<string, Task> open, Action<string> showError)
-    {
-        flyout.Items.Clear();
-        foreach (string tool in await AppServices.DiffMergeTools.GetAvailableAsync(diff: true))
-        {
-            MenuItem item = new() { Header = new TextBlock { Text = tool } };
-            item.Click += (_, _) => UiActions.Run(() => open(tool), ex => showError(ex.Message));
-            flyout.Items.Add(item);
-        }
     }
 
     /// <summary>

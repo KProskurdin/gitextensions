@@ -52,14 +52,9 @@ public partial class MainWindow
     public string? OpenRepositoryPath => RepositoryPath;
 
     /// <summary>
-    ///  Shows the About window, as the Help menu does, also for the macOS application menu.
+    ///  Shows the About window, for the Help menu and the macOS application menu (the toolbar view model's About command).
     /// </summary>
     public void ShowAbout() => _ = new AboutWindow(_git?.Version?.ToString()).ShowDialog(this);
-
-    /// <summary>
-    ///  Opens the settings, as the Tools menu does, for the macOS application menu.
-    /// </summary>
-    public void ShowSettings() => Run(() => ShowSettingsAsync());
 
     /// <summary>
     ///  Opens <paramref name="path"/> as upstream's working directory drop-down and Start > Open do.

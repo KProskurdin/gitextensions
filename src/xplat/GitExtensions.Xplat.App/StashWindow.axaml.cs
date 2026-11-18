@@ -282,52 +282,16 @@ public partial class StashWindow : Window
     {
         // This window has no settings menu, but upstream's choice holds for every file list.
         FileListToolbar.Attach(FilesByExtensionButton, _preferences);
-        FileListTreeButtons buttons = new(FilesCollapseGroupsButton, FilesAsTreeButton,
-            [
-                (FilesPathTreeMenuItem, DiffListSortType.FilePath),
-                (FilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
-                (FilesExtensionTreeMenuItem, DiffListSortType.FileExtension),
-                (FilesExtensionFlatMenuItem, DiffListSortType.FileExtensionFlat),
-                (FilesStatusTreeMenuItem, DiffListSortType.FileStatus),
-                (FilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
-            ],
-            FilesDenseTreeMenuItem, FilesGroupNodesInFlatListMenuItem);
-        buttons.Wire(_preferences, ShowGrouping);
-        buttons.CollapseGroups?.Click += (_, _) =>
+        FileListToolbarViewModel toolbar = new(_preferences);
+        FileListToolbar.Bind(FilesToolbar, toolbar);
+        toolbar.Changed += (_, _) => ShowFileRows();
+        toolbar.CollapseGroupsRequested += (_, _) =>
         {
             _tree.CollapseGroups([.. FilesList.ItemsSource?.Cast<object>() ?? []]);
             ShowFileRows();
         };
         FilesFilterBox.WorkingDirectory = () => _repositoryPath;
         FilesFilterBox.FilterChanged += (_, _) => ShowFileRows();
-        FilesByPathButton.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
-        FilesByExtensionButton.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
-        FilesByStatusButton.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
-        ShowGroupByButtons();
-        return;
-
-        void SetGroupBy(DiffListSortType grouping)
-        {
-            _preferences.DiffListSorting = FileListTreeButtons.GroupBy(_preferences.DiffListSorting, grouping);
-            _preferences.Save();
-            ShowGrouping();
-        }
-
-        void ShowGrouping()
-        {
-            ShowGroupByButtons();
-            ShowFileRows();
-        }
-
-        void ShowGroupByButtons()
-        {
-            DiffListSortType sorting = _preferences.DiffListSorting;
-            FilesByPathButton.IsChecked = sorting is DiffListSortType.FilePath or DiffListSortType.FilePathFlat;
-            FilesByExtensionButton.IsChecked =
-                sorting is DiffListSortType.FileExtension or DiffListSortType.FileExtensionFlat;
-            FilesByStatusButton.IsChecked = sorting is DiffListSortType.FileStatus or DiffListSortType.FileStatusFlat;
-            buttons.Show(_preferences);
-        }
     }
 
     // The selected files go to the view model ("Stash selected changes"); a single one shows its diff.

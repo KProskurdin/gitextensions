@@ -61,19 +61,8 @@ public partial class RevisionDiffWindow : Window
         // View concerns: the file list (its filter, grouping and menu), the selected file's diff and the sides' colors.
         // This window has no settings menu, but upstream's choice holds for every file list.
         FileListToolbar.Attach(DiffFilesByPathButton, preferences);
-        _files = new RevisionFileList<RevisionDiffFile>(DiffFiles, DiffFilesFilterBox, DiffFilesByPathButton,
-            DiffFilesByExtensionButton, DiffFilesByStatusButton, DiffFilesNoFilesText, preferences, file => file.Path,
-            file => file.Status, treeButtons: new FileListTreeButtons(DiffFilesCollapseGroupsButton,
-                DiffFilesAsTreeButton,
-                [
-                    (DiffFilesPathTreeMenuItem, DiffListSortType.FilePath),
-                    (DiffFilesPathFlatMenuItem, DiffListSortType.FilePathFlat),
-                    (DiffFilesExtensionTreeMenuItem, DiffListSortType.FileExtension),
-                    (DiffFilesExtensionFlatMenuItem, DiffListSortType.FileExtensionFlat),
-                    (DiffFilesStatusTreeMenuItem, DiffListSortType.FileStatus),
-                    (DiffFilesStatusFlatMenuItem, DiffListSortType.FileStatusFlat),
-                ],
-                DiffFilesDenseTreeMenuItem, DiffFilesGroupNodesInFlatListMenuItem), oldPath: file => file.OldPath);
+        _files = new RevisionFileList<RevisionDiffFile>(DiffFiles, DiffFilesFilterBox, DiffFilesToolbar,
+            DiffFilesNoFilesText, preferences, file => file.Path, file => file.Status, oldPath: file => file.OldPath);
         DiffFilesFilterBox.WorkingDirectory = () => _repositoryPath;
         lblFirstCommitBack.Background = Brush(AppColor.AnsiTerminalRedBackNormal);
         lblSecondCommitBack.Background = Brush(AppColor.AnsiTerminalGreenBackNormal);

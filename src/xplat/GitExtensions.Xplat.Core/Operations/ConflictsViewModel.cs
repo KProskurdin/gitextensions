@@ -162,7 +162,14 @@ public sealed partial class ConflictsViewModel : DialogViewModel
     ///  Git's merge tools for "Open in mergetool", the configured one first; empty unless there are several.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MergeToolEntries))]
     public partial IReadOnlyList<string> MergeTools { get; private set; } = [];
+
+    /// <summary>
+    ///  "Open in mergetool"'s items: <see cref="MergeTools"/>, the configured one in bold.
+    /// </summary>
+    public IReadOnlyList<MenuEntry> MergeToolEntries
+        => [.. MergeTools.Select((tool, index) => new MenuEntry(tool, RunGitMergeToolCommand, tool) { IsBold = index == 0 })];
 
     [ObservableProperty]
     public partial string OpenInText { get; private set; }
@@ -307,7 +314,8 @@ public sealed partial class ConflictsViewModel : DialogViewModel
     });
 
     // Upstream's customMergetool_Click: git mergetool on each selected file, with the chosen tool or the configured one.
-    [RelayCommand]
+    // The item that lists the tools runs it too, so it may run while it runs: a disabled item would not open its tools.
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private Task RunGitMergeToolAsync(string? tool) => GuardAsync(async () =>
     {
         foreach (ConflictData item in Selected())

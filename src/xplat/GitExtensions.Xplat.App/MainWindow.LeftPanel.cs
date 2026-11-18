@@ -267,8 +267,7 @@ public partial class MainWindow
         if (Toolbar.TreeMenu.RunScript.IsVisible)
         {
             ScriptMenus.Fill(BranchTreeContextMenu, TreeRunScriptMenuItem, script => script.AddToRevisionGridContextMenu,
-                script => RunOnSelectedCommit((path, _) =>
-                    Scripts.RunAsync(script, path, SelectedHashes, FileScriptOptions())));
+                Toolbar.RunGridScriptCommand);
         }
         else
         {

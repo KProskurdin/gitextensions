@@ -32,25 +32,24 @@ public partial class AboutWindow : Window
         ViewModel = new AboutViewModel(new WindowDialogHost(this), AppSettings.ApplicationName,
             Contributors.List(UpstreamResources.Team, UpstreamResources.Coders, UpstreamResources.Translators,
                 UpstreamResources.Designers),
-            new Random());
+            new Random())
+        {
+            ShowContributors = () => new ContributorsWindow().ShowDialog(this),
+            CopyInformation = () => CopyInformationAsync(this, gitVersion),
+        };
         DataContext = ViewModel;
         InitializeComponent();
         UpstreamTranslation.Apply(this, AboutViewModel.Category);
         logoPictureBox.Source = new Bitmap(AssetLoader.Open(new Uri(LogoUri)));
         ToolTip.SetTip(copyButton, UpstreamTranslation.ByText(Contributors.CopyTooltip));
 
-        // View concerns: the timer that thanks the next contributor, the screen the information is read for, the browser,
-        // the clipboard and the contributors window.
+        // View concerns: the timer that thanks the next contributor and the screen the information is read for; the
+        // clipboard and the contributors window are the view model's delegates.
         DispatcherTimer thanksTimer = new() { Interval = Contributors.ThanksInterval };
         thanksTimer.Tick += (_, _) => ViewModel.ThankNextContributor();
         thanksTimer.Start();
         Closed += (_, _) => thanksTimer.Stop();
         Opened += (_, _) => ViewModel.ShowInformation(Information());
-        _NO_TRANSLATE_labelProductName.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(Contributors.ProjectUrl);
-        _NO_TRANSLATE_ThanksTo.Click += (_, _) => _ = new ContributorsWindow().ShowDialog(this);
-        pictureDonate.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(DonateWindow.DonationUrl);
-        linkLabelIcons.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(Contributors.IconsUrl);
-        copyButton.Click += (_, _) => UiActions.Run(() => CopyInformationAsync(this, _gitVersion), _ => { });
     }
 
     public AboutViewModel ViewModel { get; }

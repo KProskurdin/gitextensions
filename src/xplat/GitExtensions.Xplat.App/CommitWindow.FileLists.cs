@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using GitCommands;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Diff;
@@ -8,25 +9,12 @@ using GitExtensions.Xplat.Ui;
 namespace GitExtensions.Xplat.App;
 
 // Upstream FormCommit's two file lists (FileStatusList: its toolbar, filter box, NoFiles text and item menu) and the
-// toolbarStaged between them.
+// toolbarStaged between them. What they list, their grouping and their buttons' and settings' commands are
+// CommitViewModel's (CommitViewModel.FileLists.cs); the trees, the filters and the file menu stay here.
 public partial class CommitWindow
 {
-    // Upstream FormCommit's tooltips of the stage and unstage all buttons.
-    private const string StageAllText = "Stage all";
-    private const string StageFilteredText = "Stage filtered";
-    private const string UnstageAllText = "Unstage all";
-    private const string UnstageFilteredText = "Unstage filtered";
-
-    // Git's setting of upstream's initial "Show untracked files", and its value that turns them off.
-    private const string ShowUntrackedFilesSetting = "status.showuntrackedfiles";
-    private const string NoUntrackedFiles = "no";
-
     private FileListParts _unstaged = null!;
     private FileListParts _staged = null!;
-
-    // The changes read with the working directory list's settings, while they ask for more than the repository's.
-    private IReadOnlyList<FileChange>? _flaggedChanges;
-    private int _flaggedChangesVersion;
 
     // HEAD's commit, the first revision of the staged files; read again after the changes change.
     private ObjectId? _headId;
@@ -40,55 +28,42 @@ public partial class CommitWindow
     private void WireFileLists()
     {
         _unstaged = new FileListParts(Staged: false, UnstagedList, UnstagedFilterBox, UnstagedNoFilesText,
-            UnstagedByPathButton, UnstagedByExtensionButton, UnstagedByStatusButton, UnstagedShowUntrackedMenuItem,
-            UnstagedEditGitIgnoreMenuItem, UnstagedEditLocallyIgnoredMenuItem, UnstagedFilesMenu);
-        _staged = new FileListParts(Staged: true, StagedList, StagedFilterBox, StagedNoFilesText, StagedByPathButton,
-            StagedByExtensionButton, StagedByStatusButton, StagedShowUntrackedMenuItem, StagedEditGitIgnoreMenuItem,
-            StagedEditLocallyIgnoredMenuItem, StagedFilesMenu);
-        _unstaged.TreeButtons = TreeButtons(UnstagedAsTreeButton, UnstagedPathTreeMenuItem,
-            UnstagedPathFlatMenuItem, UnstagedExtensionTreeMenuItem, UnstagedExtensionFlatMenuItem,
-            UnstagedStatusTreeMenuItem, UnstagedStatusFlatMenuItem, UnstagedDenseTreeMenuItem,
-            UnstagedGroupNodesInFlatListMenuItem);
-        _staged.TreeButtons = TreeButtons(StagedAsTreeButton, StagedPathTreeMenuItem,
-            StagedPathFlatMenuItem, StagedExtensionTreeMenuItem, StagedExtensionFlatMenuItem, StagedStatusTreeMenuItem,
-            StagedStatusFlatMenuItem, StagedDenseTreeMenuItem, StagedGroupNodesInFlatListMenuItem);
-
-        UnstagedRefreshButton.Click += (_, _) => Run(_refresh);
+            UnstagedFilesMenu);
+        _staged = new FileListParts(Staged: true, StagedList, StagedFilterBox, StagedNoFilesText, StagedFilesMenu);
 
         // Upstream's OtherColors.MergeConflictsColor.
         SolveConflictsButton.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(230, 99, 99));
 
-        // Upstream's FormCommit opens the conflicts window without its offer to commit.
-        SolveConflictsButton.Click += (_, _) => _ = new ConflictsWindow(_repositoryPath, _repository, _actions,
-            _preferences,
-            (_, file) => ShowFileHistory(file, showBlame: false), offerCommit: false).ShowDialog(this);
+        // The toolbars' flyouts give their items a data context only when they open (MVVM.md, Flyouts).
+        foreach (FlyoutBase? flyout in new[]
+                 {
+                     UnstagedAsTreeButton.Flyout, StagedAsTreeButton.Flyout, UnstagedSettingsButton.Flyout,
+                     StagedSettingsButton.Flyout,
+                 })
+        {
+            foreach (Control item in ((MenuFlyout)flyout!).Items.OfType<Control>())
+            {
+                item.DataContext = ViewModel;
+            }
+        }
+
         foreach (FileListParts parts in new[] { _unstaged, _staged })
         {
             Wire(parts);
         }
 
-        ShowGroupBy();
+        ViewModel.Grouping.Changed += (_, _) => ShowChanges();
+        ViewModel.FilterClearRequested += (_, staged) => (staged ? _staged : _unstaged).Filter.Text = "";
         WireListSettings();
         return;
 
         void Wire(FileListParts parts)
         {
-            // Upstream's tree (FileTreeRows), its tree button and its collapse button.
+            // Upstream's tree (FileTreeRows).
             parts.Tree = new FileTreeRows<FileChange>(parts.List, _preferences, change => change.Path,
                 change => change.Image, change => change.Kind, ShowChanges);
-            parts.TreeButtons?.Wire(_preferences, () =>
-            {
-                ShowGroupBy();
-                ShowChanges();
-            });
             parts.Filter.WorkingDirectory = () => _repositoryPath;
             parts.Filter.FilterChanged += (_, _) => ShowChanges();
-            parts.ByPath.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
-            parts.ByExtension.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
-            parts.ByStatus.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
-            parts.ShowUntracked.Click += (_, _) => ShowChanges();
-            parts.EditGitIgnore.Click += (_, _) => Run(() => EditIgnoreFileAsync(localExclude: false));
-            parts.EditLocallyIgnored.Click += (_, _) => Run(() => EditIgnoreFileAsync(localExclude: true));
 
             // Upstream's Unstaged_DoubleClick and Staged_DoubleClick.
             parts.List.DoubleTapped += (_, _) => StageSelected(parts.Staged);
@@ -174,88 +149,29 @@ public partial class CommitWindow
         tree.Select(parts.Shown);
     }
 
-    // Upstream's settings menu of the working directory's list (BindContextMenu with canAutoRefresh): the ignored,
-    // skip-worktree and assumed-unchanged files are read with git's flags while one is checked; "Show untracked files"
-    // starts as git's status.showuntrackedfiles says; "Refresh artificial commits on form focus" is upstream's
-    // RefreshArtificialCommitOnApplicationActivated.
+    // Upstream's settings menu of the working directory's list (BindContextMenu with canAutoRefresh): its items are the view
+    // model's; the toolbar's own items are added to both lists' menus. "Refresh artificial commits on form focus" may have
+    // changed in the settings since.
     private void WireListSettings()
     {
         FileListToolbar.Attach(UnstagedSettingsButton, _preferences, (MenuFlyout)UnstagedSettingsButton.Flyout!);
         FileListToolbar.Attach(StagedSettingsButton, _preferences, (MenuFlyout)StagedSettingsButton.Flyout!);
-        foreach (MenuItem item in new[]
-                 {
-                     UnstagedShowIgnoredMenuItem, UnstagedShowSkipWorktreeMenuItem,
-                     UnstagedShowAssumeUnchangedMenuItem
-                 })
-        {
-            item.Click += (_, _) => ReadChanges();
-        }
-
-        ((MenuFlyout)UnstagedSettingsButton.Flyout!).Opening += (_, _) =>
-            UnstagedRefreshOnFormFocusMenuItem.IsChecked = _preferences.RefreshCommitDialogOnFocus;
-        UnstagedRefreshOnFormFocusMenuItem.Click += (_, _) =>
-        {
-            _preferences.RefreshCommitDialogOnFocus = UnstagedRefreshOnFormFocusMenuItem.IsChecked;
-            _preferences.Save();
-        };
-        Opened += (_, _) => Run(async () =>
-        {
-            string showUntracked = await Task.Run(() =>
-                GitModules.Open(_repositoryPath).GetEffectiveSetting(ShowUntrackedFilesSetting));
-            UnstagedShowUntrackedMenuItem.IsChecked = showUntracked != NoUntrackedFiles;
-            ShowChanges();
-        });
-    }
-
-    // The repository's changes, or the working directory read again with the list's settings while they ask for more.
-    private void ReadChanges()
-    {
-        _headId = null;
-        int version = ++_flaggedChangesVersion;
-        bool ignored = UnstagedShowIgnoredMenuItem.IsChecked;
-        bool skipWorktree = UnstagedShowSkipWorktreeMenuItem.IsChecked;
-        bool assumeUnchanged = UnstagedShowAssumeUnchangedMenuItem.IsChecked;
-        if (!ignored && !skipWorktree && !assumeUnchanged)
-        {
-            _flaggedChanges = null;
-            ShowChanges();
-            return;
-        }
-
-        Run(async () =>
-        {
-            IReadOnlyList<FileChange> changes = await GitRepositoryService.GetWorkTreeChangesAsync(_repositoryPath,
-                ignored, assumeUnchanged, skipWorktree);
-            if (version == _flaggedChangesVersion)
-            {
-                _flaggedChanges = changes;
-                ShowChanges();
-            }
-        });
+        ((MenuFlyout)UnstagedSettingsButton.Flyout!).Opening += (_, _) => ViewModel.RefreshOptions();
     }
 
     // Upstream's lists: the files of the list in the group-by order, without untracked files when "Show untracked files" is
     // off, and only those the filter matches; NoFiles shows while a list is empty.
     private void ShowChanges()
     {
-        IReadOnlyList<FileChange> changes = _flaggedChanges ?? _repository.Changes;
-        Show(_unstaged, changes.Where(change => !change.Staged));
-        Show(_staged, changes.Where(change => change.Staged));
+        IReadOnlyList<FileChange> changes = ViewModel.ListedChanges;
+        Show(_unstaged, changes.Where(change => !change.Staged), ViewModel.ShowUntracked);
+        Show(_staged, changes.Where(change => change.Staged), showUntracked: true);
+        return;
 
         // Upstream's Unstaged_FilterChanged and Staged_FilterChanged: while a list is filtered, its button stages or
         // unstages the files shown.
-        bool unstagedFiltered = IsFiltered(_unstaged);
-        StageAllButton.Image = unstagedFiltered ? "StageAllFiltered" : "StageAll";
-        ToolTip.SetTip(StageAllButton, UpstreamTranslation.ByText(unstagedFiltered ? StageFilteredText : StageAllText));
-        bool stagedFiltered = IsFiltered(_staged);
-        UnstageAllButton.Image = stagedFiltered ? "UnstageAllFiltered" : "UnstageAll";
-        ToolTip.SetTip(UnstageAllButton,
-            UpstreamTranslation.ByText(stagedFiltered ? UnstageFilteredText : UnstageAllText));
-        return;
-
-        void Show(FileListParts parts, IEnumerable<FileChange> changes)
+        void Show(FileListParts parts, IEnumerable<FileChange> changes, bool showUntracked)
         {
-            bool showUntracked = parts.ShowUntracked.IsChecked;
             IReadOnlyList<FileChange> shown =
             [
                 .. changes.Where(change => showUntracked || change.Kind != ChangeKind.Untracked)
@@ -269,53 +185,12 @@ public partial class CommitWindow
             parts.Tree?.EndFill();
             parts.Filter.Shown(shown.Count);
             parts.NoFiles.IsVisible = shown.Count == 0;
+            ViewModel.SetShown(parts.Staged, shown, IsFiltered(parts));
         }
     }
-
-    // The lists' trees: without upstream's collapse button, which it shows only for diff groups.
-    private static FileListTreeButtons TreeButtons(ToolSplitButton asTree, MenuItem pathTree,
-        MenuItem pathFlat, MenuItem extensionTree, MenuItem extensionFlat, MenuItem statusTree, MenuItem statusFlat,
-        MenuItem denseTree, MenuItem groupNodesInFlatList)
-        => new(CollapseGroups: null, asTree,
-            [
-                (pathTree, DiffListSortType.FilePath), (pathFlat, DiffListSortType.FilePathFlat),
-                (extensionTree, DiffListSortType.FileExtension), (extensionFlat, DiffListSortType.FileExtensionFlat),
-                (statusTree, DiffListSortType.FileStatus), (statusFlat, DiffListSortType.FileStatusFlat),
-            ],
-            denseTree, groupNodesInFlatList);
 
     // Upstream's FileStatusList.IsFilterActive.
     private static bool IsFiltered(FileListParts parts) => parts.Filter.IsActive;
-
-    // Upstream's group-by buttons choose the grouping and keep the tree or flat variant.
-    private void SetGroupBy(DiffListSortType sorting)
-    {
-        _preferences.DiffListSorting = FileListTreeButtons.GroupBy(_preferences.DiffListSorting, sorting);
-        _preferences.Save();
-        ShowGroupBy();
-        ShowChanges();
-    }
-
-    private void ShowGroupBy()
-    {
-        DiffListSortType sorting = _preferences.DiffListSorting;
-        foreach (FileListParts parts in new[] { _unstaged, _staged })
-        {
-            parts.ByPath.IsChecked = sorting is DiffListSortType.FilePath or DiffListSortType.FilePathFlat;
-            parts.ByExtension.IsChecked =
-                sorting is DiffListSortType.FileExtension or DiffListSortType.FileExtensionFlat;
-            parts.ByStatus.IsChecked = sorting is DiffListSortType.FileStatus or DiffListSortType.FileStatusFlat;
-            parts.TreeButtons?.Show(_preferences);
-        }
-    }
-
-    private async Task EditIgnoreFileAsync(bool localExclude)
-    {
-        if (await GitIgnoreWindow.ShowAsync(this, _repositoryPath, localExclude))
-        {
-            await _refresh();
-        }
-    }
 
     private static List<FileChange> Selected(FileListParts parts) => SelectedChanges(parts.List);
 
@@ -325,19 +200,8 @@ public partial class CommitWindow
         ListBox List,
         FileFilterBox Filter,
         TextBlock NoFiles,
-        ToolToggleButton ByPath,
-        ToolToggleButton ByExtension,
-        ToolToggleButton ByStatus,
-        MenuItem ShowUntracked,
-        MenuItem EditGitIgnore,
-        MenuItem EditLocallyIgnored,
         FileStatusListMenu Menu)
     {
-        /// <summary>
-        ///  Upstream's collapse and tree buttons of the list's toolbar.
-        /// </summary>
-        public FileListTreeButtons? TreeButtons { get; set; }
-
         /// <summary>
         ///  The list's tree rows.
         /// </summary>

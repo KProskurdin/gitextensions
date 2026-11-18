@@ -18,7 +18,8 @@
       <StackPanel Spacing="12" Margin="10,0,0,0">
         <TextBlock x:Name="label2" TextWrapping="Wrap"
                    Text="Commit expression examples:&#10;- complete commit hash: e. g.: 8eab51fcb9c4538eb74c4dcd4c31ffd693ad25c9&#10;- partial commit hash (if unique): e. g.: 8eab51fcb9c453&#10;- tag name&#10;- branch name" />
-        <HyperlinkButton x:Name="linkGitRevParse" Content="More see git-rev-parse" Padding="0" />
+        <HyperlinkButton x:Name="linkGitRevParse" Content="More see git-rev-parse" Padding="0" Command="{Binding OpenUrlCommand}"
+                         CommandParameter="{x:Static vm:GoToCommit.GitRevParseUrl}" />
       </StackPanel>
     </HeaderedContentControl>
     <TextBlock x:Name="label3" Grid.Row="2" Text="Go to tag:" VerticalAlignment="Center" Margin="0,24,0,0" />

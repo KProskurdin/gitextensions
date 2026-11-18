@@ -1139,6 +1139,11 @@ Windows), so the Windows suites get local runs (`SYNC-LOG.md`), but Linux has ha
 
 ### 12.6 MVVM in the app (last)
 
+*Complete 2026-11-18 (the user): every step below is done. Every window and shared control has its view model, and outside
+the plugins a click handler is left only for the view concerns `MVVM.md` lists. The plugins' 15 windows (26 click handlers,
+none with a view model yet) are not part of this plan: they move to MVVM when they are reworked (principle 6). Design data
+for the previewer was a hoped-for benefit, never a step, and is not planned.*
+
 Added 2026-11-13, after a review of the app against Avalonia's documentation. Moving the existing windows comes after
 everything above: it changes how they are built, not what they do, so parity and the open decisions go first. The rule for
 new and reworked UI (principle 6) applies from now on.
@@ -1191,11 +1196,12 @@ Steps:
    |---|---|
    | Filter toolbar (`FilterToolBar`, shared by the browse and file history windows) | 1 (done; see below) |
    | Settings window (main file, Git config page, Appearance page) | 0 (done; see below) |
-   | Commit window (main file, file lists, spelling, status bar, bottom, auto-complete, XAML) | 31 |
-   | Shared controls: git grep box, revision file list, file tree rows, script menus, copy paths menu, the diff view's find and toolbar, the file list toolbar, difftool choices | about 18 |
-   | Dialogs: About, Stash, Recent repositories settings, Git ignore, Conflicts, Merge branch, Delete tag, Go to commit, message box, commit picker, editor find, dialog help | about 25 |
+   | Commit window (main file, file lists, spelling, status bar, bottom, auto-complete, XAML) | 1 (done; see below) |
+   | Shared controls: git grep box, revision file list, file tree rows, script menus, copy paths menu, the diff view's find and toolbar, the file list toolbar, difftool choices | 4 left as view concerns (done; see below) |
+   | Dialogs: About, Stash, Recent repositories settings, Git ignore, Conflicts, Merge branch, Delete tag, Go to commit, message box, commit picker, editor find, dialog help | 3 left as view concerns (done; see below) |
    | File history window (with its grid menus and build server) | 1 (done; see below) |
-   | Other: the macOS application menu, help images, plugin setting rows, toolbar overflow | about 7 |
+   | Other: the macOS application menu, help images, plugin setting rows, toolbar overflow | 3 left as view concerns (done; see below) |
+   | Repository host windows (fork and clone, view and create pull requests, the blame menu's plugin items) | 0 (done; see below) |
 
    Order: `CustomDiffTools` with the file history window and `FileStatusListMenu`, which share it; then the filter
    toolbar, the Settings window, the commit window, the shared controls and the dialogs. Some handlers may stay because
@@ -1222,5 +1228,41 @@ Steps:
    manager and the windows they open are `SettingsViewModelServices` the window supplies. No click handler is left in it.
    21 handlers fewer (and one routed handler); 5 view model tests. About 100 are left (counted as above, without the
    plugins).
+   *2026-11-18, later:* the commit window: the file lists' toolbars, settings menus and buttons
+   (`CommitViewModel.FileLists.cs`), their grouping (core `Diff/FileListGroupingViewModel.cs`, which the other file lists
+   can take in the shared controls' step instead of the app's `FileListTreeButtons`), the "Commit message" and "Commit
+   templates" menus as entries (`CommitViewModel.Menus.cs`) and the message box menu's settings. The one handler left runs
+   the message box's editing items, which act on the box's selection (a view concern). 23 handlers fewer; 11 view model
+   tests. 72 are left (counted as above, without the plugins), next the shared controls.
+   *2026-11-18, later still:* the shared controls. The file lists' toolbars (core `Diff/FileListToolbarViewModel.cs`: the
+   grouping, the collapse button and the diff status filter, bound in the Diff tab's, the diff window's and the stash
+   window's XAML; the app's `FileListTreeButtons` and `DiffStatusButtons` are gone), the Toolbar submenu
+   (`Diff/FileListToolbarChoicesViewModel.cs`), the git-grep box (`Diff/GitGrepViewModel.cs`, with the window behind
+   `IGitGrepWindow`), "Copy path(s)", the difftool choices and the scripts' items (entries and commands), and the diff
+   view's "Diff appearance" item. Left as view concerns: find, replace and go to line in the diff view and the editor, the
+   editor's cut, copy and paste, the help picture's show and hide, and the toolbar overflow. 24 handlers fewer; 11 view
+   model tests. 48 are left (counted as above, without the plugins), next the dialogs (about 25, with `DialogHelp` and
+   the commit picker), then the macOS application menu and the repository host windows.
+   *2026-11-18, evening:* the dialogs. `IDialogHost.OpenUrl` (the app's goes through `DialogHelp.Open`, which tests
+   replace) and `DialogViewModel.OpenUrlCommand` serve every link: the About, Git ignore, Go to commit, Delete tag, Merge
+   branch and Conflicts windows' links bind it, with the user manual's address set by the view where only the app knows
+   it. The About window's contributors window and copy button are commands with window delegates; the recent repositories'
+   menu is entries (`RecentRepositoriesSettingsViewModel.MenuEntries`, whose items read the list's selection when they run); the conflicts
+   window's "Open in mergetool" lists `MergeToolEntries` and runs the configured tool itself; the file history's Load split
+   button binds its command; the commit picker has core `CommitHistory/CommitPickerViewModel.cs`. Left as view concerns:
+   the message box's buttons (made in code, and about ten test classes raise their click directly) and `DialogHelp` (the
+   help button and F1 together). 18 handlers fewer; 4 view model tests. 30 are left (counted as above, without the
+   plugins; 3 of them are `StaysOpenOnClick`, which the grep also matches): 14 in the repository host windows, 2 in the
+   macOS application menu, and 11 view concerns noted in `MVVM.md`.
+   *2026-11-18, night:* the repository host windows and the macOS application menu. Core `RepositoryHosts/` has
+   `CreatePullRequestViewModel`, `ViewPullRequestsViewModel` and `ForkAndCloneViewModel` on a `RepositoryHostViewModel`
+   base (upstream's texts by the forms' field names, and messages through `ShowRepositoryHostMessage`, which the app shows
+   with upstream's `MessageBoxes`, as before); the row records moved to Core with them. The views keep the hosted
+   remotes' display binding, the diff viewer, scrolling the discussion and the folder picker. The blame menu's plugin
+   items are entries (`Plugins/PluginMenuEntries.cs`, whose command clicks the plugin's WinForms item), and the macOS
+   application menu's items take the browse window's About and Settings commands. 16 handlers fewer; 5 view model tests.
+   **Step 5 is done**: 14 lines are left (counted as above, without the plugins), the 11 view concerns `MVVM.md` lists and
+   3 `StaysOpenOnClick` attributes the grep also matches. The plugins under `src/xplat/plugins` were not part of the count;
+   their windows are upstream's plugin forms ported one by one and move to MVVM when they are reworked (principle 6).
 6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
    upstream is not affected.

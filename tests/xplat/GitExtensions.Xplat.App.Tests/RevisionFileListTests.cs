@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -262,8 +261,8 @@ internal sealed class RevisionFileListTests
         WaitUntil(() => create.BranchLoaded.IsCompleted);
         CommitPickerView picker = Find<CommitPickerView>(create, "CommitPicker");
 
-        picker.GetLogicalDescendants().OfType<Button>().Single(button => button.Name == "buttonPickCommit")
-            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        UiClicks.Raise(picker.GetLogicalDescendants().OfType<Button>().Single(button => button.Name == "buttonPickCommit"),
+            Button.ClickEvent);
         WaitUntil(() => create.OwnedWindows.OfType<ChooseCommitWindow>().SingleOrDefault()?.CommitsLoaded.IsCompleted == true);
         ChooseCommitWindow choose = create.OwnedWindows.OfType<ChooseCommitWindow>().Single();
         ListBox grid = Find<ListBox>(choose, "revisionGrid");

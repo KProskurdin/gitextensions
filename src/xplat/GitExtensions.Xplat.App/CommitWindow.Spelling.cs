@@ -12,8 +12,9 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  Upstream <c>EditNetSpell</c>'s spelling checker of the commit message: after a pause in typing the misspelled words get a
 ///  red wave and, with "Mark ill formed lines", the text past upstream's line lengths a yellow mark; the message box menu
-///  offers the misspelled word's suggestions, "Add to dictionary", "Ignore word" and "Remove word", the dictionary to use
-///  (kept for the repository) and the two settings.
+///  offers the misspelled word's suggestions, "Add to dictionary", "Ignore word" and "Remove word", and the editing items,
+///  which act on the box's text and selection. The dictionary to use (kept for the repository), the two settings and "Word
+///  wrap" are the view model's entries (<c>CommitViewModel.Menus.cs</c>).
 /// </summary>
 public partial class CommitWindow
 {
@@ -23,15 +24,11 @@ public partial class CommitWindow
     private const string AddToDictionaryText = "Add to dictionary";
     private const string IgnoreWordText = "Ignore word";
     private const string RemoveWordText = "Remove word";
-    private const string DictionaryText = "Dictionary";
-    private const string MarkIllFormedLinesText = "Mark ill formed lines";
     private const string DeleteText = "Delete";
     private const string SelectAllText = "Select all";
 
     private readonly CommitSpellChecker _spellChecker = AppServices.NewSpellChecker();
 
-    // The repository's dictionary (upstream's Detached().Dictionary); nothing is checked until it has been read.
-    private string _dictionary = CommitSpellChecker.NoDictionary;
     private SpellingUnderlines? _underlines;
 
     // Counts the checks asked for, so only the last one shows its result.
@@ -48,7 +45,7 @@ public partial class CommitWindow
     /// <summary>
     ///  The dictionary the message is checked with.
     /// </summary>
-    public string SpellingDictionary => _dictionary;
+    public string SpellingDictionary => ViewModel.SpellingDictionary;
 
     private void InitializeSpelling()
     {
@@ -68,14 +65,7 @@ public partial class CommitWindow
                 ? _underlines?.TextPositionAt(e)
                 : null;
         }, RoutingStrategies.Tunnel, handledEventsToo: true);
-        Opened += (_, _) => Run(LoadDictionaryAsync);
         Closed += (_, _) => _spellCheckRequests++;
-    }
-
-    private async Task LoadDictionaryAsync()
-    {
-        _dictionary = await SpellingDictionarySetting.LoadAsync(_repositoryPath);
-        await CheckSpellingAsync(++_spellCheckRequests);
     }
 
     // Upstream's TextBoxTextChanged: the marks go at once; the text is checked again after the pause, unless the dictionary
@@ -84,7 +74,7 @@ public partial class CommitWindow
     {
         int request = ++_spellCheckRequests;
         _underlines?.Clear();
-        if (_spellChecker.IsOff(_dictionary) || (CommitMessageBox.Text?.Length ?? 0) < CommitSpellChecker.MinCheckedLength)
+        if (_spellChecker.IsOff(SpellingDictionary) || (CommitMessageBox.Text?.Length ?? 0) < CommitSpellChecker.MinCheckedLength)
         {
             return;
         }
@@ -105,14 +95,14 @@ public partial class CommitWindow
     private async Task CheckSpellingAsync(int request)
     {
         string text = CommitMessageBox.Text ?? "";
-        string dictionary = _dictionary;
+        string dictionary = SpellingDictionary;
         IReadOnlyList<TextRange> misspelled = await Task.Run(() => _spellChecker.Misspelled(text, dictionary));
         if (request != _spellCheckRequests || text != (CommitMessageBox.Text ?? ""))
         {
             return;
         }
 
-        bool mark = _preferences.MarkIllFormedLinesInCommitMsg;
+        bool mark = ViewModel.MarkIllFormedLines;
         _underlines?.Show(misspelled, mark ? CommitSpellChecker.IllFormedLines(text) : [],
             mark && CommitSpellChecker.MarksEmptySubject(text));
     }
@@ -128,7 +118,7 @@ public partial class CommitWindow
         _menuTextPosition = null;
         List<Control> items = [];
 
-        if (_spellChecker.SuggestionsAt(text, position, _dictionary) is { } word)
+        if (_spellChecker.SuggestionsAt(text, position, SpellingDictionary) is { } word)
         {
             foreach (string suggestion in word.Suggestions)
             {
@@ -137,7 +127,7 @@ public partial class CommitWindow
 
             items.Add(Item(AddToDictionaryText, () =>
             {
-                _spellChecker.AddToDictionary(word.Word, _dictionary);
+                _spellChecker.AddToDictionary(word.Word, SpellingDictionary);
                 CheckSpellingNow();
             }));
             items.Add(Item(IgnoreWordText, () =>
@@ -160,58 +150,19 @@ public partial class CommitWindow
         paste.InputGesture = new KeyGesture(Key.V, Hotkeys.CommandModifier);
         items.AddRange([cut, copy, paste, Item(DeleteText, DeleteSelection), Item(SelectAllText, () => CommitMessageBox.SelectAll())]);
         items.Add(new Separator());
-        items.Add(DictionaryMenuItem());
+        items.Add(MenuEntries.Item(ViewModel.DictionaryEntry(
+            [CommitSpellChecker.NoDictionary, .. CommitSpellChecker.Dictionaries(AppServices.DictionaryFolder)]), this));
         items.Add(new Separator());
+        items.AddRange(ViewModel.MessageBoxSettingEntries().Select(entry => MenuEntries.Item(entry, this)));
 
-        MenuItem markLines = new()
-        {
-            Header = MarkIllFormedLinesText,
-            ToggleType = MenuItemToggleType.CheckBox,
-            IsChecked = _preferences.MarkIllFormedLinesInCommitMsg,
-        };
-        markLines.Click += (_, _) =>
-        {
-            _preferences.MarkIllFormedLinesInCommitMsg = !_preferences.MarkIllFormedLinesInCommitMsg;
-            CheckSpellingNow();
-        };
-        items.Add(markLines);
-        items.Add(AutoCompletionMenuItem());
-
-        MenuItem wordWrap = Item(WordWrapBodyText, () => CommitMessageBox.Text =
-            CommitMessageValidation.WrapBody(CommitMessageBox.Text ?? "", _preferences.CommitValidation.MaxLineLength));
         int separator = items.FindIndex(item => item is Separator);
-        items.Insert(separator < 0 ? 0 : separator, wordWrap);
+        items.Insert(separator < 0 ? 0 : separator, MenuEntries.Item(ViewModel.WordWrapEntry(), this));
 
         menu.Items.Clear();
         foreach (Control item in items)
         {
             menu.Items.Add(item);
         }
-    }
-
-    // Upstream's AddDictionaries: "None" and the dictionaries next to the app, the one in use checked; a choice is kept for
-    // the repository (DicToolStripMenuItemClick).
-    private MenuItem DictionaryMenuItem()
-    {
-        MenuItem menu = new() { Header = DictionaryText };
-        foreach (string dictionary in (string[])[CommitSpellChecker.NoDictionary, .. CommitSpellChecker.Dictionaries(AppServices.DictionaryFolder)])
-        {
-            MenuItem item = new()
-            {
-                Header = new TextBlock { Text = dictionary },
-                ToggleType = MenuItemToggleType.CheckBox,
-                IsChecked = string.Equals(dictionary, _dictionary, StringComparison.OrdinalIgnoreCase),
-            };
-            item.Click += (_, _) => Run(async () =>
-            {
-                _dictionary = dictionary;
-                await SpellingDictionarySetting.SaveLocalAsync(_repositoryPath, dictionary);
-                await CheckSpellingAsync(++_spellCheckRequests);
-            });
-            menu.Items.Add(item);
-        }
-
-        return menu;
     }
 
     // Upstream's SpellingReplacedWord: the word replaced, the caret after it.

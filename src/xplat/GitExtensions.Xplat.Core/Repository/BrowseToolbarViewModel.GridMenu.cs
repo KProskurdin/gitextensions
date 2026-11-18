@@ -164,6 +164,17 @@ public sealed partial class BrowseToolbarViewModel
     [RelayCommand]
     private void RunUserScript(ScriptDefinition script) => OnRepository(path => BrowseWindow.RunUserScriptAsync(path, script));
 
+    // Upstream's AddUserScripts in the grid's and the left panel's menus: the script on the grid's selection, while a commit
+    // is selected.
+    [RelayCommand]
+    private void RunGridScript(ScriptDefinition script)
+    {
+        if (_commits.Selected is not null)
+        {
+            OnRepository(path => BrowseWindow.RunUserScriptAsync(path, script));
+        }
+    }
+
     // The grid's hotkey commands that are menu items too: the compare items, the special commits, the Navigate menu.
     [RelayCommand]
     private void RunGrid(GridCommand command) => BrowseWindow.RunGridCommand(command);

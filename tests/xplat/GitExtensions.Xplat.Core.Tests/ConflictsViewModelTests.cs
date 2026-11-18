@@ -50,6 +50,8 @@ internal sealed class ConflictsViewModelTests
         viewModel.OpenInText.Should().Be(Mark + "Open in fake");
         viewModel.CanOpenMergeTool.Should().BeTrue();
         viewModel.MergeTools.Should().Equal("kdiff3", "meld");
+        viewModel.MergeToolEntries.Select(entry => (entry.Text, entry.IsBold)).Should()
+            .Equal(("kdiff3", true), ("meld", false));
         viewModel.Loaded.IsCompleted.Should().BeTrue();
     }
 

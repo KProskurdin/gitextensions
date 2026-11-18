@@ -65,4 +65,7 @@ internal sealed class WindowDialogHost : IDialogHost
     }
 
     public void Close(object? result) => _window.Close(result);
+
+    // Through DialogHelp's opener, which tests replace.
+    public void OpenUrl(string url) => DialogHelp.Open(url);
 }

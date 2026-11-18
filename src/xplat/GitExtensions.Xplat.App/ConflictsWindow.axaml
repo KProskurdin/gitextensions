@@ -20,7 +20,11 @@
             <ContextMenu x:Name="ConflictMenu">
               <MenuItem x:Name="OpenMergeToolMenuItem" Header="{Binding OpenInText}" Command="{Binding MergeCommand}"
                         IsEnabled="{Binding CanOpenMergeTool}" />
-              <MenuItem x:Name="CustomMergeToolMenuItem" Header="Open in _mergetool" IsEnabled="{Binding HasOneFile}" />
+              <!-- Its tools run their own command, which keeps their clicks from reaching it (MVVM.md, Parent items with
+                   commands); a click on the item itself runs the configured tool. -->
+              <MenuItem x:Name="CustomMergeToolMenuItem" Header="Open in _mergetool" IsEnabled="{Binding HasOneFile}"
+                        Command="{Binding RunGitMergeToolCommand}"
+                        ItemsSource="{Binding MergeToolEntries, Converter={x:Static local:MenuEntriesConverter.Instance}}" />
               <MenuItem x:Name="MarkAsSolvedMenuItem" Header="Mark conflict as solved" Command="{Binding MarkAsSolvedCommand}" />
               <Separator />
               <MenuItem x:Name="ChooseLocalMenuItem" Header="{Binding ChooseLocalText}" ToolTip.Tip="{Binding ChooseLocalTooltip}"
@@ -94,6 +98,7 @@
                  Margin="0,2,12,2" />
       <SelectableTextBlock x:Name="RemoteNameText" Grid.Row="2" Grid.Column="1" Text="{Binding RemoteName}" Margin="0,2" />
     </Grid>
-    <HyperlinkButton x:Name="HelpLink" Grid.Row="2" Content="Help" Padding="3,0" VerticalAlignment="Bottom" />
+    <HyperlinkButton x:Name="HelpLink" Grid.Row="2" Content="Help" Padding="3,0" VerticalAlignment="Bottom"
+                     Command="{Binding OpenUrlCommand}" />
   </Grid>
 </Window>

@@ -1,5 +1,6 @@
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Scripts;
 
 namespace GitExtensions.Xplat.Core.Diff;
 
@@ -99,6 +100,11 @@ public sealed record FileListMenuSource
     ///  The path of the file selected last (upstream's <c>FocusedItem</c>); null when unknown.
     /// </summary>
     public Func<string?> FocusedPath { get; init; } = () => null;
+
+    /// <summary>
+    ///  Runs a user script on the selection (upstream's <c>AddUserScripts</c> items); null offers none.
+    /// </summary>
+    public Action<ScriptDefinition>? RunScript { get; init; }
 
     /// <summary>
     ///  The index of <see cref="FocusedPath"/> in the selection's files, or -1.

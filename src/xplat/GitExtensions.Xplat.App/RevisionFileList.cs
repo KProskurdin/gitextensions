@@ -33,15 +33,10 @@ internal sealed class RevisionFileList<T>
     private readonly ListBox _list;
     private readonly FileFilterBox _filter;
     private readonly Func<T, string?>? _oldPath;
-    private readonly ToolToggleButton _byPath;
-    private readonly ToolToggleButton _byExtension;
-    private readonly ToolToggleButton _byStatus;
     private readonly TextBlock _noFiles;
     private readonly IAppPreferences _preferences;
     private readonly Func<T, string> _path;
     private readonly Func<T, DiffGroup?>? _groupOf;
-    private readonly FileListTreeButtons? _treeButtons;
-    private readonly DiffStatusButtons? _statusButtons;
     private readonly Func<T, DiffBranchStatus> _diffStatus;
     private readonly FileTreeRows<T> _tree;
     private readonly Dictionary<DiffGroup, bool> _expanded = new(ReferenceEqualityComparer.Instance);
@@ -49,50 +44,32 @@ internal sealed class RevisionFileList<T>
 
     /// <param name="groupOf">The diff group a file is listed in; with files of several groups the list shows upstream's
     ///  group nodes (<see cref="DiffGroupHeader"/>).</param>
-    /// <param name="treeButtons">Upstream's collapse and tree buttons, for the lists whose toolbar has them.</param>
-    /// <param name="diffStatus">Upstream's <c>DiffStatus</c> of a file in a BASE group, for its image and the
-    ///  <paramref name="statusButtons"/>' filter.</param>
+    /// <param name="toolbar">Upstream's toolbar over the list, bound to <see cref="Toolbar"/>.</param>
+    /// <param name="diffStatus">Upstream's <c>DiffStatus</c> of a file in a BASE group, for its image and the toolbar's
+    ///  diff status filter.</param>
     /// <param name="oldPath">A file's path before a rename, which the filter also matches.</param>
-    public RevisionFileList(ListBox list, FileFilterBox filter, ToolToggleButton byPath, ToolToggleButton byExtension,
-        ToolToggleButton byStatus, TextBlock noFiles, IAppPreferences preferences, Func<T, string> path,
-        Func<T, string> status, Func<T, DiffGroup?>? groupOf = null, FileListTreeButtons? treeButtons = null,
-        Func<T, DiffBranchStatus>? diffStatus = null, DiffStatusButtons? statusButtons = null,
-        Func<T, string?>? oldPath = null)
+    public RevisionFileList(ListBox list, FileFilterBox filter, Panel toolbar, TextBlock noFiles,
+        IAppPreferences preferences, Func<T, string> path, Func<T, string> status, Func<T, DiffGroup?>? groupOf = null,
+        Func<T, DiffBranchStatus>? diffStatus = null, Func<T, string?>? oldPath = null)
     {
         _groupOf = groupOf;
-        _treeButtons = treeButtons;
-        _statusButtons = statusButtons;
         _diffStatus = diffStatus ?? (_ => DiffBranchStatus.Unknown);
         _list = list;
         _filter = filter;
         _oldPath = oldPath;
-        _byPath = byPath;
-        _byExtension = byExtension;
-        _byStatus = byStatus;
         _noFiles = noFiles;
         _preferences = preferences;
         _path = path;
         _tree = new FileTreeRows<T>(list, preferences, path,
             file => FileStatusList.ImageForStatus(status(file), _diffStatus(file)),
             file => FileStatusList.KindOf(status(file)), Show);
-        statusButtons?.Wire(Show);
+        Toolbar = new FileListToolbarViewModel(preferences);
+        FileListToolbar.Bind(toolbar, Toolbar);
+        Toolbar.Changed += (_, _) => Show();
+        Toolbar.CollapseGroupsRequested += (_, _) => CollapseGroups();
         _noFiles.Text = UpstreamTranslation.ByText(NoChanges);
         _noFiles.IsVisible = false;
         _filter.FilterChanged += (_, _) => Show();
-        _byPath.Click += (_, _) => SetGroupBy(DiffListSortType.FilePath);
-        _byExtension.Click += (_, _) => SetGroupBy(DiffListSortType.FileExtension);
-        _byStatus.Click += (_, _) => SetGroupBy(DiffListSortType.FileStatus);
-        if (treeButtons is not null)
-        {
-            treeButtons.Wire(preferences, () =>
-            {
-                ShowGroupBy();
-                Show();
-            });
-            treeButtons.CollapseGroups?.Click += (_, _) => CollapseGroups();
-        }
-
-        ShowGroupBy();
 
         // Upstream's diff group nodes expand and collapse on a click on their glyph or on a double-click.
         _list.AddHandler(InputElement.TappedEvent, (_, e) =>
@@ -136,6 +113,11 @@ internal sealed class RevisionFileList<T>
     ///  Upstream's tree items of the list's menu, for its folder, group and diff group nodes.
     /// </summary>
     public FileListTree MenuTree { get; }
+
+    /// <summary>
+    ///  The toolbar's grouping, diff status filter and collapse button.
+    /// </summary>
+    public FileListToolbarViewModel Toolbar { get; }
 
     /// <summary>
     ///  The files to list; null while they are being read (the list is empty, without the NoFiles text).
@@ -218,8 +200,8 @@ internal sealed class RevisionFileList<T>
 
         // Upstream's UpdateToolbar shows the collapse button while the list has diff group nodes, and the diff status
         // filter while it has a BASE group (HasDiffABGroups).
-        _treeButtons?.CollapseGroups?.IsVisible = groups.Count >= 2;
-        _statusButtons?.SetVisible(groups.Any(group => group.Icon is DiffAIcon or DiffBIcon));
+        Toolbar.IsCollapseGroupsVisible = groups.Count >= 2;
+        Toolbar.IsDiffStatusFilterVisible = groups.Any(group => group.Icon is DiffAIcon or DiffBIcon);
 
         // Avalonia keeps a selected item that the new list has an equal one of (the files are records); adding that one
         // too would list the file twice in SelectedItems.
@@ -248,7 +230,7 @@ internal sealed class RevisionFileList<T>
     private IReadOnlyList<T> Matching(IEnumerable<T> files)
         =>
         [
-            .. files.Where(file => (_statusButtons?.Shows(_diffStatus(file)) ?? true)
+            .. files.Where(file => Toolbar.Shows(_diffStatus(file))
                                    && _filter.IsMatch(_path(file), _oldPath?.Invoke(file)))
         ];
 
@@ -318,63 +300,6 @@ internal sealed class RevisionFileList<T>
         {
             _list.SelectedItem = file;
             _list.ScrollIntoView(file);
-        }
-    }
-
-    private void SetGroupBy(DiffListSortType grouping)
-    {
-        _preferences.DiffListSorting = FileListTreeButtons.GroupBy(_preferences.DiffListSorting, grouping);
-        _preferences.Save();
-        ShowGroupBy();
-        Show();
-    }
-
-    private void ShowGroupBy()
-    {
-        DiffListSortType sorting = _preferences.DiffListSorting;
-        _byPath.IsChecked = sorting is DiffListSortType.FilePath or DiffListSortType.FilePathFlat;
-        _byExtension.IsChecked = sorting is DiffListSortType.FileExtension or DiffListSortType.FileExtensionFlat;
-        _byStatus.IsChecked = sorting is DiffListSortType.FileStatus or DiffListSortType.FileStatusFlat;
-        _treeButtons?.Show(_preferences);
-    }
-}
-
-/// <summary>
-///  Upstream FileStatusList's diff status filter (btnUnequalChange, btnOnlyB, btnOnlyA, btnSameChange): each shows the files
-///  of the BASE groups changed on its side, all checked at first; shown with their separator while the list has a BASE
-///  group.
-/// </summary>
-internal sealed record DiffStatusButtons(ToolToggleButton Unequal, ToolToggleButton OnlyB, ToolToggleButton OnlyA,
-    ToolToggleButton Same, Control Separator)
-{
-    /// <summary>
-    ///  Fills the list again after a button was clicked.
-    /// </summary>
-    public void Wire(Action changed)
-    {
-        foreach (ToolToggleButton button in new[] { Unequal, OnlyB, OnlyA, Same })
-        {
-            button.Click += (_, _) => changed();
-        }
-    }
-
-    /// <summary>
-    ///  Upstream's <c>IsDiffStatusMatch</c>.
-    /// </summary>
-    public bool Shows(DiffBranchStatus status) => status switch
-    {
-        DiffBranchStatus.UnequalChange => Unequal.IsChecked == true,
-        DiffBranchStatus.OnlyBChange => OnlyB.IsChecked == true,
-        DiffBranchStatus.OnlyAChange => OnlyA.IsChecked == true,
-        DiffBranchStatus.SameChange => Same.IsChecked == true,
-        _ => true,
-    };
-
-    public void SetVisible(bool visible)
-    {
-        foreach (Control control in new Control[] { Unequal, OnlyB, OnlyA, Same, Separator })
-        {
-            control.IsVisible = visible;
         }
     }
 }

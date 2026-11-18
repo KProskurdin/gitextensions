@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitCommands.Git;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Scripts;
@@ -78,13 +79,57 @@ public sealed record CommitViewModelServices
     ///  none.
     /// </summary>
     public Func<string?, Task>? ShowRemotes { get; init; }
+
+    /// <summary>
+    ///  Upstream's SolveMergeconflicts button: the conflicts window, without its offer to commit.
+    /// </summary>
+    public Func<Task>? ShowConflicts { get; init; }
+
+    /// <summary>
+    ///  Upstream's ignored files' editors: <c>.gitignore</c>, or the repository's own exclude file when true; true once
+    ///  saved.
+    /// </summary>
+    public Func<bool, Task<bool>>? EditIgnoredFiles { get; init; }
+
+    /// <summary>
+    ///  The commit templates' settings window.
+    /// </summary>
+    public Func<Task>? EditTemplates { get; init; }
+
+    /// <summary>
+    ///  Opens a web page in the browser (the Conventional Commits documentation).
+    /// </summary>
+    public Func<Uri, Task>? OpenUrl { get; init; }
+
+    /// <summary>
+    ///  Reads the working directory's changes with the ignored, the assumed-unchanged and the skip-worktree files as asked
+    ///  (in this order); null lists the repository's changes only.
+    /// </summary>
+    public Func<bool, bool, bool, Task<IReadOnlyList<FileChange>>>? ReadWorkTreeChanges { get; init; }
+
+    /// <summary>
+    ///  A git config value of the repository as git resolves it; null reads none.
+    /// </summary>
+    public Func<string, Task<string>>? ReadGitSetting { get; init; }
+
+    /// <summary>
+    ///  Reads the repository's spelling dictionary; null leaves spelling off.
+    /// </summary>
+    public Func<Task<string>>? LoadDictionary { get; init; }
+
+    /// <summary>
+    ///  Keeps the dictionary chosen in the message box's menu for the repository.
+    /// </summary>
+    public Func<string, Task>? SaveDictionary { get; init; }
 }
 
 /// <summary>
 ///  The view model of upstream's <c>FormCommit</c>: the message (the prepared one, the draft, the template, amend's), the
-///  commit kind, the options, the buttons' states, committing and pushing, resetting and the status bar's texts. It works on
-///  the main window's repository state and operations, so a change made here refreshes both windows. The file lists, the
-///  diff, auto-completion and spelling are the window's.
+///  commit kind, the options, the buttons' states, committing and pushing, resetting and the status bar's texts, what the
+///  file lists list and their commands (<c>CommitViewModel.FileLists.cs</c>), and the menus filled as they open
+///  (<c>CommitViewModel.Menus.cs</c>). It works on the main window's repository state and operations, so a change made
+///  here refreshes both windows. The lists' trees and filters, the diff, auto-completion and the spelling check are the
+///  window's.
 /// </summary>
 public sealed partial class CommitViewModel : DialogViewModel
 {
@@ -156,6 +201,7 @@ public sealed partial class CommitViewModel : DialogViewModel
         ShowResetAll = preferences.ShowResetAllChanges;
         ShowResetUnstaged = preferences.ShowResetWorkTreeChanges;
         Title = CommitStatusBar.Title(repository.CurrentBranch, repositoryPath);
+        Grouping = new FileListGroupingViewModel(preferences);
         _repository.PropertyChanged += OnRepositoryChanged;
         _actions.PropertyChanged += OnActionsChanged;
         ShowRepositoryState();
@@ -380,6 +426,8 @@ public sealed partial class CommitViewModel : DialogViewModel
     public Task LoadAsync() => GuardAsync(async () =>
     {
         _ = ReadModuleAsync();
+        Run(ReadShowUntrackedAsync);
+        Run(LoadDictionaryAsync);
         string message = await _messages.LoadAsync(_repositoryPath);
         if (UseFormCommitMessage && string.IsNullOrEmpty(Message))
         {
@@ -884,6 +932,7 @@ public sealed partial class CommitViewModel : DialogViewModel
             case nameof(RepositoryViewModel.Changes):
                 ShowRepositoryState();
                 OnPropertyChanged(nameof(CommitAndPushContent));
+                ReadListedChanges();
                 break;
             case nameof(RepositoryViewModel.IsLoading):
             case nameof(RepositoryViewModel.IsMerging):

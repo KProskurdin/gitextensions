@@ -33,10 +33,8 @@ public partial class GitIgnoreWindow : Window
         DataContext = ViewModel;
         InitialFocus.Attach(this, () => _NO_TRANSLATE_GitIgnoreEdit);
 
-        // View concerns: the links open the browser, the editor takes the focus once the file is read, and a close with
-        // unsaved changes waits for upstream's question, which closes the window again once answered.
-        lnkGitIgnorePatterns.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(GitIgnoreDialog.PatternsUrl);
-        lnkGitIgnoreGenerate.Click += (_, _) => OsShellUtil.OpenUrlInDefaultBrowser(GitIgnoreDialog.GenerateUrl);
+        // View concerns: the editor takes the focus once the file is read, and a close with unsaved changes waits for
+        // upstream's question, which closes the window again once answered.
         Closing += (sender, e) =>
         {
             if (!ViewModel.MayClose)

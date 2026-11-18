@@ -36,7 +36,9 @@ internal static class MenuEntries
         MenuItem item = new()
         {
             Header = Header(entry, resources),
-            Icon = entry.Image is { } image && UpstreamImages.Named(image) is { } picture ? ToolStripContent.Icon(picture) : null,
+            Icon = entry.Image is { } image && UpstreamImages.Named(image) is { } picture ? ToolStripContent.Icon(picture)
+                : entry.ImageData is { } png ? Picture(png)
+                : null,
             Command = entry.Command,
             CommandParameter = entry.CommandParameter,
             Tag = entry.SearchText,
@@ -73,6 +75,13 @@ internal static class MenuEntries
 
         decorate?.Invoke(item, entry);
         return item;
+    }
+
+    // A picture from PNG data, 16 pixels as the menus' other icons.
+    private static Image Picture(byte[] png)
+    {
+        using MemoryStream stream = new(png);
+        return new Image { Source = new Avalonia.Media.Imaging.Bitmap(stream), Width = 16, Height = 16 };
     }
 
     // An access key's text is the header itself, as upstream's menus show it; other texts show as they are.

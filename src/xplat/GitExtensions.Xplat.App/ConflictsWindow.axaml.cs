@@ -74,24 +74,8 @@ public partial class ConflictsWindow : Window
         ConflictList.SelectionChanged += (_, _) =>
             ViewModel.SelectedRows = [.. ConflictList.SelectedItems?.OfType<ConflictRow>() ?? []];
         ConflictList.DoubleTapped += (_, _) => ViewModel.MergeCommand.Execute(null);
-        CustomMergeToolMenuItem.Click += (_, e) =>
-        {
-            // A tool's item bubbles its click up here; it runs its own tool.
-            if (e.Source == CustomMergeToolMenuItem)
-            {
-                ViewModel.RunGitMergeToolCommand.Execute(null);
-            }
-        };
         ConflictMenu.Opening += (_, e) => e.Cancel = ViewModel.SelectedRows.Count == 0;
-        HelpLink.Click += (_, _) =>
-            OsShellUtil.OpenUrlInDefaultBrowser(GitUI.UserManual.UserManual.UrlFor(HelpSubfolder, HelpAnchor));
-        ViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ConflictsViewModel.MergeTools))
-            {
-                ShowMergeTools();
-            }
-        };
+        HelpLink.CommandParameter = GitUI.UserManual.UserManual.UrlFor(HelpSubfolder, HelpAnchor);
         KeyDown += OnWindowKeyDown;
         Opened += (_, _) => _ = LoadAsync();
     }
@@ -112,23 +96,6 @@ public partial class ConflictsWindow : Window
     {
         await ViewModel.LoadAsync();
         MergeButton.Focus();
-    }
-
-    // Upstream's LoadCustomMergetools: git's merge tools under "Open in mergetool", the first (the configured one) in bold.
-    // An Avalonia item with a submenu does not run on click, so the default tool is that first entry.
-    private void ShowMergeTools()
-    {
-        CustomMergeToolMenuItem.Items.Clear();
-        foreach (string tool in ViewModel.MergeTools)
-        {
-            CustomMergeToolMenuItem.Items.Add(new MenuItem
-            {
-                Header = new TextBlock { Text = tool },
-                FontWeight = CustomMergeToolMenuItem.Items.Count == 0 ? FontWeight.Bold : FontWeight.Normal,
-                Command = ViewModel.RunGitMergeToolCommand,
-                CommandParameter = tool,
-            });
-        }
     }
 
     private async Task<string?> PickSaveFileAsync(string suggestedName, string folderPath)

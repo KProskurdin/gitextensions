@@ -1,12 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace GitExtensions.Xplat.Core.Presentation;
 
 /// <summary>
 ///  The base of a window's view model (PLAN.md principle 6): the <see cref="IDialogHost"/> it reaches its window through,
-///  and the guard its commands run in, so an error is shown instead of ending the app.
+///  and the guard its commands run in, so an error is shown instead of ending the app. Every window's links bind
+///  <see cref="OpenUrlCommand"/> with their address.
 /// </summary>
-public abstract class DialogViewModel : ObservableObject
+public abstract partial class DialogViewModel : ObservableObject
 {
     protected DialogViewModel(IDialogHost host)
     {
@@ -41,4 +43,8 @@ public abstract class DialogViewModel : ObservableObject
     ///  change starts.
     /// </summary>
     protected void Run(Func<Task> action) => _ = GuardAsync(action);
+
+    // Upstream's links: the page in the browser.
+    [RelayCommand]
+    private void OpenUrl(string url) => Host.OpenUrl(url);
 }

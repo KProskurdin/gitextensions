@@ -54,6 +54,10 @@ internal sealed class FakeDialogHost : IDialogHost
 
     public void ShowError(Exception exception) => Errors.Add(exception);
 
+    public List<string> OpenedUrls { get; } = [];
+
+    public void OpenUrl(string url) => OpenedUrls.Add(url);
+
     public void Close(object? result)
     {
         IsClosed = true;

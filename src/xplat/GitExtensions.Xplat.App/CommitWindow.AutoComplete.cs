@@ -20,8 +20,6 @@ public partial class CommitWindow
     // Upstream's AutoCompleteTimer: the list follows typing after this pause.
     private static readonly TimeSpan _autoCompleteDelay = TimeSpan.FromMilliseconds(200);
 
-    private const string AutoCompletionText = "Provide auto completion";
-
     // Counts the requests to follow the typing, so only the last one after the pause shows the list.
     private int _autoCompleteRequests;
 
@@ -105,24 +103,6 @@ public partial class CommitWindow
         {
             // A newer read replaced this one.
         }
-    }
-
-    // Upstream's message box menu item.
-    private MenuItem AutoCompletionMenuItem()
-    {
-        MenuItem item = new()
-        {
-            Header = AutoCompletionText,
-            ToggleType = MenuItemToggleType.CheckBox,
-            IsChecked = _preferences.ProvideAutocompletion
-        };
-        item.Click += (_, _) =>
-        {
-            _preferences.ProvideAutocompletion = item.IsChecked;
-            CloseAutoComplete();
-            RefreshAutoCompleteWords();
-        };
-        return item;
     }
 
     // Upstream's TextBox_KeyPress: a separator closes the list, other typing shows it after the pause.

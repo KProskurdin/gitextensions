@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Ui;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
@@ -10,15 +11,15 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  Upstream's <c>CommitPickerSmallControl</c>: the chosen commit's short hash, which can be typed (a hash or ref, resolved
 ///  when the box is left and refused with upstream's message when git does not know it) or picked with the button in the
-///  choose commit window (upstream's <c>buttonPickCommit_Click</c>), and <c>GetCommitCountString</c> from HEAD to it. A
-///  view model binds <see cref="Selected"/> (two-way) and <see cref="Module"/>; code-behind windows set them and call
-///  <see cref="SetCommitAsync"/>.
+///  choose commit window (upstream's <c>buttonPickCommit_Click</c>), and <c>GetCommitCountString</c> from HEAD to it, bound
+///  to <see cref="CommitPickerViewModel"/>. A window's view model binds <see cref="Selected"/> (two-way) and
+///  <see cref="Module"/>; code-behind windows set them and call <see cref="SetCommitAsync"/>.
 /// </summary>
 public partial class CommitPickerView : UserControl
 {
     // Upstream's text.
-    public const string InvalidCommitHash = "The given commit hash is not valid for this repository and was therefore discarded.";
-    public const string ErrorCaption = "Error";
+    public const string InvalidCommitHash = CommitPickerViewModel.InvalidCommitHash;
+    public const string ErrorCaption = CommitPickerViewModel.ErrorCaption;
 
     /// <summary>
     ///  The chosen commit; null when none is.
@@ -32,19 +33,32 @@ public partial class CommitPickerView : UserControl
     public static readonly StyledProperty<IGitModule?> ModuleProperty =
         AvaloniaProperty.Register<CommitPickerView, IGitModule?>(nameof(Module));
 
-    private int _version;
-
     public CommitPickerView()
     {
         InitializeComponent();
-        CommitHashBox.LostFocus += (_, _) => UiActions.Run(() => SetCommitAsync(CommitHashBox.Text?.Trim() ?? ""), _ => { });
-        buttonPickCommit.Click += (_, _) => UiActions.Run(PickCommitAsync, _ => { });
+
+        // The view model is the inner panel's data context, so the window's own reaches the control (MVVM.md, Controls).
+        LayoutRoot.DataContext = ViewModel;
+        ViewModel.PickCommit = PickCommitAsync;
+        ViewModel.ShowError = ShowErrorAsync;
+        ViewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CommitPickerViewModel.Selected))
+            {
+                SetCurrentValue(SelectedProperty, ViewModel.Selected);
+            }
+        };
+
+        // View concern: a typed revision is resolved when the box is left.
+        CommitHashBox.LostFocus += (_, _) => _ = ViewModel.SetCommitAsync(ViewModel.HashText.Trim());
     }
 
     /// <summary>
     ///  Raised when another commit is chosen.
     /// </summary>
     public event EventHandler? SelectedChanged;
+
+    public CommitPickerViewModel ViewModel { get; } = new(UpstreamTranslation.ByText);
 
     public ObjectId? Selected
     {
@@ -59,93 +73,33 @@ public partial class CommitPickerView : UserControl
     }
 
     /// <summary>
-    ///  Upstream's <c>SetSelectedCommitHash</c>: resolves <paramref name="revision"/>; an unknown one is refused (with a
-    ///  message when something was typed) and the previous commit kept.
+    ///  Upstream's <c>SetSelectedCommitHash</c> (<see cref="CommitPickerViewModel.SetCommitAsync"/>).
     /// </summary>
-    public async Task SetCommitAsync(string? revision)
-    {
-        if (Module is not { } module || (revision ?? "") == (Selected?.ToShortString() ?? ""))
-        {
-            return;
-        }
-
-        ObjectId id = string.IsNullOrWhiteSpace(revision) ? default : await Task.Run(() => module.RevParse(revision));
-        if (id.IsZero)
-        {
-            if (!string.IsNullOrWhiteSpace(revision) && TopLevel.GetTopLevel(this) is Window owner)
-            {
-                await new MessageBoxWindow(UpstreamTranslation.ByText(InvalidCommitHash), UpstreamTranslation.ByText(ErrorCaption),
-                    MessageBoxButtons.OK).ShowDialog(owner);
-            }
-
-            CommitHashBox.Text = Selected?.ToShortString() ?? "";
-            return;
-        }
-
-        if (id == Selected)
-        {
-            // The same commit by another name: shown by its short hash again.
-            CommitHashBox.Text = id.ToShortString();
-            return;
-        }
-
-        Selected = id;
-    }
+    public Task SetCommitAsync(string? revision) => ViewModel.SetCommitAsync(revision);
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property == SelectedProperty)
         {
-            ShowSelected();
+            ViewModel.Selected = Selected;
             SelectedChanged?.Invoke(this, EventArgs.Empty);
         }
         else if (change.Property == ModuleProperty)
         {
-            ShowSelected();
+            ViewModel.Module = Module;
         }
     }
 
-    // Upstream's buttonPickCommit_Click: the choose commit window on the chosen commit.
-    private async Task PickCommitAsync()
-    {
-        if (Module is not { } module || TopLevel.GetTopLevel(this) is not Window owner)
-        {
-            return;
-        }
+    // Upstream's buttonPickCommit_Click: the choose commit window over this control's window.
+    private async Task<string?> PickCommitAsync(string? selected)
+        => Module is { } module && TopLevel.GetTopLevel(this) is Window owner
+            ? (await new ChooseCommitWindow(module.WorkingDir, selected, AppServices.Preferences)
+                .ShowDialog<Core.CommitHistory.CommitRow?>(owner))?.Hash
+            : null;
 
-        if (await new ChooseCommitWindow(module.WorkingDir, Selected?.ToString(), AppServices.Preferences)
-                .ShowDialog<Core.CommitHistory.CommitRow?>(owner) is { } row)
-        {
-            await SetCommitAsync(row.Hash);
-        }
-    }
-
-    // The chosen commit's short hash, and upstream's GetCommitCountString from HEAD to it, read off the UI thread; a later
-    // choice wins.
-    private void ShowSelected()
-    {
-        int version = ++_version;
-        CommitHashBox.Text = Selected?.ToShortString() ?? "";
-        CommitCountText.Text = "";
-        if (Selected is not { } id || Module is not { } module)
-        {
-            return;
-        }
-
-        UiActions.Run(
-            async () =>
-            {
-                string count = await Task.Run(() =>
-                {
-                    ObjectId current = module.GetCurrentCheckout();
-                    return current.IsZero ? "" : module.GetCommitCountString(current, id.ToString());
-                });
-                if (version == _version)
-                {
-                    CommitCountText.Text = count;
-                }
-            },
-            _ => { });
-    }
+    private Task ShowErrorAsync(string message, string caption)
+        => TopLevel.GetTopLevel(this) is Window owner
+            ? new MessageBoxWindow(message, caption, MessageBoxButtons.OK).ShowDialog(owner)
+            : Task.CompletedTask;
 }

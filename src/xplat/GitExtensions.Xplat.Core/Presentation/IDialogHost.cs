@@ -45,6 +45,11 @@ public interface IDialogHost
     void ShowError(Exception exception);
 
     /// <summary>
+    ///  Opens <paramref name="url"/> in the browser: upstream's links and user manual buttons.
+    /// </summary>
+    void OpenUrl(string url);
+
+    /// <summary>
     ///  Closes the window with <paramref name="result"/>.
     /// </summary>
     void Close(object? result);

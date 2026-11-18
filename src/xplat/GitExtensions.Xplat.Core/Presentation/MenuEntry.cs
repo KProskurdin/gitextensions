@@ -39,6 +39,11 @@ public sealed partial class MenuEntry : ObservableObject
     /// </summary>
     public string? Image { get; init; }
 
+    /// <summary>
+    ///  A picture as PNG data, for one that is not upstream's (a plugin's commit template icon); <see cref="Image"/> wins.
+    /// </summary>
+    public byte[]? ImageData { get; init; }
+
     public string? Tip { get; init; }
 
     public bool IsBold { get; init; }

@@ -1,5 +1,7 @@
-using System.Collections.ObjectModel;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Data;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
@@ -7,262 +9,63 @@ using GitExtensions.Xplat.Ui;
 namespace GitExtensions.Xplat.App;
 
 /// <summary>
-///  Upstream FileStatusList's "Find in commit files using git-grep" (<c>cboFindInCommitFilesGitGrep</c>,
-///  <c>DeleteSearchButton</c>, the toolbar's <c>btnFindInFilesGitGrep</c> and <c>FormFindInCommitFilesGitGrep</c>) for a
-///  list that shows a commit's files: the box below the list's filter while upstream's setting shows it, searched 200 ms
-///  after typing stops and at once for an earlier search picked from its drop-down (the last 30, latest first); the
-///  button that shows the box, the window or both as upstream's "Using ..." choice says, and its menu of upstream's
-///  git-grep settings; the window. The list reads its files again with the search's git-grep argument.
+///  The view of upstream FileStatusList's "Find in commit files using git-grep" (<see cref="GitGrepViewModel"/>) for a list
+///  that shows a commit's files: the box below the list's filter, its delete button, the toolbar's split button and its
+///  menu are bound to the view model, and upstream's window (<see cref="FindInCommitFilesGitGrepWindow"/>) is opened for it.
+///  Focusing the box when it is shown stays here.
 /// </summary>
 public sealed class GitGrepBox : IFileListGitGrep
 {
-    // Upstream's SearchFilterMaxLength and the typing delay of cboFindInCommitFilesGitGrep_TextUpdate.
-    private const int MaxSearches = 30;
-    private const int TypingDelayMilliseconds = 200;
-
-    // Upstream's "Options" submenu: git-grep's pattern kinds.
-    private static readonly string[] _patternOptions =
-        ["--basic-regexp", "--extended-regexp", "--fixed-strings", "--perl-regexp"];
-
-    private readonly Window _owner;
-    private readonly ComboBox _box;
-    private readonly Button _delete;
-    private readonly IAppPreferences _preferences;
-    private readonly Action<string> _search;
-    private readonly ObservableCollection<string> _searches = [];
-    private FindInCommitFilesGitGrepWindow? _window;
-    private CancellationTokenSource? _typing;
-    private bool _settingText;
-    private string _searched = "";
-
     /// <param name="search">Reads the list again with a git-grep argument ("" for none).</param>
     internal GitGrepBox(Window owner, ComboBox box, Button delete, GitGrepButton? button, IAppPreferences preferences,
         Action<string> search)
     {
-        _owner = owner;
-        _box = box;
-        _delete = delete;
-        _preferences = preferences;
-        _search = search;
-        _box.ItemsSource = _searches;
-        _box.PlaceholderText = UpstreamTranslation.ByText(GitGrep.Watermark);
-        _box.IsVisible = preferences.ShowFindInCommitFilesGitGrep;
-        _delete.IsVisible = false;
-        _box.PropertyChanged += (_, e) =>
-        {
-            if (e.Property == ComboBox.TextProperty && !_settingText)
-            {
-                Search(_box.Text ?? "", TypingDelayMilliseconds);
-            }
-        };
-        _box.SelectionChanged += (_, _) =>
-        {
-            if (!_settingText && _box.SelectedItem is string picked)
-            {
-                Search(picked, delay: 0);
-            }
-        };
-        _delete.Click += (_, _) =>
-        {
-            SetText("");
-            Search("", delay: 0);
-        };
-        button?.Wire(this, preferences);
+        ViewModel = new GitGrepViewModel(preferences, search,
+            viewModel => new GrepWindow(owner, preferences, viewModel), UpstreamTranslation.ByText);
+        box.ItemsSource = ViewModel.Searches;
+        box.PlaceholderText = UpstreamTranslation.ByText(GitGrep.Watermark);
+        Bind(box, Visual.IsVisibleProperty, nameof(GitGrepViewModel.IsBoxVisible));
+
+        // As an editable list must, IsEditable is set before its text is bound (MVVM.md, Editable lists).
+        Bind(box, ComboBox.TextProperty, nameof(GitGrepViewModel.BoxText), BindingMode.TwoWay);
+        Bind(box, SelectingItemsControl.SelectedItemProperty, nameof(GitGrepViewModel.PickedSearch), BindingMode.TwoWay);
+        Bind(delete, Visual.IsVisibleProperty, nameof(GitGrepViewModel.IsDeleteVisible));
+        delete.Command = ViewModel.ClearCommand;
+        ViewModel.BoxFocusRequested += (_, _) => box.Focus();
+        button?.Bind(ViewModel);
     }
+
+    public GitGrepViewModel ViewModel { get; }
 
     /// <summary>
     ///  The search in effect.
     /// </summary>
-    public string Text => _searched;
+    public string Text => ViewModel.Searched;
 
     /// <summary>
     ///  Completes when the search asked for last has been handed to the list, for tests.
     /// </summary>
-    public Task Searched { get; private set; } = Task.CompletedTask;
+    public Task Searched => ViewModel.SearchCompleted;
 
     /// <summary>
     ///  Whether the list shows the box.
     /// </summary>
-    public bool BoxVisible => _box.IsVisible;
+    public bool BoxVisible => ViewModel.IsBoxVisible;
 
     /// <summary>
     ///  The window while it is open, for tests.
     /// </summary>
-    public FindInCommitFilesGitGrepWindow? Window => _window is { IsVisible: true } window ? window : null;
+    public FindInCommitFilesGitGrepWindow? Window => ((GrepWindow)ViewModel.Window).Open;
 
-    /// <summary>
-    ///  Upstream's <c>SetFindInCommitFilesGitGrepVisibility</c>: the box shown and focused, or hidden; a hidden box with no
-    ///  window to keep its search clears it.
-    /// </summary>
-    public void SetBoxVisible(bool visible)
-    {
-        _window?.SetShowFindInCommitFilesGitGrep(visible);
-        if (_box.IsVisible == visible)
-        {
-            return;
-        }
+    public void SetBoxVisible(bool visible) => ViewModel.SetBoxVisible(visible);
 
-        _box.IsVisible = visible;
-        if (visible)
-        {
-            _box.Focus();
-        }
-        else if (Window is null && (_box.Text ?? "").Length > 0)
-        {
-            SetText("");
-            Search("", delay: 0);
-        }
-    }
+    public void ShowWindow(string text) => ViewModel.ShowWindow(text);
 
-    /// <summary>
-    ///  Upstream's <c>ShowFindInCommitFileGitGrepDialog</c>: the window with <paramref name="text"/> (else the box's search)
-    ///  and the earlier searches.
-    /// </summary>
-    public void ShowWindow(string text)
-    {
-        if (_window is not { IsVisible: true })
-        {
-            _window = new FindInCommitFilesGitGrepWindow(_preferences, search =>
-            {
-                Search(search, delay: 0);
-                SetText(search);
-            }, visible =>
-            {
-                _preferences.ShowFindInCommitFilesGitGrep = visible;
-                SetBoxVisible(visible);
-            });
-            _window.Closed += (_, _) => _window = null;
-            _window.Show(_owner);
-        }
+    public void Toggle(bool fromButton) => ViewModel.Toggle(fromButton);
 
-        if (text.Length > 0)
-        {
-            _window.GitGrepExpressionText = text;
-        }
-        else if (_searched.Length > 0)
-        {
-            _window.GitGrepExpressionText = _searched;
-        }
-
-        _window.SetSearchItems(_searches);
-        _window.SetShowFindInCommitFilesGitGrep(_box.IsVisible);
-        _window.Activate();
-    }
-
-    /// <summary>
-    ///  Upstream's <c>FindInFilesGitGrep_ButtonClick</c>: the button toggles the box, the window or both as the "Using ..."
-    ///  choice says; a choice in its menu shows them.
-    /// </summary>
-    public void Toggle(bool fromButton)
-    {
-        int findUsing = _preferences.FindInFilesGitGrepTypeIndex;
-        bool usingInputBox = findUsing != 0;
-        bool usingWindow = findUsing != 1;
-        bool isVisible = (!usingInputBox || _box.IsVisible) && (!usingWindow || Window is not null);
-        bool setVisible = !fromButton || !isVisible;
-        bool boxVisible = setVisible && usingInputBox;
-        _preferences.ShowFindInCommitFilesGitGrep = boxVisible;
-        _preferences.Save();
-        SetBoxVisible(boxVisible);
-        if (setVisible && usingWindow)
-        {
-            ShowWindow("");
-        }
-        else
-        {
-            _window?.Close();
-        }
-    }
-
-    /// <summary>
-    ///  Searches again with the search in effect, after a git-grep setting changed.
-    /// </summary>
-    public void SearchAgain() => Search(_searched, delay: 0);
-
-    // Upstream's FindInCommitFilesGitGrep: after the delay the list is read again with the search's argument, and a search
-    // goes first in the drop-down.
-    private void Search(string search, int delay)
-    {
-        _delete.IsVisible = search.Length > 0;
-        _typing?.Cancel();
-        CancellationTokenSource typing = new();
-        _typing = typing;
-        Searched = RunAsync();
-        return;
-
-        async Task RunAsync()
-        {
-            if (delay > 0)
-            {
-                try
-                {
-                    await Task.Delay(delay, typing.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-            }
-
-            _searched = search;
-            _search(GitGrep.SearchArgument(search));
-            if (search.Length > 0)
-            {
-                Remember(search);
-            }
-        }
-    }
-
-    private void Remember(string search)
-    {
-        int index = _searches.IndexOf(search);
-        if (index == 0)
-        {
-            return;
-        }
-
-        _settingText = true;
-        try
-        {
-            if (index > 0)
-            {
-                _searches.RemoveAt(index);
-            }
-            else if (_searches.Count >= MaxSearches)
-            {
-                _searches.RemoveAt(MaxSearches - 1);
-            }
-
-            _searches.Insert(0, search);
-            _box.Text = search;
-        }
-        finally
-        {
-            _settingText = false;
-        }
-
-        if (Window is { } window)
-        {
-            window.SetSearchItems(_searches);
-            if (_box.IsVisible)
-            {
-                window.GitGrepExpressionText = search;
-            }
-        }
-    }
-
-    private void SetText(string text)
-    {
-        _settingText = true;
-        try
-        {
-            _box.Text = text;
-        }
-        finally
-        {
-            _settingText = false;
-        }
-    }
+    private void Bind(Control control, AvaloniaProperty property, string path,
+        BindingMode mode = BindingMode.OneWay)
+        => control.Bind(property, new Binding(path) { Source = ViewModel, Mode = mode });
 
     /// <summary>
     ///  The list toolbar's git-grep split button (upstream's <c>btnFindInFilesGitGrep</c>) and its menu.
@@ -270,55 +73,74 @@ public sealed class GitGrepBox : IFileListGitGrep
     internal sealed record GitGrepButton(SplitButton Button, MenuItem MatchCase, MenuItem WholeWord, MenuItem Options,
         MenuItem UsingWindow, MenuItem UsingBox, MenuItem UsingBoth)
     {
-        // Upstream's tsmiFindUsingOptions text, before the options in effect.
-        private const string OptionsText = "Options";
-
-        public void Wire(GitGrepBox box, IAppPreferences preferences)
+        // The button sits in a toolbar bound to another view model, and its flyout's items have no data context until it
+        // opens (MVVM.md, Flyouts), so each gets this one.
+        public void Bind(GitGrepViewModel viewModel)
         {
-            Button.Click += (_, _) => box.Toggle(fromButton: true);
-            MatchCase.Click += (_, _) => Change(() => preferences.GitGrepIgnoreCase = !preferences.GitGrepIgnoreCase);
-            WholeWord.Click += (_, _) => Change(() => preferences.GitGrepMatchWholeWord = !preferences.GitGrepMatchWholeWord);
-            Options.ItemsSource = _patternOptions.Select(option =>
-            {
-                MenuItem item = new() { Header = option };
-                item.Click += (_, _) => Change(() => preferences.GitGrepUserArguments = option);
-                return item;
-            }).ToList();
-            MenuItem[] usings = [UsingWindow, UsingBox, UsingBoth];
-            for (int index = 0; index < usings.Length; index++)
-            {
-                int choice = index;
-                usings[index].Click += (_, _) =>
-                {
-                    preferences.FindInFilesGitGrepTypeIndex = choice;
-                    preferences.Save();
-                    box.Toggle(fromButton: false);
-                };
-            }
-
-            // Upstream's FindInFilesGitGrep_DropDownOpening and UpdateToolbar.
+            Button.DataContext = viewModel;
+            Button.Command = viewModel.ToggleFromButtonCommand;
+            Check(MatchCase, nameof(GitGrepViewModel.MatchCase), viewModel.ToggleMatchCaseCommand);
+            Check(WholeWord, nameof(GitGrepViewModel.MatchWholeWord), viewModel.ToggleMatchWholeWordCommand);
+            Options.DataContext = viewModel;
+            Options.Bind(HeaderedSelectingItemsControl.HeaderProperty,
+                new Binding(nameof(GitGrepViewModel.OptionsHeader)) { Mode = BindingMode.OneWay });
+            Options.ItemsSource = viewModel.PatternOptionEntries.Select(entry => MenuEntries.Item(entry, Button)).ToList();
+            Check(UsingWindow, nameof(GitGrepViewModel.UsesWindow), viewModel.SetFindUsingCommand, GitGrepViewModel.UsingWindow);
+            Check(UsingBox, nameof(GitGrepViewModel.UsesBox), viewModel.SetFindUsingCommand, GitGrepViewModel.UsingBox);
+            Check(UsingBoth, nameof(GitGrepViewModel.UsesBoth), viewModel.SetFindUsingCommand, GitGrepViewModel.UsingBoth);
             if (Button.Flyout is MenuFlyout flyout)
             {
-                flyout.Opening += (_, _) =>
-                {
-                    MatchCase.IsChecked = !preferences.GitGrepIgnoreCase;
-                    WholeWord.IsChecked = preferences.GitGrepMatchWholeWord;
-                    Options.Header = $"{UpstreamTranslation.ByText(OptionsText)}: {preferences.GitGrepUserArguments}";
-                    for (int index = 0; index < usings.Length; index++)
-                    {
-                        usings[index].IsChecked = preferences.FindInFilesGitGrepTypeIndex == index;
-                    }
-                };
+                flyout.Opening += (_, _) => viewModel.RefreshMenu();
             }
 
             return;
 
-            void Change(Action change)
+            // A check item: checked one way, as the command stores the setting (MVVM.md, Menu check items).
+            void Check(MenuItem item, string path, System.Windows.Input.ICommand command, object? parameter = null)
             {
-                change();
-                preferences.Save();
-                box.SearchAgain();
+                item.DataContext = viewModel;
+                item.Bind(MenuItem.IsCheckedProperty, new Binding(path) { Mode = BindingMode.OneWay });
+                item.Command = command;
+                item.CommandParameter = parameter;
             }
         }
+    }
+
+    // Upstream's FormFindInCommitFilesGitGrep over the list's window, made when it is shown and forgotten when it closes.
+    private sealed class GrepWindow(Window owner, IAppPreferences preferences, GitGrepViewModel viewModel) : IGitGrepWindow
+    {
+        private FindInCommitFilesGitGrepWindow? _window;
+
+        public FindInCommitFilesGitGrepWindow? Open => _window is { IsVisible: true } window ? window : null;
+
+        public bool IsOpen => Open is not null;
+
+        public void Show()
+        {
+            if (Open is null)
+            {
+                FindInCommitFilesGitGrepWindow window = new(preferences, viewModel.SearchFromWindow,
+                    viewModel.SetBoxVisibleFromWindow);
+                window.Closed += (_, _) =>
+                {
+                    if (_window == window)
+                    {
+                        _window = null;
+                    }
+                };
+                _window = window;
+                window.Show(owner);
+            }
+
+            _window!.Activate();
+        }
+
+        public void Close() => _window?.Close();
+
+        public void SetExpression(string text) => _window?.GitGrepExpressionText = text;
+
+        public void SetSearchItems(IReadOnlyList<string> searches) => _window?.SetSearchItems(searches);
+
+        public void SetShowBox(bool visible) => _window?.SetShowFindInCommitFilesGitGrep(visible);
     }
 }

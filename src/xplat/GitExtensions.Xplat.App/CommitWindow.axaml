@@ -2,13 +2,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:repo="using:GitExtensions.Xplat.Core.Repository"
+        xmlns:git="using:GitCommands"
         x:Class="GitExtensions.Xplat.App.CommitWindow"
         x:DataType="repo:CommitViewModel"
         Title="{Binding Title}"
         Width="1100" Height="720">
   <!-- Mirrors upstream FormCommit: unstaged files above staged files on the left, the selected file's diff on the right,
-       and the commit message below the diff. Bound to CommitViewModel (PLAN.md principle 6); the file lists, the diff,
-       auto-completion and spelling stay in the view. -->
+       and the commit message below the diff. Bound to CommitViewModel (PLAN.md principle 6); the lists' trees and filters,
+       the diff, auto-completion and the spelling check stay in the view. -->
   <DockPanel Margin="8" LastChildFill="True">
     <TextBlock x:Name="StateText" DockPanel.Dock="Top" Margin="0,0,0,6" FontWeight="SemiBold" Text="{Binding StateText}"
                IsVisible="{Binding IsStateVisible}" />
@@ -49,45 +50,81 @@
           <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
                settings; then the filter box. -->
           <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
-            <local:ToolButton x:Name="UnstagedRefreshButton" Image="ReloadRevisions" ToolTip.Tip="Refresh artificial commit" />
+            <local:ToolButton x:Name="UnstagedRefreshButton" Command="{Binding RefreshCommand}" Image="ReloadRevisions" ToolTip.Tip="Refresh artificial commit" />
             <Rectangle Classes="toolSeparator" />
-            <local:ToolSplitButton x:Name="UnstagedAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+            <local:ToolSplitButton x:Name="UnstagedAsTreeButton" Image="{Binding Grouping.TreeImage}" ToolTip.Tip="Toggle flat list / tree"
+                                   Command="{Binding Grouping.ToggleTreeCommand}">
               <local:ToolSplitButton.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="UnstagedPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                  <MenuItem x:Name="UnstagedPathTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FilePath}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FilePath}"
+                            Header="Group by file _path - tree" ToggleType="CheckBox"
                             Icon="{local:UpstreamIcon FolderClosed}" />
-                  <MenuItem x:Name="UnstagedPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
-                  <MenuItem x:Name="UnstagedExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                  <MenuItem x:Name="UnstagedPathFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FilePathFlat}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FilePathFlat}"
+                            Header="Group by _file path - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedExtensionTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileExtension}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileExtension}"
+                            Header="Group by file _extension - tree" ToggleType="CheckBox"
                             Icon="{local:UpstreamIcon File}" />
-                  <MenuItem x:Name="UnstagedExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
-                  <MenuItem x:Name="UnstagedStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                  <MenuItem x:Name="UnstagedExtensionFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileExtensionFlat}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileExtensionFlat}"
+                            Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedStatusTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileStatus}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileStatus}"
+                            Header="Group by file _status - tree" ToggleType="CheckBox"
                             Icon="{local:UpstreamIcon FileStatusModified}" />
-                  <MenuItem x:Name="UnstagedStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedStatusFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileStatusFlat}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileStatusFlat}"
+                            Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
                   <Separator />
-                  <MenuItem x:Name="UnstagedDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                  <MenuItem x:Name="UnstagedDenseTreeMenuItem" IsChecked="{Binding Grouping.DenseTree, Mode=OneWay}"
+                            IsEnabled="{Binding Grouping.CanDenseTree}" Command="{Binding Grouping.ToggleDenseTreeCommand}"
+                            Header="_Dense tree (merge single item with its folder node)"
                             ToggleType="CheckBox" />
-                  <MenuItem x:Name="UnstagedGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                  <MenuItem x:Name="UnstagedGroupNodesInFlatListMenuItem" IsChecked="{Binding Grouping.ShowGroupNodesInFlatList, Mode=OneWay}"
+                            IsEnabled="{Binding Grouping.CanShowGroupNodesInFlatList}"
+                            Command="{Binding Grouping.ToggleShowGroupNodesInFlatListCommand}"
+                            Header="Show _group nodes in flat list (if multiple)"
                             ToggleType="CheckBox" />
                 </MenuFlyout>
               </local:ToolSplitButton.Flyout>
             </local:ToolSplitButton>
             <Rectangle Classes="toolSeparator" />
-            <local:ToolToggleButton x:Name="UnstagedByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
-            <local:ToolToggleButton x:Name="UnstagedByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
-            <local:ToolToggleButton x:Name="UnstagedByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+            <local:ToolToggleButton x:Name="UnstagedByPathButton" IsChecked="{Binding Grouping.IsByPath, Mode=OneWay}"
+                                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static git:DiffListSortType.FilePath}"
+                                    Image="FolderClosed" ToolTip.Tip="Group by file path" />
+            <local:ToolToggleButton x:Name="UnstagedByExtensionButton" IsChecked="{Binding Grouping.IsByExtension, Mode=OneWay}"
+                                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static git:DiffListSortType.FileExtension}"
+                                    Image="File" ToolTip.Tip="Group by file type (extension)" />
+            <local:ToolToggleButton x:Name="UnstagedByStatusButton" IsChecked="{Binding Grouping.IsByStatus, Mode=OneWay}"
+                                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static git:DiffListSortType.FileStatus}"
+                                    Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
             <Rectangle Classes="toolSeparator" />
             <local:ToolDropDownButton x:Name="UnstagedSettingsButton" Image="Settings" ToolTip.Tip="Settings">
               <local:ToolDropDownButton.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="UnstagedShowIgnoredMenuItem" Header="Show _ignored files" ToggleType="CheckBox" />
-                  <MenuItem x:Name="UnstagedShowSkipWorktreeMenuItem" Header="Show s_kip-worktree files" ToggleType="CheckBox" />
-                  <MenuItem x:Name="UnstagedShowAssumeUnchangedMenuItem" Header="Show _assumed-unchanged files" ToggleType="CheckBox" />
-                  <MenuItem x:Name="UnstagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True" />
+                  <MenuItem x:Name="UnstagedShowIgnoredMenuItem" IsChecked="{Binding ShowIgnored, Mode=OneWay}"
+                            Command="{Binding ToggleListSettingCommand}" CommandParameter="{x:Static repo:CommitListSetting.ShowIgnored}"
+                            Header="Show _ignored files" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedShowSkipWorktreeMenuItem" IsChecked="{Binding ShowSkipWorktree, Mode=OneWay}"
+                            Command="{Binding ToggleListSettingCommand}" CommandParameter="{x:Static repo:CommitListSetting.ShowSkipWorktree}"
+                            Header="Show s_kip-worktree files" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedShowAssumeUnchangedMenuItem" IsChecked="{Binding ShowAssumeUnchanged, Mode=OneWay}"
+                            Command="{Binding ToggleListSettingCommand}" CommandParameter="{x:Static repo:CommitListSetting.ShowAssumeUnchanged}"
+                            Header="Show _assumed-unchanged files" ToggleType="CheckBox" />
+                  <MenuItem x:Name="UnstagedShowUntrackedMenuItem" IsChecked="{Binding ShowUntracked, Mode=OneWay}"
+                            Command="{Binding ToggleListSettingCommand}" CommandParameter="{x:Static repo:CommitListSetting.ShowUntracked}"
+                            Header="Show _untracked files" ToggleType="CheckBox" />
                   <Separator />
-                  <MenuItem x:Name="UnstagedEditGitIgnoreMenuItem" Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
-                  <MenuItem x:Name="UnstagedEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <MenuItem x:Name="UnstagedEditGitIgnoreMenuItem" Command="{Binding EditIgnoredFilesCommand}" CommandParameter="{x:False}"
+                            Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <MenuItem x:Name="UnstagedEditLocallyIgnoredMenuItem" Command="{Binding EditIgnoredFilesCommand}" CommandParameter="{x:True}"
+                            Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
                   <Separator />
-                  <MenuItem x:Name="UnstagedRefreshOnFormFocusMenuItem" Header="_Refresh artificial commits on form focus"
+                  <MenuItem x:Name="UnstagedRefreshOnFormFocusMenuItem" IsChecked="{Binding RefreshOnFocus, Mode=OneWay}"
+                            Command="{Binding ToggleRefreshOnFocusCommand}"
+                            Header="_Refresh artificial commits on form focus"
                             ToggleType="CheckBox" />
                 </MenuFlyout>
               </local:ToolDropDownButton.Flyout>
@@ -131,10 +168,12 @@
           <!-- Upstream's toolbarStaged between the lists: Unstage all and Unstage on the left, Stage and Stage all on the
                right. -->
           <DockPanel DockPanel.Dock="Top" Margin="2,1">
-            <local:ToolButton x:Name="StageAllButton" IsEnabled="{Binding CanStageAll}" DockPanel.Dock="Right" Image="StageAll" ToolTip.Tip="Stage all" />
+            <local:ToolButton x:Name="StageAllButton" IsEnabled="{Binding CanStageAll}" DockPanel.Dock="Right" Image="{Binding StageAllImage}"
+                              ToolTip.Tip="{Binding StageAllTip}" Command="{Binding StageAllFilesCommand}" CommandParameter="{x:False}" />
             <Rectangle DockPanel.Dock="Right" Classes="toolSeparator" />
             <local:ToolButton x:Name="StageButton" IsEnabled="{Binding CanStage}" Command="{Binding StageCommand}" DockPanel.Dock="Right" Image="Stage" Text="_Stage" />
-            <local:ToolButton x:Name="UnstageAllButton" IsEnabled="{Binding CanUnstageAll}" DockPanel.Dock="Left" Image="UnstageAll" ToolTip.Tip="Unstage all" />
+            <local:ToolButton x:Name="UnstageAllButton" IsEnabled="{Binding CanUnstageAll}" DockPanel.Dock="Left" Image="{Binding UnstageAllImage}"
+                              ToolTip.Tip="{Binding UnstageAllTip}" Command="{Binding StageAllFilesCommand}" CommandParameter="{x:True}" />
             <Rectangle DockPanel.Dock="Left" Classes="toolSeparator" />
             <local:ToolButton x:Name="UnstageButton" IsEnabled="{Binding CanUnstage}" Command="{Binding UnstageCommand}" DockPanel.Dock="Left" Image="Unstage" Text="_Unstage" />
             <Panel />
@@ -142,30 +181,54 @@
           <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
                settings; then the filter box. -->
           <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
-            <local:ToolSplitButton x:Name="StagedAsTreeButton" Image="FileTree" ToolTip.Tip="Toggle flat list / tree">
+            <local:ToolSplitButton x:Name="StagedAsTreeButton" Image="{Binding Grouping.TreeImage}" ToolTip.Tip="Toggle flat list / tree"
+                                   Command="{Binding Grouping.ToggleTreeCommand}">
               <local:ToolSplitButton.Flyout>
                 <MenuFlyout>
-                  <MenuItem x:Name="StagedPathTreeMenuItem" Header="Group by file _path - tree" ToggleType="CheckBox"
+                  <MenuItem x:Name="StagedPathTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FilePath}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FilePath}"
+                            Header="Group by file _path - tree" ToggleType="CheckBox"
                             Icon="{local:UpstreamIcon FolderClosed}" />
-                  <MenuItem x:Name="StagedPathFlatMenuItem" Header="Group by _file path - flat" ToggleType="CheckBox" />
-                  <MenuItem x:Name="StagedExtensionTreeMenuItem" Header="Group by file _extension - tree" ToggleType="CheckBox"
+                  <MenuItem x:Name="StagedPathFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FilePathFlat}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FilePathFlat}"
+                            Header="Group by _file path - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="StagedExtensionTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileExtension}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileExtension}"
+                            Header="Group by file _extension - tree" ToggleType="CheckBox"
                             Icon="{local:UpstreamIcon File}" />
-                  <MenuItem x:Name="StagedExtensionFlatMenuItem" Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
-                  <MenuItem x:Name="StagedStatusTreeMenuItem" Header="Group by file _status - tree" ToggleType="CheckBox"
+                  <MenuItem x:Name="StagedExtensionFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileExtensionFlat}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileExtensionFlat}"
+                            Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="StagedStatusTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileStatus}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileStatus}"
+                            Header="Group by file _status - tree" ToggleType="CheckBox"
                             Icon="{local:UpstreamIcon FileStatusModified}" />
-                  <MenuItem x:Name="StagedStatusFlatMenuItem" Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                  <MenuItem x:Name="StagedStatusFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static git:DiffListSortType.FileStatusFlat}}"
+                            Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static git:DiffListSortType.FileStatusFlat}"
+                            Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
                   <Separator />
-                  <MenuItem x:Name="StagedDenseTreeMenuItem" Header="_Dense tree (merge single item with its folder node)"
+                  <MenuItem x:Name="StagedDenseTreeMenuItem" IsChecked="{Binding Grouping.DenseTree, Mode=OneWay}"
+                            IsEnabled="{Binding Grouping.CanDenseTree}" Command="{Binding Grouping.ToggleDenseTreeCommand}"
+                            Header="_Dense tree (merge single item with its folder node)"
                             ToggleType="CheckBox" />
-                  <MenuItem x:Name="StagedGroupNodesInFlatListMenuItem" Header="Show _group nodes in flat list (if multiple)"
+                  <MenuItem x:Name="StagedGroupNodesInFlatListMenuItem" IsChecked="{Binding Grouping.ShowGroupNodesInFlatList, Mode=OneWay}"
+                            IsEnabled="{Binding Grouping.CanShowGroupNodesInFlatList}"
+                            Command="{Binding Grouping.ToggleShowGroupNodesInFlatListCommand}"
+                            Header="Show _group nodes in flat list (if multiple)"
                             ToggleType="CheckBox" />
                 </MenuFlyout>
               </local:ToolSplitButton.Flyout>
             </local:ToolSplitButton>
             <Rectangle Classes="toolSeparator" />
-            <local:ToolToggleButton x:Name="StagedByPathButton" Image="FolderClosed" ToolTip.Tip="Group by file path" />
-            <local:ToolToggleButton x:Name="StagedByExtensionButton" Image="File" ToolTip.Tip="Group by file type (extension)" />
-            <local:ToolToggleButton x:Name="StagedByStatusButton" Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+            <local:ToolToggleButton x:Name="StagedByPathButton" IsChecked="{Binding Grouping.IsByPath, Mode=OneWay}"
+                                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static git:DiffListSortType.FilePath}"
+                                    Image="FolderClosed" ToolTip.Tip="Group by file path" />
+            <local:ToolToggleButton x:Name="StagedByExtensionButton" IsChecked="{Binding Grouping.IsByExtension, Mode=OneWay}"
+                                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static git:DiffListSortType.FileExtension}"
+                                    Image="File" ToolTip.Tip="Group by file type (extension)" />
+            <local:ToolToggleButton x:Name="StagedByStatusButton" IsChecked="{Binding Grouping.IsByStatus, Mode=OneWay}"
+                                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static git:DiffListSortType.FileStatus}"
+                                    Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
             <Rectangle Classes="toolSeparator" />
             <local:ToolDropDownButton x:Name="StagedSettingsButton" Image="Settings" ToolTip.Tip="Settings">
               <local:ToolDropDownButton.Flyout>
@@ -176,8 +239,10 @@
                   <MenuItem x:Name="StagedShowUntrackedMenuItem" Header="Show _untracked files" ToggleType="CheckBox" IsChecked="True"
                             IsEnabled="False" />
                   <Separator />
-                  <MenuItem x:Name="StagedEditGitIgnoreMenuItem" Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
-                  <MenuItem x:Name="StagedEditLocallyIgnoredMenuItem" Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <MenuItem x:Name="StagedEditGitIgnoreMenuItem" Command="{Binding EditIgnoredFilesCommand}" CommandParameter="{x:False}"
+                            Header="_Edit ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
+                  <MenuItem x:Name="StagedEditLocallyIgnoredMenuItem" Command="{Binding EditIgnoredFilesCommand}" CommandParameter="{x:True}"
+                            Header="Edit _locally ignored files" Icon="{local:UpstreamIcon EditGitIgnore}" />
                 </MenuFlyout>
               </local:ToolDropDownButton.Flyout>
             </local:ToolDropDownButton>
@@ -222,7 +287,7 @@
           <!-- Upstream's SolveMergeconflicts button, over the diff while conflicts are unresolved. -->
           <Panel>
             <local:DiffView x:Name="Diff" />
-            <Button x:Name="SolveConflictsButton" IsVisible="{Binding HasConflicts}" HorizontalAlignment="Left" VerticalAlignment="Top"
+            <Button x:Name="SolveConflictsButton" IsVisible="{Binding HasConflicts}" Command="{Binding SolveConflictsCommand}" HorizontalAlignment="Left" VerticalAlignment="Top"
                     Margin="14,12" Width="188" Height="42" BorderThickness="0" CornerRadius="0">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Image Source="{local:UpstreamImage SolveMerge}" Width="16" Height="16" />

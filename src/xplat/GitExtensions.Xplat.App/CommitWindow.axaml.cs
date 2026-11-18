@@ -5,9 +5,11 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Scripts;
 using GitExtensions.Xplat.Core.Settings;
+using GitExtensions.Xplat.Core.Spelling;
 using GitUI.ScriptsEngine;
 using Microsoft.VisualStudio.Threading;
 
@@ -16,7 +18,8 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  Stages files and commits them: the new shell's version of upstream <c>FormCommit</c>, bound to
 ///  <see cref="CommitViewModel"/>. It works on the main window's repository state and operations, so a change made here
-///  refreshes both windows. The file lists, the diff, auto-completion, spelling and the message's menus stay here.
+///  refreshes both windows. The lists' trees and filters, the diff, line staging, auto-completion, the spelling check and
+///  the message box's editing items stay here.
 /// </summary>
 public partial class CommitWindow : Window
 {
@@ -30,18 +33,6 @@ public partial class CommitWindow : Window
     // The file whose diff is on show, and whether it is the staged or the unstaged diff.
     private FileChange? _diffChange;
     private bool _diffStaged;
-
-    // Upstream FormCommit's texts of the templates menu and the message box menu.
-    private const string TemplateSettingsText = "_Edit commit message templates and settings...";
-    private const string ConventionalCommitText = "Conven_tional Commits";
-    private const string ConventionalCommitDocumentationText = "Documentation...";
-    private const string WordWrapBodyText = "_Word wrap (except subject line)";
-    private const string SubmoduleChangesText = "Generate a list of changes in submodules";
-    private const string ShowOnlyMyMessagesText = "Show only my messages";
-
-    // The Conventional Commits submenu as last built, and whether its types add "()" for a scope (Ctrl+Shift+T).
-    private MenuItem? _conventionalCommitsItem;
-    private bool _insertScopeParentheses;
 
     // True while the message is reformatted, so the change it makes is not formatted again.
     private bool _formatting;
@@ -87,11 +78,24 @@ public partial class CommitWindow : Window
                 ShowError = (message, caption) => _ = new ErrorWindow(message) { Title = caption }.ShowDialog(this),
                 ReadModule = ReadModuleAsync,
                 StageInSuperproject = StageInSuperprojectAsync,
+
                 // The browse window's settings over this one, on the Git config page.
                 ShowGitConfigSettings = showSettings is null ? null : () => showSettings(this, GitConfigSettingsPage),
                 ShowRemotes = local => new RemotesWindow(repositoryPath, preferences,
                     remote => actions.FetchAsync(repositoryPath, remote, prune: false),
                     preselectLocal: local).ShowDialog(this),
+
+                // Upstream's FormCommit opens the conflicts window without its offer to commit.
+                ShowConflicts = () => new ConflictsWindow(repositoryPath, repository, actions, preferences,
+                    (_, file) => ShowFileHistory(file, showBlame: false), offerCommit: false).ShowDialog(this),
+                EditIgnoredFiles = localExclude => GitIgnoreWindow.ShowAsync(this, repositoryPath, localExclude),
+                EditTemplates = () => new CommitTemplateSettingsWindow(preferences).ShowDialog(this),
+                OpenUrl = async uri => await Launcher.LaunchUriAsync(uri),
+                ReadWorkTreeChanges = (ignored, assumeUnchanged, skipWorktree)
+                    => GitRepositoryService.GetWorkTreeChangesAsync(repositoryPath, ignored, assumeUnchanged, skipWorktree),
+                ReadGitSetting = key => Task.Run(() => GitModules.Open(repositoryPath).GetEffectiveSetting(key)),
+                LoadDictionary = () => SpellingDictionarySetting.LoadAsync(repositoryPath),
+                SaveDictionary = dictionary => SpellingDictionarySetting.SaveLocalAsync(repositoryPath, dictionary),
             });
         DataContext = ViewModel;
         InitializeComponent();
@@ -116,6 +120,11 @@ public partial class CommitWindow : Window
             ? GitUI.ThreadHelper.JoinableTaskFactory.RunAsync(ViewModel.SaveDraftAsync)
             : null;
         ViewModel.MessageFocusRequested += (_, _) => CommitMessageBox.Focus();
+        ViewModel.CaretRequested += (_, caret) =>
+        {
+            CommitMessageBox.CaretIndex = Math.Min(caret, CommitMessageBox.Text?.Length ?? 0);
+            CommitMessageBox.Focus();
+        };
         ViewModel.ProgressReported += (_, count) => Dispatcher.UIThread.Post(() =>
             ViewModel.StageProgressValue =
                 Math.Min(ViewModel.StageProgressMaximum - 1, ViewModel.StageProgressValue + count));
@@ -132,8 +141,6 @@ public partial class CommitWindow : Window
         WireBottomPanel();
         WireStatusBar();
 
-        StageAllButton.Click += (_, _) => StageAll(staged: false);
-        UnstageAllButton.Click += (_, _) => StageAll(staged: true);
         WireFileLists();
         ((PopulatingMenuFlyout)CommitTemplatesFlyout).Populating += (_, _) => ShowCommitTemplates();
         ((PopulatingMenuFlyout)CommitMessageFlyout).PopulateAsync = ShowPreviousMessagesAsync;
@@ -272,13 +279,13 @@ public partial class CommitWindow : Window
             case CommitCommand.FocusCommitMessage:
                 return CommitMessageBox.Focus();
             case CommitCommand.StageAll when StageAllButton.IsEnabled:
-                StageAll(staged: false);
+                ViewModel.StageAllFilesCommand.Execute(false);
                 return true;
             case CommitCommand.OpenWithDifftool when CanOpenDiffTool:
                 Run(OpenDiffToolAsync);
                 return true;
             case CommitCommand.Refresh:
-                Run(_refresh);
+                ViewModel.RefreshCommand.Execute(null);
                 return true;
             case CommitCommand.SelectNext:
             case CommitCommand.SelectNextAlternativeHotkey1:
@@ -311,22 +318,38 @@ public partial class CommitWindow : Window
         return true;
     }
 
-    // The lists and auto-completion follow the repository's changes; the view model follows the rest.
+    // Auto-completion follows the repository's changes; the view model follows the rest.
     private void OnRepositoryChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(RepositoryViewModel.Changes))
         {
-            ReadChanges();
             RefreshAutoCompleteWords();
         }
     }
 
-    // The buttons whose content is an upstream image and text follow the view model.
+    // What the view shows itself from the view model: the buttons whose content is an upstream image and text, the lists'
+    // trees, the spelling marks and auto-completion.
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(CommitViewModel.CommitIcon) or nameof(CommitViewModel.CommitAndPushContent))
+        switch (e.PropertyName)
         {
-            ShowCommitButtons();
+            case nameof(CommitViewModel.CommitIcon) or nameof(CommitViewModel.CommitAndPushContent):
+                ShowCommitButtons();
+                break;
+            case nameof(CommitViewModel.ListedChanges):
+                _headId = null;
+                ShowChanges();
+                break;
+            case nameof(CommitViewModel.ShowUntracked):
+                ShowChanges();
+                break;
+            case nameof(CommitViewModel.SpellingDictionary) or nameof(CommitViewModel.MarkIllFormedLines):
+                CheckSpellingNow();
+                break;
+            case nameof(CommitViewModel.ProvideAutoCompletion):
+                CloseAutoComplete();
+                RefreshAutoCompleteWords();
+                break;
         }
     }
 
@@ -398,179 +421,53 @@ public partial class CommitWindow : Window
     private void StageSelected(bool staged)
         => (staged ? ViewModel.UnstageCommand : ViewModel.StageCommand).Execute(null);
 
-    // Upstream's StageAllAccordingToFilter and UnstageAllFiles: a filtered list stages or unstages the files it shows and
-    // loses its filter.
-    private void StageAll(bool staged)
-    {
-        FileListParts parts = staged ? _staged : _unstaged;
-        IReadOnlyList<FileChange>? shown = IsFiltered(parts) ? [.. parts.Shown] : null;
-        parts.Filter.Text = "";
-        _ = ViewModel.StageAllAsync(staged, shown);
-    }
-
     private MenuFlyout CommitTemplatesFlyout => (MenuFlyout)CommitTemplatesButton.Flyout!;
 
     private MenuFlyout CommitMessageFlyout => (MenuFlyout)CommitMessageMenuButton.Flyout!;
 
-    // Upstream's CommitMessageToolStripMenuItemDropDownOpening, read each time the menu opens; the fixed items show at once and
-    // the messages are put before them when git has listed them.
+    // Upstream's CommitMessageToolStripMenuItemDropDownOpening, read each time the menu opens: the view model's fixed items
+    // show at once, and its earlier messages are put before them when git has listed them.
     private async Task ShowPreviousMessagesAsync()
     {
         int opening = ++_messageMenuOpenings;
-        CommitMessageFlyout.Items.Clear();
-        MenuItem submodules = new() { Header = SubmoduleChangesText };
-        submodules.Click += (_, _) => Run(InsertSubmoduleChangesAsync);
-        MenuItem onlyMine = new()
-        {
-            Header = ShowOnlyMyMessagesText,
-            ToggleType = MenuItemToggleType.CheckBox,
-            IsChecked = _preferences.CommitDialogShowOnlyMyMessages
-        };
-        onlyMine.Click += (_, _) => _preferences.CommitDialogShowOnlyMyMessages = onlyMine.IsChecked;
-        CommitMessageFlyout.Items.Add(new Separator());
-        CommitMessageFlyout.Items.Add(submodules);
-        CommitMessageFlyout.Items.Add(onlyMine);
-
-        IReadOnlyList<string> messages = await ViewModel.PreviousMessagesAsync();
+        MenuEntries.Fill(CommitMessageFlyout.Items, ViewModel.MessageMenuEntries(), this);
+        IReadOnlyList<MenuEntry> messages = await ViewModel.PreviousMessageEntriesAsync();
         if (opening != _messageMenuOpenings)
         {
             return;
         }
 
         int index = 0;
-        foreach (string message in messages)
+        foreach (MenuEntry message in messages)
         {
-            MenuItem item = new() { Header = new TextBlock { Text = PreviousCommitMessages.Label(message) } };
-            item.Click += (_, _) => ReplaceMessage(message.Trim());
-            CommitMessageFlyout.Items.Insert(index++, item);
+            CommitMessageFlyout.Items.Insert(index++, MenuEntries.Item(message, this));
         }
     }
 
-    // Upstream's generateListOfChangesInSubmodulesChangesToolStripMenuItem_Click, for the staged changes.
-    private async Task InsertSubmoduleChangesAsync()
-    {
-        if (await ViewModel.SubmoduleChangesAsync() is { } message)
-        {
-            ReplaceMessage(message);
-        }
-    }
-
-    private void ReplaceMessage(string message)
-    {
-        if (CommitMessageBox.Text != message)
-        {
-            SetMessage(message, message.Length);
-        }
-    }
-
-    // Upstream's commitTemplatesToolStripMenuItem_DropDownOpening, read each time it opens: the plugins' templates (e.g.
-    // the GitHub plugin's assigned issues), the user's own, the Conventional Commits items and the settings. A template
-    // replaces the message.
+    // Upstream's commitTemplatesToolStripMenuItem_DropDownOpening: the view model's items, read each time it opens; the
+    // "feat" type shows its hotkey.
     private void ShowCommitTemplates()
-    {
-        CommitTemplatesFlyout.Items.Clear();
-        AddGroup(CommitTemplates.Registered());
-        AddGroup(CommitTemplates.FromSettings(_preferences.CommitTemplates));
-        _conventionalCommitsItem = ConventionalCommitsItem();
-        CommitTemplatesFlyout.Items.Add(_conventionalCommitsItem);
-        CommitTemplatesFlyout.Items.Add(new Separator());
-        MenuItem settings = new() { Header = TemplateSettingsText };
-        settings.Click += (_, _) => Run(() => new CommitTemplateSettingsWindow(_preferences).ShowDialog(this));
-        CommitTemplatesFlyout.Items.Add(settings);
-
-        void AddGroup(IReadOnlyList<CommitTemplate> templates)
+        => MenuEntries.Fill(CommitTemplatesFlyout.Items, ViewModel.TemplateMenuEntries(), this, (item, entry) =>
         {
-            foreach (CommitTemplate template in templates)
-            {
-                // The name as it is: a template named after an issue may have underscores, which are not access keys here.
-                MenuItem item = new() { Header = new TextBlock { Text = template.Name }, Icon = IconOf(template) };
-                item.Click += (_, _) =>
-                {
-                    ViewModel.ApplyTemplate(template);
-                    CommitMessageBox.Focus();
-                };
-                CommitTemplatesFlyout.Items.Add(item);
-            }
-
-            if (templates.Count > 0)
-            {
-                CommitTemplatesFlyout.Items.Add(new Separator());
-            }
-        }
-    }
-
-    // Upstream's template item image, 16 pixels as the menu's other icons.
-    private static Image? IconOf(CommitTemplate template)
-    {
-        if (template.Icon is not { } png)
-        {
-            return null;
-        }
-
-        using MemoryStream stream = new(png);
-        return new Image { Source = new Avalonia.Media.Imaging.Bitmap(stream), Width = 16, Height = 16 };
-    }
-
-    // Upstream's AddConventionalCommitsItems: the commit types, the footers and the documentation link.
-    private MenuItem ConventionalCommitsItem()
-    {
-        MenuItem conventional = new() { Header = ConventionalCommitText };
-        foreach (string type in ConventionalCommits.HeaderTypes)
-        {
-            MenuItem item = new() { Header = new TextBlock { Text = type } };
-            if (type == ConventionalCommits.Feat)
+            if (entry.CommandParameter is ConventionalCommits.Feat)
             {
                 item.InputGesture = Hotkeys.Commit.GestureFor(CommitCommand.ConventionalCommitPrefixMessage);
             }
-
-            item.Click += (_, _) =>
-            {
-                (string message, int caret) = ConventionalCommits.ApplyType(CommitMessageBox.Text ?? "",
-                    CommitMessageBox.CaretIndex, type, _insertScopeParentheses);
-                SetMessage(message, caret);
-            };
-            conventional.Items.Add(item);
-        }
-
-        conventional.Items.Add(new Separator());
-        foreach (string keyword in ConventionalCommits.FooterKeywords)
-        {
-            conventional.Items.Add(FooterItem(keyword, $"{keyword}: "));
-        }
-
-        conventional.Items.Add(FooterItem(ConventionalCommits.SkipCi, ConventionalCommits.SkipCi));
-        conventional.Items.Add(new Separator());
-        MenuItem documentation = new() { Header = ConventionalCommitDocumentationText };
-        documentation.Click += (_, _) =>
-            Run(() => Launcher.LaunchUriAsync(new Uri(ConventionalCommits.DocumentationUrl)));
-        conventional.Items.Add(documentation);
-        return conventional;
-
-        MenuItem FooterItem(string text, string footer)
-        {
-            MenuItem item = new() { Header = new TextBlock { Text = text } };
-            item.Click += (_, _) =>
-            {
-                (string message, int caret) = ConventionalCommits.AppendFooter(CommitMessageBox.Text ?? "",
-                    CommitMessageBox.CaretIndex, footer);
-                SetMessage(message, caret);
-            };
-            return item;
-        }
-    }
+        });
 
     // Upstream's OpenConventionalCommitMenu (Ctrl+T, and Ctrl+Shift+T with a scope): the menu opens at its "feat" item.
     private bool OpenConventionalCommitMenu(bool insertScope)
     {
-        _insertScopeParentheses = insertScope;
+        ViewModel.InsertScopeParentheses = insertScope;
         CommitTemplatesFlyout.ShowAt(CommitTemplatesButton);
-        if (_conventionalCommitsItem is null)
+        if (CommitTemplatesFlyout.Items.OfType<MenuItem>()
+                .FirstOrDefault(item => item.Name == CommitViewModel.ConventionalCommitsName) is not { } conventional)
         {
             return true;
         }
 
-        _conventionalCommitsItem.Open();
-        _conventionalCommitsItem.Items.OfType<MenuItem>()
+        conventional.Open();
+        conventional.Items.OfType<MenuItem>()
             .FirstOrDefault(item => item.Header is TextBlock { Text: ConventionalCommits.Feat })?.Focus();
         return true;
     }

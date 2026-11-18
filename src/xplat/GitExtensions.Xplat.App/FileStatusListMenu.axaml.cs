@@ -106,6 +106,7 @@ public partial class FileStatusListMenu : ContextMenu
             Unstage = binding.Unstage,
             FindFile = binding.FindFile,
             FocusedPath = binding.FocusedPath,
+            RunScript = binding.RunScript,
         }, new MenuHost(this, binding));
 
         // Upstream's BindContextMenu with stage and unstage (FormCommit's lists) makes both items bold.
@@ -254,9 +255,9 @@ public partial class FileStatusListMenu : ContextMenu
     private void ShowScripts()
     {
         tsmiRunScript.IsVisible = true;
-        sepScripts.IsVisible = _binding?.RunScript is { } run
+        sepScripts.IsVisible = _binding?.RunScript is not null
                                && ScriptMenus.Fill(this, tsmiRunScript,
-                                   script => script.OnEvent == ScriptEvent.ShowInFileList, run);
+                                   script => script.OnEvent == ScriptEvent.ShowInFileList, ViewModel.RunScriptCommand);
         if (_binding?.RunScript is null)
         {
             tsmiRunScript.IsEnabled = false;

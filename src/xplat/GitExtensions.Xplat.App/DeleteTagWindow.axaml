@@ -24,7 +24,8 @@
               SelectedItem="{Binding SelectedRemote}" IsEnabled="{Binding DeleteFromRemote}" />
     <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="4" Margin="0,6,0,0">
       <Image Source="{local:UpstreamImage GotoManual}" Width="16" Height="16" VerticalAlignment="Top" />
-      <HyperlinkButton x:Name="HelpLink" Grid.Column="1" Content="Help" Padding="0" VerticalAlignment="Top" />
+      <HyperlinkButton x:Name="HelpLink" Grid.Column="1" Content="Help" Padding="0" VerticalAlignment="Top"
+                       Command="{Binding OpenUrlCommand}" />
       <TextBlock x:Name="label3" Grid.Column="2" TextWrapping="Wrap"
                  Text="(includes information about deleting tags which are already pushed)" />
     </Grid>
