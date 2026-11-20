@@ -20,6 +20,12 @@ public partial class CommitWindow
     // Upstream's AutoCompleteTimer: the list follows typing after this pause.
     private static readonly TimeSpan _autoCompleteDelay = TimeSpan.FromMilliseconds(200);
 
+    // Upstream's AutoCompleteToolTipTimer: how long the "not available yet" tooltip shows.
+    private static readonly TimeSpan _autoCompleteToolTipTime = TimeSpan.FromSeconds(2);
+
+    // Counts the tooltips shown, so only the last one's timer hides it.
+    private int _autoCompleteToolTips;
+
     // Counts the requests to follow the typing, so only the last one after the pause shows the list.
     private int _autoCompleteRequests;
 
@@ -45,9 +51,16 @@ public partial class CommitWindow
     public IReadOnlyList<string> AutoCompleteOffers
         => AutoCompletePopup.IsOpen ? [.. _autoCompleteMatches.Select(word => word.Word)] : [];
 
+    /// <summary>
+    ///  Upstream's tooltip while the words are being read; null when it is hidden.
+    /// </summary>
+    public string? AutoCompleteToolTipShown => AutoCompleteToolTip.IsOpen ? AutoCompleteToolTipText.Text : null;
+
     private void InitializeAutoCompletion()
     {
         AutoCompletePopup.PlacementTarget = CommitMessageBox;
+        AutoCompleteToolTip.PlacementTarget = CommitMessageBox;
+        AutoCompleteToolTipText.Text = CommitMessageAutoCompletion.NotAvailableYet;
 
         // The message box marks the input handled as it inserts it.
         CommitMessageBox.AddHandler(TextInputEvent, OnMessageTextInput, RoutingStrategies.Bubble,
@@ -81,7 +94,7 @@ public partial class CommitWindow
         try
         {
             IReadOnlyList<AutoCompleteWord> words =
-                await CommitMessageAutoCompletion.LoadWordsAsync(_repositoryPath, cancellation);
+                await AppServices.LoadAutoCompleteWords(_repositoryPath, cancellation);
             if (cancellation.IsCancellationRequested)
             {
                 return;
@@ -200,11 +213,18 @@ public partial class CommitWindow
 
         if (_autoCompleteWords is not { } words)
         {
-            // Upstream says the words are still being read; here the list opens once they are.
+            // Upstream says the words are still being read; here the list also opens once they are.
             _autoCompleteAsked |= calledByUser;
             _autoCompleteFollowTypingWhenRead = !calledByUser;
+            if (calledByUser)
+            {
+                ShowAutoCompleteToolTip();
+            }
+
             return;
         }
+
+        HideAutoCompleteToolTip();
 
         string text = CommitMessageBox.Text ?? "";
         int caret = Math.Min(CommitMessageBox.CaretIndex, text.Length);
@@ -259,6 +279,27 @@ public partial class CommitWindow
         AutoCompletePopup.IsOpen = false;
         _autoCompleteMatches = [];
         _autoCompleteWasUserActivated = false;
+    }
+
+    // Upstream's AutoCompleteToolTip at the caret, hidden by its timer or once the words are there.
+    private void ShowAutoCompleteToolTip()
+    {
+        int shown = ++_autoCompleteToolTips;
+        AutoCompleteToolTip.PlacementRect = CaretRect();
+        AutoCompleteToolTip.IsOpen = true;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (shown == _autoCompleteToolTips)
+            {
+                AutoCompleteToolTip.IsOpen = false;
+            }
+        }, _autoCompleteToolTipTime);
+    }
+
+    private void HideAutoCompleteToolTip()
+    {
+        _autoCompleteToolTips++;
+        AutoCompleteToolTip.IsOpen = false;
     }
 
     // Upstream's Ctrl+Space stays Ctrl on macOS, as Cmd+Space is Spotlight's. It can be the system's key for the next input

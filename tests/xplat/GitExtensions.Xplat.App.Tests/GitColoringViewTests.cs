@@ -140,7 +140,7 @@ internal sealed class GitColoringViewTests
     {
         TestAppBuilder.Preferences.UseGitColoring = true;
         DiffView diff = Show();
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
         lines.SelectedIndex = diff.Lines.ToList().FindIndex(line => line.Text == "+new word here");
 
         (string text, _, _) = diff.SelectedRange()!.Value;
@@ -152,7 +152,7 @@ internal sealed class GitColoringViewTests
     public void Git_word_diff_shows_the_changed_words_and_offers_no_line_patching()
     {
         DiffView diff = Show();
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
 
         ToggleWordDiff(diff);
 

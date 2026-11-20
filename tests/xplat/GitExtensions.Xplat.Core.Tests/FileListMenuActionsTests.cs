@@ -197,6 +197,20 @@ internal sealed class FileListMenuActionsTests
     }
 
     [Test]
+    public void Find_in_commit_files_should_start_with_the_text_selected_in_the_viewer()
+    {
+        _selection = WorkTreeSelection("a.txt");
+        FakeGitGrep grep = new();
+        DiffViewModel viewer = new(NSubstitute.Substitute.For<IDiffService>(), _preferences);
+        viewer.SetSelection(0, [0], "needle");
+        FileListMenuViewModel viewModel = NewViewModel(source => source with { GitGrep = grep, Viewer = () => viewer });
+
+        viewModel.OpenGitGrepCommand.Execute(null);
+
+        grep.Text.Should().Be("needle", "upstream's getSelectedText");
+    }
+
+    [Test]
     public void Show_in_file_tree_and_filter_in_grid_should_take_the_selected_folder_before_the_files()
     {
         _selection = new DiffMenuSelection(null, Commit, [Parent], [new DiffMenuFile("", "docs/a.md", null, IsTracked: true)],
@@ -257,7 +271,13 @@ internal sealed class FileListMenuActionsTests
 
         public void SetBoxVisible(bool visible) => BoxVisible = visible;
 
-        public void ShowWindow(string text) => Opened++;
+        public string? Text { get; private set; }
+
+        public void ShowWindow(string text)
+        {
+            Opened++;
+            Text = text;
+        }
     }
 
     private sealed class RecordingHost : IFileListMenuHost

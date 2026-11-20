@@ -35,6 +35,11 @@ public sealed record DiffLine(string Text, DiffLineKind Kind, int? OldNumber = n
     public IReadOnlyList<DiffColorRun>? DimRuns { get; init; }
 
     /// <summary>
+    ///  Upstream's zero-width marks where the paired line has text this one does not (<see cref="InlineDifferences"/>).
+    /// </summary>
+    public IReadOnlyList<DiffAnchor>? Anchors { get; init; }
+
+    /// <summary>
     ///  Upstream's <c>IsMovedLine</c>: git's colors say the line was moved, so it has no line that it replaces.
     /// </summary>
     public bool IsMovedLine { get; init; }

@@ -34,17 +34,27 @@ internal sealed class SettingsChecklistTests
                      .Where(field => field.IsLiteral && field.Name is not nameof(SettingsChecklist.Introduction)
                          and not nameof(SettingsChecklist.InstantSaveNotice)
                          and not nameof(SettingsChecklist.RepairText)
-                         and not nameof(SettingsChecklist.SaveAndRescanText)))
+                         and not nameof(SettingsChecklist.SaveAndRescanText)
+                         and not nameof(SettingsChecklist.CheckAtStartupText)))
         {
             page.Should().Contain($"\"{field.GetRawConstantValue()}\"", field.Name);
         }
 
         Unwrapped(designer).Should().Contain($"label11.Text = \"{SettingsChecklist.Introduction}\"")
             .And.Contain($"GitFound_Fix.Text = \"{SettingsChecklist.RepairText}\"")
-            .And.Contain($"Rescan.Text = \"{SettingsChecklist.SaveAndRescanText}\"");
+            .And.Contain($"Rescan.Text = \"{SettingsChecklist.SaveAndRescanText}\"")
+            .And.Contain($"CheckAtStartup.Text = \"{SettingsChecklist.CheckAtStartupText}\"");
         Unwrapped(form).Should()
             .Contain($"labelInstantSaveNotice.Text = \"{SettingsChecklist.InstantSaveNotice.Replace("\r\n", "\\r\\n")}\"");
     }
+
+    [TestCase(true, true, false)]
+    [TestCase(false, true, true)]
+    [TestCase(true, false, false)]
+    [TestCase(false, false, false)]
+    public void CheckAtStartupAfter_should_turn_the_startup_check_off_once_every_setting_is_right(bool isValid,
+        bool checkAtStartup, bool expected)
+        => SettingsChecklist.CheckAtStartupAfter(isValid, checkAtStartup).Should().Be(expected);
 
     [Test]
     public void Check_should_list_upstreams_rows_set_when_everything_is_configured()

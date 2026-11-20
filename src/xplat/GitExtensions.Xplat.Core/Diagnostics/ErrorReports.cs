@@ -154,8 +154,9 @@ public static class ErrorReports
     }
 
     /// <summary>
-    ///  Upstream's <c>GetExceptionInfo</c>: for a failed command its context, exit code, command, arguments and folder, one
-    ///  per line; empty for other exceptions.
+    ///  Upstream's <c>GetExceptionInfo</c>: for a failed command (upstream's <c>ExternalOperationException</c>, or the
+    ///  shell's <see cref="GitOperationException"/>) its context, exit code, command, arguments and folder, one per line;
+    ///  empty for other exceptions.
     /// </summary>
     public static string ExceptionInfo(Exception exception, ExceptionInfoLabels labels)
     {
@@ -175,6 +176,19 @@ public static class ErrorReports
             AppendIfNotEmpty(external.Command, labels.Command);
             AppendIfNotEmpty(external.Arguments, labels.Arguments);
             AppendIfNotEmpty(external.WorkingDirectory, labels.WorkingDirectory);
+        }
+
+        // The new shell's own git runners say the same of the command that failed.
+        if (exception is GitOperationException git)
+        {
+            if (git.ExitCode is int exitCode)
+            {
+                AppendIfNotEmpty(ExecutionResult.FormatExitCode(exitCode), labels.ExitCode);
+            }
+
+            AppendIfNotEmpty(git.Command, labels.Command);
+            AppendIfNotEmpty(git.Arguments, labels.Arguments);
+            AppendIfNotEmpty(git.WorkingDirectory, labels.WorkingDirectory);
         }
 
         return text.ToString();

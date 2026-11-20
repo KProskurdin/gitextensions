@@ -313,6 +313,18 @@ public interface IAppPreferences
     bool? AutoPopStashAfterCheckoutBranch { get; set; }
 
     /// <summary>
+    ///  Upstream's <c>AutoPopStashAfterPull</c>: after a pull that stashed, pop the stash (true), keep it (false), or ask
+    ///  (null).
+    /// </summary>
+    bool? AutoPopStashAfterPull { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>dontConfirmUpdateSubmodulesOnCheckout</c>: after a pull, uninitialized submodules are initialized
+    ///  (true) or not (false) when "Update submodules on checkout" is unset, or the app asks (null).
+    /// </summary>
+    bool? DontConfirmUpdateSubmodulesOnCheckout { get; set; }
+
+    /// <summary>
     ///  Upstream's <c>CreateLocalBranchForRemote</c>: the checkout dialog proposes a local branch with a custom name for a
     ///  remote branch.
     /// </summary>
@@ -422,6 +434,12 @@ public interface IAppPreferences
     ///  "German"); empty or "English" for upstream's English texts.
     /// </summary>
     string Translation { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>CheckSettings</c> (kept in the registry, on other systems in the file that stands in for it): the
+    ///  Checklist runs at startup and the settings open when something is wrong; it turns itself off once all is right.
+    /// </summary>
+    bool CheckSettings { get; set; }
 
     /// <summary>
     ///  Upstream <c>showbuildstatusiconcolumn</c>: the grid's build status column shows the status symbol.
@@ -536,6 +554,12 @@ public interface IAppPreferences
     ///  shows a merge's files against each parent and its combined diff, and several commits' files in upstream's groups.
     /// </summary>
     bool ShowDiffForAllParents { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>OmitUninterestingDiff</c>: a merge's combined diff is git's dense one (<c>--cc</c>), which leaves out the
+    ///  hunks that take one parent's version, instead of <c>-c</c>. Upstream's <c>GetCombinedDiffContent</c> reads it.
+    /// </summary>
+    bool OmitUninterestingDiff { get; set; }
 
     /// <summary>
     ///  Upstream <c>AutomaticContinuousScroll</c> ("Enable automatic continuous scroll (without ALT button)"): scrolling past
@@ -711,6 +735,12 @@ public interface IAppPreferences
     ///  Upstream's <c>CommitDialogSelectStagedOnEnterMessage</c>: entering the message box selects a staged file.
     /// </summary>
     bool CommitDialogSelectStagedOnEnterMessage { get; set; }
+
+    /// <summary>
+    ///  Upstream's <c>commitdialogselectionfilter</c>: the commit window shows its selection filter from the start. No page
+    ///  of upstream's settings edits it.
+    /// </summary>
+    bool CommitDialogSelectionFilter { get; }
 
     /// <summary>
     ///  Whether the app asks before <paramref name="confirmation"/>'s action: upstream's <c>DontConfirm...</c> settings,
@@ -1207,6 +1237,18 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.AutoPopStashAfterCheckoutBranch = value;
     }
 
+    public bool? AutoPopStashAfterPull
+    {
+        get => AppSettings.AutoPopStashAfterPull;
+        set => AppSettings.AutoPopStashAfterPull = value;
+    }
+
+    public bool? DontConfirmUpdateSubmodulesOnCheckout
+    {
+        get => AppSettings.DontConfirmUpdateSubmodulesOnCheckout;
+        set => AppSettings.DontConfirmUpdateSubmodulesOnCheckout = value;
+    }
+
     public bool CreateLocalBranchForRemote
     {
         get => AppSettings.CreateLocalBranchForRemote;
@@ -1362,6 +1404,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.Translation = value;
     }
 
+    public bool CheckSettings
+    {
+        get => AppSettings.CheckSettings;
+        set => AppSettings.CheckSettings = value;
+    }
+
     public bool ShowBuildStatusIconColumn
     {
         get => AppSettings.ShowBuildStatusIconColumn;
@@ -1501,6 +1549,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ShowDiffForAllParents;
         set => AppSettings.ShowDiffForAllParents = value;
+    }
+
+    public bool OmitUninterestingDiff
+    {
+        get => AppSettings.OmitUninterestingDiff;
+        set => AppSettings.OmitUninterestingDiff = value;
     }
 
     public bool AutomaticContinuousScroll
@@ -1783,6 +1837,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
         get => AppSettings.CommitDialogSelectStagedOnEnterMessage.Value;
         set => AppSettings.CommitDialogSelectStagedOnEnterMessage.Value = value;
     }
+
+    public bool CommitDialogSelectionFilter => AppSettings.CommitDialogSelectionFilter;
 
     public bool Asks(Confirmation confirmation) => confirmation switch
     {
@@ -2127,6 +2183,10 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool? AutoPopStashAfterCheckoutBranch { get; set; }
 
+    public bool? AutoPopStashAfterPull { get; set; }
+
+    public bool? DontConfirmUpdateSubmodulesOnCheckout { get; set; }
+
     public bool CreateLocalBranchForRemote { get; set; }
 
     public bool DontCommitMerge { get; set; }
@@ -2196,6 +2256,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public string Translation { get; set; } = "";
 
+    public bool CheckSettings { get; set; } = true;
+
     public bool ShowBuildStatusIconColumn { get; set; } = true;
 
     public bool ShowBuildStatusTextColumn { get; set; }
@@ -2237,6 +2299,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool ShowAvailableDiffTools { get; set; } = true;
 
     public bool ShowDiffForAllParents { get; set; } = true;
+
+    public bool OmitUninterestingDiff { get; set; }
 
     public bool AutomaticContinuousScroll { get; set; }
 
@@ -2299,6 +2363,7 @@ public sealed class InMemoryAppPreferences : IAppPreferences
         RememberNumberOfContextLines = false;
         RememberShowNonPrintingCharsPreference = false;
         RememberShowSyntaxHighlightingInDiff = true;
+        OmitUninterestingDiff = false;
         _diffOptions = new DiffOptions();
         _savedDiffOptions = new DiffOptions();
     }
@@ -2371,6 +2436,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool CommitDialogSelectStagedOnEnterMessage { get; set; } = true;
 
+    public bool CommitDialogSelectionFilter { get; set; }
+
     private readonly Dictionary<Confirmation, bool> _asks = [];
 
     // Upstream's defaults: every question is asked except the left panel checkout.
@@ -2382,7 +2449,13 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     /// <summary>
     ///  Puts every confirmation back to upstream's default.
     /// </summary>
-    public void ResetConfirmations() => _asks.Clear();
+    public void ResetConfirmations()
+    {
+        _asks.Clear();
+        AutoPopStashAfterCheckoutBranch = null;
+        AutoPopStashAfterPull = null;
+        DontConfirmUpdateSubmodulesOnCheckout = null;
+    }
 
     public LocalChangesAction CheckoutBranchAction { get; set; }
 

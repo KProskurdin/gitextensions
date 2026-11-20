@@ -47,13 +47,14 @@ public partial class DiffView
         // Before the list scrolls, as upstream reads the scroll bar before the wheel moves it.
         DiffList.AddHandler(PointerWheelChangedEvent, (_, e) =>
         {
-            if (DiffList.Scroll is not { } scroll || e.Delta.Y == 0)
+            if (e.Delta.Y == 0)
             {
                 return;
             }
 
-            bool atTop = scroll.Offset.Y <= 0;
-            bool atBottom = scroll.Offset.Y + scroll.Viewport.Height >= scroll.Extent.Height - 1;
+            (double offset, double extent, double viewport) = DiffList.VerticalScroll;
+            bool atTop = offset <= 0;
+            bool atBottom = offset + viewport >= extent - 1;
             if (e.Delta.Y > 0 && atTop)
             {
                 RaiseScrollReached(TopScrollReached, e.KeyModifiers);
@@ -88,6 +89,16 @@ public partial class DiffView
         }
 
         _pendingScrollToBottom = null;
-        Dispatcher.UIThread.Post(() => DiffList.ScrollIntoView(bottom ? Lines.Count - 1 : 0), DispatcherPriority.Background);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (bottom)
+            {
+                DiffList.ScrollToBottom();
+            }
+            else
+            {
+                DiffList.ScrollToTop();
+            }
+        }, DispatcherPriority.Background);
     }
 }

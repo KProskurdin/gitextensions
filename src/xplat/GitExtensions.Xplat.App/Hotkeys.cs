@@ -37,6 +37,21 @@ public enum BrowseCommand
     FindFileInSelectedCommit,
     AddNotes,
     FocusOutputHistoryAndToggleIfPanel,
+    FocusCommitInfo,
+    FocusDiff,
+    FocusFileTree,
+    FocusGpgInfo,
+    FocusBuildServerStatus,
+    FocusNextTab,
+    FocusPrevTab,
+    ToggleLeftPanel,
+    ManageWorkTrees,
+    GitGui,
+    GitGitK,
+    QuickPullOrFetch,
+    StashStaged,
+    GoToSuperproject,
+    GoToSubmodule,
 }
 
 /// <summary>
@@ -59,6 +74,8 @@ public enum CommitCommand
     SelectPreviousAlternativeHotkey2,
     ConventionalCommitPrefixMessage,
     ConventionalCommitPrefixMessageWithScope,
+    ToggleSelectionFilter,
+    AddSelectionToCommitMessage,
 }
 
 /// <summary>
@@ -88,6 +105,8 @@ public enum DiffCommand
     ShowGitWordColoring,
     ShowDifftastic,
     TreatFileAsText,
+    NextOccurrence,
+    PreviousOccurrence,
 }
 
 /// <summary>
@@ -330,6 +349,21 @@ public static class Hotkeys
             [BrowseCommand.FindFileInSelectedCommit] = (9, "FindFileInSelectedCommit"),
             [BrowseCommand.AddNotes] = (8, "AddNotes"),
             [BrowseCommand.FocusOutputHistoryAndToggleIfPanel] = (47, "FocusOutputHistoryAndToggleIfPanel"),
+            [BrowseCommand.FocusCommitInfo] = (4, "FocusCommitInfo"),
+            [BrowseCommand.FocusDiff] = (5, "FocusDiff"),
+            [BrowseCommand.FocusFileTree] = (6, "FocusFileTree"),
+            [BrowseCommand.FocusGpgInfo] = (26, "FocusGpgInfo"),
+            [BrowseCommand.FocusBuildServerStatus] = (30, "FocusBuildServerStatus"),
+            [BrowseCommand.FocusNextTab] = (31, "FocusNextTab"),
+            [BrowseCommand.FocusPrevTab] = (32, "FocusPrevTab"),
+            [BrowseCommand.ToggleLeftPanel] = (21, "ToggleLeftPanel"),
+            [BrowseCommand.ManageWorkTrees] = (49, "ManageWorkTrees"),
+            [BrowseCommand.GitGui] = (1, "GitGui"),
+            [BrowseCommand.GitGitK] = (2, "GitGitK"),
+            [BrowseCommand.QuickPullOrFetch] = (48, "QuickPullOrFetch"),
+            [BrowseCommand.StashStaged] = (46, "StashStaged"),
+            [BrowseCommand.GoToSuperproject] = (27, "GoToSuperproject"),
+            [BrowseCommand.GoToSubmodule] = (28, "GoToSubmodule"),
         },
         new Dictionary<BrowseCommand, WinFormsKeys>
         {
@@ -357,6 +391,17 @@ public static class Hotkeys
             [BrowseCommand.FindFileInSelectedCommit] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.F,
             [BrowseCommand.AddNotes] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.N,
             [BrowseCommand.FocusOutputHistoryAndToggleIfPanel] = WinFormsKeys.Control | WinFormsKeys.D9,
+            [BrowseCommand.FocusCommitInfo] = WinFormsKeys.Control | WinFormsKeys.D2,
+            [BrowseCommand.FocusDiff] = WinFormsKeys.Control | WinFormsKeys.D3,
+            [BrowseCommand.FocusFileTree] = WinFormsKeys.Control | WinFormsKeys.D4,
+            [BrowseCommand.FocusGpgInfo] = WinFormsKeys.Control | WinFormsKeys.D5,
+            [BrowseCommand.FocusBuildServerStatus] = WinFormsKeys.Control | WinFormsKeys.D7,
+            [BrowseCommand.FocusNextTab] = WinFormsKeys.Control | WinFormsKeys.Tab,
+            [BrowseCommand.FocusPrevTab] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Tab,
+            [BrowseCommand.ToggleLeftPanel] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.C,
+            [BrowseCommand.ManageWorkTrees] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.W,
+            [BrowseCommand.QuickPullOrFetch] = WinFormsKeys.F8,
+            [BrowseCommand.StashStaged] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.Alt | WinFormsKeys.Up,
         },
         macOSDefaults: new Dictionary<BrowseCommand, WinFormsKeys>
         {
@@ -365,6 +410,10 @@ public static class Hotkeys
 
             // Minimize's key. Cmd+Shift+M is the grid's "hide merge commits".
             [BrowseCommand.Merge] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.M,
+
+            // The application switcher's keys; Cmd+Shift+] and Cmd+Shift+[ switch tabs in macOS apps.
+            [BrowseCommand.FocusNextTab] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.OemCloseBrackets,
+            [BrowseCommand.FocusPrevTab] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.OemOpenBrackets,
         });
 
     /// <summary>
@@ -390,6 +439,8 @@ public static class Hotkeys
             [CommitCommand.ConventionalCommitPrefixMessage] = (25, "ConventionalCommit_PrefixMessage"),
             [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
                 (26, "ConventionalCommit_PrefixMessageWithScope"),
+            [CommitCommand.ToggleSelectionFilter] = (10, "ToggleSelectionFilter"),
+            [CommitCommand.AddSelectionToCommitMessage] = (16, "AddSelectionToCommitMessage"),
         },
         new Dictionary<CommitCommand, WinFormsKeys>
         {
@@ -409,6 +460,8 @@ public static class Hotkeys
             [CommitCommand.ConventionalCommitPrefixMessage] = WinFormsKeys.Control | WinFormsKeys.T,
             [CommitCommand.ConventionalCommitPrefixMessageWithScope] =
                 WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.T,
+            [CommitCommand.ToggleSelectionFilter] = WinFormsKeys.Control | WinFormsKeys.F,
+            [CommitCommand.AddSelectionToCommitMessage] = WinFormsKeys.C,
         });
 
     /// <summary>
@@ -447,6 +500,22 @@ public static class Hotkeys
             [GridCommand.CompareToBranch] = (29, "CompareToBranch"),
             [GridCommand.CompareSelectedCommits] = (30, "CompareSelectedCommits"),
             [GridCommand.OpenCommitsWithDifftool] = (32, "OpenCommitsWithDifftool"),
+            [GridCommand.ToggleRevisionGraph] = (0, "ToggleRevisionGraph"),
+            [GridCommand.ToggleAuthorDateCommitDate] = (2, "ToggleAuthorDateCommitDate"),
+            [GridCommand.ToggleOrderRevisionsByDate] = (3, "ToggleOrderRevisionsByDate"),
+            [GridCommand.ToggleShowRelativeDate] = (4, "ToggleShowRelativeDate"),
+            [GridCommand.ToggleDrawNonRelativesGray] = (5, "ToggleDrawNonRelativesGray"),
+            [GridCommand.ToggleShowGitNotes] = (6, "ToggleShowGitNotes"),
+            [GridCommand.ToggleShowGitNotesColumn] = (47, "ToggleShowGitNotesColumn"),
+            [GridCommand.ShowFilteredBranches] = (11, "ShowFilteredBranches"),
+            [GridCommand.ShowRemoteBranches] = (12, "ShowRemoteBranches"),
+            [GridCommand.ToggleShowTags] = (26, "ToggleShowTags"),
+            [GridCommand.ShowReflogReferences] = (34, "ShowReflogReferences"),
+            [GridCommand.SelectNextForkPointAsDiffBase] = (38, "SelectNextForkPointAsDiffBase"),
+            [GridCommand.NavigateBackwardAlternativeHotkey] = (39, "NavigateBackward_AlternativeHotkey"),
+            [GridCommand.NavigateForwardAlternativeHotkey] = (40, "NavigateForward_AlternativeHotkey"),
+            [GridCommand.DeleteRef] = (41, "DeleteRef"),
+            [GridCommand.RenameRef] = (42, "RenameRef"),
         },
         new Dictionary<GridCommand, WinFormsKeys>
         {
@@ -475,6 +544,15 @@ public static class Hotkeys
             [GridCommand.SelectAsBaseToCompare] = WinFormsKeys.Control | WinFormsKeys.L,
             [GridCommand.CompareToBase] = WinFormsKeys.Control | WinFormsKeys.R,
             [GridCommand.CompareToWorkingDirectory] = WinFormsKeys.Control | WinFormsKeys.D,
+            [GridCommand.ShowFilteredBranches] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.T,
+            [GridCommand.ShowRemoteBranches] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.R,
+            [GridCommand.ToggleShowTags] = WinFormsKeys.Control | WinFormsKeys.Alt | WinFormsKeys.T,
+            [GridCommand.ShowReflogReferences] = WinFormsKeys.Control | WinFormsKeys.Shift | WinFormsKeys.L,
+            [GridCommand.SelectNextForkPointAsDiffBase] = WinFormsKeys.Control | WinFormsKeys.K,
+            [GridCommand.NavigateBackwardAlternativeHotkey] = WinFormsKeys.BrowserBack,
+            [GridCommand.NavigateForwardAlternativeHotkey] = WinFormsKeys.BrowserForward,
+            [GridCommand.DeleteRef] = WinFormsKeys.Delete,
+            [GridCommand.RenameRef] = WinFormsKeys.F2,
         });
 
     /// <summary>
@@ -501,6 +579,8 @@ public static class Hotkeys
             [DiffCommand.ShowGitWordColoring] = (18, "ShowGitWordColoring"),
             [DiffCommand.ShowDifftastic] = (19, "ShowDifftastic"),
             [DiffCommand.TreatFileAsText] = (5, "TreatFileAsText"),
+            [DiffCommand.NextOccurrence] = (10, "NextOccurrence"),
+            [DiffCommand.PreviousOccurrence] = (11, "PreviousOccurrence"),
         },
         new Dictionary<DiffCommand, WinFormsKeys>
         {
@@ -521,6 +601,8 @@ public static class Hotkeys
             [DiffCommand.ShowSyntaxHighlighting] = WinFormsKeys.X,
             [DiffCommand.ShowGitWordColoring] = WinFormsKeys.Control | WinFormsKeys.D,
             [DiffCommand.ShowDifftastic] = WinFormsKeys.Control | WinFormsKeys.T,
+            [DiffCommand.NextOccurrence] = WinFormsKeys.Alt | WinFormsKeys.Right,
+            [DiffCommand.PreviousOccurrence] = WinFormsKeys.Alt | WinFormsKeys.Left,
         },
         macOSDefaults: new Dictionary<DiffCommand, WinFormsKeys>
         {

@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using GitCommands;
 using GitCommands.Git;
@@ -1050,6 +1051,33 @@ internal sealed class GitOperationsTests
 
     // Runs a git operation to its end as vs-threading lets a test wait: JoinableTaskFactory.Run keeps the work that the
     // operation sends to the main thread going, where blocking on its task would not.
+    [AvaloniaTest]
+    public void A_failed_command_carries_upstreams_details_which_the_error_window_shows()
+    {
+        GitOperationException? failure = null;
+        try
+        {
+            Wait(() => _operations.CheckoutAsync(_repo.Path, "no-such-branch"));
+        }
+        catch (GitOperationException ex)
+        {
+            failure = ex;
+        }
+
+        failure.Should().NotBeNull();
+        failure!.Arguments.Should().Contain("checkout").And.Contain("no-such-branch");
+        failure.WorkingDirectory!.TrimEnd('/', '\\').Should().Be(_repo.Path, "upstream's module folder ends with a separator");
+        failure.ExitCode.Should().NotBe(0);
+        string details = ErrorReporter.Details(failure);
+        details.Should().Contain("Exit code:").And.Contain("Working directory: " + _repo.Path);
+
+        ErrorWindow window = new(failure.Message, details);
+        window.Show();
+        SelectableTextBlock text = window.FindControl<SelectableTextBlock>("DetailsText")!;
+        (text.IsVisible, text.Text).Should().Be((true, details.TrimEnd()));
+        window.Close();
+    }
+
     private static void Wait(Func<Task> operation) => GitUI.ThreadHelper.JoinableTaskFactory.Run(operation);
 
     private sealed class CollectingProgress(List<GitOutputLine> lines) : IProgress<GitOutputLine>

@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Editing;
+using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
 
@@ -34,7 +36,6 @@ public partial class EditorWindow : Window
         _path = ViewModel.Path;
         DataContext = ViewModel;
         InitializeComponent();
-        ContentBox.NewLine = "\n";
 
         // View concerns: the keys (Escape, the save shortcut and find's), the editor menu, the question's focus, and the
         // caret once the file is read.
@@ -67,7 +68,8 @@ public partial class EditorWindow : Window
     private async Task ShowFileAsync()
     {
         await ViewModel.LoadAsync();
-        ContentBox.CaretIndex = 0;
+        ShowText();
+        ContentBox.CaretOffset = 0;
         ContentBox.Focus();
 
         // With the screenshot aid the file is shown, saved as a picture and accepted unchanged, so a script can run the app
@@ -94,6 +96,61 @@ public partial class EditorWindow : Window
         else if (RunFindHotkey(e))
         {
             e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    ///  Upstream's highlighting of the file, once it is shown; null for a file with no syntax.
+    /// </summary>
+    public EditorColorizer? Colorizer { get; private set; }
+
+    // The editor's text is not bindable: it starts as the file's, and each change goes to the view model. Upstream's
+    // highlighting follows the text (EditorColorizer): git's files with the repository's comment character, others in the
+    // syntax of their extension; a commit message's waves show their tooltip under the pointer.
+    private void ShowText()
+    {
+        ContentBox.Text = ViewModel.Text ?? "";
+        EditorSyntax syntax = EditorHighlighting.SyntaxOf(_path);
+        SyntaxDefinition? definition = syntax == EditorSyntax.File ? SyntaxDefinitions.ForFile(_path) : null;
+        if (syntax != EditorSyntax.File || definition is not null)
+        {
+            EditorColorizer colorizer = new(syntax,
+                syntax == EditorSyntax.File ? EditorHighlighting.DefaultCommentChar
+                    : EditorHighlighting.CommentChar(CommentCharSetting(_path)), definition);
+            colorizer.Update(ContentBox.Document);
+            ContentBox.TextArea.TextView.LineTransformers.Add(colorizer);
+            ContentBox.TextArea.TextView.BackgroundRenderers.Add(colorizer.WaveRenderer);
+            ContentBox.Document.Changed += (_, _) =>
+            {
+                colorizer.Update(ContentBox.Document);
+                ContentBox.TextArea.TextView.Redraw();
+            };
+            ContentBox.PointerHover += (_, e) =>
+            {
+                if (ContentBox.GetPositionFromPoint(e.GetPosition(ContentBox)) is { } position
+                    && colorizer.ToolTipAt(ContentBox.Document, ContentBox.Document.GetOffset(position.Location)) is { } tip)
+                {
+                    ToolTip.SetTip(ContentBox, tip);
+                    ToolTip.SetIsOpen(ContentBox, true);
+                }
+            };
+            ContentBox.PointerHoverStopped += (_, _) => ToolTip.SetIsOpen(ContentBox, false);
+            Colorizer = colorizer;
+        }
+
+        ContentBox.TextChanged += (_, _) => ViewModel.Text = ContentBox.Text;
+    }
+
+    // Upstream's core.commentchar of the repository the file belongs to (git's files are in its .git folder).
+    private static string? CommentCharSetting(string path)
+    {
+        try
+        {
+            return GitModules.Open(Path.GetDirectoryName(path) ?? "").GetEffectiveSetting("core.commentchar");
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return null;
         }
     }
 

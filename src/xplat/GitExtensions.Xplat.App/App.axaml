@@ -14,6 +14,12 @@
     <FluentTheme DensityStyle="Compact" />
     <!-- The revision grid rows (RevisionGrid.axaml), shared by the windows that show a commit grid. -->
     <StyleInclude Source="avares://GitExtensions/RevisionGrid.axaml" />
+    <!-- AvaloniaEdit's editor (the editor window), styled as the rest of the app. -->
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+    <!-- Screen readers read a row of a list or tree by what it shows, as upstream's WinForms rows and nodes (AccessibleNames). -->
+    <Style Selector="ListBoxItem, TreeViewItem">
+      <Setter Property="AutomationProperties.Name" Value="{ReflectionBinding Converter={x:Static local:AccessibleNames.Converter}}" />
+    </Style>
     <!-- Fluent's tab headers are sized for touch; the browse window's tabs are a compact strip, as in upstream. The tab's
          content inherits the size, so it is the application font's (FontApplier). -->
     <Style Selector="TabItem">

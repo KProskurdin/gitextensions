@@ -111,16 +111,7 @@ public partial class MainWindow
         => selected.Count > 1
            || (selected is [{ } row] && !ArtificialCommits.IsArtificial(row.Hash) && row.ParentHashes?.Count > 1);
 
-    // Upstream's GitRevision of a grid row: its id and its parents.
-    private static GitRevision Revision(CommitRow row)
-        => new(ObjectId.Parse(row.Hash))
-        {
-            ParentIds =
-            [
-                .. (row.ParentHashes ?? []).Select(hash => ObjectId.TryParse(hash, out ObjectId id) ? id : default)
-                .Where(id => !id.IsZero)
-            ],
-        };
+    private static GitRevision Revision(CommitRow row) => GridRevisions.Revision(row);
 
     // A file of a group, with the group it is shown in.
     private static (DiffGroup Group, RevisionDiffFile File)? GroupFile(CommitFile file)

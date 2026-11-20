@@ -59,7 +59,7 @@ public partial class MainWindow : IRepoObjectWindow
         => StartCheckoutBranchAsync(path, branch, remote: true);
 
     Task<bool> IRepoObjectWindow.PullBranchAsync(string path, string remote, string branch, bool rebase)
-        => PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, remote, branch, rebase), remote);
+        => PullAndUpdateSubmodulesAsync(path, () => QuickPullAsync(path, remote, branch, rebase), remote);
 
     Task IRepoObjectWindow.StashAllAsync() => StashAsync();
 

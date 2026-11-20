@@ -202,6 +202,8 @@ public sealed partial class CommitViewModel : DialogViewModel
         ShowResetUnstaged = preferences.ShowResetWorkTreeChanges;
         Title = CommitStatusBar.Title(repository.CurrentBranch, repositoryPath);
         Grouping = new FileListGroupingViewModel(preferences);
+        SelectionFilter = new SelectionFilterViewModel(preferences.CommitDialogSelectionFilter, () => _unstagedListed,
+            host.Translate);
         _repository.PropertyChanged += OnRepositoryChanged;
         _actions.PropertyChanged += OnActionsChanged;
         ShowRepositoryState();

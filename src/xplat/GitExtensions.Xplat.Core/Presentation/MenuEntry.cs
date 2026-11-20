@@ -40,6 +40,11 @@ public sealed partial class MenuEntry : ObservableObject
     public string? Image { get; init; }
 
     /// <summary>
+    ///  Upstream's <c>AdaptLightness</c> on <see cref="Image"/>, where upstream calls it.
+    /// </summary>
+    public bool AdaptsImage { get; init; }
+
+    /// <summary>
     ///  A picture as PNG data, for one that is not upstream's (a plugin's commit template icon); <see cref="Image"/> wins.
     /// </summary>
     public byte[]? ImageData { get; init; }

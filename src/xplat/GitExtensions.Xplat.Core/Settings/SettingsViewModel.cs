@@ -309,7 +309,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
         ConfirmationGroups =
         [
             .. Confirmations.Options.GroupBy(option => option.Group).Select(group => new ConfirmationGroup(group.Key + ":",
-                [.. group.Select(option => new ConfirmationChoice(option, preferences.Asks(option.Confirmation)))]))
+                [.. group.Select(option => new ConfirmationChoice(option, Confirmations.CheckState(preferences, option.Confirmation)))]))
         ];
         Hotkeys = new HotkeysPageViewModel(services.Hotkeys);
         Checklist = new ChecklistPageViewModel(new ChecklistPageServices
@@ -326,6 +326,8 @@ public sealed partial class SettingsViewModel : DialogViewModel
             OpenUri = services.OpenUri,
             DarkBackground = services.DarkBackground,
             ShowError = ex => ErrorText = ex.Message,
+            ReadCheckAtStartup = () => preferences.CheckSettings,
+            WriteCheckAtStartup = value => preferences.CheckSettings = value,
         });
         PageTree = new SettingsPageTreeViewModel(services.PageTree with { PageTexts = PageTexts }, PluginsPage.Pages);
         PageTree.PropertyChanged += (_, e) =>
@@ -638,6 +640,18 @@ public sealed partial class SettingsViewModel : DialogViewModel
     [ObservableProperty]
     public partial bool UseDefaultCheckoutBranchAction { get; set; }
 
+    /// <summary>
+    ///  Upstream's Advanced page: "Don't show help images".
+    /// </summary>
+    [ObservableProperty]
+    public partial bool DontShowHelpImages { get; set; }
+
+    /// <summary>
+    ///  Upstream's Advanced page: "Always show advanced options".
+    /// </summary>
+    [ObservableProperty]
+    public partial bool AlwaysShowAdvOpt { get; set; }
+
     [ObservableProperty]
     public partial bool AutoNormaliseBranchName { get; set; }
 
@@ -709,6 +723,12 @@ public sealed partial class SettingsViewModel : DialogViewModel
 
     [ObservableProperty]
     public partial bool ShowDiffForAllParents { get; set; }
+
+    /// <summary>
+    ///  Upstream's Diff viewer page: "Omit uninteresting changes from combined diff".
+    /// </summary>
+    [ObservableProperty]
+    public partial bool OmitUninterestingDiff { get; set; }
 
     [ObservableProperty]
     public partial decimal? DiffVerticalRulerPosition { get; set; }
@@ -978,6 +998,8 @@ public sealed partial class SettingsViewModel : DialogViewModel
         RelativeDate = p.RelativeDate;
         AlwaysShowCheckoutBranchDlg = p.AlwaysShowCheckoutBranchDlg;
         UseDefaultCheckoutBranchAction = p.UseDefaultCheckoutBranchAction;
+        DontShowHelpImages = p.DontShowHelpImages;
+        AlwaysShowAdvOpt = p.AlwaysShowAdvOpt;
         AutoNormaliseBranchName = p.AutoNormaliseBranchName;
         CommitAndPushForcedWhenAmend = p.CommitAndPushForcedWhenAmend;
         EnsureCommitMessageSecondLineEmpty = p.EnsureCommitMessageSecondLineEmpty;
@@ -1002,6 +1024,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
         ReverseGitColoring = p.ReverseGitColoring;
         ShowAvailableDiffTools = p.ShowAvailableDiffTools;
         ShowDiffForAllParents = p.ShowDiffForAllParents;
+        OmitUninterestingDiff = p.OmitUninterestingDiff;
         DiffVerticalRulerPosition = p.DiffVerticalRulerPosition;
         RecentRepositoriesHistorySize = p.RecentRepositoriesHistorySize;
         ShowRepoCurrentBranch = p.ShowRepoCurrentBranch;
@@ -1140,6 +1163,8 @@ public sealed partial class SettingsViewModel : DialogViewModel
 
         p.AlwaysShowCheckoutBranchDlg = AlwaysShowCheckoutBranchDlg;
         p.UseDefaultCheckoutBranchAction = UseDefaultCheckoutBranchAction;
+        p.DontShowHelpImages = DontShowHelpImages;
+        p.AlwaysShowAdvOpt = AlwaysShowAdvOpt;
         p.AutoNormaliseBranchName = AutoNormaliseBranchName;
         if (SelectedNormaliseSymbol is { } symbol)
         {
@@ -1170,6 +1195,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
         p.ReverseGitColoring = ReverseGitColoring;
         p.ShowAvailableDiffTools = ShowAvailableDiffTools;
         p.ShowDiffForAllParents = ShowDiffForAllParents;
+        p.OmitUninterestingDiff = OmitUninterestingDiff;
         p.DiffVerticalRulerPosition = (int)(DiffVerticalRulerPosition ?? 0);
         p.RecentRepositoriesHistorySize = (int)(RecentRepositoriesHistorySize ?? p.RecentRepositoriesHistorySize);
         StoreGitAndSshPages();
@@ -1194,7 +1220,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
 
         foreach (ConfirmationChoice choice in ConfirmationChoices)
         {
-            p.SetAsks(choice.Confirmation, choice.Asks);
+            Confirmations.SetCheckState(p, choice.Confirmation, choice.CheckState);
         }
     }
 

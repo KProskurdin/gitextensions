@@ -61,12 +61,16 @@ internal sealed class RepositoryOperationsViewModelTests
     public async Task A_failing_operation_sets_the_error_and_does_not_report_a_change()
     {
         Task<bool> commit = _viewModel.CommitAsync(RepositoryPath, "nothing staged", amend: false, signOff: false, author: "");
-        _git.Fail(0, new GitOperationException("nothing added to commit"));
+        GitOperationException failure = new("nothing added to commit") { ExitCode = 1 };
+        _git.Fail(0, failure);
 
         (await commit).Should().BeFalse();
         _viewModel.ErrorMessage.Should().Be("nothing added to commit");
+        _viewModel.Error.Should().BeSameAs(failure, "the window shows upstream's details of the failed command");
         _viewModel.StatusMessage.Should().BeEmpty();
         _changedPaths.Should().BeEmpty();
+        _viewModel.ClearError();
+        _viewModel.Error.Should().BeNull();
     }
 
     [Test]

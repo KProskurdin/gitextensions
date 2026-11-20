@@ -103,6 +103,8 @@ public static class SettingsChecklist
 
     public const string RepairText = "Repair";
     public const string SaveAndRescanText = "Save and rescan";
+    public const string CheckAtStartupText =
+        "Check settings at startup (disables automatically if all settings are correct)";
     public const string InstantSaveNotice =
         "Changes on the selected page will be saved instantly. \r\nTherefore the Cancel button does NOT revert any changes made.";
 
@@ -189,6 +191,12 @@ public static class SettingsChecklist
     /// </summary>
     public static bool IsValid(ChecklistFacts facts, IReadOnlyList<ChecklistEntry> entries)
         => entries.All(entry => entry.State == ChecklistState.Set) && !string.IsNullOrEmpty(facts.Editor);
+
+    /// <summary>
+    ///  Upstream's <c>IsCheckAtStartupChecked</c>: whether the startup check stays on after a check; it turns itself off
+    ///  once every setting is right.
+    /// </summary>
+    public static bool CheckAtStartupAfter(bool isValid, bool checkAtStartup) => checkAtStartup && !isValid;
 
     /// <summary>
     ///  The command upstream's <see cref="DiffMergeToolConfigurationManager"/> finds for a tool: its <c>cmd</c> setting, or

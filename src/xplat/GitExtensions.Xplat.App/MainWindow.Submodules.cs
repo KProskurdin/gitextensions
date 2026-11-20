@@ -53,7 +53,7 @@ public partial class MainWindow
             .ShowDialog<PullRequest?>(owner);
         if (request is not null)
         {
-            await _actions.PullAsync(submodulePath, request);
+            await PullAutoStashFlow.PullAsync(_actions, _preferences, submodulePath, request, () => owner);
         }
     }
 }

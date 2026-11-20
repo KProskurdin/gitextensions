@@ -1237,10 +1237,10 @@ internal sealed class MainWindowTests
         DiffView diff = Find<DiffView>(commit, "Diff");
         WaitUntil(() => diff.Lines.Any(line => line.Text == "+line 2 changed"));
 
-        ListBox diffList = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView diffList = diff.FindControl<DiffTextView>("DiffList")!;
         List<DiffLineItem> lines = [.. diff.Lines];
-        diffList.Selection.Select(lines.FindIndex(line => line.Text == "-line 2"));
-        diffList.Selection.Select(lines.FindIndex(line => line.Text == "+line 2 changed"));
+        diffList.SelectLines(lines.FindIndex(line => line.Text == "-line 2"),
+            lines.FindIndex(line => line.Text == "+line 2 changed"));
         ClickDiffMenuItem(diff, "StageLinesMenuItem");
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Staged selected lines");
@@ -2021,7 +2021,7 @@ internal sealed class MainWindowTests
         SelectDiffLines(diff, "+line 1");
         Dispatcher.UIThread.RunJobs();
 
-        PressIn(diff.FindControl<ListBox>("DiffList")!, Key.S, KeyModifiers.None);
+        PressIn(diff.FindControl<DiffTextView>("DiffList")!, Key.S, KeyModifiers.None);
 
         WaitUntil(() => Find<TextBlock>(window, "OperationStatusText").Text == "Staged selected lines");
         _repo.Run("show", ":lines.txt").ReplaceLineEndings("\n").Should().Be("line 1\n");
@@ -2434,7 +2434,7 @@ internal sealed class MainWindowTests
     // Upstream FileViewer's menu: it updates itself for the selection when it opens; the item must be offered.
     private static void ClickDiffMenuItem(DiffView diff, string name)
     {
-        ListBox list = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView list = diff.FindControl<DiffTextView>("DiffList")!;
         list.RaiseEvent(new ContextRequestedEventArgs());
         Dispatcher.UIThread.RunJobs();
         list.ContextMenu!.Close();
@@ -2468,12 +2468,10 @@ internal sealed class MainWindowTests
 
     private static void SelectDiffLines(DiffView diff, params string[] texts)
     {
-        ListBox diffList = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView diffList = diff.FindControl<DiffTextView>("DiffList")!;
         List<DiffLineItem> lines = [.. diff.Lines];
-        foreach (string text in texts)
-        {
-            diffList.Selection.Select(lines.FindIndex(line => line.Text == text));
-        }
+        List<int> indexes = [.. texts.Select(text => lines.FindIndex(line => line.Text == text))];
+        diffList.SelectLines(indexes.Min(), indexes.Max());
     }
 
     private static void Click(Window window, string name)

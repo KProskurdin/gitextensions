@@ -54,6 +54,7 @@ public partial class CommitWindow
 
         ViewModel.Grouping.Changed += (_, _) => ShowChanges();
         ViewModel.FilterClearRequested += (_, staged) => (staged ? _staged : _unstaged).Filter.Text = "";
+        ViewModel.SelectionFilter.SelectRequested += (_, changes) => SelectChanges(_unstaged, changes);
         WireListSettings();
         return;
 
@@ -157,6 +158,19 @@ public partial class CommitWindow
         FileListToolbar.Attach(UnstagedSettingsButton, _preferences, (MenuFlyout)UnstagedSettingsButton.Flyout!);
         FileListToolbar.Attach(StagedSettingsButton, _preferences, (MenuFlyout)StagedSettingsButton.Flyout!);
         ((MenuFlyout)UnstagedSettingsButton.Flyout!).Opening += (_, _) => ViewModel.RefreshOptions();
+    }
+
+    // Upstream's FileStatusList.SetSelectionFilter: exactly the matching files are selected, their folders expanded.
+    private void SelectChanges(FileListParts parts, IReadOnlyList<FileChange> changes)
+    {
+        if (parts.Tree is not { } tree)
+        {
+            return;
+        }
+
+        tree.Expand(tree.NodeKeys(changes, ""));
+        ShowChanges();
+        tree.Select(changes);
     }
 
     // Upstream's lists: the files of the list in the group-by order, without untracked files when "Show untracked files" is

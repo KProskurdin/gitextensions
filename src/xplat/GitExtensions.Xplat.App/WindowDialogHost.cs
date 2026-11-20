@@ -61,7 +61,7 @@ internal sealed class WindowDialogHost : IDialogHost
             return;
         }
 
-        _ = new ErrorWindow(exception.Message).ShowDialog(_window);
+        _ = new ErrorWindow(exception.Message, ErrorReporter.Details(exception)).ShowDialog(_window);
     }
 
     public void Close(object? result) => _window.Close(result);

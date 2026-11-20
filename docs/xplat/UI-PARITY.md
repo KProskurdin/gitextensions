@@ -757,15 +757,20 @@ toolbar icons with upstream's `ToolTipText`.
   FormBlame, FormSettings, GitConfigSettingsPage, the FormBrowse menus) and FormPull's note matches its row; 22 stay
   `partial`. The comparison also found gaps no audit had named. What is left, by where it can be done:
   - **Portable, checkable on any OS:** ~~the Git > Advanced settings page (eight git config values; the page tree lists it
-    without a page)~~ done the same day (see GitConfigAdvancedSettingsPage in `PORTING-MAP.md`); "Check settings at startup" and upstream's startup check; the Advanced page's "Don't show help images"
-    and "Always show advanced options" check boxes (both settings are read already); "Show file history in the main window";
-    "Omit uninteresting changes from combined diff"; the Confirmations page's two stash pop check boxes and upstream's
-    question after a pull that stashed (the shell lets git's own autostash pop at once); FormCommit's selection filter
+    without a page)~~ done the same day (see GitConfigAdvancedSettingsPage in `PORTING-MAP.md`); ~~"Check settings at startup" and upstream's startup check~~ done 2026-11-19 (see ChecklistSettingsPage); ~~the Advanced page's "Don't show help images"
+    and "Always show advanced options" check boxes (both settings are read already)~~ done 2026-11-19; "Show file history in
+    the main window" (not to do: decided with the user on 2026-11-04 not to port `UseBrowseForFileHistory`, see the
+    FormFileHistory note); ~~"Omit uninteresting changes from combined diff"; the Confirmations page's two stash pop check
+    boxes and upstream's question after a pull that stashed (the shell lets git's own autostash pop at once)~~ done 2026-11-19,
+    with the Confirmations page's "Update submodules on checkout" and auto stash for the quick pulls (see the FormPull,
+    ConfirmationsSettingsPage, DiffViewerSettingsPage and AdvancedSettingsPage notes); ~~FormCommit's selection filter
     toolbar; FormLog, which a double-click on the grid with no selection opens; 31 hotkeys of features the shell has (the
     focus commands, the grid's View toggles, delete and rename ref, stash staged and others, listed in the
-    HotkeySettingsManager note); the auto-completion's tooltip while its words are read.
-  - **Waiting for a viewer with text selection or an editor control:** next and previous occurrence, git-grep's selected
-    text, "Add selection to commit message", the rebase todo highlighting and line numbers.
+    HotkeySettingsManager note); the auto-completion's tooltip while its words are read~~ done 2026-11-19 (see the
+    FormCommit, FormLog, HotkeySettingsManager and EditNetSpell notes). The portable list is done.
+  - ~~**Waiting for a viewer with text selection or an editor control:** next and previous occurrence, git-grep's selected
+    text, "Add selection to commit message", the rebase todo highlighting and line numbers.~~ Done 2026-11-19 on macOS with
+    AvaloniaEdit (`PLAN.md`, the reversed decision; see the FileViewer, FormEditor and FormCommit notes).
   - **Waiting for a decision:** `RunCommand`, the command line verbs (`searchfile` among them) and the `Start...Dialog`
     methods that throw (not ported for now, 2026-11-09).
   - **Windows only:** the Console tab, its settings and shell (ConEmu); the PuTTY prompts and retry; "Download Git", the
@@ -819,9 +824,10 @@ result, and Windows has only the local runs in `SYNC-LOG.md`.
    1. ~~**Errors that nothing catches.** Upstream's `Program.Main` sends every UI-thread exception and every terminating one
       to `BugReportInvoker.Report`; the shell had no handler at all.~~ Done: `ErrorReporter` with upstream's rules (core
       `ErrorReports`) and both handlers, `BugReportWindow` for upstream's `BugReportForm`. The 11 discarded tasks turned out to
-      catch their own errors or not to fail, so they stay. **Left:** `ErrorWindow` (65 places) still shows only the message.
+      catch their own errors or not to fail, so they stay. ~~**Left:** `ErrorWindow` (65 places) still shows only the message.
       Upstream's details (command, arguments, folder, exit code) need them on the shell's `GitOperationException`, which
-      carries only git's message; that touches its 17 throw sites, so it waits.
+      carries only git's message; that touches its 17 throw sites, so it waits.~~ Done 2026-11-19 on macOS for the shared
+      git runners (see the BugReportInvoker note).
    2. ~~**Dubious ownership.**~~ Done: the report offers to trust the repository (git's own `safe.directory` command), open
       its folder or read git's help, for an unhandled exception and when a repository fails to open; a trusted repository
       opens again.
@@ -829,8 +835,10 @@ result, and Windows has only the local runs in `SYNC-LOG.md`.
       `AcceptButton`, `CancelButton` and `MinimumSize` against its window, from `PORTING-MAP.md`'s rows.
    4. ~~**Screen readers.**~~ Done: the test confirmed it (a reader got "Avalonia.Controls.Image"); the tool buttons now
       name themselves by their text or tooltip, and upstream's five `AccessibleName`s are on the settings window. **Left:**
-      a check with VoiceOver on the Mac and Narrator on Windows, at the screen. The rest of the shell (grids, lists, custom
-      controls) was not reviewed for names; upstream's WinForms controls give theirs by default.
+      a check with VoiceOver on the Mac and Narrator on Windows, at the screen. ~~The rest of the shell (grids, lists, custom
+      controls) was not reviewed for names; upstream's WinForms controls give theirs by default.~~ The rows of lists and
+      trees are named since 2026-11-19 (see the "Accessible names of tool buttons" note); custom drawn controls are not
+      reviewed.
 
 **Windows only: do not start from the Mac** (`MACOS.md`, section 7): FormClone's PuTTY prompts, the process dialog's PuTTY
 retry, the PuTTY menu items, "Download Git", the HOME check and FormFixHome's search, the checklist's installer rows and

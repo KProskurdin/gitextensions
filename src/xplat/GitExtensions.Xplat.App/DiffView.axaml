@@ -23,25 +23,11 @@
     <Border x:Name="PicturePanel" IsVisible="{Binding IsShowingImage}" Background="{DynamicResource EditorBackgroundBrush}">
       <Image x:Name="PictureBox" Stretch="Uniform" StretchDirection="DownOnly" />
     </Border>
-    <ListBox x:Name="DiffList" IsVisible="{Binding !IsShowingImage}" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" Padding="0" SelectionMode="Multiple"
-             Background="{DynamicResource EditorBackgroundBrush}">
-      <ListBox.Styles>
-        <Style Selector="ListBoxItem">
-          <Setter Property="Padding" Value="4,0" />
-          <Setter Property="MinHeight" Value="0" />
-        </Style>
-        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-          <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
-        </Style>
-        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-          <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
-        </Style>
-        <Style Selector="ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
-          <Setter Property="Background" Value="{DynamicResource SelectionBackgroundBrush}" />
-        </Style>
-      </ListBox.Styles>
-      <!-- Upstream FileViewer's menu: line staging (where the window can stage), the copy items, then the view options. -->
-      <ListBox.ContextMenu>
+    <!-- Upstream's FileViewer text: an editor (read only) with real text selection, the two line number columns, each
+         line's background and colors (DiffTextView). -->
+    <local:DiffTextView x:Name="DiffList" IsVisible="{Binding !IsShowingImage}" FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}"
+                        Background="{DynamicResource EditorBackgroundBrush}">
+      <local:DiffTextView.ContextMenu>
         <ContextMenu x:Name="DiffContextMenu">
           <MenuItem x:Name="StageLinesMenuItem" Header="Stage selected line(s)" Icon="{local:UpstreamIcon Stage}"
                     IsVisible="{Binding IsStageLinesVisible}" IsEnabled="{Binding HasSelectedLines}"
@@ -104,21 +90,8 @@
           <MenuItem x:Name="FindMenuItem" Header="_Find..." Icon="{local:UpstreamIcon Preview}" />
           <MenuItem x:Name="GoToLineMenuItem" Header="_Go to line" />
         </ContextMenu>
-      </ListBox.ContextMenu>
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="local:DiffLineItem">
-          <Grid ColumnDefinitions="44,44,*">
-            <TextBlock Grid.Column="0" Text="{Binding OldNumber}" Opacity="0.55" TextAlignment="Right" Padding="0,0,6,0"
-                       Background="{DynamicResource LineNumberBackgroundBrush}" />
-            <TextBlock Grid.Column="1" Text="{Binding NewNumber}" Opacity="0.55" TextAlignment="Right" Padding="0,0,8,0"
-                       Background="{DynamicResource LineNumberBackgroundBrush}" />
-            <!-- The file's syntax colors when its type has a definition, as upstream's file viewer. -->
-            <local:SyntaxTextBlock Grid.Column="2" Text="{Binding Text}" Runs="{Binding Runs}" Foreground="{Binding Foreground}"
-                                   Background="{Binding Background}" />
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+      </local:DiffTextView.ContextMenu>
+    </local:DiffTextView>
     <Canvas IsHitTestVisible="False" ClipToBounds="True">
       <Line x:Name="VerticalRuler" StrokeThickness="1" Stroke="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" IsVisible="False" />
     </Canvas>

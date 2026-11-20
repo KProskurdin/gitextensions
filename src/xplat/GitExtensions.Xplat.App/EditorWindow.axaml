@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:GitExtensions.Xplat.App"
         xmlns:vm="using:GitExtensions.Xplat.Core.Editing"
+        xmlns:ae="using:AvaloniaEdit"
         x:Class="GitExtensions.Xplat.App.EditorWindow"
         x:DataType="vm:EditorViewModel"
         Title="{Binding Path}"
@@ -32,8 +33,9 @@
         <Button x:Name="KeepEditingButton" Content="Cancel" Command="{Binding KeepEditingCommand}" />
       </StackPanel>
     </Border>
-    <TextBox x:Name="ContentBox" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" ClearSelectionOnLostFocus="False" BorderThickness="0"
-             Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}"
-             FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" />
+    <!-- Upstream's editor is a FileViewer: line numbers, and the highlighting of git's files (EditorColorizer). -->
+    <ae:TextEditor x:Name="ContentBox" ShowLineNumbers="True" WordWrap="False" IsReadOnly="{Binding IsReadOnly}"
+                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                   FontFamily="{DynamicResource DiffFontFamily}" FontWeight="{DynamicResource DiffFontWeight}" FontStyle="{DynamicResource DiffFontStyle}" FontSize="{DynamicResource DiffFontSize}" />
   </DockPanel>
 </Window>

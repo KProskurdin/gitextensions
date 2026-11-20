@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using GitExtensions.Xplat.Core.Repository;
 using GitUI.AutoCompletion;
@@ -34,4 +35,12 @@ internal sealed class CommitMessageAutoCompletionTests
         CommitMessageAutoCompletion.Matches(words, "re").Select(word => word.Word).Should().Equal("RenderWidget", "readme");
         CommitMessageAutoCompletion.Matches(words, "df").Select(word => word.Word).Should().Equal("DrawFrame");
     }
+
+    [Test]
+    public void The_tooltip_while_the_words_are_read_is_upstreams()
+        => File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "app", "GitUI", "SpellChecker", "EditNetSpell.cs"))
+            .Should().Contain($"\"{CommitMessageAutoCompletion.NotAvailableYet}\"");
+
+    private static string RepositoryRoot([CallerFilePath] string testFile = "")
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", ".."));
 }

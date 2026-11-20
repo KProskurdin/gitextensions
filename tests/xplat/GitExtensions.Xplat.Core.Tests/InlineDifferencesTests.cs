@@ -38,6 +38,23 @@ internal sealed class InlineDifferencesTests
         Dimmed(lines[1]).Should().Equal("int value = ", ";");
     }
 
+    [TestCase("-call(a, c);", "+call(a, b, c);", 0)]
+    [TestCase("-call(a, b, c);", "+call(a, c);", 1)]
+    public void Text_only_one_side_has_gets_upstreams_anchor_on_the_other_side(string removed, string added, int anchored)
+    {
+        IReadOnlyList<DiffLine> lines = InlineDifferences.Add(
+            [new DiffLine(removed, DiffLineKind.Removed), new DiffLine(added, DiffLineKind.Added)], dimBackground: true);
+
+        DiffAnchor anchor = lines[anchored].Anchors.Should().ContainSingle().Subject;
+        lines[1 - anchored].Anchors.Should().BeNull();
+        string shorter = lines[anchored].Text;
+        string longer = lines[1 - anchored].Text;
+        longer[1..anchor.Column].Should().Be(shorter[1..anchor.Column], "the anchor stands where the other side's text goes in");
+        anchor.Color.Should().Be(AppColorExtension.ThemeColors(anchored == 0
+            ? AppColor.AnsiTerminalGreenForeBold
+            : AppColor.AnsiTerminalRedForeBold), "the color of the text the other side has there");
+    }
+
     [Test]
     public void A_whole_line_of_new_text_has_nothing_dimmed()
     {

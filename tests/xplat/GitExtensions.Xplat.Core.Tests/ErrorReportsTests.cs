@@ -119,6 +119,12 @@ internal sealed class ErrorReportsTests
         ErrorReports.ExceptionInfo(failed, new ExceptionInfoLabels()).ReplaceLineEndings("\n").Should().Be(
             "Exit code: 128\nCommand: git\nArguments: fetch origin\nWorking directory: /repo\n");
         ErrorReports.ExceptionInfo(new InvalidOperationException(), new ExceptionInfoLabels()).Should().BeEmpty();
+        ErrorReports.ExceptionInfo(
+                new GitOperationException("fatal") { Command = "git", Arguments = "pull", WorkingDirectory = "/repo", ExitCode = 1 },
+                new ExceptionInfoLabels())
+            .ReplaceLineEndings("\n").Should().Be("Exit code: 1\nCommand: git\nArguments: pull\nWorking directory: /repo\n",
+                "the shell's own git runners give the same details");
+        ErrorReports.ExceptionInfo(new GitOperationException("no details"), new ExceptionInfoLabels()).Should().BeEmpty();
         ErrorReports.ExceptionInfo(new UserExternalOperationException("Script failed", failed),
                 new ExceptionInfoLabels())
             .Should().StartWith("Script failed");

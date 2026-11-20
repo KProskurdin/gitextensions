@@ -172,6 +172,12 @@ public static class AppServices
         () => new Core.Spelling.CommitSpellChecker(DictionaryFolder);
 
     /// <summary>
+    ///  Reads the commit message auto-completion's words of a repository's changes; a test can hold them back.
+    /// </summary>
+    public static Func<string, CancellationToken, Task<IReadOnlyList<GitUI.AutoCompletion.AutoCompleteWord>>>
+        LoadAutoCompleteWords { get; set; } = CommitMessageAutoCompletion.LoadWordsAsync;
+
+    /// <summary>
     ///  The platform's file manager, for upstream's "show in file explorer" commands.
     /// </summary>
     public static IFileManager FileManager { get; set; } =

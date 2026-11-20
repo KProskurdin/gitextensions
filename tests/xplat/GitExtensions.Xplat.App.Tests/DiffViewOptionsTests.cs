@@ -76,7 +76,7 @@ internal sealed class DiffViewOptionsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
         DiffView diff = Show();
-        ListBox list = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView list = diff.FindControl<DiffTextView>("DiffList")!;
 
         Press(list, Key.E, Hotkeys.CommandModifier);
         Press(list, Key.W, Hotkeys.CommandModifier | KeyModifiers.Shift);
@@ -135,7 +135,7 @@ internal sealed class DiffViewOptionsTests
             .And.NotContainNulls("the comment has the definition's comment color");
         diff.Lines.Single(line => line.Text.StartsWith("@@", StringComparison.Ordinal)).Runs.Should().BeNull();
         Dispatcher.UIThread.RunJobs();
-        diff.GetVisualDescendants().OfType<SyntaxTextBlock>().Should().Contain(block => block.Inlines!.Count > 0);
+        diff.FindControl<DiffTextView>("DiffList")!.Editor.Text.Should().Contain("+// changed", "the editor shows the lines");
 
         diff.ShowText("notes.txt", "plain text");
         diff.Lines.Single().Runs.Should().BeNull();
@@ -192,11 +192,14 @@ internal sealed class DiffViewOptionsTests
         Find<CheckBox>(settings, "ShowAllDiffToolsCheck").IsChecked.Should().BeTrue();
         Find<CheckBox>(settings, "RememberSyntaxHighlightingCheck").IsChecked.Should().BeTrue();
         Find<CheckBox>(settings, "RememberNonPrintingCheck").IsChecked = true;
+        Find<CheckBox>(settings, "chkOmitUninterestingDiff").IsChecked.Should().BeFalse();
+        Find<CheckBox>(settings, "chkOmitUninterestingDiff").IsChecked = true;
         Find<NumericUpDown>(settings, "VerticalRulerBox").Value = 72;
         UiClicks.Raise(Find<Button>(settings, "SaveButton"), Button.ClickEvent);
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
         TestAppBuilder.Preferences.RememberShowNonPrintingCharsPreference.Should().BeTrue();
         TestAppBuilder.Preferences.DiffVerticalRulerPosition.Should().Be(72);
+        TestAppBuilder.Preferences.OmitUninterestingDiff.Should().BeTrue();
 
         Button choices = Find<Button>(window, "CommitDiffToolChoiceButton");
         choices.IsVisible.Should().BeTrue();
@@ -222,7 +225,7 @@ internal sealed class DiffViewOptionsTests
 
         toolbar.IsVisible.Should().BeTrue();
         Click(diff, "NextChangeButton");
-        diff.Lines[diff.FindControl<ListBox>("DiffList")!.SelectedIndex].Text.Should().StartWith("-");
+        diff.Lines[diff.FindControl<DiffTextView>("DiffList")!.SelectedIndex].Text.Should().StartWith("-");
 
         diff.ShowText("a.txt", "text");
         toolbar.IsVisible.Should().BeFalse("a file's text has no diff options");
@@ -234,7 +237,7 @@ internal sealed class DiffViewOptionsTests
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed\n");
         DiffView diff = Show();
-        ListBox list = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView list = diff.FindControl<DiffTextView>("DiffList")!;
 
         OpenMenu(list);
 
@@ -262,7 +265,7 @@ internal sealed class DiffViewOptionsTests
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "\0abd\n");
         DiffView diff = Show();
         WaitUntil(() => diff.Lines.Any(line => line.Text.StartsWith("Binary files", StringComparison.Ordinal)));
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
         OpenMenu(lines);
         MenuItem item = lines.ContextMenu!.Items.OfType<MenuItem>().Single(entry => entry.Name == "TreatAllFilesAsTextMenuItem");
         item.IsVisible.Should().BeTrue("upstream offers it for a diff");
@@ -336,7 +339,7 @@ internal sealed class DiffViewOptionsTests
         }
     }
 
-    private static void OpenMenu(ListBox list)
+    private static void OpenMenu(Control list)
     {
         list.RaiseEvent(new ContextRequestedEventArgs());
         Dispatcher.UIThread.RunJobs();

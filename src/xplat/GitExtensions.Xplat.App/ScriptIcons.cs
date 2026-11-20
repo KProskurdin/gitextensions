@@ -77,9 +77,10 @@ public sealed class ScriptIconConverter : IMultiValueConverter
 {
     public static ScriptIconConverter Instance { get; } = new();
 
+    // Upstream's ScriptInfoProxy.SetImages adapts the list's icons.
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
-        => ScriptIcons.For(new ScriptDefinition
+        => ThemedImages.AdaptLightness(ScriptIcons.For(new ScriptDefinition
         {
             Icon = values.ElementAtOrDefault(0) as string, IconFilePath = values.ElementAtOrDefault(1) as string,
-        });
+        }));
 }

@@ -105,7 +105,8 @@ public sealed class GitDiffService : IDiffService
         if (!result.ExitedSuccessfully)
         {
             string error = result.StandardError.Trim();
-            throw new GitOperationException(error.Length > 0 ? error : $"git diff failed with exit code {result.ExitCode}");
+            throw GitOperationException.Failed(module.GitExecutable, arguments, result,
+                error.Length > 0 ? error : $"git diff failed with exit code {result.ExitCode}");
         }
 
         return result.StandardOutput;

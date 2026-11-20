@@ -1,0 +1,116 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fl="using:GitExtensions.Xplat.Core.Diff"
+        xmlns:fgc="using:GitCommands"
+        xmlns:core="using:GitExtensions.Xplat.Core.CommitHistory"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        x:Class="GitExtensions.Xplat.App.LogWindow"
+        x:DataType="core:LogViewModel"
+        Title="Diff"
+        Width="750" Height="529" MinWidth="250" MinHeight="250" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormLog: the revision grid (205 pixels) above the selected commits' files (188 pixels) beside the selected
+       file's diff. Bound to LogViewModel (PLAN.md principle 6); the file list and the diff stay in the view. -->
+  <Grid x:Name="splitContainer1" RowDefinitions="205,5,*">
+    <ListBox x:Name="RevisionGrid" Classes="revisionGrid" SelectionMode="Multiple"
+             ItemTemplate="{StaticResource RevisionRowTemplate}" ItemsSource="{Binding Commits.VisibleRows}" />
+    <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+    <Grid x:Name="splitContainer3" Grid.Row="2" ColumnDefinitions="188,5,*">
+      <DockPanel>
+        <StackPanel x:Name="DiffFilesToolbar" DockPanel.Dock="Top" Classes="toolStrip" x:DataType="fl:FileListToolbarViewModel"
+                    DataContext="{x:Null}">
+          <local:ToolButton x:Name="DiffFilesCollapseGroupsButton" Command="{Binding CollapseGroupsCommand}" IsVisible="{Binding IsCollapseGroupsVisible}" Image="CollapseAll"
+                            ToolTip.Tip="Collapse all groups, otherwise expand the selected group" />
+          <Rectangle Classes="toolSeparator" IsVisible="{Binding #DiffFilesCollapseGroupsButton.IsVisible}" />
+          <local:ToolSplitButton x:Name="DiffFilesAsTreeButton" Image="{Binding Grouping.TreeImage}" Command="{Binding Grouping.ToggleTreeCommand}" ToolTip.Tip="Toggle flat list / tree">
+            <local:ToolSplitButton.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="DiffFilesPathTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FilePath}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FilePath}"
+                    Header="Group by file _path - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon FolderClosed}" />
+                <MenuItem x:Name="DiffFilesPathFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FilePathFlat}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FilePathFlat}"
+                    Header="Group by _file path - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffFilesExtensionTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileExtension}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileExtension}"
+                    Header="Group by file _extension - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon File}" />
+                <MenuItem x:Name="DiffFilesExtensionFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileExtensionFlat}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileExtensionFlat}"
+                    Header="Group by file e_xtension - flat" ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffFilesStatusTreeMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileStatus}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileStatus}"
+                    Header="Group by file _status - tree" ToggleType="CheckBox"
+                          Icon="{local:UpstreamIcon FileStatusModified}" />
+                <MenuItem x:Name="DiffFilesStatusFlatMenuItem" IsChecked="{Binding Grouping.Sorting, Mode=OneWay, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static fgc:DiffListSortType.FileStatusFlat}}"
+                    Command="{Binding Grouping.SetSortingCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileStatusFlat}"
+                    Header="Group by file s_tatus - flat" ToggleType="CheckBox" />
+                <Separator />
+                <MenuItem x:Name="DiffFilesDenseTreeMenuItem" IsChecked="{Binding Grouping.DenseTree, Mode=OneWay}"
+                    IsEnabled="{Binding Grouping.CanDenseTree}" Command="{Binding Grouping.ToggleDenseTreeCommand}"
+                    Header="_Dense tree (merge single item with its folder node)"
+                          ToggleType="CheckBox" />
+                <MenuItem x:Name="DiffFilesGroupNodesInFlatListMenuItem" IsChecked="{Binding Grouping.ShowGroupNodesInFlatList, Mode=OneWay}"
+                    IsEnabled="{Binding Grouping.CanShowGroupNodesInFlatList}"
+                    Command="{Binding Grouping.ToggleShowGroupNodesInFlatListCommand}"
+                    Header="Show _group nodes in flat list (if multiple)"
+                          ToggleType="CheckBox" />
+              </MenuFlyout>
+            </local:ToolSplitButton.Flyout>
+          </local:ToolSplitButton>
+          <Rectangle Classes="toolSeparator" />
+          <local:ToolToggleButton x:Name="DiffFilesByPathButton" IsChecked="{Binding Grouping.IsByPath, Mode=OneWay}"
+                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FilePath}"
+                    Image="FolderClosed" ToolTip.Tip="Group by file path" />
+          <local:ToolToggleButton x:Name="DiffFilesByExtensionButton" IsChecked="{Binding Grouping.IsByExtension, Mode=OneWay}"
+                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileExtension}"
+                    Image="File" ToolTip.Tip="Group by file type (extension)" />
+          <local:ToolToggleButton x:Name="DiffFilesByStatusButton" IsChecked="{Binding Grouping.IsByStatus, Mode=OneWay}"
+                    Command="{Binding Grouping.GroupByCommand}" CommandParameter="{x:Static fgc:DiffListSortType.FileStatus}"
+                    Image="FileStatusModified" ToolTip.Tip="Group by diff status" />
+        </StackPanel>
+        <local:FileFilterBox x:Name="DiffFilesFilterBox" DockPanel.Dock="Top" Margin="0,0,0,2" />
+        <Panel>
+          <ListBox x:Name="DiffFiles" SelectionMode="Multiple">
+          <ListBox.DataTemplates>
+            <DataTemplate x:DataType="core:CommitFile">
+              <!-- Upstream's status image, then the path, which follows "Truncate long filenames"
+                   (FilePathTrimming). -->
+              <DockPanel Margin="{Binding $parent[ListBoxItem].(local:FileRows.Indent)}">
+                <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                       Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                <TextBlock Text="{Binding $parent[ListBoxItem].(local:FileRows.Text), Converter={x:Static local:FilePathTrimming.Text}}"
+                           TextTrimming="{DynamicResource FilePathTrimming}" ToolTip.Tip="{Binding Path}" />
+              </DockPanel>
+            </DataTemplate>
+            <!-- Upstream's folder node, or an extension or status group node: the expander, the image and the text;
+                 a click expands or collapses it. -->
+            <DataTemplate x:DataType="local:FileTreeRow">
+              <DockPanel Background="Transparent" Margin="{Binding Indent}">
+                <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                       Source="{Binding Image, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </DataTemplate>
+            <!-- Upstream's group node (several diff groups): the expander, the group's icon, its count and
+                 summary; a click expands or collapses it. -->
+            <DataTemplate x:DataType="local:DiffGroupHeader">
+              <DockPanel Background="Transparent" ToolTip.Tip="{Binding Text}">
+                <TextBlock DockPanel.Dock="Left" Classes="expander" Background="Transparent" Text="{Binding Expander}" Width="12" VerticalAlignment="Center" />
+                <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,4,0"
+                       Source="{Binding Group.Icon, Converter={x:Static local:UpstreamImageConverter.Instance}}" />
+                <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.DataTemplates>
+          </ListBox>
+          <TextBlock x:Name="DiffFilesNoFilesText" Margin="4,2" IsHitTestVisible="False" IsVisible="False"
+                     Foreground="{DynamicResource SystemControlDisabledBaseMediumLowBrush}" />
+        </Panel>
+      </DockPanel>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <local:DiffView x:Name="diffViewer" Grid.Column="2" />
+    </Grid>
+  </Grid>
+</Window>

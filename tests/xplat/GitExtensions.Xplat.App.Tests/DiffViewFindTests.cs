@@ -25,7 +25,7 @@ internal sealed class DiffViewFindTests
     public void Find_next_selects_each_occurrences_line_marks_it_and_wraps_around_as_upstream()
     {
         (Window window, DiffView diff) = Show("alpha\nbeta foo\ngamma\nfoo delta");
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
 
         Press(lines, Key.F, Hotkeys.CommandModifier);
 
@@ -60,7 +60,7 @@ internal sealed class DiffViewFindTests
     public void Whole_word_case_and_the_selected_lines_limit_the_search_and_highlight_all_marks_every_occurrence()
     {
         (Window window, DiffView diff) = Show("Foo foo_bar\nfoo\nFoo");
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
         diff.Find();
         FindWindow find = diff.FindWindow!;
         find.LookFor = "foo";
@@ -74,8 +74,7 @@ internal sealed class DiffViewFindTests
         find.IsVisible.Should().BeFalse("upstream closes the window when it marked some");
 
         find.FindControl<CheckBox>("chkMatchCase")!.IsChecked = false;
-        lines.SelectedItems!.Add(diff.Lines[1]);
-        lines.SelectedItems.Add(diff.Lines[2]);
+        lines.SelectLines(1, 2);
         diff.Find();
         find.Title.Should().EndWith("(selection only)");
         Click(find, "btnFindNext");
@@ -92,7 +91,7 @@ internal sealed class DiffViewFindTests
     public void Go_to_line_selects_the_files_line_or_the_new_line_number_of_a_diff()
     {
         (Window window, DiffView diff) = Show("one\ntwo\nthree\nfour\nfive");
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
         diff.MaxLineNumber.Should().Be(5);
 
         Press(lines, Key.G, Hotkeys.CommandModifier);
@@ -136,11 +135,11 @@ internal sealed class DiffViewFindTests
         find.LookFor = "needle";
 
         Click(find, "btnFindNext");
-        diff.Lines[diff.FindControl<ListBox>("DiffList")!.SelectedIndex].Text.Should().Contain("needle one");
+        diff.Lines[diff.FindControl<DiffTextView>("DiffList")!.SelectedIndex].Text.Should().Contain("needle one");
         Click(find, "btnFindNext");
 
         WaitUntil(() => files.SelectedItem is CommitFile { Path: "second.txt" } && !diff.IsLoading
-                        && diff.FindControl<ListBox>("DiffList")!.SelectedIndex is >= 0 and var line
+                        && diff.FindControl<DiffTextView>("DiffList")!.SelectedIndex is >= 0 and var line
                         && diff.Lines[line].Text.Contains("needle two", StringComparison.Ordinal));
         find.Close();
         window.Close();
@@ -163,7 +162,7 @@ internal sealed class DiffViewFindTests
         ];
         await diff.ShowGrepAsync("notes.txt", _ => Task.FromResult<(IReadOnlyList<GrepLine>, string?)>((grep, null)));
         Dispatcher.UIThread.RunJobs();
-        ListBox lines = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
         Button next = diff.FindControl<ToolButton>("NextChangeButton")!;
         Button previous = diff.FindControl<ToolButton>("PreviousChangeButton")!;
 
@@ -176,6 +175,36 @@ internal sealed class DiffViewFindTests
         lines.SelectedIndex.Should().Be(4, "lines that match one after the other are one stop, as upstream's");
         UiClicks.Raise(previous, Button.ClickEvent);
         lines.SelectedIndex.Should().Be(1);
+        window.Close();
+    }
+
+    [AvaloniaTest]
+    public void Selected_text_marks_its_occurrences_and_alt_arrows_move_between_them_as_upstream()
+    {
+        (Window window, DiffView diff) = Show("foo bar\nFOO baz\nqux foo");
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
+
+        lines.Editor.Select(0, 3);
+        lines.Occurrences.Select(found => found.Offset).Should().Equal([0, 8, 20], "upstream ignores case");
+
+        // Upstream's GetTextColor for the text of a mark.
+        System.Drawing.Color expected = DiffTextView.OccurrenceMarkColors().Text;
+        AvaloniaEdit.Rendering.TextView view = lines.Editor.TextArea.TextView;
+        AvaloniaEdit.Rendering.VisualLine second = view.GetOrConstructVisualLine(lines.Editor.Document.GetLineByNumber(2));
+        second.Elements.First().TextRunProperties.ForegroundBrush.Should().BeAssignableTo<Avalonia.Media.ISolidColorBrush>()
+            .Which.Color.Should().Be(Avalonia.Media.Color.FromArgb(expected.A, expected.R, expected.G, expected.B));
+        diff.ViewModel.SelectedText.Should().Be("foo");
+
+        Press(lines, Key.Right, KeyModifiers.Alt);
+        lines.Editor.CaretOffset.Should().Be(8);
+        Press(lines, Key.Right, KeyModifiers.Alt);
+        lines.Editor.CaretOffset.Should().Be(20);
+        Press(lines, Key.Left, KeyModifiers.Alt);
+        lines.Editor.CaretOffset.Should().Be(8);
+        lines.Occurrences.Should().HaveCount(3, "moving the caret keeps the marks");
+
+        lines.Editor.Select(3, 1);
+        lines.Occurrences.Should().BeEmpty("white space marks nothing");
         window.Close();
     }
 

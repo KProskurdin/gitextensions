@@ -127,6 +127,10 @@ internal sealed class AdvancedSettingsTests
         Find<CheckBox>(settings, "AlwaysShowCheckoutDlgCheck").IsChecked = true;
         Find<CheckBox>(settings, "UseLocalChangesActionCheck").IsChecked = true;
         Find<CheckBox>(settings, "CommitAndPushForcedCheck").IsChecked = true;
+        Find<CheckBox>(settings, "chkDontSHowHelpImages").IsChecked.Should().BeFalse();
+        Find<CheckBox>(settings, "chkAlwaysShowAdvOpt").IsChecked.Should().BeFalse();
+        Find<CheckBox>(settings, "chkDontSHowHelpImages").IsChecked = true;
+        Find<CheckBox>(settings, "chkAlwaysShowAdvOpt").IsChecked = true;
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
@@ -134,6 +138,7 @@ internal sealed class AdvancedSettingsTests
         (preferences.AutoNormaliseSymbol, preferences.AlwaysShowCheckoutBranchDlg,
                 preferences.UseDefaultCheckoutBranchAction, preferences.CommitAndPushForcedWhenAmend)
             .Should().Be(("", true, true, true));
+        (preferences.DontShowHelpImages, preferences.AlwaysShowAdvOpt).Should().Be((true, true));
     }
 
     private static void Reset()
@@ -143,6 +148,8 @@ internal sealed class AdvancedSettingsTests
         TestAppBuilder.Preferences.AutoNormaliseBranchName = true;
         TestAppBuilder.Preferences.AutoNormaliseSymbol = "_";
         TestAppBuilder.Preferences.CommitAndPushForcedWhenAmend = false;
+        TestAppBuilder.Preferences.DontShowHelpImages = false;
+        TestAppBuilder.Preferences.AlwaysShowAdvOpt = false;
         TestAppBuilder.Preferences.CheckoutBranchAction = LocalChangesAction.DontChange;
         TestAppBuilder.Preferences.CloseCommitDialogAfterCommit = true;
         TestAppBuilder.Preferences.ResetConfirmations();

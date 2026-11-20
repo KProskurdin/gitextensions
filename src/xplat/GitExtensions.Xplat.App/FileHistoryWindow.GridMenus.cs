@@ -108,9 +108,9 @@ public partial class FileHistoryWindow
             case GridCommand.GoToMergeBase when selected is not null:
                 Run(GoToMergeBaseAsync);
                 return true;
-            case GridCommand.NavigateBackward:
+            case GridCommand.NavigateBackward or GridCommand.NavigateBackwardAlternativeHotkey:
                 return Navigate(_navigationHistory.NavigateBackward());
-            case GridCommand.NavigateForward:
+            case GridCommand.NavigateForward or GridCommand.NavigateForwardAlternativeHotkey:
                 return Navigate(_navigationHistory.NavigateForward());
             case GridCommand.NextQuickSearch:
                 return QuickSearchNext(down: true);
@@ -137,9 +137,37 @@ public partial class FileHistoryWindow
             case GridCommand.ShowFirstParent:
                 ApplyFilter(ViewModel.Commits.Filter with { FirstParent = !ViewModel.Commits.Filter.FirstParent });
                 return true;
+            case GridCommand.ShowFilteredBranches:
+                ToolStripFilters.ShowBranches(currentOnly: false, filtered: true);
+                return true;
+            case GridCommand.ToggleRevisionGraph:
+                return ToggleGridView(GridViewToggle.GraphColumn);
+            case GridCommand.ToggleAuthorDateCommitDate:
+                return ToggleGridView(GridViewToggle.AuthorDate);
+            case GridCommand.ToggleShowRelativeDate:
+                return ToggleGridView(GridViewToggle.RelativeDate);
+            case GridCommand.ToggleDrawNonRelativesGray:
+                return ToggleGridView(GridViewToggle.DrawNonRelativesGray);
+            case GridCommand.ToggleShowGitNotes:
+                return ToggleGridView(GridViewToggle.GitNotes);
+            case GridCommand.ToggleShowGitNotesColumn:
+                return ToggleGridView(GridViewToggle.NotesColumn);
+            case GridCommand.ToggleShowTags:
+                return ToggleGridView(GridViewToggle.Tags);
+            case GridCommand.ShowRemoteBranches:
+                return ToggleGridView(GridViewToggle.RemoteBranches);
+            case GridCommand.ShowReflogReferences:
+                return ToggleGridView(GridViewToggle.Reflog);
             default:
                 return false;
         }
+    }
+
+    // Upstream's grid toggles: the View menu's item.
+    private bool ToggleGridView(GridViewToggle toggle)
+    {
+        ((GridViewMenuViewModel)ViewMenuItem.DataContext!).ToggleCommand.Execute(toggle);
+        return true;
     }
 
     private bool SelectGridRow(int? index)

@@ -284,6 +284,48 @@ public sealed class CommitListViewModel : ObservableObject
         ];
 
     /// <summary>
+    ///  Upstream's <c>SelectNextForkPointAsDiffBase</c>: from <paramref name="earliest"/> (an artificial commit counting as
+    ///  the commit below it) along the first parents to the first loaded commit with a local or remote branch, or with
+    ///  other than one child, or the last one loaded; null when an artificial commit leads to no loaded commit.
+    /// </summary>
+    public string? NextForkPoint(CommitRow earliest)
+    {
+        Dictionary<string, CommitRow> rows = new(StringComparer.OrdinalIgnoreCase);
+        foreach (CommitRow row in _rows)
+        {
+            rows.TryAdd(row.Hash, row);
+        }
+
+        CommitRow? revision = earliest;
+        while (revision is not null && ArtificialCommits.IsArtificial(revision.Hash))
+        {
+            revision = FirstParent(revision);
+        }
+
+        if (revision is null)
+        {
+            return null;
+        }
+
+        do
+        {
+            if (FirstParent(revision) is not { } parent)
+            {
+                break;
+            }
+
+            revision = parent;
+        }
+        while (!(revision.Labels ?? []).Any(label => label.Kind is RefKind.Head or RefKind.Branch or RefKind.RemoteBranch)
+               && ChildrenOf(revision.Hash).Count == 1);
+
+        return revision.Hash;
+
+        CommitRow? FirstParent(CommitRow row)
+            => row.ParentHashes is [{ } parent, ..] ? rows.GetValueOrDefault(parent) : null;
+    }
+
+    /// <summary>
     ///  The loaded commits that match <see cref="FilterText"/>; all of them when the filter is empty.
     /// </summary>
     public IReadOnlyList<CommitListItem> VisibleRows

@@ -12,6 +12,11 @@ namespace GitExtensions.Xplat.Core.Repository;
 /// </summary>
 public static class CommitMessageAutoCompletion
 {
+    /// <summary>
+    ///  Upstream's tooltip when the list is asked for while the words are still being read.
+    /// </summary>
+    public const string NotAvailableYet = "AutoComplete is not available yet (it is still parsing the changed files).";
+
     private static readonly WordAtCursorExtractor _extractor = new();
 
     /// <summary>

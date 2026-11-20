@@ -84,16 +84,29 @@ public sealed partial class FontChoice : ObservableObject
 }
 
 /// <summary>
-///  One question of the Confirmations page: checked means the app asks first.
+///  One question of the Confirmations page: checked means the app asks first. A three-state one shows upstream's
+///  in-between state too (<see cref="Confirmations.CheckState"/>).
 /// </summary>
-public sealed partial class ConfirmationChoice(ConfirmationOption option, bool asks) : ObservableObject
+public sealed partial class ConfirmationChoice(ConfirmationOption option, bool? checkState) : ObservableObject
 {
     public Confirmation Confirmation => option.Confirmation;
 
     public string Label => option.Label;
 
+    public bool IsThreeState => option.IsThreeState;
+
     [ObservableProperty]
-    public partial bool Asks { get; set; } = asks;
+    [NotifyPropertyChangedFor(nameof(Asks))]
+    public partial bool? CheckState { get; set; } = checkState;
+
+    /// <summary>
+    ///  True when the box is checked.
+    /// </summary>
+    public bool Asks
+    {
+        get => CheckState == true;
+        set => CheckState = value;
+    }
 }
 
 /// <summary>

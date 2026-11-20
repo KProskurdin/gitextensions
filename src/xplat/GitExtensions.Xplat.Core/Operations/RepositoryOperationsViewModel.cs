@@ -74,7 +74,16 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         private set => SetProperty(ref _errorMessage, value);
     }
 
-    public void ClearError() => ErrorMessage = null;
+    /// <summary>
+    ///  The failure behind <see cref="ErrorMessage"/>, for upstream's details of a failed command; null for invalid input.
+    /// </summary>
+    public Exception? Error { get; private set; }
+
+    public void ClearError()
+    {
+        Error = null;
+        ErrorMessage = null;
+    }
 
     /// <summary>
     ///  The output of the last remote operation, as a console shows it: a progress line is replaced by the line after it.
@@ -618,6 +627,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Error = ex;
             ErrorMessage = ex.Message;
             return false;
         }
@@ -721,6 +731,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             StatusMessage = "";
             RemoteState = RemoteOperationState.Failed;
             ErrorMessage = null;
+            Error = ex;
             ErrorMessage = ex.Message;
             return false;
         }
@@ -758,6 +769,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
     private Task<bool> RejectAsync(string message)
     {
+        Error = null;
         ErrorMessage = null;
         ErrorMessage = message;
         return Task.FromResult(false);
@@ -779,6 +791,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         {
             StatusMessage = "";
             ErrorMessage = null;
+            Error = ex;
             ErrorMessage = ex.Message;
             return false;
         }

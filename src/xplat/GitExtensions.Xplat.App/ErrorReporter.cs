@@ -53,6 +53,12 @@ public static class ErrorReporter
     /// </summary>
     public static event EventHandler<Window>? Showing;
 
+    /// <summary>
+    ///  Upstream's details of a failed command in <paramref name="exception"/>, translated; empty for none.
+    /// </summary>
+    public static string Details(Exception? exception)
+        => exception is null ? "" : ErrorReports.ExceptionInfo(exception, Labels);
+
     private static ExceptionInfoLabels Labels => new(
         UpstreamTranslation.Text(TranslatedStrings, "_exitCodeText", "Exit code"),
         UpstreamTranslation.Text(TranslatedStrings, "_commandText", "Command"),

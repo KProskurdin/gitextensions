@@ -20,7 +20,7 @@
               <Image Source="{local:UpstreamImage RemoteDelete}" Width="16" Height="16" />
             </Button>
             <Button x:Name="ToggleStateButton" Command="{Binding ToggleStateCommand}" IsEnabled="{Binding CanDelete}" ToolTip.Tip="{Binding ToggleTip}" Width="26" Height="26" Padding="0">
-              <Image x:Name="ToggleStateImage" Source="{local:UpstreamImage EyeOpened}" Width="16" Height="16" />
+              <Image x:Name="ToggleStateImage" Source="{local:UpstreamImage EyeOpened, Adapt=True}" Width="16" Height="16" />
             </Button>
           </StackPanel>
           <ListBox x:Name="RemotesList" ItemsSource="{Binding RemoteRows}" SelectedItem="{Binding SelectedRemoteRow}">

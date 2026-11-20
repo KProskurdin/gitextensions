@@ -224,32 +224,5 @@ public partial class MainWindow
 
     // DescribeRevision over the grid's rows as they are now, for a calculation off the UI thread.
     private Func<ObjectId, string> RevisionDescriber()
-    {
-        Dictionary<string, CommitRow> rows = [];
-        foreach (CommitListItem item in _commits.VisibleRows)
-        {
-            rows.TryAdd(item.Row.Hash, item.Row);
-        }
-
-        return id => Describe(id, rows);
-    }
-
-    private static string Describe(ObjectId id, IReadOnlyDictionary<string, CommitRow> rows)
-    {
-        if (id.IsZero)
-        {
-            return ResourceManager.TranslatedStrings.Workspace;
-        }
-
-        if (!rows.TryGetValue(id.ToString(), out CommitRow? row))
-        {
-            return id.ToShortString();
-        }
-
-        string description = id.IsArtificial ? "" : id.ToShortString() + ": ";
-        RefLabel? label =
-            (row.Labels ?? []).FirstOrDefault(label => label.Kind is RefKind.Branch or RefKind.RemoteBranch)
-            ?? (row.Labels ?? []).FirstOrDefault(label => label.Kind == RefKind.Tag);
-        return description + (label?.Name ?? row.Subject);
-    }
+        => GridRevisions.Describer(_commits.VisibleRows.Select(item => item.Row));
 }

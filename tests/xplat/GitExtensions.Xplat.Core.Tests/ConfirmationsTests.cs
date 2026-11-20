@@ -21,6 +21,46 @@ internal sealed class ConfirmationsTests
         }
     }
 
+    [TestCase(null, null)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    public void A_three_state_box_shows_upstreams_inverted_setting_and_stores_it_back(bool? setting, bool? state)
+    {
+        InMemoryAppPreferences preferences = new()
+        {
+            AutoPopStashAfterPull = setting,
+            AutoPopStashAfterCheckoutBranch = setting,
+            DontConfirmUpdateSubmodulesOnCheckout = setting,
+        };
+        Confirmation[] threeState = [.. Confirmations.Options.Where(option => option.IsThreeState)
+            .Select(option => option.Confirmation)];
+
+        threeState.Should().Equal(Confirmation.PopStashAfterCheckout, Confirmation.PopStashAfterPull,
+            Confirmation.UpdateSubmodules);
+        threeState.Select(confirmation => Confirmations.CheckState(preferences, confirmation)).Should()
+            .OnlyContain(value => value == state);
+
+        InMemoryAppPreferences stored = new();
+        foreach (Confirmation confirmation in threeState)
+        {
+            Confirmations.SetCheckState(stored, confirmation, state);
+        }
+
+        (stored.AutoPopStashAfterPull, stored.AutoPopStashAfterCheckoutBranch, stored.DontConfirmUpdateSubmodulesOnCheckout)
+            .Should().Be((setting, setting, setting));
+    }
+
+    [Test]
+    public void A_two_state_box_shows_whether_the_app_asks()
+    {
+        InMemoryAppPreferences preferences = new();
+        Confirmations.SetCheckState(preferences, Confirmation.StashDrop, false);
+
+        preferences.Asks(Confirmation.StashDrop).Should().BeFalse();
+        Confirmations.CheckState(preferences, Confirmation.StashDrop).Should().BeFalse();
+        Confirmations.CheckState(preferences, Confirmation.Amend).Should().BeTrue();
+    }
+
     [Test]
     public void The_questions_are_upstreams()
     {

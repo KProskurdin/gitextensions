@@ -68,6 +68,7 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" />
     <!-- The commit the app was built from, for the environment information (upstream's exe uses it the same way). -->
     <PackageReference Include="GitInfo">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

@@ -18,10 +18,6 @@ public partial class DiffView : UserControl
     // Upstream's line argument of ViewChangesAsync: the line to go to when the next lines are shown.
     private int? _lineToGoTo;
 
-    // The item template's padding and line number columns, before a line's text.
-    private const double LinePadding = 4;
-    private const double LineNumbersWidth = 88;
-
     /// <summary>
     ///  The viewer's state and commands; the view draws its lines. A view model that owns the viewer's (a window's) binds
     ///  it here; without one the viewer makes its own.
@@ -45,7 +41,7 @@ public partial class DiffView : UserControl
             ViewModel.ViewerWidth = DiffList.Bounds.Width;
             ShowVerticalRuler();
         };
-        DiffList.AddHandler(ScrollViewer.ScrollChangedEvent, (_, _) => ShowVerticalRuler());
+        DiffList.ScrollChanged += (_, _) => ShowVerticalRuler();
         DiffList.PropertyChanged += (_, e) =>
         {
             if (e.Property == FontSizeProperty || e.Property == FontFamilyProperty)
@@ -243,9 +239,30 @@ public partial class DiffView : UserControl
             _ => DiffCommand.ResetLines,
         });
 
+    /// <summary>
+    ///  Upstream's <c>GetSelectedText</c>: the text selected in the viewer.
+    /// </summary>
+    public string SelectedText => DiffList.SelectedText;
+
+    /// <summary>
+    ///  Upstream's <c>AddContextMenuEntry</c>: an item at the end of the viewer's menu, for the window around it.
+    /// </summary>
+    public MenuItem AddMenuEntry(string text, Avalonia.Input.KeyGesture? gesture, Action action)
+    {
+        MenuItem item = new() { Header = text, InputGesture = gesture };
+        item.Click += (_, _) => action();
+        DiffContextMenu.Items.Add(item);
+        return item;
+    }
+
+    /// <summary>
+    ///  Gives the viewer's text the focus (upstream's FocusSelectedDiff and FocusDiff).
+    /// </summary>
+    public bool FocusText() => DiffList.Editor.TextArea.Focus();
+
     // The list's selection, which the view model's menu, copy and line range read.
     private void SyncSelection()
-        => ViewModel.SetSelection(DiffList.SelectedIndex, [.. DiffList.Selection.SelectedIndexes]);
+        => ViewModel.SetSelection(DiffList.SelectedIndex, DiffList.SelectedIndexes, DiffList.SelectedText);
 
     private void SelectLine(int index)
     {
@@ -292,12 +309,12 @@ public partial class DiffView : UserControl
                 : null;
         Lines =
         [
-            .. content.Lines.Select(line => WithDimmedRuns(line, line.ColorRuns is null
+            .. content.Lines.Select(line => WithAnchors(line, WithDimmedRuns(line, line.ColorRuns is null
                 ? new DiffLineItem(DisplayText(line),
                     ThemeBrushes.ForegroundFor(line.Kind), ThemeBrushes.BackgroundFor(line.Kind),
                     line.OldNumber?.ToString(CultureInfo.InvariantCulture) ?? "",
                     line.NewNumber?.ToString(CultureInfo.InvariantCulture) ?? "") { Runs = Highlight(highlighter, line), }
-                : ColoredItem(highlighter, line)))
+                : ColoredItem(highlighter, line))))
         ];
         ResetFind();
         DiffList.ItemsSource = Lines;
@@ -311,6 +328,20 @@ public partial class DiffView : UserControl
     }
 
     // Upstream's AddInlineDifferenceMarkers: what the line shares with the one it replaces goes dimmed over its other colors.
+    // Upstream's anchors where the paired line has text this one does not, at their display columns.
+    private DiffLineItem WithAnchors(DiffLine line, DiffLineItem item)
+        => line.Anchors is { Count: > 0 } anchors
+            ? item with
+            {
+                Anchors =
+                [
+                    .. anchors.Select(anchor => (DisplayOffset(line, anchor.Column),
+                        (IBrush)new SolidColorBrush(Color.FromArgb(anchor.Color.A, anchor.Color.R, anchor.Color.G,
+                            anchor.Color.B))))
+                ],
+            }
+            : item;
+
     private DiffLineItem WithDimmedRuns(DiffLine line, DiffLineItem item)
     {
         if (line.DimRuns is not { Count: > 0 } dims)
@@ -502,8 +533,8 @@ public partial class DiffView : UserControl
 
         FormattedText digit = new("0", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             new Typeface(DiffList.FontFamily, DiffList.FontStyle, DiffList.FontWeight), DiffList.FontSize, null);
-        double x = LinePadding + LineNumbersWidth + (column * digit.WidthIncludingTrailingWhitespace)
-                   - (DiffList.Scroll?.Offset.X ?? 0);
+        double x = DiffTextView.NumbersWidth + (column * digit.WidthIncludingTrailingWhitespace)
+                   - DiffList.HorizontalOffset;
         VerticalRuler.StartPoint = new Point(x, 0);
         VerticalRuler.EndPoint = new Point(x, DiffList.Bounds.Height);
     }
@@ -629,6 +660,14 @@ public partial class DiffView : UserControl
                 return ViewModel.TryToggleDifftastic();
             case DiffCommand.ShowSyntaxHighlighting:
                 return ViewModel.TryToggleSyntaxHighlighting();
+
+            // Upstream's GoToNextOccurrence and GoToPreviousOccurrence take the key whether or not there is one.
+            case DiffCommand.NextOccurrence:
+                DiffList.GoToNextOccurrence();
+                return true;
+            case DiffCommand.PreviousOccurrence:
+                DiffList.GoToPreviousOccurrence();
+                return true;
             default:
                 return false;
         }
@@ -650,6 +689,11 @@ public sealed record DiffLineItem(
     ///  The line in parts with their syntax colors, or null when the file has no syntax definition.
     /// </summary>
     public IReadOnlyList<DiffTextRun>? Runs { get; init; }
+
+    /// <summary>
+    ///  Upstream's zero-width marks before these columns, where the paired line has text this one does not.
+    /// </summary>
+    public IReadOnlyList<(int Column, IBrush Brush)>? Anchors { get; init; }
 }
 
 /// <summary>

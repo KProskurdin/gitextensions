@@ -350,7 +350,7 @@ public sealed class GitCommitHistory : ICommitHistory
         ExecutionResult result = module.GitExecutable.Execute(arguments, throwOnErrorExit: false);
         if (!result.ExitedSuccessfully)
         {
-            throw new GitOperationException(result.StandardError.Trim());
+            throw GitOperationException.Failed(module.GitExecutable, arguments, result, result.StandardError.Trim());
         }
 
         List<CommitFile> files = result.StandardOutput

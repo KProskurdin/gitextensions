@@ -325,7 +325,38 @@ public interface IGitOperations
     Task InitAsync(string folder);
 }
 
-public sealed class GitOperationException(string message) : Exception(message);
+public sealed class GitOperationException(string message) : Exception(message)
+{
+    /// <summary>
+    ///  The program that ran (upstream's <c>ExternalOperationException.Command</c>), when known.
+    /// </summary>
+    public string? Command { get; init; }
+
+    public string? Arguments { get; init; }
+
+    public string? WorkingDirectory { get; init; }
+
+    public int? ExitCode { get; init; }
+
+    /// <summary>
+    ///  The failure of <paramref name="arguments"/> run by <paramref name="executable"/>: git's message, else upstream's
+    ///  line with the exit code, and the command's details.
+    /// </summary>
+    public static GitOperationException Failed(IExecutable executable, ArgumentString arguments, ExecutionResult result,
+        string? message = null)
+    {
+        string detail = message ?? result.StandardError.Trim();
+        return new GitOperationException(detail.Length > 0
+            ? detail
+            : $"git {arguments} failed with exit code {result.ExitCode}")
+        {
+            Command = executable.Command,
+            Arguments = arguments.ToString(),
+            WorkingDirectory = executable.WorkingDir,
+            ExitCode = result.ExitCode,
+        };
+    }
+}
 
 /// <summary>
 ///  Upstream FormCommit's Options for a commit: <c>--no-verify</c>, the GPG choice (null for git's default, false for

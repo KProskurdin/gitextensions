@@ -66,9 +66,9 @@ internal sealed class PushRejectedFlow(RepositoryOperationsViewModel actions, IA
                 }
 
                 if (pull is not { } action ||
-                    !await actions.PullAsync(repositoryPath,
+                    !await PullAutoStashFlow.PullAsync(actions, preferences, repositoryPath,
                         new PullRequest(request.Remote, remoteBranch, action, Prune: false,
-                            AutoStash: preferences.AutoStash, FetchTags: null)))
+                            AutoStash: preferences.AutoStash, FetchTags: null), owner))
                 {
                     return false;
                 }

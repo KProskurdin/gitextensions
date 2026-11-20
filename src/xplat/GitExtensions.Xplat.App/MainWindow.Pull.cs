@@ -33,6 +33,13 @@ public partial class MainWindow
         return done;
     }
 
+    // Upstream's quick pulls (StartPullDialogAndPullImmediately) run FormPull's pull with the stored "Auto stash".
+    private Task<bool> QuickPullAsync(string path, string remote, string branch, bool rebase)
+        => PullAutoStashFlow.PullAsync(_actions, _preferences, path,
+            new PullRequest(remote, branch, rebase ? PullAction.Rebase : PullAction.Merge, Prune: false,
+                AutoStash: _preferences.AutoStash),
+            () => this);
+
     // Upstream's HandlePullOnExit: a pull from a remote that failed because the branch's remote ref no longer exists
     // offers to delete the remote's stale remote-tracking branches (Yes, No, Cancel; No by default).
     private async Task OfferPruneAfterRejectedPullAsync(string path, string remote)
@@ -69,7 +76,7 @@ public partial class MainWindow
         }
 
         bool initialize = _preferences.UpdateSubmodulesOnCheckout
-                          ?? AppSettings.DontConfirmUpdateSubmodulesOnCheckout
+                          ?? _preferences.DontConfirmUpdateSubmodulesOnCheckout
                           ?? await AskInitializeSubmodulesAsync();
         if (initialize)
         {

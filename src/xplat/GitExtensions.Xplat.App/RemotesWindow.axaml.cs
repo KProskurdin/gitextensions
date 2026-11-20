@@ -137,7 +137,8 @@ public partial class RemotesWindow : Window
             : null;
 
     private void ShowToggleState()
-        => ToggleStateImage.Source = UpstreamImages.Named(ViewModel.SelectedIsInactive ? "EyeOpened" : "EyeClosed");
+        => ToggleStateImage.Source =
+            ThemedImages.AdaptLightness(UpstreamImages.Named(ViewModel.SelectedIsInactive ? "EyeOpened" : "EyeClosed"));
 
     private async Task<string?> PickFolderAsync()
     {

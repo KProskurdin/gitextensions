@@ -72,7 +72,10 @@ public static class GitOutputRunner
             string detail = string.Join(Environment.NewLine, errorLines.TakeLast(ErrorLinesInMessage));
             throw new GitOperationException(detail.Length > 0
                 ? detail
-                : $"{program ?? "git"} {args} failed with exit code {process.ExitCode}");
+                : $"{program ?? "git"} {args} failed with exit code {process.ExitCode}")
+            {
+                Command = fileName, Arguments = args, WorkingDirectory = workingDirectory, ExitCode = process.ExitCode,
+            };
         }
     }
 

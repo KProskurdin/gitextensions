@@ -36,7 +36,10 @@ internal static class MenuEntries
         MenuItem item = new()
         {
             Header = Header(entry, resources),
-            Icon = entry.Image is { } image && UpstreamImages.Named(image) is { } picture ? ToolStripContent.Icon(picture)
+            Icon = entry.Image is { } image
+                   && (entry.AdaptsImage ? ThemedImages.AdaptLightness(UpstreamImages.Named(image)) : UpstreamImages.Named(image))
+                       is { } picture
+                ? ToolStripContent.Icon(picture)
                 : entry.ImageData is { } png ? Picture(png)
                 : null,
             Command = entry.Command,

@@ -5,7 +5,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GitCommands;
+using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
+using GitUI.AutoCompletion;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -217,6 +219,84 @@ internal sealed class CommitDialogSettingsTests
         Dispatcher.UIThread.RunJobs();
         commit.AutoCompleteOffers.Should().BeEmpty();
         commit.Close();
+    }
+
+    [AvaloniaTest]
+    public void The_command_key_and_f_shows_the_selection_filter_which_selects_the_unstaged_files_it_matches()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        File.WriteAllText(Path.Combine(_repo.Path, "Widget.cs"), "class Widget { }");
+        File.WriteAllText(Path.Combine(_repo.Path, "Other.cs"), "class Other { }");
+        CommitWindow commit = OpenCommitWindow(Open());
+        WaitUntil(() => commit.IsVisible && commit.ViewModel.ListedChanges.Count == 3);
+        StackPanel bar = Find<StackPanel>(commit, "toolbarSelectionFilter");
+        bar.IsVisible.Should().BeFalse("upstream's commitdialogselectionfilter is off");
+
+        Find<ListBox>(commit, "UnstagedList").Focus();
+        commit.KeyPress(Key.F, TestKeys.Command, PhysicalKey.F, keySymbol: null);
+        Dispatcher.UIThread.RunJobs();
+        bar.IsVisible.Should().BeTrue();
+        Find<ComboBox>(commit, "selectionFilter").Text = "\\.CS$";
+
+        WaitUntil(() => commit.ViewModel.SelectedUnstaged.Count == 2);
+        commit.ViewModel.SelectedUnstaged.Select(change => change.Path).Should().BeEquivalentTo("Widget.cs", "Other.cs");
+        commit.ViewModel.SelectionFilter.History.Should().Equal("\\.CS$");
+        commit.KeyPress(Key.F, TestKeys.Command, PhysicalKey.F, keySymbol: null);
+        bar.IsVisible.Should().BeFalse();
+        commit.Close();
+    }
+
+    [AvaloniaTest]
+    public void C_in_the_diff_adds_its_selected_text_to_the_message_as_upstream()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "needle in a haystack");
+        CommitWindow commit = OpenCommitWindow(Open());
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        WaitUntil(() => commit.IsVisible && unstaged.ItemCount > 0);
+        unstaged.SelectedIndex = 0;
+        DiffView diff = Find<DiffView>(commit, "Diff");
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+needle in a haystack"));
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
+        int offset = lines.Editor.Text.IndexOf("needle", StringComparison.Ordinal);
+        lines.Editor.Select(offset, "needle".Length);
+        diff.FocusText();
+
+        lines.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.C });
+        Dispatcher.UIThread.RunJobs();
+
+        TextBox message = Find<TextBox>(commit, "CommitMessageBox");
+        message.Text.Should().Be("needle\n", "a message without a selection gets the text on a line of its own");
+        message.CaretIndex.Should().Be("needle\n".Length);
+        commit.Close();
+    }
+
+    [AvaloniaTest]
+    public void Ctrl_space_while_the_words_are_read_shows_upstreams_tooltip_then_the_list()
+    {
+        TaskCompletionSource<IReadOnlyList<AutoCompleteWord>> words = new();
+        Func<string, CancellationToken, Task<IReadOnlyList<AutoCompleteWord>>> load = AppServices.LoadAutoCompleteWords;
+        AppServices.LoadAutoCompleteWords = (_, _) => words.Task;
+        try
+        {
+            CommitWindow commit = OpenCommitWindow(Open());
+            TextBox box = Find<TextBox>(commit, "CommitMessageBox");
+            WaitUntil(() => commit.IsVisible);
+            box.Focus();
+
+            commit.KeyTextInput("Re");
+            commit.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, keySymbol: null);
+
+            WaitUntil(() => commit.AutoCompleteToolTipShown is not null);
+            commit.AutoCompleteToolTipShown.Should().Be(CommitMessageAutoCompletion.NotAvailableYet);
+            words.SetResult([new AutoCompleteWord("Render"), new AutoCompleteWord("Reset")]);
+            WaitUntil(() => commit.AutoCompleteOffers.Count == 2);
+            commit.AutoCompleteToolTipShown.Should().BeNull("the list replaces it");
+            commit.Close();
+        }
+        finally
+        {
+            AppServices.LoadAutoCompleteWords = load;
+        }
     }
 
     [AvaloniaTest]

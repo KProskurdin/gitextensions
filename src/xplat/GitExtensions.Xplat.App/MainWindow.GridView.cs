@@ -103,12 +103,22 @@ public partial class MainWindow
                                                  StringComparison.OrdinalIgnoreCase));
 
     // Upstream's ViewSelectedRevisions, which a double-click on the grid runs: a real commit opens in upstream's
-    // FormCommitDiff; the artificial rows open nothing. Not ported: with no selection, upstream compares revisions.
+    // FormCommitDiff; the artificial rows open nothing; with no selection, upstream's FormLog (LogWindow).
     private void ViewSelectedRevision()
     {
-        if (RepositoryPath is { } path && _commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
+        if (RepositoryPath is not { } path)
+        {
+            return;
+        }
+
+        if (_commits.Selected is { } row && !ArtificialCommits.IsArtificial(row.Hash))
         {
             new CommitDiffWindow(path, row.Hash).Show(this);
+        }
+        else if (SelectedRevisions.Count == 0)
+        {
+            // Upstream's StartCompareRevisionsDialog: FormLog, over the browse window.
+            _ = new LogWindow(path, _preferences).ShowDialog(this);
         }
     }
 }

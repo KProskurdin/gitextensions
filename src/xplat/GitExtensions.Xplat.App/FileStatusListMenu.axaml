@@ -50,7 +50,8 @@
   <MenuItem x:Name="tsmiEditWorkingDirectoryFile" Header="_Edit working directory file" Icon="{local:UpstreamIcon EditFile}" IsVisible="{Binding IsEditWorkingFileVisible}" Command="{Binding EditWorkingFileCommand}" />
   <MenuItem x:Name="tsmiOpenInVisualStudio" Header="Open in _Visual Studio" Icon="{local:UpstreamIcon VisualStudio16}" IsVisible="{Binding IsOpenInVisualStudioVisible}" Command="{Binding OpenInVisualStudioCommand}" />
   <MenuItem x:Name="tsmiSaveAs" Header="S_ave selected as..." Icon="{local:UpstreamIcon SaveAs}" IsVisible="{Binding IsSaveAsVisible}" Command="{Binding SaveAsCommand}" />
-  <MenuItem x:Name="tsmiMove" Header="Rena_me / move" IsVisible="{Binding IsMoveVisible}" Command="{Binding MoveFileCommand}" />
+  <MenuItem x:Name="tsmiMove" Header="Rena_me / move" IsVisible="{Binding IsMoveVisible}" Command="{Binding MoveFileCommand}"
+            Icon="{local:UpstreamIcon FileStatusRenamed, Adapt=True}" />
   <MenuItem x:Name="tsmiDeleteFile" Icon="{local:UpstreamIcon DeleteFile}" IsVisible="{Binding IsDeleteFileVisible}" Header="{Binding DeleteFileHeader}" Command="{Binding DeleteFileCommand}" />
   <Separator x:Name="sepFile" IsVisible="{Binding IsFileSeparatorVisible}" />
   <MenuItem x:Name="tsmiCopyPaths" Header="Copy _path(s)" Icon="{local:UpstreamIcon CopyToClipboard}" IsVisible="{Binding HasSelection}" IsEnabled="{Binding IsCopyPathsEnabled}" />

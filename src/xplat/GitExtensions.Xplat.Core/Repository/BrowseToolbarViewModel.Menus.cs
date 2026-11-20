@@ -107,7 +107,7 @@ public sealed partial class BrowseToolbarViewModel
             bool shown = _commits.IndexOfHash(hash) is not null;
             entries.Add(new MenuEntry(name, CheckoutNamedBranchCommand, name)
             {
-                Image = shown ? "Branch" : "EyeClosed", IsDimmed = !shown,
+                Image = shown ? "Branch" : "EyeClosed", AdaptsImage = true, IsDimmed = !shown,
             });
         }
 

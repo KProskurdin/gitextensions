@@ -47,6 +47,13 @@
     <Grid x:Name="SplitMainGrid" ColumnDefinitions="380,6,*">
       <Grid x:Name="SplitLeftGrid" Grid.Column="0" RowDefinitions="*,6,*">
         <DockPanel Grid.Row="0" LastChildFill="True">
+          <!-- Upstream's toolbarSelectionFilter (Ctrl+F): a regular expression that selects unstaged files. -->
+          <StackPanel x:Name="toolbarSelectionFilter" DockPanel.Dock="Top" Classes="toolStrip"
+                      IsVisible="{Binding SelectionFilter.IsVisible}">
+            <TextBlock Text="{x:Static repo:SelectionFilterViewModel.LabelText}" VerticalAlignment="Center" Margin="2,0,6,0" />
+            <ComboBox x:Name="selectionFilter" IsEditable="True" MinWidth="121" ItemsSource="{Binding SelectionFilter.History}"
+                      Text="{Binding SelectionFilter.Text}" ToolTip.Tip="{Binding SelectionFilter.ToolTip}" />
+          </StackPanel>
           <!-- Upstream's FileStatusList toolbar: refresh (the working directory list only), the group-by choices and the
                settings; then the filter box. -->
           <StackPanel DockPanel.Dock="Top" Classes="toolStrip">
@@ -389,6 +396,14 @@
             <Popup x:Name="AutoCompletePopup"
                    Placement="AnchorAndGravity" PlacementAnchor="BottomLeft" PlacementGravity="BottomRight">
               <ListBox x:Name="AutoCompleteList" MaxHeight="200" MinWidth="120" Focusable="False" />
+            </Popup>
+            <!-- Upstream's AutoCompleteToolTip, while the words are still being read. -->
+            <Popup x:Name="AutoCompleteToolTip"
+                   Placement="AnchorAndGravity" PlacementAnchor="BottomLeft" PlacementGravity="BottomRight">
+              <Border Background="{DynamicResource ToolTipBackground}" BorderBrush="{DynamicResource ToolTipBorderBrush}"
+                      BorderThickness="1" Padding="6,3">
+                <TextBlock x:Name="AutoCompleteToolTipText" Foreground="{DynamicResource ToolTipForeground}" />
+              </Border>
             </Popup>
             <TextBox x:Name="CommitMessageBox" AcceptsReturn="True" TextWrapping="Wrap"
                      FontFamily="{DynamicResource CommitFontFamily}" FontWeight="{DynamicResource CommitFontWeight}" FontStyle="{DynamicResource CommitFontStyle}" FontSize="{DynamicResource CommitFontSize}" PlaceholderText="{Binding MessagePlaceholder}"

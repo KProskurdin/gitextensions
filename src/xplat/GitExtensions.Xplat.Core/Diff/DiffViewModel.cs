@@ -374,11 +374,17 @@ public sealed partial class DiffViewModel : ObservableObject
     ///  The view's selection: the selected line (the list's first) and every selected one, as indexes in
     ///  <see cref="Content"/>.
     /// </summary>
-    public void SetSelection(int selectedIndex, IReadOnlyList<int> selectedIndexes)
+    public void SetSelection(int selectedIndex, IReadOnlyList<int> selectedIndexes, string selectedText = "")
     {
         _selectedIndex = selectedIndex;
         _selectedIndexes = selectedIndexes;
+        SelectedText = selectedText;
     }
+
+    /// <summary>
+    ///  Upstream's <c>GetSelectedText</c>: the text selected in the viewer; empty for none.
+    /// </summary>
+    public string SelectedText { get; private set; } = "";
 
     /// <summary>
     ///  Reads the menu's state again, as upstream does when its menu opens.

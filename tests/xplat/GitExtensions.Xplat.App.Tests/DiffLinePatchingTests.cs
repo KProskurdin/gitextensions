@@ -158,17 +158,15 @@ internal sealed class DiffLinePatchingTests
 
     private static void SelectDiffLines(DiffView diff, params string[] texts)
     {
-        ListBox diffList = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView diffList = diff.FindControl<DiffTextView>("DiffList")!;
         List<DiffLineItem> lines = [.. diff.Lines];
-        foreach (string text in texts)
-        {
-            diffList.Selection.Select(lines.FindIndex(line => line.Text == text));
-        }
+        List<int> indexes = [.. texts.Select(text => lines.FindIndex(line => line.Text == text))];
+        diffList.SelectLines(indexes.Min(), indexes.Max());
     }
 
     private static void ClickDiffMenuItem(DiffView diff, string name)
     {
-        ListBox list = diff.FindControl<ListBox>("DiffList")!;
+        DiffTextView list = diff.FindControl<DiffTextView>("DiffList")!;
         list.RaiseEvent(new ContextRequestedEventArgs());
         Dispatcher.UIThread.RunJobs();
         list.ContextMenu!.Close();

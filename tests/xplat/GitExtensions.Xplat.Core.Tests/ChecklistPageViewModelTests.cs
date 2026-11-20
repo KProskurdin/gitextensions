@@ -18,6 +18,7 @@ internal sealed class ChecklistPageViewModelTests
     private readonly List<string> _steps = [];
     private readonly List<string> _pages = [];
     private readonly List<Exception> _errors = [];
+    private bool _checkAtStartup;
 
     [SetUp]
     public void SetUp()
@@ -25,6 +26,7 @@ internal sealed class ChecklistPageViewModelTests
         _steps.Clear();
         _pages.Clear();
         _errors.Clear();
+        _checkAtStartup = true;
     }
 
     [Test]
@@ -96,6 +98,37 @@ internal sealed class ChecklistPageViewModelTests
     }
 
     [Test]
+    public async Task The_startup_box_should_show_the_setting_and_store_a_change_at_once()
+    {
+        ChecklistPageViewModel checklist = New(() => Task.FromResult(_facts));
+
+        checklist.CheckAtStartup.Should().BeTrue();
+        await checklist.RunAsync();
+        checklist.CheckAtStartup.Should().BeTrue("a setting is wrong");
+        checklist.CheckAtStartup = false;
+
+        _checkAtStartup.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task A_check_with_every_setting_right_should_turn_the_startup_check_off()
+    {
+        ChecklistPageViewModel checklist = New(() => Task.FromResult(_facts with
+        {
+            GitVersion = GitCommands.Git.GitVersion.LastRecommendedVersion,
+            Editor = "vi",
+            DiffTool = "meld",
+            DiffToolKnownToGit = true,
+        }));
+
+        await checklist.RunAsync();
+
+        checklist.IsValid.Should().BeTrue();
+        checklist.CheckAtStartup.Should().BeFalse();
+        _checkAtStartup.Should().BeFalse();
+    }
+
+    [Test]
     public async Task An_error_should_be_shown_on_the_window()
     {
         ChecklistPageViewModel checklist = New(() => throw new InvalidOperationException("no git"));
@@ -126,5 +159,7 @@ internal sealed class ChecklistPageViewModelTests
             },
             OpenUri = _ => Task.CompletedTask,
             ShowError = _errors.Add,
+            ReadCheckAtStartup = () => _checkAtStartup,
+            WriteCheckAtStartup = value => _checkAtStartup = value,
         });
 }

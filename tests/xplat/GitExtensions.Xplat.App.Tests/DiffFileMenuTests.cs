@@ -58,7 +58,7 @@ internal sealed class DiffFileMenuTests
             DiffView diff = Find<DiffView>(window, "CommitDiff");
             BlameView blame = Find<BlameView>(window, "DiffTabBlame");
             WaitUntil(() => diff.Lines.Any(line => line.Text == "+three"));
-            diff.FindControl<ListBox>("DiffList")!.SelectedItem = diff.Lines.Single(line => line.Text == "+three");
+            diff.FindControl<DiffTextView>("DiffList")!.SelectedIndex = diff.Lines.ToList().FindIndex(line => line.Text == "+three");
 
             UiClicks.Raise(Find<MenuItem>(files.ContextMenu!, "tsmiBlame"), MenuItem.ClickEvent);
 

@@ -59,6 +59,16 @@ public sealed record ChecklistPageServices
     /// </summary>
     public Func<Color?> DarkBackground { get; init; } = () => null;
 
+    /// <summary>
+    ///  Upstream's <c>CheckSettings</c>, which the "Check settings at startup" box shows.
+    /// </summary>
+    public Func<bool> ReadCheckAtStartup { get; init; } = () => false;
+
+    /// <summary>
+    ///  Stores upstream's <c>CheckSettings</c>; as upstream, the box writes it at once.
+    /// </summary>
+    public Action<bool> WriteCheckAtStartup { get; init; } = _ => { };
+
     public required Action<Exception> ShowError { get; init; }
 }
 
@@ -86,6 +96,12 @@ public sealed partial class ChecklistPageViewModel(ChecklistPageServices service
     public partial bool IsValid { get; private set; }
 
     /// <summary>
+    ///  Upstream's "Check settings at startup" box.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool CheckAtStartup { get; set; } = services.ReadCheckAtStartup();
+
+    /// <summary>
     ///  Runs the checks; a run started later wins over this one.
     /// </summary>
     public async Task RunAsync()
@@ -100,6 +116,7 @@ public sealed partial class ChecklistPageViewModel(ChecklistPageServices service
         IReadOnlyList<ChecklistEntry> entries = SettingsChecklist.Check(facts);
         Color? darkBackground = services.DarkBackground();
         IsValid = SettingsChecklist.IsValid(facts, entries);
+        CheckAtStartup = SettingsChecklist.CheckAtStartupAfter(IsValid, services.ReadCheckAtStartup());
         Rows = [.. entries.Select(entry => new ChecklistRow(entry, SettingsChecklist.RowColor(entry.State, darkBackground)))];
     }
 
@@ -149,6 +166,9 @@ public sealed partial class ChecklistPageViewModel(ChecklistPageServices service
                 break;
         }
     });
+
+    // Upstream's CheckAtStartup_CheckedChanged.
+    partial void OnCheckAtStartupChanged(bool value) => services.WriteCheckAtStartup(value);
 
     private async Task SaveAndRescanCoreAsync()
     {
@@ -207,12 +227,7 @@ public sealed class ChecklistFactsReader(
             GitVersion = gitVersion,
             UserName = await GlobalAsync("user.name"),
             UserEmail = await GlobalAsync("user.email"),
-            Editor =
-                new[]
-                {
-                    Environment("GIT_EDITOR"), await GlobalAsync("core.editor"), Environment("VISUAL"),
-                    Environment("EDITOR"),
-                }.FirstOrDefault(editor => !string.IsNullOrEmpty(editor)),
+            Editor = await ReadEditorAsync(),
             MergeTool = mergeTool,
             MergeToolCommand = mergeToolCommand,
             MergeToolKnownToGit = await KnownToGitAsync(mergeTool, mergeToolCommand, diff: false),
@@ -270,6 +285,16 @@ public sealed class ChecklistFactsReader(
             => tool is not null && string.IsNullOrWhiteSpace(command) &&
                (await diffMergeTools.GetAvailableAsync(diff)).Contains(tool);
     }
+
+    /// <summary>
+    ///  The editor git uses, as upstream's <c>CommonLogic.GetGlobalEditor</c> finds it; null when there is none.
+    /// </summary>
+    public async Task<string?> ReadEditorAsync()
+        => new[]
+        {
+            Environment("GIT_EDITOR"), await GlobalAsync("core.editor"), Environment("VISUAL"),
+            Environment(StartupSettingsCheck.EditorVariable),
+        }.FirstOrDefault(editor => !string.IsNullOrEmpty(editor));
 
     private async Task<string?> GlobalAsync(string key)
         => await gitConfig.GetAsync(ConfigScope.Global, key) is { Length: > 0 } value ? value : null;

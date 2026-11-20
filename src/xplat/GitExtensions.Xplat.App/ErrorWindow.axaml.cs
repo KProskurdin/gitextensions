@@ -14,9 +14,11 @@ public partial class ErrorWindow : Window
     [Obsolete(DesignTime.ConstructorOnly)]
     public ErrorWindow() => InitializeComponent();
 
-    public ErrorWindow(string message)
+    /// <param name="message">The error.</param>
+    /// <param name="details">Upstream's details of a failed command (<see cref="ErrorReporter.Details"/>), or empty.</param>
+    public ErrorWindow(string message, string details = "")
     {
-        DataContext = new MessageViewModel(new WindowDialogHost(this), message);
+        DataContext = new MessageViewModel(new WindowDialogHost(this), message, details);
         InitializeComponent();
     }
 }

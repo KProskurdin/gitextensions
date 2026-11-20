@@ -80,6 +80,8 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <CheckBox x:Name="CheckAtStartup" Content="{x:Static settings:SettingsChecklist.CheckAtStartupText}"
+                    IsChecked="{Binding Checklist.CheckAtStartup}" />
           <Button x:Name="ChecklistRescanButton" Content="{x:Static settings:SettingsChecklist.SaveAndRescanText}"
                   HorizontalAlignment="Left" Margin="0,6,0,0" Command="{Binding Checklist.SaveAndRescanCommand}" />
         </StackPanel>
@@ -371,6 +373,8 @@
             <TextBlock TextWrapping="Wrap" Text="Use last chosen &quot;local changes&quot; action as default action. This action will be performed without warning while checking out branch." />
           </CheckBox>
           <TextBlock Text="General" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="chkDontSHowHelpImages" IsChecked="{Binding DontShowHelpImages}" Content="Don't show help images" />
+          <CheckBox x:Name="chkAlwaysShowAdvOpt" IsChecked="{Binding AlwaysShowAdvOpt}" Content="Always show advanced options" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <CheckBox x:Name="AutoNormaliseCheck" IsChecked="{Binding AutoNormaliseBranchName}" Content="Auto normalise branch name" />
             <TextBlock Text="Symbol to use:" VerticalAlignment="Center" Margin="12,0,0,0" />
@@ -396,6 +400,7 @@
           <CheckBox x:Name="RememberSyntaxHighlightingCheck" IsChecked="{Binding RememberShowSyntaxHighlightingInDiff}" Content="Remember the 'Show syntax highlighting' preference" />
           <CheckBox x:Name="chkRememberDiffAppearancePreference" IsChecked="{Binding RememberDiffDisplayAppearance}" Content="Remember the 'Diff appearance' preference"
                     ToolTip.Tip="Diff appearance: patch (default), Git word-diff or Difftastic." />
+          <CheckBox x:Name="chkOmitUninterestingDiff" IsChecked="{Binding OmitUninterestingDiff}" Content="Omit uninteresting changes from combined diff" />
           <CheckBox x:Name="ContScrollToNextFileOnlyWithAltCheck" IsChecked="{Binding AutomaticContinuousScroll}" Content="Enable automatic continuous scroll (without ALT button)" />
           <CheckBox x:Name="chkOpenSubmoduleDiffInSeparateWindow" IsChecked="{Binding OpenSubmoduleDiffInSeparateWindow}" Content="Open Submodule Diff in separate window" />
           <CheckBox x:Name="ShowDiffForAllParentsCheck" IsChecked="{Binding ShowDiffForAllParents}" Content="Show file differences for all parents in browse dialog" />
@@ -632,7 +637,7 @@
                     <ItemsControl ItemsSource="{Binding Choices}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="settings:ConfirmationChoice">
-                          <CheckBox Content="{Binding Label}" IsChecked="{Binding Asks}" Margin="12,0,0,0" />
+                          <CheckBox Content="{Binding Label}" IsChecked="{Binding CheckState}" IsThreeState="{Binding IsThreeState}" Margin="12,0,0,0" />
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>

@@ -39,6 +39,9 @@ public sealed partial class CommitViewModel
     private IReadOnlyList<FileChange>? _unstagedShown;
     private IReadOnlyList<FileChange>? _stagedShown;
 
+    // What the unstaged list shows, filtered or not, for the selection filter.
+    private IReadOnlyList<FileChange> _unstagedListed = [];
+
     /// <summary>
     ///  Raised when stage all or unstage all took the files a filtered list shows: the list (true for the staged one)
     ///  loses its filter, as upstream's.
@@ -49,6 +52,11 @@ public sealed partial class CommitViewModel
     ///  The grouping of both lists, one setting as upstream's.
     /// </summary>
     public FileListGroupingViewModel Grouping { get; }
+
+    /// <summary>
+    ///  Upstream's selection filter of the unstaged list.
+    /// </summary>
+    public SelectionFilterViewModel SelectionFilter { get; }
 
     /// <summary>
     ///  The changes the lists show (before "Show untracked files" and the filters): the repository's, or the working
@@ -98,6 +106,7 @@ public sealed partial class CommitViewModel
         }
         else
         {
+            _unstagedListed = shown;
             _unstagedShown = filtered ? shown : null;
             OnPropertyChanged(nameof(StageAllImage));
             OnPropertyChanged(nameof(StageAllTip));

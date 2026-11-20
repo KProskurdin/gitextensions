@@ -56,6 +56,9 @@ public sealed partial class BrowseToolbarViewModel
                 {
                     HasAccessKey = true,
                     Image = item.Image,
+
+                    // Upstream's CopyContextMenuItem adapts its branch and author pictures.
+                    AdaptsImage = item.Image is "Branch" or "Author",
                     IsBold = item.Value is null,
                     IsEnabled = item.Value is not null,
                 })
@@ -185,6 +188,26 @@ public sealed partial class BrowseToolbarViewModel
         {
             Run(() => action(path, stash));
         }
+    }
+
+    /// <summary>
+    ///  Upstream's <c>DeleteRef</c> and <c>RenameRef</c> hotkeys (<c>InitiateRefAction</c>) on the selected commit: with one
+    ///  branch or tag to act on, the action runs at once and nothing is returned; with several, the entries to choose
+    ///  from, as upstream's <c>FormQuickGitRefSelector</c> lists them.
+    /// </summary>
+    public IReadOnlyList<MenuEntry> QuickRefAction(GridRefMenus menus, bool delete)
+    {
+        IReadOnlyList<MenuEntry> entries = delete
+            ? [.. RefEntries(menus.Delete.OfType<GridMenuRef>(), DeleteRefCommand),
+                .. RefEntries(menus.DeleteTags, DeleteTagRefCommand)]
+            : RefEntries(menus.Rename, RenameRefCommand);
+        if (entries is [{ Command: { } command, CommandParameter: var parameter }])
+        {
+            command.Execute(parameter);
+            return [];
+        }
+
+        return entries;
     }
 
     private static IReadOnlyList<MenuEntry> RefEntries(IEnumerable<GridMenuRef?> refs, ICommand command)

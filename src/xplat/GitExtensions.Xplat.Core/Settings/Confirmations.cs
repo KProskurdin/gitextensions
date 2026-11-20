@@ -36,6 +36,19 @@ public enum Confirmation
     /// <summary>Upstream <c>stashconfirmdropshow</c> (<c>DontConfirmStashDrop</c>): dropping a stash.</summary>
     StashDrop,
 
+    /// <summary>
+    ///  Upstream <c>AutoPopStashAfterCheckoutBranch</c>: popping the stash after a checkout that stashed. Three states.
+    /// </summary>
+    PopStashAfterCheckout,
+
+    /// <summary>Upstream <c>AutoPopStashAfterPull</c>: popping the stash after a pull that stashed. Three states.</summary>
+    PopStashAfterPull,
+
+    /// <summary>
+    ///  Upstream <c>dontConfirmUpdateSubmodulesOnCheckout</c>: initializing submodules after a pull. Three states.
+    /// </summary>
+    UpdateSubmodules,
+
     /// <summary>Upstream <c>DontConfirmSwitchWorktree</c>: opening another worktree in the window.</summary>
     SwitchWorktree,
 
@@ -52,7 +65,8 @@ public enum Confirmation
 /// <summary>
 ///  A check box of the Confirmations page: its group and upstream's label.
 /// </summary>
-public sealed record ConfirmationOption(string Group, Confirmation Confirmation, string Label);
+/// <param name="IsThreeState">Upstream's three-state check boxes, whose in-between state means "ask".</param>
+public sealed record ConfirmationOption(string Group, Confirmation Confirmation, string Label, bool IsThreeState = false);
 
 /// <summary>
 ///  Upstream's texts for the confirmations: the page's labels in upstream's order, and the questions.
@@ -79,14 +93,56 @@ public static class Confirmations
         new("Branches", Confirmation.AddTrackingRef, "Add a tracking reference for newly pushed branch"),
         new("Branches", Confirmation.DeleteUnmergedBranch, "Delete unmerged branches"),
         new("Branches", Confirmation.BranchCheckout, "Checkout branch using left panel"),
+        new("Stash", Confirmation.PopStashAfterCheckout,
+            "Apply stashed changes after successful checkout (else stash will be popped automatically)", IsThreeState: true),
+        new("Stash", Confirmation.PopStashAfterPull,
+            "Apply stashed changes after successful pull (else stash will be popped automatically)", IsThreeState: true),
         new("Stash", Confirmation.StashDrop, "Drop stash"),
         new("Rebase / conflict resolution", Confirmation.ResolveConflicts, "Resolve conflicts"),
         new("Rebase / conflict resolution", Confirmation.CommitAfterConflictsResolved,
             "Commit changes after conflicts have been resolved"),
         new("Rebase / conflict resolution", Confirmation.SecondAbortConfirmation,
             "Confirm for the second time to abort a merge"),
+        new("Submodules", Confirmation.UpdateSubmodules, "Update submodules on checkout", IsThreeState: true),
         new("Worktrees", Confirmation.SwitchWorktree, "Switch worktree"),
     ];
+
+    /// <summary>
+    ///  The state of <paramref name="confirmation"/>'s check box: for a three-state one upstream's
+    ///  <c>ToCheckboxStateInverted</c> (unset shows the in-between state, false checked, true unchecked), else whether the
+    ///  app asks.
+    /// </summary>
+    public static bool? CheckState(IAppPreferences preferences, Confirmation confirmation) => confirmation switch
+    {
+        Confirmation.PopStashAfterCheckout => Inverted(preferences.AutoPopStashAfterCheckoutBranch),
+        Confirmation.PopStashAfterPull => Inverted(preferences.AutoPopStashAfterPull),
+        Confirmation.UpdateSubmodules => Inverted(preferences.DontConfirmUpdateSubmodulesOnCheckout),
+        _ => preferences.Asks(confirmation),
+    };
+
+    /// <summary>
+    ///  Stores a check box's state as <see cref="CheckState"/> reads it (upstream's <c>ToBooleanInverted</c>).
+    /// </summary>
+    public static void SetCheckState(IAppPreferences preferences, Confirmation confirmation, bool? state)
+    {
+        switch (confirmation)
+        {
+            case Confirmation.PopStashAfterCheckout:
+                preferences.AutoPopStashAfterCheckoutBranch = Inverted(state);
+                break;
+            case Confirmation.PopStashAfterPull:
+                preferences.AutoPopStashAfterPull = Inverted(state);
+                break;
+            case Confirmation.UpdateSubmodules:
+                preferences.DontConfirmUpdateSubmodulesOnCheckout = Inverted(state);
+                break;
+            default:
+                preferences.SetAsks(confirmation, state == true);
+                break;
+        }
+    }
+
+    private static bool? Inverted(bool? value) => value is null ? null : !value;
 
     /// <summary>
     ///  Upstream's <c>ConfirmResolveMergeConflicts</c> question and caption.

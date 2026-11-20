@@ -140,9 +140,17 @@ public static class UpstreamImages
 /// </summary>
 public sealed class UpstreamImageExtension(string name) : MarkupExtension
 {
+    /// <summary>
+    ///  Upstream's <c>AdaptLightness</c> on the picture, where upstream calls it.
+    /// </summary>
+    public bool Adapt { get; set; }
+
     // A name that is not upstream's leaves the property unset.
     public override object ProvideValue(IServiceProvider serviceProvider)
-        => (object?)UpstreamImages.Named(name) ?? AvaloniaProperty.UnsetValue;
+        => (object?)Picture(name, Adapt) ?? AvaloniaProperty.UnsetValue;
+
+    internal static Bitmap? Picture(string name, bool adapt)
+        => adapt ? ThemedImages.AdaptLightness(UpstreamImages.Named(name)) : UpstreamImages.Named(name);
 }
 
 /// <summary>
@@ -151,8 +159,15 @@ public sealed class UpstreamImageExtension(string name) : MarkupExtension
 /// </summary>
 public sealed class UpstreamIconExtension(string name) : MarkupExtension
 {
+    /// <summary>
+    ///  Upstream's <c>AdaptLightness</c> on the picture, where upstream calls it.
+    /// </summary>
+    public bool Adapt { get; set; }
+
     public override object ProvideValue(IServiceProvider serviceProvider)
-        => UpstreamImages.Named(name) is { } picture ? ToolStripContent.Icon(picture) : AvaloniaProperty.UnsetValue;
+        => UpstreamImageExtension.Picture(name, Adapt) is { } picture
+            ? ToolStripContent.Icon(picture)
+            : AvaloniaProperty.UnsetValue;
 }
 
 /// <summary>
@@ -185,7 +200,7 @@ internal static class ToolStripContent
     public static object? Build(string? image, string? text)
     {
         string? shown = string.IsNullOrEmpty(text) ? text : UpstreamTranslation.ByText(text);
-        Bitmap? picture = UpstreamImages.Named(image);
+        Bitmap? picture = ThemedImages.Named(image, ThemedImages.ToolbarPictures);
         if (picture is null)
         {
             return shown;
@@ -391,8 +406,9 @@ public sealed class UpstreamImageConverter : IValueConverter
 {
     public static UpstreamImageConverter Instance { get; } = new();
 
+    // Upstream's lists and trees adapt some pictures in their image lists.
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => UpstreamImages.Named(value as string);
+        => ThemedImages.Named(value as string, ThemedImages.ListPictures);
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

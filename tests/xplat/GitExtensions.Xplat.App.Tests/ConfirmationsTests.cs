@@ -39,18 +39,26 @@ internal sealed class ConfirmationsTests
         SettingsWindow settings = window.OwnedWindows.OfType<SettingsWindow>().Single();
         WaitUntil(() => settings.IsGitConfigLoaded);
 
-        // Upstream's defaults: every question is asked except the left panel checkout.
+        // Upstream's defaults: every question is asked except the left panel checkout; the three-state ones are in between.
+        Confirmation[] threeState =
+            [Confirmation.PopStashAfterCheckout, Confirmation.PopStashAfterPull, Confirmation.UpdateSubmodules];
         settings.ConfirmationChecks.Where(pair => pair.Value.Asks).Select(pair => pair.Key).Should()
-            .BeEquivalentTo(Enum.GetValues<Confirmation>().Where(c => c != Confirmation.BranchCheckout));
+            .BeEquivalentTo(Enum.GetValues<Confirmation>()
+                .Where(c => c != Confirmation.BranchCheckout && !threeState.Contains(c)));
+        threeState.Select(c => settings.ConfirmationChecks[c]).Should()
+            .OnlyContain(choice => choice.IsThreeState && choice.CheckState == null);
         settings.ConfirmationChecks[Confirmation.StashDrop].Label.Should().Be("Drop stash");
         settings.ConfirmationChecks[Confirmation.StashDrop].Asks = false;
         settings.ConfirmationChecks[Confirmation.BranchCheckout].Asks = true;
+        settings.ConfirmationChecks[Confirmation.PopStashAfterPull].CheckState = true;
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
         TestAppBuilder.Preferences.Asks(Confirmation.StashDrop).Should().BeFalse();
         TestAppBuilder.Preferences.Asks(Confirmation.BranchCheckout).Should().BeTrue();
         TestAppBuilder.Preferences.Asks(Confirmation.Amend).Should().BeTrue();
+        TestAppBuilder.Preferences.AutoPopStashAfterPull.Should().BeFalse("upstream's box is inverted");
+        TestAppBuilder.Preferences.AutoPopStashAfterCheckoutBranch.Should().BeNull();
     }
 
     [AvaloniaTest]

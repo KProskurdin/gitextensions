@@ -258,10 +258,13 @@ public partial class MainWindow : IDashboardWindow
 
     private void OpenUrl(string url) => Run(() => Launcher.LaunchUriAsync(new Uri(url)));
 
+    // Upstream's Dashboard adapts the Develop and Translate pictures.
     private static object LinkContent(string? image, string text)
     {
         StackPanel content = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
-        if (UpstreamImages.Named(image) is { } picture)
+        if ((image is "Develop" or "Translate"
+                ? ThemedImages.AdaptLightness(UpstreamImages.Named(image))
+                : UpstreamImages.Named(image)) is { } picture)
         {
             content.Children.Add(new Image { Source = picture, Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center });
         }

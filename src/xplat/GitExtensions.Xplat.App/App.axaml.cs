@@ -80,7 +80,7 @@ public partial class App : Application
             }
             else
             {
-                desktop.MainWindow = new MainWindow(FindGit());
+                desktop.MainWindow = new MainWindow(FindGit()) { CheckSettingsAtStartup = true };
                 SetUpMacOS(desktop);
             }
         }

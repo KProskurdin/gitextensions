@@ -17,6 +17,25 @@ public static class ThemedImages
 {
     private const int BytesPerPixel = 4;
 
+    /// <summary>
+    ///  The pictures upstream adapts in the image lists of its lists and trees: FileStatusList's renamed files and
+    ///  RepoObjectsTree's branch and visibility pictures.
+    /// </summary>
+    public static IReadOnlySet<string> ListPictures { get; } = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "FileStatusRenamed", "FileStatusRenamedUnequal", "FileStatusRenamedOnlyA", "FileStatusRenamedOnlyB",
+        "FileStatusRenamedSame", "Branch", "EyeClosed", "EyeOpened", "RemoteEnableAndFetch",
+    };
+
+    /// <summary>
+    ///  The pictures upstream adapts on its toolbar buttons: FileViewer's whitespace buttons and FileStatusList's flat
+    ///  list button.
+    /// </summary>
+    public static IReadOnlySet<string> ToolbarPictures { get; } = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "WhitespaceIgnoreEol", "WhitespaceIgnore", "WhitespaceIgnoreAll", "DocumentTree",
+    };
+
     // By the theme's colors too, so a theme changed while the app runs gets its own copy.
     private static readonly Dictionary<(Bitmap Source, DrawingColor Text, DrawingColor Background), Bitmap> _adapted = [];
 
@@ -30,6 +49,14 @@ public static class ThemedImages
             ? original
             : Adapted(original, colors.GetNonEmpty(KnownColor.WindowText), colors.GetNonEmpty(KnownColor.Window));
     }
+
+    /// <summary>
+    ///  Upstream's picture of that name, adapted when <paramref name="adapted"/> lists it.
+    /// </summary>
+    public static Bitmap? Named(string? name, IReadOnlySet<string> adapted)
+        => name is not null && adapted.Contains(name)
+            ? AdaptLightness(UpstreamImages.Named(name))
+            : UpstreamImages.Named(name);
 
     /// <summary>
     ///  Gets <paramref name="original"/> adapted to <paramref name="text"/> and <paramref name="background"/>.

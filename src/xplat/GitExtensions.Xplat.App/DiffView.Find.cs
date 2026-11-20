@@ -84,7 +84,7 @@ public partial class DiffView
         }
 
         FindWindow window = _findWindow ??= NewFindWindow();
-        IReadOnlyList<int> selected = [.. DiffList.Selection.SelectedIndexes.Order()];
+        IReadOnlyList<int> selected = DiffList.SelectedIndexes;
         _scanRegion = selected is [var first, .., var last] && last > first
             ? (LineStart(first), LineStart(last) + _unmarkedLines[last].Text.Length - LineStart(first))
             : null;
@@ -292,33 +292,22 @@ public partial class DiffView
             ScanRegion = _scanRegion,
         };
 
-    // Upstream's caret: after the occurrence found last while its line is still the selected one, else at the start of
-    // the selected line (the top without one).
-    private int Caret()
-    {
-        int selected = DiffList.SelectedIndex;
-        if (_found is { } found && LineOf(found.Offset) == selected)
-        {
-            return found.Offset + found.Length;
-        }
+    // Upstream's caret: the editor's, which stands after the occurrence found last or a selection.
+    private int Caret() => _unmarkedLines.Count == 0 ? 0 : DiffList.Editor.CaretOffset;
 
-        return selected >= 0 && selected < _unmarkedLines.Count ? LineStart(selected) : 0;
-    }
-
-    // Upstream's SelectResult: the occurrence selected and scrolled to; here its line is selected and it is marked.
+    // Upstream's SelectResult: the occurrence selected and scrolled to, and marked.
     private void SelectFound((int Offset, int Length) found)
     {
         _found = found;
         ShowMarks();
-        int line = LineOf(found.Offset);
-        DiffList.SelectedIndex = line;
-        DiffList.ScrollIntoView(line);
+        DiffList.Editor.Select(found.Offset, found.Length);
+        DiffList.Editor.TextArea.Caret.Offset = found.Offset + found.Length;
+        DiffList.ScrollIntoView(LineOf(found.Offset));
     }
 
     // The lines with the occurrences marked in upstream's highlight color (Color.Yellow.AdaptBackColor()).
     private void ShowMarks()
     {
-        int selected = DiffList.SelectedIndex;
         IBrush brush = new SolidColorBrush(ToAvalonia(System.Drawing.Color.Yellow.AdaptBackColor()));
         List<(int Offset, int Length)> marks = [.. _highlighted];
         if (_found is { } found)
@@ -350,9 +339,9 @@ public partial class DiffView
             start = end + 1;
         }
 
+        // The same text keeps the editor's selection and scroll; only the colors change.
         Lines = lines;
         DiffList.ItemsSource = Lines;
-        DiffList.SelectedIndex = selected;
     }
 
     // The line's runs (its syntax colors, else the whole text) split at the marks, the marked parts on the brush.

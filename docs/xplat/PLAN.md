@@ -336,6 +336,13 @@ Tests: 52 core tests and 40 app tests, including real-git diffs for a commit, th
 Decision, 2026-10-03: AvaloniaEdit is not used. Its newest NuGet release is 0.10.12, built for Avalonia 0.10, so it
 does not load with Avalonia 12. The diff is shown with native list items, which is enough for a read-only view.
 Syntax highlighting and line numbers are not done; they can be revisited if a control for Avalonia 12 appears.
+Reversed 2026-11-19 (decided with the user): the maintained package `Avalonia.AvaloniaEdit` has a 12.0.0 release (MIT,
+built on Avalonia 12.0.0, April 2026). It is adopted for the editor window (the rebase todo's highlighting and line numbers)
+and for the diff viewer (real text selection: next and previous occurrence, git-grep's selected text, "Add selection to
+commit message"). Done the same day: the editor window is AvaloniaEdit's editor (line numbers, upstream's rebase todo and commit message
+highlighting, core `Editing/EditorHighlighting.cs`), and the diff viewer's text is one too (`DiffTextView`: the two line
+number columns, line backgrounds and colors as before, real text selection, next and previous occurrence). Both checked
+in a real render on macOS.
 
 File tree and file history, 2026-10-04: a Files window for the selected commit (or HEAD) lists every file in the tree,
 and selecting a file lists the commits that changed it, with Show diff for any of them. The core reads are

@@ -107,6 +107,12 @@ public partial class MainWindow : Window
     /// </summary>
     public GridViewMenuViewModel GridViewMenu { get; }
 
+    /// <summary>
+    ///  True for the app's own window, which runs upstream's startup check of the settings when it opens; a test's window
+    ///  does not.
+    /// </summary>
+    public bool CheckSettingsAtStartup { get; init; }
+
     public MainWindow(GitDiscoveryResult? git)
     {
         _git = git;
@@ -390,6 +396,15 @@ public partial class MainWindow : Window
 
         HighlightSelectedBranchMenuItem.InputGesture =
             Hotkeys.Grid.GestureFor(GridCommand.ToggleHighlightSelectedBranch);
+
+        // Upstream's View menu shows the keys of these items (RevisionGridMenuCommands).
+        ShowAllBranchesMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ShowAllBranches);
+        ShowCurrentBranchOnlyMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ShowCurrentBranchOnly);
+        ShowFilteredBranchesMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ShowFilteredBranches);
+        ShowReflogReferencesMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ShowReflogReferences);
+        AdvancedFilterViewMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.RevisionFilter);
+        ShowRemoteBranchesMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ShowRemoteBranches);
+        ShowTagsMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.ToggleShowTags);
         FixupCommitMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CreateFixupCommit);
         SquashCommitMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CreateSquashCommit);
         AmendCommitMenuItem.InputGesture = Hotkeys.Grid.GestureFor(GridCommand.CreateAmendCommit);
@@ -411,6 +426,16 @@ public partial class MainWindow : Window
         {
             await new ChooseTranslationWindow(_preferences).ShowDialog(this);
             GitExtensions.Xplat.Ui.UpstreamTranslation.ApplyByText(this);
+        }
+
+        // Then, as upstream, the startup check, unless git is missing (which the dashboard reports) or a screenshot or
+        // benchmark runs.
+        if (CheckSettingsAtStartup && _git?.Status != GitDiscoveryStatus.NotFound && Screenshot.RequestedFile is null &&
+            string.IsNullOrEmpty(Environment.GetEnvironmentVariable(BenchmarkEnvironmentVariable)) &&
+            await NewStartupSettingsCheck().RunAsync())
+        {
+            // Upstream's dialog opens on its first page, the Checklist, being the first in the process.
+            await ShowSettingsAsync(page: SettingsPageTreeViewModel.ChecklistPage);
         }
 
         Run(ShowPluginsAsync);
@@ -700,6 +725,51 @@ public partial class MainWindow : Window
             case BrowseCommand.AddNotes:
                 AddNotes();
                 break;
+            case BrowseCommand.FocusCommitInfo:
+                FocusCommitInfo();
+                break;
+            case BrowseCommand.FocusDiff:
+                FocusFilesTab(DiffTab, CommitFilesList, CommitDiff, DiffTabBlame);
+                break;
+            case BrowseCommand.FocusFileTree:
+                FocusFilesTab(FileTreeTab, FileTreeView, FileContentView, FileTreeBlame);
+                break;
+            case BrowseCommand.FocusGpgInfo:
+                FocusTab(GpgInfoTab, CommitGpgText);
+                break;
+            case BrowseCommand.FocusBuildServerStatus:
+                FocusTab(BuildReportTab, OpenBuildReportLink);
+                break;
+            case BrowseCommand.FocusNextTab:
+                FocusNextTab(forward: true);
+                break;
+            case BrowseCommand.FocusPrevTab:
+                FocusNextTab(forward: false);
+                break;
+            case BrowseCommand.ToggleLeftPanel:
+                ToggleLeftPanel();
+                break;
+            case BrowseCommand.ManageWorkTrees:
+                Toolbar.ManageWorktreesCommand.Execute(null);
+                break;
+            case BrowseCommand.GitGui when RepositoryPath is { } guiPath:
+                GitModules.Open(guiPath).RunGui();
+                break;
+            case BrowseCommand.GitGitK when RepositoryPath is { } gitkPath:
+                GitModules.Open(gitkPath).RunGitK();
+                break;
+            case BrowseCommand.QuickPullOrFetch:
+                Toolbar.PullCommand.Execute(null);
+                break;
+            case BrowseCommand.StashStaged:
+                Toolbar.StashStagedCommand.Execute(null);
+                break;
+            case BrowseCommand.GoToSuperproject:
+                Toolbar.SubmodulesCommand.Execute(null);
+                break;
+            case BrowseCommand.GoToSubmodule:
+                ((IBrowseWindow)this).ShowSubmodulesMenu();
+                break;
         }
     }
 
@@ -769,9 +839,9 @@ public partial class MainWindow : Window
                 return SelectGridRow(selected is null ? null : _commits.IndexOfLastParent(selected));
             case GridCommand.ToggleBetweenArtificialAndHeadCommits:
                 return SelectGridRow(_commits.IndexOfNextArtificialOrHead(selected));
-            case GridCommand.NavigateBackward:
+            case GridCommand.NavigateBackward or GridCommand.NavigateBackwardAlternativeHotkey:
                 return Navigate(_navigationHistory.NavigateBackward());
-            case GridCommand.NavigateForward:
+            case GridCommand.NavigateForward or GridCommand.NavigateForwardAlternativeHotkey:
                 return Navigate(_navigationHistory.NavigateForward());
             case GridCommand.GoToCommit when RepositoryPath is not null:
                 Run(GoToCommitAsync);
@@ -799,6 +869,33 @@ public partial class MainWindow : Window
                 return CompareSelectedCommits();
             case GridCommand.OpenCommitsWithDifftool:
                 return DiffSelectedCommitsWithDifftool(tool: null);
+            case GridCommand.ToggleRevisionGraph:
+                return ToggleGridView(GridViewToggle.GraphColumn);
+            case GridCommand.ToggleAuthorDateCommitDate:
+                return ToggleGridView(GridViewToggle.AuthorDate);
+            case GridCommand.ToggleShowRelativeDate:
+                return ToggleGridView(GridViewToggle.RelativeDate);
+            case GridCommand.ToggleDrawNonRelativesGray:
+                return ToggleGridView(GridViewToggle.DrawNonRelativesGray);
+            case GridCommand.ToggleShowGitNotes:
+                return ToggleGridView(GridViewToggle.GitNotes);
+            case GridCommand.ToggleShowGitNotesColumn:
+                return ToggleGridView(GridViewToggle.NotesColumn);
+            case GridCommand.ToggleShowTags:
+                return ToggleGridView(GridViewToggle.Tags);
+            case GridCommand.ShowRemoteBranches:
+                return ToggleGridView(GridViewToggle.RemoteBranches);
+            case GridCommand.ShowReflogReferences:
+                return ToggleGridView(GridViewToggle.Reflog);
+            case GridCommand.ShowFilteredBranches:
+                ShowBranches(currentOnly: false, filtered: true);
+                return true;
+            case GridCommand.SelectNextForkPointAsDiffBase:
+                return SelectNextForkPointAsDiffBase();
+            case GridCommand.DeleteRef:
+                return QuickRefAction(delete: true);
+            case GridCommand.RenameRef:
+                return QuickRefAction(delete: false);
             default:
                 return false;
         }
@@ -1039,7 +1136,7 @@ public partial class MainWindow : Window
                                                    && await WithScriptsAsync(path, ScriptEvent.BeforePull,
                                                        ScriptEvent.AfterPull,
                                                        () => PullAndUpdateSubmodulesAsync(path,
-                                                           () => _actions.PullAsync(path, TrackingRemote(), branch,
+                                                           () => QuickPullAsync(path, TrackingRemote(), branch,
                                                                action == GitPullAction.Rebase),
                                                            TrackingRemote())));
     }
@@ -1300,7 +1397,9 @@ public partial class MainWindow : Window
                 fetchOnly ? ScriptEvent.AfterFetch : ScriptEvent.AfterPull,
                 () => fetchOnly
                     ? _actions.PullAsync(path, request)
-                    : PullAndUpdateSubmodulesAsync(path, () => _actions.PullAsync(path, request), request.Remote));
+                    : PullAndUpdateSubmodulesAsync(path,
+                        () => PullAutoStashFlow.PullAsync(_actions, _preferences, path, request, () => owner),
+                        request.Remote));
         }
     }
 
@@ -1488,6 +1587,15 @@ public partial class MainWindow : Window
             _ => ShowCommitWindow(), UpdateSubmodulesAfterCheckoutAsync,
             checkoutSubmoduleBranch: (owner, submodulePath, commits) =>
                 CheckoutFlow().StartAsync(owner, submodulePath, containObjectIds: commits));
+
+    // Upstream checks the settings without a repository (a GitModule on an empty folder).
+    private StartupSettingsCheck NewStartupSettingsCheck()
+    {
+        ChecklistFactsReader facts = new(_preferences, AppServices.GitConfig, AppServices.DiffMergeTools,
+            repositoryPath: null, OperatingSystem.IsWindows());
+        return new StartupSettingsCheck(_preferences, facts.ReadAsync, facts.ReadEditorAsync, AppServices.EditorCommand,
+            Environment.SetEnvironmentVariable);
+    }
 
     // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved. A
     // window other than this one can open it over itself on one of upstream's pages (StartSettingsDialog with a page).
@@ -1833,8 +1941,9 @@ public partial class MainWindow : Window
             case nameof(RepositoryOperationsViewModel.ErrorMessage):
                 if (_actions.ErrorMessage is { } message)
                 {
+                    string details = ErrorReporter.Details(_actions.Error);
                     _actions.ClearError();
-                    ShowError(message);
+                    ShowError(message, details);
                 }
 
                 break;
@@ -2284,7 +2393,7 @@ public partial class MainWindow : Window
 
     // Over the window that is active, as upstream shows an error over the form that ran the command: a modal window
     // (the stash window) runs operations whose errors arrive here, and an error owned by this window would open behind it.
-    private void ShowError(string message)
+    private void ShowError(string message, string details = "")
     {
         // Upstream's BugReportInvoker offers to trust a repository git refused, instead of git's message. Every read of the
         // repository fails the same way; the report is shown once.
@@ -2301,6 +2410,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        _ = new ErrorWindow(message).ShowDialog(OwnedWindows.FirstOrDefault(window => window.IsActive) ?? this);
+        _ = new ErrorWindow(message, details).ShowDialog(OwnedWindows.FirstOrDefault(window => window.IsActive) ?? this);
     }
 }

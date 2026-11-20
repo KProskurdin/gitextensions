@@ -36,4 +36,24 @@ public enum GridCommand
     CompareToBranch,
     CompareSelectedCommits,
     OpenCommitsWithDifftool,
+    ToggleRevisionGraph,
+    ToggleAuthorDateCommitDate,
+
+    /// <summary>
+    ///  Upstream lists it on its hotkeys page but runs nothing for it, as here.
+    /// </summary>
+    ToggleOrderRevisionsByDate,
+    ToggleShowRelativeDate,
+    ToggleDrawNonRelativesGray,
+    ToggleShowGitNotes,
+    ToggleShowGitNotesColumn,
+    ShowFilteredBranches,
+    ShowRemoteBranches,
+    ToggleShowTags,
+    ShowReflogReferences,
+    SelectNextForkPointAsDiffBase,
+    NavigateBackwardAlternativeHotkey,
+    NavigateForwardAlternativeHotkey,
+    DeleteRef,
+    RenameRef,
 }

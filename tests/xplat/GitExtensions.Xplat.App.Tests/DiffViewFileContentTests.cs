@@ -53,7 +53,7 @@ internal sealed class DiffViewFileContentTests
 
         _diff.IsShowingImage.Should().BeTrue();
         _diff.FindControl<Image>("PictureBox")!.Source.Should().NotBeNull();
-        _diff.FindControl<ListBox>("DiffList")!.IsVisible.Should().BeFalse();
+        _diff.FindControl<DiffTextView>("DiffList")!.IsVisible.Should().BeFalse();
         _diff.Lines.Should().BeEmpty();
     }
 
@@ -119,7 +119,7 @@ internal sealed class DiffViewFileContentTests
         _diff.ShowText("a.txt", "one");
 
         _diff.IsShowingImage.Should().BeFalse();
-        _diff.FindControl<ListBox>("DiffList")!.IsVisible.Should().BeTrue();
+        _diff.FindControl<DiffTextView>("DiffList")!.IsVisible.Should().BeTrue();
         _diff.FindControl<Image>("PictureBox")!.Source.Should().BeNull();
 
         Task late = _diff.ShowAsync(_repo.Path, "HEAD", ImageFile, staged: false, ImageFile);

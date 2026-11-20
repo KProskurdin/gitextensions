@@ -102,9 +102,8 @@ public sealed class GitOperations : IGitOperations
         if (!result.ExitedSuccessfully)
         {
             string detail = result.AllOutput.Trim();
-            throw new GitOperationException(detail.Length > 0
-                ? detail
-                : $"git apply failed with exit code {result.ExitCode}");
+            throw GitOperationException.Failed(module.GitExecutable, arguments, result,
+                detail.Length > 0 ? detail : $"git apply failed with exit code {result.ExitCode}");
         }
     }
 
@@ -692,10 +691,7 @@ public sealed class GitOperations : IGitOperations
             return;
         }
 
-        string detail = result.StandardError.Trim();
-        throw new GitOperationException(detail.Length > 0
-            ? detail
-            : $"git {arguments} failed with exit code {result.ExitCode}");
+        throw GitOperationException.Failed(executable, arguments, result);
     }
 
     private static GitModule CreateModule(string path)

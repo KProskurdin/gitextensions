@@ -4,6 +4,7 @@ using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using AvaloniaEdit;
 using NUnit.Framework;
 
 namespace GitExtensions.Xplat.App.Tests;
@@ -32,7 +33,7 @@ internal sealed class EditorWindowTests
     {
         EditorWindow editor = OpenEditor();
 
-        Find<TextBox>(editor, "ContentBox").Text.Should().Be("pick 1111111 first\npick 2222222 second\n");
+        Find<TextEditor>(editor, "ContentBox").Text.Should().Be("pick 1111111 first\npick 2222222 second\n");
         Find<Button>(editor, "SaveButton").IsEffectivelyEnabled.Should().BeFalse();
         editor.Close();
 
@@ -50,10 +51,10 @@ internal sealed class EditorWindowTests
 
         EditorWindow editor = OpenEditor(file);
 
-        Find<TextBox>(editor, "ContentBox").Text.Should().Be("caf\u00E9\n");
-        Find<TextBox>(editor, "ContentBox").Text = "caf\u00E9 noir\n";
+        Find<TextEditor>(editor, "ContentBox").Text.Should().Be("caf\u00E9\n");
+        Find<TextEditor>(editor, "ContentBox").Text = "caf\u00E9 noir\n";
         Click(editor, "SaveButton");
-        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEffectivelyEnabled);
+        WaitUntil(() => !editor.ViewModel.HasChanges);
         File.ReadAllBytes(file).Should().Equal(System.Text.Encoding.Latin1.GetBytes("caf\u00E9 noir\n"));
         editor.Close();
     }
@@ -62,10 +63,12 @@ internal sealed class EditorWindowTests
     public void Save_writes_the_edited_text_and_closing_then_accepts_it()
     {
         EditorWindow editor = OpenEditor();
-        Find<TextBox>(editor, "ContentBox").Text = "pick 2222222 second\ndrop 1111111 first\n";
+        Find<TextEditor>(editor, "ContentBox").Text = "pick 2222222 second\ndrop 1111111 first\n";
 
         Click(editor, "SaveButton");
-        WaitUntil(() => !Find<Button>(editor, "SaveButton").IsEffectivelyEnabled);
+
+        // The button is off while the save runs too, so the wait is for the file to be written.
+        WaitUntil(() => !editor.ViewModel.HasChanges);
         editor.Close();
 
         File.ReadAllText(_path).Should().Be("pick 2222222 second\ndrop 1111111 first\n");
@@ -76,7 +79,7 @@ internal sealed class EditorWindowTests
     public void Closing_with_unsaved_changes_asks_and_keeps_the_window_open()
     {
         EditorWindow editor = OpenEditor();
-        Find<TextBox>(editor, "ContentBox").Text = "drop 1111111 first\n";
+        Find<TextEditor>(editor, "ContentBox").Text = "drop 1111111 first\n";
 
         editor.Close();
 
@@ -97,7 +100,7 @@ internal sealed class EditorWindowTests
     public void Discarding_the_changes_leaves_the_file_and_rejects_it()
     {
         EditorWindow editor = OpenEditor();
-        Find<TextBox>(editor, "ContentBox").Text = "";
+        Find<TextEditor>(editor, "ContentBox").Text = "";
         editor.Close();
 
         Click(editor, "DiscardButton");
@@ -112,7 +115,7 @@ internal sealed class EditorWindowTests
     {
         string newFile = Path.Combine(_folder, "new.txt");
         EditorWindow editor = OpenEditor(newFile);
-        Find<TextBox>(editor, "ContentBox").Text = "hello\n";
+        Find<TextEditor>(editor, "ContentBox").Text = "hello\n";
 
         Click(editor, "SaveButton");
         WaitUntil(() => File.Exists(newFile));
@@ -122,11 +125,64 @@ internal sealed class EditorWindowTests
     }
 
     [AvaloniaTest]
+    public void The_rebase_todo_shows_line_numbers_and_upstreams_highlighting_which_follows_the_text()
+    {
+        EditorWindow editor = OpenEditor();
+        TextEditor box = Find<TextEditor>(editor, "ContentBox");
+
+        box.ShowLineNumbers.Should().BeTrue();
+        box.TextArea.TextView.LineTransformers.OfType<EditorColorizer>().Should().ContainSingle();
+        EditorColorizer.ColorOf(GitExtensions.Xplat.Core.Editing.EditorTokenKind.Drop, dark: false).Should()
+            .Be(System.Drawing.Color.Red, "upstream's light color for drop");
+
+        box.Text = "drop 1111111 first\n";
+        editor.ViewModel.Text.Should().Be("drop 1111111 first\n", "the editor's text goes to the view model");
+        DiscardAndClose(editor);
+    }
+
+    [AvaloniaTest]
+    public void A_commit_message_gets_upstreams_waves_with_their_tooltips_which_follow_the_text()
+    {
+        string file = Path.Combine(_folder, "COMMIT_EDITMSG");
+        string summary = new('s', 55);
+        File.WriteAllText(file, summary + "\nno blank line before me\n");
+        EditorWindow editor = OpenEditor(file);
+        TextEditor box = Find<TextEditor>(editor, "ContentBox");
+
+        EditorColorizer colorizer = editor.Colorizer!;
+        colorizer.Marks.Select(mark => mark.ToolTip).Should().Equal(
+            GitExtensions.Xplat.Core.Editing.EditorHighlighting.SummaryTooLongText,
+            GitExtensions.Xplat.Core.Editing.EditorHighlighting.SpacerNeededText);
+        colorizer.ToolTipAt(box.Document, 52).Should().Be(GitExtensions.Xplat.Core.Editing.EditorHighlighting.SummaryTooLongText);
+        colorizer.ToolTipAt(box.Document, 10).Should().BeNull();
+
+        box.Text = "Short summary\n\nBody\n";
+        colorizer.Marks.Should().BeEmpty("the marks follow the text");
+        DiscardAndClose(editor);
+    }
+
+    [AvaloniaTest]
+    public void Another_file_is_highlighted_in_the_syntax_of_its_extension()
+    {
+        string code = Path.Combine(_folder, "Program.cs");
+        File.WriteAllText(code, "// comment\nclass C { }\n");
+        EditorWindow editor = OpenEditor(code);
+        editor.Colorizer.Should().NotBeNull("the file viewer's C# definition");
+        editor.Close();
+
+        string plain = Path.Combine(_folder, "notes.unknownextension");
+        File.WriteAllText(plain, "text\n");
+        EditorWindow other = OpenEditor(plain);
+        other.Colorizer.Should().BeNull();
+        other.Close();
+    }
+
+    [AvaloniaTest]
     public void Find_takes_the_word_at_the_caret_and_selects_each_occurrence_around_the_end()
     {
         EditorWindow editor = OpenEditor();
-        TextBox box = Find<TextBox>(editor, "ContentBox");
-        box.CaretIndex = 1;
+        TextEditor box = Find<TextEditor>(editor, "ContentBox");
+        box.CaretOffset = 1;
 
         Press(editor, DiffCommand.Find);
 
@@ -134,7 +190,7 @@ internal sealed class EditorWindowTests
         find.IsVisible.Should().BeTrue();
         find.ReplaceMode.Should().BeFalse();
         find.LookFor.Should().Be("pick");
-        Find<Button>(find, "btnHighlightAll").IsVisible.Should().BeFalse("a text box cannot mark every occurrence");
+        Find<Button>(find, "btnHighlightAll").IsVisible.Should().BeTrue("the editor marks every occurrence, as upstream's");
 
         Click(find, "btnFindNext");
         WaitUntil(() => box.SelectionStart == 19);
@@ -147,12 +203,29 @@ internal sealed class EditorWindowTests
     }
 
     [AvaloniaTest]
+    public void Highlight_all_marks_every_occurrence_closes_and_the_marks_move_with_the_text()
+    {
+        EditorWindow editor = OpenEditor();
+        TextEditor box = Find<TextEditor>(editor, "ContentBox");
+        Press(editor, DiffCommand.Find);
+        FindWindow find = editor.FindWindow!;
+        find.LookFor = "pick";
+
+        Click(find, "btnHighlightAll");
+
+        editor.Highlighted.Should().Equal((0, 4), (19, 4));
+        find.IsVisible.Should().BeFalse("upstream closes the window when it marked some");
+        box.Document.Insert(0, "# note\n");
+        editor.Highlighted.Should().Equal((7, 4), (26, 4));
+        DiscardAndClose(editor);
+    }
+
+    [AvaloniaTest]
     public void Replace_changes_the_selection_only_when_it_is_the_text_looked_for_then_moves_on()
     {
         EditorWindow editor = OpenEditor();
-        TextBox box = Find<TextBox>(editor, "ContentBox");
-        box.SelectionStart = 0;
-        box.SelectionEnd = 4;
+        TextEditor box = Find<TextEditor>(editor, "ContentBox");
+        box.Select(0, 4);
 
         Press(editor, DiffCommand.Replace);
 
@@ -174,10 +247,9 @@ internal sealed class EditorWindowTests
     public void Replace_All_keeps_to_a_region_tells_the_count_closes_and_can_be_undone_at_once()
     {
         EditorWindow editor = OpenEditor();
-        TextBox box = Find<TextBox>(editor, "ContentBox");
+        TextEditor box = Find<TextEditor>(editor, "ContentBox");
         box.Text = "pick a\npick b\npick c\n";
-        box.SelectionStart = 7;
-        box.SelectionEnd = 20;
+        box.Select(7, 13);
 
         Press(editor, DiffCommand.Replace);
 
@@ -208,7 +280,7 @@ internal sealed class EditorWindowTests
 
         WaitUntil(() => find.OwnedWindows.OfType<MessageBoxWindow>().Any());
         find.OwnedWindows.OfType<MessageBoxWindow>().Single().Close();
-        Find<TextBox>(editor, "ContentBox").Text.Should().Be("pick 1111111 first\npick 2222222 second\n");
+        Find<TextEditor>(editor, "ContentBox").Text.Should().Be("pick 1111111 first\npick 2222222 second\n");
         find.IsVisible.Should().BeTrue();
         editor.Close();
     }
@@ -224,7 +296,7 @@ internal sealed class EditorWindowTests
         GoToLineWindow window = editor.OwnedWindows.OfType<GoToLineWindow>().Single();
         window.FindControl<NumericUpDown>("_NO_TRANSLATE_LineNumberUpDown")!.Value = 2;
         Click(window, "okBtn");
-        WaitUntil(() => Find<TextBox>(editor, "ContentBox").CaretIndex == 19);
+        WaitUntil(() => Find<TextEditor>(editor, "ContentBox").CaretOffset == 19);
         editor.Close();
     }
 
@@ -233,7 +305,7 @@ internal sealed class EditorWindowTests
     {
         EditorWindow editor = OpenEditor();
 
-        List<MenuItem> items = [.. ((MenuFlyout)Find<TextBox>(editor, "ContentBox").ContextFlyout!).Items.OfType<MenuItem>()];
+        List<MenuItem> items = [.. ((MenuFlyout)Find<TextEditor>(editor, "ContentBox").ContextFlyout!).Items.OfType<MenuItem>()];
 
         items.Select(item => item.Header).Should().Equal("Cut", "Copy", "Paste", "_Find...", "_Replace...", "Go to line...");
         items[3].InputGesture.Should().Be(Hotkeys.Diff.GestureFor(DiffCommand.Find));
@@ -258,7 +330,7 @@ internal sealed class EditorWindowTests
     {
         EditorWindow editor = new(path ?? _path);
         editor.Show();
-        WaitUntil(() => editor.FileLoaded.IsCompleted && !Find<TextBox>(editor, "ContentBox").IsReadOnly);
+        WaitUntil(() => editor.FileLoaded.IsCompleted && !Find<TextEditor>(editor, "ContentBox").IsReadOnly);
         return editor;
     }
 

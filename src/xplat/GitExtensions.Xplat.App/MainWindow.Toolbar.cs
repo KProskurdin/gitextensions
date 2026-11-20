@@ -169,7 +169,7 @@ public partial class MainWindow
                 RunOnCurrentBranch(async (path, branch) => await LoadPuttyKeysAsync(path, TrackingRemote())
                     && await WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
                         () => PullAndUpdateSubmodulesAsync(path,
-                            () => _actions.PullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase),
+                            () => QuickPullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase),
                             TrackingRemote())));
                 break;
         }

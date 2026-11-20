@@ -12,6 +12,12 @@ namespace GitExtensions.Xplat.Core.Diff;
 ///  line that belong together have what they share dimmed, so that what changed stands out. The service itself is tied to the
 ///  WinForms text editor, so its logic is ported here.
 /// </summary>
+/// <summary>
+///  Upstream's <c>CreateAnchorMarker</c>: a zero-width mark before <paramref name="Column"/> of a line (a
+///  <c>TextMarkerType.InterChar</c>), in the color of the text the paired line has there.
+/// </summary>
+public sealed record DiffAnchor(int Column, Color Color);
+
 public static class InlineDifferences
 {
     // In order to skip the + or - of a line.
@@ -36,6 +42,7 @@ public static class InlineDifferences
     public static IReadOnlyList<DiffLine> Add(IReadOnlyList<DiffLine> lines, bool dimBackground)
     {
         Dictionary<int, List<DiffColorRun>> dims = [];
+        Dictionary<int, List<DiffAnchor>> anchors = [];
         int index = 0;
         while (index < lines.Count)
         {
@@ -54,20 +61,28 @@ public static class InlineDifferences
 
             foreach ((ISegment lineRemoved, ISegment lineAdded) in LinesMatcher.FindLinePairs(Text, removed, added))
             {
-                AddDifferences(dims, lineRemoved.Offset, lineAdded.Offset, Text(lineRemoved), Text(lineAdded), dimBackground);
+                AddDifferences(dims, anchors, lineRemoved.Offset, lineAdded.Offset, Text(lineRemoved), Text(lineAdded),
+                    dimBackground);
             }
         }
 
-        if (dims.Count == 0)
+        if (dims.Count == 0 && anchors.Count == 0)
         {
             return lines;
         }
 
         return
         [
-            .. lines.Select((line, lineIndex) => dims.TryGetValue(lineIndex, out List<DiffColorRun>? runs)
-                ? line with { DimRuns = [.. runs.Where(run => run.Length > 0).OrderBy(run => run.Start)] }
-                : line)
+            .. lines.Select((line, lineIndex) => (dims.TryGetValue(lineIndex, out List<DiffColorRun>? runs),
+                    anchors.TryGetValue(lineIndex, out List<DiffAnchor>? marks)) switch
+                {
+                    (false, false) => line,
+                    _ => line with
+                    {
+                        DimRuns = runs is null ? line.DimRuns : [.. runs.Where(run => run.Length > 0).OrderBy(run => run.Start)],
+                        Anchors = marks is null ? line.Anchors : [.. marks.OrderBy(mark => mark.Column)],
+                    },
+                })
         ];
 
         // A segment's offset here is the line's index in the list.
@@ -111,13 +126,13 @@ public static class InlineDifferences
         return result;
     }
 
-    private static void AddDifferences(Dictionary<int, List<DiffColorRun>> dims, int lineRemoved, int lineAdded, string removed,
-        string added, bool dimBackground)
+    private static void AddDifferences(Dictionary<int, List<DiffColorRun>> dims, Dictionary<int, List<DiffAnchor>> anchors,
+        int lineRemoved, int lineAdded, string removed, string added, bool dimBackground)
     {
         ReadOnlySpan<char> textRemoved = removed.Length <= MaxLength ? removed : removed.AsSpan(0, MaxLength);
         ReadOnlySpan<char> textAdded = added.Length <= MaxLength ? added : added.AsSpan(0, MaxLength);
-        (int identicalAtStart, int identicalAtEnd) =
-            AddDifferences(dims, lineRemoved, lineAdded, textRemoved, textAdded, DiffContentOffset, DiffContentOffset, dimBackground);
+        (int identicalAtStart, int identicalAtEnd) = AddDifferences(dims, anchors, lineRemoved, lineAdded, textRemoved,
+            textAdded, DiffContentOffset, DiffContentOffset, dimBackground);
         if (identicalAtStart > 0)
         {
             AddDimmed(dims, lineRemoved, lineAdded, DiffContentOffset, DiffContentOffset, identicalAtStart, dimBackground);
@@ -130,11 +145,11 @@ public static class InlineDifferences
         }
     }
 
-    // Upstream's recursive AddDifferenceMarkers: split at the best common word, then what remains on each side. Upstream's
-    // zero-width "anchor" where text was inserted has no equivalent in the viewer's runs, and is left out.
+    // Upstream's recursive AddDifferenceMarkers: split at the best common word, then what remains on each side; where only one
+    // side has text left, the other gets upstream's zero-width anchor.
     private static (int IdenticalAtStart, int IdenticalAtEnd) AddDifferences(Dictionary<int, List<DiffColorRun>> dims,
-        int lineRemoved, int lineAdded, ReadOnlySpan<char> textRemoved, ReadOnlySpan<char> textAdded, int offsetRemoved,
-        int offsetAdded, bool dimBackground)
+        Dictionary<int, List<DiffAnchor>> anchors, int lineRemoved, int lineAdded, ReadOnlySpan<char> textRemoved,
+        ReadOnlySpan<char> textAdded, int offsetRemoved, int offsetAdded, bool dimBackground)
     {
         int identicalAtStart = 0;
         int identicalAtEnd = 0;
@@ -152,11 +167,11 @@ public static class InlineDifferences
             int lengthIdentical = commonWord.Length;
             int rightRemoved = startRemoved + lengthIdentical;
             int rightAdded = startAdded + lengthIdentical;
-            (int identicalAtStartOfRight, identicalAtEnd) = AddDifferences(dims, lineRemoved, lineAdded,
+            (int identicalAtStartOfRight, identicalAtEnd) = AddDifferences(dims, anchors, lineRemoved, lineAdded,
                 textRemoved[rightRemoved..], textAdded[rightAdded..], offsetRemoved + rightRemoved, offsetAdded + rightAdded,
                 dimBackground);
             lengthIdentical += identicalAtStartOfRight;
-            (identicalAtStart, int identicalAtEndOfLeft) = AddDifferences(dims, lineRemoved, lineAdded,
+            (identicalAtStart, int identicalAtEndOfLeft) = AddDifferences(dims, anchors, lineRemoved, lineAdded,
                 textRemoved[..startRemoved], textAdded[..startAdded], offsetRemoved, offsetAdded, dimBackground);
             lengthIdentical += identicalAtEndOfLeft;
             startRemoved -= identicalAtEndOfLeft;
@@ -195,7 +210,31 @@ public static class InlineDifferences
             ++identicalAtEnd;
         }
 
+        // Upstream's CreateAnchorMarker in the color of the other side's text.
+        int differentRemoved = endOfRemoved - identicalAtStart;
+        int differentAdded = endOfAdded - identicalAtStart;
+        if (differentRemoved == 0 && differentAdded > 0)
+        {
+            AddAnchor(anchors, lineRemoved,
+                new DiffAnchor(offsetRemoved + identicalAtStart, AppColor.AnsiTerminalGreenForeBold.GetThemeColor()));
+        }
+        else if (differentRemoved > 0 && differentAdded == 0)
+        {
+            AddAnchor(anchors, lineAdded,
+                new DiffAnchor(offsetAdded + identicalAtStart, AppColor.AnsiTerminalRedForeBold.GetThemeColor()));
+        }
+
         return (identicalAtStart, identicalAtEnd);
+    }
+
+    private static void AddAnchor(Dictionary<int, List<DiffAnchor>> anchors, int line, DiffAnchor anchor)
+    {
+        if (!anchors.TryGetValue(line, out List<DiffAnchor>? marks))
+        {
+            anchors[line] = marks = [];
+        }
+
+        marks.Add(anchor);
     }
 
     private static void AddDimmed(Dictionary<int, List<DiffColorRun>> dims, int lineRemoved, int lineAdded, int startRemoved,

@@ -378,6 +378,30 @@ internal sealed class CommitListViewModelTests
     }
 
     [Test]
+    public async Task NextForkPoint_should_follow_first_parents_to_a_branch_or_a_commit_with_other_than_one_child()
+    {
+        // feature: e -> d -> c (fork: b has two children, c and side) -> b -> a; main points at a.
+        Task open = _viewModel.OpenAsync(RepositoryPath);
+        _history.CompletePage(0, new CommitPage(
+        [
+            .. ArtificialCommits.Rows("Ann", "e"),
+            new CommitRow("e", "e", "e", "a", "d", ["d"], Labels: [new RefLabel("feature", RefKind.Branch)]),
+            new CommitRow("side", "side", "side", "a", "d", ["b"]),
+            new CommitRow("d", "d", "d", "a", "d", ["c"]),
+            new CommitRow("c", "c", "c", "a", "d", ["b"]),
+            new CommitRow("b", "b", "b", "a", "d", ["a"]),
+            new CommitRow("a", "a", "a", "a", "d", Labels: [new RefLabel("origin/main", RefKind.RemoteBranch)]),
+        ], HasMore: false));
+        await open;
+        CommitRow Row(string hash) => _viewModel.VisibleRows.Single(item => item.Row.Hash == hash).Row;
+
+        _viewModel.NextForkPoint(Row("e")).Should().Be("b", "b has two children");
+        _viewModel.NextForkPoint(Row(ArtificialCommits.WorkTreeHash)).Should().Be("b", "the working directory counts as e");
+        _viewModel.NextForkPoint(Row("b")).Should().Be("a", "a has a remote branch");
+        _viewModel.NextForkPoint(Row("a")).Should().Be("a", "a has no parent, as upstream keeps it");
+    }
+
+    [Test]
     public async Task Toggle_between_artificial_and_HEAD_should_circle_and_pass_over_a_clean_index()
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);
