@@ -418,7 +418,8 @@ internal sealed class PluginHost : IGitUICommands
 
     public bool StartBrowseDialog(IWin32Window? owner, BrowseArguments? args = null)
         => RunFlow(owner, (f, _, p) => f.BrowseAsync(p, args?.RevFilter ?? "", args?.PathFilter ?? "",
-            args is { SelectedId.IsZero: false } ? args.SelectedId.ToString() : null));
+            args is { SelectedId.IsZero: false } ? args.SelectedId.ToString() : null,
+            args is { FirstId.IsZero: false } ? args.FirstId.ToString() : null, args?.IsFileHistoryMode ?? false));
 
     public bool StartCheckoutBranch(IWin32Window? owner, IReadOnlyList<ObjectId>? containObjectIds)
         => RunFlow(owner, (f, o, p) => f.CheckoutBranchAsync(o, p, "", remote: false, containObjectIds));
@@ -434,7 +435,7 @@ internal sealed class PluginHost : IGitUICommands
         => RunFlow(owner, (f, _, p) => f.CheckoutRevisionAsync(p, revision));
 
     public bool StartCherryPickDialog(IWin32Window? owner = null, GitRevision? revision = null)
-        => RunFlow(owner, (f, o, p) => f.CherryPickAsync(o, p, [revision?.Guid ?? "HEAD"]));
+        => RunFlow(owner, (f, o, p) => f.CherryPickAsync(o, p, [revision?.Guid]));
 
     public bool StartCherryPickDialog(IWin32Window? owner, IEnumerable<GitRevision> revisions)
         => RunFlow(owner, (f, o, p) => f.CherryPickAsync(o, p, [.. revisions.Select(revision => revision.Guid)]));
@@ -540,11 +541,12 @@ internal sealed class PluginHost : IGitUICommands
         => RunFlow(owner, (f, _, _) => f.EditGitIgnoreAsync(localExcludes));
 
     public bool StartFileEditorDialog(string? filename, bool showWarning = false, int? lineNumber = null)
-        => filename is not null && RunFlow(owner: null, (f, o, _) => f.EditFileAsync(o, filename, showWarning));
+        => filename is not null && RunFlow(owner: null, (f, o, _) => f.EditFileAsync(o, filename, showWarning, lineNumber));
 
     public void StartFileHistoryDialog(IWin32Window? owner, string fileName, GitRevision? revision = null,
         bool filterByRevision = false, bool showBlame = false)
-        => _ = RunFlow(owner, (f, o, p) => f.ShowFileHistoryAsync(o, p, fileName, revision?.Guid, showBlame));
+        => _ = RunFlow(owner, (f, o, p) =>
+            f.ShowFileHistoryAsync(o, p, fileName, revision?.Guid, showBlame, filterByRevision));
 
     public bool StartFixupCommitDialog(IWin32Window? owner, GitRevision revision)
         => RunFlow(owner, (f, _, p) => f.SpecialCommitAsync(p, CommitKind.Fixup, revision.ObjectId));
@@ -594,11 +596,11 @@ internal sealed class PluginHost : IGitUICommands
             new ViewPullRequestsWindow(host, Module, _actions).Show(OwnerOf(owner)));
 
     public bool StartPushDialog(IWin32Window? owner, bool pushOnShow)
-        => RunFlow(owner, (f, _, _) => f.PushAsync(pushOnShow, branch: null));
+        => RunFlow(owner, (f, _, _) => f.PushAsync(pushOnShow, branch: null, forceWithLease: false));
 
     public bool StartPushDialog(IWin32Window? owner, bool pushOnShow, bool forceWithLease, out bool pushCompleted,
         string? branchName = null)
-        => pushCompleted = RunFlow(owner, (f, _, _) => f.PushAsync(pushOnShow, branchName));
+        => pushCompleted = RunFlow(owner, (f, _, _) => f.PushAsync(pushOnShow, branchName, forceWithLease));
 
     public bool StartRebase(IWin32Window? owner, string onto)
         => RunFlow(owner, (f, _, p) => f.RebaseAsync(p, "", to: null, onto, interactive: false, immediately: true));
@@ -630,7 +632,7 @@ internal sealed class PluginHost : IGitUICommands
         => RunFlow(owner, (f, _, p) => f.ResetCurrentBranchAsync(p, branch));
 
     public bool StartResolveConflictsDialog(IWin32Window? owner = null, bool offerCommit = true)
-        => RunFlow(owner, (f, o, p) => f.ResolveConflictsAsync(o, p));
+        => RunFlow(owner, (f, o, p) => f.ResolveConflictsAsync(o, p, offerCommit));
 
     public bool StartRevertCommitDialog(IWin32Window? owner, GitRevision revision)
         => RunFlow(owner, (f, o, p) => f.RevertCommitAsync(o, p, revision.Guid));

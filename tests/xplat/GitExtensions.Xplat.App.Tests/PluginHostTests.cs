@@ -325,6 +325,25 @@ internal sealed class PluginHostTests
     }
 
     [AvaloniaTest]
+    public void A_plugins_browse_dialog_is_another_browse_window_on_the_repository()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        WaitForPluginItem(window);
+        Open(window, _repo.Path);
+        using TestRepository other = new();
+        MainWindow? opened = null;
+        using IDisposable watch = Window.WindowOpenedEvent.AddClassHandler<MainWindow>((browse, _) => opened = browse);
+
+        _plugin.Commands!.WithWorkingDirectory(other.Path).StartBrowseDialog(owner: null).Should().BeTrue();
+
+        WaitUntil(() => opened is { IsBusy: false, OpenRepositoryPath: not null });
+        opened!.Should().NotBeSameAs(window);
+        opened.OpenRepositoryPath.Should().StartWith(other.Path);
+        window.OpenRepositoryPath.Should().StartWith(_repo.Path, "the plugin's window stays on its repository");
+    }
+
+    [AvaloniaTest]
     public void A_plugin_can_open_the_clone_dialog_on_a_url()
     {
         const string url = "https://example.com/owner/project.git";

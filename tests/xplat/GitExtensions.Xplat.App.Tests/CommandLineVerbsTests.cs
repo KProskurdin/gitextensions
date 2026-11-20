@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
@@ -88,10 +89,10 @@ internal sealed class CommandLineVerbsTests
     [AvaloniaTest]
     public void An_unknown_word_with_arguments_shows_upstreams_usage_and_succeeds()
     {
-        MessageBoxWindow usage = Open<MessageBoxWindow>(Request("help", "me"), _outside);
+        CommandLineHelpWindow usage = Open<CommandLineHelpWindow>(Request("help", "me"), _outside);
 
-        usage.ViewModel.Text.Should().Be(CommandLine.Usage);
-        usage.ViewModel.Title.Should().Be(CommandLine.UsageCaption);
+        usage.Title.Should().Be(CommandLine.UsageCaption);
+        usage.FindControl<SelectableTextBlock>("_NO_TRANSLATE_commands")!.Text.Should().Be(CommandLine.UsageCommands);
         CloseAndExitCode(usage).Should().Be(0);
     }
 
@@ -99,6 +100,7 @@ internal sealed class CommandLineVerbsTests
     [TestCase("checkoutrevision", typeof(CheckoutRevisionWindow))]
     [TestCase("tag", typeof(CreateTagWindow))]
     [TestCase("branch", typeof(CreateBranchWindow))]
+    [TestCase("cherry", typeof(CherryPickWindow))]
     public void A_dialog_verb_shows_over_an_unseen_browse_window_and_its_cancel_fails(string verb, Type type)
     {
         MainWindow host = Open<MainWindow>(Request(verb), _repo.Path);
@@ -143,6 +145,25 @@ internal sealed class CommandLineVerbsTests
     }
 
     [AvaloniaTest]
+    public void Reset_with_files_resets_them_and_deletes_the_new_ones_when_asked()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+        File.WriteAllText(Path.Combine(_repo.Path, "new.txt"), "new");
+        File.WriteAllText(Path.Combine(_repo.Path, "kept.txt"), "kept");
+        MainWindow host = Open<MainWindow>(Request("reset", "a.txt", "new.txt"), _repo.Path);
+
+        ResetChangesWindow question = (ResetChangesWindow)WaitForOwned(host, typeof(ResetChangesWindow));
+        question.FindControl<CheckBox>("DeleteNewFilesCheck")!.IsChecked = true;
+        UiClicks.Raise(question.FindControl<Button>("ResetButton")!, Button.ClickEvent);
+
+        WaitUntil(() => _exitCode is not null);
+        _exitCode.Should().Be(0);
+        File.Exists(Path.Combine(_repo.Path, "new.txt")).Should().BeFalse("upstream deletes the new files when asked");
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().NotBe("changed");
+        File.Exists(Path.Combine(_repo.Path, "kept.txt")).Should().BeTrue("only the files given are reset");
+    }
+
+    [AvaloniaTest]
     public void Commit_quiet_with_nothing_to_commit_opens_no_window_and_succeeds()
     {
         _repo.Run("status", "--porcelain").Should().BeEmpty();
@@ -154,17 +175,73 @@ internal sealed class CommandLineVerbsTests
     }
 
     [AvaloniaTest]
-    public void Init_asks_before_it_creates_the_repository_in_the_folder_given()
+    public void Init_opens_upstreams_dialog_on_the_folder_given_and_creates_the_repository()
     {
         string folder = Path.Combine(_outside, "new");
         MainWindow host = Open<MainWindow>(Request("init", folder), _outside);
 
-        ConfirmWindow question = (ConfirmWindow)WaitForOwned(host, typeof(ConfirmWindow));
-        question.ViewModel.ConfirmCommand.Execute(null);
+        InitRepositoryWindow init = (InitRepositoryWindow)WaitForOwned(host, typeof(InitRepositoryWindow));
+        init.ViewModel.Directory.Should().Be(folder);
+        init.ViewModel.CreateCommand.Execute(null);
+        WaitForOwned(init, typeof(MessageBoxWindow)).Close();
 
         WaitUntil(() => _exitCode is not null);
         _exitCode.Should().Be(0);
         Directory.Exists(Path.Combine(folder, ".git")).Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void Commit_with_a_message_starts_the_commit_window_on_it()
+    {
+        MainWindow host = Open<MainWindow>(Request("commit", "--message", "From the command line"), _repo.Path);
+
+        CommitWindow commit = (CommitWindow)WaitForOwned(host, typeof(CommitWindow));
+        commit.ViewModel.Message.Should().Be("From the command line");
+        commit.Close();
+        WaitUntil(() => _exitCode is not null);
+    }
+
+    [AvaloniaTest]
+    [TestCase("not-a-commit")]
+    [TestCase("HEAD", "--other")]
+    public void File_history_with_a_revision_that_is_no_commit_id_or_another_option_fails(params string[] after)
+    {
+        Open<MainWindow>(Request(["filehistory", Path.Combine(_repo.Path, "a.txt"), .. after]), _outside);
+
+        WaitUntil(() => _exitCode is not null);
+        _exitCode.Should().Be(CommandLine.FailedExitCode);
+    }
+
+    [AvaloniaTest]
+    public async Task Browse_selects_both_commits_of_commit_and_a_path_filter_is_upstreams_file_history_mode()
+    {
+        string first = _repo.Run("rev-parse", "HEAD~1").Trim();
+        string second = _repo.Run("rev-parse", "HEAD").Trim();
+        MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+        window.Show();
+        window.OpenRepository(_repo.Path);
+        WaitUntil(() => !window.IsBusy);
+        ListBox commits = window.FindControl<ListBox>("CommitList")!;
+
+        await window.ApplyBrowseArgumentsAsync(Request("browse", "--pathFilter=a.txt", $"-commit={second},{first}"));
+
+        WaitUntil(() => !window.IsBusy && commits.SelectedItems!.Count == 2);
+        commits.SelectedItems!.OfType<CommitListItem>().Select(item => item.Row.Hash).Should().BeEquivalentTo([first, second]);
+        window.FindControl<ToggleButton>("ToggleLeftPanelButton")!.IsChecked.Should().BeFalse("the left panel collapses");
+    }
+
+    [AvaloniaTest]
+    public void The_editor_starts_on_the_line_asked_for()
+    {
+        string file = Path.Combine(_outside, "lines.txt");
+        File.WriteAllText(file, "one\ntwo\nthree\n");
+        EditorWindow editor = new(file, lineNumber: 3);
+        editor.Show();
+        AvaloniaEdit.TextEditor content = editor.FindControl<AvaloniaEdit.TextEditor>("ContentBox")!;
+        WaitUntil(() => content.Text?.Contains("three", StringComparison.Ordinal) == true && editor.FileLoaded.IsCompleted);
+
+        content.TextArea.Caret.Line.Should().Be(3);
+        editor.Close();
     }
 
     [AvaloniaTest]
@@ -221,7 +298,8 @@ internal sealed class CommandLineVerbsTests
     public void About_and_settings_open_without_a_repository()
     {
         CloseAndExitCode(Open<AboutWindow>(Request("about"), _outside)).Should().Be(0);
-        CloseAndExitCode(Open<SettingsWindow>(Request("settings"), _outside)).Should().Be(0);
+        CloseAndExitCode(Open<SettingsWindow>(Request("settings"), _outside)).Should()
+            .Be(CommandLine.FailedExitCode, "upstream's code says the settings were not saved");
     }
 
     [AvaloniaTest]

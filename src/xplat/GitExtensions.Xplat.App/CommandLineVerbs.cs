@@ -86,7 +86,7 @@ public static class CommandLineVerbs
         // Upstream's FormCommandlineHelp, for "help" and anything it does not know.
         if (!CommandLine.Verbs.Contains(request.Verb))
         {
-            return Message(CommandLine.Usage, CommandLine.UsageCaption, 0, exit);
+            return Closing(new CommandLineHelpWindow(), exit);
         }
 
         string? repository = CommandLine.WorkingDirectory(request, currentDirectory);
@@ -95,10 +95,14 @@ public static class CommandLineVerbs
             case "about":
                 return Closing(new AboutWindow(git?.Version?.ToString()), exit);
 
-            // Upstream's exit code also tells whether the settings were saved; here it is 0 either way, as a window that
-            // is not a dialog drops its result. Without the browse window no plugin is loaded, so their pages are missing.
+            // Upstream's exit code tells whether the settings were saved (OK, or Apply before Cancel). Without the browse
+            // window no plugin is loaded, so their pages are missing.
             case "settings":
-                return Closing(new SettingsWindow(AppServices.Preferences, repository), exit);
+            {
+                SettingsWindow settings = new(AppServices.Preferences, repository);
+                return Closing(settings, exit, () => settings.ViewModel.Saved ? 0 : CommandLine.FailedExitCode);
+            }
+
             case "viewpatch":
                 return Closing(new ViewPatchWindow(repository ?? currentDirectory, request.Argument(0)), exit);
 

@@ -97,9 +97,9 @@ public partial class MainWindow
     }
 
     // Upstream's StartCherryPickDialog(revisions); true when every commit was picked.
-    private async Task<bool> CherryPickRevisionsAsync(Window owner, string path, IReadOnlyList<string> revisions)
+    private async Task<bool> CherryPickRevisionsAsync(Window owner, string path, IReadOnlyList<string?> revisions)
     {
-        foreach (string revision in revisions)
+        foreach (string? revision in revisions)
         {
             if (!await new CherryPickWindow(path, revision, _preferences,
                         (window, commit, arguments) => CherryPickAsync(window, path, commit, arguments))

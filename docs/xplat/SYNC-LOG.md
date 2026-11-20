@@ -282,3 +282,21 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   868 of 868 in 13 minutes 22 seconds, the test host at most 862 MB; the shadow projects 12 of 12; `verify-upstream.sh`
   passes against `17213fe3f`. No sleep during the runs. No upstream file changed; seam count unchanged. Not tried with a
   third-party plugin or at the screen. Windows and Linux were not run.
+
+### 2026-11-20, night: FormInit, the command line's and plugins' last options, a flaky test, no merge
+
+- On macOS: upstream's FormInit (`InitRepositoryWindow`, MVVM) for the Start menu, the `init` verb and the plugins'
+  `StartInitializeDialog`; the command line's `commit --message`, `blame file line`, `filehistory`'s revision check and
+  `--filter-by-revision`, `-commit=`'s second commit and `--pathFilter=`'s file history mode; the plugins' `forceWithLease`,
+  `lineNumber`, `FirstId` and file history mode (`PORTING-MAP.md`, Command line, GitUICommands plugin side, FormInit).
+- Flaky tests: core `DashboardViewModelTests`' delete-category test fixed (it checked the window's notice before the
+  command had sent it). The App tests that failed only in full runs (`The_filter_menu_shows_upstreams_hotkeys`,
+  `CommitFileListsTests`' folder tree test, `CommitDialogSettingsTests`' Option+Esc) were not reproduced and are left; a
+  hotkey leak from `MainWindowTests` was ruled out.
+- `PORTING-MAP.md`: the Git/SSH and General settings page rows were `partial` in the table while their notes said `ported`
+  since the Windows session; now `ported`. One `partial` row is left (the settings tree's Shell extension page, Windows).
+- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings (an incremental build;
+  a clean build shows the existing warnings of other projects, none in the files changed); core 1467 of 1467; app 873 of
+  873 in 15 minutes 25 seconds, the test host at most 757 MB; the shadow projects 12 of 12; `verify-upstream.sh` passes
+  against `17213fe3f`. No sleep during the runs. No upstream file changed; seam count unchanged. Windows and Linux were not
+  run.

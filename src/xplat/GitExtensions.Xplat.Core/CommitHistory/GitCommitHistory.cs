@@ -427,7 +427,9 @@ public sealed class GitCommitHistory : ICommitHistory
         {
             new RevisionReader(module).GetLog(observer, revisionFilter: revision, pathFilter: pathFilter,
                 hasNotes: notes,
-                autostashLabel: "", cancellationToken: stopReading.Token);
+
+                // As upstream's grid: the commit a rebase stashed the changes in, shown during the rebase.
+                autostashLabel: ResourceManager.TranslatedStrings.Autostash, cancellationToken: stopReading.Token);
         }
         catch (OperationCanceledException) when (stopReading.IsCancellationRequested)
         {

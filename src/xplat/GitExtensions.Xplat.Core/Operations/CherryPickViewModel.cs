@@ -29,11 +29,11 @@ public sealed partial class CherryPickViewModel : DialogViewModel
     private string? _revision;
     private GitRevision? _selected;
 
-    /// <param name="revision">The commit to cherry pick.</param>
+    /// <param name="revision">The commit to cherry pick; null for none yet, which the commit picker then chooses.</param>
     /// <param name="preferences">Upstream's two cherry pick options.</param>
     /// <param name="pick">Runs the cherry pick command (the commit's hash, the command) and handles its conflicts.</param>
     /// <param name="chooseCommit">Upstream's FormChooseCommit on the given commit: the chosen commit's hash, or null.</param>
-    public CherryPickViewModel(IDialogHost host, IGitModule module, string revision, IAppPreferences preferences,
+    public CherryPickViewModel(IDialogHost host, IGitModule module, string? revision, IAppPreferences preferences,
         Func<string, ArgumentString, Task>? pick, Func<string?, Task<string?>> chooseCommit)
         : base(host)
     {

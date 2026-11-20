@@ -21,7 +21,8 @@ internal interface IPluginFlows
 
     Task<bool> ArchiveAsync(Window owner, string path, string revision, string? diffRevision, string? filePath);
 
-    Task<bool> BrowseAsync(string path, string revisionFilter, string pathFilter, string? commit);
+    Task<bool> BrowseAsync(string path, string revisionFilter, string pathFilter, string? commit, string? firstCommit,
+        bool fileHistoryMode);
 
     Task<bool> CheckoutBranchAsync(Window owner, string path, string branch, bool remote,
         IReadOnlyList<ObjectId>? containObjectIds);
@@ -30,7 +31,7 @@ internal interface IPluginFlows
 
     Task<bool> CheckoutRevisionAsync(string path, string? revision);
 
-    Task<bool> CherryPickAsync(Window owner, string path, IReadOnlyList<string> revisions);
+    Task<bool> CherryPickAsync(Window owner, string path, IReadOnlyList<string?> revisions);
 
     Task<bool> CleanupAsync(Window owner, string path);
 
@@ -48,7 +49,7 @@ internal interface IPluginFlows
 
     Task<bool> DeleteTagAsync(string path, string? tag);
 
-    Task<bool> EditFileAsync(Window owner, string file, bool showWarning);
+    Task<bool> EditFileAsync(Window owner, string file, bool showWarning, int? lineNumber);
 
     Task<bool> EditGitIgnoreAsync(bool localExclude);
 
@@ -64,7 +65,7 @@ internal interface IPluginFlows
 
     Task<bool> PullAsync(Window owner, string? remoteBranch, string? remote, GitPullAction action, bool pullAtOnce);
 
-    Task<bool> PushAsync(bool pushAtOnce, string? branch);
+    Task<bool> PushAsync(bool pushAtOnce, string? branch, bool forceWithLease);
 
     Task<bool> RebaseAsync(string path, string from, string? to, string? onto, bool interactive, bool immediately);
 
@@ -76,7 +77,7 @@ internal interface IPluginFlows
 
     Task<bool> ResetCurrentBranchAsync(string path, string revision);
 
-    Task<bool> ResolveConflictsAsync(Window owner, string path);
+    Task<bool> ResolveConflictsAsync(Window owner, string path, bool offerCommit);
 
     Task<bool> RevertCommitAsync(Window owner, string path, string revision);
 
@@ -86,7 +87,8 @@ internal interface IPluginFlows
 
     Task<bool> ShowCommitDiffAsync(Window owner, string path, string revision);
 
-    Task<bool> ShowFileHistoryAsync(Window owner, string path, string file, string? revision, bool showBlame);
+    Task<bool> ShowFileHistoryAsync(Window owner, string path, string file, string? revision, bool showBlame,
+        bool filterByRevision);
 
     Task<bool> SparseWorkingCopyAsync(string path);
 

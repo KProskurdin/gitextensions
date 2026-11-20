@@ -12,6 +12,8 @@ namespace GitExtensions.Xplat.Core.Repository;
 /// </summary>
 public sealed partial class ReflogViewModel : DialogViewModel
 {
+    private IReadOnlyList<ReflogEntry> _loadedEntries = [];
+
     // Upstream's texts.
     public const string CurrentBranchFormat = "current branch ({0})";
 
@@ -61,6 +63,18 @@ public sealed partial class ReflogViewModel : DialogViewModel
 
     [ObservableProperty]
     public partial IReadOnlyList<ReflogEntry> Entries { get; private set; } = [];
+
+    /// <summary>
+    ///  The column the entries are sorted by, null for git's order.
+    /// </summary>
+    [ObservableProperty]
+    public partial ReflogColumn? SortColumn { get; private set; }
+
+    /// <summary>
+    ///  True when <see cref="SortColumn"/> sorts from the last to the first.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool SortDescending { get; private set; }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CopyShaCommand), nameof(CreateBranchCommand), nameof(ResetCurrentBranchCommand))]
@@ -149,9 +163,32 @@ public sealed partial class ReflogViewModel : DialogViewModel
             IReadOnlyList<ReflogEntry> entries = await _loadReflog(_repositoryPath, reference);
             if (SelectedReference == reference)
             {
+                // As upstream's new SortableRefLineList: a reference's reflog shows in git's order.
+                _loadedEntries = entries;
+                SortColumn = null;
+                SortDescending = false;
                 Entries = entries;
             }
         });
+
+    // Upstream's DataGridView over its SortableRefLineList: a column's header sorts by it, again the other way; the hash
+    // as an object id, the ref ordinally and the action as the user's culture sorts text.
+    [RelayCommand]
+    private void SortBy(ReflogColumn column)
+    {
+        SortDescending = SortColumn == column && !SortDescending;
+        SortColumn = column;
+        Func<ReflogEntry, ReflogEntry, int> compare = column switch
+        {
+            ReflogColumn.Sha => (x, y) => x.Sha.CompareTo(y.Sha),
+            ReflogColumn.Ref => (x, y) => string.Compare(x.Ref, y.Ref, StringComparison.Ordinal),
+            _ => (x, y) => string.Compare(x.Action, y.Action, StringComparison.CurrentCulture),
+        };
+        Comparer<ReflogEntry> comparer = Comparer<ReflogEntry>.Create((x, y) => compare(x, y));
+        Entries = SortDescending
+            ? [.. _loadedEntries.OrderByDescending(entry => entry, comparer)]
+            : [.. _loadedEntries.OrderBy(entry => entry, comparer)];
+    }
 
     [RelayCommand]
     private void ShowCurrentBranch() => SelectedReference = _currentBranch;
@@ -196,4 +233,14 @@ public sealed partial class ReflogViewModel : DialogViewModel
 
         await _resetCurrentBranch(entry.Sha, IsDirty ? ResetMode.Soft : ResetMode.Hard);
     });
+}
+
+/// <summary>
+///  The reflog's columns, which upstream's grid sorts by.
+/// </summary>
+public enum ReflogColumn
+{
+    Sha,
+    Ref,
+    Action,
 }

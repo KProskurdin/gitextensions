@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
+        x:Class="GitExtensions.Xplat.App.InitRepositoryWindow"
+        x:DataType="vm:InitRepositoryViewModel"
+        Title="Create new repository"
+        Width="560" SizeToContent="Height" CanMinimize="False" CanMaximize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormInit: the folder (the recent repositories in its list) with Browse, the repository type, and Create.
+       Bound to InitRepositoryViewModel (PLAN.md principle 6). -->
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Classes="dialogFooter">
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="HelpButton" Content="?" Width="24" Padding="0" HorizontalContentAlignment="Center"
+                VerticalAlignment="Center" />
+        <Button x:Name="Init" Grid.Column="1" Content="Create" MinWidth="94" HorizontalAlignment="Right"
+                HorizontalContentAlignment="Center" IsDefault="True" Command="{Binding CreateCommand}" />
+      </Grid>
+    </Border>
+    <StackPanel Margin="9,8" Spacing="8">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+        <TextBlock x:Name="label1" Text="Directory" VerticalAlignment="Center" />
+        <ComboBox x:Name="DirectoryBox" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding RecentDirectories}" Text="{Binding Directory}" />
+        <Button x:Name="Browse" Grid.Column="2" Content="Browse" MinWidth="94" HorizontalContentAlignment="Center"
+                Command="{Binding BrowseCommand}" />
+      </Grid>
+      <HeaderedContentControl x:Name="groupBox1" Classes="groupBox" Header="Repository type">
+        <StackPanel Spacing="4">
+          <RadioButton x:Name="Personal" GroupName="RepositoryType" Content="Personal repository"
+                       IsChecked="{Binding Personal}" />
+          <RadioButton x:Name="Central" GroupName="RepositoryType"
+                       Content="Central repository, no working directory  (--bare --shared=all)"
+                       IsChecked="{Binding Central}" />
+        </StackPanel>
+      </HeaderedContentControl>
+    </StackPanel>
+  </DockPanel>
+</Window>

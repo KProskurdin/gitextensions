@@ -36,12 +36,17 @@ public static class CommandLine
     public const string UsageCaption = "Commandline usage";
 
     /// <summary>
-    ///  Upstream's <c>FormCommandlineHelp</c> text: its label, then its list of commands.
+    ///  Upstream's <c>FormCommandlineHelp</c> label.
     /// </summary>
-    public const string Usage = """
+    public const string UsageLabel = """
         Supported commandline arguments for
         gitex.cmd / gitex (located in the same folder as GitExtensions.exe):
+        """;
 
+    /// <summary>
+    ///  Upstream's <c>FormCommandlineHelp</c> list of commands.
+    /// </summary>
+    public const string UsageCommands = """
         [path]
         browse [path] [-filter=] [--pathFilter=<filepath>] [-commit=<selectedSha>[,<firstSha>]]
         about
@@ -83,6 +88,11 @@ public static class CommandLine
         viewdiff
         viewpatch [filename]
         """;
+
+    /// <summary>
+    ///  Upstream's <c>FormCommandlineHelp</c> text: its label, then its list of commands.
+    /// </summary>
+    public const string Usage = UsageLabel + "\n\n" + UsageCommands;
 
     private const string OptionPrefix = "--";
 

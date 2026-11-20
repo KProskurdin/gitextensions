@@ -196,8 +196,11 @@ internal sealed class DashboardViewModelTests
             string.Format("T:" + DashboardViewModel.DeleteCategoryQuestion, "Work", 1), "T:" + DashboardViewModel.DeleteCategoryCaption);
         dashboard.CountIn("Work").Should().Be(1, "the question was answered no");
 
+        // The command reads the groups again before it tells the window, so its end is the window's notice.
         menu[1].Command!.Execute(menu[1].CommandParameter);
-        await WaitForAsync(() => dashboard.Groups.All(group => group.Category != "Work"));
+        await WaitForAsync(() => window.ReceivedCalls().Any(call =>
+            call.GetMethodInfo().Name == nameof(IDashboardWindow.RepositoriesChangedAsync)));
+        dashboard.Groups.Should().OnlyContain(group => group.Category != "Work");
         await window.Received(1).RepositoriesChangedAsync();
     }
 

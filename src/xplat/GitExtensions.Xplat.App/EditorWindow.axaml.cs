@@ -16,6 +16,7 @@ namespace GitExtensions.Xplat.App;
 public partial class EditorWindow : Window
 {
     private readonly string _path;
+    private readonly int? _lineNumber;
 
     /// <summary>
     ///  The design-time constructor (<see cref="DesignTime"/>): the window's XAML only.
@@ -30,8 +31,10 @@ public partial class EditorWindow : Window
     ///  Shows upstream's warning that changing the file by hand can break something (its <c>showWarning</c>, for
     ///  .git/config).
     /// </param>
-    public EditorWindow(string path, bool showWarning = false)
+    /// <param name="lineNumber">Upstream's <c>lineNumber</c>: the line the caret starts on, from 1.</param>
+    public EditorWindow(string path, bool showWarning = false, int? lineNumber = null)
     {
+        _lineNumber = lineNumber;
         ViewModel = new EditorViewModel(new WindowDialogHost(this), path, showWarning);
         _path = ViewModel.Path;
         DataContext = ViewModel;
@@ -69,7 +72,11 @@ public partial class EditorWindow : Window
     {
         await ViewModel.LoadAsync();
         ShowText();
-        ContentBox.CaretOffset = 0;
+        string text = ContentBox.Text ?? "";
+        ContentBox.CaretOffset = _lineNumber is { } line
+            ? TextReplace.OffsetOfLine(text, Math.Clamp(line, 1, TextReplace.LineOf(text, text.Length)))
+            : 0;
+        ContentBox.TextArea.Caret.BringCaretToView();
         ContentBox.Focus();
 
         // With the screenshot aid the file is shown, saved as a picture and accepted unchanged, so a script can run the app

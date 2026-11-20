@@ -30,7 +30,7 @@ public partial class CherryPickWindow : Window
     /// <param name="revision">The commit to cherry pick.</param>
     /// <param name="preferences">Upstream's two cherry pick options and the commit chooser's grid.</param>
     /// <param name="pick">Runs the cherry pick command and handles its conflicts as upstream does.</param>
-    public CherryPickWindow(string repositoryPath, string revision, IAppPreferences preferences,
+    public CherryPickWindow(string repositoryPath, string? revision, IAppPreferences preferences,
         Func<Window, string, ArgumentString, Task>? pick)
     {
         ViewModel = new CherryPickViewModel(new WindowDialogHost(this), GitModules.Open(repositoryPath), revision, preferences,

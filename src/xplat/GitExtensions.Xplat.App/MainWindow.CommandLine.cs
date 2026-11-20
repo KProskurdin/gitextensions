@@ -20,12 +20,24 @@ public partial class MainWindow
     // between a closed dialog and the operation the dialog asked for.
     private static readonly TimeSpan _commandLineIdleCheck = TimeSpan.FromMilliseconds(250);
 
-    // The init verb's question, as the Start menu's "Create new repository...".
-    private const string InitCaption = "Create new repository";
-    private const string InitConfirmText = "Create a git repository in {0}?";
+    // Upstream's TranslatedStrings.ResetChangesCaption (GitUI).
+    private const string ResetChangesCaption = "Reset changes";
+
+    // Upstream's FilterByRevisionArg.
+    private const string FilterByRevisionArgument = "--filter-by-revision";
 
     private readonly CommandLineRequest? _commandLineVerb;
     private readonly string _commandLineDirectory;
+
+    /// <summary>
+    ///  The repository a browse window opened by another one starts on (upstream's <c>StartBrowseDialog</c>).
+    /// </summary>
+    internal string? StartRepository { get; init; }
+
+    /// <summary>
+    ///  The filters and commits such a window applies once it has opened <see cref="StartRepository"/>.
+    /// </summary>
+    internal BrowseFilters? StartFilters { get; init; }
 
     /// <summary>
     ///  Upstream's exit code of the command line verb this window ran: 0, or <see cref="CommandLine.FailedExitCode"/> when
@@ -87,21 +99,18 @@ public partial class MainWindow
         return RepositoryPath is { } path && await RunRepositoryVerbAsync(request, path, currentDirectory);
     }
 
-    // Upstream's StartInitializeDialog (the init verb): the folder given, after the question, else one to choose; the new
-    // repository's folder, or null when none was made.
+    // Upstream's StartInitializeDialog (the Start menu, the init verb and the plugins): FormInit on the folder given, else
+    // on upstream's default clone destination; the new repository, which joins the recent ones as upstream's, or null.
     private async Task<string?> InitAsync(Window owner, string? folder)
     {
-        if (folder is null)
-        {
-            folder = await PickFolderAsync(InitCaption);
-        }
-        else if (!await new ConfirmWindow(string.Format(CultureInfo.CurrentCulture, InitConfirmText, folder), "Create",
-                     InitCaption, cancelText: "Cancel").ShowDialog<bool>(owner))
+        InitRepositoryWindow window = new(folder ?? "", await AppServices.RecentRepositories.LoadAsync());
+        if (!await window.ShowDialog<bool>(owner) || window.ViewModel.CreatedRepository is not { } created)
         {
             return null;
         }
 
-        return folder is not null && await _actions.InitAsync(folder) ? folder : null;
+        await _recent.AddAsync(created);
+        return created;
     }
 
     // A verb on the open repository at <path>, the files given from <currentDirectory>.
@@ -133,13 +142,24 @@ public partial class MainWindow
             }
 
             // Upstream's FormBlame on the file as it is checked out.
+            // Upstream's RunBlameCommand: the line after the file, when it is a number, is selected.
             case "blame":
-                new BlameWindow(path, "HEAD", RepositoryFile(path, request.Arguments[0], currentDirectory)).Show(this);
+                new BlameWindow(path, "HEAD", RepositoryFile(path, request.Arguments[0], currentDirectory),
+                    initialLine: int.TryParse(request.Argument(1), out int line) ? line : null).Show(this);
                 return true;
+
+            // Upstream's RunFileHistoryCommand: a revision must be a commit's id, and only --filter-by-revision may follow.
             case "blamehistory":
             case "filehistory":
+                if ((request.Argument(1) is { } revision && !ObjectId.TryParse(revision, out _))
+                    || (request.Argument(2) is { } filter && filter != FilterByRevisionArgument))
+                {
+                    return false;
+                }
+
                 NewFileHistoryWindow(path, RepositoryFile(path, request.Arguments[0], currentDirectory), request.Argument(1),
-                    showBlame: request.Verb == "blamehistory").Show(this);
+                    showBlame: request.Verb == "blamehistory",
+                    filterByRevision: request.Argument(2) is not null).Show(this);
                 return true;
             case "branch":
                 return await new CreateBranchWindow(path, _actions, _preferences).ShowDialog<bool>(this);
@@ -149,9 +169,9 @@ public partial class MainWindow
             case "checkoutrevision":
                 return await ShowCheckoutRevisionAsync(path, revision: null);
 
-            // Upstream's FormCherryPick starts on no commit; here on the checked out one, which the window's picker changes.
+            // Upstream's FormCherryPick on no commit yet, which its commit picker chooses.
             case "cherry":
-                return await new CherryPickWindow(path, "HEAD", _preferences,
+                return await new CherryPickWindow(path, revision: null, _preferences,
                         (owner, commit, arguments) => CherryPickAsync(owner, path, commit, arguments))
                     .ShowDialog<bool>(this);
             case "commit":
@@ -181,7 +201,7 @@ public partial class MainWindow
                 return request.Arguments.Count == 0
                     ? await ResetChangesAsync(path)
                     : await ResetFilesAsync(path,
-                        [.. request.Arguments.Select(file => RepositoryFile(path, file, currentDirectory))]);
+                        [.. request.Arguments.Select(file => Path.GetFullPath(file, currentDirectory))]);
             case "stash":
                 await ShowStashWindowAsync(this);
                 return true;
@@ -212,12 +232,28 @@ public partial class MainWindow
     ///  <c>-commit=</c> selected (upstream also keeps the second, for a diff).
     /// </summary>
     public Task ApplyBrowseArgumentsAsync(CommandLineRequest request)
-        => ApplyBrowseFiltersAsync(CommandLine.Parameter(request, "-filter"), CommandLine.Parameter(request, "--pathFilter"),
-            CommandLine.Parameter(request, "-commit").Split(',')[0]);
-
-    // Upstream's BrowseArguments: the "Filter:" box's text, the grid's path filter and the commit to select (empty: none).
-    private async Task ApplyBrowseFiltersAsync(string revisionFilter, string pathFilter, string? commit)
     {
+        string[] commits = CommandLine.Parameter(request, "-commit").Split(',');
+        return ApplyBrowseFiltersAsync(CommandLine.Parameter(request, "-filter"),
+            CommandLine.Parameter(request, "--pathFilter"), commits[0], commits.Length > 1 ? commits[1] : null,
+            fileHistoryMode: request.Arguments.Any(argument => argument.StartsWith("--pathFilter", StringComparison.Ordinal)));
+    }
+
+    // Upstream's BrowseArguments: the "Filter:" box's text, the grid's path filter, the commit to select with the first
+    // commit of a diff (selected first, as upstream's FirstId), and the file history mode, in which the File tree tab shows
+    // blame and the left panel is collapsed while the window is open (upstream restores it when the window closes).
+    private async Task ApplyBrowseFiltersAsync(string revisionFilter, string pathFilter, string? commit,
+        string? firstCommit = null, bool fileHistoryMode = false)
+    {
+        if (fileHistoryMode)
+        {
+            _fileTreeBlame = true;
+            if (MainSplitGrid.ColumnDefinitions[0].Width.Value > 0)
+            {
+                ToggleLeftPanel();
+            }
+        }
+
         if (revisionFilter.Length > 0)
         {
             FilterToolStrip.SetRevisionFilter(revisionFilter);
@@ -231,15 +267,37 @@ public partial class MainWindow
             });
         }
 
-        if (!string.IsNullOrEmpty(commit))
+        if (!string.IsNullOrEmpty(commit) && !string.IsNullOrEmpty(firstCommit))
+        {
+            await GoToRevisionAsync(firstCommit, showNoRevisionMessage: true);
+            await GoToRevisionAsync(commit, showNoRevisionMessage: true, toggleSelection: true);
+        }
+        else if (!string.IsNullOrEmpty(commit))
         {
             await GoToRevisionAsync(commit, showNoRevisionMessage: true);
         }
     }
 
-    // Upstream's Commit: with --quiet, nothing to commit is no window and no failure.
+    // Upstream's Commit: with --quiet, nothing to commit is no window and no failure; --message replaces the message.
     private bool Commit(IReadOnlyDictionary<string, string?> options)
-        => (options.ContainsKey("quiet") && _repository.Changes.Count == 0) || OpenCommitWindow() is not null;
+    {
+        if (options.ContainsKey("quiet") && _repository.Changes.Count == 0)
+        {
+            return true;
+        }
+
+        if (OpenCommitWindow() is not { } window)
+        {
+            return false;
+        }
+
+        if (options.GetValueOrDefault("message") is { } message)
+        {
+            window.ViewModel.Message = message;
+        }
+
+        return true;
+    }
 
     // Upstream's Pull: --merge, --rebase and --fetch become the stored default pull action (upstream stores them too),
     // --autostash turns auto stash on; --quiet pulls at once as the toolbar's Pull, else the pull dialog opens.
@@ -288,11 +346,42 @@ public partial class MainWindow
         }
     }
 
-    // Upstream's FormResetChanges for the files given: their changes go back to HEAD.
-    private async Task<bool> ResetFilesAsync(string path, IReadOnlyList<string> files)
-        => await ResetChangesWindow.ShowResetDialogAsync(this, hasExistingFiles: true, hasNewFiles: false)
-               != ResetChangesAction.Cancel
-           && await _actions.ResetFilesToAsync(path, "HEAD", files);
+    // Upstream's StartResetChangesDialog(names): the changed files given or under the folders given ("." is all of
+    // them), the question with whether they are tracked or new, then upstream's ResetChanges, which deletes the new ones
+    // too when asked; its output, if any, in upstream's message.
+    private async Task<bool> ResetFilesAsync(string path, IReadOnlyList<string> fullPaths)
+    {
+        GitModule module = GitModules.Open(path);
+        string workingDir = module.WorkingDir;
+        HashSet<string> files = [.. fullPaths.Select(name => Path.GetRelativePath(workingDir, name).ToPosixPath() ?? name)];
+        HashSet<string> folders = [.. files.Where(name => Directory.Exists(Path.Join(workingDir, name)))];
+        bool all = folders.Contains(".");
+        IReadOnlyList<GitItemStatus> selected = await Task.Run(() =>
+            (IReadOnlyList<GitItemStatus>)[.. module.GetAllChangedFilesWithSubmodulesStatus(cancellationToken: default)
+                .Where(item => all || files.Contains(item.Name)
+                               || folders.Any(folder => item.Path.Value.StartsWith(folder, StringComparison.Ordinal)))]);
+        ResetChangesAction action = await ResetChangesWindow.ShowResetDialogAsync(this,
+            hasExistingFiles: selected.Any(item => item.IsTracked), hasNewFiles: selected.Any(item => item.IsNew));
+        if (action == ResetChangesAction.Cancel || selected.Count == 0)
+        {
+            return false;
+        }
+
+        string output = await Task.Run(() =>
+        {
+            module.ResetChanges(resetId: default, selected, resetAndDelete: action == ResetChangesAction.ResetAndDelete,
+                new FullPathResolver(() => workingDir), out System.Text.StringBuilder text);
+            return text.ToString();
+        });
+        if (output.Length > 0)
+        {
+            await new MessageBoxWindow(output, GitExtensions.Xplat.Ui.UpstreamTranslation.ByText(ResetChangesCaption),
+                System.Windows.Forms.MessageBoxButtons.OK).ShowDialog(this);
+        }
+
+        RefreshRepository();
+        return true;
+    }
 
     // Upstream's NormalizeFileName: a file given from anywhere, as git names it in the repository.
     private static string RepositoryFile(string repository, string file, string currentDirectory)
@@ -312,3 +401,10 @@ public partial class MainWindow
         }
     }
 }
+
+/// <summary>
+///  Upstream's <c>BrowseArguments</c>: the "Filter:" box's text, the grid's path filter, the commit to select with the first
+///  commit of a diff, and the file history mode.
+/// </summary>
+internal sealed record BrowseFilters(string RevisionFilter, string PathFilter, string? Commit, string? FirstCommit,
+    bool FileHistoryMode);

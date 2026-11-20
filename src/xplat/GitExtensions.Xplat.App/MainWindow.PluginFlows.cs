@@ -45,17 +45,17 @@ public partial class MainWindow : IPluginFlows
         return true;
     }
 
-    // Upstream's StartBrowseDialog shows the repository with the arguments; here in this window.
-    async Task<bool> IPluginFlows.BrowseAsync(string path, string revisionFilter, string pathFilter, string? commit)
+    // Upstream's StartBrowseDialog: another browse window, on the repository with the arguments.
+    Task<bool> IPluginFlows.BrowseAsync(string path, string revisionFilter, string pathFilter, string? commit,
+        string? firstCommit, bool fileHistoryMode)
     {
-        if (!string.Equals(path, RepositoryPath, StringComparison.Ordinal))
-        {
-            await OpenRepositoryAsync(path);
-        }
-
-        await ApplyBrowseFiltersAsync(revisionFilter, pathFilter, commit);
-        return RepositoryPath is not null;
+        ShowAnotherBrowseWindow(path, new BrowseFilters(revisionFilter, pathFilter, commit, firstCommit, fileHistoryMode));
+        return Task.FromResult(true);
     }
+
+    // A browse window of its own, as upstream's FormBrowse that StartBrowseDialog shows.
+    private void ShowAnotherBrowseWindow(string? repository, BrowseFilters? filters)
+        => new MainWindow(_git) { StartRepository = repository, StartFilters = filters }.Show();
 
     Task<bool> IPluginFlows.CheckoutBranchAsync(Window owner, string path, string branch, bool remote,
         IReadOnlyList<ObjectId>? containObjectIds)
@@ -67,7 +67,7 @@ public partial class MainWindow : IPluginFlows
     Task<bool> IPluginFlows.CheckoutRevisionAsync(string path, string? revision)
         => ShowCheckoutRevisionAsync(path, revision);
 
-    Task<bool> IPluginFlows.CherryPickAsync(Window owner, string path, IReadOnlyList<string> revisions)
+    Task<bool> IPluginFlows.CherryPickAsync(Window owner, string path, IReadOnlyList<string?> revisions)
         => CherryPickRevisionsAsync(owner, path, revisions);
 
     async Task<bool> IPluginFlows.CleanupAsync(Window owner, string path)
@@ -99,9 +99,9 @@ public partial class MainWindow : IPluginFlows
     Task<bool> IPluginFlows.DeleteTagAsync(string path, string? tag)
         => tag is null ? Browse.DeleteTagAsync(path) : Browse.DeleteNamedTagAsync(path, tag);
 
-    async Task<bool> IPluginFlows.EditFileAsync(Window owner, string file, bool showWarning)
+    async Task<bool> IPluginFlows.EditFileAsync(Window owner, string file, bool showWarning, int? lineNumber)
     {
-        EditorWindow editor = new(file, showWarning);
+        EditorWindow editor = new(file, showWarning, lineNumber);
         await editor.ShowDialog(owner);
         return editor.Accepted;
     }
@@ -138,9 +138,10 @@ public partial class MainWindow : IPluginFlows
             ? PullAtOnceAsync(action is GitPullAction.None ? _preferences.DefaultPullAction : action)
             : ShowPullDialogAsync(owner, remoteBranch, remote, action);
 
-    // Upstream's StartPushDialog: with pushOnShow, the current branch to its tracked remote at once.
-    Task<bool> IPluginFlows.PushAsync(bool pushAtOnce, string? branch)
-        => pushAtOnce ? PushAtOnceAsync() : ShowPushDialogAsync(branch);
+    // Upstream's StartPushDialog: with pushOnShow, the current branch to its tracked remote at once; forceWithLease checks
+    // the dialog's "Force with lease".
+    Task<bool> IPluginFlows.PushAsync(bool pushAtOnce, string? branch, bool forceWithLease)
+        => pushAtOnce ? PushAtOnceAsync() : ShowPushDialogAsync(branch, forceWithLease);
 
     Task<bool> IPluginFlows.RebaseAsync(string path, string from, string? to, string? onto, bool interactive,
         bool immediately)
@@ -171,9 +172,9 @@ public partial class MainWindow : IPluginFlows
     Task<bool> IPluginFlows.ResetCurrentBranchAsync(string path, string revision)
         => Browse.ResetCurrentBranchAsync(path, revision);
 
-    async Task<bool> IPluginFlows.ResolveConflictsAsync(Window owner, string path)
+    async Task<bool> IPluginFlows.ResolveConflictsAsync(Window owner, string path, bool offerCommit)
     {
-        await NewConflictsWindow(path).ShowDialog(owner);
+        await NewConflictsWindow(path, offerCommit).ShowDialog(owner);
         return true;
     }
 
@@ -205,15 +206,14 @@ public partial class MainWindow : IPluginFlows
             return editor.Accepted;
         }
 
+        // Upstream's browse and openrepo: StartBrowseDialog, another browse window.
         if (CommandLineVerbs.OpensBrowseWindow(request, currentDirectory, out string? repository))
         {
-            if (repository is not null)
-            {
-                await OpenRepositoryAsync(repository);
-            }
-
-            await ApplyBrowseArgumentsAsync(request);
-            return RepositoryPath is not null;
+            string[] commits = CommandLine.Parameter(request, "-commit").Split(',');
+            ShowAnotherBrowseWindow(repository, new BrowseFilters(CommandLine.Parameter(request, "-filter"),
+                CommandLine.Parameter(request, "--pathFilter"), commits[0], commits.Length > 1 ? commits[1] : null,
+                request.Arguments.Any(argument => argument.StartsWith("--pathFilter", StringComparison.Ordinal))));
+            return true;
         }
 
         if (CommandLineVerbs.OpensNoWindow(request))
@@ -251,9 +251,9 @@ public partial class MainWindow : IPluginFlows
     }
 
     Task<bool> IPluginFlows.ShowFileHistoryAsync(Window owner, string path, string file, string? revision,
-        bool showBlame)
+        bool showBlame, bool filterByRevision)
     {
-        NewFileHistoryWindow(path, file, revision, showBlame).Show(owner);
+        NewFileHistoryWindow(path, file, revision, showBlame, filterByRevision).Show(owner);
         return Task.FromResult(true);
     }
 

@@ -8,6 +8,12 @@
         Width="782" Height="555" MinWidth="400" MinHeight="200" WindowStartupLocation="CenterOwner">
   <!-- Upstream's FormReflog: the warning about local changes, the reference with the current branch and HEAD links, and
        the reflog with its context menu, which a click opens too. Bound to ReflogViewModel (PLAN.md principle 6). -->
+  <Window.Styles>
+    <Style Selector="Button.columnHeader">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+  </Window.Styles>
   <Grid RowDefinitions="Auto,40,*" ColumnDefinitions="Auto,*">
     <TextBlock x:Name="DirtyWarningText" Grid.ColumnSpan="2" IsVisible="{Binding IsDirty}" Margin="3,0" TextAlignment="Center"
                TextWrapping="Wrap"
@@ -31,9 +37,13 @@
           <ColumnDefinition Width="Auto" SharedSizeGroup="Ref" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <TextBlock Text="SHA-1" FontWeight="SemiBold" Margin="0,0,12,0" />
-        <TextBlock Grid.Column="1" Text="Ref" FontWeight="SemiBold" Margin="0,0,12,0" />
-        <TextBlock Grid.Column="2" Text="Action" FontWeight="SemiBold" />
+        <!-- Upstream's sortable column headers: a click sorts by the column, again the other way. -->
+        <Button x:Name="ShaHeader" Classes="columnHeader" Content="SHA-1" FontWeight="SemiBold" Margin="0,0,12,0"
+                Command="{Binding SortByCommand}" CommandParameter="{x:Static repo:ReflogColumn.Sha}" />
+        <Button x:Name="RefHeader" Grid.Column="1" Classes="columnHeader" Content="Ref" FontWeight="SemiBold"
+                Margin="0,0,12,0" Command="{Binding SortByCommand}" CommandParameter="{x:Static repo:ReflogColumn.Ref}" />
+        <Button x:Name="ActionHeader" Grid.Column="2" Classes="columnHeader" Content="Action" FontWeight="SemiBold"
+                Command="{Binding SortByCommand}" CommandParameter="{x:Static repo:ReflogColumn.Action}" />
       </Grid>
       <ListBox x:Name="EntryList" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}">
         <ListBox.ContextMenu>

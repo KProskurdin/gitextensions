@@ -140,6 +140,8 @@ Every window below has its view model. MVVM everywhere (actions as commands, men
 | `PromptWindow` | `Presentation/PromptViewModel.cs` | Done 2026-11-13: `PromptResult` moved to Core. |
 | `ChangeLogWindow` | `Platform/ChangeLogViewModel.cs` | Done 2026-11-13: the Avalonia asset is opened by a delegate the window passes. |
 | `AddFilesWindow` | `Operations/AddFilesViewModel.cs` | Done 2026-11-13. |
+| `InitRepositoryWindow` | `Operations/InitRepositoryViewModel.cs` | New 2026-11-20 (upstream's FormInit), MVVM from the start. |
+| `CommandLineHelpWindow` | `Operations/CommandLineHelpViewModel.cs` | New 2026-11-20 (upstream's FormCommandlineHelp), MVVM from the start. |
 | `AskPassWindow` | `Operations/AskPassViewModel.cs` | Done 2026-11-13: the hidden answer's character and the screenshot aid stay in the view. |
 | `PuttyErrorWindow` | `Operations/PuttyErrorViewModel.cs` | New 2026-11-20 (upstream's FormPuttyError): Load SSH key, Retry and Cancel as commands; the key picker is a delegate the window supplies, and Pageant is given the key through another, so tests start no Pageant. `Answer` is what the operations view model's PuTTY retry reads (`IPuttyPrompts`, App `PuttyPrompts`). 3 view model tests. |
 | `ResetChangesWindow` | `Operations/ResetChangesViewModel.cs` | Done 2026-11-13: the window's nested `ResetAction` became Core's `ResetChangesAction` (five callers changed). |

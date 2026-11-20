@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
+        x:Class="GitExtensions.Xplat.App.CommandLineHelpWindow"
+        x:DataType="vm:CommandLineHelpViewModel"
+        Title="{Binding Title}"
+        Width="394" Height="662" CanMinimize="False" WindowStartupLocation="CenterScreen">
+  <!-- Upstream's FormCommandlineHelp: its label, then the commands. Bound to CommandLineHelpViewModel (PLAN.md
+       principle 6). -->
+  <ScrollViewer Padding="9,8">
+    <StackPanel Spacing="12">
+      <TextBlock x:Name="label1" Text="{Binding Label}" TextWrapping="Wrap" />
+      <SelectableTextBlock x:Name="_NO_TRANSLATE_commands" Text="{Binding Commands}" TextWrapping="Wrap" />
+    </StackPanel>
+  </ScrollViewer>
+</Window>

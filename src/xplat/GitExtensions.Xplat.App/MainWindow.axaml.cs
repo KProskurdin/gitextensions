@@ -486,7 +486,7 @@ public partial class MainWindow : Window, ISettingsWindowHost
         }
 
         // As upstream's Program: without a repository argument, the one used last when the setting asks for it.
-        string? initial = Program.InitialRepository ??
+        string? initial = StartRepository ?? Program.InitialRepository ??
                           (_preferences.StartWithRecentWorkingDir &&
                            _preferences.RecentWorkingDir is { Length: > 0 } recent &&
                            GitModule.IsValidGitWorkingDir(recent)
@@ -507,7 +507,12 @@ public partial class MainWindow : Window, ISettingsWindowHost
         }
 
         await OpenRepositoryAsync(initial);
-        if (Program.BrowseRequest is { } browse)
+        if (StartFilters is { } filters)
+        {
+            await ApplyBrowseFiltersAsync(filters.RevisionFilter, filters.PathFilter, filters.Commit, filters.FirstCommit,
+                filters.FileHistoryMode);
+        }
+        else if (Program.BrowseRequest is { } browse)
         {
             await ApplyBrowseArgumentsAsync(browse);
         }
@@ -1100,11 +1105,12 @@ public partial class MainWindow : Window, ISettingsWindowHost
         }
     }
 
+    // Upstream's "Create new repository...": FormInit, then the new repository opens (StartInitializeDialog's SetGitModule).
     private async Task PickAndInitRepositoryAsync()
     {
-        if (await PickFolderAsync("Create a repository in this folder") is { } folder)
+        if (await InitAsync(this, folder: null) is { } created)
         {
-            await _actions.InitAsync(folder);
+            await OpenRepositoryAsync(created);
         }
     }
 
@@ -1358,14 +1364,14 @@ public partial class MainWindow : Window, ISettingsWindowHost
 
     // Upstream's Ctrl+Up opens the push dialog; the toolbar's Push and Ctrl+Shift+Up push at once.
     // The grid's "Push branch..." opens it on that local branch (upstream's StartPushDialog with a branch).
-    private async Task<bool> ShowPushDialogAsync(string? branch = null)
+    private async Task<bool> ShowPushDialogAsync(string? branch = null, bool forceWithLease = false)
     {
         if (RepositoryPath is not { } path || !PushButton.IsEnabled)
         {
             return false;
         }
 
-        PushWindow window = await NewPushWindowAsync(path, branch);
+        PushWindow window = await NewPushWindowAsync(path, branch, forceWithLease);
         PushRequest? request = await window.ShowDialog<PushRequest?>(this);
         bool pushed = false;
         if (request is not null
@@ -1396,8 +1402,8 @@ public partial class MainWindow : Window, ISettingsWindowHost
     }
 
     // Upstream's StartPushDialog: the dialog on the open repository; its Pull button opens the pull dialog over it.
-    private async Task<PushWindow> NewPushWindowAsync(string path, string? branch = null)
-        => new(new PushDialog(await PushRepository.LoadAsync(path), branch), _preferences,
+    private async Task<PushWindow> NewPushWindowAsync(string path, string? branch = null, bool forceWithLease = false)
+        => new(new PushDialog(await PushRepository.LoadAsync(path), branch) { ForceWithLease = forceWithLease }, _preferences,
             path.EnsureTrailingPathSeparator(),
             _plugins.HasRepositoryHost, owner => ShowPullDialogAsync(owner),
             async (owner, remote) =>
@@ -1641,10 +1647,10 @@ public partial class MainWindow : Window, ISettingsWindowHost
         }
     }
 
-    private ConflictsWindow NewConflictsWindow(string path)
+    private ConflictsWindow NewConflictsWindow(string path, bool offerCommit = true)
         => new(path, _repository, _actions, _preferences,
             (owner, file) => NewFileHistoryWindow(path, file, revision: null, showBlame: false).Show(owner),
-            _ => ShowCommitWindow(), UpdateSubmodulesAfterCheckoutAsync,
+            _ => ShowCommitWindow(), UpdateSubmodulesAfterCheckoutAsync, offerCommit,
             checkoutSubmoduleBranch: (owner, submodulePath, commits) =>
                 CheckoutFlow().StartAsync(owner, submodulePath, containObjectIds: commits));
 
@@ -1918,10 +1924,12 @@ public partial class MainWindow : Window, ISettingsWindowHost
 
     // Upstream's StartFileHistoryDialog: the file history window on <file>, selecting <revision>, on its Blame tab for
     // blame. Upstream starts it in a new process; here it is a window of this one.
-    private FileHistoryWindow NewFileHistoryWindow(string path, string file, string? revision, bool showBlame)
+    private FileHistoryWindow NewFileHistoryWindow(string path, string file, string? revision, bool showBlame,
+        bool filterByRevision = false)
         => new(path, _preferences, file, revision, showBlame,
             (repository, hash) => _actions.CherryPickAsync(repository, hash),
-            (repository, hash) => _actions.RevertAsync(repository, hash), RelevantRepositoryHost)
+            (repository, hash) => RevertCommitAsync(ModalWindow.OwnerWindow(owner: null) ?? this, repository, hash),
+            RelevantRepositoryHost, filterByRevision)
         {
             ShowSettings = () => ShowSettingsAsync(),
         };
