@@ -877,6 +877,31 @@ an embedded terminal, which would be new work). Recommendation: leave out, and r
 **New for macOS:** the Cmd keys and macOS's reserved keys (MAC3), and the menu bar, application menu and `PATH` (MAC4). They
 have no upstream form to compare with, so a test or a recorded check is their evidence, and notes go in `PORTING-MAP.md`.
 
+**Next on the Mac, from 2026-11-20** (written on Windows before moving back; `PORTING-MAP.md` has 124 rows `ported`, 3
+`partial`, and the browse window's parity list above is done but for the items below):
+
+1. **Check on macOS what was done on Windows on 2026-11-20.** The full core and app suites, as nothing of that day ran on
+   a Mac: the PuTTY prompts and FormPuttyError (their tests fake plink and Pageant, so they run anywhere), FormFixHome and
+   "Download Git" (hidden off Windows), the commit window's next file after a stage, the left panel's search and focus
+   fixes, and `TestIsolation.cs`, which closes the windows tests leave open (`SYNC-LOG.md`). Compare the suite's time and the
+   test host's memory with Windows' 13 minutes and 600 MB.
+2. **Fix, portable:** `DiffView.ShowSettings` is static and set by every new browse window, so a viewer's settings item opens
+   Settings over the newest window, even a closed one. It belongs to the window that hosts the viewer (MVVM: a command or
+   delegate the owner gives, as `AddedMenuEntries`). Small.
+3. **Investigate, portable:** a file that is one line of several megabytes holds the viewer for minutes after "Show large
+   file" (seen in a headless test; try it in the real app and compare upstream, which shows such a file).
+4. **At the screen, on the Mac only** (`MACOS.md`): MAC2's smoke items 2 to 9 not done, MAC3 item 5 (real Cmd and Option
+   keys), MAC4's application menu, Dock icon under `dotnet run`, Terminal opened by Interactive add, and dark mode and the
+   font (items 8 and 9, a decision each); VoiceOver on the tool buttons and the lists' rows.
+5. **Decisions, from any machine:** merging `upstream/master` (`PLAN.md` 12.1, item 3; `verify-upstream.sh` runs on a Mac);
+   the macOS menu bar (question 15, which MAC4 item 3 waits for); turning off upstream's workflows on GitHub and `xplat.yml`
+   (question 16, needs the GitHub login); `RunCommand` and the command line verbs (not ported since 2026-11-09, the largest
+   piece left); the settings folder on Windows, `%APPDATA%\GitExtensions` against upstream's
+   `%APPDATA%\GitExtensions\GitExtensions` (open since 2026-10-14; the fix is portable, its check is Windows only).
+6. **Leave for the next Windows session:** the Shell extension page, the checklist's installer rows, "Show current branch in
+   Visual Studio", the PuTTY windows against a real server and Pageant, Narrator, the settings folder once decided, and
+   `AdvancedSettingsTests`' Create Branch test, which timed out once in a full run (`SYNC-LOG.md`, 2026-11-20 evening).
+
 **Items that look different on a Mac** are not parity bugs: `MACOS.md`, section 6, lists them. The reverse also holds: a step
 that adds a Windows-only code path while on the Mac goes on the Windows check list.
 
