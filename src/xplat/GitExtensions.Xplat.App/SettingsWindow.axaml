@@ -210,6 +210,7 @@
         <StackPanel Spacing="8" Margin="4,8">
           <CheckBox x:Name="CloseAfterCommitCheck" IsChecked="{Binding CloseCommitDialogAfterCommit}" Content="Close the commit window after a commit" />
           <CheckBox x:Name="CloseProcessDialogCheck" IsChecked="{Binding CloseProcessDialog}" Content="Close the output window when a fetch, pull or push succeeds" />
+          <CheckBox x:Name="chkShowGitCommandLine" IsVisible="{Binding IsWindows}" IsChecked="{Binding ShowGitCommandLine}" Content="Show console window when executing git process" />
           <CheckBox x:Name="StartWithRecentWorkingDirCheck" IsChecked="{Binding StartWithRecentWorkingDir}" Content="Open last working directory on startup" />
           <CheckBox x:Name="FollowRenamesInFileHistoryCheck" IsChecked="{Binding FollowRenames}" Content="Follow renames in file history" />
           <CheckBox x:Name="FollowRenamesExactCheck" IsChecked="{Binding ExactRenamesOnly}" Content="Follow exact renames and copies only" Margin="24,0,0,0" />
@@ -260,6 +261,8 @@
               <Button x:Name="BrowseLinuxToolsButton" Command="{Binding BrowsePathCommand}" CommandParameter="{x:Static settings:SettingsPathField.LinuxToolsDir}" DockPanel.Dock="Right" Content="Browse" Margin="8,0,0,0" />
               <TextBox x:Name="LinuxToolsDirBox" Text="{Binding LinuxToolsDir}" />
             </DockPanel>
+            <HyperlinkButton x:Name="downloadGitForWindows" Content="Download Git" Padding="0" Command="{Binding OpenUrlCommand}"
+                             CommandParameter="{x:Static settings:SettingsViewModel.DownloadGitUrl}" />
           </StackPanel>
           <TextBlock Text="Environment" FontWeight="SemiBold" Margin="0,8,0,0" />
           <TextBlock x:Name="HomeText" Text="{Binding HomeText}" TextWrapping="Wrap" />

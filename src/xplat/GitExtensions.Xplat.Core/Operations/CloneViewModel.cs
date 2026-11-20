@@ -254,6 +254,17 @@ public sealed partial class CloneViewModel : DialogViewModel
 
         if (!string.IsNullOrEmpty(error))
         {
+            // Upstream's UpdateBranches: plink's failed authentication (FormPuttyError) or uncached host key
+            // (AskForCacheHostkey with the URL) is asked about, and on Yes the branches are read again.
+            PuttyFailureKind kind = PuttyFailure.Classify(error);
+            if (_actions.PuttyPrompts is { } prompts
+                && kind is PuttyFailureKind.Authentication or PuttyFailureKind.HostKeyNotCached
+                && (await PuttyFailure.RecoverAsync(prompts, kind, () => from)).Retry)
+            {
+                await LoadBranchesAsync();
+                return;
+            }
+
             throw new InvalidOperationException(error);
         }
 

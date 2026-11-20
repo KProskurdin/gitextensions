@@ -73,6 +73,12 @@ public interface IAppPreferences
     bool CloseProcessDialog { get; set; }
 
     /// <summary>
+    ///  Upstream <c>showgitcommandline</c> ("Show console window when executing git process"): git started for the output
+    ///  window gets a console window (Windows; elsewhere git has none).
+    /// </summary>
+    bool ShowGitCommandLine { get; set; }
+
+    /// <summary>
     ///  Upstream <c>addnewlinetocommitmessagewhenmissing</c>: a commit message whose second line is text gets an empty line
     ///  after the subject (upstream's <c>CommitMessageManager.FormatCommitMessage</c>).
     /// </summary>
@@ -941,6 +947,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.CloseProcessDialog;
         set => AppSettings.CloseProcessDialog = value;
+    }
+
+    public bool ShowGitCommandLine
+    {
+        get => AppSettings.ShowGitCommandLine;
+        set => AppSettings.ShowGitCommandLine = value;
     }
 
     public bool EnsureCommitMessageSecondLineEmpty
@@ -2087,6 +2099,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     }
 
     public bool CloseProcessDialog { get; set; }
+
+    public bool ShowGitCommandLine { get; set; }
 
     // Upstream's defaults.
     public bool EnsureCommitMessageSecondLineEmpty { get; set; } = true;

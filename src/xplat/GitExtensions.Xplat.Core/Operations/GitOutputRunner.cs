@@ -23,6 +23,32 @@ public static class GitOutputRunner
     private const int ErrorLinesInMessage = 8;
 
     /// <summary>
+    ///  How <see cref="RunAsync"/> starts <paramref name="fileName"/>: output read as it comes, the extra variables set, and
+    ///  a console window only with <paramref name="showWindow"/>, upstream's <c>ShowGitCommandLine</c> as its
+    ///  <c>PlainTextConsoleCommandRunner</c> reads it (Windows; elsewhere the OS opens none).
+    /// </summary>
+    public static ProcessStartInfo StartInfo(string fileName, string args, string workingDirectory,
+        IReadOnlyDictionary<string, string>? environment, bool showWindow)
+    {
+        ProcessStartInfo info = new(fileName, args)
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = !showWindow,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        foreach ((string name, string value) in environment ?? new Dictionary<string, string>())
+        {
+            info.Environment[name] = value;
+        }
+
+        return info;
+    }
+
+    /// <summary>
     ///  Runs git with <paramref name="arguments"/> in <paramref name="workingDirectory"/>. Throws
     ///  <see cref="OperationCanceledException"/> when cancelled (git is killed) and <see cref="GitOperationException"/> with
     ///  git's last messages when it exits with an error. <paramref name="environment"/> adds variables for this git process
@@ -38,21 +64,7 @@ public static class GitOutputRunner
         // Upstream's executable writes quotes inside arguments as this marker (see Executable.Start).
         string args = (arguments.Arguments ?? "").Replace("$QUOTE$", "\\\"");
         string fileName = program ?? AppSettings.GitCommand;
-        ProcessStartInfo info = new(fileName, args)
-        {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
-        };
-        foreach ((string name, string value) in environment ?? new Dictionary<string, string>())
-        {
-            info.Environment[name] = value;
-        }
-
+        ProcessStartInfo info = StartInfo(fileName, args, workingDirectory, environment, AppSettings.ShowGitCommandLine);
         ProcessOperation log = CommandLog.LogProcessStart(fileName, args, workingDirectory);
         using Process process = Process.Start(info) ?? throw new GitOperationException($"Could not start {fileName}");
         log.SetProcessId(process.Id);

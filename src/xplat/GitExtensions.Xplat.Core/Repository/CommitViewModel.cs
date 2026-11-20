@@ -217,6 +217,18 @@ public sealed partial class CommitViewModel : DialogViewModel
     public event EventHandler<int>? ProgressReported;
 
     /// <summary>
+    ///  Raised before files are staged (false) or unstaged (true), so that the window keeps the list's next file, as
+    ///  upstream's <c>StoreNextItemToSelect</c>.
+    /// </summary>
+    public event EventHandler<bool>? FilesMoving;
+
+    /// <summary>
+    ///  Raised after the files were staged or unstaged: whether git moved them. The lists show the result when the
+    ///  repository has been read again.
+    /// </summary>
+    public event EventHandler<bool>? FilesMoved;
+
+    /// <summary>
     ///  Upstream's <c>Message.Focus()</c> after "Modify the commit message" and a soft reset: the window focuses the message.
     /// </summary>
     public event EventHandler? MessageFocusRequested;
@@ -901,15 +913,18 @@ public sealed partial class CommitViewModel : DialogViewModel
         StageProgressMaximum = paths.Count;
         StageProgressValue = 0;
         IsStageProgressVisible = true;
+        FilesMoving?.Invoke(this, staged);
+        bool moved = false;
         try
         {
-            await (staged
+            moved = await (staged
                 ? _actions.UnstageAsync(_repositoryPath, paths, Processed)
                 : _actions.StageAsync(_repositoryPath, paths, Processed));
         }
         finally
         {
             IsStageProgressVisible = false;
+            FilesMoved?.Invoke(this, moved);
         }
 
         // Called on git's thread; the window posts it to its own.

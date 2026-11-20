@@ -25,6 +25,20 @@ internal sealed class RemoteOperationOutputTests
         errors.Should().Equal("Counting: 100%, done.", "To /remote", "  main -> main");
     }
 
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    public void StartInfo_should_open_a_console_window_only_with_upstreams_setting(bool showWindow, bool createNoWindow)
+    {
+        Dictionary<string, string> variables = new() { ["GIT_SSH"] = "ssh" };
+
+        System.Diagnostics.ProcessStartInfo info = GitOutputRunner.StartInfo("git", "fetch", RepositoryPath, variables, showWindow);
+
+        info.CreateNoWindow.Should().Be(createNoWindow);
+        (info.FileName, info.Arguments, info.WorkingDirectory, info.Environment["GIT_SSH"])
+            .Should().Be(("git", "fetch", RepositoryPath, "ssh"));
+        (info.UseShellExecute, info.RedirectStandardOutput, info.RedirectStandardError).Should().Be((false, true, true));
+    }
+
     [Test]
     public void Pump_should_report_a_last_line_without_a_line_end()
     {

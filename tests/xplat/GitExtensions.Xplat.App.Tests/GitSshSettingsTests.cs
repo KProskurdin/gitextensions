@@ -93,7 +93,9 @@ internal sealed class GitSshSettingsTests
         Find<TextBlock>(settings, "ErrorText").Text.Should().Contain("not accessible");
         window.OwnedWindows.OfType<SettingsWindow>().Should().ContainSingle();
 
+        // With a global config there, upstream's HOME check after the save has nothing to fix.
         Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, ".gitconfig"), "");
         try
         {
             Save(window, settings);
@@ -102,7 +104,7 @@ internal sealed class GitSshSettingsTests
         }
         finally
         {
-            Directory.Delete(folder);
+            Directory.Delete(folder, recursive: true);
         }
     }
 

@@ -108,11 +108,26 @@ public static class Putty
             return $"'{plink}'{Environment.NewLine}{Environment.NewLine}{translate(NotInstalled)}";
         }
 
-        string arguments = $"/k \"\"{plink}\" -T {PlinkCompatibleUrl(url)}\"";
-        using IProcess process = new Executable(ConsoleProgram).Start(arguments, createWindow: true,
-            redirectInput: false, redirectOutput: false, outputEncoding: null);
+        using IProcess process = StartConsole(plink, url);
         await process.WaitForExitAsync();
         return null;
+    }
+
+    /// <summary>
+    ///  Upstream's <c>Plink.Connect</c> as <c>FormRemoteProcess</c> uses it to cache a host key: plink connects to the
+    ///  URL's host in a console window that stays open, where the user answers plink's question. True when the window
+    ///  ends with exit code 0, as upstream; false when plink is not where the settings say.
+    /// </summary>
+    public static async Task<bool> ConnectAsync(string url)
+    {
+        string plink = AppSettings.Plink;
+        if (!File.Exists(plink))
+        {
+            return false;
+        }
+
+        using IProcess process = StartConsole(plink, url);
+        return await process.WaitForExitAsync() == 0;
     }
 
     /// <summary>
@@ -154,4 +169,9 @@ public static class Putty
 
         return running;
     }
+
+    // Upstream's Plink.ConnectAsync: plink in a console window that stays open (cmd.exe /k).
+    private static IProcess StartConsole(string plink, string url)
+        => new Executable(ConsoleProgram).Start($"/k \"\"{plink}\" -T {PlinkCompatibleUrl(url)}\"", createWindow: true,
+            redirectInput: false, redirectOutput: false, outputEncoding: null);
 }

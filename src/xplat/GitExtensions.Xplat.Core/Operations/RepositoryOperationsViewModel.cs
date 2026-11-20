@@ -1,7 +1,12 @@
+using System.Runtime.ExceptionServices;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GitCommands;
+using GitCommands.Config;
 using GitCommands.Git;
 using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
+using GitExtensions.Extensibility.Settings;
+using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.Core.Operations;
 
@@ -42,6 +47,27 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     ///  app. Without it, interactive rebase is refused and a resumed rebase keeps each message.
     /// </summary>
     public string? EditorCommand { get; set; }
+
+    /// <summary>
+    ///  Upstream FormRemoteProcess's windows after a plink failure (the app's); without them a failure is only shown.
+    /// </summary>
+    public IPuttyPrompts? PuttyPrompts { get; set; }
+
+    /// <summary>
+    ///  Whether git uses PuTTY's plink (upstream's <c>GitSshHelpers.IsPlink</c>), read when an operation fails.
+    /// </summary>
+    public Func<bool> UsesPlink { get; set; } = () => GitSshHelpers.IsPlink;
+
+    /// <summary>
+    ///  Reads a repository's git setting (a remote's URL or PuTTY key); tests replace it.
+    /// </summary>
+    public Func<string, string, string> ReadGitSetting { get; set; } = (path, key) => GitModules.Open(path).GetSetting(key);
+
+    /// <summary>
+    ///  Writes a repository's git setting (a remote's PuTTY key); tests replace it.
+    /// </summary>
+    public Action<string, string, string> WriteGitSetting { get; set; }
+        = (path, key, value) => GitModules.Open(path).SetSetting(key, value);
 
     public event EventHandler<RepositoryChangedEventArgs>? RepositoryChanged;
 
@@ -271,20 +297,24 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
     public Task<bool> FetchAsync(string repositoryPath, string remote, bool prune)
         => RunRemoteAsync($"Fetch from {remote}", "Fetched", repositoryPath,
-            (output, cancellation) => _operations.FetchAsync(repositoryPath, remote, prune, output, cancellation));
+            (output, cancellation) => _operations.FetchAsync(repositoryPath, remote, prune, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, remote));
 
     public Task<bool> PushTagsAsync(string repositoryPath, string remote)
         => RunRemoteAsync($"Push tags to {remote}", "Pushed tags", repositoryPath,
-            (output, cancellation) => _operations.PushTagsAsync(repositoryPath, remote, output, cancellation));
+            (output, cancellation) => _operations.PushTagsAsync(repositoryPath, remote, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, remote));
 
     public Task<bool> PullAsync(string repositoryPath, string remote, string branch, bool rebase)
         => RunRemoteAsync($"Pull {branch} from {remote}", "Pulled", repositoryPath,
             (output, cancellation) =>
-                _operations.PullAsync(repositoryPath, remote, branch, rebase, output, cancellation));
+                _operations.PullAsync(repositoryPath, remote, branch, rebase, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, remote));
 
     public Task<bool> PushAsync(string repositoryPath, string remote, string branch)
         => RunRemoteAsync($"Push {branch} to {remote}", "Pushed", repositoryPath,
-            (output, cancellation) => _operations.PushAsync(repositoryPath, remote, branch, output, cancellation));
+            (output, cancellation) => _operations.PushAsync(repositoryPath, remote, branch, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, remote));
 
     public Task<bool> PushAsync(string repositoryPath, PushRequest request)
     {
@@ -304,7 +334,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             _ => request.LocalBranch,
         };
         return RunRemoteAsync($"Push {what} to {request.Remote}", "Pushed", repositoryPath,
-            (output, cancellation) => _operations.PushAsync(repositoryPath, request, output, cancellation));
+            (output, cancellation) => _operations.PushAsync(repositoryPath, request, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, request.Remote));
     }
 
     public Task<bool> PullAsync(string repositoryPath, PullRequest request)
@@ -318,7 +349,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         string what = request.RemoteBranch.Length == 0 ? request.Remote : $"{request.Remote}/{request.RemoteBranch}";
         return RunRemoteAsync(fetchOnly ? $"Fetch {what}" : $"Pull {what}", fetchOnly ? "Fetched" : "Pulled",
             repositoryPath,
-            (output, cancellation) => _operations.PullAsync(repositoryPath, request, output, cancellation));
+            (output, cancellation) => _operations.PullAsync(repositoryPath, request, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, request.Remote));
     }
 
     public Task<bool> StashAsync(string repositoryPath, string message, bool includeUntracked, bool keepIndex,
@@ -363,7 +395,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     public Task<bool> DeleteRemoteTagAsync(string repositoryPath, string remote, string name)
         => RunRemoteAsync($"Delete tag {name} on {remote}", $"Deleted tag {name} on {remote}", repositoryPath,
             (output, cancellation) =>
-                _operations.DeleteRemoteTagAsync(repositoryPath, remote, name, output, cancellation));
+                _operations.DeleteRemoteTagAsync(repositoryPath, remote, name, output, cancellation),
+            putty: new PuttyTarget(repositoryPath, remote));
 
     /// <summary>
     ///  Upstream's <c>FormCreateWorktree</c>: runs the command the dialog built for the worktree at
@@ -671,7 +704,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
 
         return RunRemoteAsync($"Clone {sourceUrl.Trim()}", "Cloned", targetPath,
             (output, cancellation) =>
-                _operations.CloneAsync(sourceUrl.Trim(), targetPath.Trim(), output, cancellation, depth));
+                _operations.CloneAsync(sourceUrl.Trim(), targetPath.Trim(), output, cancellation, depth),
+            putty: new PuttyTarget(RepositoryPath: null, Remote: null, sourceUrl.Trim()));
     }
 
     /// <summary>
@@ -681,10 +715,12 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     /// </summary>
     public Task<bool> CloneAsync(string sourceUrl, string targetPath, ArgumentString arguments)
         => RunRemoteAsync($"Clone {sourceUrl.Trim()}", "Cloned", repositoryPath: null,
-            (output, cancellation) => _operations.RunCloneAsync(targetPath, arguments, output, cancellation));
+            (output, cancellation) => _operations.RunCloneAsync(targetPath, arguments, output, cancellation),
+            putty: new PuttyTarget(RepositoryPath: null, Remote: null, sourceUrl.Trim()));
 
     private async Task<bool> RunRemoteAsync(string title, string successMessage, string? repositoryPath,
-        Func<IProgress<GitOutputLine>, CancellationToken, Task> operation, bool keepOutputOpen = false)
+        Func<IProgress<GitOutputLine>, CancellationToken, Task> operation, bool keepOutputOpen = false,
+        PuttyTarget? putty = null)
     {
         lock (_outputLock)
         {
@@ -704,7 +740,8 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await operation(progress, cancellation.Token);
+            await RunWithPuttyRetryAsync(operation, putty ?? new PuttyTarget(repositoryPath, Remote: null), progress,
+                cancellation.Token);
             StatusMessage = successMessage;
             RemoteState = RemoteOperationState.Succeeded;
             if (repositoryPath is not null)
@@ -745,6 +782,72 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             History?.RecordRun(title, OutputLines, DateTime.Now);
         }
     }
+
+    // Upstream FormRemoteProcess.HandleOnExit and DataReceived: with plink, what its output says went wrong is asked about,
+    // and on Yes the operation runs again in the same output window, its output cleared as upstream's Retry does.
+    private async Task RunWithPuttyRetryAsync(Func<IProgress<GitOutputLine>, CancellationToken, Task> operation,
+        PuttyTarget target, IProgress<GitOutputLine> progress, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            Exception failure;
+            try
+            {
+                await operation(progress, cancellationToken);
+                return;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failure = ex;
+            }
+
+            if (!await RetryAfterPuttyAsync(target, failure))
+            {
+                ExceptionDispatchInfo.Throw(failure);
+            }
+
+            lock (_outputLock)
+            {
+                _output.Clear();
+            }
+
+            OutputLines = [];
+        }
+    }
+
+    private async Task<bool> RetryAfterPuttyAsync(PuttyTarget target, Exception failure)
+    {
+        if (PuttyPrompts is not { } prompts || !UsesPlink())
+        {
+            return false;
+        }
+
+        string output = string.Join(Environment.NewLine, OutputLines.Append(failure.Message));
+        PuttyRecovery recovery = await PuttyFailure.RecoverAsync(prompts, PuttyFailure.Classify(output),
+            () => target.Url ?? RemoteUrl(target));
+
+        // Upstream: to prevent future authentication errors, the key is kept for the remote unless it has one.
+        if (recovery.KeyPath is { Length: > 0 } key && target is { RepositoryPath: { } path, Remote: { Length: > 0 } remote })
+        {
+            string setting = string.Format(SettingKeyString.RemotePuttySshKey, remote);
+            await Task.Run(() =>
+            {
+                if (string.IsNullOrEmpty(ReadGitSetting(path, setting)))
+                {
+                    WriteGitSetting(path, setting, key.ConvertPathToGitSetting() ?? key);
+                }
+            });
+        }
+
+        return recovery.Retry;
+    }
+
+    // Upstream's URL plink is asked to connect to: the remote's URL, else its name.
+    private string? RemoteUrl(PuttyTarget target)
+        => target is { RepositoryPath: { } path, Remote: { Length: > 0 } remote }
+           && ReadGitSetting(path, string.Format(SettingKeyString.RemoteUrl, remote)) is { Length: > 0 } url
+            ? url
+            : target.Remote;
 
     // A console redraws a progress line in place; the line after it replaces it here too.
     private void AppendOutput(GitOutputLine line)
@@ -837,6 +940,12 @@ internal sealed class OutputReporter(SynchronizationContext? context, Action<Git
         }
     }
 }
+
+/// <summary>
+///  What a remote operation talks to, for upstream's answers to plink's failures: the repository and remote whose URL and
+///  PuTTY key are read and kept, or the URL being cloned.
+/// </summary>
+internal sealed record PuttyTarget(string? RepositoryPath, string? Remote, string? Url = null);
 
 public enum RemoteOperationState
 {

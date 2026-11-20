@@ -773,9 +773,28 @@ toolbar icons with upstream's `ToolTipText`.
     AvaloniaEdit (`PLAN.md`, the reversed decision; see the FileViewer, FormEditor and FormCommit notes).
   - **Waiting for a decision:** `RunCommand`, the command line verbs (`searchfile` among them) and the `Start...Dialog`
     methods that throw (not ported for now, 2026-11-09).
-  - **Windows only:** the Console tab, its settings and shell (ConEmu); the PuTTY prompts and retry; "Download Git", the
-    HOME check and FormFixHome; "Show console window when executing git process"; the Shell extension and Console style
-    pages; the checklist's installer rows; "Show current branch in Visual Studio".
+  - **Windows only:** ~~the Console tab, its settings and shell (ConEmu)~~ (decided 2026-11-20: `windows-only`, not ported);
+    ~~the PuTTY prompts and retry~~ (done 2026-11-20, see FormRemoteProcess and FormClone); ~~"Download Git", the
+    HOME check and FormFixHome~~ (done 2026-11-20 on Windows, see the GitSettingsPage note); ~~"Show console window when
+    executing git process"~~ (done 2026-11-20, see the GeneralSettingsPage note); the Shell extension page (~~and the
+    Console style page~~, `windows-only` with the Console tab); the checklist's installer rows; "Show current branch in
+    Visual Studio".
+- 2026-11-20, on Windows, the Windows-only list above: the Git page's "Download Git" link and upstream's HOME check after a
+  save with FormFixHome's search; "Show console window when executing git process"; the PuTTY prompts of the output window
+  and the clone window, with upstream's FormPuttyError (`PuttyErrorWindow`, MVVM). Decided with the user: the Console tab
+  (ConEmu, Mintty), its Console style page and "Default shell" stay `windows-only` (the ConsoleEmulation note of
+  `PORTING-MAP.md`). Found on the way: the left panel lost the keyboard focus when a refresh filled it again (fixed, see
+  RepoObjectsTree). Rows now `ported`: GitSettingsPage, GeneralSettingsPage, FormClone, FormRemoteProcess, FormBrowse,
+  Terminals, CommitInfo and FormBrowseRepoSettingsPage, and the new FormPuttyError; 3 stay `partial` (the Shell extension
+  page under FormSettings page tree, and `RunCommand` with the command line verbs under GitUICommands and SearchWindow).
+  Results: core 1434 of 1434, app 817 of 817 on Windows (`SYNC-LOG.md`). Not checked: a real PuTTY server (plink and
+  Pageant are faked in the tests). Still open from 2026-10-14: on Windows the new shell reads its own
+  `%APPDATA%\GitExtensions\GitExtensions.settings`, not the WinForms app's `%APPDATA%\GitExtensions\GitExtensions\`
+  (the shim's `Application.UserAppDataPath`), so the two apps' settings differ there; it showed today as automatic
+  continuous scroll on in the new shell and off in the WinForms app.
+  Left of the Windows-only list: the Shell extension page, the checklist's installer rows and "Show current branch in
+  Visual Studio". To check by hand (`MACOS.md`, section 7): the PuTTY windows against a real server and Pageant, and the
+  Tools > PuTTY items (ported 2026-10-31).
 
 ### Continuing on macOS
 
@@ -840,12 +859,13 @@ result, and Windows has only the local runs in `SYNC-LOG.md`.
       trees are named since 2026-11-19 (see the "Accessible names of tool buttons" note); custom drawn controls are not
       reviewed.
 
-**Windows only: do not start from the Mac** (`MACOS.md`, section 7): FormClone's PuTTY prompts, the process dialog's PuTTY
-retry, the PuTTY menu items, "Download Git", the HOME check and FormFixHome's search, the checklist's installer rows and
+**Windows only: do not start from the Mac** (`MACOS.md`, section 7): ~~FormClone's PuTTY prompts, the process dialog's PuTTY
+retry~~ (done 2026-11-20), the PuTTY menu items, ~~"Download Git", the HOME check and FormFixHome's search~~ (done 2026-11-20), the checklist's installer rows and
 startup check, the Shell extension page, the Console tab (ConEmu).
 
 **Needs a decision off Windows:** what the Console tab and its settings page mean without ConEmu (leave them out, as now, or
 an embedded terminal, which would be new work). Recommendation: leave out, and record `windows-only` in `PORTING-MAP.md`.
+*Decided 2026-11-20 (the user):* left out and `windows-only`, as recommended (the ConsoleEmulation note in `PORTING-MAP.md`).
 
 **New for macOS:** the Cmd keys and macOS's reserved keys (MAC3), and the menu bar, application menu and `PATH` (MAC4). They
 have no upstream form to compare with, so a test or a recorded check is their evidence, and notes go in `PORTING-MAP.md`.

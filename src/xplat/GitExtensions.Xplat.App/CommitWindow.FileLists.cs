@@ -19,6 +19,9 @@ public partial class CommitWindow
     // HEAD's commit, the first revision of the staged files; read again after the changes change.
     private ObjectId? _headId;
 
+    // The file to select once staged or unstaged files have moved (upstream's stored next item).
+    private NextAfterMove? _nextAfterMove;
+
     /// <summary>
     ///  The browse window's submodule commands for upstream's submodule items; null leaves them out (a commit window on a
     ///  submodule).
@@ -30,6 +33,14 @@ public partial class CommitWindow
         _unstaged = new FileListParts(Staged: false, UnstagedList, UnstagedFilterBox, UnstagedNoFilesText,
             UnstagedFilesMenu);
         _staged = new FileListParts(Staged: true, StagedList, StagedFilterBox, StagedNoFilesText, StagedFilesMenu);
+        ViewModel.FilesMoving += (_, staged) => KeepNextBeforeMove(staged);
+        ViewModel.FilesMoved += (_, moved) =>
+        {
+            if (!moved)
+            {
+                _nextAfterMove = null;
+            }
+        };
 
         // Upstream's OtherColors.MergeConflictsColor.
         SolveConflictsButton.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(230, 99, 99));
@@ -173,6 +184,61 @@ public partial class CommitWindow
         tree.Select(changes);
     }
 
+    // Upstream's Stage and Unstage: before git runs, the list's next file is kept (StoreNextItemToSelect), and once the lists
+    // show the result it is selected, its diff shown (SelectStoredNextItem). A list left empty hands over to the other, which
+    // selects the files that moved (RestoreSelectedFiles); after an unstage that list also takes the focus.
+    private void KeepNextBeforeMove(bool staged)
+    {
+        FileListParts parts = staged ? _staged : _unstaged;
+        List<object> selected = parts.List.SelectedItems?.Cast<object>().ToList() ?? [];
+        FileChange? next = FileStatusList.NextToSelect<FileChange>(parts.List.Items.Cast<object>(), selected);
+        _nextAfterMove = new NextAfterMove(staged, next?.Path,
+            [.. selected.OfType<FileChange>().Select(change => change.Path)]);
+    }
+
+    private void SelectNextAfterMove()
+    {
+        if (_nextAfterMove is not { } pending)
+        {
+            return;
+        }
+
+        _nextAfterMove = null;
+        FileListParts from = pending.FromStaged ? _staged : _unstaged;
+        FileListParts to = pending.FromStaged ? _unstaged : _staged;
+        if (!from.List.Items.OfType<FileChange>().Any())
+        {
+            SelectPaths(to, pending.MovedPaths);
+            if (pending.FromStaged)
+            {
+                to.List.Focus();
+            }
+        }
+        else if (pending.NextPath is { } next)
+        {
+            SelectPaths(from, [next]);
+        }
+
+        return;
+
+        static void SelectPaths(FileListParts parts, IReadOnlyCollection<string> paths)
+        {
+            List<FileChange> files = [.. parts.List.Items.OfType<FileChange>().Where(change => paths.Contains(change.Path))];
+            if (files.Count == 0 || parts.List.SelectedItems is not { } selection)
+            {
+                return;
+            }
+
+            selection.Clear();
+            foreach (FileChange file in files)
+            {
+                selection.Add(file);
+            }
+
+            parts.List.ScrollIntoView(files[0]);
+        }
+    }
+
     // Upstream's lists: the files of the list in the group-by order, without untracked files when "Show untracked files" is
     // off, and only those the filter matches; NoFiles shows while a list is empty.
     private void ShowChanges()
@@ -207,6 +273,9 @@ public partial class CommitWindow
     private static bool IsFiltered(FileListParts parts) => parts.Filter.IsActive;
 
     private static List<FileChange> Selected(FileListParts parts) => SelectedChanges(parts.List);
+
+    // The next file to select after files are staged or unstaged, until the lists show the result.
+    private sealed record NextAfterMove(bool FromStaged, string? NextPath, IReadOnlyList<string> MovedPaths);
 
     // The controls of one of the two lists.
     private sealed record FileListParts(

@@ -115,6 +115,50 @@ internal sealed class SettingsViewModelTests
     }
 
     [Test]
+    public async Task OK_should_ask_upstreams_HOME_question_after_saving_and_close_on_No()
+    {
+        FakeDialogHost host = new() { Answer = false };
+        SettingsViewModel viewModel = New(host, isWindows: true,
+            services => services with { HomeLookup = ProfileHasTheGlobalConfig() });
+
+        await viewModel.OkCommand.ExecuteAsync(null);
+
+        host.Questions.Should().ContainSingle().Which.Should().Contain(Path.Join("root", "home"));
+        _steps.Should().Contain("after close=True");
+        host.IsClosed.Should().BeTrue();
+    }
+
+    [Test]
+    public async Task Yes_to_the_HOME_question_should_keep_the_window_on_the_Git_page_with_the_folder_found()
+    {
+        FakeDialogHost host = new() { Answer = true };
+        SettingsViewModel viewModel = New(host, isWindows: true,
+            services => services with { HomeLookup = ProfileHasTheGlobalConfig() });
+        viewModel.PageTree.GoToPage("GeneralSettingsPage");
+
+        await viewModel.OkCommand.ExecuteAsync(null);
+
+        (viewModel.Saved, host.IsClosed).Should().Be((true, false), "upstream's FormFixHome is the Git page here");
+        _steps.Should().Contain("after close=False");
+        viewModel.PageTree.ShownNode!.Page.Should().Be(SettingsViewModel.GitPage);
+        viewModel.SelectedHomeChoice.Should().Be(HomeChoice.UserProfile);
+        host.Messages.Should().ContainSingle().Which.Should().Contain(Path.Join("root", "profile"));
+    }
+
+    [Test]
+    public async Task Saving_off_Windows_should_not_check_HOME()
+    {
+        FakeDialogHost host = new();
+        SettingsViewModel viewModel = New(host, isWindows: false,
+            services => services with { HomeLookup = ProfileHasTheGlobalConfig() });
+
+        await viewModel.OkCommand.ExecuteAsync(null);
+
+        host.Questions.Should().BeEmpty();
+        host.IsClosed.Should().BeTrue();
+    }
+
+    [Test]
     public void ShowLanguages_should_keep_a_stored_translation_whose_file_is_gone()
     {
         SettingsViewModel viewModel = New(new FakeDialogHost());
@@ -349,11 +393,32 @@ internal sealed class SettingsViewModelTests
             },
             SetEnvironment = () => _steps.Add("environment"),
             ApplySshPath = _ => { },
+
+            // HOME has the global config, so the check after a save has nothing to ask.
+            HomeLookup = new HomeLookup(name => name == "HOME" ? "home" : null, _ => null, () => null, _ => true, _ => true),
         };
         SettingsViewModel viewModel = new(host, _preferences, services is null ? defaults : services(defaults), isWindows);
 
         // Showing the Git page sets the environment once; the tests look at what saving does.
         _steps.Clear();
         return viewModel;
+    }
+
+    // HOME is a folder without a global git config, and USERPROFILE has one: upstream's FormFixHome would offer it.
+    private static HomeLookup ProfileHasTheGlobalConfig()
+    {
+        string home = Path.Join("root", "home");
+        string profile = Path.Join("root", "profile");
+        return new HomeLookup(
+            name => name switch
+            {
+                "HOME" => home,
+                "USERPROFILE" => profile,
+                _ => null,
+            },
+            _ => null,
+            () => null,
+            folder => folder == home || folder == profile,
+            file => file == Path.Join(profile, ".gitconfig"));
     }
 }

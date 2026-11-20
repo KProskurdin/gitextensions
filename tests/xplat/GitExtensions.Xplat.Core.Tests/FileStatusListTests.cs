@@ -16,6 +16,20 @@ internal sealed class FileStatusListTests
         new("new.md", ChangeKind.Untracked, Staged: false),
     ];
 
+    [Test]
+    public void NextToSelect_should_take_the_first_unselected_file_after_the_selection_as_upstream()
+    {
+        object folder = new();
+        string[] rows = ["a", "b", "c", "d"];
+        object[] list = [rows[0], folder, rows[1], rows[2], rows[3]];
+
+        FileStatusList.NextToSelect<string>(list, [rows[1]]).Should().Be("c");
+        FileStatusList.NextToSelect<string>(list, [rows[0], rows[2]]).Should().Be("b", "folder rows are passed over");
+        FileStatusList.NextToSelect<string>(list, [rows[3]]).Should().Be("a", "after the last file, the first");
+        FileStatusList.NextToSelect<string>(list, []).Should().Be("a");
+        FileStatusList.NextToSelect<string>([], []).Should().BeNull();
+    }
+
     [TestCase(ChangeKind.Modified, "FileStatusModified")]
     [TestCase(ChangeKind.Added, "FileStatusAdded")]
     [TestCase(ChangeKind.Untracked, "FileStatusAdded")]

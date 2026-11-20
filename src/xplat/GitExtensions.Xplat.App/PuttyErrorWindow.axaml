@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Operations"
+        x:Class="GitExtensions.Xplat.App.PuttyErrorWindow"
+        x:DataType="vm:PuttyErrorViewModel"
+        Title="Authentication error"
+        Width="353" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormPuttyError: Pageant's picture, the two lines, and Load SSH key, Retry and Cancel. Bound to
+       PuttyErrorViewModel (PLAN.md principle 6). -->
+  <Grid Margin="20,16,20,14" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*">
+    <Image Grid.Row="0" Grid.Column="0" Source="{local:UpstreamImage Pageant}" Width="32" Height="32" VerticalAlignment="Top" Margin="0,8,10,0" />
+    <StackPanel Grid.Row="0" Grid.Column="1" Spacing="10">
+      <TextBlock x:Name="lblPleaseLoadKey" Text="Please load your SSH private key" FontWeight="Bold" TextWrapping="Wrap" />
+      <TextBlock x:Name="lblMustAuthenticate" Text="You must authenticate to run this command." TextWrapping="Wrap" />
+    </StackPanel>
+    <DockPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,18,0,0" LastChildFill="False">
+      <Button x:Name="LoadSSHKey" DockPanel.Dock="Left" MinWidth="140" Command="{Binding LoadSshKeyCommand}">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Image Source="{local:UpstreamImage Putty}" Width="16" Height="16" />
+          <AccessText Text="Load SSH key" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
+      <Button x:Name="Cancel" DockPanel.Dock="Right" Content="Cancel" MinWidth="77" Margin="6,0,0,0" Command="{Binding CancelCommand}" />
+      <Button x:Name="Retry" DockPanel.Dock="Right" Content="Retry" MinWidth="77" Command="{Binding RetryCommand}" />
+    </DockPanel>
+  </Grid>
+</Window>

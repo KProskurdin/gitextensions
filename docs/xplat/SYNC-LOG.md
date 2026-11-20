@@ -188,3 +188,14 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   macOS only). Before the fixes: core 1406 of 1407, app 810 of 811, then 811 of 812 (the same multi-select test). Shadow projects and
   `verify-upstream.sh` were not run: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed. The fixes
   touch no upstream file; seam count unchanged. CI is still off. Linux and macOS were not run.
+
+### 2026-11-20, later: Windows-only parity items of `UI-PARITY.md`, no merge
+
+- Done on Windows: the Git page's "Download Git" link and upstream's HOME check after a save (FormFixHome's search); "Show
+  console window when executing git process"; the PuTTY prompts of the output window and the clone window, with upstream's
+  FormPuttyError. Decided with the user: the Console tab (ConEmu, Mintty) stays `windows-only`. `PORTING-MAP.md` has 3
+  `partial` rows left (the Shell extension page, and `RunCommand` with the command line verbs, set aside 2026-11-09).
+- On Windows, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1434 of 1434; app 817 of 817
+  (820, 3 are macOS only). `port-drift.sh`: 141 rows, 0 with upstream changes since their base. Shadow projects and
+  `verify-upstream.sh` were not run: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed,
+  and no upstream file. The PuTTY prompts were not tried against a real PuTTY server. Linux and macOS were not run.

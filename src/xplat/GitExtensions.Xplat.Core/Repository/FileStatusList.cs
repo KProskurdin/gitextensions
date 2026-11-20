@@ -12,6 +12,35 @@ namespace GitExtensions.Xplat.Core.Repository;
 public static class FileStatusList
 {
     /// <summary>
+    ///  Upstream's <c>StoreNextItemToSelect</c>, before files are staged or unstaged: in the list's order, the first file
+    ///  after the first selected row that is not selected itself, else the list's first file. Folder rows of a tree are
+    ///  passed over, as upstream's nodes without a file.
+    /// </summary>
+    /// <param name="rows">The list's rows in their order: files of type <typeparamref name="T"/> and folder rows.</param>
+    /// <param name="selected">The selected rows.</param>
+    public static T? NextToSelect<T>(IEnumerable<object> rows, IReadOnlyCollection<object> selected)
+        where T : class
+    {
+        List<object> all = [.. rows];
+        bool found = false;
+        foreach (object row in all)
+        {
+            if (selected.Contains(row))
+            {
+                found = true;
+                continue;
+            }
+
+            if (found && row is T file)
+            {
+                return file;
+            }
+        }
+
+        return all.OfType<T>().FirstOrDefault();
+    }
+
+    /// <summary>
     ///  Git's status letter for a working directory or index change, as the file list menu's rules read it.
     /// </summary>
     public static string StatusLetter(ChangeKind kind)

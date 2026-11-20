@@ -378,6 +378,7 @@ public partial class CommitWindow : Window
             case nameof(CommitViewModel.ListedChanges):
                 _headId = null;
                 ShowChanges();
+                SelectNextAfterMove();
                 break;
             case nameof(CommitViewModel.ShowUntracked):
                 ShowChanges();

@@ -112,6 +112,35 @@ internal sealed class CommitFileListsTests
     }
 
     [AvaloniaTest]
+    public void Staging_a_file_selects_the_next_unstaged_one_and_shows_its_diff_as_upstream()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "b.txt"), "b");
+        _repo.Run("add", "b.txt");
+        _repo.Run("commit", "-q", "-m", "b");
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed a");
+        File.WriteAllText(Path.Combine(_repo.Path, "b.txt"), "changed b");
+        CommitWindow commit = OpenCommitWindow();
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        ListBox staged = Find<ListBox>(commit, "StagedList");
+        DiffView diff = Find<DiffView>(commit, "Diff");
+        WaitUntil(() => unstaged.ItemCount == 2);
+        unstaged.SelectedIndex = 0;
+
+        unstaged.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => Paths(staged).SequenceEqual(["a.txt"]) && Paths(unstaged).SequenceEqual(["b.txt"]));
+        WaitUntil(() => (unstaged.SelectedItem as FileChange)?.Path == "b.txt");
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+changed b"));
+
+        unstaged.RaiseEvent(new TappedEventArgs(InputElement.DoubleTappedEvent, null!));
+
+        WaitUntil(() => unstaged.ItemCount == 0 && Paths(staged).SequenceEqual(["a.txt", "b.txt"]));
+        WaitUntil(() => (staged.SelectedItem as FileChange)?.Path == "b.txt");
+        staged.SelectedItems!.Count.Should().Be(1, "the empty list hands over to the staged one, with the file that moved");
+        commit.Close();
+    }
+
+    [AvaloniaTest]
     public void Group_by_status_orders_both_lists_and_keeps_the_choice()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");

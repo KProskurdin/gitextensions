@@ -86,10 +86,64 @@ internal sealed class GitSshSettingsTests
     }
 
     [Test]
+    public void HasGlobalGitConfig_should_find_a_gitconfig_or_gits_XDG_file_as_upstream()
+    {
+        string home = Path.Join("root", "home");
+        string xdg = Path.Join(home, ".config");
+
+        HomeSettings.HasGlobalGitConfig(home, Lookup([home], [Path.Join(home, ".gitconfig")])).Should().BeTrue();
+        HomeSettings.HasGlobalGitConfig(home, Lookup([home, xdg], [Path.Join(xdg, "git", "config")])).Should().BeTrue();
+        HomeSettings.HasGlobalGitConfig(home, Lookup([home, xdg], [Path.Join(xdg, "git", "config")],
+            new Dictionary<string, string> { ["XDG_CONFIG_HOME"] = "elsewhere" })).Should().BeFalse();
+        HomeSettings.HasGlobalGitConfig(home, Lookup([], [Path.Join(home, ".gitconfig")])).Should().BeFalse();
+        HomeSettings.HasGlobalGitConfig(null, Lookup([home], [])).Should().BeFalse();
+    }
+
+    [Test]
+    public void NeedsFix_should_ask_only_when_HOME_is_missing_or_another_folder_has_the_global_config()
+    {
+        string home = Path.Join("root", "home");
+        string profile = Path.Join("root", "profile");
+        Dictionary<string, string> variables = new() { ["HOME"] = home, ["USERPROFILE"] = profile };
+
+        HomeSettings.NeedsFix(Lookup([], [], new Dictionary<string, string>())).Should().BeTrue("HOME is not set");
+        HomeSettings.NeedsFix(Lookup([profile], [], variables)).Should().BeTrue("HOME is not a folder");
+        HomeSettings.NeedsFix(Lookup([home, profile], [Path.Join(home, ".gitconfig")], variables)).Should().BeFalse();
+        HomeSettings.NeedsFix(Lookup([home, profile], [Path.Join(profile, ".gitconfig")], variables)).Should().BeTrue();
+        HomeSettings.NeedsFix(Lookup([home, profile], [], variables)).Should().BeFalse("no folder is better");
+    }
+
+    [Test]
+    public void Locate_should_take_the_first_folder_with_a_global_config_in_upstreams_order()
+    {
+        string user = Path.Join("root", "user");
+        string drive = Path.Join("root", "drive");
+        string profile = Path.Join("root", "profile");
+        string documents = Path.Join("root", "documents");
+        Dictionary<string, string> variables = new()
+        {
+            ["HOMEDRIVE"] = "root", ["HOMEPATH"] = Path.DirectorySeparatorChar + "drive",
+            ["USERPROFILE"] = profile,
+        };
+        string[] folders = [user, drive, profile, documents];
+        string Config(string folder) => Path.Join(folder, ".gitconfig");
+
+        HomeSettings.Locate(Lookup(folders, [Config(user), Config(profile)], variables, user, documents)).Should()
+            .Be(new HomeLocation(HomeFoundIn.HomeVariable, user));
+        HomeSettings.Locate(Lookup(folders, [Config(drive), Config(profile)], variables, user, documents)).Should()
+            .Be(new HomeLocation(HomeFoundIn.HomeDriveAndPath, drive));
+        HomeLocation fromProfile = HomeSettings.Locate(Lookup(folders, [Config(profile)], variables, user, documents))!;
+        (fromProfile.Folder, fromProfile.Choice).Should().Be((profile, HomeChoice.UserProfile));
+        HomeLocation fromDocuments = HomeSettings.Locate(Lookup(folders, [Config(documents)], variables, user, documents))!;
+        (fromDocuments.Folder, fromDocuments.Choice).Should().Be((documents, HomeChoice.Other));
+        HomeSettings.Locate(Lookup(folders, [], variables, user, documents)).Should().BeNull();
+    }
+
+    [Test]
     public void The_texts_are_upstreams()
     {
         string sources = string.Join("\n",
-            UpstreamSource("GitSettingsPage.cs"), UpstreamSource("FormFixHome.cs"),
+            UpstreamSource("GitSettingsPage.cs"), UpstreamSource("GitSettingsPage.Designer.cs"), UpstreamSource("FormFixHome.cs"),
             UpstreamSource("FormFixHome.Designer.cs"), UpstreamSource("SshSettingsPage.Designer.cs"));
 
         foreach (string text in (string[])
@@ -99,11 +153,30 @@ internal sealed class GitSshSettingsTests
                      "\"&Use default for HOME\"", "\"&Set HOME to USERPROFILE\"", "\"&Other\"",
                      "\"Specify which ssh client to use\"", "\"OpenSSH\"", "\"PuTTY\"", "\"Other ssh client\"",
                      "\"Path to plink\"", "\"Path to puttygen\"", "\"Path to pageant\"", "\"Configure PuTTY\"",
+                     $"\"{HomeSettings.GlobalConfigNotFoundCaption}\"", "\"Download Git\"", SettingsViewModel.DownloadGitUrl,
+                     "\"The environment variable HOME does not point to a directory that contains the global git config file:\"",
+                     "\"Do you want Git Extensions to help locate the correct folder?\"",
                  ])
         {
             sources.Should().Contain(text);
         }
+
+        foreach (HomeFoundIn foundIn in Enum.GetValues<HomeFoundIn>())
+        {
+            (string name, string english) = new HomeLocation(foundIn, "folder").Message;
+            sources.Should().Contain($"{name} =").And.Contain($"\"{english}\"");
+        }
     }
+
+    // Folders that exist, readable files, the process's variables, the user's own HOME and the personal folder.
+    private static HomeLookup Lookup(string[] folders, string[] files, Dictionary<string, string>? variables = null,
+        string? userHome = null, string? personal = null)
+        => new(
+            name => variables?.GetValueOrDefault(name),
+            name => name == "HOME" ? userHome : null,
+            () => personal,
+            folders.Contains,
+            files.Contains);
 
     private static string UpstreamSource(string file)
         => File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "app", "GitUI", "CommandsDialogs", "SettingsDialog",

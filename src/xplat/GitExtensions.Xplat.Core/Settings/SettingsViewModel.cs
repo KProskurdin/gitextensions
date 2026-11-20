@@ -129,6 +129,11 @@ public sealed record SettingsViewModelServices
     public Action<string> ApplySshPath { get; init; } = SshClients.Apply;
 
     /// <summary>
+    ///  What the HOME check after a save reads (upstream's <c>FormFixHome.CheckHomePath</c>, Windows only).
+    /// </summary>
+    public HomeLookup HomeLookup { get; init; } = HomeLookup.System;
+
+    /// <summary>
     ///  The pages the window has and how the tree shows them.
     /// </summary>
     public SettingsPageTreeServices PageTree { get; init; } =
@@ -232,6 +237,14 @@ public sealed partial class SettingsViewModel : DialogViewModel
     ///  Upstream's type of the Git page (Paths), shown when OK finds an error on it.
     /// </summary>
     public const string GitPage = "GitSettingsPage";
+
+    /// <summary>
+    ///  Upstream's "Download Git" link on the Git page (<c>downloadGitForWindows</c>).
+    /// </summary>
+    public const string DownloadGitUrl = "https://github.com/gitextensions/gitextensions/wiki/Application-Dependencies#git";
+
+    // Upstream's form whose texts the HOME check uses.
+    private const string FixHomeCategory = "FormFixHome";
 
     private const string HotkeysPage = "HotkeysSettingsPage";
 
@@ -544,6 +557,9 @@ public sealed partial class SettingsViewModel : DialogViewModel
 
     [ObservableProperty]
     public partial bool CloseProcessDialog { get; set; }
+
+    [ObservableProperty]
+    public partial bool ShowGitCommandLine { get; set; }
 
     [ObservableProperty]
     public partial bool StartWithRecentWorkingDir { get; set; }
@@ -887,9 +903,17 @@ public sealed partial class SettingsViewModel : DialogViewModel
 
             // HOME and the Linux tools folder as the next git gets them; upstream sets them before every git start too.
             _services.SetEnvironment();
-            await _services.SavePagesAfterStore(close);
+
+            // Upstream's CheckHomePath after a save on Windows. Its FormFixHome is the Git page here, so on Yes the window
+            // stays open there with the folder the search found, for the user to save.
+            bool fixHome = IsWindows && HomeSettings.NeedsFix(_services.HomeLookup) && await AskToFixHomeAsync();
+            await _services.SavePagesAfterStore(close && !fixHome);
             Saved = true;
-            if (close)
+            if (fixHome)
+            {
+                await ShowFoundHomeAsync();
+            }
+            else if (close)
             {
                 Host.Close(true);
             }
@@ -908,6 +932,33 @@ public sealed partial class SettingsViewModel : DialogViewModel
     partial void OnShowGitStatusInBrowseToolbarChanged(bool value) => ClampSubmoduleStatus();
 
     private void GoToPage(string page) => PageTree.GoToPage(page);
+
+    private Task<bool> AskToFixHomeAsync()
+        => Host.ConfirmAsync(
+            string.Format(Host.Translate(FixHomeCategory, "_gitGlobalConfigNotFound", HomeSettings.GlobalConfigNotFoundText),
+                _services.HomeLookup.Variable("HOME")),
+            Host.Translate(FixHomeCategory, "_gitGlobalConfigNotFoundCaption", HomeSettings.GlobalConfigNotFoundCaption));
+
+    // Upstream FormFixHome's LoadSettings: the stored choice, which the page shows, then the first folder with a global git
+    // config is chosen, as its message says.
+    private async Task ShowFoundHomeAsync()
+    {
+        PageTree.GoToPage(GitPage);
+        if (HomeSettings.Locate(_services.HomeLookup) is not { } found)
+        {
+            return;
+        }
+
+        SelectedHomeChoice = found.Choice;
+        if (found.Choice == HomeChoice.Other)
+        {
+            OtherHome = found.Folder;
+        }
+
+        (string name, string english) = found.Message;
+        await Host.ShowMessageAsync(string.Format(Host.Translate(FixHomeCategory, name, english), found.Folder),
+            Host.Translate("Information"));
+    }
 
     // Upstream's OnPageShown: a plugin's page shows the plugin's settings, and the Checklist checks again.
     private void OnPageShown(SettingsPageNode node)
@@ -971,6 +1022,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
         FillRefLabels = p.FillRefLabels;
         CloseCommitDialogAfterCommit = p.CloseCommitDialogAfterCommit;
         CloseProcessDialog = p.CloseProcessDialog;
+        ShowGitCommandLine = p.ShowGitCommandLine;
         StartWithRecentWorkingDir = p.StartWithRecentWorkingDir;
         FollowRenames = p.FileHistory.FollowRenames;
         ExactRenamesOnly = p.FileHistory.ExactRenamesOnly;
@@ -1103,6 +1155,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
         p.FillRefLabels = FillRefLabels;
         p.CloseCommitDialogAfterCommit = CloseCommitDialogAfterCommit;
         p.CloseProcessDialog = CloseProcessDialog;
+        p.ShowGitCommandLine = ShowGitCommandLine;
         p.StartWithRecentWorkingDir = StartWithRecentWorkingDir;
         p.FileHistory = p.FileHistory with { FollowRenames = FollowRenames, ExactRenamesOnly = ExactRenamesOnly };
         p.UseHistogramDiffAlgorithm = UseHistogramDiffAlgorithm;

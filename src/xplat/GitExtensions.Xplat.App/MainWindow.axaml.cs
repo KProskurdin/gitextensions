@@ -177,6 +177,9 @@ public partial class MainWindow : Window
         _actions.PropertyChanged += (_, e) => OnActionsChanged(e.PropertyName);
         _actions.RepositoryChanged += (_, e) => OnActionChangedRepository(e.RepositoryPath, e.OnlyFileStatus);
         _actions.RemoteOperationStarted += (_, _) => ShowProcessWindow();
+
+        // Upstream FormRemoteProcess's questions after a plink failure, over the output window while it is open.
+        _actions.PuttyPrompts = new PuttyPrompts(() => _processWindow ?? (Window)this);
         _recent.PropertyChanged += (_, e) => OnRecentChanged(e.PropertyName);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         Opened += (_, _) => Run(OnOpenedAsync);

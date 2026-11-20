@@ -169,8 +169,8 @@ Keep these in a list and check them in one go on Windows, instead of guessing. D
 
 | Area | Items |
 |---|---|
-| PuTTY | Pageant, plink, the clone prompts, the process dialog's retry, the Tools > PuTTY items |
-| Windows integration | The registry side of seam S1, Credential Manager settings, the Visual Studio integration, the HOME check and FormFixHome, the checklist's installer rows, "Download Git" |
+| PuTTY | Pageant, plink, the clone prompts, the process dialog's retry (all four in the code since 2026-11-20, with plink and Pageant faked in the tests; a run against a real PuTTY server is still to make), the Tools > PuTTY items |
+| Windows integration | The registry side of seam S1, Credential Manager settings, the Visual Studio integration, ~~the HOME check and FormFixHome~~ (done 2026-11-20), the checklist's installer rows, ~~"Download Git"~~ (done 2026-11-20) |
 | Not ported, Windows only | ConEmu console tabs, the shell extension, the WiX installer |
 | Window behavior | Taskbar icons, focus, placement, `cmd.exe` consoles for "Interactive add" |
 | Earlier checks still open | Real Pageant call, and the Ctrl+Shift+H and Alt+arrow presses (these can also be checked on a Mac, with Cmd and Option) |

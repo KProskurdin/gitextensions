@@ -105,9 +105,13 @@ internal sealed class GeneralSettingsTests
         languages.Items.Should().Contain(["English", "German", "Japanese"]);
         languages.SelectedItem = "German";
         Find<TextBox>(settings, "DefaultCloneDestinationBox").Text = " /src ";
+        CheckBox console = Find<CheckBox>(settings, "chkShowGitCommandLine");
+        console.IsVisible.Should().Be(OperatingSystem.IsWindows(), "only Windows gives git a console window");
+        console.IsChecked = true;
         Click(settings, "SaveButton");
         WaitUntil(() => !window.OwnedWindows.OfType<SettingsWindow>().Any());
 
+        TestAppBuilder.Preferences.ShowGitCommandLine.Should().BeTrue();
         TestAppBuilder.Preferences.StartWithRecentWorkingDir.Should().BeTrue();
         TestAppBuilder.Preferences.ShowGitStatusInBrowseToolbar.Should().BeFalse();
         TestAppBuilder.Preferences.RelativeDate.Should().BeFalse();
@@ -252,6 +256,7 @@ internal sealed class GeneralSettingsTests
         TestAppBuilder.Preferences.Translation = ChooseTranslationWindow.English;
         TestAppBuilder.Preferences.ShowGpgInformation = true;
         TestAppBuilder.Preferences.ShowFindInCommitFilesGitGrep = false;
+        TestAppBuilder.Preferences.ShowGitCommandLine = false;
     }
 
     private static DateTime UnixDate(string seconds)
