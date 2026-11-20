@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Spelling;
 
@@ -36,6 +37,18 @@ public sealed partial class CommitViewModel
     ///  The caret in the message box, which the view passes; Conventional Commits' types and footers go there.
     /// </summary>
     public int MessageCaret { get; set; }
+
+    /// <summary>
+    ///  Raised when the view model put text in the message: the window moves the caret there and leaves the focus where it
+    ///  is (in the diff, for "Add selection to commit message").
+    /// </summary>
+    public event EventHandler<int>? MessageCaretMoved;
+
+    /// <summary>
+    ///  The message box's selection, which the view passes: its two ends in either order, equal when nothing is selected.
+    ///  "Add selection to commit message" replaces it.
+    /// </summary>
+    public (int Start, int End) MessageSelection { get; set; }
 
     /// <summary>
     ///  Upstream's <c>OpenConventionalCommitMenu</c> with a scope (Ctrl+Shift+T): the types add "()" after them.
@@ -245,6 +258,35 @@ public sealed partial class CommitViewModel
         _preferences.ProvideAutocompletion = !_preferences.ProvideAutocompletion;
         OnPropertyChanged(nameof(ProvideAutoCompletion));
     }
+
+    /// <summary>
+    ///  Upstream FormCommit's <c>AddSelectionToCommitMessage</c>: the diff's selected text replaces the message's selection,
+    ///  or goes in at the caret on a line of its own, and the caret follows it.
+    /// </summary>
+    /// <returns>False when nothing is selected in the diff (the key then goes on).</returns>
+    public bool TryAddSelectionToCommitMessage(string selected)
+    {
+        if (selected.Length == 0)
+        {
+            return false;
+        }
+
+        string message = Message;
+        int start = Math.Clamp(Math.Min(MessageSelection.Start, MessageSelection.End), 0, message.Length);
+        int end = Math.Clamp(Math.Max(MessageSelection.Start, MessageSelection.End), start, message.Length);
+        if (start == end)
+        {
+            selected += '\n';
+        }
+
+        Message = message[..start] + selected + message[end..];
+        MessageCaretMoved?.Invoke(this, start + selected.Length);
+        return true;
+    }
+
+    // The item the window adds at the end of the diff's menu (upstream's AddContextMenuEntry), with that diff.
+    [RelayCommand]
+    private void AddSelectionToCommitMessage(DiffViewModel diff) => TryAddSelectionToCommitMessage(diff.SelectedText);
 
     private void SetMessage(string message, int caret)
     {

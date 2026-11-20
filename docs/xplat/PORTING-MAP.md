@@ -710,7 +710,7 @@ choosing one from the list applies after the same pause, where upstream applies 
 message" came the same day, with the viewer's text selection: the item at the end of the diff's menu and its key (C while
 the diff has the focus) put the selected text in the message as upstream's (on a line of its own when the message has no
 selection).
-Status 2026-11-20 (on macOS): `ported`. Nothing named by the audits is left: the selection filter and "Add selection to commit message" came on 2026-11-19, the spelling checker on 2026-11-09.
+Status 2026-11-20 (on macOS): `ported`. Nothing named by the audits is left: the selection filter and "Add selection to commit message" came on 2026-11-19, the spelling checker on 2026-11-09. Later the same day, on Windows: "Add selection to commit message" is a view model command (`CommitViewModel.AddSelectionToCommitMessageCommand`, `MVVM.md`), with a headless test for the diff menu's item next to the one for its key.
 
 **FormPush** (`ported`). Ported: push of the current branch to the remote it tracks (origin when it tracks none), with upstream tracking. Not ported:
 recursive submodules, pushing several branches at once, and the tags tab. Added 2026-10-06: the progress dialog (see
@@ -1706,6 +1706,11 @@ the browse window on its own, which it reads again. Differences: a submodule who
 upstream also shows a message box while filling the tree; Open does not select the work tree and the recorded commit
 (upstream's `SetWorkingDir` with those revisions), and a new instance does not get the grid's selection, as the new shell
 takes no revisions on its command line. With Alt+click (above) the row is ported.
+Fixed 2026-11-20, on Windows: a refill (after any refresh, also the one when the window is activated) replaced the focused
+node's item and left the keyboard focus on nothing, so the left panel's keys were lost until the user clicked the tree
+again; upstream's tree keeps its focus. `ShowRepoObjects` gives the focus back to the selected node's new item when the
+tree had it (`FocusSelectedRepoObject`). Found as `LeftPanelTests`' multi-select test failing only in long runs; covered by
+`A_refresh_keeps_the_keyboard_focus_on_the_selected_node_so_its_keys_still_work`.
 
 **HotkeySettingsManager** (`ported`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a

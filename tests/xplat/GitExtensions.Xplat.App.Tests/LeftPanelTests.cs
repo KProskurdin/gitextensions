@@ -470,6 +470,29 @@ internal sealed class LeftPanelTests
     }
 
     [AvaloniaTest]
+    public void A_refresh_keeps_the_keyboard_focus_on_the_selected_node_so_its_keys_still_work()
+    {
+        _repo.Run("branch", "older", "HEAD~1");
+        MainWindow window = OpenWindow();
+        TreeView tree = Find<TreeView>(window, "BranchTreeView");
+        KeyGesture multiSelect = Hotkeys.LeftPanel.GestureFor(LeftPanelCommand.MultiSelect)!;
+        tree.SelectedItem = BranchNode(tree, "older");
+        FocusItem(tree, BranchNode(tree, "older")!);
+        IReadOnlyList<RepoObjectNode> before = Roots(tree);
+
+        // F5 refreshes as the window's activation does, without taking the focus from the tree as a click on a button does.
+        window.KeyPress(Key.F5, RawInputModifiers.None, PhysicalKey.F5, keySymbol: null);
+        WaitUntil(() => !window.IsBusy && !ReferenceEquals(Roots(tree), before));
+        window.KeyPress(multiSelect.Key, TestKeys.Raw(multiSelect.KeyModifiers), PhysicalKey.Space, keySymbol: null);
+
+        TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement().Should().BeOfType<TreeViewItem>()
+            .Which.DataContext.Should().BeSameAs(BranchNode(tree, "older"),
+                "upstream's tree keeps the focus on its node across a refresh");
+        BranchNode(tree, "older")!.IsMultiSelected.Should().BeTrue();
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void A_branch_has_the_copy_submenu_and_a_local_branch_the_grids_scripts()
     {
         TestAppBuilder.Scripts.Save(

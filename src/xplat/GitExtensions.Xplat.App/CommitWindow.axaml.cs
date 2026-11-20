@@ -190,9 +190,23 @@ public partial class CommitWindow : Window
         };
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
-        // Upstream's _addSelectionToCommitMessageToolStripMenuItem, at the end of the diff's menu with its key.
-        Diff.AddMenuEntry(GitExtensions.Xplat.Ui.UpstreamTranslation.ByText(AddSelectionToCommitMessageText),
-            Hotkeys.Commit.GestureFor(CommitCommand.AddSelectionToCommitMessage), () => AddSelectionToCommitMessage());
+        // Upstream's _addSelectionToCommitMessageToolStripMenuItem, at the end of the diff's menu with its key; it replaces
+        // the message's selection, which the view model is told as it changes.
+        Diff.ViewModel.AddedMenuEntries.Add(new MenuEntry(
+            GitExtensions.Xplat.Ui.UpstreamTranslation.ByText(AddSelectionToCommitMessageText),
+            ViewModel.AddSelectionToCommitMessageCommand, Diff.ViewModel)
+        {
+            Gesture = Hotkeys.Commit.GestureFor(CommitCommand.AddSelectionToCommitMessage),
+        });
+        CommitMessageBox.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextBox.SelectionStartProperty || e.Property == TextBox.SelectionEndProperty)
+            {
+                ViewModel.MessageSelection = (CommitMessageBox.SelectionStart, CommitMessageBox.SelectionEnd);
+            }
+        };
+        ViewModel.MessageCaretMoved += (_, caret)
+            => CommitMessageBox.CaretIndex = Math.Min(caret, CommitMessageBox.Text?.Length ?? 0);
 
         _repository.PropertyChanged += OnRepositoryChanged;
         Closed += (_, _) =>
@@ -307,7 +321,7 @@ public partial class CommitWindow : Window
                 ToggleSelectionFilter();
                 return true;
             case CommitCommand.AddSelectionToCommitMessage:
-                return Diff.IsKeyboardFocusWithin && AddSelectionToCommitMessage();
+                return Diff.IsKeyboardFocusWithin && ViewModel.TryAddSelectionToCommitMessage(Diff.SelectedText);
             default:
                 return false;
         }
@@ -315,27 +329,6 @@ public partial class CommitWindow : Window
 
     // Upstream FormCommit's _addSelectionToCommitMessage.
     private const string AddSelectionToCommitMessageText = "Add selection to commit message";
-
-    // Upstream's AddSelectionToCommitMessage: the diff's selected text replaces the message's selection, or goes in at the
-    // caret on a line of its own, and the caret follows it. False when nothing is selected.
-    private bool AddSelectionToCommitMessage()
-    {
-        string selected = Diff.SelectedText;
-        if (selected.Length == 0)
-        {
-            return false;
-        }
-
-        int start = Math.Min(CommitMessageBox.SelectionStart, CommitMessageBox.SelectionEnd);
-        if (CommitMessageBox.SelectionStart == CommitMessageBox.SelectionEnd)
-        {
-            selected += '\n';
-        }
-
-        CommitMessageBox.SelectedText = selected;
-        CommitMessageBox.CaretIndex = start + selected.Length;
-        return true;
-    }
 
     // Upstream's ToggleSelectionFilter: the box takes the focus as it shows, and gives it to the list as it hides.
     private void ToggleSelectionFilter()

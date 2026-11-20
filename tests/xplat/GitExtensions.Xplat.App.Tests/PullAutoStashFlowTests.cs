@@ -39,7 +39,7 @@ internal sealed class PullAutoStashFlowTests
     }
 
     [AvaloniaTest]
-    public void A_pull_with_auto_stash_stashes_pulls_and_pops_after_upstreams_question()
+    public async Task A_pull_with_auto_stash_stashes_pulls_and_pops_after_upstreams_question()
     {
         string branch = PushTheirCommit();
         File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "local edit");
@@ -62,7 +62,7 @@ internal sealed class PullAutoStashFlowTests
             .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         WaitUntil(() => pull.IsCompleted);
-        pull.Result.Should().BeTrue();
+        (await pull).Should().BeTrue();
         _repo.ReadFile("a.txt").Should().Be("local edit");
         _repo.Run("stash", "list").Trim().Should().BeEmpty();
         TestAppBuilder.Preferences.AutoPopStashAfterPull.Should().BeTrue();

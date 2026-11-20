@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using CommunityToolkit.Mvvm.Input;
+using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
@@ -278,6 +279,37 @@ internal sealed class CommitViewModelTests
 
         viewModel.Message.Should().EndWith(Environment.NewLine + "[skip ci]");
         carets[1].Should().Be(3, "upstream's skip ci footer leaves the caret where it is");
+    }
+
+    [TestCase(0, 0, "picked\nmy text", 7)]
+    [TestCase(7, 3, "my picked", 9)]
+    public void Add_selection_to_commit_message_should_replace_the_messages_selection_or_go_in_on_a_line_of_its_own(
+        int start, int end, string expected, int caret)
+    {
+        CommitViewModel viewModel = New(new FakeDialogHost());
+        viewModel.Message = "my text";
+        viewModel.MessageSelection = (start, end);
+        DiffViewModel diff = new(Substitute.For<IDiffService>());
+        diff.SetSelection(-1, [], "picked");
+        List<int> carets = [];
+        viewModel.MessageCaretMoved += (_, moved) => carets.Add(moved);
+
+        viewModel.AddSelectionToCommitMessageCommand.Execute(diff);
+
+        viewModel.Message.Should().Be(expected);
+        carets.Should().Equal(caret);
+    }
+
+    [Test]
+    public void Add_selection_to_commit_message_should_leave_the_message_when_nothing_is_selected_in_the_diff()
+    {
+        CommitViewModel viewModel = New(new FakeDialogHost());
+        viewModel.Message = "my text";
+        viewModel.MessageSelection = (0, 7);
+
+        viewModel.TryAddSelectionToCommitMessage("").Should().BeFalse();
+
+        viewModel.Message.Should().Be("my text");
     }
 
     [Test]

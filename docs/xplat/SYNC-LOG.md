@@ -176,3 +176,15 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   `PushWindowTests.cs`, no final newline). Core 992 pass of 1001, 9 not run on Windows. App, the classes touched since 2026-11-08 only
   (`ApplicationMenuTests`, `MainWindowTests`, `GitOperationsTests`, `CommitTemplateFileTests`, `LeftPanelTests`, submodule tree): 187 of 187.
   The full app suite, the shadow projects and `verify-upstream.sh` were not run. Linux and macOS were not run.
+
+### 2026-11-20: first Windows check after the macOS work of 2026-11-18 to 20, no merge
+
+- Checked `dcc0e441d` plus uncommitted fixes, on Windows. Details: `PLAN.md` section 12.6, step 5, the note of 2026-11-20.
+- Found and fixed: a click handler back in `DiffView` ("Add selection to commit message" is a view model command now); a core test
+  that expected backslashes in a POSIX path on Windows (written on the Mac); analyzer warnings in the files changed on 2026-11-19
+  (VSTHRD001 in `OutputReporter` muted with its reason); and the left panel losing the keyboard focus when a refresh fills the tree
+  again, which made `LeftPanelTests`' multi-select test fail only in full runs (`PORTING-MAP.md`, RepoObjectsTree).
+- On Windows, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1410 of 1410; app 813 of 813 (816, 3 are
+  macOS only). Before the fixes: core 1406 of 1407, app 810 of 811, then 811 of 812 (the same multi-select test). Shadow projects and
+  `verify-upstream.sh` were not run: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed. The fixes
+  touch no upstream file; seam count unchanged. CI is still off. Linux and macOS were not run.

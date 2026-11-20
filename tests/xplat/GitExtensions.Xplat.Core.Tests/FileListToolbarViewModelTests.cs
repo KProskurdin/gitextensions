@@ -80,7 +80,9 @@ internal sealed class FileListToolbarViewModelTests
 
         entries.Should().HaveCount(5);
         entries.Single(entry => entry.IsBold).CommandParameter.Should().Be(CopyPathsKind.FullNative);
-        copied.Should().Equal(OperatingSystem.IsWindows() ? expected.Replace('/', '\\') : expected);
+        copied.Should().Equal(OperatingSystem.IsWindows() && kind == CopyPathsKind.FullNative
+            ? expected.Replace('/', '\\')
+            : expected);
     }
 
     [Test]

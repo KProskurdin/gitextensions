@@ -271,11 +271,44 @@ internal sealed class CommitDialogSettingsTests
     }
 
     [AvaloniaTest]
+    public void The_diffs_menu_item_replaces_the_messages_selection_with_the_diffs()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "needle in a haystack");
+        CommitWindow commit = OpenCommitWindow(Open());
+        ListBox unstaged = Find<ListBox>(commit, "UnstagedList");
+        WaitUntil(() => commit.IsVisible && unstaged.ItemCount > 0);
+        unstaged.SelectedIndex = 0;
+        DiffView diff = Find<DiffView>(commit, "Diff");
+        WaitUntil(() => diff.Lines.Any(line => line.Text == "+needle in a haystack"));
+        DiffTextView lines = diff.FindControl<DiffTextView>("DiffList")!;
+        lines.Editor.Select(lines.Editor.Text.IndexOf("needle", StringComparison.Ordinal), "needle".Length);
+        TextBox message = Find<TextBox>(commit, "CommitMessageBox");
+        message.Text = "my text";
+        message.SelectionStart = 3;
+        message.SelectionEnd = 7;
+        MenuItem item = diff.FindControl<ContextMenu>("DiffContextMenu")!.Items.OfType<MenuItem>()
+            .Single(menuItem => menuItem.Header is TextBlock { Text: "Add selection to commit message" });
+
+        UiClicks.Click(item);
+        Dispatcher.UIThread.RunJobs();
+
+        item.InputGesture.Should().NotBeNull("upstream shows the item's key");
+        message.Text.Should().Be("my needle");
+        message.CaretIndex.Should().Be("my needle".Length);
+        commit.Close();
+    }
+
+    [AvaloniaTest]
     public void Ctrl_space_while_the_words_are_read_shows_upstreams_tooltip_then_the_list()
     {
-        TaskCompletionSource<IReadOnlyList<AutoCompleteWord>> words = new();
+        List<TaskCompletionSource<IReadOnlyList<AutoCompleteWord>>> reads = [];
         Func<string, CancellationToken, Task<IReadOnlyList<AutoCompleteWord>>> load = AppServices.LoadAutoCompleteWords;
-        AppServices.LoadAutoCompleteWords = (_, _) => words.Task;
+        AppServices.LoadAutoCompleteWords = (_, _) =>
+        {
+            TaskCompletionSource<IReadOnlyList<AutoCompleteWord>> read = new();
+            reads.Add(read);
+            return read.Task;
+        };
         try
         {
             CommitWindow commit = OpenCommitWindow(Open());
@@ -288,7 +321,11 @@ internal sealed class CommitDialogSettingsTests
 
             WaitUntil(() => commit.AutoCompleteToolTipShown is not null);
             commit.AutoCompleteToolTipShown.Should().Be(CommitMessageAutoCompletion.NotAvailableYet);
-            words.SetResult([new AutoCompleteWord("Render"), new AutoCompleteWord("Reset")]);
+            foreach (TaskCompletionSource<IReadOnlyList<AutoCompleteWord>> read in reads)
+            {
+                read.TrySetResult([new AutoCompleteWord("Render"), new AutoCompleteWord("Reset")]);
+            }
+
             WaitUntil(() => commit.AutoCompleteOffers.Count == 2);
             commit.AutoCompleteToolTipShown.Should().BeNull("the list replaces it");
             commit.Close();

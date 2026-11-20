@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitCommands;
 using GitCommands.Settings;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Core.Settings;
 
@@ -385,6 +387,11 @@ public sealed partial class DiffViewModel : ObservableObject
     ///  Upstream's <c>GetSelectedText</c>: the text selected in the viewer; empty for none.
     /// </summary>
     public string SelectedText { get; private set; } = "";
+
+    /// <summary>
+    ///  Upstream's <c>AddContextMenuEntry</c>: the items the window around the viewer adds at the end of its menu.
+    /// </summary>
+    public ObservableCollection<MenuEntry> AddedMenuEntries { get; } = [];
 
     /// <summary>
     ///  Reads the menu's state again, as upstream does when its menu opens.

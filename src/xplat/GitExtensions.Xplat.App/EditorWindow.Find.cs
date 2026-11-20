@@ -4,9 +4,9 @@ using Avalonia.Input;
 using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
-using GitExtUtils.GitUI.Theming;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Ui;
+using GitExtUtils.GitUI.Theming;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
 
 namespace GitExtensions.Xplat.App;
@@ -39,7 +39,7 @@ public partial class EditorWindow
     public FindWindow? FindWindow => _findWindow;
 
     /// <summary>
-    ///  The occurrences "Find & highlight all" marked, where they are now.
+    ///  The occurrences "Find &amp; highlight all" marked, where they are now.
     /// </summary>
     public IReadOnlyList<(int Offset, int Length)> Highlighted
         => [.. (_highlighted ?? []).Select(segment => (segment.StartOffset, segment.Length))];

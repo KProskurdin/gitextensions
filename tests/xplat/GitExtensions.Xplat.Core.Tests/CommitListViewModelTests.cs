@@ -140,11 +140,11 @@ internal sealed class CommitListViewModelTests
         bool notesInBody)
     {
         Task open = _viewModel.OpenAsync(RepositoryPath);
-        _history.CompletePage(0, new CommitPage(
-            [new CommitRow("aaa1", "aaa1", "subject", "a", "d", Body: "subject\n\nbody", HasMultiLineMessage: true)
-            {
-                Notes = "reviewed\nby Ann\n",
-            }], HasMore: false));
+        CommitRow row = new("aaa1", "aaa1", "subject", "a", "d", Body: "subject\n\nbody", HasMultiLineMessage: true)
+        {
+            Notes = "reviewed\nby Ann\n",
+        };
+        _history.CompletePage(0, new CommitPage([row], HasMore: false));
         await open;
 
         _viewModel.ViewOptions = new GridViewOptions(ShowGitNotes: showGitNotes, NotesInSeparateColumn: column);

@@ -13,11 +13,14 @@ namespace GitExtensions.Xplat.Core.Tests;
 /// </summary>
 internal sealed class ErrorReportsTests
 {
-    private const string DubiousOutput = """
+    // Git indents the command in its hint with a tab.
+    private const string Tab = "\t";
+
+    private const string DubiousOutput = $"""
                                          fatal: detected dubious ownership in repository at '/home/other/repo'
                                          To add an exception for this directory, call:
 
-                                         	git config --global --add safe.directory /home/other/repo
+                                         {Tab}git config --global --add safe.directory /home/other/repo
                                          """;
 
     [Test]

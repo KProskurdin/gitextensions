@@ -4,9 +4,9 @@ using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.CommitHistory;
 using GitExtensions.Xplat.Core.Diff;
 using GitExtensions.Xplat.Core.Repository;
-using GitUIPluginInterfaces;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
+using GitUIPluginInterfaces;
 
 namespace GitExtensions.Xplat.App;
 

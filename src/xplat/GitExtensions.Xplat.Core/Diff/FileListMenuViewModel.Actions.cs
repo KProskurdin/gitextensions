@@ -533,8 +533,8 @@ public sealed partial class FileListMenuViewModel
     [RelayCommand]
     private Task FindFileInListAsync() => GuardAsync(FindFileAsync);
 
-    [RelayCommand]
     // Upstream's OpenFindInCommitFilesGitGrepDialog_Click: the window starts with the text selected in the viewer.
+    [RelayCommand]
     private void OpenGitGrep() => _source?.GitGrep?.ShowWindow(_source.Viewer?.Invoke()?.SelectedText ?? "");
 
     // Upstream's ShowFindInCommitFilesGitGrep_Click.

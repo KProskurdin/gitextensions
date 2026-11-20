@@ -829,7 +829,11 @@ internal sealed class OutputReporter(SynchronizationContext? context, Action<Git
         }
         else
         {
+            // Posting to the captured context keeps the lines in order, which a switch per line would not promise, and the
+            // core has no JoinableTaskFactory to switch with in tests.
+#pragma warning disable VSTHRD001
             context.Post(_ => append(value), null);
+#pragma warning restore VSTHRD001
         }
     }
 }

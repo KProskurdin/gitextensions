@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
@@ -5,6 +6,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using GitExtensions.Xplat.Core.Diff;
+using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Ui;
 
 namespace GitExtensions.Xplat.App;
@@ -25,6 +27,7 @@ public partial class DiffView : UserControl
     public static readonly StyledProperty<DiffViewModel?> ViewModelProperty =
         AvaloniaProperty.Register<DiffView, DiffViewModel?>(nameof(ViewModel));
 
+    private readonly List<Control> _addedMenuItems = [];
     private DiffViewModel _viewModel;
 
     public DiffView()
@@ -217,6 +220,8 @@ public partial class DiffView : UserControl
 
         // A context menu gets its data context only when it opens (MVVM.md).
         DiffContextMenu.DataContext = viewModel;
+        viewModel.AddedMenuEntries.CollectionChanged += OnAddedMenuEntriesChanged;
+        ShowAddedMenuEntries(viewModel);
     }
 
     private void Detach(DiffViewModel viewModel)
@@ -224,6 +229,27 @@ public partial class DiffView : UserControl
         viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         viewModel.SelectLineRequested -= OnSelectLineRequested;
         viewModel.LinesRequested -= OnLinesRequested;
+        viewModel.AddedMenuEntries.CollectionChanged -= OnAddedMenuEntriesChanged;
+    }
+
+    private void OnAddedMenuEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => ShowAddedMenuEntries(ViewModel);
+
+    // Upstream's AddContextMenuEntry: the window's items at the end of the menu, as the view model lists them.
+    private void ShowAddedMenuEntries(DiffViewModel viewModel)
+    {
+        foreach (Control item in _addedMenuItems)
+        {
+            DiffContextMenu.Items.Remove(item);
+        }
+
+        _addedMenuItems.Clear();
+        foreach (MenuEntry entry in viewModel.AddedMenuEntries)
+        {
+            Control item = MenuEntries.Item(entry, this);
+            _addedMenuItems.Add(item);
+            DiffContextMenu.Items.Add(item);
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -243,17 +269,6 @@ public partial class DiffView : UserControl
     ///  Upstream's <c>GetSelectedText</c>: the text selected in the viewer.
     /// </summary>
     public string SelectedText => DiffList.SelectedText;
-
-    /// <summary>
-    ///  Upstream's <c>AddContextMenuEntry</c>: an item at the end of the viewer's menu, for the window around it.
-    /// </summary>
-    public MenuItem AddMenuEntry(string text, Avalonia.Input.KeyGesture? gesture, Action action)
-    {
-        MenuItem item = new() { Header = text, InputGesture = gesture };
-        item.Click += (_, _) => action();
-        DiffContextMenu.Items.Add(item);
-        return item;
-    }
 
     /// <summary>
     ///  Gives the viewer's text the focus (upstream's FocusSelectedDiff and FocusDiff).

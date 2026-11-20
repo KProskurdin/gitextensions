@@ -96,10 +96,11 @@ public partial class MainWindow
         }, RoutingStrategies.Bubble, handledEventsToo: true);
     }
 
-    // Upstream's trees refill after each refresh; the expanded nodes and the selection stay.
+    // Upstream's trees refill after each refresh; the expanded nodes, the selection and the keyboard focus stay.
     private void ShowRepoObjects()
     {
         string? selectedKey = SelectedRepoObject?.Key;
+        bool hadFocus = BranchTreeView.IsKeyboardFocusWithin;
         IReadOnlyList<RepoObjectNode> roots = RepositoryPath is not { } path
             ? []
             : RepoObjectsTree.Build(
@@ -128,6 +129,25 @@ public partial class MainWindow
                 _restoringRepoObjectSelection = false;
             }
         }
+
+        if (hadFocus)
+        {
+            FocusSelectedRepoObject();
+        }
+    }
+
+    // New items replace the focused node's item, which leaves the keyboard focus on nothing, so a key pressed after a refresh
+    // (such as the one when the window is activated) was lost. Upstream's tree keeps its nodes and the focus: the selected
+    // node's new item takes it, once the tree has made its items.
+    private void FocusSelectedRepoObject()
+    {
+        if (SelectedRepoObject is not { } node)
+        {
+            return;
+        }
+
+        BranchTreeView.UpdateLayout();
+        BranchTreeView.GetVisualDescendants().OfType<TreeViewItem>().FirstOrDefault(item => item.DataContext == node)?.Focus();
     }
 
     // Upstream's OnSelected of the branch, tag, stash and worktree nodes (GoToRevision): their commit is selected in the

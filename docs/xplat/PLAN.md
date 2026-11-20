@@ -1294,5 +1294,26 @@ Steps:
    **Step 5 is done**: 14 lines are left (counted as above, without the plugins), the 11 view concerns `MVVM.md` lists and
    3 `StaysOpenOnClick` attributes the grep also matches. The plugins under `src/xplat/plugins` were not part of the count;
    their windows are upstream's plugin forms ported one by one and move to MVVM when they are reworked (principle 6).
+   *2026-11-20, on Windows (the first check there since the work of 2026-11-19 on macOS):* one click handler had come
+   back, `DiffView.AddMenuEntry`, which "Add selection to commit message" brought on 2026-11-19. It is a command now: the
+   viewer lists a window's items as `DiffViewModel.AddedMenuEntries` (upstream's `AddContextMenuEntry`), and the commit
+   window's item runs `CommitViewModel.AddSelectionToCommitMessageCommand` (`MVVM.md`, the commit window's row); 3 view
+   model tests and a headless one. The count is 14 again. Every `*Window.axaml` has a view model but `ViewTextWindow`,
+   which keeps no state; the new `LogWindow` came with `LogViewModel`. The xplat solution builds. The analyzer warnings in
+   the files changed on 2026-11-19 are fixed, and VSTHRD001 in `OutputReporter` is muted at its one line with the reason
+   (it posts to the captured context to keep git's lines in order, and the core's tests have no `JoinableTaskFactory`).
+   Core tests 1410/1410; one had failed on Windows only (`FileListToolbarViewModelTests` expected backslashes in a POSIX
+   path, written on the Mac, where the two are the same). Headless app tests before the change: 810/811, the failure
+   `LeftPanelTests`' multi-select test, which passed when run again; after it, the classes it touches 93/93 and the full
+   suite 811/812 (28 minutes). The failure is that multi-select test again (another node not marked): it passed both
+   times it ran alone, but failed in both full runs that day. Found the same day by running the 76 classes before it
+   (517 tests, 17 minutes), which reproduced it: a refresh when the window is activated (`RefreshStatusOnActivation`)
+   came in during the key press, the tree was filled again, the focused node's item was replaced and the keyboard focus
+   went to nothing, so the key reached no part of the left panel. When the activation comes depends on the windows the
+   tests before leave. An app bug, not only the test's: upstream's tree keeps the focus across a refresh. Fixed:
+   `ShowRepoObjects` gives the focus back to the selected node's new item when the tree had it (`PORTING-MAP.md`,
+   RepoObjectsTree). New headless test `A_refresh_keeps_the_keyboard_focus_on_the_selected_node_so_its_keys_still_work`
+   (fails without the fix, passes with it); `LeftPanelTests` 21/21. Full headless suite after the fix: 813/813
+   (28 minutes), the multi-select test passing in the long run that had failed it twice.
 6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
    upstream is not affected.
