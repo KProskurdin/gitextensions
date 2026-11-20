@@ -300,3 +300,17 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   873 in 15 minutes 25 seconds, the test host at most 757 MB; the shadow projects 12 of 12; `verify-upstream.sh` passes
   against `17213fe3f`. No sleep during the runs. No upstream file changed; seam count unchanged. Windows and Linux were not
   run.
+
+### 2026-11-20, late night: the porting map's audit, its gaps, the last differences, the flaky tests, no merge
+
+- On macOS: the porting map's latest "not ported" lines checked against the code (an "Audit 2026-11-20" line in each note
+  concerned): most were stale; done the same night: reflog sorting by a column, the autostash row's label, the file
+  history's revert window. The command line's last differences: the usage text in upstream's own window
+  (`CommandLineHelpWindow`), `settings`' exit code, `cherry` on no commit, `reset files` as upstream's (folders, new files
+  deleted when asked); for plugins, `StartBrowseDialog` opens another browse window and `offerCommit` is passed on.
+- Flaky tests: four full App runs in a row (with builds beside them) gave 4 x 872 passed, 0 failed; the three that failed
+  only in full runs did not appear (memory note and `PORTING-MAP.md` unchanged for them).
+- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings; core 1468 of 1468;
+  app 876 of 876 in 16 minutes 15 seconds, the test host at most 858 MB; the shadow projects 12 of 12 (3823 passed, 201
+  ignored with reasons); `verify-upstream.sh` passes against `17213fe3f` (`GitCommands.Tests` 3421 passed, 174 skipped). No
+  sleep during the runs. No upstream file changed; seam count unchanged. Windows and Linux were not run.

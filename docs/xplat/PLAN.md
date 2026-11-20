@@ -1157,14 +1157,20 @@ State on 2026-11-13: parity resumed on 2026-11-08 and items 1 to 6 of `UI-PARITY
 CI was turned off that night (question 16). Work now alternates between the Mac and Windows (the 2026-11-10 commits were made on
 Windows), so the Windows suites get local runs (`SYNC-LOG.md`), but Linux has had no run since CI's only one.
 
+State on 2026-11-20 (night, on macOS): `UI-PARITY.md`'s "Next on the Mac" items 1 to 3 are done, and from item 5, chosen by
+the user, the settings folder on Windows (its check is Windows only), the macOS menu bar (question 15), and upstream's whole
+command line with the plugins' `RunCommand` and `Start...Dialog` methods. `PORTING-MAP.md` has one row `partial` (the
+settings tree's Shell extension page, Windows). Left for the user: the checks at the screen (`MACOS.md` section 10, 19 rows),
+questions 7 to 10 and 12 to 14 and 16, and merging `upstream/master`, against which `verify-upstream.sh` passes.
+
 ### 12.5 Open decisions (section 9)
 
 1. Question 7: confirm "keep upstream behavior" for branch-name rules and commit-message line endings.
 2. Question 8: an Apple developer account for signing and notarization.
 3. Question 9: who maintains the xplat track, and how often it syncs with upstream.
 4. Question 10: the terminal on Linux and macOS (recommendation: a configurable command with a default from the OS).
-5. Questions 12 to 15, from the move to macOS: where the work runs, the fork's default branch, the reference pictures, and
-   the macOS menu bar. Questions 12 to 14 affect the handoff, so they come first.
+5. Questions 12 to 14, from the move to macOS: where the work runs, the fork's default branch and the reference pictures.
+   Question 15 (the macOS menu bar) was decided 2026-11-20, as recommended, and is done.
 6. Question 16: CI is off, and 13 upstream workflow files are edited to do it. This blocks MAC1 and breaks the "no upstream
    file edited" rule, so it comes before the others.
 

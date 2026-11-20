@@ -927,6 +927,14 @@ have no upstream form to compare with, so a test or a recorded check is their ev
    WinForms app show the same settings, such as automatic continuous scroll), and
    `AdvancedSettingsTests`' Create Branch test, which timed out once in a full run (`SYNC-LOG.md`, 2026-11-20 evening).
 
+**Status 2026-11-20, night (macOS):** items 1 to 3 are done; of item 5, the settings folder, the menu bar and the command line
+(with the plugins' `RunCommand` and `Start...Dialog`) are done, and item 4 is a checklist (`MACOS.md` section 10). The same
+night, an audit of the porting map's latest "not ported" lines against the code (each note has its "Audit 2026-11-20" line):
+most were stale; the real gaps found are done (reflog sorting, the autostash row's label, the file history's revert window),
+and FormInit and FormCommandlineHelp are ported. `PORTING-MAP.md` has 141 rows `ported` and 1 `partial` (the Shell
+extension page, Windows). Left on the Mac: item 4 at the screen; the decisions of item 5 (merging upstream, CI, dark mode
+and the font); and the three App tests that failed only in full runs, not seen again in five full runs that night.
+
 **Items that look different on a Mac** are not parity bugs: `MACOS.md`, section 6, lists them. The reverse also holds: a step
 that adds a Windows-only code path while on the Mac goes on the Windows check list.
 
