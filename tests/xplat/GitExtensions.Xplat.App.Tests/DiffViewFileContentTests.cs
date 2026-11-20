@@ -182,8 +182,11 @@ internal sealed class DiffViewFileContentTests
     [AvaloniaTest]
     public void A_large_file_waits_for_a_click()
     {
-        const int MoreThanFiveMb = (5 * 1024 * 1024) + 1;
-        File.WriteAllText(FullPath("large.txt"), new string('x', MoreThanFiveMb));
+        // Lines of a kilobyte: one line of five megabytes took the headless view four minutes to lay out, and the size,
+        // not the lines, is what makes the view wait.
+        const int LineLength = 1023;
+        const int Lines = (5 * 1024) + 1;
+        File.WriteAllText(FullPath("large.txt"), string.Concat(Enumerable.Repeat(new string('x', LineLength) + "\n", Lines)));
         Open();
 
         Run(_diff.ShowFileAsync(_repo.Path, commitHash: null, staged: false, "large.txt"));
@@ -195,7 +198,7 @@ internal sealed class DiffViewFileContentTests
 
         UiClicks.Raise(link, Button.ClickEvent);
 
-        WaitUntil(() => !link.IsVisible && _diff.Lines.Count == 1 && _diff.Lines[0].Text.Length == MoreThanFiveMb);
+        WaitUntil(() => !link.IsVisible && _diff.Lines.Count >= Lines && _diff.Lines[0].Text.Length == LineLength);
     }
 
     [AvaloniaTest]

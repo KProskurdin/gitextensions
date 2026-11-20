@@ -123,7 +123,9 @@ Things to know:
 - **The screenshot aid renders the window's content only**: no title bar and no native menu bar. For those use
   `screencapture`, which needs the Screen Recording permission for the terminal.
 - **Do not build during a test run.** The full app suite took about 22 minutes on Windows, and one run there was killed for
-  lack of memory, so close other heavy programs first.
+  lack of memory, so close other heavy programs first. *2026-11-20:* the memory was the tests' own: windows left open
+  were never freed and the test host reached 7.4 GB. `TestIsolation.cs` now closes them after each test; the suite takes
+  13 minutes on Windows and about 600 MB. A test must not count on its window outliving it.
 - **Not on a Mac:** `GitExtensions.slnx`, `update-loc.cmd`, `src/native`, and `src/xplat/eng/Generate-KeysShim.ps1`. The
   fork does not need them: `Keys.g.cs` is checked in, and the fork does not change `English.xlf`.
 

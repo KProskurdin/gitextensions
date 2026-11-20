@@ -795,6 +795,13 @@ toolbar icons with upstream's `ToolTipText`.
   Left of the Windows-only list: the Shell extension page, the checklist's installer rows and "Show current branch in
   Visual Studio". To check by hand (`MACOS.md`, section 7): the PuTTY windows against a real server and Pageant, and the
   Tools > PuTTY items (ported 2026-10-31).
+- 2026-11-20, evening, on Windows: after a stage or unstage the commit window selects the next file and shows its diff,
+  as upstream's `StoreNextItemToSelect` and `SelectStoredNextItem` (found by the user; FormCommit). The left panel's
+  search could select a node a refresh had dropped (fixed, RepoObjectsTree). The headless suite's test host no longer
+  grows to gigabytes: windows left open are closed after each test (`SYNC-LOG.md`); 818 of 818 in 13 minutes. Found,
+  not fixed: `DiffView.ShowSettings` is static, so with two browse windows the viewer's settings item opens Settings over
+  the newest window, even a closed one; a file that is one line of megabytes holds the viewer for minutes after "Show
+  large file".
 
 ### Continuing on macOS
 

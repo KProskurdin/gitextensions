@@ -199,3 +199,32 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   (820, 3 are macOS only). `port-drift.sh`: 141 rows, 0 with upstream changes since their base. Shadow projects and
   `verify-upstream.sh` were not run: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed,
   and no upstream file. The PuTTY prompts were not tried against a real PuTTY server. Linux and macOS were not run.
+
+### 2026-11-20, evening: the commit window's next file, two flaky tests and the test host's memory, no merge
+
+- Fixed on Windows (found by the user): after a stage or unstage the commit window selected nothing, so the diff kept
+  showing the file that had moved; it now selects the next file as upstream does (`PORTING-MAP.md`, FormCommit).
+- Full `GitExtensions.xplat.slnx` run on Windows, on `d82a23c8b`: 6236 passed, 3 failed, 2 skipped of 6241. The known
+  `AsyncLoaderTests` failure in `GitCommands.Tests`, and two headless tests that failed only in that run, with all 14
+  test projects at once: `LeftPanelTests`' search test (fixed: it held a tree node a refresh had replaced, and the window
+  could select such a node too; `PORTING-MAP.md`, RepoObjectsTree) and `AdvancedSettingsTests`' new branch name test
+  (the Create Branch window did not finish loading in 20 seconds; not reproduced in 8 runs, two of them under load, and
+  not changed).
+- A second full run was stopped by Claude Code for lack of memory: the app test host had grown to 7.4 GB. The cause was
+  in the tests: most end with their window open, an open window stays in Avalonia's render loop, and each main window
+  joins the app's shared output history, so every window kept the ones before it (about 18 MB per test). The recent
+  repositories list, shared by all tests, also grew with each opened repository, and a late test's Start menu and
+  dashboard listed hundreds of entries. New `tests/xplat/GitExtensions.Xplat.App.Tests/TestIsolation.cs`, an assembly test
+  action: it closes the windows a test left open, and gives each test its own output history and recent list.
+  `A_large_file_waits_for_a_click` wrote its 5 MB as one line, which the headless view took about 4 minutes to lay out; it
+  now writes lines of a kilobyte. No product code changed for this.
+- App suite on Windows after the changes: 818 of 818 in 13 minutes (27 to 29 before); the tests' own time 796 seconds
+  (1630 before); live managed memory stays between 40 and 110 MB, the test host's working set about 600 MB. Left as they
+  are: `The_tool_catalog_lists_what_git_finds_without_terminal_tools` (26 seconds: git's `--tool-help` takes 13 seconds
+  per list on Windows, and upstream's cache runs the two one after the other); merging tests to save the second each
+  spends opening a window (not done: about 12% at most, and one behaviour per test is the rule).
+- Found, not fixed: `DiffView.ShowSettings` is static and set by every new main window, so with two windows open a
+  viewer's settings item opens Settings over the newer one, even after it closed; and a file that is one very long line
+  (several megabytes) holds the viewer for minutes after "Show large file".
+- Core 1435 of 1435 in the full run. Shadow projects passed but for the known failure. `verify-upstream.sh` was not run:
+  no upstream file changed. Linux and macOS were not run.

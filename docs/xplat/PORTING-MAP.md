@@ -1726,6 +1726,10 @@ node's item and left the keyboard focus on nothing, so the left panel's keys wer
 again; upstream's tree keeps its focus. `ShowRepoObjects` gives the focus back to the selected node's new item when the
 tree had it (`FocusSelectedRepoObject`). Found as `LeftPanelTests`' multi-select test failing only in long runs; covered by
 `A_refresh_keeps_the_keyboard_focus_on_the_selected_node_so_its_keys_still_work`.
+Fixed later on 2026-11-20, on Windows: Search selects its match once the tree has made its items, and a refill before
+that (a refresh) left the dropped node selected; the match is now looked up by its key in the tree shown then
+(`SearchRepoObjects`). Found as `LeftPanelTests`' search test failing in a full run, as the test also held a node a
+refresh had replaced; the test now makes such a refresh itself and reads the tree's nodes again after it.
 
 **HotkeySettingsManager** (`ported`). Ported: the FormBrowse defaults for open, close, commit, refresh, pull and push dialogs,
 quick pull, push and fetch, terminal (upstream's Git bash), settings, focus the filter, the grid and the left panel, create a

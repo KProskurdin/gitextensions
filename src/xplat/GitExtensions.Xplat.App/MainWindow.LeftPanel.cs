@@ -189,8 +189,11 @@ public partial class MainWindow
 
         Dispatcher.UIThread.Post(() =>
         {
-            BranchTreeView.SelectedItem = node;
-            BranchTreeView.ScrollIntoView(node);
+            // A refresh can refill the tree before this runs: its node for the match is selected, not the dropped one.
+            RepoObjectNode shown = _repoObjects.SelectMany(root => root.Descendants())
+                .FirstOrDefault(candidate => candidate.Key == node.Key) ?? node;
+            BranchTreeView.SelectedItem = shown;
+            BranchTreeView.ScrollIntoView(shown);
         }, DispatcherPriority.Loaded);
     }
 

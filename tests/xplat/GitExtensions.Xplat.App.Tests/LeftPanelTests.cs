@@ -157,14 +157,26 @@ internal sealed class LeftPanelTests
         _repo.Run("branch", "team/found");
         MainWindow window = OpenWindow();
         TreeView tree = Find<TreeView>(window, "BranchTreeView");
-        RepoObjectNode folder = Roots(tree)[0].Children.Single(node => node.Kind == RepoObjectKind.Folder);
+        RepoObjectNode folder = Folder(tree);
         folder.IsExpanded = false;
+
+        // A refresh (as the one when the window is activated) can refill the tree at any time, with new nodes that keep the
+        // expansion; the test makes one and reads the tree's nodes again after it, never a node the tree has dropped.
+        // Refresh is off while the window is busy.
+        WaitUntil(() =>
+        {
+            Dispatcher.UIThread.RunJobs();
+            return !window.IsBusy;
+        });
+        Click(window, "RefreshButton");
+        WaitUntil(() => !window.IsBusy && Folder(tree) != folder);
+        Folder(tree).IsExpanded.Should().BeFalse();
 
         Find<AutoCompleteBox>(window, "LeftPanelSearchBox").Text = "FOUND";
         Click(window, "LeftPanelSearchButton");
 
         WaitUntil(() => tree.SelectedItem is RepoObjectNode { Branch.Name: "team/found" });
-        folder.IsExpanded.Should().BeTrue();
+        Folder(tree).IsExpanded.Should().BeTrue();
         BranchNode(tree, "team/found")!.IsSearchMatch.Should().BeTrue("upstream highlights every match");
 
         // Refresh is off while the window is busy; the queued work runs first.
@@ -639,6 +651,9 @@ internal sealed class LeftPanelTests
 
     private static RepoObjectNode? SubmoduleTop(TreeView tree)
         => Roots(tree).Single(root => root.Kind == RepoObjectKind.SubmodulesRoot).Children.FirstOrDefault();
+
+    private static RepoObjectNode Folder(TreeView tree)
+        => Roots(tree)[0].Children.Single(node => node.Kind == RepoObjectKind.Folder);
 
     private static IReadOnlyList<RepoObjectNode> Roots(TreeView tree)
         => tree.ItemsSource as IReadOnlyList<RepoObjectNode> ?? [];
