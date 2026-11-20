@@ -35,7 +35,7 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  The browse window: the new shell's version of upstream <c>FormBrowse</c>.
 /// </summary>
-public partial class MainWindow : Window
+public partial class MainWindow : Window, ISettingsWindowHost
 {
     // Developer aid: when set, the window loads XPLAT_BENCHMARK_COMMITS commits (default 5000), scrolls through them, writes
     // frame times to this file, and the app exits (ScrollBenchmark).
@@ -113,12 +113,15 @@ public partial class MainWindow : Window
     /// </summary>
     public bool CheckSettingsAtStartup { get; init; }
 
-    public MainWindow(GitDiscoveryResult? git)
+    /// <param name="commandLineVerb">Upstream's command line verb to run instead of browsing (<see cref="CommandLineVerbs"/>):
+    ///  the window then only owns the verb's windows, unseen, and closes when the verb is done.</param>
+    /// <param name="commandLineDirectory">The folder the command line was given in, which upstream's paths start from.</param>
+    public MainWindow(GitDiscoveryResult? git, CommandLineRequest? commandLineVerb = null,
+        string? commandLineDirectory = null)
     {
         _git = git;
-
-        // Upstream's FileViewer settings button opens the settings dialog on its page.
-        DiffView.ShowSettings = (owner, page) => ShowSettingsAsync(owner: owner, page: page);
+        _commandLineVerb = commandLineVerb;
+        _commandLineDirectory = commandLineDirectory ?? Environment.CurrentDirectory;
         _history = new GitCommitHistory(
             () => new CommitDateStyle(_preferences.RelativeDate, _preferences.ShowAuthorDate),
             () => _preferences.RevisionSortOrder, AppServices.RevisionLinks,
@@ -131,7 +134,7 @@ public partial class MainWindow : Window
         _actions.EditorCommand = AppServices.EditorCommand;
         _fileManager = new SystemFileManager(_launcher, HostPlatform.Current);
         _plugins = new PluginHost(this, _actions, plugin => Run(() => ShowSettingsAsync(plugin, pluginsPage: true)),
-            ShowCommitWindow) { NewCloneWindow = NewCloneWindow };
+            ShowCommitWindow) { NewCloneWindow = NewCloneWindow, Flows = this };
         _plugins.BrowseRepo = this;
         Toolbar = new BrowseToolbarViewModel(_commits, _repository, _actions, _recent, _preferences,
             gitAvailable: _git?.Status != GitDiscoveryStatus.NotFound, UpstreamTranslation.ByText, AppServices.DiffMergeTools)
@@ -140,7 +143,20 @@ public partial class MainWindow : Window
         };
         GridViewMenu = NewGridViewMenu();
         InitializeComponent();
-        WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
+        if (commandLineVerb is not null)
+        {
+            HideAsCommandLineHost();
+        }
+        else
+        {
+            WindowPlacementTracker.Attach(this, "Xplat.MainWindow");
+
+            // On macOS the menus are in the system menu bar (PLAN.md section 9, question 15), copied from the window's.
+            if (OperatingSystem.IsMacOS())
+            {
+                SystemMenuBar.Show(this, MainMenu);
+            }
+        }
 
         // The parts bound to another view model get it before the window's is set, so their compiled bindings never see
         // the toolbar's (a binding of another type throws).
@@ -442,6 +458,12 @@ public partial class MainWindow : Window
         }
 
         Run(ShowPluginsAsync);
+        if (_commandLineVerb is { } verb)
+        {
+            await RunCommandLineVerbAsync(verb);
+            return;
+        }
+
         await _recent.LoadAsync();
 
         // As upstream's command line: the clone verb or a URL. Upstream shows the dialog alone; here it is over the dashboard.
@@ -485,6 +507,10 @@ public partial class MainWindow : Window
         }
 
         await OpenRepositoryAsync(initial);
+        if (Program.BrowseRequest is { } browse)
+        {
+            await ApplyBrowseArgumentsAsync(browse);
+        }
 
         if (Environment.GetEnvironmentVariable(BenchmarkEnvironmentVariable) is { Length: > 0 } benchmark)
         {
@@ -1004,7 +1030,13 @@ public partial class MainWindow : Window
                 LoadSubmoduleStructure();
                 Toolbar.Refresh(RepositoryPath);
                 UpdateBranchText();
-                await _recent.AddAsync(repositoryPath);
+
+                // Upstream's command line leaves the recent repositories alone (Program.GetWorkingDir).
+                if (_commandLineVerb is null)
+                {
+                    await _recent.AddAsync(repositoryPath);
+                }
+
                 if (_showUntrackedReadFor != repositoryPath)
                 {
                     _showUntrackedReadFor = repositoryPath;
@@ -1012,7 +1044,10 @@ public partial class MainWindow : Window
                 }
 
                 // Upstream's RecentWorkingDir, which the next start can open.
-                _preferences.RecentWorkingDir = repositoryPath;
+                if (_commandLineVerb is null)
+                {
+                    _preferences.RecentWorkingDir = repositoryPath;
+                }
             }
 
             RegisterPlugins();
@@ -1115,42 +1150,50 @@ public partial class MainWindow : Window
 
     // Upstream's toolbar pull runs the default pull action (Settings > General): the pull dialog, a merge or rebase pull, or
     // a fetch of the branch's remote or of all remotes (with prune). The Rebase box is the merge or rebase choice.
-    private void Pull()
+    private void Pull() => Run(() => PullAtOnceAsync(_preferences.DefaultPullAction));
+
+    // The toolbar's Pull for an action (upstream's StartPullDialogAndPullImmediately): none or the default opens the pull
+    // dialog, a fetch or pull runs at once; true when it ran.
+    private async Task<bool> PullAtOnceAsync(GitPullAction action)
     {
-        GitPullAction action = _preferences.DefaultPullAction;
+        if (RepositoryPath is not { } path)
+        {
+            return false;
+        }
+
         if (action is GitPullAction.None or GitPullAction.Default)
         {
-            Run(ShowPullDialogAsync);
-            return;
+            return await ShowPullDialogAsync(this);
         }
 
         if (action is GitPullAction.Fetch or GitPullAction.FetchAll or GitPullAction.FetchPruneAll)
         {
             string remote = action == GitPullAction.Fetch ? TrackingRemote() : "--all";
-            RunOnRepository(async path => await LoadPuttyKeysAsync(path, remote)
-                                          && await WithScriptsAsync(path, ScriptEvent.BeforeFetch,
-                                              ScriptEvent.AfterFetch,
-                                              () => _actions.FetchAsync(path, remote,
-                                                  prune: action == GitPullAction.FetchPruneAll)));
-            return;
+            return await LoadPuttyKeysAsync(path, remote)
+                   && await WithScriptsAsync(path, ScriptEvent.BeforeFetch, ScriptEvent.AfterFetch,
+                       () => _actions.FetchAsync(path, remote, prune: action == GitPullAction.FetchPruneAll));
         }
 
-        RunOnCurrentBranch(async (path, branch) => await LoadPuttyKeysAsync(path, TrackingRemote())
-                                                   && await WithScriptsAsync(path, ScriptEvent.BeforePull,
-                                                       ScriptEvent.AfterPull,
-                                                       () => PullAndUpdateSubmodulesAsync(path,
-                                                           () => QuickPullAsync(path, TrackingRemote(), branch,
-                                                               action == GitPullAction.Rebase),
-                                                           TrackingRemote())));
+        return _repository.CurrentBranch is { Length: > 0 } branch
+               && await LoadPuttyKeysAsync(path, TrackingRemote())
+               && await WithScriptsAsync(path, ScriptEvent.BeforePull, ScriptEvent.AfterPull,
+                   () => PullAndUpdateSubmodulesAsync(path,
+                       () => QuickPullAsync(path, TrackingRemote(), branch, action == GitPullAction.Rebase),
+                       TrackingRemote()));
     }
 
-    private void Push() => RunOnCurrentBranch(async (path, branch) =>
-        await ConfirmPushAsync(TrackingRemote(), branch)
-        && await LoadPuttyKeysAsync(path, TrackingRemote())
-        && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
-            () => PushFlow.PushAsync(ProcessOwner, path,
-                new PushRequest(TrackingRemote(), branch, "", ForcePushOptions.DoNotForce, Track: true),
-                new PushOrigin(branch, branch, _repository.TrackingRemote))));
+    private void Push() => Run(PushAtOnceAsync);
+
+    // The toolbar's Push (upstream's StartPushDialog with pushOnShow): the current branch to its tracked remote, after the
+    // question; true when it was pushed.
+    private async Task<bool> PushAtOnceAsync()
+        => RepositoryPath is { } path && _repository.CurrentBranch is { Length: > 0 } branch
+           && await ConfirmPushAsync(TrackingRemote(), branch)
+           && await LoadPuttyKeysAsync(path, TrackingRemote())
+           && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
+               () => PushFlow.PushAsync(ProcessOwner, path,
+                   new PushRequest(TrackingRemote(), branch, "", ForcePushOptions.DoNotForce, Track: true),
+                   new PushOrigin(branch, branch, _repository.TrackingRemote)));
 
     // Upstream's quick fetch (Fetch in the pull menu), and its fetch-all and prune variants; a prune asks first.
     private void Fetch(string remote = RemoteName, bool prune = false) =>
@@ -1315,25 +1358,28 @@ public partial class MainWindow : Window
 
     // Upstream's Ctrl+Up opens the push dialog; the toolbar's Push and Ctrl+Shift+Up push at once.
     // The grid's "Push branch..." opens it on that local branch (upstream's StartPushDialog with a branch).
-    private async Task ShowPushDialogAsync(string? branch = null)
+    private async Task<bool> ShowPushDialogAsync(string? branch = null)
     {
         if (RepositoryPath is not { } path || !PushButton.IsEnabled)
         {
-            return;
+            return false;
         }
 
         PushWindow window = await NewPushWindowAsync(path, branch);
         PushRequest? request = await window.ShowDialog<PushRequest?>(this);
+        bool pushed = false;
         if (request is not null
             && (window.Dialog.ToUrl || await LoadPuttyKeysAsync(path, request.Remote))
             && await WithScriptsAsync(path, ScriptEvent.BeforePush, ScriptEvent.AfterPush,
                 () => PushFlow.PushAsync(ProcessOwner, path, request,
                     new PushOrigin(window.Dialog.Branch, _repository.CurrentBranch, _repository.TrackingRemote,
                         window.Dialog.ToUrl)))
-            && window.CreatePullRequestAfterPush)
+            && (pushed = true) && window.CreatePullRequestAfterPush)
         {
             CreatePullRequestAfterPush(window.Dialog);
         }
+
+        return pushed;
     }
 
     // As upstream: the repository host's pull request window after the push, else the page of an Azure DevOps remote.
@@ -1382,28 +1428,33 @@ public partial class MainWindow : Window
 
     private async Task ShowPullDialogAsync() => await ShowPullDialogAsync(this);
 
-    private async Task ShowPullDialogAsync(Window owner)
+    // Upstream's StartPullDialog, with the remote, remote branch and action a plugin can choose; true when it pulled.
+    private async Task<bool> ShowPullDialogAsync(Window owner, string? remoteBranch = null, string? remote = null,
+        GitPullAction action = GitPullAction.None)
     {
         if (RepositoryPath is not { } path || !RefreshMenuItem.IsEnabled)
         {
-            return;
+            return false;
         }
 
-        PullRequest? request = await (await NewPullWindowAsync(path)).ShowDialog<PullRequest?>(owner);
+        PullRequest? request =
+            await (await NewPullWindowAsync(path, action, remote, remoteBranch)).ShowDialog<PullRequest?>(owner);
 
         // As upstream's dialog, a fetch with prune chosen there runs without the question the quick fetch and prune asks.
-        if (request is not null && await LoadPuttyKeysAsync(path, request.Remote))
+        if (request is null || !await LoadPuttyKeysAsync(path, request.Remote))
         {
-            // As upstream's pull dialog, "fetch only" runs the fetch scripts and a pull the pull scripts.
-            bool fetchOnly = request.Action == PullAction.FetchOnly;
-            await WithScriptsAsync(path, fetchOnly ? ScriptEvent.BeforeFetch : ScriptEvent.BeforePull,
-                fetchOnly ? ScriptEvent.AfterFetch : ScriptEvent.AfterPull,
-                () => fetchOnly
-                    ? _actions.PullAsync(path, request)
-                    : PullAndUpdateSubmodulesAsync(path,
-                        () => PullAutoStashFlow.PullAsync(_actions, _preferences, path, request, () => owner),
-                        request.Remote));
+            return false;
         }
+
+        // As upstream's pull dialog, "fetch only" runs the fetch scripts and a pull the pull scripts.
+        bool fetchOnly = request.Action == PullAction.FetchOnly;
+        return await WithScriptsAsync(path, fetchOnly ? ScriptEvent.BeforeFetch : ScriptEvent.BeforePull,
+            fetchOnly ? ScriptEvent.AfterFetch : ScriptEvent.AfterPull,
+            () => fetchOnly
+                ? _actions.PullAsync(path, request)
+                : PullAndUpdateSubmodulesAsync(path,
+                    () => PullAutoStashFlow.PullAsync(_actions, _preferences, path, request, () => owner),
+                    request.Remote));
     }
 
     private async Task<Window?> ScreenshotDialogAsync(string? name)
@@ -1479,10 +1530,16 @@ public partial class MainWindow : Window
         };
 
     // Upstream's StartPullDialog: the dialog on the open repository, its default action from Settings > General.
-    private async Task<PullWindow> NewPullWindowAsync(string path)
+    private async Task<PullWindow> NewPullWindowAsync(string path, GitPullAction action = GitPullAction.None,
+        string? remote = null, string? remoteBranch = null)
     {
-        PullDialog dialog = new(_repository.Remotes, _repository.CurrentBranch, GitPullAction.None,
-            _preferences.DefaultPullAction, defaultRemote: null, _repository.TrackingRemote);
+        PullDialog dialog = new(_repository.Remotes, _repository.CurrentBranch, action,
+            _preferences.DefaultPullAction, defaultRemote: remote, _repository.TrackingRemote);
+        if (remoteBranch is not null)
+        {
+            dialog.RemoteBranch = remoteBranch;
+        }
+
         PullWindowGit git = new(
             async branch => await AppServices.GitConfig.GetAsync(ConfigScope.Local, $"branch.{branch}.remote", path) is
                 { Length: > 0 } remote
@@ -1599,6 +1656,10 @@ public partial class MainWindow : Window
         return new StartupSettingsCheck(_preferences, facts.ReadAsync, facts.ReadEditorAsync, AppServices.EditorCommand,
             Environment.SetEnvironmentVariable);
     }
+
+    // Upstream's FileViewer settings button opens the settings dialog on its page, for the viewers of this window and of
+    // the windows it owns.
+    Task ISettingsWindowHost.ShowSettingsAsync(Window owner, string page) => ShowSettingsAsync(owner: owner, page: page);
 
     // As upstream's settings dialog, the plugins hear about the change (PostSettings) whether or not it was saved. A
     // window other than this one can open it over itself on one of upstream's pages (StartSettingsDialog with a page).
@@ -1795,8 +1856,8 @@ public partial class MainWindow : Window
         => NewRebaseWindow(path, onto, interactive, immediately, from).ShowDialog<bool>(this);
 
     private RebaseWindow NewRebaseWindow(string path, string? onto, bool interactive, bool immediately,
-        string from = "")
-        => new(path, _actions, _preferences, from, to: null, onto, interactive, immediately, _ => ShowCommitWindow(),
+        string from = "", string? to = null)
+        => new(path, _actions, _preferences, from, to, onto, interactive, immediately, _ => ShowCommitWindow(),
             owner => _ = NewConflictsWindow(path).ShowDialog(owner))
         {
             RunGit = arguments => RunGitWithOutputAsync(path, arguments),

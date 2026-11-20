@@ -26,4 +26,23 @@ internal sealed class XplatTestUserDataTests
         Environment.GetEnvironmentVariable(Application.UserDataFolderVariable).Should().NotBeNullOrEmpty();
         XplatTestUserData.Contains(Path.Combine(Application.UserAppDataPath, "file")).Should().BeTrue();
     }
+
+    [Test]
+    public void The_default_folder_on_Windows_should_be_the_one_upstreams_settings_come_from()
+    {
+        const string ApplicationData = "/application-data";
+        string folder = Application.DefaultUserAppDataPath(ApplicationData, windows: true);
+
+        // Upstream's AppSettings.ApplicationDataPath, which makes WinForms' folder version independent.
+        string settingsFolder = folder.Replace(Application.ProductVersion, string.Empty)
+            .Replace(AppSettings.ApplicationName, AppSettings.ApplicationId);
+
+        Path.TrimEndingDirectorySeparator(settingsFolder).Should()
+            .Be(Path.Combine(ApplicationData, "GitExtensions", "GitExtensions"));
+    }
+
+    [Test]
+    public void The_default_folder_elsewhere_should_stay_where_the_fork_has_kept_it()
+        => Application.DefaultUserAppDataPath("/application-data", windows: false).Should()
+            .Be(Path.Combine("/application-data", "GitExtensions"));
 }

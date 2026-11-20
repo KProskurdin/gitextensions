@@ -378,7 +378,11 @@ public sealed class GitCommitHistory : ICommitHistory
     // Git's mode of a submodule entry (a commit in the tree).
     private const string SubmoduleMode = "160000";
 
-    private static IReadOnlyList<string> LoadTree(string path, string hash)
+    /// <summary>
+    ///  The paths of a commit's files, read from git each time (upstream's <c>GetFullTree</c> caches its output by the
+    ///  arguments alone, so a second repository would get the first one's files).
+    /// </summary>
+    public static IReadOnlyList<string> LoadTree(string path, string hash)
     {
         ExecutionResult result = CreateModule(path).GitExecutable.Execute(
             new GitArgumentBuilder("ls-tree") { "-r", "--name-only", "-z", hash },

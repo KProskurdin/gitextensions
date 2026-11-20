@@ -333,6 +333,11 @@ public static class Application
 
     public static string ExecutablePath => Environment.ProcessPath ?? string.Empty;
 
+    /// <summary>
+    ///  Upstream's <c>AssemblyCompany</c> (CommonAssemblyInfo.cs), which WinForms puts in <see cref="UserAppDataPath"/>.
+    /// </summary>
+    public static string CompanyName => "Git Extensions";
+
     public static string ProductName => "Git Extensions";
 
     public static string ProductVersion =>
@@ -344,7 +349,7 @@ public static class Application
 
     /// <summary>
     ///  Like WinForms, creates the directory: upstream relies on it existing (e.g. before writing GitExtensions.settings).
-    ///  ApplicationData is ~/.config on Linux, ~/Library/Application Support on macOS.
+    ///  The folder is <see cref="DefaultUserAppDataPath"/> in the user's application data folder.
     ///  <see cref="UserDataFolderVariable"/> replaces the folder, so a test run or a trial run leaves the user's settings alone.
     /// </summary>
     public static string UserAppDataPath
@@ -353,11 +358,24 @@ public static class Application
         {
             string path = Environment.GetEnvironmentVariable(UserDataFolderVariable) is { Length: > 0 } folder
                 ? folder
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitExtensions");
+                : DefaultUserAppDataPath(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    OperatingSystem.IsWindows());
             Directory.CreateDirectory(path);
             return path;
         }
     }
+
+    /// <summary>
+    ///  The folder <see cref="UserAppDataPath"/> names in <paramref name="applicationData"/>. On Windows it is WinForms' own,
+    ///  company, product and version, so upstream's <c>AppSettings</c> turns it into the WinForms app's
+    ///  <c>%APPDATA%\GitExtensions\GitExtensions</c> and both apps share one settings file. Elsewhere it is
+    ///  <c>GitExtensions</c> in ~/.config on Linux and ~/Library/Application Support on macOS, as it has been since the
+    ///  fork's first run there (no upstream app reads those).
+    /// </summary>
+    public static string DefaultUserAppDataPath(string applicationData, bool windows)
+        => windows
+            ? Path.Combine(applicationData, CompanyName, ProductName, ProductVersion)
+            : Path.Combine(applicationData, "GitExtensions");
 
     /// <summary>
     ///  Raised instead of WinForms' thread exception dialog; the host application subscribes.

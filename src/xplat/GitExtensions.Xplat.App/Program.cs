@@ -38,6 +38,18 @@ internal static class Program
     /// </summary>
     public static string? AskPassPrompt { get; private set; }
 
+    /// <summary>
+    ///  Upstream's command line verb other than <c>fileeditor</c> and <c>clone</c>, or a request for its help: the app then
+    ///  shows only that verb's window (<see cref="CommandLineVerbs"/>).
+    /// </summary>
+    public static CommandLineRequest? Verb { get; private set; }
+
+    /// <summary>
+    ///  Upstream's <c>browse</c> or <c>openrepo</c> verb, whose filters and commit the browse window applies once it opened
+    ///  <see cref="InitialRepository"/>.
+    /// </summary>
+    public static CommandLineRequest? BrowseRequest { get; private set; }
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -59,7 +71,18 @@ internal static class Program
         {
             StartsWithClone = CloneArguments.AsksForClone(args);
             CloneUrl = CloneArguments.Url(args);
-            InitialRepository = !StartsWithClone && args.Length > 0 ? args[0] : null;
+            if (!StartsWithClone && CommandLine.Parse(args) is { } request)
+            {
+                if (CommandLineVerbs.OpensBrowseWindow(request, Environment.CurrentDirectory, out string? repository))
+                {
+                    InitialRepository = repository;
+                    BrowseRequest = request;
+                }
+                else
+                {
+                    Verb = request;
+                }
+            }
 
             // Not for the prompt and editor runs above: git started those, and they start nothing themselves.
             LoginShellPath.Apply();

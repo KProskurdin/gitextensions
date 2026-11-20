@@ -205,7 +205,14 @@ internal sealed class PluginHostTests
         window.Show();
         MenuItem item = WaitForPluginItem(window);
         Open(window, _repo.Path);
-        _plugin.OnExecute = args => args.GitUICommands.StartPushDialog(args.OwnerForm, pushOnShow: true);
+
+        // A WinForms form, which the new shell cannot show; every Start...Dialog has its window.
+        _plugin.OnExecute = args =>
+        {
+            args.GitUICommands.ShowModelessForm(args.OwnerForm, requiresValidWorkingDir: false, preEvent: null,
+                postEvent: null, () => new System.Windows.Forms.Form());
+            return false;
+        };
 
         UiClicks.Raise(item, MenuItem.ClickEvent);
 
@@ -267,6 +274,54 @@ internal sealed class PluginHostTests
         selected.ParentIds.Should().BeEmpty();
         selected.ObjectId.ToString().Should().Be(_repo.Run("rev-parse", "HEAD~1").Trim());
         WaitUntil(() => window.SelectedRevisions is [{ Subject: "second" }]);
+    }
+
+    [AvaloniaTest]
+    public void A_plugins_stash_save_runs_the_stash_and_answers_once_it_is_done()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        WaitForPluginItem(window);
+        Open(window, _repo.Path);
+        File.WriteAllText(Path.Combine(_repo.Path, "a.txt"), "changed");
+
+        _plugin.Commands!.StashSave(owner: null, includeUntrackedFiles: false, message: "from a plugin").Should().BeTrue();
+
+        _repo.Run("stash", "list").Should().Contain("from a plugin");
+        File.ReadAllText(Path.Combine(_repo.Path, "a.txt")).Should().NotBe("changed");
+    }
+
+    [AvaloniaTest]
+    public void A_plugins_dialog_answers_with_the_dialog_once_it_has_closed()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        WaitForPluginItem(window);
+        Open(window, _repo.Path);
+
+        // The call waits in a nested frame, as upstream's ShowDialog: the dialog is cancelled from within it.
+        bool opened = false;
+        using IDisposable closer = Window.WindowOpenedEvent.AddClassHandler<CreateTagWindow>((tag, _) =>
+        {
+            opened = true;
+            Dispatcher.UIThread.Post(tag.Close);
+        });
+
+        _plugin.Commands!.StartCreateTagDialog().Should().BeFalse("the dialog was cancelled");
+
+        opened.Should().BeTrue();
+    }
+
+    [AvaloniaTest]
+    public void A_plugins_RunCommand_runs_the_verb_on_the_open_repository()
+    {
+        MainWindow window = NewWindow();
+        window.Show();
+        WaitForPluginItem(window);
+        Open(window, _repo.Path);
+
+        _plugin.Commands!.RunCommand(["gitex", "commit", "--quiet"]).Should().BeTrue("nothing to commit is no failure");
+        _plugin.Commands.RunCommand(["gitex"]).Should().BeFalse("without a verb there is nothing to run");
     }
 
     [AvaloniaTest]

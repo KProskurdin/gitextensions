@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -40,6 +41,43 @@ public static class ModalWindow
 
         Dispatcher.UIThread.PushFrame(frame);
         return window;
+    }
+
+    /// <summary>
+    ///  Runs <paramref name="flow"/> and returns its answer once it has finished, in a nested dispatcher frame as
+    ///  <see cref="Show"/>: upstream's <c>Start...Dialog</c> methods return the answer of the dialog they show. An exception
+    ///  of the flow is thrown here. Called from another thread, it runs on the UI thread and waits for it.
+    /// </summary>
+    public static bool Wait(Func<Task<bool>> flow)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            return Dispatcher.UIThread.Invoke(() => Wait(flow));
+        }
+
+        bool result = false;
+        ExceptionDispatchInfo? error = null;
+        DispatcherFrame frame = new();
+        _ = RunAsync();
+        Dispatcher.UIThread.PushFrame(frame);
+        error?.Throw();
+        return result;
+
+        async Task RunAsync()
+        {
+            try
+            {
+                result = await flow();
+            }
+            catch (Exception ex)
+            {
+                error = ExceptionDispatchInfo.Capture(ex);
+            }
+            finally
+            {
+                frame.Continue = false;
+            }
+        }
     }
 
     /// <summary>

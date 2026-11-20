@@ -213,8 +213,8 @@ toolbar icons with upstream's `ToolTipText`.
   buttons, "Save and rescan" and the instant save notice; the Windows-only rows on Windows. Not ported: "Check settings at
   startup" and the startup check. See the "ChecklistSettingsPage" note in `PORTING-MAP.md`. Checked by screenshot.
   Found then: on Windows the shim's `Application.UserAppDataPath` is `%APPDATA%\GitExtensions`, while WinForms (upstream)
-  uses `%APPDATA%\GitExtensions\GitExtensions`, so the two apps read different `GitExtensions.settings` files there. Not
-  fixed yet.
+  uses `%APPDATA%\GitExtensions\GitExtensions`, so the two apps read different `GitExtensions.settings` files there. Fixed
+  2026-11-20 (item 5 of "Next on the Mac").
 - 2026-10-14, U5 started with the groundwork the dialogs share: upstream's dialog frame (`Border.dialogFooter`: the button
   strip with its colors and line), the group box (`HeaderedContentControl.groupBox`), the help picture (`HelpImageView`,
   upstream's help pictures linked), and `XPLAT_SCREENSHOT_WINDOW=<dialog>` to capture a dialog on the open repository.
@@ -836,7 +836,8 @@ result, and Windows has only the local runs in `SYNC-LOG.md`.
    command line has about 40 verbs (`GitUICommands.RunCommand`), of which the new shell has `fileeditor`, `clone` and a
    repository path, and the plugin API's `Start...Dialog` methods mostly throw `NotSupportedException`. Both need the same
    dispatcher from a verb or call to the shell's windows, each opened on its own as upstream's are. **Decided 2026-11-09: not
-   ported for now**; the work goes on with item 6. Recorded in the GitUICommands (plugin side) and SearchWindow notes of
+   ported for now**; the work goes on with item 6. *Reopened 2026-11-20*: the dispatcher and the first verbs are done (see
+   "Next on the Mac", item 5). Recorded in the GitUICommands (plugin side) and SearchWindow notes of
    `PORTING-MAP.md`.
 6. The larger ones: ~~the theme editor, then the spelling checker with "Mark ill formed lines" and its dictionary setting~~
    done 2026-11-09 on macOS. Upstream has had no theme editor since 2019; its Colors page's "Open theme folder" is ported
@@ -885,21 +886,45 @@ have no upstream form to compare with, so a test or a recorded check is their ev
    "Download Git" (hidden off Windows), the commit window's next file after a stage, the left panel's search and focus
    fixes, and `TestIsolation.cs`, which closes the windows tests leave open (`SYNC-LOG.md`). Compare the suite's time and the
    test host's memory with Windows' 13 minutes and 600 MB.
+   *Done 2026-11-20 on macOS:* core 1441 of 1441; app 819 of 820 in 14.5 minutes, the one failure
+   `ThemedImagesTests`' upstream source check, which looks for `src/app` above the test folder and found none because that
+   run was built outside the repository (it passes from `artifacts/`). After items 2 and 3, from the repository's build:
+   core 1441 of 1441, app 825 of 825 in 15 minutes, the test host at most 836 MB (`SYNC-LOG.md`).
 2. **Fix, portable:** `DiffView.ShowSettings` is static and set by every new browse window, so a viewer's settings item opens
    Settings over the newest window, even a closed one. It belongs to the window that hosts the viewer (MVVM: a command or
-   delegate the owner gives, as `AddedMenuEntries`). Small.
+   delegate the owner gives, as `AddedMenuEntries`). Small. *Done 2026-11-20 on macOS:* the browse window that owns the
+   viewer's window opens them (`ISettingsWindowHost`, `PORTING-MAP.md`, FileViewer).
 3. **Investigate, portable:** a file that is one line of several megabytes holds the viewer for minutes after "Show large
    file" (seen in a headless test; try it in the real app and compare upstream, which shows such a file).
+   *Done 2026-11-20 on macOS:* the minutes were the headless text shaper; with Skia's, as the app has it, a plain 5 MB line
+   takes about a second. Found instead: a line's time grew with the square of its colored parts (a 400 KB minified JSON
+   line, 142 seconds; 6,667 marked occurrences in one line, 215 seconds). Fixed by leaving such lines in their own color
+   past 1,000 parts (`PORTING-MAP.md`, FileViewer). Not yet tried at the screen in the real app.
 4. **At the screen, on the Mac only** (`MACOS.md`): MAC2's smoke items 2 to 9 not done, MAC3 item 5 (real Cmd and Option
    keys), MAC4's application menu, Dock icon under `dotnet run`, Terminal opened by Interactive add, and dark mode and the
    font (items 8 and 9, a decision each); VoiceOver on the tool buttons and the lists' rows.
+   *2026-11-20:* written up as a checklist with a result column, `MACOS.md` section 10, with the long-line viewer check.
 5. **Decisions, from any machine:** merging `upstream/master` (`PLAN.md` 12.1, item 3; `verify-upstream.sh` runs on a Mac);
    the macOS menu bar (question 15, which MAC4 item 3 waits for); turning off upstream's workflows on GitHub and `xplat.yml`
    (question 16, needs the GitHub login); `RunCommand` and the command line verbs (not ported since 2026-11-09, the largest
    piece left); the settings folder on Windows, `%APPDATA%\GitExtensions` against upstream's
    `%APPDATA%\GitExtensions\GitExtensions` (open since 2026-10-14; the fix is portable, its check is Windows only).
+   *2026-11-20, chosen by the user:* the menu bar, `RunCommand` and the settings folder are taken on (below). *Settings
+   folder done on macOS:* on Windows the shim's `Application.UserAppDataPath` is now WinForms' own folder (company,
+   product, version), which upstream's `AppSettings` turns into `%APPDATA%\GitExtensions\GitExtensions`, so both apps share
+   one settings file; macOS and Linux keep their folder. Nothing is moved: settings the shell wrote to
+   `%APPDATA%\GitExtensions` on Windows stay there unread. Tests: `XplatTestUserDataTests` (both OSes' folders).
+   *Menu bar done on macOS:* the browse window's menus are copied into the system menu bar (`SystemMenuBar`, `PORTING-MAP.md`
+   macOS notes); not seen at the screen, and the keys beside the items are left out until tried (`MACOS.md` section 10, row
+   18). *`RunCommand` done on macOS:* every verb of upstream's command line, `browse`'s filters and its usage text (core
+   `CommandLine`, the app's `CommandLineVerbs`, and `MainWindow.CommandLine.cs`, whose browse window runs the verbs that
+   need its flows without showing itself; `PORTING-MAP.md`, Command line, has the differences and the few options left).
+   Left: trying the verbs at the screen (`MACOS.md` section 10, row 19). *Plugins' `RunCommand` and `Start...Dialog` done
+   on macOS* the same day: each runs the browse window's flow and returns its answer, as upstream's (`PORTING-MAP.md`,
+   GitUICommands, plugin side); only `ShowModelessForm` (a WinForms form) cannot show.
 6. **Leave for the next Windows session:** the Shell extension page, the checklist's installer rows, "Show current branch in
-   Visual Studio", the PuTTY windows against a real server and Pageant, Narrator, the settings folder once decided, and
+   Visual Studio", the PuTTY windows against a real server and Pageant, Narrator, the settings folder (the shell and the
+   WinForms app show the same settings, such as automatic continuous scroll), and
    `AdvancedSettingsTests`' Create Branch test, which timed out once in a full run (`SYNC-LOG.md`, 2026-11-20 evening).
 
 **Items that look different on a Mac** are not parity bugs: `MACOS.md`, section 6, lists them. The reverse also holds: a step

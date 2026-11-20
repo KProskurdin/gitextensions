@@ -8,11 +8,6 @@ namespace GitExtensions.Xplat.App;
 // here the pointer that shows the toolbar, the menu's opening and the window the settings open over.
 public partial class DiffView
 {
-    /// <summary>
-    ///  Opens the settings window on a page over a window (the browse window's); null hides the toolbar's settings button.
-    /// </summary>
-    public static Func<Window, string, Task>? ShowSettings { get; set; }
-
     private void WireMenu()
     {
         // Upstream's contextMenu_Opening.
@@ -23,11 +18,14 @@ public partial class DiffView
         };
 
         // As upstream, the toolbar shows while the pointer is on the viewer; the settings button opens the settings over
-        // this viewer's window, when the app can.
+        // this viewer's window, run by the browse window that owns it (upstream's UICommands of the viewer's form). A
+        // window no browse window owns hides the button. Found when the pointer comes, as a window gets its owner when
+        // it is shown, after the viewer is made.
         PointerEntered += (_, _) =>
         {
-            ViewModel.OpenSettings = ShowSettings is { } showSettings
-                ? page => TopLevel.GetTopLevel(this) is Window owner ? showSettings(owner, page) : Task.CompletedTask
+            ViewModel.OpenSettings = TopLevel.GetTopLevel(this) is Window owner
+                                     && ISettingsWindowHost.Of(owner) is { } host
+                ? page => host.ShowSettingsAsync(owner, page)
                 : null;
             ViewModel.IsPointerOver = true;
         };

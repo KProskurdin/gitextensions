@@ -405,7 +405,7 @@ Exit: items decided, done or recorded in `PORTING-MAP.md` as a macOS note, teste
 |---|---|
 | 1. `PATH` | **Done, checked.** `LoginShellPath` reads it with a 3 second limit when no terminal started the app. A `core.fsmonitor` script in a scratch repository recorded what git saw: `/opt/homebrew/bin` and `~/.local/bin` from the user's fish, colons included |
 | 2. Application menu | **Done, not seen.** `Name`, About and Settings (`App.MacOS.cs`) are tested as a menu, but nobody has looked at the real menu bar, or whether macOS adds Hide and Quit as expected |
-| 3. System menu bar | **Waiting for `PLAN.md` section 9, question 15.** Nothing done |
+| 3. System menu bar | **Done 2026-11-20, not seen.** The browse window's menus are copied into the menu bar (`SystemMenuBar`), and the window's own menu hides once macOS shows them: a rendered window of the real app had no menu row. The menu bar itself was not looked at (no screen access here), nor the keys beside the items, which are left out for now. Section 10, row 18 |
 | 4. Dock icon | **Done, not seen.** A bundle has an `.icns` and `CFBundleIconFile` (MAC5). 2026-11-10: a run without a bundle showed the generic icon, as Avalonia's macOS layer ignores `Window.Icon` and has no call for the application's icon; the app now sets `NSApplication.applicationIconImage` from the 512-pixel logo at startup, in every mode (`MacApplicationIcon`, `App.ShowMacOSDockIcon`, from `Program.Main` only, so the headless tests never touch it). Written on Windows: check on a Mac that `dotnet run` and the bundle both show the logo in the Dock |
 | 5. Opening a folder | **Done, checked.** `open -a` with a folder and a new data folder opens that repository, through the activation event. `CFBundleDocumentTypes` lists folders. A real drop on the Dock icon is not tried, and only the first of several items opens. **Closing the last window still quits**, so a Dock click with no windows cannot happen: kept, as a window here is a repository browser. Say if you want the usual macOS behavior |
 | 6. "New instance" | **Done.** In a bundle it runs `open -n`, at all four places (`NewInstanceCommand`). `open -n` itself was run; the menu items were not clicked |
@@ -452,3 +452,49 @@ prompt. Notarization stays with question 8.
 ## 9. After MAC2: which parity work to do where
 
 See the section "Continuing on macOS" in `UI-PARITY.md`.
+
+## 10. At the screen: the checklist
+
+*Written 2026-11-20 on macOS* from what MAC2's smoke list, MAC3 item 5, MAC4 and `UI-PARITY.md` ("Next on the Mac", item 4)
+leave for a person at the Mac. Fill in the Result column (pass, fail with what was seen, or skipped and why), then move the
+results to the phase tables above and to `SYNC-LOG.md`.
+
+**Setup, once.** A scratch data folder so the user's settings stay untouched, and a scratch repository with the files the
+checks need:
+
+```sh
+export DOTNET_ROOT=/opt/homebrew/Cellar/dotnet/10.0.401/libexec   # with Homebrew's dotnet only
+DATA=$(mktemp -d)/data; REPO=$(mktemp -d)/smoke; mkdir -p "$REPO" && cd "$REPO" && git init -q
+printf 'one\ntwo\n' > a.txt; cp ~/projects/gitextensions/setup/assets/Logo/git-extensions-logo-512px.png logo.png
+head -c 2048 /dev/urandom > blob.bin
+python3 -c 'print(",".join("{\"key%d\":[%d,\"value %d\",true,null]}" % (i, i, i) for i in range(150000)))' > minified.json
+git add -A && git commit -qm first && printf 'one\nthree\n' > a.txt
+cd ~/projects/gitextensions
+dotnet build GitExtensions.xplat.slnx -v:q -nologo && bash src/xplat/eng/publish-app.sh osx-arm64
+```
+
+Start from `dotnet run` with `GITEXTENSIONS_XPLAT_USER_DATA="$DATA" dotnet run --project src/xplat/GitExtensions.Xplat.App --
+"$REPO"`, and from the bundle with `open -n -W --env GITEXTENSIONS_XPLAT_USER_DATA="$DATA" <bundle> --args "$REPO"`, where the
+bundle is the `Git Extensions.app` in the zip whose path `publish-app.sh` printed, unzipped (so its path has a space).
+
+| # | Check (source) | How | Result |
+|---|---|---|---|
+| 1 | Diff, image, binary file (MAC2 1) | Commit tab: `a.txt` shows git's colors; Diff tab of `first`: `logo.png` shows as a picture, `blob.bin` as "Binary file" with a hex dump | |
+| 2 | A very long line (UI-PARITY 4, viewer fix of 2026-11-20) | File tree tab, `minified.json` (about 7 MB, one line): "Show large file", then the text shows within a few seconds in one color; scroll right; select `key1` and see marks | |
+| 3 | Restart keeps state (MAC2 2) | Move and resize the window, change one setting, quit, start again from the bundle: the recent list, the window's place and the setting are back, in `$DATA` | |
+| 4 | Commit, amend, interactive rebase from the app's menus (MAC2 3) | Commit `a.txt`, amend it, then on `first` the grid's "Rebase > Selected commit interactively...": the editor windows open and the result is right | |
+| 5 | SSH with a passphrase, HTTPS with `osxkeychain` (MAC2 4) | Push and pull with a remote of each kind: the prompt window asks, a typed passphrase works, the keychain answers HTTPS | |
+| 6 | Terminal, Finder, difftool, user script (MAC2 5) | Open Terminal; "Show in folder" on a file; a difftool (FileMerge) on `a.txt`; a user script that runs `git status` | |
+| 7 | Refresh after an outside commit (MAC2 6) | Commit `a.txt` from Terminal: the grid shows the commit without a manual refresh | |
+| 8 | Themes, plugins, language (MAC2 7) | Settings, Colors: light, dark and a dark upstream theme on the Retina screen; the Plugins menu lists the plugins; a non-English language after a restart | |
+| 9 | Tools through `PATH` from Finder (MAC2 8) | Start the bundle from Finder: a difftool or `git lfs` found only through the login shell's `PATH` runs | |
+| 10 | Paths with a space (MAC2 9) | From the bundle: "New instance" opens a second app with its own Dock icon | |
+| 11 | Real keys (MAC3 5) | Cmd+A in the commit list; Ctrl+click opens the grid's menu; Cmd+Return opens the commit window; Cmd+Option+M merge; Option+Space in the left panel; Option as Alt in a text box types the character; F5 (Fn+F5) refreshes; trackpad scrolling in the grid and diff; menu mnemonics show no stray underscores | |
+| 12 | Application menu (MAC4 2) | The app menu has the name, About, Settings (Cmd+,), Hide and Quit, and each works | |
+| 13 | Dock icon (MAC4 4) | Both `dotnet run` and the bundle show the Git Extensions logo in the Dock, not the generic icon | |
+| 14 | Interactive add (MAC4 7) | On `a.txt`, "Interactive add": Terminal opens with `git add -p`, and the app refreshes after it is closed | |
+| 15 | Dark mode and accents (MAC4 8, a decision) | Switch macOS to dark: does the app follow, and does the title bar match the theme? Decide: follow the system or keep upstream's theme choice | |
+| 16 | Font (MAC4 9, a decision) | Inter against San Francisco in the grid, lists and dialogs: keep Inter, or change | |
+| 17 | VoiceOver (UI-PARITY 4) | Cmd+F5, then move over the toolbar: each tool button says its name; in the commit list and file lists each row reads its text | |
+| 18 | System menu bar (MAC4 3) | With a repository open the bar shows Start, Repository, Navigate, View, Commands, Plugins, Tools and Help (Dashboard instead of the repository's menus on the dashboard); Recent repositories lists them; View's checks match the window; Commands' items are greyed as the toolbar's; a click runs once (View > Show tags toggles once). Decide: show the keys beside the items, after checking that Cmd+Option+T then toggles once, not twice | |
+| 19 | Command line verbs (UI-PARITY "Next on the Mac" 5) | From Terminal in the smoke repository, run the built app with `commit`, `push`, `pull --quiet`, `stash`, `blame a.txt`, `filehistory a.txt`, `searchfile`, `settings` and `help`: only the verb's window shows, centred, with no browse window and no extra Dock or Cmd+Tab entry beyond the app's; closing it ends the app (`echo $?`: 0, or 255 for upstream's -1 after a cancel); `browse . -commit=<hash>` opens the browse window on that commit | |

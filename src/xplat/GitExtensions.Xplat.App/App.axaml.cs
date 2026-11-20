@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GitCommands;
+using GitExtensions.Xplat.Core.Operations;
 using GitExtensions.Xplat.Core.Settings;
 using GitExtensions.Xplat.Ui;
 
@@ -51,7 +52,7 @@ public partial class App : Application
         {
             // The prompt and editor windows decide the exit code git reads, so closing them must not end the app with 0
             // before their own shutdown runs.
-            if (Program.AskPassPrompt is not null || Program.FileToEdit is not null)
+            if (Program.AskPassPrompt is not null || Program.FileToEdit is not null || Program.Verb is not null)
             {
                 desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             }
@@ -77,6 +78,22 @@ public partial class App : Application
                 EditorWindow editor = new(file);
                 editor.Closed += (_, _) => desktop.Shutdown(editor.Accepted ? 0 : -1);
                 desktop.MainWindow = editor;
+            }
+            else if (Program.Verb is { } request && CommandLineVerbs.OpensNoWindow(request))
+            {
+                UiActions.Run(
+                    async () => desktop.Shutdown(await CommandLineVerbs.RunWithoutWindowAsync(request,
+                        Environment.CurrentDirectory, AppServices.GitConfig)),
+                    ex =>
+                    {
+                        Console.Error.WriteLine(ex.Message);
+                        desktop.Shutdown(CommandLine.FailedExitCode);
+                    });
+            }
+            else if (Program.Verb is { } verb)
+            {
+                desktop.MainWindow = CommandLineVerbs.Open(verb, Environment.CurrentDirectory, FindGit(),
+                    desktop.Shutdown);
             }
             else
             {

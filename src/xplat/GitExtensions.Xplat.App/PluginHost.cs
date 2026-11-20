@@ -15,6 +15,7 @@ using GitExtensions.Xplat.Core.Plugins;
 using GitExtensions.Xplat.Core.Repository;
 using GitExtensions.Xplat.Ui;
 using GitExtUtils;
+using GitUI;
 using GitUIPluginInterfaces;
 using Form = System.Windows.Forms.Form;
 using Image = System.Drawing.Image;
@@ -25,8 +26,9 @@ namespace GitExtensions.Xplat.App;
 /// <summary>
 ///  What the plugins see of the app: the new shell's <see cref="IGitUICommands"/> (upstream's <c>GitUICommands</c>) for one
 ///  window. It keeps the current repository's module, raises upstream's events where the shell has the matching action,
-///  and registers the plugins with the repository, as upstream's <c>FormBrowse</c> does. Dialogs the shell does not have
-///  yet throw <see cref="NotSupportedException"/>, which the Plugins menu shows as an error.
+///  and registers the plugins with the repository, as upstream's <c>FormBrowse</c> does. Its <c>Start...Dialog</c> methods run
+///  the browse window's flows (<see cref="IPluginFlows"/>) and return their answer, as upstream's; only a WinForms form
+///  (<c>ShowModelessForm</c>) cannot show, and throws <see cref="NotSupportedException"/>.
 /// </summary>
 internal sealed class PluginHost : IGitUICommands
 {
@@ -306,7 +308,11 @@ internal sealed class PluginHost : IGitUICommands
         => StartCommandLineProcessDialog(owner, AppSettings.GitCommand, arguments);
 
     public IGitUICommands WithGitModule(IGitModule module)
-        => new PluginHost(_owner, _actions, _showSettings, _showCommit, module) { NewCloneWindow = NewCloneWindow };
+        => new PluginHost(_owner, _actions, _showSettings, _showCommit, module)
+        {
+            NewCloneWindow = NewCloneWindow,
+            Flows = Flows,
+        };
 
     public IGitUICommands WithWorkingDirectory(string? workingDirectory)
         => WithGitModule(CreateModule(workingDirectory ?? ""));
@@ -320,7 +326,10 @@ internal sealed class PluginHost : IGitUICommands
 
     public void RemoveCommitTemplate(string key) => CommitTemplates.Unregister(key);
 
-    public bool RunCommand(IReadOnlyList<string> args) => false;
+    // Upstream's RunCommand: args[0] is the program, args[1] the verb, run as from the command line but on this window.
+    public bool RunCommand(IReadOnlyList<string> args)
+        => CommandLine.Parse([.. args.Skip(1)]) is { } request
+           && RunFlow(owner: null, (f, _, _) => f.RunCommandAsync(request));
 
     // Upstream's AddUpstreamRemote: the plugin adds the fork's parent as "upstream", which is then fetched (upstream opens
     // its pull dialog to fetch it at once).
@@ -336,28 +345,46 @@ internal sealed class PluginHost : IGitUICommands
             },
             ex => ShowError(ex.Message)));
 
-    public IGitRemoteCommand CreateRemoteCommand() => throw NotAvailable();
+    public IGitRemoteCommand CreateRemoteCommand()
+        => Flows is not null ? new RemoteCommand(this) : throw NotAvailable();
 
     public void OpenWithDifftool(IWin32Window? owner, IReadOnlyList<GitRevision?> revisions, string fileName,
         string? oldFileName, RevisionDiffKind diffKind, bool isTracked, string? customTool = null)
-        => throw NotAvailable();
+    {
+        // As upstream: the revisions as the diff kind takes them, else the reason in a message.
+        if (!RevisionDiffInfoProvider.TryGet(revisions, diffKind, out string? firstRevision, out string? secondRevision,
+                out string? error))
+        {
+            ShowError(error ?? "");
+            return;
+        }
 
+        Module.OpenWithDifftool(fileName, oldFileName, firstRevision, secondRevision, isTracked: isTracked,
+            customTool: customTool);
+    }
+
+    // A WinForms form cannot show in the new shell (the shim's Form is no window); the plugins built for it show their
+    // windows themselves (PluginDialog).
     public void ShowModelessForm(IWin32Window? owner, bool requiresValidWorkingDir,
         EventHandler<GitUIEventArgs>? preEvent, EventHandler<GitUIPostActionEventArgs>? postEvent,
         Func<Form> provideForm)
         => throw NotAvailable();
 
-    public bool StartAddFilesDialog(IWin32Window? owner, string? addFiles = null) => throw NotAvailable();
+    public bool StartAddFilesDialog(IWin32Window? owner, string? addFiles = null)
+        => RunFlow(owner, (f, o, p) => f.AddFilesAsync(o, p, addFiles));
 
     public bool StartAddToGitIgnoreDialog(IWin32Window? owner, bool localExclude, params string[] filePattern)
-        => throw NotAvailable();
+        => RunFlow(owner, (f, o, p) => f.AddToGitIgnoreAsync(o, p, localExclude, filePattern));
 
-    public bool StartAmendCommitDialog(IWin32Window? owner, GitRevision revision) => throw NotAvailable();
+    public bool StartAmendCommitDialog(IWin32Window? owner, GitRevision revision)
+        => RunFlow(owner, (f, _, p) => f.SpecialCommitAsync(p, CommitKind.Amend, revision.ObjectId));
 
-    public bool StartApplyPatchDialog(IWin32Window? owner, string? patchFile = null) => throw NotAvailable();
+    public bool StartApplyPatchDialog(IWin32Window? owner, string? patchFile = null)
+        => RunFlow(owner, (f, o, p) => f.ApplyPatchAsync(o, p, patchFile));
 
     public bool StartArchiveDialog(IWin32Window? owner = null, GitRevision? revision = null,
-        GitRevision? revision2 = null, string? path = null) => throw NotAvailable();
+        GitRevision? revision2 = null, string? path = null)
+        => RunFlow(owner, (f, o, p) => f.ArchiveAsync(o, p, revision?.Guid ?? "HEAD", revision2?.Guid, path));
 
     /// <summary>
     ///  As upstream: writes <paramref name="batchFile"/> to a temporary file, runs it in the process window and deletes it.
@@ -389,23 +416,36 @@ internal sealed class PluginHost : IGitUICommands
             ex => ShowError(ex.Message));
     }
 
-    public bool StartBrowseDialog(IWin32Window? owner, BrowseArguments? args = null) => throw NotAvailable();
+    public bool StartBrowseDialog(IWin32Window? owner, BrowseArguments? args = null)
+        => RunFlow(owner, (f, _, p) => f.BrowseAsync(p, args?.RevFilter ?? "", args?.PathFilter ?? "",
+            args is { SelectedId.IsZero: false } ? args.SelectedId.ToString() : null));
 
     public bool StartCheckoutBranch(IWin32Window? owner, IReadOnlyList<ObjectId>? containObjectIds)
-        => throw NotAvailable();
+        => RunFlow(owner, (f, o, p) => f.CheckoutBranchAsync(o, p, "", remote: false, containObjectIds));
 
     public bool StartCheckoutBranch(IWin32Window? owner, string branch = "", bool remote = false,
-        IReadOnlyList<ObjectId>? containObjectIds = null) => throw NotAvailable();
+        IReadOnlyList<ObjectId>? containObjectIds = null)
+        => RunFlow(owner, (f, o, p) => f.CheckoutBranchAsync(o, p, branch, remote, containObjectIds));
 
-    public bool StartCheckoutRemoteBranch(IWin32Window? owner, string branch) => throw NotAvailable();
+    public bool StartCheckoutRemoteBranch(IWin32Window? owner, string branch)
+        => RunFlow(owner, (f, _, p) => f.CheckoutRemoteBranchAsync(p, branch));
 
-    public bool StartCheckoutRevisionDialog(IWin32Window? owner, string? revision = null) => throw NotAvailable();
+    public bool StartCheckoutRevisionDialog(IWin32Window? owner, string? revision = null)
+        => RunFlow(owner, (f, _, p) => f.CheckoutRevisionAsync(p, revision));
 
-    public bool StartCherryPickDialog(IWin32Window? owner = null, GitRevision? revision = null) => throw NotAvailable();
+    public bool StartCherryPickDialog(IWin32Window? owner = null, GitRevision? revision = null)
+        => RunFlow(owner, (f, o, p) => f.CherryPickAsync(o, p, [revision?.Guid ?? "HEAD"]));
 
-    public bool StartCherryPickDialog(IWin32Window? owner, IEnumerable<GitRevision> revisions) => throw NotAvailable();
+    public bool StartCherryPickDialog(IWin32Window? owner, IEnumerable<GitRevision> revisions)
+        => RunFlow(owner, (f, o, p) => f.CherryPickAsync(o, p, [.. revisions.Select(revision => revision.Guid)]));
 
-    public bool StartCleanupRepositoryDialog(IWin32Window? owner = null, string? path = null) => throw NotAvailable();
+    public bool StartCleanupRepositoryDialog(IWin32Window? owner = null, string? path = null)
+        => RunFlow(owner, (f, o, p) => f.CleanupAsync(o, path ?? p));
+
+    /// <summary>
+    ///  The browse window's flows behind the <c>Start...Dialog</c> methods; set by the browse window.
+    /// </summary>
+    public IPluginFlows? Flows { get; set; }
 
     /// <summary>
     ///  Makes the browse window's clone window for a URL and who hears of the opened clone; set by the browse window.
@@ -435,12 +475,16 @@ internal sealed class PluginHost : IGitUICommands
             _ = new ForkAndCloneWindow(host, _actions, DefaultCloneDestination(), gitModuleChanged).ShowDialog(
                 OwnerOf(owner)));
 
-    public bool StartCompareRevisionsDialog(IWin32Window? owner = null) => throw NotAvailable();
+    public bool StartCompareRevisionsDialog(IWin32Window? owner = null)
+        => RunFlow(owner, (f, o, p) => f.CompareRevisionsAsync(o, p));
 
     public bool StartCreateBranchDialog(IWin32Window? owner = null, ObjectId objectId = default,
-        string? newBranchNamePrefix = null) => throw NotAvailable();
+        string? newBranchNamePrefix = null)
+        => RunFlow(owner, (f, o, p) =>
+            f.CreateBranchAsync(o, p, objectId.IsZero ? null : objectId.ToString(), newBranchNamePrefix));
 
-    public bool StartCreateBranchDialog(IWin32Window? owner, string? branch) => throw NotAvailable();
+    public bool StartCreateBranchDialog(IWin32Window? owner, string? branch)
+        => RunFlow(owner, (f, o, p) => f.CreateBranchAsync(o, p, branch, namePrefix: null));
 
     /// <summary>
     ///  True when a repository host plugin knows the open repository (upstream's <c>TryGetGitHosterForModule</c>).
@@ -474,130 +518,183 @@ internal sealed class PluginHost : IGitUICommands
         => WrapRepoHostingCall(RepositoryHostTexts.CreatePullRequest, gitHoster, host =>
             new CreatePullRequestWindow(host, Module, chooseRemote).Show(OwnerOf(owner)));
 
-    public bool StartCreateTagDialog(IWin32Window? owner = null, GitRevision? revision = null) => throw NotAvailable();
+    public bool StartCreateTagDialog(IWin32Window? owner = null, GitRevision? revision = null)
+        => RunFlow(owner, (f, o, _) => f.CreateTagAsync(o, revision?.Guid ?? "HEAD"));
 
-    public bool StartDeleteBranchDialog(IWin32Window? owner, IEnumerable<string> branches) => throw NotAvailable();
+    public bool StartDeleteBranchDialog(IWin32Window? owner, IEnumerable<string> branches)
+        => RunFlow(owner, (f, _, p) => f.DeleteBranchesAsync(p, [.. branches]));
 
-    public bool StartDeleteBranchDialog(IWin32Window? owner, string branch) => throw NotAvailable();
+    public bool StartDeleteBranchDialog(IWin32Window? owner, string branch)
+        => RunFlow(owner, (f, _, p) => f.DeleteBranchesAsync(p, [branch]));
 
-    public bool StartDeleteRemoteBranchDialog(IWin32Window? owner, string remoteBranch) => throw NotAvailable();
+    public bool StartDeleteRemoteBranchDialog(IWin32Window? owner, string remoteBranch)
+        => RunFlow(owner, (f, _, p) => f.DeleteRemoteBranchAsync(p, remoteBranch));
 
-    public bool StartDeleteTagDialog(IWin32Window? owner, string? tag) => throw NotAvailable();
+    public bool StartDeleteTagDialog(IWin32Window? owner, string? tag)
+        => RunFlow(owner, (f, _, p) => f.DeleteTagAsync(p, tag));
 
-    public bool StartEditGitAttributesDialog(IWin32Window? owner = null) => throw NotAvailable();
+    public bool StartEditGitAttributesDialog(IWin32Window? owner = null)
+        => RunFlow(owner, (f, _, p) => f.EditRepositoryFileAsync(p, RepositoryTextFiles.GitAttributes));
 
-    public bool StartEditGitIgnoreDialog(IWin32Window? owner, bool localExcludes) => throw NotAvailable();
+    public bool StartEditGitIgnoreDialog(IWin32Window? owner, bool localExcludes)
+        => RunFlow(owner, (f, _, _) => f.EditGitIgnoreAsync(localExcludes));
 
     public bool StartFileEditorDialog(string? filename, bool showWarning = false, int? lineNumber = null)
-        => throw NotAvailable();
+        => filename is not null && RunFlow(owner: null, (f, o, _) => f.EditFileAsync(o, filename, showWarning));
 
     public void StartFileHistoryDialog(IWin32Window? owner, string fileName, GitRevision? revision = null,
-        bool filterByRevision = false, bool showBlame = false) => throw NotAvailable();
+        bool filterByRevision = false, bool showBlame = false)
+        => _ = RunFlow(owner, (f, o, p) => f.ShowFileHistoryAsync(o, p, fileName, revision?.Guid, showBlame));
 
-    public bool StartFixupCommitDialog(IWin32Window? owner, GitRevision revision) => throw NotAvailable();
+    public bool StartFixupCommitDialog(IWin32Window? owner, GitRevision revision)
+        => RunFlow(owner, (f, _, p) => f.SpecialCommitAsync(p, CommitKind.Fixup, revision.ObjectId));
 
-    public bool StartFormCommitDiff(ObjectId objectId) => throw NotAvailable();
+    public bool StartFormCommitDiff(ObjectId objectId)
+        => RunFlow(owner: null, (f, o, p) => f.ShowCommitDiffAsync(o, p, objectId.ToString()));
 
-    public bool StartFormatPatchDialog(IWin32Window? owner = null) => throw NotAvailable();
+    public bool StartFormatPatchDialog(IWin32Window? owner = null)
+        => RunFlow(owner, (f, o, p) => f.FormatPatchAsync(o, p));
 
     public bool StartInitializeDialog(IWin32Window? owner = null, string? dir = null,
-        EventHandler<GitModuleEventArgs>? gitModuleChanged = null) => throw NotAvailable();
+        EventHandler<GitModuleEventArgs>? gitModuleChanged = null)
+        => RunFlow(owner, async (f, o, _) =>
+        {
+            if (await f.InitAsync(o, dir) is not { } folder)
+            {
+                return false;
+            }
 
-    public bool StartInteractiveRebase(IWin32Window? owner, string onto) => throw NotAvailable();
+            gitModuleChanged?.Invoke(this, new GitModuleEventArgs(CreateModule(folder)));
+            return true;
+        });
 
-    public bool StartMailMapDialog(IWin32Window? owner = null) => throw NotAvailable();
+    public bool StartInteractiveRebase(IWin32Window? owner, string onto)
+        => RunFlow(owner, (f, _, p) => f.RebaseAsync(p, "", to: null, onto, interactive: true, immediately: true));
 
-    public bool StartMergeBranchDialog(IWin32Window? owner, string? branch) => throw NotAvailable();
+    public bool StartMailMapDialog(IWin32Window? owner = null)
+        => RunFlow(owner, (f, _, p) => f.EditRepositoryFileAsync(p, RepositoryTextFiles.MailMap));
+
+    public bool StartMergeBranchDialog(IWin32Window? owner, string? branch)
+        => RunFlow(owner, (f, _, p) => f.MergeAsync(p, branch));
 
     public bool StartPullDialog(IWin32Window? owner = null, string? remoteBranch = null, string? remote = null,
-        GitPullAction pullAction = GitPullAction.None) => throw NotAvailable();
+        GitPullAction pullAction = GitPullAction.None)
+        => RunFlow(owner, (f, o, _) => f.PullAsync(o, remoteBranch, remote, pullAction, pullAtOnce: false));
 
     public bool StartPullDialogAndPullImmediately(IWin32Window? owner = null, string? remoteBranch = null,
-        string? remote = null, GitPullAction pullAction = GitPullAction.None) => throw NotAvailable();
+        string? remote = null, GitPullAction pullAction = GitPullAction.None)
+        => RunFlow(owner, (f, o, _) => f.PullAsync(o, remoteBranch, remote, pullAction, pullAtOnce: true));
 
     public bool StartPullDialogAndPullImmediately(out bool pullCompleted, IWin32Window? owner = null,
         string? remoteBranch = null, string? remote = null, GitPullAction pullAction = GitPullAction.None)
-        => throw NotAvailable();
+        => pullCompleted = RunFlow(owner, (f, o, _) => f.PullAsync(o, remoteBranch, remote, pullAction, pullAtOnce: true));
 
     public void StartPullRequestsDialog(IWin32Window? owner, IRepositoryHostPlugin gitHoster)
         => WrapRepoHostingCall(RepositoryHostTexts.ViewPullRequest, gitHoster, host =>
             new ViewPullRequestsWindow(host, Module, _actions).Show(OwnerOf(owner)));
 
-    public bool StartPushDialog(IWin32Window? owner, bool pushOnShow) => throw NotAvailable();
+    public bool StartPushDialog(IWin32Window? owner, bool pushOnShow)
+        => RunFlow(owner, (f, _, _) => f.PushAsync(pushOnShow, branch: null));
 
     public bool StartPushDialog(IWin32Window? owner, bool pushOnShow, bool forceWithLease, out bool pushCompleted,
-        string? branchName = null) => throw NotAvailable();
+        string? branchName = null)
+        => pushCompleted = RunFlow(owner, (f, _, _) => f.PushAsync(pushOnShow, branchName));
 
-    public bool StartRebase(IWin32Window? owner, string onto) => throw NotAvailable();
+    public bool StartRebase(IWin32Window? owner, string onto)
+        => RunFlow(owner, (f, _, p) => f.RebaseAsync(p, "", to: null, onto, interactive: false, immediately: true));
 
     public bool StartRebaseDialog(IWin32Window? owner, string? from, string? to, string? onto, bool interactive = false,
-        bool startRebaseImmediately = true) => throw NotAvailable();
+        bool startRebaseImmediately = true)
+        => RunFlow(owner, (f, _, p) => f.RebaseAsync(p, from ?? "", to, onto, interactive, startRebaseImmediately));
 
-    public bool StartRebaseDialog(IWin32Window? owner, string? onto) => throw NotAvailable();
+    public bool StartRebaseDialog(IWin32Window? owner, string? onto)
+        => RunFlow(owner, (f, _, p) => f.RebaseAsync(p, "", to: null, onto, interactive: false, immediately: false));
 
     public bool StartRebaseDialogWithAdvOptions(IWin32Window? owner, string onto, string from = "")
-        => throw NotAvailable();
+        => RunFlow(owner, (f, _, p) => f.RebaseAsync(p, from, to: null, onto, interactive: false, immediately: false));
 
     public bool StartRemotesDialog(IWin32Window? owner, string? preselectRemote = null, string? preselectLocal = null)
-        => throw NotAvailable();
+        => RunFlow(owner, (f, o, _) => f.RemotesAsync(o, preselectRemote, preselectLocal));
 
-    public bool StartRenameDialog(IWin32Window? owner, string branch) => throw NotAvailable();
+    public bool StartRenameDialog(IWin32Window? owner, string branch)
+        => RunFlow(owner, (f, _, _) => f.RenameBranchAsync(branch));
 
     public bool StartRepoSettingsDialog(IWin32Window? owner) => StartSettingsDialog(owner);
 
     public bool StartResetChangesDialog(IWin32Window? owner, IReadOnlyCollection<GitItemStatus> workTreeFiles,
-        bool onlyWorkTree) => throw NotAvailable();
+        bool onlyWorkTree)
+        => RunFlow(owner, (f, o, p) => f.ResetChangesAsync(o, p, hasExistingFiles: workTreeFiles.Any(file => !file.IsNew),
+            hasNewFiles: workTreeFiles.Any(file => file.IsNew), onlyWorkTree));
 
-    public bool StartResetCurrentBranchDialog(IWin32Window? owner, string branch) => throw NotAvailable();
+    public bool StartResetCurrentBranchDialog(IWin32Window? owner, string branch)
+        => RunFlow(owner, (f, _, p) => f.ResetCurrentBranchAsync(p, branch));
 
     public bool StartResolveConflictsDialog(IWin32Window? owner = null, bool offerCommit = true)
-        => throw NotAvailable();
+        => RunFlow(owner, (f, o, p) => f.ResolveConflictsAsync(o, p));
 
-    public bool StartRevertCommitDialog(IWin32Window? owner, GitRevision revision) => throw NotAvailable();
+    public bool StartRevertCommitDialog(IWin32Window? owner, GitRevision revision)
+        => RunFlow(owner, (f, o, p) => f.RevertCommitAsync(o, p, revision.Guid));
 
-    public bool StartSparseWorkingCopyDialog(IWin32Window? owner) => throw NotAvailable();
+    public bool StartSparseWorkingCopyDialog(IWin32Window? owner)
+        => RunFlow(owner, (f, _, p) => f.SparseWorkingCopyAsync(p));
 
-    public bool StartSquashCommitDialog(IWin32Window? owner, GitRevision revision) => throw NotAvailable();
+    public bool StartSquashCommitDialog(IWin32Window? owner, GitRevision revision)
+        => RunFlow(owner, (f, _, p) => f.SpecialCommitAsync(p, CommitKind.Squash, revision.ObjectId));
 
     public bool StartStashDialog(IWin32Window? owner = null, bool manageStashes = true, string? initialStash = null)
-        => throw NotAvailable();
+        => RunFlow(owner, (f, o, _) => f.StashWindowAsync(o, manageStashes, initialStash));
 
-    public bool StartSubmodulesDialog(IWin32Window? owner) => throw NotAvailable();
+    public bool StartSubmodulesDialog(IWin32Window? owner)
+        => RunFlow(owner, (f, _, p) => f.ManageSubmodulesAsync(p));
 
-    public bool StartSyncSubmodulesDialog(IWin32Window? owner) => throw NotAvailable();
+    public bool StartSyncSubmodulesDialog(IWin32Window? owner)
+        => RunFlow(owner, (_, _, p) => _actions.SyncSubmodulesAsync(p, path: null));
 
-    public bool StartTheContinueRebaseDialog(IWin32Window? owner) => throw NotAvailable();
+    public bool StartTheContinueRebaseDialog(IWin32Window? owner)
+        => RunFlow(owner, (f, _, p) => f.ContinueRebaseAsync(p));
 
     public bool StartUpdateSubmoduleDialog(IWin32Window? owner, string submoduleLocalPath, string submoduleParentPath)
-        => throw NotAvailable();
+        => RunFlow(owner, (f, _, _) => f.UpdateSubmodulesAsync(submoduleParentPath, submoduleLocalPath));
 
     public bool StartUpdateSubmodulesDialog(IWin32Window? owner, string submoduleLocalPath = "")
-        => throw NotAvailable();
+        => RunFlow(owner, (f, _, p) => f.UpdateSubmodulesAsync(p, submoduleLocalPath.Length == 0 ? null : submoduleLocalPath));
 
-    public bool StartVerifyDatabaseDialog(IWin32Window? owner = null) => throw NotAvailable();
+    public bool StartVerifyDatabaseDialog(IWin32Window? owner = null)
+        => RunFlow(owner, (f, _, p) => f.VerifyDatabaseAsync(p));
 
-    public bool StartViewPatchDialog(IWin32Window? owner, string? patchFile = null) => throw NotAvailable();
+    public bool StartViewPatchDialog(IWin32Window? owner, string? patchFile = null)
+        => RunFlow(owner, (f, o, p) => f.ViewPatchAsync(o, p, patchFile));
 
-    public bool StartViewPatchDialog(string patchFile) => throw NotAvailable();
+    public bool StartViewPatchDialog(string patchFile)
+        => RunFlow(owner: null, (f, o, p) => f.ViewPatchAsync(o, p, patchFile));
 
-    public bool StashApply(IWin32Window? owner, string stashName) => throw NotAvailable();
+    public bool StashApply(IWin32Window? owner, string stashName)
+        => RunFlow(owner, (_, _, p) => _actions.ApplyStashAsync(p, stashName));
 
-    public bool StashDrop(IWin32Window? owner, string stashName) => throw NotAvailable();
+    public bool StashDrop(IWin32Window? owner, string stashName)
+        => RunFlow(owner, (_, _, p) => _actions.DropStashAsync(p, stashName));
 
-    public bool StashPop(IWin32Window? owner, string stashName = "") => throw NotAvailable();
+    public bool StashPop(IWin32Window? owner, string stashName = "")
+        => RunFlow(owner, (_, _, p) => _actions.PopStashAsync(p, stashName));
 
     public bool StashSave(IWin32Window? owner, bool includeUntrackedFiles, bool keepIndex = false, string message = "",
-        IReadOnlyList<string>? selectedFiles = null) => throw NotAvailable();
+        IReadOnlyList<string>? selectedFiles = null)
+        => RunFlow(owner, (_, _, p) => _actions.StashAsync(p, message, includeUntrackedFiles, keepIndex, selectedFiles));
 
-    public bool StashStaged(IWin32Window? owner) => throw NotAvailable();
+    public bool StashStaged(IWin32Window? owner)
+        => RunFlow(owner, (_, _, p) => _actions.StashStagedAsync(p));
 
-    public void UpdateSubmodules(IWin32Window? owner) => throw NotAvailable();
+    public void UpdateSubmodules(IWin32Window? owner)
+        => _ = RunFlow(owner, (f, _, p) => f.UpdateSubmodulesAsync(p, submodulePath: null));
 
-    public bool WorktreeCreate(IWin32Window? owner, string mainWorktreePath) => throw NotAvailable();
+    public bool WorktreeCreate(IWin32Window? owner, string mainWorktreePath)
+        => RunFlow(owner, (f, o, p) => f.WorktreeCreateAsync(o, p, mainWorktreePath));
 
-    public bool WorktreeDelete(IWin32Window? owner, string worktreePath) => throw NotAvailable();
+    public bool WorktreeDelete(IWin32Window? owner, string worktreePath)
+        => RunFlow(owner, (f, o, p) => f.WorktreeDeleteAsync(o, p, worktreePath));
 
-    public bool WorktreeSwitch(IWin32Window? owner, string worktreePath) => throw NotAvailable();
+    public bool WorktreeSwitch(IWin32Window? owner, string worktreePath)
+        => RunFlow(owner, (f, o, _) => f.WorktreeSwitchAsync(o, worktreePath));
 
     // Upstream's WrapRepoHostingCall: a host that is not set up yet is run first (the GitHub plugin then opens its settings),
     // and a failure is shown with upstream's text.
@@ -635,6 +732,15 @@ internal sealed class PluginHost : IGitUICommands
 
     private static GitModule CreateModule(string workingDir) => new(_executorProvider, workingDir);
 
+    // Upstream's Start...Dialog methods show their dialog and return its answer once it has closed: the browse window's
+    // flow for it runs on this host's repository in a nested dispatcher frame (ModalWindow.Wait). Without the browse
+    // window's flows there is no such dialog.
+    private bool RunFlow(IWin32Window? owner, Func<IPluginFlows, Window, string, Task<bool>> flow,
+        [CallerMemberName] string member = "")
+        => Flows is { } flows
+            ? ModalWindow.Wait(() => flow(flows, OwnerOf(owner), Module.WorkingDir))
+            : throw NotAvailable(member);
+
     private static NotSupportedException NotAvailable(
         [System.Runtime.CompilerServices.CallerMemberName]
         string member = "")
@@ -655,6 +761,33 @@ internal sealed class PluginHost : IGitUICommands
     }
 
     private void ShowError(string message) => _ = new ErrorWindow(message).ShowDialog(_owner);
+
+    // Upstream's GitRemoteCommand: a git command on a remote, run in the process window after Pageant for the remote's key;
+    // Execute returns when it has finished.
+    private sealed class RemoteCommand(PluginHost host) : IGitRemoteCommand
+    {
+        public event EventHandler<GitRemoteCommandCompletedEventArgs>? Completed;
+
+        public object? OwnerForm { get; set; }
+
+        public string? Remote { get; set; }
+
+        public string? Title { get; set; }
+
+        public string? CommandText { get; set; }
+
+        public bool ErrorOccurred { get; private set; }
+
+        public string? CommandOutput { get; private set; }
+
+        public void Execute()
+        {
+            ErrorOccurred = !host.RunFlow(OwnerForm as IWin32Window,
+                (flows, _, path) => flows.RunRemoteGitAsync(path, Remote, CommandText ?? ""));
+            CommandOutput = string.Join(Environment.NewLine, host._actions.OutputLines);
+            Completed?.Invoke(this, new GitRemoteCommandCompletedEventArgs(this, ErrorOccurred, handled: false));
+        }
+    }
 }
 
 /// <summary>

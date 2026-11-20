@@ -20,6 +20,12 @@ public sealed class DiffTextView : UserControl
     private const double NumberColumnWidth = 44;
     private const double NumberOpacity = 0.55;
 
+    // AvaloniaEdit splits a line's elements for each part it colors and walks them to find each part again, so a line's time
+    // grows with the square of its parts: a minified JSON file of one 400 KB line held the viewer for over two minutes, and
+    // marking 6,667 occurrences in a 20 KB line for over three. Past this many parts a line keeps its own color, as editors
+    // stop coloring very long lines (VS Code's editor.maxTokenizationLineLength); upstream's editor colors them all.
+    private const int MaxColoredPartsPerLine = 1000;
+
     private IReadOnlyList<DiffLineItem> _items = [];
     private IReadOnlyList<(int Offset, int Length)> _occurrences = [];
 
@@ -361,17 +367,58 @@ public sealed class DiffTextView : UserControl
 
             System.Drawing.Color color = DiffTextView.OccurrenceMarkColors().Background;
             IBrush brush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
-            int first = textView.VisualLines[0].FirstDocumentLine.Offset;
-            int last = textView.VisualLines[^1].LastDocumentLine.EndOffset;
-            foreach ((int offset, int length) in owner._occurrences.Where(found => found.Offset <= last
-                                                                                  && found.Offset + found.Length >= first))
+
+            // Only the occurrences in the columns shown: each one measures its line, and a long line can hold thousands. They
+            // are in order and of one length (the selected text's), and one across a line break is drawn once.
+            IReadOnlyList<(int Offset, int Length)> occurrences = owner._occurrences;
+            int length = occurrences[0].Length;
+            SortedSet<int> shown = [];
+            foreach (VisualLine line in textView.VisualLines)
             {
+                int first = OffsetAt(line, textView.HorizontalOffset);
+                int last = OffsetAt(line, textView.HorizontalOffset + textView.Bounds.Width);
+                for (int index = FirstEndingAtOrAfter(occurrences, first, length);
+                     index < occurrences.Count && occurrences[index].Offset <= last; index++)
+                {
+                    shown.Add(index);
+                }
+            }
+
+            foreach (int index in shown)
+            {
+                (int offset, int _) = occurrences[index];
                 foreach (Rect rect in BackgroundGeometryBuilder.GetRectsForSegment(textView,
                              new TextSegment { StartOffset = offset, Length = length }))
                 {
                     drawingContext.FillRectangle(brush, rect);
                 }
             }
+
+            return;
+
+            static int FirstEndingAtOrAfter(IReadOnlyList<(int Offset, int Length)> occurrences, int offset, int length)
+            {
+                int low = 0;
+                int high = occurrences.Count;
+                while (low < high)
+                {
+                    int middle = (low + high) / 2;
+                    if (occurrences[middle].Offset + length < offset)
+                    {
+                        low = middle + 1;
+                    }
+                    else
+                    {
+                        high = middle;
+                    }
+                }
+
+                return low;
+            }
+
+            static int OffsetAt(VisualLine line, double x)
+                => line.FirstDocumentLine.Offset
+                   + line.GetRelativeOffset(line.GetVisualColumnFloor(new Point(x, line.VisualTop)));
         }
     }
 
@@ -422,16 +469,28 @@ public sealed class DiffTextView : UserControl
                 return;
             }
 
-            System.Drawing.Color color = DiffTextView.OccurrenceMarkColors().Text;
-            IBrush brush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
+            List<(int Start, int End)> parts = [];
             foreach ((int offset, int length) in owner._occurrences)
             {
                 int start = Math.Max(offset, line.Offset);
                 int end = Math.Min(offset + length, line.EndOffset);
                 if (end > start)
                 {
-                    ChangeLinePart(start, end, element => element.TextRunProperties.SetForegroundBrush(brush));
+                    parts.Add((start, end));
                 }
+            }
+
+            // The marks behind them still show where they are.
+            if (parts.Count > MaxColoredPartsPerLine)
+            {
+                return;
+            }
+
+            System.Drawing.Color color = DiffTextView.OccurrenceMarkColors().Text;
+            IBrush brush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
+            foreach ((int start, int end) in parts)
+            {
+                ChangeLinePart(start, end, element => element.TextRunProperties.SetForegroundBrush(brush));
             }
         }
     }
@@ -446,7 +505,7 @@ public sealed class DiffTextView : UserControl
                 return;
             }
 
-            if (item.Runs is not { } runs)
+            if (item.Runs is not { Count: <= MaxColoredPartsPerLine } runs)
             {
                 ChangeLinePart(line.Offset, line.EndOffset,
                     element => element.TextRunProperties.SetForegroundBrush(item.Foreground));

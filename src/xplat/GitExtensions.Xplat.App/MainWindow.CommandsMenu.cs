@@ -65,10 +65,14 @@ public partial class MainWindow
         }
 
         string? diffRevision = selected.Count == 2 ? selected[1].Hash : null;
-        Run(() => new ArchiveWindow(path, row.Hash, diffRevision, path: null, _preferences,
-                arguments => _actions.RunProgramAsync("git archive", AppSettings.GitCommand, arguments, path))
-            .ShowDialog(this));
+        Run(() => ArchiveAsync(this, path, row.Hash, diffRevision, filePath: null));
     }
+
+    // Upstream's StartArchiveDialog: a commit, the one its changed files are taken against, and a path to archive.
+    private Task ArchiveAsync(Window owner, string path, string revision, string? diffRevision, string? filePath)
+        => new ArchiveWindow(path, revision, diffRevision, filePath, _preferences,
+                arguments => _actions.RunProgramAsync("git archive", AppSettings.GitCommand, arguments, path))
+            .ShowDialog(owner);
 
     // Upstream's CherryPickCommitToolStripMenuItemClick and StartCherryPickDialog(revisions): a cherry pick window for each
     // selected commit, the lowest in the grid first; the options carry over (they are saved on each pick), and the first
@@ -89,19 +93,23 @@ public partial class MainWindow
             return;
         }
 
-        Run(async () =>
+        Run(() => CherryPickRevisionsAsync(this, path, [.. rows.Select(row => row.Hash)]));
+    }
+
+    // Upstream's StartCherryPickDialog(revisions); true when every commit was picked.
+    private async Task<bool> CherryPickRevisionsAsync(Window owner, string path, IReadOnlyList<string> revisions)
+    {
+        foreach (string revision in revisions)
         {
-            foreach (CommitRow row in rows)
+            if (!await new CherryPickWindow(path, revision, _preferences,
+                        (window, commit, arguments) => CherryPickAsync(window, path, commit, arguments))
+                    .ShowDialog<bool>(owner))
             {
-                bool picked = await new CherryPickWindow(path, row.Hash, _preferences,
-                        (owner, commit, arguments) => CherryPickAsync(owner, path, commit, arguments))
-                    .ShowDialog<bool>(this);
-                if (!picked)
-                {
-                    return;
-                }
+                return false;
             }
-        });
+        }
+
+        return true;
     }
 
     // Upstream's btnPick_Click: the command, then MergeConflictHandler.HandleMergeConflicts, which offers the
@@ -122,14 +130,18 @@ public partial class MainWindow
             return;
         }
 
-        Run(() => new RevertCommitWindow(path, row.Hash, async (owner, arguments, _) =>
+        Run(() => RevertCommitAsync(this, path, row.Hash));
+    }
+
+    // Upstream's StartRevertCommitDialog for a commit.
+    private Task RevertCommitAsync(Window owner, string path, string revision)
+        => new RevertCommitWindow(path, revision, async (window, arguments, _) =>
             {
                 // As upstream's Revert_Click: the result is not checked, a failure is most likely a conflict.
                 await RunGitWithOutputAsync(path, arguments.ToString());
-                await OfferToResolveConflictsAsync(owner, path);
+                await OfferToResolveConflictsAsync(window, path);
             })
-            .ShowDialog(this));
-    }
+            .ShowDialog(owner);
 
     // Upstream's MergeConflictHandler.HandleMergeConflicts: when the command stopped on conflicts, the question, then the
     // conflicts window.

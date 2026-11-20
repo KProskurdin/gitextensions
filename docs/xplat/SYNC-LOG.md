@@ -228,3 +228,57 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   (several megabytes) holds the viewer for minutes after "Show large file".
 - Core 1435 of 1435 in the full run. Shadow projects passed but for the known failure. `verify-upstream.sh` was not run:
   no upstream file changed. Linux and macOS were not run.
+
+### 2026-11-20, late: the macOS check of the Windows work, and two viewer fixes, no merge
+
+- On macOS (MacBook Air, Apple Silicon, macOS 27.2, Apple git 2.54, .NET SDK 10.0.401), from `4587038c7` unchanged: the
+  whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1441 of 1441; app 819 of 820 in 14 minutes 34 seconds. The
+  failure was `ThemedImagesTests.The_adapted_pictures_are_those_upstream_adapts`, because that run was built into a folder
+  outside the repository and the test looks for `src/app` above its own folder; it passes from `artifacts/`.
+- Fixed (`UI-PARITY.md`, "Next on the Mac", items 2 and 3; `PORTING-MAP.md`, FileViewer): the viewer's settings button
+  used a static every new browse window set, and is now opened by the browse window that owns the viewer's window; and a
+  line with many colored parts (syntax runs or find's marks) took time growing with their square, so past 1,000 parts a
+  line keeps its own color. The slowness of a one-line 5 MB file in headless tests was Avalonia's headless text shaper:
+  with Skia's shaping, as the app has it, such a plain line takes about a second. New tests: `DiffViewSettingsTests` (3)
+  and `DiffTextViewLongLineTests` (2), each failing on the code before its fix.
+- On macOS after the fixes, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings;
+  core 1441 of 1441; app 825 of 825 in 15 minutes 4 seconds (`caffeinate -dis`, no sleep in `pmset -g log` during the
+  run), the test host's resident memory at most 836 MB (Windows: 13 minutes, about 600 MB). No upstream file changed;
+  seam count unchanged. Not tried at the screen in the real app. Windows and Linux were not run.
+- Shadow projects on macOS: 12 of 12 pass (`GitCommands.Tests` 3381 passed, 149 skipped of 3530).
+- `verify-upstream.sh` on macOS against `upstream/master` `17213fe3f` (73 commits past the fork's base `0174ba1cc`) first
+  failed: 4 tests in `GitCommands.Tests`, all new with upstream's `645715232` (`fix(worktree): remove using git`,
+  `TryRemoveWorktree`). Three pass Windows paths (`C:\repos\...`, `\\wsl$\...`); one makes a folder undeletable by
+  holding a file open with `FileShare.None`, which macOS and Linux do not prevent, so the deletion succeeds and the code
+  goes on to `worktree prune`. Not a broken seam. Both methods are now in `XplatPlatformSkips.cs` (Windows path input;
+  Windows file lock). Their POSIX counterparts cannot compile in the fork before the merge brings `TryRemoveWorktree`,
+  so they are for the merge (`PLAN.md` 12.1). After: `verify-upstream.sh` passes, 12 of 12 (`GitCommands.Tests` 3419
+  passed, 174 skipped of 3593), and the fork's `GitCommands.Tests` still 3381 passed, 149 skipped.
+
+### 2026-11-20, night: the settings folder, the macOS menu bar, the command line verbs, no merge
+
+- On macOS, chosen by the user from `UI-PARITY.md` "Next on the Mac" item 5: on Windows the shim's `UserAppDataPath` is
+  WinForms' folder, so the shell and the WinForms app share `%APPDATA%\GitExtensions\GitExtensions\GitExtensions.settings`
+  (macOS and Linux keep theirs; nothing is moved); the browse window's menus are in the macOS menu bar (`SystemMenuBar`,
+  `PLAN.md` question 15); upstream's command line is ported, every verb and `browse`'s filters (`PORTING-MAP.md`, Command
+  line). `MACOS.md` section 10 is a new checklist for the checks that need a person at the Mac (rows 1 to 19).
+- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings (the one SA1515 of the
+  run below fixed after it); core 1461 of 1461; app 865 of 865 in 17 minutes 54 seconds, the test host at most 827 MB; the
+  shadow projects 12 of 12; `verify-upstream.sh` passes against `17213fe3f`. No sleep during the runs. No upstream file
+  changed; seam count unchanged.
+- Not tried at the screen: the menu bar itself (a rendered window of the real app had no menu row, so macOS took the menus)
+  and the verbs' windows. In the real app `commit --quiet` in a clean repository exited 0 after 2 seconds with no window, and
+  `about` and `stash` opened and stayed open. The settings folder's check is Windows only. Windows and Linux were not run.
+
+### 2026-11-20, late night: the plugins' RunCommand and Start...Dialog methods, no merge
+
+- On macOS: every `IGitUICommands` method that threw now runs the browse window's flow and returns its answer, as
+  upstream's, waiting in a nested dispatcher frame (`ModalWindow.Wait`); `RunCommand` runs a command line verb on the open
+  repository. Only `ShowModelessForm` (a WinForms form) still throws. `PORTING-MAP.md`, GitUICommands (plugin side), now
+  `ported`. Small changes to the browse window's flows, the menus unchanged: the quick pull and push and the pull and push
+  dialogs answer whether they ran, the pull dialog takes a remote, branch and action, and cherry pick, revert, archive and the
+  special commits have variants taking the revision.
+- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings; core 1461 of 1461; app
+  868 of 868 in 13 minutes 22 seconds, the test host at most 862 MB; the shadow projects 12 of 12; `verify-upstream.sh`
+  passes against `17213fe3f`. No sleep during the runs. No upstream file changed; seam count unchanged. Not tried with a
+  third-party plugin or at the screen. Windows and Linux were not run.

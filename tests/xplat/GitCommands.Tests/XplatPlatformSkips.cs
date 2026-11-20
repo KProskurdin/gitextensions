@@ -14,6 +14,7 @@ public sealed class XplatSkipOnNonWindowsAttribute : Attribute, ITestAction
     private const string WindowsPathInput = "Windows path syntax as input (drive letters, backslashes, UNC); '\\' is an ordinary filename character on this OS";
     private const string WindowsOnlyFeature = "Windows-only feature (WSL, Cygwin, cmd.exe batch limits, CreateProcess errors)";
     private const string PlatformNativeExpectation = "Expects Windows line endings or Windows path separators; Linux behavior is covered in XplatLinuxExpectations";
+    private const string WindowsFileLock = "Locks a file (FileShare.None) to make deleting its folder fail; macOS and Linux delete an open file, so the deletion succeeds";
     private const string WindowsProgram = "Starts or looks for a Windows program (ping.exe, cmd.exe, notepad.exe), which a WSL session finds through its Windows PATH but macOS and plain Linux do not; POSIX programs are used in XplatLinuxExecutableTests and XplatLinuxDiffMergeToolConfigurationTests";
 
     // Method-level so passing cases of the same method stay excluded too. Each entry needs a per-test decision before
@@ -81,6 +82,10 @@ public sealed class XplatSkipOnNonWindowsAttribute : Attribute, ITestAction
         ("GitCommandsTests_Git.CommandsTests.ApplyMailboxPatchCmd", WindowsPathInput),
         ("GitCommandsTests_Git.CommandsTests.MergeBranchCmd", WindowsPathInput),
         ("GitCommandsTests_Git.CommandsTests.PushTagCmd", WindowsPathInput),
+
+        // Upstream since 645715232, not yet merged into the fork (2026-11-20): POSIX counterparts come with the merge.
+        ("GitCommandsTests_Git.CommandsTests.TryRemoveWorktree_should_let_git_remove_the_worktree", WindowsPathInput),
+        ("GitCommandsTests_Git.CommandsTests.TryRemoveWorktree_should_report_both_errors_if_the_directory_cannot_be_deleted_either", WindowsFileLock),
     ];
 
     public ActionTargets Targets => ActionTargets.Test;

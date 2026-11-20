@@ -98,11 +98,21 @@ public partial class MainWindow
             return false;
         }
 
-        Run(async () =>
+        Run(() => StartSpecialCommitAsync(path, kind, id, row.Subject));
+        return true;
+    }
+
+    // Upstream's StartFixupCommitDialog, StartSquashCommitDialog and StartAmendCommitDialog: the commit window making that
+    // commit for a commit; false when no commit window could open.
+    private async Task<bool> StartSpecialCommitAsync(string path, CommitKind kind, ObjectId id, string subject)
+    {
+        GitRevision? revision = await Task.Run(() => GitModules.Open(path).GetRevision(id, shortFormat: false));
+        if (OpenCommitWindow() is not { } window)
         {
-            GitRevision? revision = await Task.Run(() => GitModules.Open(path).GetRevision(id, shortFormat: false));
-            OpenCommitWindow()?.StartSpecialCommit(kind, revision?.Subject ?? row.Subject, revision?.Body ?? row.Subject);
-        });
+            return false;
+        }
+
+        window.StartSpecialCommit(kind, revision?.Subject ?? subject, revision?.Body ?? subject);
         return true;
     }
 

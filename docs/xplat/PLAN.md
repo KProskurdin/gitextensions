@@ -951,6 +951,7 @@ These change the plan. Each has a recommendation, but the choice is the user's.
     be taken before leaving Windows, or later on a Windows machine or VM.
 15. **macOS menu bar.** In the window, as on the other OSes, or in the system menu bar? *Recommendation:* the system menu
     bar, generated from the window's menu so there is one definition (`MACOS.md`, MAC4). Not needed before MAC2.
+    *Decided 2026-11-20 by the user, as recommended, and done on macOS* (`SystemMenuBar`, `PORTING-MAP.md` macOS notes).
 16. **CI on or off.** *Found 2026-11-13:* `fc4d4ba5d` (2026-11-08) commented out every workflow, so the fork has had no CI since
     its first run, and Windows and Linux are checked only when someone runs them locally. The commit also edits 13 upstream
     files (section 5, "Files outside the fork folders"). The reason was not recorded. *Recommendation:* restore those 13 files
