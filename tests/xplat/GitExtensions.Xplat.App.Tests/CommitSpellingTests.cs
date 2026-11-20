@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitCommands;
 using GitExtensions.Xplat.Core.Spelling;
 using NUnit.Framework;
@@ -126,6 +127,7 @@ internal sealed class CommitSpellingTests
         menu.ShowAt(message);
         Dispatcher.UIThread.RunJobs();
         List<object?> items = [.. menu.Items];
+        items.OfType<Control>().Should().OnlyContain(item => item.IsAttachedToVisualTree(), "the open menu shows its items");
         menu.Hide();
         return items;
     }

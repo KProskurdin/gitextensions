@@ -547,11 +547,12 @@ public partial class CommitWindow : Window
         _formatting = false;
     }
 
-    // Upstream's message box menu, made each time it opens (see FillMessageMenu).
+    // Upstream's message box menu, made each time it opens (see FillMessageMenu), before the flyout starts to open: items
+    // set in Opening are not shown (PopulatingMenuFlyout), which left a thin empty strip under the pointer.
     private void AddMessageMenu()
     {
-        MenuFlyout menu = new();
-        menu.Opening += (_, _) => FillMessageMenu(menu);
+        PopulatingMenuFlyout menu = new();
+        menu.Populating += (_, _) => FillMessageMenu(menu);
         CommitMessageBox.ContextFlyout = menu;
         InitializeSpelling();
     }
