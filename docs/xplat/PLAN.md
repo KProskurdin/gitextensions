@@ -139,14 +139,31 @@ by an additive file.
 Rule: a new seam needs a line in this table, a reason, and a note on whether it is an upstream
 candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on Linux too.
 
+*Status 2026-11-20 (checked on macOS against `upstream/master` `c584b9740`, 2026-11-06):* the seams patch 4 upstream files
+with 11 `XplatPatch` items (S1 4 and S2 1 in `AppSettings.cs`, S4 3 in `PathEqualityComparer.cs`, S3 1 in `DebugHelpers.cs`,
+S8 2 anchor-only in `ManagedExtensibility.cs`), and every anchor is still found there. Of the 4 files only `AppSettings.cs`
+changed upstream since the fork base `0174ba1cc` (159 lines, none of them an anchor), so S1 and S2 are the seams most likely to
+need work after a merge. Patches never cause a git conflict; a moved anchor fails the build instead.
+
+How to have fewer, in order of effect:
+
+1. Offer the bug fixes upstream: S4, S2, S3 and S8, and the `Lazy` defect below. If they are taken, 7 of the 11 items and
+   `GitOutputEncodingWarmUp` go, leaving S1.
+2. S1 stays as it is unless upstream takes a settings store. Considered and not done: a fork-side `GitCommands.Registry` and
+   `GitCommands.RegistryKey`, which C# would pick over `Microsoft.Win32`'s for upstream's `GitCommands` code and so remove the
+   4 items. It would also capture `DiffMergeTools/VsDiffMerge.cs` (`Registry.LocalMachine`), and nothing in the code would
+   show the substitution, while today a moved anchor fails the build and names the file.
+3. S5 and S6 are additive files and cannot conflict; nothing to gain.
+
 ### Files outside the fork folders
 
 Not seams, as the build does not depend on them, but each is a change at an upstream path and can conflict with an upstream
-merge. Listed 2026-11-13, when a review found them; nothing listed them before.
+merge. Listed 2026-11-13, when a review found them; nothing listed them before. On 2026-11-20 the 13 upstream workflows were
+restored, so `.gitignore` and `CLAUDE.md` are the only changes left at upstream paths.
 
 | File | Change | Merge risk | Recommendation |
 |---|---|---|---|
-| `.github/workflows/*.yml`, the 13 upstream workflows | Every line commented out (`fc4d4ba5d`, 2026-11-08, "disabled all actions") | High: any upstream change to a workflow conflicts, and upstream edits them often (pinned action versions) | Restore upstream's content and turn workflows off on GitHub instead: `gh workflow disable "<name>"`, or Settings, Actions. That state lives on GitHub and survives merges. It is also the only way that works for scheduled workflows: GitHub runs those from the default branch, `master`, which this commit did not change, so `pr-check-stale` and the labelers were not stopped by it. Upstream's `app-build` runs only on `master`, `release/**` and pull requests, so on `feature/**` the edit stopped nothing but `xplat.yml`. Question 16 |
+| `.github/workflows/*.yml`, the 13 upstream workflows | Every line commented out (`fc4d4ba5d`, 2026-11-08, "disabled all actions"). *Restored 2026-11-20* in the working tree to the fork base's content (`git show 0174ba1cc:<file>`, no diff left against it), so the next merge takes upstream's changes cleanly; one was already waiting, as upstream changed `app-build.yml`'s `concurrency` group after the fork base. Left for the user: commit, and turn the workflows off on GitHub (below) | High while edited: any upstream change to a workflow conflicts, and upstream edits them often (pinned action versions). None once restored | Restore upstream's content and turn workflows off on GitHub instead: `gh workflow disable "<name>"`, or Settings, Actions. That state lives on GitHub and survives merges. It is also the only way that works for scheduled workflows: GitHub runs those from the default branch, `master`, which this commit did not change, so `pr-check-stale` and the labelers were not stopped by it. Upstream's `app-build` runs only on `master`, `release/**` and pull requests, so on `feature/**` the edit stopped nothing but `xplat.yml`. Question 16 |
 | `.github/workflows/xplat.yml` | Fork-owned, added by the fork; commented out by the same commit | None | Turn it back on; question 16 |
 | `.gitignore` | One line appended, `/.claude` (`735c6ae4d`, 2026-10-17) | Low: only an upstream change at the file's end conflicts | Keep and accept, or move the line to each clone's `.git/info/exclude`. User's choice |
 | `CLAUDE.md` | Added at the root by the fork | Add/add conflict if upstream ever adds one (upstream has none on 2026-10-09) | Keep; on such a conflict, merge the fork's rules into upstream's file |
@@ -941,6 +958,10 @@ These change the plan. Each has a recommendation, but the choice is the user's.
     ones that the edit did not reach. Turn `xplat.yml` back on. If run time or notification noise is the reason, keep
     `workflow_dispatch` and push to `feature/**`, and drop the nightly `schedule` until question 13 is settled. If CI stays off,
     MAC1's exit changes to "Windows and Linux suites run by hand before each push", and every status report says which OS ran.
+    *2026-11-20:* the 13 upstream files are restored (section 5). None of them runs on a push to `feature/**`: they run on a
+    push to `master`, `release` or `experimental/**`, on pull request and issue events, on a schedule (from `master`) or by
+    hand. Still open: turning them off on GitHub (`gh workflow disable "<name>"` for each, or Settings, Actions; it needs the
+    user's GitHub login), and whether `xplat.yml`, still commented out, is turned back on.
 17. **The base of the view models.** *Decided 2026-11-13 (the user):* CommunityToolkit.Mvvm, the default of Avalonia's
     documentation and templates: source-generated properties (`[ObservableProperty]`) and commands (`[RelayCommand]`, with
     `CanExecute`). The core's own `ObservableObject` was replaced by the toolkit's the same day (16 types; its
@@ -1017,10 +1038,12 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
      model: `master` mirrors `upstream/master` and is moved by the user only (fast-forward);
      `xplat/main` is the fork's integration branch; feature work branches from `xplat/main`. The
      sync merges `master` into `xplat/main`. Automation does not create, move or commit branches.
-  5. Run the macOS test suites locally, and confirm the Windows and Linux ones in CI.
-  6. For each upstream commit that touched a ported form, update `PORTING-MAP.md`: port it, or
+  5. If the merge added an upstream workflow, turn it off on GitHub (`gh workflow disable "<name>"`); a new workflow
+     starts enabled, and the fork's workflow files stay as upstream has them (section 5).
+  6. Run the macOS test suites locally, and confirm the Windows and Linux ones in CI.
+  7. For each upstream commit that touched a ported form, update `PORTING-MAP.md`: port it, or
      record that it was deliberately skipped, with the reason.
-  7. Append a line to `SYNC-LOG.md`: date, upstream commit, number of commits, seam status.
+  8. Append a line to `SYNC-LOG.md`: date, upstream commit, number of commits, seam status.
 - **Catch-up:** if the fork has been out of sync for a long time, catch up in batches of about
   200 upstream commits, verifying after each batch, rather than one large merge.
 
