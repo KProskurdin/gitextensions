@@ -2,6 +2,7 @@ using System.Diagnostics;
 using GitCommands;
 using GitExtensions.Extensibility;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 
 namespace GitExtensions.Xplat.Core.Settings;
 
@@ -121,7 +122,7 @@ public static class GitConfigChoices
     /// </summary>
     public static IReadOnlyList<string> Editors()
     {
-        string app = GitEditorCommand.Build(Environment.ProcessPath ?? "GitExtensions",
+        string app = GitEditorCommand.Build(AppExecutable.Current ?? "GitExtensions",
             System.Reflection.Assembly.GetEntryAssembly()?.Location);
         if (OperatingSystem.IsWindows())
         {

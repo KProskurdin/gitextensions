@@ -217,9 +217,11 @@ Exit: installable builds for Windows (existing installer), Linux (AppImage, and 
 - macOS: code signing and notarization need an Apple developer account (question 8).
 - Shell extension and ConEmu terminal are Windows-only and stay out of the Linux/macOS builds.
 
-Done: `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it per OS: a zip for Windows, a
-tarball with a `.desktop` entry and icon for Linux, and a `Git Extensions.app` bundle (`.icns`, ad-hoc signed) as a zip and a
-`.dmg` for macOS. What is left is section 12.3.
+Done: `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it per OS: a zip for Windows; for
+Linux a tarball with a `.desktop` entry and icon, an AppImage (`appimagetool`) and a `.deb` (`dpkg-deb`, the app in
+`/usr/lib/gitextensions-xplat` and the command `gitextensions-xplat`), the last two only when run on Linux; and a
+`Git Extensions.app` bundle (`.icns`, ad-hoc signed) as a zip and a `.dmg` for macOS. The app starts itself again through the
+AppImage file, not its temporary mount (`AppExecutable`). What is left is section 12.3.
 
 ### M8. Feature parity and retirement (optional)
 
@@ -419,7 +421,11 @@ sync that was done during the milestone.
 
 1. Real signing and notarization, once an Apple developer account exists (question 8: not for now).
 2. Trying a downloaded, quarantined macOS package (`MACOS.md`, MAC5).
-3. An AppImage, and a `.deb` or `.rpm`, for Linux.
+3. The AppImage and the `.deb` on Linux (written 2026-11-22 on macOS; only their folder trees were checked there, with
+   stand-ins for the two tools): run `publish-app.sh linux-x64 ~/xplat-publish` in WSL with `appimagetool` and `dpkg-deb`
+   installed, then start the AppImage (WSLg), install the `.deb` with `apt install ./<file>.deb` on a Debian or Ubuntu, and
+   try "New instance" and Settings, Git config's own editor from each. `lintian` on the `.deb` is optional. An `.rpm` is not
+   made: openSUSE and Fedora users take the AppImage or the tarball.
 4. An installer for the Avalonia app on Windows, with the Explorer shell extension's files (built by `src/native`, which
    needs VC++ and ATL); until then its Shell extension page works with an installed Git Extensions' files.
 

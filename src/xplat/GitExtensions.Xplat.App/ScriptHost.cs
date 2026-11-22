@@ -5,6 +5,7 @@ using Avalonia.Platform.Storage;
 using GitCommands;
 using GitExtensions.Extensibility;
 using GitExtensions.Xplat.Core.Operations;
+using GitExtensions.Xplat.Core.Platform;
 using GitExtensions.Xplat.Core.Presentation;
 using GitExtensions.Xplat.Core.Scripts;
 using GitUI.ScriptsEngine;
@@ -77,7 +78,7 @@ internal sealed class ScriptHost(
         {
             RepositoryScriptContext context = await Task.Run(() =>
                 new RepositoryScriptContext(repositoryPath, selectedHashes, ChooseAsync, extraOptions));
-            launch = await ScriptRunner.PrepareAsync(script, context, this, Environment.ProcessPath ?? "GitExtensions");
+            launch = await ScriptRunner.PrepareAsync(script, context, this, AppExecutable.Current ?? "GitExtensions");
         }
         catch (ScriptException ex)
         {

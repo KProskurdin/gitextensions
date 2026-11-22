@@ -382,7 +382,7 @@ public static class ErrorReporter
     // Upstream's RestartGE: the same command line again, then this process ends.
     private static void Restart()
     {
-        if (Environment.ProcessPath is not { } path)
+        if (AppExecutable.Current is not { } path)
         {
             return;
         }

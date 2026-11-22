@@ -353,3 +353,15 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   walking up from its build output, which `~/xplat-artifacts` puts outside the repository (seen once on the Mac too):
   `ThemedImagesTests` now finds the repository from its source file, and passes on Linux and Windows. No product failure
   on Linux.
+
+### 2026-11-22, evening: Linux packages, no merge
+
+- On macOS: `publish-app.sh` also packs an AppImage (`appimagetool`) and a `.deb` (`dpkg-deb`) for `linux-*`, only when run on
+  Linux; the tarball is still packed on any OS (`PLAN.md` M7 and section 12.3). The app now starts itself again (new
+  instance, restart, git's editor and password prompt, scripts) through `AppExecutable`, which in an AppImage is the
+  AppImage file instead of its temporary mount (`PORTING-MAP.md`, Linux notes).
+- Checked on macOS only: a real `linux-x64` publish with `uname` reporting Linux and stand-ins for `appimagetool` and
+  `dpkg-deb`, which listed the AppDir (`AppRun`, the entry, the icon, `.DirIcon`) and the `.deb`'s tree and control file. The
+  real tools, the AppImage and the installed `.deb` have not run yet; that is `PLAN.md` section 12.3, item 3.
+- On macOS after: 0 errors, no warning in fork files; core 1536 of 1536; app 884 of 884 in 13 minutes 52 seconds. No upstream
+  file changed; seam count unchanged. Windows and Linux were not run.

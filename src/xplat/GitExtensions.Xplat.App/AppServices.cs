@@ -249,7 +249,7 @@ public static class AppServices
     }
 
     private static string? DefaultAskPassExecutable()
-        => Environment.ProcessPath is { } process
+        => AppExecutable.Current is { } process
            && !string.Equals(Path.GetFileNameWithoutExtension(process), "dotnet", StringComparison.OrdinalIgnoreCase)
             ? process
             : null;
@@ -258,7 +258,7 @@ public static class AppServices
     private static string? DefaultEditorCommand()
     {
         string? entryAssembly = Assembly.GetEntryAssembly()?.Location;
-        return Environment.ProcessPath is { } process
+        return AppExecutable.Current is { } process
             ? GitEditorCommand.Build(process, string.IsNullOrEmpty(entryAssembly) ? null : entryAssembly)
             : null;
     }

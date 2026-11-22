@@ -3193,6 +3193,14 @@ window's own menu hides once the platform shows the copy (`NativeMenu.IsNativeMe
 tests and on the other OSes. Not copied: the keys shown beside the items (the window handles its keys, and a key macOS
 also gave a menu item might run twice; to try at the screen) and the icons. Only the browse window has the copy: another
 window in front shows the application menu alone. Tests: `SystemMenuBarTests`.
+**Linux notes, 2026-11-22** (no upstream form to compare with; `PLAN.md` section 12.3). Upstream starts itself again through
+`Application.ExecutablePath`: "new instance", the restart after an error (`RestartGE`), git's editor (`FileEditorCommand`,
+which upstream also writes into `core.editor`), the password prompt and scripts. Here they all ask `AppExecutable.Current`,
+which is the running executable but in an AppImage, where it is the AppImage file (`$APPIMAGE`): the executable's folder is
+mounted only while the first process runs, under a new name each time, so a second instance or a restart would lose its
+files once the first ended, and a `core.editor` chosen in Settings, Git config would point nowhere. The AppImage counts only
+when the executable is inside its mount (`$APPDIR`), as both variables are inherited by every program the AppImage starts.
+Tests: `AppExecutableTests`.
 
 **OutputHistory** (`ported`). 2026-11-09, on macOS: upstream's output history, one for the app (`OutputHistory`, reimplementing
 GitUI's internal `OutputHistoryModel`): at most `OutputHistoryDepth` entries (20; 0 turns it off; read when it is first needed,

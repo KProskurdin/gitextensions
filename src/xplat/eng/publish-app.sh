@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # Publishes the cross-platform app as a self-contained build for one runtime and packs it the way that OS expects
-# (PLAN.md M7, first step): a zip on Windows, a tarball with a .desktop entry and icon on Linux, and on macOS an .app bundle
-# with an icon, as a zip and a .dmg. The macOS bundle has only an ad-hoc signature and is not notarized, so a downloaded copy
-# needs: xattr -dr com.apple.quarantine "Git Extensions.app". macOS packages can be packed only on a Mac: the tools are there,
-# and files on NTFS have no executable bit.
+# (PLAN.md M7): a zip on Windows; on Linux a tarball with a .desktop entry and icon, an AppImage and a .deb; and on macOS an
+# .app bundle with an icon, as a zip and a .dmg. The macOS bundle has only an ad-hoc signature and is not notarized, so a
+# downloaded copy needs: xattr -dr com.apple.quarantine "Git Extensions.app". macOS packages can be packed only on a Mac, and
+# the AppImage and the .deb only on Linux: the tools are there, and files on NTFS have no executable bit. The Linux tarball
+# is packed on any OS.
 # Usage: src/xplat/eng/publish-app.sh <runtime-id> [output-folder]   (XPLAT_REPO overrides the repository root)
 #   runtime ids: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64
+#   XPLAT_VERSION       the packages' version (default 0.1)
+#   APPIMAGETOOL        the appimagetool command (default appimagetool; from https://github.com/AppImage/appimagetool). Where
+#                       FUSE is missing, as in WSL: APPIMAGETOOL="appimagetool --appimage-extract-and-run"
+#   APPIMAGE_RUNTIME    a runtime file for appimagetool; without it, appimagetool downloads one
+#   XPLAT_MAINTAINER    the .deb's Maintainer field
+# In WSL, give an output folder in the Linux file system (as ~/xplat-publish): on /mnt/c every file has mode 777, which
+# dpkg-deb refuses.
 set -euo pipefail
 
 RID="$1"
@@ -20,6 +28,10 @@ OUT="${2:-$REPO/artifacts/xplat-publish}"
 NAME="GitExtensions-xplat-$RID"
 STAGE="$OUT/$NAME"
 LOGO="$REPO/setup/assets/Logo"
+VERSION="${XPLAT_VERSION:-0.1}"
+
+# The Linux packages' name: the command in /usr/bin, the .desktop entry, the icon and the folder in /usr/lib.
+LINUX_ID=gitextensions-xplat
 
 # Packs the current folder into <zip>; Git Bash on Windows has no zip, so PowerShell does it there. PowerShell can fail and
 # still exit with 0 unless told to stop, so the file itself is checked.
@@ -52,6 +64,110 @@ make_icns() {
     rm -rf "$(dirname "$iconset")"
 }
 
+# Writes a .desktop entry that starts <command> to <file>.
+write_desktop() {
+    cat > "$1" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Git Extensions (cross-platform)
+Comment=Graphical user interface for git
+Exec=$2 %F
+Icon=$LINUX_ID
+Categories=Development;RevisionControl;
+Terminal=false
+DESKTOP
+}
+
+# Puts the app in <root>/usr/lib/$LINUX_ID, with its .desktop entry (starting <command>) and icon under <root>/usr/share.
+stage_linux_tree() {
+    mkdir -p "$1/usr/lib" "$1/usr/share/applications" "$1/usr/share/icons/hicolor/256x256/apps"
+    cp -R "$STAGE/app" "$1/usr/lib/$LINUX_ID"
+    cp "$LOGO/git-extensions-logo-256px.png" "$1/usr/share/icons/hicolor/256x256/apps/$LINUX_ID.png"
+    write_desktop "$1/usr/share/applications/$LINUX_ID.desktop" "$2"
+}
+
+# The AppImage's folder: the tree, plus at its root the AppRun that starts the app and the entry and icon appimagetool reads.
+# The app finds the AppImage file through $APPIMAGE to start itself again (AppExecutable.cs), as the folder it runs from is
+# mounted only while it runs.
+pack_appimage() {
+    local appdir="$OUT/$NAME.AppDir" arch
+    case "$RID" in
+        linux-x64) arch=x86_64 ;;
+        linux-arm64) arch=aarch64 ;;
+    esac
+
+    local tool
+    read -ra tool <<< "${APPIMAGETOOL:-appimagetool}"
+    if ! command -v "${tool[0]}" >/dev/null; then
+        echo "${tool[0]} was not found: get it from https://github.com/AppImage/appimagetool/releases, or set APPIMAGETOOL." >&2
+        exit 1
+    fi
+
+    rm -rf "$appdir"
+    stage_linux_tree "$appdir" GitExtensions
+    cp "$appdir/usr/share/applications/$LINUX_ID.desktop" "$appdir/"
+    cp "$LOGO/git-extensions-logo-256px.png" "$appdir/$LINUX_ID.png"
+    ln -s "$LINUX_ID.png" "$appdir/.DirIcon"
+    cat > "$appdir/AppRun" <<APPRUN
+#!/bin/sh
+HERE="\$(dirname "\$(readlink -f "\$0")")"
+exec "\$HERE/usr/lib/$LINUX_ID/GitExtensions" "\$@"
+APPRUN
+    chmod 755 "$appdir/AppRun"
+
+    local runtime=()
+    if [[ -n "${APPIMAGE_RUNTIME:-}" ]]; then
+        runtime=(--runtime-file "$APPIMAGE_RUNTIME")
+    fi
+
+    rm -f "$OUT/$NAME.AppImage"
+    ARCH="$arch" "${tool[@]}" --no-appstream ${runtime[@]+"${runtime[@]}"} "$appdir" "$OUT/$NAME.AppImage"
+    rm -rf "$appdir"
+    echo "$OUT/$NAME.AppImage"
+}
+
+# A .deb that installs the tree under /usr, with $LINUX_ID in /usr/bin. The runtime is in the app, so the dependencies are
+# what a self-contained .NET app and Avalonia on X11 load from the system. ICU's package has its version in its name, so the
+# list names those of Debian 11 to 13 and Ubuntu 20.04 to 25.10.
+pack_deb() {
+    local root="$OUT/$NAME.deb-root" arch
+    case "$RID" in
+        linux-x64) arch=amd64 ;;
+        linux-arm64) arch=arm64 ;;
+    esac
+
+    if ! command -v dpkg-deb >/dev/null; then
+        echo "dpkg-deb was not found: install dpkg (apt install dpkg-dev, zypper install dpkg, dnf install dpkg)." >&2
+        exit 1
+    fi
+
+    rm -rf "$root"
+    stage_linux_tree "$root" "$LINUX_ID"
+    mkdir -p "$root/usr/bin" "$root/DEBIAN"
+    ln -s "../lib/$LINUX_ID/GitExtensions" "$root/usr/bin/$LINUX_ID"
+    cat > "$root/DEBIAN/control" <<CONTROL
+Package: $LINUX_ID
+Version: $VERSION
+Architecture: $arch
+Maintainer: ${XPLAT_MAINTAINER:-Git Extensions cross-platform fork}
+Installed-Size: $(du -sk "$root/usr" | cut -f1)
+Depends: git, libc6, libgcc-s1, libstdc++6, libfontconfig1, libx11-6, libice6, libsm6,
+ libicu78 | libicu77 | libicu76 | libicu74 | libicu72 | libicu70 | libicu67 | libicu66,
+ libssl3t64 | libssl3 | libssl1.1
+Section: vcs
+Priority: optional
+Homepage: https://github.com/gitextensions/gitextensions
+Description: Graphical user interface for git (cross-platform)
+ Git Extensions' cross-platform app: browse the history, commit, merge, rebase
+ and work with remotes.
+CONTROL
+    chmod -R u=rwX,go=rX "$root"
+    rm -f "$OUT/$NAME.deb"
+    dpkg-deb --root-owner-group --build "$root" "$OUT/$NAME.deb" >/dev/null
+    rm -rf "$root"
+    echo "$OUT/$NAME.deb"
+}
+
 rm -rf "$STAGE"
 mkdir -p "$OUT"
 
@@ -66,26 +182,25 @@ case "$RID" in
         ;;
     linux-*)
         mkdir -p "$STAGE/share/applications" "$STAGE/share/icons/hicolor/256x256/apps"
-        cp "$LOGO/git-extensions-logo-256px.png" "$STAGE/share/icons/hicolor/256x256/apps/gitextensions-xplat.png"
-        cat > "$STAGE/share/applications/gitextensions-xplat.desktop" <<'DESKTOP'
-[Desktop Entry]
-Type=Application
-Name=Git Extensions (cross-platform)
-Comment=Graphical user interface for git
-Exec=GitExtensions %F
-Icon=gitextensions-xplat
-Categories=Development;RevisionControl;
-Terminal=false
-DESKTOP
+        cp "$LOGO/git-extensions-logo-256px.png" "$STAGE/share/icons/hicolor/256x256/apps/$LINUX_ID.png"
+        write_desktop "$STAGE/share/applications/$LINUX_ID.desktop" GitExtensions
         tar -C "$OUT" -czf "$OUT/$NAME.tar.gz" "$NAME"
         echo "$OUT/$NAME.tar.gz"
+
+        if [[ "$(uname -s)" != Linux ]]; then
+            echo "The AppImage and the .deb can be packed only on Linux; only the tarball was packed." >&2
+            exit 0
+        fi
+
+        pack_appimage
+        pack_deb
         ;;
     osx-*)
         BUNDLE="$STAGE/Git Extensions.app"
         mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
         cp -R "$STAGE/app/." "$BUNDLE/Contents/MacOS/"
         make_icns "$BUNDLE/Contents/Resources/GitExtensions.icns"
-        cat > "$BUNDLE/Contents/Info.plist" <<'PLIST'
+        cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -96,8 +211,8 @@ DESKTOP
   <key>CFBundleExecutable</key><string>GitExtensions</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-  <key>CFBundleShortVersionString</key><string>0.1</string>
-  <key>CFBundleVersion</key><string>0.1</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleIconFile</key><string>GitExtensions</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>LSMinimumSystemVersion</key><string>12.0</string>

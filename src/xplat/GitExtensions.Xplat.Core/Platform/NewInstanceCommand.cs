@@ -25,7 +25,7 @@ public static class NewInstanceCommand
     /// </summary>
     public static void Start(IProcessLauncher launcher, string repositoryPath)
     {
-        if (Environment.ProcessPath is { } process)
+        if (AppExecutable.Current is { } process)
         {
             (string fileName, IReadOnlyList<string> arguments) = For(process, repositoryPath, OperatingSystem.IsMacOS());
             launcher.Start(fileName, arguments, repositoryPath);
