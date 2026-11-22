@@ -2477,8 +2477,9 @@ repository is bare). "This repository does not yet contain any commits." with "E
 grid showed. Tests: `EmptyRepositoryPanelTests`.
 
 **FormStatus password input / PasswordInput** (`ported`). 2026-11-22, on Windows (found by the same comparison): the
-output window's "Show password input" and upstream's box for git's input, for what git asks on its standard input (a
-prompt that no askpass helper answers). The box shows while the operation runs when the check box is checked (stored at
+output window's "Show password input" and upstream's box for git's input, for what git or a program it starts asks on its
+standard input, such as plink's host key question (git asks for credentials through an askpass helper or the terminal, not
+there). The box shows while the operation runs when the check box is checked (stored at
 once in upstream's `ShowProcessDialogPasswordInput`), or by itself when git writes text without a line end and waits
 (upstream's `FormProcess.DataReceived` sets the check box to neither, shows the box and puts the focus in it); the text
 is hidden unless the eye shows it, and Enter or "Send input" writes it with a line end to git's standard input

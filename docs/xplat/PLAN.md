@@ -1,7 +1,8 @@
 # Cross-platform Git Extensions: implementation plan
 
-Status: revised 2026-10-03 after the goal update, and 2026-11-08 for moving development to macOS (`MACOS.md`). Owner:
-KProskurdin. Working branch: `feature/cross-os-ui`.
+Status: cleaned up 2026-11-22. Completed milestones and plans were removed, and decided questions reduced to their outcome;
+their full text is in git history (this file and `UI-PARITY.md` before 2026-11-22). Owner: KProskurdin. Working branch:
+`feature/cross-os-ui`.
 
 Goals this plan serves (both are hard requirements):
 1. **A cross-platform application**, not only passing tests: Git Extensions runs as a usable app on
@@ -14,32 +15,19 @@ Goals this plan serves (both are hard requirements):
 Make Git Extensions run on Windows, Linux and macOS, while the fork keeps merging upstream
 (`gitextensions/gitextensions`) without permanent conflicts.
 
-"Cross-platform" is not yet defined to a level of scope. Section 9 lists the decisions that
-set the scope. Until they are made, this plan is a sequence of milestones, each with an exit
-criterion, and the milestones beyond M4 are estimates only.
-
 ## 2. Where we are
 
 | Area | State | Evidence |
 |---|---|---|
-| Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) compiles as `net10.0` | Done | `src/xplat/*` shadow projects, 0 errors on Windows and Linux |
-| Shared core tests | Done with a gap | macOS 3381 pass, 0 fail, 149 ignored with reasons (`GitCommands.Tests`, 2026-11-08). Windows 3482 pass (1 known failure, `AsyncLoaderTests`). Linux 3369 pass, 0 fail, 144 ignored with reasons (verify run 2026-10-03, in WSL; `MACOS.md`, MAC2, explains why plain Linux may differ). Since 2026-11-02 every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8), and `run-tests.sh` runs them all; the analyzer project is in the solution as it is (netstandard2.0) |
-| Upstream files | **Edited, 2026-11-13 review** | Code folders untouched: no fork change under `src/app`, `src/plugins`, `tests/app`, `setup` or `eng`. Outside them the fork changes 14 upstream files against the fork base: the 13 upstream workflows in `.github/workflows/`, all commented out by `fc4d4ba5d` (2026-11-08), and one line in `.gitignore`. `CLAUDE.md` is a fork file at the root. Section 5, "Files outside the fork folders", has each one and what to do about it. The measure in 11.2 did not see these, as it checked only the code folders; it now checks everything |
-| Seams | 8 | Section 5 table: `XplatPatch` items in `src/xplat/GitCommands/GitCommands.csproj` and `src/xplat/GitUIPluginInterfaces`, plus `XplatFriends.cs`, `SupportedOSPlatforms.cs`, `PluginAssemblyResolve.cs` and the test-side replacements |
-| Settings persistence | Linux done 2026-10-03; macOS seen working 2026-11-08 (`MACOS.md`, MAC2) | Off Windows, seam S1 now writes machine-level values to `GitExtensions.registry.json` in the user config directory. The settings XML file was already written there |
-| Avalonia app | M1 to M6 work items done (2026-10-11); UI parity in progress (`UI-PARITY.md`) | `src/xplat/GitExtensions.Xplat.App`. Runs on Windows, and on Linux (WSLg) when last tried, checked by screenshot. Tests 2026-11-08 **on macOS**: 929 core and 738 app, all passing, and a signed zip and dmg that start through `open` (`MACOS.md`, MAC2 to MAC5; the checks at the screen are open). Last on Windows, same day but before the Mac's changes: 898 core, and 701 of 702 app with the failure then fixed. The Linux app run has not succeeded since 2026-10-11 |
-| Fork workflow | Partly set up | `upstream` remote added on the Mac and fetched. `tests/xplat/verify-upstream.sh` passed on `c584b9740` on macOS, 2026-11-08 (`SYNC-LOG.md`). Local `master` NOT moved (user decision) |
-| CI | **Off since 2026-11-08** | One run, `42521621315` on `5ea555567`: packages and Ubuntu's tests pass; Windows' shadow tests fail and the screenshot job hangs on every OS, both not understood yet (`MACOS.md`, MAC1). Then `fc4d4ba5d` commented out every workflow, `xplat.yml` included, so nothing after `5ea555567` has a CI result and MAC1's exit cannot be met. Question 16 has the choice. `origin/master` still lacks the file, so scheduled and manual runs stay unavailable |
-| Git history | User commits | `7e1abfec4 begin of implementation`, `2229a18f add linux tests` on `feature/cross-os-ui` |
+| Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) as `net10.0` | Done | `src/xplat/*` shadow projects. Every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8). Windows 2026-11-22: `GitCommands.Tests` 3500 of 3502 (1 skipped, 1 known Windows failure in `AsyncLoaderTests`). macOS 2026-11-20: 3823 pass, 201 ignored with reasons |
+| Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason. Windows 2026-11-22: core 1520, app 885, all passing. macOS 2026-11-20: core 1468, app 876, all passing. Linux: last app result in CI's only run, 2026-11-08 |
+| Upstream files | Clean but for the files in section 5 | The 13 upstream workflows are back to upstream's content; `.gitignore` (one line) and `CLAUDE.md` (fork file) are the changes at upstream paths |
+| Seams | 8 | Section 5 |
+| Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `17213fe3f` on macOS, 2026-11-20 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
+| CI | **Off since 2026-11-08** | `.github/workflows/xplat.yml` is commented out (question 16). Windows and macOS are checked by local runs, Linux not at all since 2026-11-08 |
 
-Upstream size, for scale (measured 2026-10-03):
-
-- `src/app/GitUI`: about 99k lines of non-designer code, 154 designers, 125 control classes, 87 form classes.
-- `src/app/GitCommands`: about 25k lines, with only 7 files that touch WinForms types.
-- Upstream churn in the last 12 months: 418 commits, 275 of them in `GitUI`. The fork is 17 commits behind upstream.
-
-The shared core is close to portable. The UI is the expensive part, and it is also where upstream
-changes most often. That is why the plan keeps the WinForms UI untouched and builds a second UI beside it.
+The shared core is portable. The UI is where upstream changes most often, which is why the plan keeps the WinForms UI
+untouched and builds a second UI beside it.
 
 ## 3. Principles
 
@@ -69,9 +57,10 @@ changes most often. That is why the plan keeps the WinForms UI untouched and bui
    logic rewritten; not a small fix) moves to MVVM in the same change. Code-behind keeps only view
    concerns. View models are tested with plain NUnit tests. They use CommunityToolkit.Mvvm
    (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`; section 9, question 17), and no
-   other MVVM library.
+   other MVVM library. Button and menu actions are commands, and menus built in code are entries a
+   view model lists (decided 2026-11-17). The pattern and its gotchas are `MVVM.md`.
 
-## 4. Repository layout (target)
+## 4. Repository layout
 
 ```
 src/
@@ -83,8 +72,9 @@ src/
     eng/                    SharedSources.targets, XplatPatch.targets, SupportedOSPlatforms.cs, XplatFriends.cs, Generate-KeysShim.ps1
     WinFormsShim/           stand-in WinForms types with host hooks
     GitCommands/ ...        shadow projects (same names as upstream, sources linked)
-    GitExtensions.Xplat.App/   Avalonia app (M1 onward)
-    GitExtensions.Xplat.Core/  NEW in M2: UI-agnostic services and view models
+    GitExtensions.Xplat.App/   Avalonia app
+    GitExtensions.Xplat.Core/  UI-agnostic services and view models
+    plugins/                upstream's plugins built for the new shell
 tests/
   app/                      upstream, untouched
   xplat/
@@ -96,27 +86,27 @@ tests/
     plugins/                shadows of the non-UI plugin unit tests (DeleteUnusedBranches, GitUIPluginInterfaces,
                             ReleaseNotesGenerator, BuildServerIntegration/*). Not shadowed, because they test WinForms
                             forms: FindLargeFiles.Tests, BugReporter.Tests, GitUI.Tests and the integration tests
-    GitExtensions.Xplat.App.Tests/  NEW in M1: Avalonia headless tests
+    GitExtensions.Xplat.Core.Tests/  view model and service tests
+    GitExtensions.Xplat.App.Tests/   Avalonia headless tests
 tests/xplat/
   XplatTestUserData.cs     moves the settings folder of every test assembly, so tests never touch the user's settings
   run-tests.sh             builds and tests every shadow test project (Windows via cmd.exe; Linux/macOS directly)
   run-with-watchdog.sh     CI: runs the app with a time limit and reports its processes and stacks if it hangs
   ci-report.py             CI: turns each suite's .trx into job annotations, readable without a sign-in
-  make-bench-repo.sh       builds the 5500-commit repository of the revision graph benchmark (M3.5)
+  make-bench-repo.sh       builds the 5500-commit repository of the revision graph benchmark
   verify-upstream.sh       runs the same against upstream/master in a temporary worktree
-  port-drift.sh            NEW in M1: lists upstream commits that touched ported files since the recorded commit
-  xplat-drift.sh           NEW in M1: flags mirrored upstream test classes (from each XplatLinux* file's
-                           "// Mirrors:" line and the XplatPlatformSkips.cs entries) that changed or disappeared,
-                           in every shadow test project
+  port-drift.sh            lists upstream commits that touched ported files since the recorded commit
+  xplat-drift.sh           flags mirrored upstream test classes (from each XplatLinux* file's "// Mirrors:" line and
+                           the XplatPlatformSkips.cs entries) that changed or disappeared, in every shadow test project
 docs/xplat/
   PLAN.md                  this file
-  SYNC-LOG.md              one entry per upstream check or merge
-  PORTING-MAP.md           NEW in M1: one row per ported upstream file
-  UI-PARITY.md             the look and behavior against the WinForms app, and the remaining features
-  MACOS.md                 setup, commands, predicted failures and phases MAC0 to MAC5 for working on a Mac
+  SYNC-LOG.md              one entry per upstream check or merge, and the test results of each working session
+  PORTING-MAP.md           one row per ported upstream file
+  MVVM.md                  the MVVM pattern of the app and its gotchas
+  MACOS.md                 setup, commands and the open checks for working on a Mac
   reference/windows/       proposed: pictures of the WinForms app, which cannot run on a Mac (section 9, question 14)
 GitExtensions.xplat.slnx    solution for everything above
-.github/workflows/xplat.yml CI: shadow tests on Windows, Linux and macOS (macOS added in M1), nightly upstream check
+.github/workflows/xplat.yml CI: shadow tests on Windows, Linux and macOS, nightly upstream check (off, question 16)
 ```
 
 ## 5. Seams: the complete list
@@ -158,688 +148,63 @@ How to have fewer, in order of effect:
 ### Files outside the fork folders
 
 Not seams, as the build does not depend on them, but each is a change at an upstream path and can conflict with an upstream
-merge. Listed 2026-11-13, when a review found them; nothing listed them before. On 2026-11-20 the 13 upstream workflows were
-restored, so `.gitignore` and `CLAUDE.md` are the only changes left at upstream paths.
+merge.
 
 | File | Change | Merge risk | Recommendation |
 |---|---|---|---|
-| `.github/workflows/*.yml`, the 13 upstream workflows | Every line commented out (`fc4d4ba5d`, 2026-11-08, "disabled all actions"). *Restored 2026-11-20* in the working tree to the fork base's content (`git show 0174ba1cc:<file>`, no diff left against it), so the next merge takes upstream's changes cleanly; one was already waiting, as upstream changed `app-build.yml`'s `concurrency` group after the fork base. Left for the user: commit, and turn the workflows off on GitHub (below) | High while edited: any upstream change to a workflow conflicts, and upstream edits them often (pinned action versions). None once restored | Restore upstream's content and turn workflows off on GitHub instead: `gh workflow disable "<name>"`, or Settings, Actions. That state lives on GitHub and survives merges. It is also the only way that works for scheduled workflows: GitHub runs those from the default branch, `master`, which this commit did not change, so `pr-check-stale` and the labelers were not stopped by it. Upstream's `app-build` runs only on `master`, `release/**` and pull requests, so on `feature/**` the edit stopped nothing but `xplat.yml`. Question 16 |
-| `.github/workflows/xplat.yml` | Fork-owned, added by the fork; commented out by the same commit | None | Turn it back on; question 16 |
+| `.github/workflows/xplat.yml` | Fork-owned, added by the fork; commented out (`fc4d4ba5d`) | None | Turn it back on; question 16 |
 | `.gitignore` | One line appended, `/.claude` (`735c6ae4d`, 2026-10-17) | Low: only an upstream change at the file's end conflicts | Keep and accept, or move the line to each clone's `.git/info/exclude`. User's choice |
 | `CLAUDE.md` | Added at the root by the fork | Add/add conflict if upstream ever adds one (upstream has none on 2026-10-09) | Keep; on such a conflict, merge the fork's rules into upstream's file |
+
+The 13 upstream workflows, commented out by `fc4d4ba5d` (2026-11-08), are back to the fork base's content since 2026-11-20.
+Workflows the fork does not want are turned off on GitHub (`gh workflow disable "<name>"`, or Settings, Actions), never by
+editing their files: that state lives on GitHub and survives merges, and it is the only way that stops scheduled workflows,
+which GitHub runs from `master`.
 
 ### Upstream defects worked around in fork code
 
 Not seams either: upstream's file stays as it is and fork code avoids the defect. Each is an upstream candidate, and the
-workaround goes when upstream fixes it. Added 2026-11-18.
+workaround goes when upstream fixes it.
 
 | Defect | Effect | Workaround | Upstream candidate |
 |---|---|---|---|
-| `src/app/GitCommands/Git/ExecutableExtensions.cs`: `_defaultOutputEncoding` is `new Lazy<Encoding>(() => GitModule.SystemEncoding, false)`, not thread-safe | When a process's first two git commands run on two threads at once (the browse window reads the refs and the commits in parallel when it opens), the second throws "ValueFactory attempted to access the Value property of this instance": an error window, and the repository does not load. Seen in `AdvancedSettingsTests` (the first test class of a full run) failing about half the time | `Core/Platform/GitOutputEncodingWarmUp.cs`, called first in `App.OnFrameworkInitializationCompleted` (the app and the headless tests): it creates the value on the UI thread through `GetOutputAsync` with an executable that throws instead of starting, so no process runs. If upstream's method stops reading the encoding before starting the executable, the warm-up throws at start-up instead of leaving the race open again | Yes: make the lazy thread-safe (drop `false`); upstream's WinForms app hits the same race when two threads run the first git commands |
+| `src/app/GitCommands/Git/ExecutableExtensions.cs`: `_defaultOutputEncoding` is `new Lazy<Encoding>(() => GitModule.SystemEncoding, false)`, not thread-safe | When a process's first two git commands run on two threads at once (the browse window reads the refs and the commits in parallel when it opens), the second throws "ValueFactory attempted to access the Value property of this instance": an error window, and the repository does not load | `Core/Platform/GitOutputEncodingWarmUp.cs`, called first in `App.OnFrameworkInitializationCompleted` (the app and the headless tests): it creates the value on the UI thread through `GetOutputAsync` with an executable that throws instead of starting, so no process runs. If upstream's method stops reading the encoding before starting the executable, the warm-up throws at start-up instead of leaving the race open again | Yes: make the lazy thread-safe (drop `false`); upstream's WinForms app hits the same race when two threads run the first git commands |
 
 ## 6. Mapping WinForms to the new shell
 
 For every upstream form or control that gets ported, the port is recorded in
-`docs/xplat/PORTING-MAP.md` (created in M1) with four columns: upstream file, new file,
-upstream commit the port was based on, and status (`ported`, `partial`, `skipped: <reason>`,
-`windows-only`). This table is what makes upstream merges manageable.
+`docs/xplat/PORTING-MAP.md` with four columns: upstream file, new file, upstream commit the port was based on, and status
+(`ported`, `partial`, `skipped: <reason>`, `windows-only`). This table is what makes upstream merges manageable.
 
-`tests/xplat/port-drift.sh` (built in M1) reads the table and lists upstream commits that touched
-a mapped file since its recorded commit. Each listed commit must end as a row update: ported,
-skipped with a reason, or the row is marked `stale`. It runs with the nightly verify job, so
-drift is visible without anyone remembering to look.
+`tests/xplat/port-drift.sh` reads the table and lists upstream commits that touched a mapped file since its recorded commit.
+Each listed commit must end as a row update: ported, skipped with a reason, or the row is marked `stale`. It runs with the
+nightly verify job, so drift is visible without anyone remembering to look.
+
+To find upstream forms no row names (as FormOpenDirectory, EmptyRepoControl and the process dialog's password input were,
+until 2026-11-22), compare the names of upstream's `*.Designer.cs` files with the map after each upstream merge; the ones
+left are base classes and helpers, or ported under another name.
+
+**Parity rules** (from the UI parity plan, completed 2026-11-22; they still hold for every port):
+
+1. **Upstream's designer files are the specification.** Item order, texts, icons, grouping and default sizes come from the
+   `*.Designer.cs` of the form being matched; where possible a test reads them (`MainMenuParityTests`,
+   `DialogKeysParityTests`, the settings label tests), so an upstream change fails a test instead of drifting silently.
+2. **Reuse upstream's assets, never copy them.** Icons from `Images.resx` and `Resources/Icons` (already linked), texts from
+   upstream (and so its translations), colors from the theme files.
+3. **Same layout on every OS.** Keep the Windows layout on Linux and macOS; adapt only what the OS dictates (Cmd keys, the
+   macOS menu bar; `MACOS.md`).
+4. **Behavior first where they conflict.** A feature the Avalonia app has that upstream shows elsewhere moves to where
+   upstream shows it (usually a context menu), rather than being removed.
+5. **Each step is checked against the original** and recorded in `PORTING-MAP.md`: by a screenshot of the running app
+   (`XPLAT_SCREENSHOT`), and on a Mac, where the original cannot run, by the designer files, then reference pictures, then a
+   Windows machine (`MACOS.md`, section 6). Say which of these a step was checked against.
 
 ## 7. Milestones
 
-Estimates are for one developer who is familiar with the codebase. They are rough, and they are
-not a commitment. The first three rows are the ones the team can plan against.
-
-### M0. Foundations (done, with one open item)
-
-Exit: shared core builds and tests on Windows and Linux; fork has an upstream remote; CI file exists.
-
-- Done: shadow projects, stand-in shim, seams S1 to S7, Windows and Linux test runs, upstream
-  verify script, solution file `GitExtensions.xplat.slnx`, CI workflow.
-- Open: move local `master` to `upstream/master` (user action, not done by automation);
-  commit the current work (user action); confirm the CI workflow runs on GitHub.
-
-### M1. Application shell and first read-only view (started)
-
-Exit: the app opens a repository on Windows, Linux and macOS, lists commits, shows the selected
-commit's details, and remembers its state across restarts. On macOS the exit is verified by CI
-(build, headless tests, screenshot artifact); a run on real hardware follows when a Mac is available.
-*Correction 2026-11-08:* that CI has never run (section 2). This exit, and the same "macOS pending CI" wording below and
-in M2 to M6, are therefore open, and `MACOS.md` phases MAC1 and MAC2 are what closes them.
-
-Done: window, path box, commit list (read-only), developer screenshot aid.
-
-Remaining:
-1. Done 2026-10-03 (Windows and Linux): commit selection shows the message, author, dates and parents
-   (`RevisionReader.GetRevision`, off the UI thread).
-2. Done 2026-10-03 (Windows and Linux): the list reads one page of 500 commits at a time. Reading stops once the page is full (`CommitHistory.LoadPage`), "Load more" re-reads with a larger limit, and the list is virtualized by Avalonia. Done 2026-10-10: "Load more" reads only the next page. `GetLog` did not need a change: its revision filter carries git's `--skip=N`, and rows already loaded are dropped if the history moved meanwhile.
-3. Done 2026-10-03 (Windows and Linux): headless UI tests in `tests/xplat/GitExtensions.Xplat.App.Tests`
-   (Avalonia.Headless.NUnit, 5 tests: git missing, git too old, open a repository, select a commit,
-   root commit). CI runs them on all three OSes; macOS pending the first CI run.
-4. **Settings persistence off Windows (done on Linux 2026-10-03; macOS pending CI).** Replace the in-memory store behind seam S1 with a file in
-   the platform's user-config directory (XDG on Linux, Application Support on macOS). Windows keeps
-   the registry-plus-settings-file behavior it has upstream. Recent repositories must survive a restart.
-5. **Git discovery (done on Linux 2026-10-03; macOS rules unit-tested, not yet run on a Mac).** Find the `git` executable per OS (PATH, then known locations; macOS Command Line
-   Tools), validate its version against the minimum the shared core expects, and show a clear message
-   when it is missing. Upstream has a `gitcommand` setting; the new shell reads it and does not
-   invent a second one.
-6. Done 2026-10-03 (Windows and Linux): window title from the repository folder, icon from `setup/assets/Logo` (linked, not copied), and an error dialog (`ErrorWindow`) for failed opens. The icon is set in code and not seen in a screenshot, because the screenshot aid renders the content only.
-7. **macOS in CI (workflow changed 2026-10-03; first green run pending a push).** `macos-latest` is in
-   `.github/workflows/xplat.yml`: shadow tests and app build. Headless tests (item 3) and the screenshot
-   artifact (item 8) are still to come. Until a Mac is available this is the macOS evidence,
-   and every status report says so.
-8. Done 2026-10-03, not yet run on GitHub: `app-screenshot` job in `.github/workflows/xplat.yml` builds, launches the app on the checkout (`xvfb-run` on Linux), and uploads a screenshot on all three OSes. The launch command was run locally in WSL; the workflow itself has not run.
-9. `docs/xplat/PORTING-MAP.md` created 2026-10-03 with rows for the forms the app already replaces (`FormBrowse`, `RevisionGridControl`, both `partial`)
-   (the commit list replaces `FormBrowse`'s revision grid, the window replaces `FormBrowse`).
-10. `tests/xplat/port-drift.sh` and `tests/xplat/xplat-drift.sh` (section 4), run by the nightly job.
-    Done 2026-10-03. Against `upstream/master` today: port-drift lists 2 upstream commits touching the
-    two ported forms; xplat-drift flags `PathUtilTest` (648dd4cc7) and `GitModuleWorktreeTests` (065da3680).
-    Both need a decision before the next sync.
-11. Done 2026-10-06 (Windows and Linux): recent repositories survive a restart. They are read and written through
-    upstream's `RepositoryHistoryManager` (setting key `history`, upstream format), so the WinForms app and the new shell
-    share one list. While no repository is open the window shows them as a dashboard; Start > Recent repositories lists
-    them too. Theme and the other preferences are upstream keys as well (M5). Window size and position are not kept yet.
-    The headless tests replace the stores with in-memory ones (`AppServices`), so a test run never writes the user's
-    settings file or global git config.
-
-Estimate: 3 to 4 weeks (the settings and git-discovery items were not in the earlier estimate).
-
-### M2. Engine services for UI (the boundary)
-
-Exit: every operation the UI needs is available as a service with no WinForms dependency, and the
-WinForms shell calls the same services where practical.
-
-Started 2026-10-03: `src/xplat/GitExtensions.Xplat.Core` holds `ICommitHistory` with `GitCommitHistory`
-(the history reads, moved out of the app), `CommitListViewModel` (commit list, paging, selection,
-details, errors, with no UI types) and `ObservableObject` (replaced by CommunityToolkit.Mvvm's on 2026-11-13, principle 6). The
-app's window is a view over the view model.
-Continued 2026-10-03: `Repository/IRepositoryService` with `GitRepositoryService` (snapshot: current branch,
-local and remote branches, changed files with kind and staged state) and `RepositoryViewModel`. The window
-shows the branch and the changes in a left panel. Open stays disabled while either panel is loading.
-Tests: `tests/xplat/GitExtensions.Xplat.Core.Tests` (22, against fakes, including the status mapping) and the
-app's headless tests. `GitCommands` grants friend access to the core in
-`src/xplat/GitCommands/XplatFriends.cs`.
-
-Write services, 2026-10-03: `Operations/IGitOperations` with `GitOperations`: stage, unstage, commit (with
-amend), create and check out branches, delete branches, fetch, pull, push and clone. Each builds its command
-with the upstream builders (`Commands.*`, `GitModule.FetchCmd/PullCmd`) and runs it through the same
-executor. A failed exit raises `GitOperationException` with git's own message. Tested against real
-repositories and a bare remote.
-
-Operations view model and window, 2026-10-03: `Operations/RepositoryOperationsViewModel` runs each operation,
-reports its status and error, and raises `RepositoryChanged` with the repository path so the window reloads it
-(for clone, the new folder). The window has Fetch, Pull and Push (origin, current branch), Clone (a dialog for
-URL and folder), stage and unstage of selected changes, commit with amend, create, check out and delete of
-branches. Buttons are enabled only when their action can run. Tests: 34 core tests (fake operations) and 27 app
-tests, including an end-to-end stage-and-commit through the window.
-
-Added 2026-10-03: checkout of remote branches as tracking branches; headless tests for the clone dialog (URL and
-folder, cancel, and staying open when the folder is missing); `PORTING-MAP.md` rows for the seven upstream
-write-operation forms, reviewed against upstream `52d08e996` in `SYNC-LOG.md`.
-
-Platform services, 2026-10-03: `Platform/` in the core holds `HostPlatform`, `IProcessLauncher` (no shell, does not
-wait), `IFileManager` (Explorer, Finder via `open`, `xdg-open`) and `ITerminalLauncher` with a per-OS default
-terminal (`cmd.exe`; Terminal on macOS; `$TERMINAL` or `x-terminal-emulator` on Linux). The window has Open folder
-and Terminal buttons. The clone dialog has a folder picker (Avalonia storage provider) that names the new folder
-after the repository. Tests: 44 core tests (recording fake launcher, one case per OS) and 32 app tests.
-Not tested: the Avalonia folder picker and the real launches (they need a desktop session and would open windows).
-
-Stash and clipboard, 2026-10-03: stash save (with an optional message) and pop of the top stash, through the same
-operations layer; the window has the stash controls and a Copy hash button for the selected commit (Avalonia
-clipboard). Tests: 46 core tests, 35 app tests, including a stash round trip and a clipboard check in headless.
-
-Credentials: no new service yet. Upstream's `EnvironmentConfiguration` runs before every git start, so `SSH_ASKPASS`
-and `DISPLAY` are already set for the shadow process. HTTPS and SSH authentication therefore rely on git's own
-credential helpers (decision 6). Without a helper, a GUI push to an HTTPS remote fails with git's message instead
-of prompting. This is untested against a real remote.
-
-Still open in M2 at that point: notifications; the UI-thread abstraction; a credential store for Linux and macOS. All three
-are settled below (notifications ported, the abstraction dropped, git's helpers kept as the store), so M2 is done.
-
-Notifications, 2026-10-09: upstream's notification bars above the grid (`InteractiveGitActionControl`) are ported: one bar
-for a bisect and one for a stopped rebase, merge or patch (`git am`) or for unresolved conflicts, with upstream's texts,
-buttons and colors (`Core/Repository/GitActionBanner.cs`). The repository state now uses upstream's `GitModule.InTheMiddleOf*`
-checks, so a stopped `git am` shows as a patch instead of a rebase; Continue also concludes a merge (`merge --continue`) and a
-patch. With them came bisect (upstream `FormBisect` and the grid's bisect items, good and bad marks as labels). Message boxes
-were done in M6 (`MessageBoxHost`). Tests: 289 core and 213 app on Windows.
-
-Credentials, decided 2026-10-09 (decision 6): git's own credential helpers are the store on every OS. Settings > Git config
-has a `credential.helper` row since 2026-10-10 with upstream's choices (the helpers in the Git for Windows folder, then
-`store` and `cache`; on other OSes `oauth`, `store` and `cache`) plus, off Windows, the helpers installed in git's own folder
-and on the PATH (`osxkeychain`, `libsecret`, Git Credential Manager's `manager`), and the askpass window answers git's and ssh's
-prompts when no helper does (checked end to end on Windows 2026-10-10: a typed password reached git). Plugin credentials
-settings use Windows' credential store as upstream and say on Linux and macOS that they cannot be edited there.
-
-UI-thread abstraction, decided 2026-10-09: dropped (the user's decision, on this recommendation). The view models are created
-and used on the UI thread and await off-thread work, so their continuations return through Avalonia's synchronization
-context; upstream code that switches threads uses `ThreadHelper.JoinableTaskContext`, which the app creates on the UI thread
-at startup. The eight remaining `Dispatcher.UIThread` calls are in views (priority posts, the nested frame of a message box,
-the screenshot and benchmark aids), where a wrapper would add a layer without removing an Avalonia dependency.
-
-- Create `GitExtensions.Xplat.Core` with interfaces for: repository open, history, refs, status,
-  stage/unstage, commit, branch, checkout, fetch/pull/push, stash.
-- Each service delegates to `GitCommands`. Where the logic lives in a WinForms form today, the
-  core **reimplements** it against `GitCommands`. The upstream form is not changed. The port is
-  recorded in `PORTING-MAP.md` (section 6), so upstream changes to the form show up in the drift check.
-- View models (`CommitListViewModel`, `CommitDetailsViewModel`, ...) in the core, with no UI types.
-- Threading: one UI-thread abstraction, built on the existing `ThreadHelper` and `AsyncLoader`
-  (both in the shared core). Replace the Avalonia dispatcher calls with it. (Dropped 2026-10-09, see above.)
-- **Platform services**, each with a Windows implementation and a POSIX one, behind interfaces in
-  the core:
-  - file and folder pickers (Avalonia storage provider);
-  - open a folder in the file manager (Explorer, Finder, `xdg-open`);
-  - open a terminal in a folder (per OS, configurable; section 9, question 10);
-  - clipboard;
-  - credential store (section 9, question 6);
-  - notifications and message boxes, replacing the `MessageBox` stand-in's host hook.
-- Each interface gets a unit test with a fake implementation, so the core does not depend on any OS.
-
-Estimate: 3 to 4 weeks.
-
-### M3. Read-only browsing parity
-
-Exit: a user can browse history, see a diff for any commit, browse the file tree at a commit,
-and view blame and file history.
-
-Started 2026-10-03: a changed-file list for each selected commit with a Show diff action, and a diff window for
-a commit file or a working-tree file (staged or unstaged). Diff lines are colored by kind (added, removed, hunk,
-header). The diff is `Core/Diff` (`DiffParser`, `GitDiffService`, `DiffViewModel`); the window is `DiffWindow`.
-Tests: 52 core tests and 40 app tests, including real-git diffs for a commit, the working tree and the index.
-
-Decision, 2026-10-03: AvaloniaEdit is not used. Its newest NuGet release is 0.10.12, built for Avalonia 0.10, so it
-does not load with Avalonia 12. The diff is shown with native list items, which is enough for a read-only view.
-Syntax highlighting and line numbers are not done; they can be revisited if a control for Avalonia 12 appears.
-Reversed 2026-11-19 (decided with the user): the maintained package `Avalonia.AvaloniaEdit` has a 12.0.0 release (MIT,
-built on Avalonia 12.0.0, April 2026). It is adopted for the editor window (the rebase todo's highlighting and line numbers)
-and for the diff viewer (real text selection: next and previous occurrence, git-grep's selected text, "Add selection to
-commit message"). Done the same day: the editor window is AvaloniaEdit's editor (line numbers, upstream's rebase todo and commit message
-highlighting, core `Editing/EditorHighlighting.cs`), and the diff viewer's text is one too (`DiffTextView`: the two line
-number columns, line backgrounds and colors as before, real text selection, next and previous occurrence). Both checked
-in a real render on macOS.
-
-File tree and file history, 2026-10-04: a Files window for the selected commit (or HEAD) lists every file in the tree,
-and selecting a file lists the commits that changed it, with Show diff for any of them. The core reads are
-`LoadTreeAsync` (`ls-tree -z`) and `LoadFileHistoryAsync` (the log reader with a path filter, paged). Renames are not
-followed and the tree is a flat list. Tests: 56 core tests and 43 app tests, including a real repository with a file
-added later.
-
-Blame, 2026-10-04: the Files window has a Blame button for the selected file. The blame window shows each line with
-its commit, author and day (`git blame --line-porcelain`, parsed by `BlameParser`). Tests: 60 core tests (parser) and
-48 app tests (real repository). The revision graph is still open (the spike, M3.5).
-
-Rest of M3, 2026-10-10: the file history follows renames as upstream's `BuildPathFilter` (the names the file had, read with
-`git log --follow`, then the history of all of them; settings `followrenamesinfilehistory` and its exact-renames variant,
-toggles in the Files window), and a diff from the history uses the file's name in that commit. Syntax highlighting without
-AvaloniaEdit: upstream's own definitions (ICSharpCode's `.xshd` files from `externals`, embedded, not copied) are read by a
-port of the editor's line parser (`Core/Diff/SyntaxHighlighting.cs`) and drawn as colored runs in the diff and file views,
-with the colors adapted to the theme as upstream adapts them. Line numbers were done in M5. With these, the M3 exit is met:
-history, diffs of any commit, the file tree at a commit, blame and file history (Windows and Linux).
-
-Components, in suggested order:
-1. Diff viewer. Editor control: AvaloniaEdit (not yet checked: current version and maintenance;
-   the NuGet index lists 0.10.12). Syntax highlighting and line numbers. Patch parsing reuses
-   the shared `Patches` code where it fits.
-2. Changed-file list for a commit, with per-file diff.
-3. File tree at a commit, and file history.
-4. Blame.
-5. Revision graph. This is the riskiest component: upstream `RevisionGrid` is about 13.5k lines,
-   and the graph layout alone is about 2.7k. Plan a spike (M3.5) before committing to it.
-
-Estimate: 6 to 8 weeks, plus the graph spike.
-
-### M3.5. Revision graph spike
-
-Exit: a graph of the last 5000 commits renders at 60 fps on the three OSes, with labels, and the
-layout code is either reused from upstream (if it is not WinForms-bound) or reimplemented.
-
-Estimate: 1 to 2 weeks.
-
-Exit met on Windows and Linux 2026-10-06; macOS pending (CI or the user's laptop). Lanes keep one color for their whole
-length (`GraphRow.Color`, `ActiveColors`, `ParentColors`; the palette follows the light or dark theme), and labels are typed
-(HEAD, branch, remote branch, tag) and colored by kind. Measured with the developer aid `XPLAT_BENCHMARK=<file>` (the app
-loads `XPLAT_BENCHMARK_COMMITS`, default 5000, then scrolls the grid 40 px per frame for 600 frames with the platform
-renderer; `ScrollBenchmark.cs`) on a generated repository of 5500 commits with 500 merges, Debug build:
-
-| OS | Load 5000 commits | Average frame | 95th percentile frame | Frames over 25 ms |
-|---|---|---|---|---|
-| Windows 11 (desktop) | 197 ms | 10.1 ms (99 fps) | 11.4 ms | 0.2% |
-| Linux (WSLg, openSUSE Tumbleweed) | 88 ms | 16.3 ms (61 fps, vsync) | 16.8 ms | 0.2% |
-| Linux (WSLg), second run | 77 ms | 17.2 ms (58 fps) | 16.8 ms | 1.7% |
-
-WSLg frame times vary between runs by a few percent; the 95th percentile stayed at one 60 Hz frame. CI now runs the same
-benchmark on Windows, Linux (xvfb) and macOS runners (`tests/xplat/make-bench-repo.sh`, artifact `graph-benchmark-<os>`);
-runners have no GPU, so those numbers are a lower bound.
-
-Until 2026-10-07 the spike's own `GraphLayout` assigned the lanes (unit-tested for 5000 commits); it was replaced by
-upstream's graph, below. Still open: the graph of a filtered or searched list (it is computed over the rows shown).
-
-Upstream graph, 2026-10-07: the spike's own lane layout (`GraphLayout`) is replaced by upstream's graph model: `RevisionGraph`
-and its rows, segments and lanes (`src/app/GitUI/UserControls/RevisionGrid/Graph`, ten files) are compiled into the core by
-link, unchanged; only their lane colors (upstream reads WinForms theme brushes) have a stand-in that gives the color index.
-Upstream's renderer (`GraphRenderer`, `SegmentRenderer`) draws with WinForms' Graphics, so `GraphPainter` ports it to plain
-shapes (lines, Bezier curves, nodes) that `GraphCell` draws with Avalonia: upstream's lanes, shared lanes, straightened
-diagonals, curves, square nodes for commits with refs and the outline of the checked-out commit, in upstream's sizes. The list
-shows the commits in the graph's order, as upstream's grid does. Settings > Detailed has upstream's three graph settings
-(`MergeGraphLanesHavingCommonParent`, `RenderGraphWithDiagonals`, `StraightenGraphDiagonals`); upstream's graph reads them
-itself when a graph is made, so they apply on the next reload. Because upstream straightens lanes while it builds the graph,
-loading 5000 commits takes about 470 ms on Windows (197 ms with the spike); the graph is built off the UI thread. Scrolling is
-unchanged: 99 fps on Windows, 61 fps on Linux (WSLg, vsync). Not ported: upstream's other draw styles (gray non-relatives,
-highlighting a branch on hover), the lane tooltips (`LaneInfoProvider`), the artificial working-tree rows, and a column
-width that follows the visible rows (each row is as wide as the widest row of the page). A lane to a parent beyond the
-loaded page is not drawn, as in upstream's renderer. Tests: 275 core and 206 app on Windows; 275 and 205 on Linux (WSL).
-Checked by screenshot on Windows on this repository and on the 5500-commit benchmark repository.
-
-Draw styles and the rest, 2026-10-10: upstream's draw styles (non-relatives gray, on by default as upstream; highlight the
-selected branch, Alt+click or the View menu; highlight while the pointer is on a branch label) with upstream's lane color
-rule (`GetBrushForLaneInfo`); lane tooltips (upstream's `LaneInfoProvider` text, with `BranchFinder` linked); the
-artificial "Working directory" and "Commit index" rows with their change counts; and a graph column as wide as the visible
-rows need. The graph of a filtered list is upstream's too: upstream builds its graph over the rows the filter returns.
-With these the spike's open items are closed.
-
-Started 2026-10-04 as a spike. Done: `GraphLayout` in core assigns each commit a lane and the lanes open above it (pure code, 6 tests); each commit row carries its parent hashes and its branch and tag labels; the commit list draws the lanes with `GraphCell` and shows the labels in brackets. A screenshot on Windows of a repository with two merges and a tag shows the lanes and labels as expected. Not done: the 5000-commit target, the 60 fps measurement, colors per branch, and a check on Linux and macOS. The spike has only loaded commits (the first 500), so the graph covers that page.
-
-### M4. Write operations
-
-Exit: a user can clone a repository, stage and unstage files, commit (with amend), create, switch and
-delete branches, fetch, pull and push, stash and apply stashes, and see conflicts. Clone is in
-scope from 2026-10-03 (section 9, question 1).
-
-Started 2026-10-04: merge the selected branch into the current one (fast-forward by default, as the upstream buildersets it), abort a stopped merge, and show "merge in progress" while MERGE_HEAD exists. A conflicting merge leaves thefiles in the Changes list as Conflict; resolving them is done outside the app for now, and Commit then completes themerge. Tests: 63 core tests and 48 app tests, including a fast-forward, a conflicting merge that is aborted, and theMerge button in the window. Still open in M4: stash list and apply-by-name, conflict resolution, rebase, cherry-pick,reset, tags, and the write operations' progress and failure output.
-
-Continued 2026-10-04: stash list with apply, pop and drop by name (the pop button acts on the selected stash, not the top one); lightweight tags (create at the selected commit or HEAD, delete); cherry-pick, revert and reset soft or mixed of the selected commit (hard reset is not exposed); rebase onto a selected branch with abort and continue once the conflicts are staged. Read of the rebase state uses git's rebase-merge and rebase-apply folders. Tests: 70 core tests and 61 app tests, with real-git tests for each operation, including the rebase conflict abort and continue and the apply and pop of an older stash. Still open in M4: the progress and failure output of write operations (only the git error text is shown), annotated tags, interactive rebase, and a dedicated conflict view. Also: include untracked files when stashing, rebase on pull (toolbar option), annotated tags when a tag message is entered, and deletion of a remote branch from the Delete button (`push --delete`, origin/HEAD excluded). Tests after these: 70 core, 64 app, on Windows and on Linux (WSL).
-
-Later on 2026-10-04: commit sign-off; amend starts from the HEAD message and unchecking restores the typed text; conflict resolution with ours or theirs for the selected conflicted files; branch rename (also the checked-out one); create a branch at the selected commit; the whole stash as a diff; a filter over the loaded commits; a Refresh button and F5; fetch with prune; push of all tags; stash of only the selected files; discard of the unstaged edits of selected tracked files, after a confirmation dialog (ConfirmWindow); hard reset behind the same confirmation; an optional commit author; "Working..." in the status line while a write runs; force delete of an unmerged branch behind the same dialog; remotes listed with add (name and URL) and remove behind a confirmation (FormRemotes); the branch label shows ahead and behind counts against the upstream when there is one; Ctrl+Enter in the message box commits; Stage all and Unstage all; Commit and push (the push runs only after a successful commit). Tests: 80 core and 99 app at the latest change, on Windows; search of the whole history by message (Search history box, Enter); abort of a merge or rebase asks first; Reflog window (HEAD history, reset mixed to an entry); Ignore whitespace in the diff window; delete of selected untracked files behind a confirmation; remote branch delete behind a confirmation; Copy message beside Copy hash; HEAD label on the first row; Init (git init in the path box); Keep index for stash; pull and push use the remote the branch tracks (origin when none; fetch still uses origin); the same core and app tests were also run on Linux (WSL) before the graph and filter changes.
-2026-10-06: the browse window was reorganized to follow FormBrowse (menu bar with upstream's default hotkeys, toolbar,
-left panel of branches, tags, stashes and remotes, revision grid with columns and a context menu for the commit actions,
-Commit and Diff tabs, status bar, a warning bar with Solve conflicts, Abort and Continue while a merge or rebase is
-stopped). Staging and committing moved into a Commit window laid out like FormCommit (unstaged above staged, inline diff,
-message below). New: a conflicts window (ours, theirs, merge tool, mark resolved), live git output with Abort for fetch,
-pull, push, push tags and clone (a process window, `GitOutputRunner`), and the git command log (upstream `CommandLog`).
-Later on 2026-10-06: staging and unstaging of selected diff lines of a tracked file (upstream's `PatchManager`, applied as
-upstream's FileViewer does); push and pull dialogs as upstream's FormPush and FormPull (remote, branches, force with lease,
-tracking; merge, rebase or fetch only, prune, auto stash), opened with Ctrl+Up and Ctrl+Down as upstream, while the toolbar
-buttons and Ctrl+Shift+Up/Down/P stay quick actions; the branch list became a tree grouped by folders and remotes; a File
-tree tab; old and new line numbers in every diff; window size and position kept across restarts. Then: the grid shows every
-branch by default as upstream does (upstream setting `ShowCurrentBranchOnly` switches to the current branch) with an advanced
-filter (author, committer, message, dates, path, no merges, first parent); a worktrees window; remote rename and URL change;
-tag deletion on the remote; Open in diff tool; Ignore... and a .gitignore editor; blame lines open their commit's change; the
-status is read again when the window is activated; a submodules section (update, sync, open); checkout asks what to do with local changes (keep, merge, stash, discard), and a commit
-can be checked out detached. Tests: 123 core and 133 app
-on Windows. Remaining in M4: interactive rebase, line staging for new files, and the authentication prompts (git's
-credential helpers are still relied on).
-
-Interactive rebase, 2026-10-06 (later): the grid menu "Rebase current branch on" > "Selected commit interactively..." runs
-`git rebase -i` with live output, and git opens the app itself as its editor, as upstream does: the app's `fileeditor <file>`
-verb shows only an editor window (upstream `FormEditor`) and exits 0, or -1 when the changes are discarded, which makes git
-abort. Upstream reaches the editor through the global `core.editor`; the new shell sets `GIT_SEQUENCE_EDITOR` and `GIT_EDITOR`
-for that git call only (`GitEditorCommand`), so the user's git config is not touched. The same editor opens for reworded and
-squashed messages, and on Continue and Skip; the warning bar gained Skip commit and Edit todo. Checked by hand on Windows:
-`git rebase -i` with the built app as the sequence editor showed the todo list and completed (the screenshot aid,
-`XPLAT_SCREENSHOT`, now also works in editor mode: it saves the window and accepts the file unchanged). Tests: real-git
-interactive rebases with a shell-script editor (drop, reword, a failing editor), skip of a conflicting commit, and headless
-tests of the editor window. Remaining in M4: line staging for new files and the authentication prompts.
-
-Line staging for new files, 2026-10-06 (later): lines of an untracked file can be staged (the file is added to the index
-with only those lines) and lines of a newly added file unstaged (the file stays staged with the rest), through upstream's
-`PatchManager` as before. Upstream builds the untracked case from the file's text; the new shell shows that file as a diff
-from /dev/null, whose "new file" header already gives the same patch.
-
-Authentication prompts, 2026-10-06 (later): the app is its own askpass program, the new shell's version of upstream's native
-`GitExtSshAskPass` (Windows-only upstream). Remote operations (fetch, pull, push, clone, submodule update, remote tag delete)
-run with `SSH_ASKPASS` set to the app, `SSH_ASKPASS_REQUIRE=force` and a marker variable (`GitAskPass`); ssh and git start
-the app with the prompt as the only argument, and the marker makes it show only a prompt window (hidden typing for passwords,
-passphrases and PINs) and print the answer, or exit 1 on Cancel. As upstream, `GIT_ASKPASS` is not set, so a user's own
-askpass, `core.askPass` and git's credential helpers still come first. Tests: a stand-in ssh (`core.sshCommand`) that asks
-`SSH_ASKPASS` during a real fetch, the prompt rules, and the prompt window headless. Checked by hand on Windows: `git
-credential fill` with no helper started the built app as the prompt. Not checked: a typed answer reaching git in a real run
-(no one at the screen; the headless test covers the window's answer), ssh on macOS, and that no console window flashes when
-git starts the app on Windows (the app is a console-subsystem executable).
-
-Tests after these (2026-10-06): 151 core and 150 app, on Windows and on Linux (WSL). With these, the M4 items listed above
-are done; M4's exit (all write operations) is met on Windows and Linux, macOS pending CI.
-
-Askpass checks, 2026-10-10: the app is now a GUI-subsystem executable on Windows (`OutputType` WinExe), so no console window
-opens when git starts it as the prompt. A typed answer reaching git was checked in a real run on Windows: `git credential
-fill` with no helper started the built app, UI automation typed the user name and password into its window, and git printed
-them back. Still not checked: ssh on macOS.
-
-Notes:
-- Each command goes through the shared `Commands`/`IGitCommand` path, which already declares
-  `AccessesRemote` and `ChangesRepoState`. The new shell reuses that declaration to decide
-  whether to show a progress indicator and whether to refresh.
-- Credential prompts: the Windows Credential Manager is used on Windows. Linux and macOS need the
-  equivalent (libsecret / Keychain). Upstream `AdysTech.CredentialManager` is Windows-only. Decided
-  2026-10-09 (decision 6): git's own helpers, chosen in Settings > Git config; no seam.
-- Conflict resolution is a dedicated milestone if the upstream flow is complex (its
-  `FormResolveConflicts` is large).
-
-Estimate: 6 to 8 weeks.
-
-### M5. Settings, themes and hotkeys
-
-Exit: user settings are editable in the new shell; themes apply; hotkeys are configurable.
-
-Started 2026-10-06: a Settings window (Tools > Settings, Ctrl+,) edits the theme (light, dark, follow the system), the
-commit and output window options, the recent list size, the git executable, and git config `user.name`, `user.email` and
-`merge.tool` (global and per repository, through `GitConfigService`). Each app preference is an upstream key read and
-written through `AppSettings` (`IAppPreferences`), so nothing is migrated. The theme applies at once and at startup;
-meaning-carrying colors (diff, graph lanes, labels, warnings) come from `ThemeBrushes` with a light and a dark set. The UI
-font is Inter on every OS (`Avalonia.Fonts.Inter`), because some Linux installs have no sans-serif font. Hotkeys use
-upstream's defaults (`Hotkeys.cs`); since later on 2026-10-06 the browse window's hotkeys are editable in Settings > Hotkeys
-and stored in upstream's `SerializedHotkeys` setting (same XML, so both apps share them). Not done: the upstream CSS theme files,
-the other windows' hotkeys,
-external diff and merge tool presets per OS (diff.tool and merge.tool are set by name), and the other settings pages. With
-the theme, the settings editor and the browse hotkeys done, the M5 exit is met for the browse window on Windows and Linux.
-
-Diff and merge tool presets, 2026-10-06 (later): Settings > Git config offers the diff and merge tools found on this computer
-beside the tool boxes; a choice fills the global value. The list comes from upstream's `CustomDiffMergeToolCache`, used as
-is: it asks `git difftool --tool-help` (and mergetool), keeps the tools git reports as available (including user-defined
-ones) and leaves out the terminal-only ones. git checks each tool's program on the current OS, so Meld or KDiff3 on Linux and
-opendiff on macOS show up without a list of paths in the fork. Tests: 151 core and 152 app on Windows and Linux (WSL). Still
-open in M5: the upstream CSS theme files, the other windows' hotkeys, and the other settings pages.
-
-Upstream CSS themes, 2026-10-06 (later): the new shell reads upstream's theme files. Upstream's loader (`ThemeLoader`,
-`ThemeRepository`, `ThemePersistence`, `ThemeCssUrlResolver`, `ThemeFileReader` and the `IThemePathProvider` interface from
-`src/app/GitUI/Theming`) is compiled into the core by link, unchanged, with upstream's ExCSS version; it has no WinForms code.
-`ThemeModule`, which applies a theme to WinForms, is not linked. Upstream's `ThemePathProvider` is not used either: in Debug
-builds it asserts that the app is GitExtensions.exe, which fails on Linux and macOS, so `AppThemePaths` repeats its rules.
-The theme files themselves (`src/app/GitUI/Themes/*.css`) are linked into the app's Themes folder, as upstream ships them.
-Settings > Appearance lists the themes as upstream does (follow the operating system, the built-in themes, the user's own)
-with the colorblind variation; the choice is upstream's `uitheme_v2`, `uithemeisbuiltin_v2` and `uithemevariations`, so both
-apps share it. The colors that carry meaning come from the theme's `AppColor` values as upstream uses them: diff lines on
-the green and red terminal background colors, hunk headers on `DiffSection`, ref labels in `Branch`, `RemoteBranch` and
-`Tag`, graph lanes in `GraphBranch1` to `8`. A dark theme (dark panel background) switches Avalonia to its dark variant. A
-theme that fails to load falls back to upstream's default theme, as upstream does. Not applied: the panel, editor and
-selection backgrounds and upstream's system color overrides (Avalonia's Fluent theme draws the controls), and the graph and
-labels repaint only when the grid reloads after a theme change (upstream applies a theme only after a restart). Tests: 158
-core (upstream's CSS: dark, dark+ importing dark, colorblind, system mode, a broken user theme) and 153 app, on Windows and
-Linux (WSL). Checked by screenshot on Windows and with a Debug build on Linux (WSLg).
-
-Commit window hotkeys, 2026-10-06 (later): the commit window's keys follow upstream's FormCommit hotkey section (focus the
-unstaged, diff, staged and message panes, stage all, open in diff tool, refresh, next and previous file) and are editable in
-Settings > Hotkeys beside the browse window's (`HotkeyTable`, `HotkeyEditor`). Fixed on the way: the fork stored the browse
-hotkeys under the section name "FormBrowse", but upstream's section is "Browse" (`FormBrowse.HotkeySettingsName`), so hotkeys
-were not shared with the WinForms app as this plan said. The names are now upstream's, and a test reads them from upstream's
-source so they cannot drift again. Tests: 160 core and 154 app on Windows and Linux (WSL). Still open in M5: the other
-upstream hotkey sections (revision grid, file viewer, left panel, conflicts) and the other settings pages.
-
-More hotkey sections, 2026-10-06 (later): the commands the new shell has from upstream's RevisionGrid section (go to parent
-and child, select HEAD, open and reset the filter, all branches, current branch only, hide merges, first parent), FileViewer
-(next and previous change, ignore whitespace, S and U to stage and unstage the selected lines in the commit window),
-LeftPanel (Delete) and FormMergeConflicts (M, L, R, F5) work as upstream, with upstream's defaults, codes and section names,
-while the grid, the diff, the left panel or the conflicts window has the focus; all are editable in Settings > Hotkeys.
-The section-name test covers them too. Tests: 166 core and 156 app on Windows and Linux (WSL). Not ported: those sections'
-commands that the new shell has no feature for (compare, fixup commits, find, go to line, blame from the diff, ...), and the
-Stash, BrowseDiff and Scripts sections. Still open in M5: the other settings pages.
-
-Confirmations page, 2026-10-07: Settings > Confirmations lists upstream's confirmation settings whose action the new shell
-has, with upstream's groups and labels: amend, commit with no branch checked out, rebase on the selected commit, fetch
-with prune, push of a branch the remote does not have, force delete of an unmerged branch, checkout from the left panel
-(off by default, as upstream), stash drop and worktree switch. Each is upstream's key (`DontConfirm...`, inverted, and
-`ConfirmBranchCheckout`), so both apps share them. The questions are upstream's texts and, as upstream's
-`ConfirmSuppressible`, offer "Don't show me this message again", which turns the question off whatever the answer. New
-questions for the user because of this: amend, a commit with no branch, the push of a new branch, fetch with prune, stash
-drop and worktree switch were not asked before; the force delete and rebase questions now use upstream's text. Not on the
-page: undo last commit, the tracking reference question, the stash pop after pull and checkout, conflict resolution, the
-second abort question and submodule update on checkout (the shell has no such action or asks differently). The detached
-commit question offers only Continue and Cancel; upstream also offers to check out or create a branch. A test reads
-upstream's page and texts, so a label or question changed upstream fails it. Tests: 201 core and 175 app on Windows and
-Linux (WSL).
-
-Commit dialog page, 2026-10-07: Settings > Commit dialog has upstream's settings whose feature the commit window has: "Ensure
-the second line of commit message is empty" (`addnewlinetocommitmessagewhenmissing`, on by default), "Remember 'Amend
-commit' checkbox on commit form close" (`RememberAmendCommitState`, upstream's `.git/GitExtensions.amend`) and the
-"Commit & Push" button (`showcommitandpush`). Fixed on the way: the commit window gave git the message as typed; it now
-goes through upstream's `CommitMessageManager.FormatCommitMessage`, as upstream's commit window does, so a second line of
-text gets an empty line before it unless the setting is off. Not on the page: errors when staging, composing the message
-outside the window, the number of previous messages (the window has no previous-messages menu yet), the reset buttons the
-window does not have, and auto-completion. Commit templates are not supported, so their comment lines are not removed.
-Tests: 208 core and 178 app on Windows and Linux (WSL).
-
-Diff viewer page, 2026-10-07: the diff view gained upstream FileViewer's choices it lacked, and Settings > Diff viewer has
-their settings. The view's toolbar picks the whitespace changes to ignore (none, at end of line, amount, all: upstream's
-`IgnoreWhitespaceKind`, which `-w` alone had covered), the lines of context (fewer, more) and the entire file; the
-arguments are upstream's `GetExtraDiffArguments` ones (`Core/Diff/DiffOptions.cs`). Upstream's hotkeys Ctrl+=, Ctrl+- and
-Ctrl+E (FileViewer section) act on the diff too. As upstream, the choices are kept for the next diff view in this run;
-"Remember the 'Ignore whitespaces' / 'Show entire file' / 'Number of context lines' preference" decide whether a new view
-keeps them or starts from the saved default, and "Save current view settings as default" stores the current ones (upstream's
-runtime settings `IgnoreWhitespaceKind` and `ShowEntireFile`, and `NumberOfContextLines`). Not ported: non-printing
-characters, syntax highlighting, diff appearance (word diff, difftastic), combined diff, continuous scroll, submodule diff
-window, diff for all parents, the difftool list, the vertical ruler and Git coloring (the view has none of them yet).
-Tests: 212 core and 182 app on Windows and Linux (WSL).
-
-General and appearance settings, 2026-10-07: the grid's date column now follows upstream's `DateColumnProvider`: the author
-date or the commit date (`showauthordate`) and, by default as upstream, the relative text from upstream's
-`LocalizationHelpers` ("3 days ago", `relativedate`) instead of the fixed "yyyy-MM-dd HH:mm" the shell showed; otherwise the
-culture's full date. A new View menu has upstream's "Show author date" and "Show relative date" toggles, and Settings >
-Appearance has "Show relative date instead of full date". Settings > General gained upstream's "Open last working directory
-on startup" (`StartWithRecentWorkingDir`, with `RecentWorkingDir` kept on every open, as upstream), "Show number of changed
-files on commit button" (`showgitstatusinbrowsetoolbar`) and "Default clone destination" (the clone window suggests a folder
-there, named after the repository, until another target is typed). Fixed on the way: the app did not ship
-`ResourceManager.dll`, so the AutoCompileSubmodules plugin (which uses its `TranslationString`) failed to load in a real run;
-the core now references the shadow ResourceManager, and the plugin load test covers both plugins. Not ported from these
-pages: the other General settings (pull action, autostash, submodules on checkout, histogram diff, commit limit, quick search
-timeout, console window, telemetry) and the other Appearance settings (avatars, language, dictionary, truncation, auto
-scale). Tests: 215 core and 187 app on Windows and Linux (WSL).
-
-Advanced page, 2026-10-07: Settings > Advanced has upstream's settings whose feature the shell has. Checkout: "Use last chosen
-'local changes' action as default action" (`UseDefaultCheckoutBranchAction`) checks out with the last choice without asking,
-and "Always show checkout dialog" (`AlwaysShowCheckoutBranchDlg`) asks anyway, as upstream's `FormCheckoutBranch` decides
-(the shell's question appears only when there are local changes; upstream also shows its dialog without them). General:
-"Auto normalise branch name" with the symbol "_", "-" or none (`AutoNormaliseBranchName`, `AutoNormaliseSymbol`): branch
-names typed in the left panel, the create branch prompt and the new worktree's branch go through upstream's
-`GitBranchNameNormaliser` (the left panel's box when it is left, as upstream's dialogs, and again where the name is used).
-Commit: "Push forced with lease when Commit & Push action is performed with Amend option checked"
-(`CommitAndPushForcedWhenAmend`). Not on the tab: update checks, help images, advanced options, console emulator. Tests:
-221 core and 191 app on Windows and Linux (WSL).
-
-Git and SSH pages, 2026-10-07: Settings > Git has upstream's Git page: the command used to run git (moved from General), the
-Linux tools folder on Windows (`LinuxToolsDir`; upstream clears it on other OSes) and upstream's line saying where git finds
-the global config (`GIT_CONFIG_GLOBAL`, otherwise HOME). On Windows the tab also has upstream's "Change HOME" choices
-(`FormFixHome`: upstream's default, USERPROFILE or another folder, `customhomedir` and `userprofilehomedir`) with its checks;
-on Linux and macOS HOME is always set, and changing the app's HOME would also move its own settings folders, so they are
-not offered. Settings > SSH has upstream's SSH page: OpenSSH, PuTTY (Windows) or another ssh client (`gitssh`), PuTTY's
-paths (`plink`, `puttygen`, `pageant`, looked for in upstream's folders) and "Automatically start authentication client"
-(`autostartpageant`). Fixed on the way: the shell never gave git the ssh client the user chose in Git Extensions for Windows;
-`GIT_SSH` is now set at startup, as upstream's `AppSettings.LoadSettings` does, and when the page is saved. Not ported:
-PuTTY's part in remote operations (Pageant start with a remote's key, plink's host key question, key buttons), the startup
-HOME check, validation of the git command while it is typed, the "Download Git" link. Tests: 238 core and 195 app on
-Windows; 238 and 194 on Linux (WSL), where the HOME choice test does not run.
-
-Sorting page, 2026-10-07: Settings > Sorting has upstream's Sorting page. "Sort revisions by" (`RevisionSortOrder`: git's
-default, author date, topology) orders the grid, the file history and the search as upstream's `RevisionReader` asks git
-(`--author-date-order`, `--topo-order`). "Sort branches by" and "Order branches" (`RefsSortBy`, `RefsSortOrder`) go to git's
-`for-each-ref --sort` through upstream's `Commands.GetRefs`, and the branch tree's new context menu has upstream's "Sort by"
-and "Sort order" choices, which apply at once. "Prioritized branches" and "Prioritized remotes" (`PrioritizedBranchNames`,
-`PrioritizedRemoteNames`, regular expressions separated by ';') move matching branches and remotes to the top of the tree,
-as upstream's `BaseRefTree.OrderByPriority`; remotes are listed by name, as upstream does (they were in git's order). By
-default "main..." and "master..." local branches and the origin and upstream remotes now come first, as in Git Extensions
-for Windows. The shell passes its preferences to the readers instead of relying on upstream's static settings, so the
-values are the same in the app and the tests can use their own. Tests: 245 core and 198 app on Windows; 245 and 197 on
-Linux (WSL).
-
-Revision links page, 2026-10-07: Settings > Revision links has upstream's page: link definitions that turn text in a commit
-into links (an issue number in the message, a branch named after a ticket). The definitions are upstream's `RevisionLinkDefs`
-setting, edited through upstream's `ExternalLinksManager` at upstream's levels, so both apps share them; the GitHub and Azure
-DevOps templates are upstream's own classes, compiled into the core by link (their WinForms icons are a stand-in). The
-commit details now show upstream's "Related links:" for the selected commit, found by upstream's parser in the message and
-the branch names at the commit; each opens in the browser. Not ported: choosing the settings level on the page, the template
-icons. Tests: 250 core and 200 app on Windows; 250 and 199 on Linux (WSL).
-
-Fonts page, 2026-10-07: Settings > Fonts has upstream's four fonts (application, commit, code, monospace), stored under
-upstream's keys in upstream's format; the core reads that text itself (`FontSetting`), since upstream's `System.Drawing.Font`
-does not work off Windows. The family is chosen from the installed fonts and the size given in points; "(default)" keeps the
-app's own font. The fonts apply when OK is pressed (upstream needs a restart): the application font to the whole UI, the
-commit font to the commit message box and details, the code font to diffs, editors, blame and git output, the monospace font
-to commit hashes. Visible change: Git Extensions for Windows stores all four fonts whenever its Fonts page is saved, so on a
-computer where it ran, the new shell now uses those fonts (typically Segoe UI 9 points instead of Inter, Consolas for code),
-and the commit message box uses the commit font, which is not monospace by default (as upstream). Checked by screenshot on
-Windows with such settings. Not ported: bold and italic, end-of-line glyphs. Tests: 264 core and 202 app on Windows; 264 and
-201 on Linux (WSL).
-
-Browse repository window page, 2026-10-07: the revision grid now shows upstream's tooltips: the full message and the
-commit's branches and tags on the message, author and committer on the author, both dates on the date, the full hash on the
-hash, with upstream's texts. Settings > Browse repository window has upstream's "Show revision tooltips"
-(`ShowRevisionGridTooltips`), which applies without a restart. The page's other settings are for features the shell does not
-have (Console tab, GPG, git-grep search, output history) or shows elsewhere (file history and blame in their own windows).
-Tests: 268 core and 203 app on Windows; 268 and 202 on Linux (WSL).
-
-M5 status after the settings pages, 2026-10-07: every upstream settings page has a tab in the new shell for the settings whose
-feature the shell has (Appearance, Fonts, General, Browse repository window, Commit dialog, Diff viewer, Advanced,
-Confirmations, Sorting, Revision links, Git, SSH, Git config, Scripts, Hotkeys, Plugins, Blame viewer), stored under upstream's
-keys. Detailed has a tab for its revision graph settings (since upstream's graph is used, M3.5); its push and merge
-window options are not ported. Not given a tab: Build server integration, Console style, Shell extension and the checklist
-(Windows-only or features not ported). Theme, hotkeys and settings are editable, so the M5 exit is met on Windows and
-Linux.
-
-Blame viewer page, 2026-10-07: the blame window follows upstream's blame settings. git blames with upstream's flags (ignore
-whitespace, on by default; detect moved or copied lines in the file or in all files), and each run of lines from one commit
-shows upstream's gutter line once: the author and date in the chosen order, the time, and the original path of a line that
-came from another file; line numbers are off by default, as upstream. The window's context menu has upstream's blame
-settings menu with its rules, and Settings > Blame viewer has the page. Not ported: author avatars, age colors, blaming the
-line's commit or parent. Tests: 279 core and 205 app on Windows; 279 and 204 on Linux (WSL).
-
-Settings leftovers, 2026-10-10 and 2026-10-11 (finishing M0 to M6): the settings whose feature the shell has, or gained for
-them, are now on their pages (details per page in `PORTING-MAP.md`):
-- General: default pull action, autostash with untracked files, submodule update on checkout (with upstream's question),
-  histogram diff, commit limit, quick search timeout (with upstream's quick search in the grid), uncommitted changes check,
-  ahead/behind and stash count in the status bar, artificial commits' change counts.
-- Appearance: author images (upstream's providers ported without System.Drawing; images in upstream's cache folder; the
-  initials drawn by the view; in the grid, the commit details and the blame gutter), branch names in the dashboard and the
-  recent menu, "Truncate long filenames".
-- Fonts: bold and italic. Theme: the panel, editor, line number and selection colors, and a user theme's system color
-  overrides (WindowText, GrayText, Highlight) on Fluent's resources.
-- Commit dialog: every setting (show errors when staging, compose outside the window with git's editor, previous messages
-  and the "Commit message" menu, the reset buttons, auto-completion with upstream's providers).
-- Diff viewer: nonprinting characters, syntax highlighting toggle, their remember settings, the vertical ruler, the list of
-  all diff tools.
-- Blame viewer: age colors and the author avatar. Revision links: the settings level and the template icons.
-- Hotkeys: the BrowseDiff and Stash sections, Conventional Commits, quick search.
-Moved to M8 (feature parity), because each needs a feature the shell does not have: the spelling checker (upstream's
-NetSpell is a WinForms component), update checks, help images, "always show advanced options", the console emulator, the
-GPG, Console and output history tabs, git-grep search, file history and blame in the main window, the multi-branch push
-view and the merge dialog (Detailed page), the remaining confirmations (undo last commit, tracking reference, stash pop
-after pull and checkout, conflict questions, second abort), the diff appearance choices (word diff, difftastic), git
-coloring, the combined and per-parent diffs of merges, continuous scroll, the submodule diff window, and the hotkey
-commands of all of those. Not applicable off Windows: "Show current branch in Visual Studio" and "Auto scale user
-interface" (Avalonia follows the system's scale). Tests 2026-10-11: 384 core and 276 app on Windows; 384 core on Linux
-(WSL); the Linux app run was stopped by the host for lack of memory and is still to be repeated.
-
-- Settings: the file store itself is M1 item 4. M5 adds the settings editor UI and migrates any
-  values that upstream keeps in the Windows registry (through S1, read-only on Windows).
-- External tools: diff and merge tools are configured per OS. Upstream's presets are Windows
-  programs (WinMerge, Beyond Compare, P4Merge, ...); the new shell detects the ones that exist
-  on the current OS (Meld and Kdiff3 on Linux, FileMerge and Beyond Compare on macOS) and lets
-  the user add others. The `DiffMergeTools` code in the shared core stays as it is.
-- Shell integration: the Windows terminal and shell launch (`CmdShell`, `PowerShellShell`,
-  `BashShell`, ConEmu) has POSIX equivalents (`$SHELL`, the configured terminal). Only the launch
-  is ported; ConEmu and Mintty embedding stay Windows-only.
-- Themes: map `AppColor` to Avalonia resources. The upstream theme files are CSS-like and are
-  loaded by `ThemeLoader`, so the same files can be read.
-- Hotkeys: `HotkeyCommand` model reused; key names differ per OS (Cmd on macOS).
-
-Estimate: 3 to 4 weeks.
-
-### M6. Plugins and scripts
-
-Exit: scripts (user commands on lifecycle events) run on all OSes; plugins load on all OSes.
-
-- Scripts engine: shared logic in `ScriptRunner`; the UI for editing scripts is new.
-- Plugins: MEF-based hosting in `GitUIPluginInterfaces`. Non-UI plugins work once the core loads
-  on each OS. UI plugins need a new contract; the upstream plugin API is versioned
-  (`src/app/GitExtensions.Extensibility`), so changes there must be additive and noted.
-- Upstream plugins that use WinForms (28 forms) are not ported in this milestone. They stay
-  Windows-only until someone needs them on other OSes.
-
-Scripts, 2026-10-06 to 2026-10-07: the scripts half of the exit is met on Windows and Linux. The engine (`Core/Scripts`)
-reads and writes upstream's `ownScripts` setting, so both apps share the scripts, and expands every option of upstream's
-arguments help with upstream's prompts. Scripts run from the user menu bar, from the grid's Run script menu, on the before
-and after events of commit, pull, push, fetch, checkout and merge, and from their hotkeys. Settings > Scripts edits them
-(add, delete, reorder, every value but the icon) with upstream's arguments help. The hotkeys are upstream's "Scripts"
-section, editable in Settings > Hotkeys. Changed for this: stored hotkeys are now matched by command code, as upstream
-matches them, not by name, so a renamed script keeps its key. Not done: `ShowInFileList` scripts and script icons. Plugin
-commands in scripts (`plugin:name`, `{plugin:name}`) run the named plugin since the plugins load (below). Tests then: 190
-core and 162 app on Windows and Linux (WSL).
-
-Plugins, 2026-10-07 (non-UI plugins first, as recommended in section 9, question 5): the app loads plugins with upstream's
-`ManagedExtensibility`, unchanged, from the Plugins folder next to it and from the user's plugins folder, and registers them
-with the open repository as `FormBrowse` does (`Core/Plugins/PluginCatalog.cs`, `App/PluginHost.cs`). The plugins see a
-`PluginHost` as their `IGitUICommands`: the module, the change notifier, upstream's events where the shell has the action,
-and settings, commit and process windows; other dialogs report that they are not available. A Plugins menu runs them, and
-Settings > Plugins edits their settings under upstream's keys. Upstream's message boxes (shared core and plugins) are now
-shown and answered (`MessageBoxHost`); before, they returned no answer. Two upstream plugins have no WinForms forms and are
-built for the new shell by shadow projects in `src/xplat/plugins`, compiled unchanged: BackgroundFetch and
-AutoCompileSubmodules. Their only change is the bitmap resources, which cannot be created off Windows: a stand-in
-`Properties/Resources.cs` returns no bitmap, and the PNG icon is embedded for the new shell's menu. The app build copies them
-to `Plugins/<assembly>/`, so they ship in the published packages. Not done: the other upstream plugins (they use WinForms
-forms; GitHub3 and the build-server plugins need the repository-host and build-server UI first), commit templates from
-plugins, plugin settings levels and credentials settings. Third-party plugins built for the WinForms app reference WinForms
-types and are skipped by upstream's loader when their types do not resolve. Tests: 199 core and 171 app on Windows; on Linux (WSL)
-the plugin and script tests pass (25 core, 9 app). Not verified: macOS, and a run of the real app with the plugins on Linux.
-Next in M6: UI plugins by demand.
-
-Plugins with their own windows, 2026-10-09: six more upstream plugins work in the new shell: Create local tracking branches,
-Proxy Switcher, Find large files, Delete obsolete branches, Release Notes Generator and Gource. No new plugin contract was
-needed, and `GitExtensions.Extensibility` is unchanged: each plugin class is compiled unchanged by a shadow project in
-`src/xplat/plugins`, and only its WinForms form is replaced, by a stand-in of the same name and constructor whose
-`ShowDialog` shows an Avalonia window that reimplements the form (rows in `PORTING-MAP.md`). The stand-ins derive from
-`PluginDialog` in the new library `src/xplat/GitExtensions.Xplat.Ui` (Avalonia helpers shared by the app and the plugins:
-`WindowOwner`, moved from the app, and `ModalWindow`, which runs a window in a nested dispatcher frame so the plugin's
-synchronous `Execute` gets the answer, as WinForms' `ShowDialog` gives it; `MessageBoxHost` now uses it too). A plugin project
-opts in with `XplatPluginUi`, which adds Avalonia and the library without copying them. `PluginHost.StartBatchFileProcessDialog`
-works now: upstream's batch file on Windows, a sh script elsewhere (Find large files writes each). Tests: 9 headless tests
-load each plugin from the Plugins folder, run it from the Plugins menu and drive its window (`UiPluginTests`), including a
-real `filter-branch` removal and upstream's own snapshots of the batch file. 289 core and 222 app tests on Windows. Later the
-same day: the two Statistics plugins, Impact Graph (upstream's `ImpactLoader` unchanged, its drawing control ported as
-`ImpactGraph`) and Statistics (upstream's `LineCounter` unchanged; a flat pie instead of upstream's 3D System.Drawing pie);
-`PluginHost.GetService` now gives `IGitExecutorProvider`, which Statistics asks for. Found while testing: upstream's
-`ImpactLoader` skips every commit that follows another in git's log output (its parse loop steps over the next header), so
-Impact Graph undercounts in both apps; it is left unfixed in the fork (the file is compiled unchanged) and is a candidate for
-an upstream fix. With these, eight of the eleven upstream plugins run in the new shell. Tests: 11 plugin tests; 289 core and
-224 app on Windows. Not done: GitHub3 and BuildServerIntegration (they need the repository-host and build-server UI),
-translations of the plugin windows, and third-party WinForms plugins (still skipped by the loader).
-
-Remaining upstream plugins and translations, 2026-10-09 (later): all eleven upstream plugins now run in the new shell.
-- Translations: the app ships upstream's Transifex files and Settings > Appearance has upstream's language choice (the shared
-  `translation` setting). `GitExtensions.Xplat.Ui.UpstreamTranslation` translates a window as upstream translates the form it
-  reimplements (by type name and field names), so the plugin windows, the build server and repository host windows below
-  use upstream's existing translations; the plugin classes translate themselves as upstream. The rest of the shell stays
-  English for now (its windows are not named after upstream's forms yet).
-- Build server integration: the six BuildServerIntegration plugins are shadow projects (adapters, API clients and detectors
-  unchanged; each WinForms settings control replaced by an Avalonia control exported with upstream's metadata, TeamCity's
-  build chooser too). `Core/BuildServer` reimplements upstream's `BuildServerWatcher` (adapter choice and detection, polling,
-  credentials), and the grid has upstream's "Build Status" column with its View toggles and the build report and pull request
-  links; Settings > Build server integration edits the repository's settings with the plugin's control. Credentials: upstream's
-  DPAPI file on Windows, the Secret Service (`secret-tool`) on Linux when installed, otherwise kept for the session only.
-- GitHub: `externals/Git.hub` and the GitHub3 plugin are compiled unchanged (the shim gained `LinkLabel`, menu item lists and
-  `TaskDialog`). The app reimplements upstream's repository host forms (fork and clone, view pull requests, create pull
-  request) and menu, the blame window shows the plugin's "View in GitHub", plugin settings show link labels as links, and
-  plugin commit templates (the GitHub issue helper) appear in the commit window's new "Commit templates" menu, with the user's
-  own templates from upstream's setting.
-Tests: the real GitHub Actions adapter against a local fake API, the real Jenkins settings control, the watcher's choice and
-credentials, the repository host windows with a fake host plugin, and the GitHub plugin itself (menu, blame item, links,
-template) without network. 290 core and 242 app on Windows; 290 and 241 on Linux (WSL). Not done: third-party WinForms
-plugins (still skipped by the loader), the build report tab, the conventional commit items of the templates menu.
-
-Finished 2026-10-10:
-- Third-party WinForms plugins (decision 5): not loadable. Settings > Plugins lists every plugin file upstream's loader passed
-  over, with the reason (built on WinForms, another interface version).
-- Plugin settings: the settings level choice of upstream's page header, and credentials settings (Windows' store, as
-  upstream; on Linux and macOS shown as not editable, with the reason).
-- Scripts: `ShowInFileList` scripts in the file lists' menus with the selected files' options, and the script icons (upstream's
-  images, linked, or the script's icon file), with the icon choice in Settings > Scripts.
-- The build report tab (a link to the report, as Avalonia has no embedded browser) and `ShowBuildResultPage`.
-- The commit window: the Conventional Commits items, upstream's commit template settings window, the message checks and
-  formatting, and the "Word wrap" menu item.
-- Translations of the whole shell: windows that are not named after an upstream form are translated by their English texts
-  (`UpstreamTranslation.ApplyByText`), so every text the shell shares with upstream follows the language (decision 4).
-With these the M6 exit is met on Windows and Linux.
-
-Estimate: 3 to 4 weeks.
+M0 (foundations), M1 (application shell), M2 (engine services), M3 (read-only browsing), M3.5 (revision graph), M4 (write
+operations), M5 (settings, themes and hotkeys) and M6 (plugins and scripts) are done: their exits are met on Windows and
+macOS by local runs, and on Linux by CI's only run (2026-11-08). The part of their exits that CI was to prove on every push
+is open with question 16. Their history is in git and in `PORTING-MAP.md`.
 
 ### M7. Packaging and distribution
 
@@ -849,148 +214,96 @@ Exit: installable builds for Windows (existing installer), Linux (AppImage, and 
 - Windows: upstream WiX installer keeps working for the WinForms app. The Avalonia app ships as a
   separate artifact at first.
 - Linux: AppImage first, since it needs no distro packaging.
-- macOS: code signing and notarization need an Apple developer account. Decide whether the project
-  has one (section 9).
+- macOS: code signing and notarization need an Apple developer account (question 8).
 - Shell extension and ConEmu terminal are Windows-only and stay out of the Linux/macOS builds.
 
-Estimate: 2 to 3 weeks per platform, after the app works.
-
-Started 2026-10-06 (first step, unsigned): `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it
-per OS: a zip for Windows, a tarball with a `.desktop` entry and icon for Linux, and a zipped `Git Extensions.app` bundle
-(`Info.plist`, executable in `Contents/MacOS`) for macOS. The app project opts back into publishing (`IsPublishable`, which
-the repository turns off). Checked locally: the Windows zip and the Linux tarball (WSL) were unpacked and the app started from
-them without an installed .NET; the macOS bundle was built from Linux and its layout checked, not run (no Mac). CI job
-`app-packages` builds and uploads win-x64, linux-x64 and osx-arm64. Not done: signing and notarization, an `.icns` icon,
-AppImage, `.deb` or `.rpm`, a `.dmg`, and an installer for the Avalonia app on Windows.
+Done: `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it per OS: a zip for Windows, a
+tarball with a `.desktop` entry and icon for Linux, and a `Git Extensions.app` bundle (`.icns`, ad-hoc signed) as a zip and a
+`.dmg` for macOS. What is left is section 12.3.
 
 ### M8. Feature parity and retirement (optional)
 
 Exit: the Avalonia app covers the WinForms app's features, or the decision is made to keep both.
 
-Not planned in detail. Full parity is the largest unknown and depends on section 9, question 1. The known gaps, in the
-order users would notice them, are listed in section 12.4.
+The parity part is done (section 2). Left: the decision whether the WinForms app is retired or both are kept, which needs
+the open questions of section 9 first.
 
 ## 8. Testing strategy
 
 | Layer | Tool | Runs on | Notes |
 |---|---|---|---|
-| Shared core unit tests | NUnit, the shadow `GitCommands.Tests` | Windows, Linux | Upstream tests, plus `XplatLinux*.cs` counterparts. 144 ignored on Linux, each with a reason |
-| Other non-UI upstream unit tests | NUnit, 11 shadow test projects (Extensibility, GitExtUtils, ResourceManager, plugin and build server tests), added 2026-11-02 | Windows, Linux | Windows 487 pass. Linux 440 pass, 51 ignored with reasons (GDI+/user32, a Windows relative path, an inherited `DISPLAY`), including 2 `XplatLinux*.cs` counterparts. One upstream Gitlab test is skipped on both, as upstream |
-| Upstream merge check | `tests/xplat/verify-upstream.sh` | Linux (CI nightly) | Builds and tests shadow projects against `upstream/master` in a temporary worktree |
-| App unit tests (view models) | NUnit | Windows, Linux, macOS | Start in M2 |
-| App UI tests | Avalonia.Headless | Windows, Linux, macOS | Start in M1 |
-| App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux, macOS | Manual review, and an artifact in CI once MAC1 is done. The aid renders the content only, without title bar or native menu bar; `screencapture` covers those on a Mac |
-| macOS smoke test | The real app, by hand, from `dotnet run` and from a bundle | macOS | The list in `MACOS.md`, MAC2. Repeated before a macOS package is offered |
-| Windows checks that need a person | Pageant, taskbar, Credential Manager and others | Windows | The list in `MACOS.md`, section 7, done in one go when a Windows machine is at hand |
-| Git behavior | Real temporary repositories (`ReferenceRepository`) | Windows, Linux, macOS | As upstream does. macOS needs the Command Line Tools on the runner |
+| Shared core unit tests | NUnit, the shadow `GitCommands.Tests` | Windows, Linux, macOS | Upstream tests, plus `XplatLinux*.cs` counterparts, each ignored test with a reason |
+| Other non-UI upstream unit tests | NUnit, 11 shadow test projects (Extensibility, GitExtUtils, ResourceManager, plugin and build server tests) | Windows, Linux, macOS | One upstream Gitlab test is skipped on every OS, as upstream |
+| Upstream merge check | `tests/xplat/verify-upstream.sh` | Linux (CI nightly), and by hand | Builds and tests shadow projects against `upstream/master` in a temporary worktree |
+| App unit tests (view models) | NUnit, `GitExtensions.Xplat.Core.Tests` | Windows, Linux, macOS | |
+| App UI tests | Avalonia.Headless, `GitExtensions.Xplat.App.Tests` | Windows, Linux, macOS | Tests that run the real `GitOutputRunner` belong here: its command log needs the threading context the app sets |
+| App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux, macOS | Manual review, and an artifact in CI once it runs. The aid renders the content only, without title bar or native menu bar. Run it with `GITEXTENSIONS_XPLAT_USER_DATA` on a scratch folder, so the real settings stay untouched |
+| macOS checks at the screen | The real app, by hand | macOS | `MACOS.md`, section 10 |
+| Windows checks that need a person | Pageant, taskbar, Explorer and others | Windows | `MACOS.md`, section 7, and section 12.2 |
+| Git behavior | Real temporary repositories | Windows, Linux, macOS | As upstream does. macOS needs the Command Line Tools |
 | Drift checks | `port-drift.sh`, `xplat-drift.sh`, `verify-upstream.sh` | Linux (nightly) | Upstream changes to ported files and to mirrored tests are reported, not discovered by accident |
 
-**Which machine runs what, from 2026-11-08:** macOS locally for every change. Windows and Linux in CI (MAC1), because they
-are no longer at hand. CI sees a change only after the user pushes it, so a status report says which commit CI last checked.
-
 Principle: no test is excluded silently. A Windows-only test is an `XplatPlatformSkips.cs` entry
-with a reason. A Linux-only expectation is an `XplatLinux*.cs` test, and a macOS-only one an `XplatMac*.cs` test. A test that
-must be skipped on macOS but still passes on Linux gets a macOS-only skip (to add, `MACOS.md`, MAC2).
+with a reason. A Linux-only expectation is an `XplatLinux*.cs` test, and a macOS-only one an `XplatMac*.cs` test.
 
 ## 9. Open decisions (need the user)
 
-These change the plan. Each has a recommendation, but the choice is the user's.
+These change the plan. Each has a recommendation, but the choice is the user's. Decided questions keep their number and
+are listed with their outcome at the end, as code and the other documents refer to them.
 
-1. **Scope.** *Decided 2026-10-03:* core UI workflows first: clone, commit, push, pull and branch
-   work. The new UI should stay as close as possible to the WinForms app, so later it can match
-   its look and behavior. Full parity (M8) stays optional. Clone is added to M4 (see below).
-   *Consequence:* M6 (plugins) and M7 (packaging) move after M4, and M8 remains optional.
-2. **First target OS.** *Decided 2026-10-03:* Windows, Linux and macOS together. Every milestone
-   from M1 on has to build and run on all three; the platform services in M2 and the terminal
-   and credentials choices are per OS from the start.
-3. **Upstream strategy.** *Decided 2026-10-03:* shadow projects only. No seam PRs are sent
-   upstream. S2, S3 and S4 stay as seams in `XplatPatch`.
-   *Consequence:* the seam count stays at 7 and must not grow without a table entry. (S8 was added later with its entry, so the
-   count is 8.)
-4. **macOS hardware run.** *Decided 2026-10-03:* the user will test the macOS build on their own
-   laptop later. Until then, CI-only evidence (question 11) is what the milestones use.
-   *Updated 2026-11-08:* development moves to a Mac, so hardware runs are now routine (`MACOS.md`).
-4. **Translations:** reuse the Transifex `.xlf` files, or start new?
-   *Recommendation:* reuse. The strings already exist and translators already work on them.
-   Needs a check of how `TranslationString` maps to the Avalonia side.
-   *Status 2026-10-09:* the files are reused as they are (shipped from `src/app/GitUI/Translation`); a window named after
-   upstream's form uses its entries (`UpstreamTranslation`). Applied to the plugin, build server and repository host windows
-   so far; the user has not confirmed the recommendation yet.
-   *Decided 2026-10-09:* reuse (the user confirmed). Since 2026-10-10 the other windows are translated by their English texts,
-   and the shell's own texts that upstream does not have stay English.
-5. **Plugins off Windows:** which plugins must work, and is it acceptable that WinForms-based
-   plugins stay Windows-only?
-   *Recommendation:* non-UI plugins first (M6); UI plugins later, by demand.
-   *Status 2026-10-07:* the recommendation is what M6 implemented (BackgroundFetch and AutoCompileSubmodules on every OS,
-   WinForms plugins Windows-only); the user has not confirmed it yet.
-   *Decided 2026-10-09:* confirmed. Upstream's own WinForms plugins were since built for the new shell (M6); third-party
-   plugins built on WinForms are not loadable, and Settings > Plugins lists them with the reason.
-6. **Credentials on Linux and macOS:** libsecret and Keychain, or plain git credential helpers?
-   *Recommendation:* use git's own credential helpers, and add libsecret and Keychain later.
-   *Decided 2026-10-09:* git's own helpers (`osxkeychain` and `libsecret` are such helpers), with a `credential.helper` choice
-   in Settings > Git config (done 2026-10-10, M2).
 7. **Branch-name rule and commit-message line endings** (decided earlier as "keep upstream
    behavior"): confirm, or change to one fixed set on every OS.
 8. **Apple developer account** for signing and notarization (M7).
-9. **Who maintains the xplat track** after the first milestones, and how often it syncs with upstream.
+9. **Who maintains the xplat track**, and how often it syncs with upstream.
 10. **Terminal on Linux and macOS:** which terminal to launch when the user asks for one. Options:
     `$TERMINAL` or `$SHELL` with a configurable command, or a fixed list per OS.
     *Recommendation:* configurable command, with a default detected from the OS.
-11. **macOS evidence until a Mac exists:** accept CI-only evidence (build, headless tests, screenshot
-    artifact) as the macOS exit for M1 and M2, with a real run before any macOS release?
-    *Recommendation:* yes. A macOS release must not ship without a run on hardware.
-    *Overtaken 2026-11-08:* real runs replace it (question 4). CI remains the evidence for Windows and Linux.
-12. **Where the work runs after the move.** *Assumed 2026-11-08, to confirm:* the Mac is the main machine, Windows stays
-    reachable through CI and now and then a machine or VM, and Linux is CI only. If no Windows machine remains, the list in
-    `MACOS.md` section 7 cannot be checked by anyone and must be marked unverified in `PORTING-MAP.md`.
+12. **Where the work runs.** *Assumed 2026-11-08, to confirm:* the Mac and Windows are both in use, Linux is CI only. If no
+    Windows machine remains, the list in `MACOS.md` section 7 cannot be checked by anyone and must be marked unverified in
+    `PORTING-MAP.md`.
 13. **Default branch of the fork on GitHub.** The nightly upstream check runs only from the default branch, and `master` is
     meant to mirror upstream, so it does not have the workflow. *Recommendation:* make the integration branch the default
     (`feature/cross-os-ui` now, `xplat/main` if that is created, section 11.3). Only the user can change this.
 14. **Reference pictures of the WinForms app.** Keep them in the repository, or outside? *Recommendation:* in
-    `docs/xplat/reference/windows/`, a fork-owned folder, so a later session on a Mac finds them; a few MB in total. They must
-    be taken before leaving Windows, or later on a Windows machine or VM.
-15. **macOS menu bar.** In the window, as on the other OSes, or in the system menu bar? *Recommendation:* the system menu
-    bar, generated from the window's menu so there is one definition (`MACOS.md`, MAC4). Not needed before MAC2.
-    *Decided 2026-11-20 by the user, as recommended, and done on macOS* (`SystemMenuBar`, `PORTING-MAP.md` macOS notes).
-16. **CI on or off.** *Found 2026-11-13:* `fc4d4ba5d` (2026-11-08) commented out every workflow, so the fork has had no CI since
-    its first run, and Windows and Linux are checked only when someone runs them locally. The commit also edits 13 upstream
-    files (section 5, "Files outside the fork folders"). The reason was not recorded. *Recommendation:* restore those 13 files
-    to upstream's content and turn the unwanted workflows off on GitHub (`gh workflow disable`), which also stops the scheduled
-    ones that the edit did not reach. Turn `xplat.yml` back on. If run time or notification noise is the reason, keep
-    `workflow_dispatch` and push to `feature/**`, and drop the nightly `schedule` until question 13 is settled. If CI stays off,
-    MAC1's exit changes to "Windows and Linux suites run by hand before each push", and every status report says which OS ran.
-    *2026-11-20:* the 13 upstream files are restored (section 5). None of them runs on a push to `feature/**`: they run on a
-    push to `master`, `release` or `experimental/**`, on pull request and issue events, on a schedule (from `master`) or by
-    hand. Still open: turning them off on GitHub (`gh workflow disable "<name>"` for each, or Settings, Actions; it needs the
-    user's GitHub login), and whether `xplat.yml`, still commented out, is turned back on.
-17. **The base of the view models.** *Decided 2026-11-13 (the user):* CommunityToolkit.Mvvm, the default of Avalonia's
-    documentation and templates: source-generated properties (`[ObservableProperty]`) and commands (`[RelayCommand]`, with
-    `CanExecute`). The core's own `ObservableObject` was replaced by the toolkit's the same day (16 types; its
-    `RaisePropertyChanged` is the toolkit's `OnPropertyChanged`), so the app has one MVVM base. The version is set in
-    `src/xplat/Directory.Packages.props`, and `GitExtensions.Xplat.Core` references the package.
+    `docs/xplat/reference/windows/`, a fork-owned folder, so a session on a Mac finds them; a few MB in total. They are taken
+    on a Windows machine.
+16. **CI on or off.** `fc4d4ba5d` (2026-11-08) commented out every workflow, so the fork has had no CI since its first run,
+    and Windows and Linux are checked only when someone runs them locally. The 13 upstream workflow files are restored
+    (section 5). Still open: turning the unwanted upstream workflows off on GitHub (`gh workflow disable "<name>"` for each,
+    or Settings, Actions; it needs the user's GitHub login), and whether `xplat.yml` is turned back on. *Recommendation:*
+    turn it back on; if run time or notification noise is the reason, keep `workflow_dispatch` and push to `feature/**`, and
+    drop the nightly `schedule` until question 13 is settled. If CI stays off, every status report says which OS ran.
+
+Decided:
+
+1. Scope: core workflows first, as close as possible to the WinForms app; full parity optional (2026-10-03). Since done.
+2. First target OS: Windows, Linux and macOS together (2026-10-03).
+3. Upstream strategy: shadow projects only, no seam pull requests upstream (2026-10-03).
+4. macOS hardware runs: routine since development moved to a Mac (2026-11-08). Translations (the second question 4):
+   upstream's `.xlf` files reused as they are (2026-10-09).
+5. Plugins off Windows: non-UI plugins first, upstream's WinForms plugins built for the new shell, third-party WinForms
+   plugins not loadable and listed with the reason (2026-10-09).
+6. Credentials on Linux and macOS: git's own credential helpers (`osxkeychain`, `libsecret`), chosen in Settings > Git config
+   (2026-10-09).
+11. macOS evidence: overtaken by real runs on a Mac (2026-11-08).
+15. macOS menu bar: the system menu bar, generated from the window's menu (2026-11-20, done: `SystemMenuBar`).
+17. The base of the view models: CommunityToolkit.Mvvm (2026-11-13); the core's own `ObservableObject` was replaced by it.
 
 ## 10. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Upstream GitUI churn breaks ported forms faster than we port them | High | `PORTING-MAP.md` and the weekly upstream script; port the high-churn forms last |
-| Revision graph is harder to port than estimated | High | M3.5 spike before M3 is committed |
+| Upstream GitUI churn breaks ported forms faster than they are ported | High | `PORTING-MAP.md` and `port-drift.sh`; port changes at each sync |
 | Avalonia API changes between majors | Medium | Pin versions in `Directory.Packages.props`; upgrade deliberately |
-| macOS failures found all at once: nothing has ever run there, while the app grew to about 700 tests | High | `MACOS.md`: CI first, then a first run with predicted failures listed, and no new parity work until it is read. Say the OS in every status report |
-| Windows breaks unnoticed once no one develops on it | High | CI on Windows for every push (MAC1), and the Windows check list (`MACOS.md`, section 7) |
-| The WinForms app, the parity reference, cannot run on a Mac | Medium | Designer files, then reference pictures taken beforehand, then a Windows machine (`MACOS.md`, section 6) |
-| Knowledge left on the Windows machine (Claude's memory, global rules, session scripts) | Medium | `MACOS.md`, section 2; the rules themselves are now in `CLAUDE.md` |
+| Windows or Linux breaks unnoticed while CI is off | High | Question 16; until then, local Windows runs and a status report that names the OS |
+| The WinForms app, the parity reference, cannot run on a Mac | Medium | Designer files, then reference pictures, then a Windows machine (`MACOS.md`, section 6) |
 | Seams grow beyond what `XplatPatch` can carry | Medium | Each seam is in section 5; more than about 10 means revisiting the approach |
-| Upstream test changes make Linux counterparts stale | Medium | Verify script runs nightly; `XplatLinux*.cs` tests have the upstream test name in their comment |
-| WinForms-only features (shell extension, ConEmu, WiX) confuse users on other OSes | Low | Document them as Windows-only; hide the menu items on other OSes |
-| Credential storage differs per OS | Medium | Section 9, question 6 |
-| Settings lost on Linux and macOS until M1 item 4 | High | Fix first in M1; until then, say in every status report that nothing persists off Windows |
-| `git` not found or too old on a user's machine (especially macOS without Command Line Tools) | High | M1 item 5: detection, version check, clear message |
+| Upstream test changes make Linux counterparts stale | Medium | `xplat-drift.sh` in the nightly job; `XplatLinux*.cs` tests have the upstream test name in their comment |
+| WinForms-only features (shell extension, ConEmu, WiX) confuse users on other OSes | Low | Documented as Windows-only; their menu items are hidden on other OSes |
 | Reimplemented form logic drifts from upstream without anyone noticing | High | `port-drift.sh` in the nightly job; `PORTING-MAP.md` rows marked `stale` block the milestone exit |
-| `XplatLinux*` counterparts go stale when the upstream test changes | Medium | `xplat-drift.sh` in the nightly job flags them (section 4) |
 | `WinFormsShim` grows with every new shared use of WinForms, and its stand-ins drift from real behavior | Medium | Measure the member count (11.2); each new member needs a note on what the real type does |
-| Terminal, diff-tool and shell launch behave differently on each OS | Medium | Section 9, question 10; per-OS tests where the OS allows |
-| An unexpected exception ends the app without a message: the shell had no last-chance handler and no bug report (found 2026-11-13) | High, now Low | Done 2026-11-13: upstream's handlers and reports (`UI-PARITY.md`, "Continuing on macOS" item 7.1). Left: a terminating exception on the UI thread itself is traced only, as there is no thread left to show it on |
+| Terminal, diff-tool and shell launch behave differently on each OS | Medium | Question 10; per-OS tests where the OS allows |
+| A terminating exception on the UI thread itself is only traced: no thread is left to show it on | Low | Accepted; every other unhandled exception gets upstream's bug report |
 
 ## 11. Long-term mergeability
 
@@ -1017,7 +330,7 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
 
 | Measure | Target | How it is measured |
 |---|---|---|
-| Upstream files modified | 0, apart from the files listed in section 5 | `git diff --name-only <fork-base> HEAD -- . ':!src/xplat' ':!tests/xplat' ':!docs/xplat' ':!GitExtensions.xplat.slnx' ':!.github/workflows/xplat.yml'` lists only the files in section 5's two tables. Until 2026-11-13 this checked `src/app src/plugins tests/app setup eng` only, and so reported 0 while 13 workflows were edited |
+| Upstream files modified | 0, apart from the files listed in section 5 | `git diff --name-only <fork-base> HEAD -- . ':!src/xplat' ':!tests/xplat' ':!docs/xplat' ':!GitExtensions.xplat.slnx' ':!.github/workflows/xplat.yml'` lists only the files in section 5's tables |
 | Seam count | at most 10 | Rows in section 5 |
 | Seam anchors intact after upstream merge | 100% | Build fails if an anchor is missing; `verify-upstream.sh` |
 | Shadow build and tests on current upstream | pass | `tests/xplat/verify-upstream.sh` |
@@ -1041,9 +354,10 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
      sync merges `master` into `xplat/main`. Automation does not create, move or commit branches.
   5. If the merge added an upstream workflow, turn it off on GitHub (`gh workflow disable "<name>"`); a new workflow
      starts enabled, and the fork's workflow files stay as upstream has them (section 5).
-  6. Run the macOS test suites locally, and confirm the Windows and Linux ones in CI.
+  6. Run the test suites locally on the machine at hand, and confirm the other OSes in CI.
   7. For each upstream commit that touched a ported form, update `PORTING-MAP.md`: port it, or
-     record that it was deliberately skipped, with the reason.
+     record that it was deliberately skipped, with the reason. Compare upstream's designer file names with the map
+     (section 6) for new forms.
   8. Append a line to `SYNC-LOG.md`: date, upstream commit, number of commits, seam status.
 - **Catch-up:** if the fork has been out of sync for a long time, catch up in batches of about
   200 upstream commits, verifying after each batch, rather than one large merge.
@@ -1076,251 +390,44 @@ Each milestone's exit criteria include a sync: `verify-upstream.sh` passes on th
 `upstream/master`, the measures in 11.2 are reported, and `SYNC-LOG.md` has an entry for the
 sync that was done during the milestone.
 
-## 12. Remaining work (future plan)
-
-Updated 2026-10-11, after the work items of M1 to M6 were finished (details in each milestone and in `PORTING-MAP.md`).
-Nothing below needs code for M0 to M6; it is user actions, runs that are still missing, M7 and M8, and open decisions.
+## 12. Remaining work
 
 ### 12.1 User actions
 
-1. Done (checked 2026-11-08, neither is left): remove the two leftovers of a failed test run (see `SYNC-LOG.md` 2026-10-11):
-   `git config --unset http.proxy` and `git branch -D pr/n7_ann/feature`.
-2. Done: the work is committed and pushed by the user, up to `4e556130c`.
-3. Decide whether to merge `upstream/master` (`c584b9740`, 55 commits ahead of the fork base on 2026-11-08) and move `master`
-   (M0's open item). Record the merge in `SYNC-LOG.md`.
+1. Decide whether to merge `upstream/master` (`verify-upstream.sh` passed against `17213fe3f` on 2026-11-20) and move
+   `master`. Record the merge in `SYNC-LOG.md`.
+2. Commit the work in the working tree.
 
 ### 12.2 Checks not run yet
 
-1. Linux app tests: passed in CI's first run on 2026-11-08 (`42521621315`).
-2. CI on GitHub: ran on 2026-11-08 with failures on Windows and a hang in the screenshot job (section 2; MAC1). One cause of the core
-   failure is fixed; the rest needs the next run, whose annotations report the failed tests and what a hung app is doing.
-   *2026-11-13:* there has been no next run, as CI is off (question 16). Windows had local runs only: core 992 pass and part
-   of the app suite (`SYNC-LOG.md`, 2026-11-13). The full Windows app suite and shadow projects have not run since 2026-11-08.
-3. macOS on hardware: done for the test suites on 2026-11-08 (all pass, `SYNC-LOG.md`). The smoke items that need a person at
-   the screen are still open (`MACOS.md`, MAC2).
+1. **CI** (question 16): Windows' shadow tests failed and the screenshot job hung on every OS in its only run
+   (`42521621315`, 2026-11-08); the causes are not known (`MACOS.md`, MAC1). Linux has had no run since.
+2. **On a Mac, at the screen:** `MACOS.md`, section 10 (19 rows, with two decisions: dark mode and the font).
+3. **On Windows, at the screen:**
+   - The Shell extension page with the Explorer menu: Enable and Disable (they ask for administrator rights and change the
+     machine's registration), and the menu's items starting this app.
+   - The Checklist's Repair buttons: git, the linux tools and PuTTY found as upstream finds them, the install folder.
+   - The PuTTY windows against a real server and Pageant.
+   - Narrator on the tool buttons and the lists' rows.
+   - Both apps showing the same settings (the settings folder is shared since 2026-11-20).
+   - The new windows of 2026-11-22: "Open local repository", the empty repository panel, and the output window's password
+     box with a real question on git's input (plink's host key question, with PuTTY as the SSH client).
 
-### 12.3 M7, packaging and distribution (started)
+### 12.3 M7, packaging and distribution
 
-Done: packages per OS from `src/xplat/eng/publish-app.sh` (Windows zip, Linux tarball with a `.desktop` entry, macOS `.app`
-with an `.icns`, as a zip and a `.dmg`, ad-hoc signed; built on a Mac 2026-11-08, `MACOS.md`, MAC5), to be built by CI. To do:
-1. Real signing and notarization (needs section 9, question 8: an Apple developer account).
-2. Trying a downloaded macOS package, the last exit item of MAC5.
+1. Real signing and notarization (question 8: an Apple developer account).
+2. Trying a downloaded, quarantined macOS package (`MACOS.md`, MAC5).
 3. An AppImage, and a `.deb` or `.rpm`, for Linux.
-4. An installer for the Avalonia app on Windows.
+4. An installer for the Avalonia app on Windows, with the Explorer shell extension's files (built by `src/native`, which
+   needs VC++ and ATL); until then its Shell extension page works with an installed Git Extensions' files.
 
-### 12.4 M8, feature parity (optional, not planned in detail)
+### 12.4 M8, retirement (optional)
 
-*Stale, 2026-11-13:* most of this list was done through `UI-PARITY.md` (items 1, 2, 3 and 5, and the GPG, output history and
-git-grep parts of item 4, by `PORTING-MAP.md`). The current list of gaps is `UI-PARITY.md`'s audit of 2026-11-07 and its
-"Continuing on macOS" section; this list is kept as it was planned.
-
-In the order users would notice them:
-1. The diffs of merge commits against each parent and the combined diff ("Show file differences for all parents",
-   "Omit uninteresting changes from combined diff").
-2. ~~The spelling checker of the commit message (upstream's NetSpell is a WinForms component), with the dictionary setting
-   and "Mark ill formed lines".~~ Done 2026-11-09 on macOS: NetSpell turned out to need no WinForms, so it is compiled
-   unchanged by the shadow project `src/xplat/NetSpell.SpellChecker` (see the EditNetSpell row of `PORTING-MAP.md`).
-3. Diff viewer: diff appearance (git word diff, difftastic), git coloring, continuous scroll to the next file, the
-   submodule diff window, end-of-line glyphs.
-4. Browse window: the GPG, Console and output history tabs (with the default shell and output history depth), git-grep
-   search, file history and blame inside the main window.
-5. The multi-branch push view (with "Get remote branches directly from the remote") and the merge dialog (with the log
-   messages options).
-6. The remaining confirmations: undo last commit, the tracking reference question, the stash pop after pull and checkout,
-   the conflict resolution questions, the second abort question.
-7. Advanced page: update checks, "Always show advanced options", help images (the console emulator is Windows-only).
-8. The hotkey commands of all the features above.
-
-### 12.4b UI and UX parity
-
-The look and behavior of the Avalonia app against the WinForms app: the comparison of 2026-10-11 and the plan (U1 groundwork,
-U2 browse window, U3 commit window, U4 settings, U5 other windows, U6 UX details) are in `UI-PARITY.md`. It includes a
-bug found by the comparison: lane colors differ from upstream's (U1 item 1).
-
-*2026-11-13:* a review against the WinForms checklist (what a form gets from its designer and from `Program.Main`) found four
-gaps that the per-row audit could not see: no crash handling or bug report, no `safe.directory` prompt, three dialogs without
-Enter or Escape, and no accessible names on image-only tool buttons. They are `UI-PARITY.md`'s "Continuing on macOS" item 7
-and come before the remaining parity work, the first two above all. *Done the same day on Windows*, with two leftovers recorded
-there: the failed command's details in the shell's error window, and a check with a real screen reader.
-
-### 12.4c Moving development to macOS
-
-This comes before the rest of section 12 and before more UI parity work. `MACOS.md` has the handoff, the setup, and phases
-MAC0 (handoff), MAC1 (CI runs), MAC2 (first results and smoke test), MAC3 (keys), MAC4 (fitting into macOS) and MAC5
-(packaging). `UI-PARITY.md`, "Continuing on macOS", sorts the remaining features by where they can be done.
-
-State on 2026-11-08: the test parts of MAC2, MAC3 items 1 to 4, most of MAC4 and items 1 to 5 of MAC5 are done on macOS. Left
-for the user: pushing for the first CI run (MAC1), the checks at the screen (MAC2's smoke list, MAC3 item 5, the menu bar and Terminal
-in MAC4), and questions 12 to 15. `MACOS.md` has each one's state. Windows and Linux have run none of this yet.
-
-State on 2026-11-13: parity resumed on 2026-11-08 and items 1 to 6 of `UI-PARITY.md`'s Mac list are done, while MAC1 stays open:
-CI was turned off that night (question 16). Work now alternates between the Mac and Windows (the 2026-11-10 commits were made on
-Windows), so the Windows suites get local runs (`SYNC-LOG.md`), but Linux has had no run since CI's only one.
-
-State on 2026-11-20 (night, on macOS): `UI-PARITY.md`'s "Next on the Mac" items 1 to 3 are done, and from item 5, chosen by
-the user, the settings folder on Windows (its check is Windows only), the macOS menu bar (question 15), and upstream's whole
-command line with the plugins' `RunCommand` and `Start...Dialog` methods. `PORTING-MAP.md` has one row `partial` (the
-settings tree's Shell extension page, Windows). Left for the user: the checks at the screen (`MACOS.md` section 10, 19 rows),
-questions 7 to 10 and 12 to 14 and 16, and merging `upstream/master`, against which `verify-upstream.sh` passes.
+The decision whether to retire the WinForms app or keep both, after the open questions of section 9.
 
 ### 12.5 Open decisions (section 9)
 
-1. Question 7: confirm "keep upstream behavior" for branch-name rules and commit-message line endings.
-2. Question 8: an Apple developer account for signing and notarization.
-3. Question 9: who maintains the xplat track, and how often it syncs with upstream.
-4. Question 10: the terminal on Linux and macOS (recommendation: a configurable command with a default from the OS).
-5. Questions 12 to 14, from the move to macOS: where the work runs, the fork's default branch and the reference pictures.
-   Question 15 (the macOS menu bar) was decided 2026-11-20, as recommended, and is done.
-6. Question 16: CI is off, and 13 upstream workflow files are edited to do it. This blocks MAC1 and breaks the "no upstream
-   file edited" rule, so it comes before the others.
-
-### 12.6 MVVM in the app (last)
-
-*Complete 2026-11-18 (the user): every step below is done. Every window and shared control has its view model, and outside
-the plugins a click handler is left only for the view concerns `MVVM.md` lists. The plugins' 15 windows (26 click handlers,
-none with a view model yet) are not part of this plan: they move to MVVM when they are reworked (principle 6). Design data
-for the previewer was a hoped-for benefit, never a step, and is not planned.*
-
-Added 2026-11-13, after a review of the app against Avalonia's documentation. Moving the existing windows comes after
-everything above: it changes how they are built, not what they do, so parity and the open decisions go first. The rule for
-new and reworked UI (principle 6) applies from now on.
-
-Where it stands: the logic is out of the windows (M2). `GitExtensions.Xplat.Core` has seven view models (`CommitListViewModel`,
-`RepositoryViewModel`, `RepositoryOperationsViewModel`, `DiffViewModel`, `DashboardViewModel`, `FileBrowserViewModel`,
-`RecentRepositoriesViewModel`) and 32 `*Dialog` models, on CommunityToolkit.Mvvm's `ObservableObject`, tested without a UI. The windows
-do not bind to them: no command is bound in XAML, `DataContext` is set in two places, and about 42,000 lines of code-behind
-(8,800 in `MainWindow`, 767 `Click` handlers) copy view model state into controls by hand.
-
-What it would bring:
-- Bindings, and commands with `CanExecute`, in place of most of that glue code.
-- Window state tested as plain NUnit tests on all three OSes instead of headless UI tests (392 of those took 10 minutes on
-  2026-11-13).
-- Bindings checked at build time (compiled bindings with `x:DataType`).
-- Design data for the XAML previewer, which can already open every window (`DesignTime.cs`).
-
-Steps:
-1. *Done 2026-11-13:* the base is CommunityToolkit.Mvvm (section 9, question 17). The core's own `ObservableObject` was replaced
-   by the toolkit's, so there is one MVVM base.
-2. *Done 2026-11-13:* the pilot, `CreateBranchWindow` with `CreateBranchViewModel`: code-behind 209 to 67 lines, 10 view model
-   tests in plain NUnit that run in milliseconds, the window's headless tests unchanged but for clicking. The pattern and
-   its gotchas are `MVVM.md`, which also lists the windows done. The user asked the same day to go on with every window.
-   Planned as: a pilot on one mid-sized dialog: bind `CreateBranchWindow` to `CreateBranchDialog` (properties, commands with `CanExecute`,
-   `x:DataType`, design data). Measure the code-behind removed and the test time saved, and decide from that whether to go on.
-3. *Decided 2026-11-13 (the user), in force before the pilot:* new UI uses MVVM, and a window or control that is reworked
-   moves to it in the same change (principle 6). *Later the same day:* the user asked to convert every window now, after
-   the pilot, window by window in the pilot's pattern; `MVVM.md` lists the windows done.
-4. `MainWindow`: the toolbar and menu state that follows the selection moves into `CommitListViewModel` properties bound in
-   XAML. *Started 2026-11-15:* the state is its own view model instead, `BrowseToolbarViewModel` (core `Repository/`), the
-   window's data context: what can run (from the busy state, the open repository, git, the branch, the remotes and the
-   selected commit; about 80 menu items and buttons), the toolstrip's texts (working directory, branch, push's ahead and
-   behind, the commit count and state image) and the title. It reads the grid's, the repository's and the actions' view
-   models, which `UpdateBusyState` refreshes as before. The window's other parts follow in `MVVM.md`. *Done 2026-11-17:* the rest of the window's state (the View menu, the left panel's and the Diff tab's menus, the dashboard, the status bar, the panels and the banners) is bound to view models; `MVVM.md` lists them.
-5. What stays in code-behind: the menus built from upstream's designers (`MainMenuParityTests`), plugin and script items, the
-   toolbar overflow and the nested frame of a message box. *Changed 2026-11-17 (the user): MVVM everywhere.* The actions
-   behind buttons and menu items move to view model commands too, and a menu built in code from the core's rules becomes
-   items a view model lists; code-behind keeps only what cannot be bound (focus, key capture, measuring text, opening a
-   window through an interface the view model calls, such as `IBrowseWindow`). Started with the browse window's main menu,
-   toolstrip, action bar and grid menu commands (`BrowseToolbarViewModel.Commands.cs`); `MVVM.md` lists what is done.
-
-   *Where it stands, 2026-11-17:* every window has a view model, but MVVM everywhere is done only in `MainWindow`. Its
-   click handlers went from about 250 to 2. The first is the difftool item, whose tool submenu is the shared
-   `CustomDiffTools`. The second is the dashboard's "Actions" link, which only opens its menu. Menus built in code are
-   `MenuEntry` lists from the view models, rendered by `MenuEntries.Fill` (the left panel's, the grid's, the toolstrip's
-   drop-downs, the Start menu's, the dashboard's). About 135 click handlers are left in the rest of the app (counted
-   with `grep -E '\.Click \+=|Click="'`):
-
-   | Area | Handlers |
-   |---|---|
-   | Filter toolbar (`FilterToolBar`, shared by the browse and file history windows) | 1 (done; see below) |
-   | Settings window (main file, Git config page, Appearance page) | 0 (done; see below) |
-   | Commit window (main file, file lists, spelling, status bar, bottom, auto-complete, XAML) | 1 (done; see below) |
-   | Shared controls: git grep box, revision file list, file tree rows, script menus, copy paths menu, the diff view's find and toolbar, the file list toolbar, difftool choices | 4 left as view concerns (done; see below) |
-   | Dialogs: About, Stash, Recent repositories settings, Git ignore, Conflicts, Merge branch, Delete tag, Go to commit, message box, commit picker, editor find, dialog help | 3 left as view concerns (done; see below) |
-   | File history window (with its grid menus and build server) | 1 (done; see below) |
-   | Other: the macOS application menu, help images, plugin setting rows, toolbar overflow | 3 left as view concerns (done; see below) |
-   | Repository host windows (fork and clone, view and create pull requests, the blame menu's plugin items) | 0 (done; see below) |
-
-   Order: `CustomDiffTools` with the file history window and `FileStatusListMenu`, which share it; then the filter
-   toolbar, the Settings window, the commit window, the shared controls and the dialogs. Some handlers may stay because
-   they are only view concerns (a link that opens its menu, the macOS application menu, the toolbar overflow); each is
-   decided with its window and noted in `MVVM.md`. Done when no button or menu action is left in code-behind except
-   those, and the full suite and the view model tests pass.
-
-   *2026-11-17, later:* the first item of the order is done. The custom difftools are core `Diff/CustomDiffToolsViewModel.cs`
-   (one `CustomDiffToolMenu` per item: its tools as `MenuEntry`s, bound through `MenuEntriesConverter`, and `OpenCommand`,
-   which the item itself runs with no tool), owned by `FileListMenuViewModel`, `FileHistoryViewModel` and
-   `BrowseToolbarViewModel`; the App's `CustomDiffTools` is gone. The file list menu's parent items ("Reset file(s) to",
-   "Open with difftool") and the browse window's difftool item are commands, so `FileStatusListMenu` and `MainWindow`'s
-   compare items have no click handler left (`MainWindow` keeps only the dashboard's "Actions" link). The file history
-   window's Navigate items, Quick search help, command log button and build report link are commands; its Load split
-   button keeps its handler (a raised click on a split button runs no command). 10 handlers fewer; 8 view model tests.
-   Then the filter toolbar: core `CommitHistory/FilterToolBarViewModel.cs` (with `IFilterToolBarGrid`, moved to Core) holds
-   the kinds of text and refs, the boxes' texts and lists, the toggles, the advanced button's image and summary, and the
-   commands; the view keeps the keys, the focus, the hotkeys shown in the advanced menu, the branch button's translated
-   text and its click, which only opens its menu (a view concern). 18 handlers fewer; 12 view model tests.
-   *2026-11-18:* the Settings window: its Browse buttons (one `BrowsePathCommand` with a `SettingsPathField`), the sorting
-   help buttons, the theme folders' menu, "Clear image cache", "Save current view settings as default", Configure
-   encodings, the Suggest buttons, the script icon picker and arguments help, the revision link template and Remove buttons
-   and a plugin setting's link are commands (`Settings/SettingsViewModel.Actions.cs`); the pickers, the browser, the file
-   manager and the windows they open are `SettingsViewModelServices` the window supplies. No click handler is left in it.
-   21 handlers fewer (and one routed handler); 5 view model tests. About 100 are left (counted as above, without the
-   plugins).
-   *2026-11-18, later:* the commit window: the file lists' toolbars, settings menus and buttons
-   (`CommitViewModel.FileLists.cs`), their grouping (core `Diff/FileListGroupingViewModel.cs`, which the other file lists
-   can take in the shared controls' step instead of the app's `FileListTreeButtons`), the "Commit message" and "Commit
-   templates" menus as entries (`CommitViewModel.Menus.cs`) and the message box menu's settings. The one handler left runs
-   the message box's editing items, which act on the box's selection (a view concern). 23 handlers fewer; 11 view model
-   tests. 72 are left (counted as above, without the plugins), next the shared controls.
-   *2026-11-18, later still:* the shared controls. The file lists' toolbars (core `Diff/FileListToolbarViewModel.cs`: the
-   grouping, the collapse button and the diff status filter, bound in the Diff tab's, the diff window's and the stash
-   window's XAML; the app's `FileListTreeButtons` and `DiffStatusButtons` are gone), the Toolbar submenu
-   (`Diff/FileListToolbarChoicesViewModel.cs`), the git-grep box (`Diff/GitGrepViewModel.cs`, with the window behind
-   `IGitGrepWindow`), "Copy path(s)", the difftool choices and the scripts' items (entries and commands), and the diff
-   view's "Diff appearance" item. Left as view concerns: find, replace and go to line in the diff view and the editor, the
-   editor's cut, copy and paste, the help picture's show and hide, and the toolbar overflow. 24 handlers fewer; 11 view
-   model tests. 48 are left (counted as above, without the plugins), next the dialogs (about 25, with `DialogHelp` and
-   the commit picker), then the macOS application menu and the repository host windows.
-   *2026-11-18, evening:* the dialogs. `IDialogHost.OpenUrl` (the app's goes through `DialogHelp.Open`, which tests
-   replace) and `DialogViewModel.OpenUrlCommand` serve every link: the About, Git ignore, Go to commit, Delete tag, Merge
-   branch and Conflicts windows' links bind it, with the user manual's address set by the view where only the app knows
-   it. The About window's contributors window and copy button are commands with window delegates; the recent repositories'
-   menu is entries (`RecentRepositoriesSettingsViewModel.MenuEntries`, whose items read the list's selection when they run); the conflicts
-   window's "Open in mergetool" lists `MergeToolEntries` and runs the configured tool itself; the file history's Load split
-   button binds its command; the commit picker has core `CommitHistory/CommitPickerViewModel.cs`. Left as view concerns:
-   the message box's buttons (made in code, and about ten test classes raise their click directly) and `DialogHelp` (the
-   help button and F1 together). 18 handlers fewer; 4 view model tests. 30 are left (counted as above, without the
-   plugins; 3 of them are `StaysOpenOnClick`, which the grep also matches): 14 in the repository host windows, 2 in the
-   macOS application menu, and 11 view concerns noted in `MVVM.md`.
-   *2026-11-18, night:* the repository host windows and the macOS application menu. Core `RepositoryHosts/` has
-   `CreatePullRequestViewModel`, `ViewPullRequestsViewModel` and `ForkAndCloneViewModel` on a `RepositoryHostViewModel`
-   base (upstream's texts by the forms' field names, and messages through `ShowRepositoryHostMessage`, which the app shows
-   with upstream's `MessageBoxes`, as before); the row records moved to Core with them. The views keep the hosted
-   remotes' display binding, the diff viewer, scrolling the discussion and the folder picker. The blame menu's plugin
-   items are entries (`Plugins/PluginMenuEntries.cs`, whose command clicks the plugin's WinForms item), and the macOS
-   application menu's items take the browse window's About and Settings commands. 16 handlers fewer; 5 view model tests.
-   **Step 5 is done**: 14 lines are left (counted as above, without the plugins), the 11 view concerns `MVVM.md` lists and
-   3 `StaysOpenOnClick` attributes the grep also matches. The plugins under `src/xplat/plugins` were not part of the count;
-   their windows are upstream's plugin forms ported one by one and move to MVVM when they are reworked (principle 6).
-   *2026-11-20, on Windows (the first check there since the work of 2026-11-19 on macOS):* one click handler had come
-   back, `DiffView.AddMenuEntry`, which "Add selection to commit message" brought on 2026-11-19. It is a command now: the
-   viewer lists a window's items as `DiffViewModel.AddedMenuEntries` (upstream's `AddContextMenuEntry`), and the commit
-   window's item runs `CommitViewModel.AddSelectionToCommitMessageCommand` (`MVVM.md`, the commit window's row); 3 view
-   model tests and a headless one. The count is 14 again. Every `*Window.axaml` has a view model but `ViewTextWindow`,
-   which keeps no state; the new `LogWindow` came with `LogViewModel`. The xplat solution builds. The analyzer warnings in
-   the files changed on 2026-11-19 are fixed, and VSTHRD001 in `OutputReporter` is muted at its one line with the reason
-   (it posts to the captured context to keep git's lines in order, and the core's tests have no `JoinableTaskFactory`).
-   Core tests 1410/1410; one had failed on Windows only (`FileListToolbarViewModelTests` expected backslashes in a POSIX
-   path, written on the Mac, where the two are the same). Headless app tests before the change: 810/811, the failure
-   `LeftPanelTests`' multi-select test, which passed when run again; after it, the classes it touches 93/93 and the full
-   suite 811/812 (28 minutes). The failure is that multi-select test again (another node not marked): it passed both
-   times it ran alone, but failed in both full runs that day. Found the same day by running the 76 classes before it
-   (517 tests, 17 minutes), which reproduced it: a refresh when the window is activated (`RefreshStatusOnActivation`)
-   came in during the key press, the tree was filled again, the focused node's item was replaced and the keyboard focus
-   went to nothing, so the key reached no part of the left panel. When the activation comes depends on the windows the
-   tests before leave. An app bug, not only the test's: upstream's tree keeps the focus across a refresh. Fixed:
-   `ShowRepoObjects` gives the focus back to the selected node's new item when the tree had it (`PORTING-MAP.md`,
-   RepoObjectsTree). New headless test `A_refresh_keeps_the_keyboard_focus_on_the_selected_node_so_its_keys_still_work`
-   (fails without the fix, passes with it); `LeftPanelTests` 21/21. Full headless suite after the fix: 813/813
-   (28 minutes), the multi-select test passing in the long run that had failed it twice.
-6. Each window that moves updates its `PORTING-MAP.md` row. All of it is fork code under `src/xplat`, so mergeability with
-   upstream is not affected.
+1. Question 16 (CI) first: without it no change is checked on Linux, and Windows only by hand.
+2. Questions 12 to 14: where the work runs, the fork's default branch and the reference pictures.
+3. Questions 7 to 10: line endings and branch names, the Apple account, the maintainer, the terminal off Windows.
+4. Dark mode and the font on macOS (`MACOS.md`, section 10, rows 15 and 16).

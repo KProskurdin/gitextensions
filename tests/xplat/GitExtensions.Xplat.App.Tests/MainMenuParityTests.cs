@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace GitExtensions.Xplat.App.Tests;
 
 /// <summary>
-///  Reads upstream's menu designers (UI-PARITY principle 1): the browse window's Start, Dashboard, Repository, Commands,
+///  Reads upstream's menu designers (PLAN.md section 6, parity rule 1): the browse window's Start, Dashboard, Repository, Commands,
 ///  Tools and Help menus have upstream's texts and access keys, and their items come in upstream's order.
 /// </summary>
 internal sealed partial class MainMenuParityTests
