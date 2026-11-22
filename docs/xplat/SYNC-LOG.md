@@ -345,4 +345,11 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   13 minutes 9 seconds. No upstream file changed; seam count unchanged. macOS and Linux were not run.
 - Then the user's decisions on `PLAN.md` questions 7 to 10 and 12 to 14 and on macOS's dark mode and font, recorded in
   `PLAN.md` and `MACOS.md`; only question 16 (CI) is open. Question 10 brought a terminal command setting for Linux and
-  macOS (`PORTING-MAP.md`, Terminals).
+  macOS (`PORTING-MAP.md`, Terminals). On Windows after it: core 1527 of 1527, app 885 of 885.
+- **Linux**, the first run since CI's only one (2026-11-08), in WSL on the Windows machine (openSUSE Tumbleweed, .NET SDK
+  10.0.112 in `~/.dotnet`, git 2.56.0), from the Windows working tree with the build output in `~/xplat-artifacts`: core
+  1533 of 1533 (37 seconds with the build); app 881 of 882 in 4 minutes 18 seconds; the shadow projects 3823 pass, 0 fail,
+  201 ignored with reasons (`GitCommands.Tests` 3383 and 149). The app failure was a test that found upstream's sources by
+  walking up from its build output, which `~/xplat-artifacts` puts outside the repository (seen once on the Mac too):
+  `ThemedImagesTests` now finds the repository from its source file, and passes on Linux and Windows. No product failure
+  on Linux.

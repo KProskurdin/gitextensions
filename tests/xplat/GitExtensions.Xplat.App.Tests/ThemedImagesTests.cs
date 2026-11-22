@@ -78,12 +78,9 @@ internal sealed class ThemedImagesTests
     [Test]
     public void The_adapted_pictures_are_those_upstream_adapts()
     {
-        string root = Path.GetFullPath(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "..",
-            ".."));
-        while (!Directory.Exists(Path.Combine(root, "src", "app")))
-        {
-            root = Path.GetDirectoryName(root)!;
-        }
+        // Found from this file, not the build output, which a Linux or macOS run puts outside the repository
+        // (run-tests.sh's ~/xplat-artifacts).
+        string root = RepositoryRoot();
 
         string Source(params string[] path) => File.ReadAllText(Path.Combine([root, "src", "app", "GitUI", .. path]));
         string lists = Source("UserControls", "FileStatusList.cs") + Source("LeftPanel", "RepoObjectsTree.cs");
@@ -93,4 +90,7 @@ internal sealed class ThemedImagesTests
                                                                || lists.Contains($"Pad(Images.{name}).AdaptLightness()"));
         ThemedImages.ToolbarPictures.Should().OnlyContain(name => toolbars.Contains($"Images.{name}.AdaptLightness()"));
     }
+
+    private static string RepositoryRoot([System.Runtime.CompilerServices.CallerFilePath] string testFile = "")
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", ".."));
 }

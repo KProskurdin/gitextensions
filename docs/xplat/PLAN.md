@@ -20,11 +20,11 @@ Make Git Extensions run on Windows, Linux and macOS, while the fork keeps mergin
 | Area | State | Evidence |
 |---|---|---|
 | Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) as `net10.0` | Done | `src/xplat/*` shadow projects. Every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8). Windows 2026-11-22: `GitCommands.Tests` 3500 of 3502 (1 skipped, 1 known Windows failure in `AsyncLoaderTests`). macOS 2026-11-20: 3823 pass, 201 ignored with reasons |
-| Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason. Windows 2026-11-22: core 1520, app 885, all passing. macOS 2026-11-20: core 1468, app 876, all passing. Linux: last app result in CI's only run, 2026-11-08 |
+| Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason. Windows 2026-11-22: core 1527, app 885, all passing. Linux (WSL) 2026-11-22: core 1533, app 882 (one test fixed after the run), shadow projects 3823 pass, 0 fail. macOS 2026-11-20: core 1468, app 876, all passing |
 | Upstream files | Clean but for the files in section 5 | The 13 upstream workflows are back to upstream's content; `.gitignore` (one line) and `CLAUDE.md` (fork file) are the changes at upstream paths |
 | Seams | 8 | Section 5 |
 | Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `17213fe3f` on macOS, 2026-11-20 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
-| CI | **Off since 2026-11-08** | `.github/workflows/xplat.yml` is commented out (question 16). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; no run since 2026-11-08 yet) |
+| CI | **Off since 2026-11-08** | `.github/workflows/xplat.yml` is commented out (question 16). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; last run 2026-11-22) |
 
 The shared core is portable. The UI is where upstream changes most often, which is why the plan keeps the WinForms UI
 untouched and builds a second UI beside it.
@@ -399,7 +399,8 @@ sync that was done during the milestone.
 
 1. **CI** (question 16): Windows' shadow tests failed and the screenshot job hung on every OS in its only run
    (`42521621315`, 2026-11-08); the causes are not known (`MACOS.md`, MAC1).
-2. **Linux in WSL** (question 12): the core, app and shadow suites, not run since 2026-11-08.
+2. **Linux at the screen:** the suites pass in WSL (2026-11-22), but the app itself has not been started on Linux since
+   2026-10-11 (WSLg can show it).
 3. **On a Mac, at the screen:** `MACOS.md`, section 10.
 4. **Reference pictures** (question 14): the WinForms app's windows on the Windows machine, into
    `docs/xplat/reference/windows/`: at least the browse window with each tab, the commit window, every settings page, and
