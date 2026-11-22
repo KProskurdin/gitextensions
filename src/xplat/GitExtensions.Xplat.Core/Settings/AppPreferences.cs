@@ -79,6 +79,12 @@ public interface IAppPreferences
     bool ShowProcessDialogPasswordInput { get; set; }
 
     /// <summary>
+    ///  The terminal the browse window's terminal button opens on Linux and macOS: a command line, the folder as
+    ///  <c>{folder}</c>; empty for the system's terminal. The fork's own setting (upstream has shells on Windows only).
+    /// </summary>
+    string TerminalCommand { get; set; }
+
+    /// <summary>
     ///  Upstream <c>showgitcommandline</c> ("Show console window when executing git process"): git started for the output
     ///  window gets a console window (Windows; elsewhere git has none).
     /// </summary>
@@ -908,6 +914,9 @@ public sealed class SettingsAppPreferences : IAppPreferences
     // Upstream's FileStatusList.UpdateToolbar builds this from its class and control names.
     private const string FileListToolbarVisibilityKey = "FileStatusList.Toolbar.Visibility.";
 
+    // The fork's own key, named so an upstream key cannot collide with it.
+    private const string TerminalCommandKey = "xplat.TerminalCommand";
+
     public bool CloseCommitDialogAfterCommit
     {
         get => AppSettings.CloseCommitDialogAfterCommit;
@@ -975,6 +984,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.ShowProcessDialogPasswordInput.Value;
         set => AppSettings.ShowProcessDialogPasswordInput.Value = value;
+    }
+
+    public string TerminalCommand
+    {
+        get => AppSettings.GetString(TerminalCommandKey, "") ?? "";
+        set => AppSettings.SetString(TerminalCommandKey, value);
     }
 
     public bool ShowGitCommandLine
@@ -2147,6 +2162,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public bool CloseProcessDialog { get; set; }
 
     public bool ShowProcessDialogPasswordInput { get; set; }
+
+    public string TerminalCommand { get; set; } = "";
 
     public bool ShowGitCommandLine { get; set; }
 

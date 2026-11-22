@@ -832,6 +832,17 @@ public sealed partial class SettingsViewModel : DialogViewModel
     public partial string? LinuxToolsDir { get; set; }
 
     /// <summary>
+    ///  The terminal command of Linux and macOS (<see cref="IAppPreferences.TerminalCommand"/>); empty for the system's.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? TerminalCommand { get; set; }
+
+    /// <summary>
+    ///  The terminal the button opens when <see cref="TerminalCommand"/> is empty, shown as the box's placeholder.
+    /// </summary>
+    public string DefaultTerminalCommand { get; init; } = "";
+
+    /// <summary>
     ///  Upstream's HOME as git sees it, and where it comes from.
     /// </summary>
     [ObservableProperty]
@@ -1144,6 +1155,7 @@ public sealed partial class SettingsViewModel : DialogViewModel
     {
         GitCommand = _preferences.GitCommand;
         LinuxToolsDir = _preferences.LinuxToolsDir;
+        TerminalCommand = _preferences.TerminalCommand;
 
         _services.SetEnvironment();
         HomeText = HomeSettings.Describe(
@@ -1362,6 +1374,11 @@ public sealed partial class SettingsViewModel : DialogViewModel
     private void StoreGitAndSshPages()
     {
         _preferences.GitCommand = GitCommand?.Trim() ?? "";
+        if (!IsWindows)
+        {
+            _preferences.TerminalCommand = TerminalCommand?.Trim() ?? "";
+        }
+
         if (IsWindows)
         {
             _preferences.LinuxToolsDir = LinuxToolsDir?.Trim() ?? "";

@@ -343,3 +343,6 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   in `CheckoutBranchWindowTests`. The remote operations' git now has its standard input redirected while it runs, as
   upstream's. On Windows, from a clean build: 0 errors, no warning in fork files; core 1520 of 1520; app 885 of 885 in
   13 minutes 9 seconds. No upstream file changed; seam count unchanged. macOS and Linux were not run.
+- Then the user's decisions on `PLAN.md` questions 7 to 10 and 12 to 14 and on macOS's dark mode and font, recorded in
+  `PLAN.md` and `MACOS.md`; only question 16 (CI) is open. Question 10 brought a terminal command setting for Linux and
+  macOS (`PORTING-MAP.md`, Terminals).

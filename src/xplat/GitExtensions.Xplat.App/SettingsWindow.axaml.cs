@@ -120,7 +120,12 @@ public partial class SettingsWindow : Window
             ClearAvatarCache = () => AppServices.Avatars.ClearCacheAsync(),
             ConfigureEncodings = () => new AvailableEncodingsWindow().ShowDialog<bool>(this),
             ShowScriptHelp = ShowScriptHelp,
-        }, OperatingSystem.IsWindows());
+        }, OperatingSystem.IsWindows())
+        {
+            // The terminal the button opens with no command set, shown in the empty box.
+            DefaultTerminalCommand = Core.Platform.TerminalCommand.Default(Core.Platform.HostPlatform.Current,
+                Environment.GetEnvironmentVariable("TERMINAL")).CommandLine,
+        };
         ViewModel.PluginsPage.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(PluginsPageViewModel.IsSkipped) && _headers.ContainsKey(PluginsTab))

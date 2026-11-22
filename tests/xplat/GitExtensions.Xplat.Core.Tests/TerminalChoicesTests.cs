@@ -31,6 +31,38 @@ internal sealed class TerminalChoicesTests
     }
 
     [Test]
+    public void For_should_offer_the_configured_terminal_off_windows_only()
+    {
+        TerminalChoice configured = TerminalChoices.For(MacOs, null, Finder(), "open -a iTerm {folder}").Should()
+            .ContainSingle().Subject;
+        (configured.Name, configured.Command.FileName).Should().Be(("open", "open"));
+        configured.Command.Arguments.Should().Equal("-a", "iTerm", TerminalCommand.FolderToken);
+
+        TerminalChoices.For(Linux, "gnome-terminal", Finder(), "  ").Should().ContainSingle()
+            .Which.Command.FileName.Should().Be("gnome-terminal", "a blank setting keeps the system's terminal");
+        TerminalChoices.For(Windows, null, Finder("cmd.exe"), "kitty").Should().ContainSingle()
+            .Which.Name.Should().Be("cmd", "Windows offers upstream's shells");
+    }
+
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("   ")]
+    [TestCase("\"\"")]
+    public void Parse_should_give_no_command_for_a_blank_setting(string? commandLine)
+        => TerminalCommand.Parse(commandLine).Should().BeNull();
+
+    [Test]
+    public void Parse_should_split_at_spaces_keeping_quoted_parts_whole_and_CommandLine_should_read_back()
+    {
+        TerminalCommand command = TerminalCommand.Parse("  \"/Applications/My Term.app/run\" --dir \"{folder}\"  -e  ")!;
+
+        command.FileName.Should().Be("/Applications/My Term.app/run");
+        command.Arguments.Should().Equal("--dir", "{folder}", "-e");
+        command.CommandLine.Should().Be("\"/Applications/My Term.app/run\" --dir {folder} -e");
+        TerminalCommand.Parse(command.CommandLine)!.Arguments.Should().Equal(command.Arguments);
+    }
+
+    [Test]
     public void For_should_offer_the_system_terminal_elsewhere()
     {
         TerminalChoices.For(Linux, "gnome-terminal", Finder()).Should().ContainSingle()

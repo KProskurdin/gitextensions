@@ -1718,6 +1718,7 @@ public partial class MainWindow : Window, ISettingsWindowHost
             ShowHotkeys();
             ShowUserScripts();
             ShowGridScripts();
+            FillTerminals();
             await _recent.LoadAsync();
 
             // The date and commit button settings show on the next read.

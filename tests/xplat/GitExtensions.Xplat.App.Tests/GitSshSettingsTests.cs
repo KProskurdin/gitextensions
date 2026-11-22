@@ -70,6 +70,8 @@ internal sealed class GitSshSettingsTests
             Environment.GetEnvironmentVariable("HOME") ?? "", OperatingSystem.IsWindows()));
         Find<StackPanel>(settings, "HomeChoicePanel").IsVisible.Should().Be(OperatingSystem.IsWindows());
         Find<StackPanel>(settings, "LinuxToolsPanel").IsVisible.Should().Be(OperatingSystem.IsWindows());
+        Find<StackPanel>(settings, "TerminalCommandPanel").IsVisible.Should().Be(!OperatingSystem.IsWindows());
+        Find<TextBox>(settings, "TerminalCommandBox").PlaceholderText.Should().NotBeNullOrEmpty("the default terminal shows");
         Find<TextBox>(settings, "GitCommandBox").Text = " /usr/local/bin/git ";
         Save(window, settings);
 

@@ -24,7 +24,7 @@ Make Git Extensions run on Windows, Linux and macOS, while the fork keeps mergin
 | Upstream files | Clean but for the files in section 5 | The 13 upstream workflows are back to upstream's content; `.gitignore` (one line) and `CLAUDE.md` (fork file) are the changes at upstream paths |
 | Seams | 8 | Section 5 |
 | Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `17213fe3f` on macOS, 2026-11-20 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
-| CI | **Off since 2026-11-08** | `.github/workflows/xplat.yml` is commented out (question 16). Windows and macOS are checked by local runs, Linux not at all since 2026-11-08 |
+| CI | **Off since 2026-11-08** | `.github/workflows/xplat.yml` is commented out (question 16). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; no run since 2026-11-08 yet) |
 
 The shared core is portable. The UI is where upstream changes most often, which is why the plan keeps the WinForms UI
 untouched and builds a second UI beside it.
@@ -232,16 +232,16 @@ the open questions of section 9 first.
 
 | Layer | Tool | Runs on | Notes |
 |---|---|---|---|
-| Shared core unit tests | NUnit, the shadow `GitCommands.Tests` | Windows, Linux, macOS | Upstream tests, plus `XplatLinux*.cs` counterparts, each ignored test with a reason |
+| Shared core unit tests | NUnit, the shadow `GitCommands.Tests` | Windows, Linux (WSL), macOS | Upstream tests, plus `XplatLinux*.cs` counterparts, each ignored test with a reason |
 | Other non-UI upstream unit tests | NUnit, 11 shadow test projects (Extensibility, GitExtUtils, ResourceManager, plugin and build server tests) | Windows, Linux, macOS | One upstream Gitlab test is skipped on every OS, as upstream |
-| Upstream merge check | `tests/xplat/verify-upstream.sh` | Linux (CI nightly), and by hand | Builds and tests shadow projects against `upstream/master` in a temporary worktree |
+| Upstream merge check | `tests/xplat/verify-upstream.sh` | By hand, before each merge | Builds and tests shadow projects against `upstream/master` in a temporary worktree. Not nightly: GitHub runs scheduled workflows from the default branch, which stays `master` (question 13) |
 | App unit tests (view models) | NUnit, `GitExtensions.Xplat.Core.Tests` | Windows, Linux, macOS | |
 | App UI tests | Avalonia.Headless, `GitExtensions.Xplat.App.Tests` | Windows, Linux, macOS | Tests that run the real `GitOutputRunner` belong here: its command log needs the threading context the app sets |
 | App visual check | Screenshot via `XPLAT_SCREENSHOT` | Windows, Linux, macOS | Manual review, and an artifact in CI once it runs. The aid renders the content only, without title bar or native menu bar. Run it with `GITEXTENSIONS_XPLAT_USER_DATA` on a scratch folder, so the real settings stay untouched |
 | macOS checks at the screen | The real app, by hand | macOS | `MACOS.md`, section 10 |
 | Windows checks that need a person | Pageant, taskbar, Explorer and others | Windows | `MACOS.md`, section 7, and section 12.2 |
 | Git behavior | Real temporary repositories | Windows, Linux, macOS | As upstream does. macOS needs the Command Line Tools |
-| Drift checks | `port-drift.sh`, `xplat-drift.sh`, `verify-upstream.sh` | Linux (nightly) | Upstream changes to ported files and to mirrored tests are reported, not discovered by accident |
+| Drift checks | `port-drift.sh`, `xplat-drift.sh`, `verify-upstream.sh` | By hand at each sync (Linux or WSL for `xplat-drift.sh`, which needs bash 4) | Upstream changes to ported files and to mirrored tests are reported, not discovered by accident |
 
 Principle: no test is excluded silently. A Windows-only test is an `XplatPlatformSkips.cs` entry
 with a reason. A Linux-only expectation is an `XplatLinux*.cs` test, and a macOS-only one an `XplatMac*.cs` test.
@@ -251,28 +251,13 @@ with a reason. A Linux-only expectation is an `XplatLinux*.cs` test, and a macOS
 These change the plan. Each has a recommendation, but the choice is the user's. Decided questions keep their number and
 are listed with their outcome at the end, as code and the other documents refer to them.
 
-7. **Branch-name rule and commit-message line endings** (decided earlier as "keep upstream
-   behavior"): confirm, or change to one fixed set on every OS.
-8. **Apple developer account** for signing and notarization (M7).
-9. **Who maintains the xplat track**, and how often it syncs with upstream.
-10. **Terminal on Linux and macOS:** which terminal to launch when the user asks for one. Options:
-    `$TERMINAL` or `$SHELL` with a configurable command, or a fixed list per OS.
-    *Recommendation:* configurable command, with a default detected from the OS.
-12. **Where the work runs.** *Assumed 2026-11-08, to confirm:* the Mac and Windows are both in use, Linux is CI only. If no
-    Windows machine remains, the list in `MACOS.md` section 7 cannot be checked by anyone and must be marked unverified in
-    `PORTING-MAP.md`.
-13. **Default branch of the fork on GitHub.** The nightly upstream check runs only from the default branch, and `master` is
-    meant to mirror upstream, so it does not have the workflow. *Recommendation:* make the integration branch the default
-    (`feature/cross-os-ui` now, `xplat/main` if that is created, section 11.3). Only the user can change this.
-14. **Reference pictures of the WinForms app.** Keep them in the repository, or outside? *Recommendation:* in
-    `docs/xplat/reference/windows/`, a fork-owned folder, so a session on a Mac finds them; a few MB in total. They are taken
-    on a Windows machine.
 16. **CI on or off.** `fc4d4ba5d` (2026-11-08) commented out every workflow, so the fork has had no CI since its first run,
     and Windows and Linux are checked only when someone runs them locally. The 13 upstream workflow files are restored
     (section 5). Still open: turning the unwanted upstream workflows off on GitHub (`gh workflow disable "<name>"` for each,
     or Settings, Actions; it needs the user's GitHub login), and whether `xplat.yml` is turned back on. *Recommendation:*
     turn it back on; if run time or notification noise is the reason, keep `workflow_dispatch` and push to `feature/**`, and
-    drop the nightly `schedule` until question 13 is settled. If CI stays off, every status report says which OS ran.
+    drop the nightly `schedule`, which cannot run while the default branch is `master` (question 13). If CI stays off,
+    every status report says which OS ran.
 
 Decided:
 
@@ -285,7 +270,19 @@ Decided:
    plugins not loadable and listed with the reason (2026-10-09).
 6. Credentials on Linux and macOS: git's own credential helpers (`osxkeychain`, `libsecret`), chosen in Settings > Git config
    (2026-10-09).
+7. Branch-name rule and commit-message line endings: upstream's behavior on each OS, as the app has it (2026-11-22).
+8. No Apple developer account for now (2026-11-22): macOS builds are ad-hoc signed, and a downloaded copy needs
+   `xattr -dr com.apple.quarantine "Git Extensions.app"`, which is said wherever a build is offered. Revisit before the app
+   is offered to other people.
+9. Maintainer: KProskurdin, who merges upstream when needed rather than on a fixed cadence (2026-11-22; section 11.3).
+10. Terminal on Linux and macOS: a terminal command setting, with the OS default when it is empty (Terminal on macOS,
+    `$TERMINAL` or `x-terminal-emulator` on Linux) (2026-11-22).
 11. macOS evidence: overtaken by real runs on a Mac (2026-11-08).
+12. Where the work runs: the Mac and the Windows machine, and Linux through WSL on the Windows machine (2026-11-22).
+13. Default branch: stays `master` (2026-11-22). So the nightly upstream check (a scheduled workflow) cannot run; syncs are
+    checked by hand with `verify-upstream.sh`.
+14. Reference pictures of the WinForms app: in the repository, `docs/xplat/reference/windows/<form>[-<page>].png`, taken on
+    the Windows machine (2026-11-22; section 12.2).
 15. macOS menu bar: the system menu bar, generated from the window's menu (2026-11-20, done: `SystemMenuBar`).
 17. The base of the view models: CommunityToolkit.Mvvm (2026-11-13); the core's own `ObservableObject` was replaced by it.
 
@@ -342,8 +339,8 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
 
 ### 11.3 Sync cadence and procedure
 
-- **Cadence:** at least every 2 weeks while development is active; at least every 3 months after
-  that. A sync that has not happened for 3 months is recorded as overdue in `docs/xplat/SYNC-LOG.md`.
+- **Cadence:** when the maintainer chooses (question 9). A sync that has not happened for 3 months is recorded as overdue in
+  `docs/xplat/SYNC-LOG.md`, as the risk of a hard merge grows with the gap.
 - **Procedure:**
   1. Fetch `upstream/master`.
   2. Run `tests/xplat/verify-upstream.sh`. Read the failures before merging anything.
@@ -354,7 +351,7 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
      sync merges `master` into `xplat/main`. Automation does not create, move or commit branches.
   5. If the merge added an upstream workflow, turn it off on GitHub (`gh workflow disable "<name>"`); a new workflow
      starts enabled, and the fork's workflow files stay as upstream has them (section 5).
-  6. Run the test suites locally on the machine at hand, and confirm the other OSes in CI.
+  6. Run the test suites locally on the machine at hand, and confirm the other OSes in CI, or by hand (Linux in WSL).
   7. For each upstream commit that touched a ported form, update `PORTING-MAP.md`: port it, or
      record that it was deliberately skipped, with the reason. Compare upstream's designer file names with the map
      (section 6) for new forms.
@@ -378,11 +375,11 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
 
 The fork then owns its own release line. Everything above still applies, and in addition:
 
-- Keep the fork's own CI running (`.github/workflows/xplat.yml`), including the nightly upstream
-  verification. Without it, the first sign of drift is a failed merge.
+- Keep the fork's own CI running (`.github/workflows/xplat.yml`), and run `verify-upstream.sh` before each merge. Without
+  them, the first sign of drift is a failed merge.
 - Keep the sync log current; it is the record of how far behind the fork is.
-- Name the maintainer and a fallback in this file (section 9, question 9). A fork with no one
-  syncing it degrades within a few months of upstream change.
+- The maintainer is named in section 9, question 9; name a fallback there too. A fork with no one syncing it degrades
+  within a few months of upstream change.
 
 ### 11.6 Milestone exit criteria (added to each milestone)
 
@@ -401,9 +398,13 @@ sync that was done during the milestone.
 ### 12.2 Checks not run yet
 
 1. **CI** (question 16): Windows' shadow tests failed and the screenshot job hung on every OS in its only run
-   (`42521621315`, 2026-11-08); the causes are not known (`MACOS.md`, MAC1). Linux has had no run since.
-2. **On a Mac, at the screen:** `MACOS.md`, section 10 (19 rows, with two decisions: dark mode and the font).
-3. **On Windows, at the screen:**
+   (`42521621315`, 2026-11-08); the causes are not known (`MACOS.md`, MAC1).
+2. **Linux in WSL** (question 12): the core, app and shadow suites, not run since 2026-11-08.
+3. **On a Mac, at the screen:** `MACOS.md`, section 10.
+4. **Reference pictures** (question 14): the WinForms app's windows on the Windows machine, into
+   `docs/xplat/reference/windows/`: at least the browse window with each tab, the commit window, every settings page, and
+   the dialogs most used (clone, push, pull, the output window); a light version, and a dark one where colors matter.
+5. **On Windows, at the screen:**
    - The Shell extension page with the Explorer menu: Enable and Disable (they ask for administrator rights and change the
      machine's registration), and the menu's items starting this app.
    - The Checklist's Repair buttons: git, the linux tools and PuTTY found as upstream finds them, the install folder.
@@ -415,7 +416,7 @@ sync that was done during the milestone.
 
 ### 12.3 M7, packaging and distribution
 
-1. Real signing and notarization (question 8: an Apple developer account).
+1. Real signing and notarization, once an Apple developer account exists (question 8: not for now).
 2. Trying a downloaded, quarantined macOS package (`MACOS.md`, MAC5).
 3. An AppImage, and a `.deb` or `.rpm`, for Linux.
 4. An installer for the Avalonia app on Windows, with the Explorer shell extension's files (built by `src/native`, which
@@ -427,7 +428,4 @@ The decision whether to retire the WinForms app or keep both, after the open que
 
 ### 12.5 Open decisions (section 9)
 
-1. Question 16 (CI) first: without it no change is checked on Linux, and Windows only by hand.
-2. Questions 12 to 14: where the work runs, the fork's default branch and the reference pictures.
-3. Questions 7 to 10: line endings and branch names, the Apple account, the maintainer, the terminal off Windows.
-4. Dark mode and the font on macOS (`MACOS.md`, section 10, rows 15 and 16).
+Only question 16 (CI) is open; the others were decided on 2026-11-22.

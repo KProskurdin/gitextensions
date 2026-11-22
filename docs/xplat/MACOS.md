@@ -19,11 +19,11 @@ bundle starts through `open`. **CI is off** (`PLAN.md` section 9, question 16), 
 
 ### Assumptions
 
-Each of these changes the plan if it is wrong (`PLAN.md` section 9, question 12):
+Decided 2026-11-22 (`PLAN.md` section 9, question 12):
 
 1. The Mac and Windows are both in use for development, so each result names its OS.
 2. Windows stays reachable for the items in section 7.
-3. Linux is checked by CI only.
+3. Linux is checked in WSL on the Windows machine, and by CI once it is on.
 4. Either Mac CPU works. Use `osx-arm64` on Apple Silicon and `osx-x64` on Intel. `macos-latest` in CI is arm64.
 
 ## 2. Before leaving Windows
@@ -120,8 +120,9 @@ of sources:
 
 1. **The upstream `*.Designer.cs` and form code**: items, order, texts, icons and logic. This was always the specification,
    and it is all readable on a Mac.
-2. **Reference pictures** taken on Windows, for layout and spacing. Proposed place: `docs/xplat/reference/windows/<form>[-<page>].png`.
-   The folder is fork-owned, so it cannot conflict with an upstream merge (`PLAN.md` section 9, question 14).
+2. **Reference pictures** taken on Windows, for layout and spacing, in `docs/xplat/reference/windows/<form>[-<page>].png`
+   (decided 2026-11-22, `PLAN.md` section 9, question 14; to take, `PLAN.md` section 12.2). The folder is fork-owned, so it
+   cannot conflict with an upstream merge.
 3. **A Windows machine or VM**, when the first two leave a question open. Record it with the step.
 
 A difference that macOS itself causes is not a parity bug: fonts, the title bar, the menu bar's place, the Cmd key.
@@ -205,8 +206,8 @@ Done 2026-11-08 and 2026-11-20, but for the checks at the screen (section 10, ro
 - **"New instance"** runs `open -n` in a bundle (`NewInstanceCommand`).
 - **"Interactive add" and "Reset chunk"** run in Terminal through a generated `.command` script that leaves git's exit code
   in a file (`InteractivePatch.MacScript`).
-- **Open decisions:** dark mode (follow the system or upstream's theme choice) and the font (Inter or San Francisco),
-  section 10, rows 15 and 16.
+- **Dark mode and the font** (decided 2026-11-22): upstream's theme setting stays as it is (its "follow the operating
+  system" choice included), and Inter stays the font on every OS, as `PLAN.md`'s parity rule 3 keeps one layout everywhere.
 
 ### MAC5. Packaging on a Mac
 
@@ -266,9 +267,10 @@ bundle is the `Git Extensions.app` in the zip whose path `publish-app.sh` printe
 | 12 | Application menu (MAC4) | The app menu has the name, About, Settings (Cmd+,), Hide and Quit, and each works | |
 | 13 | Dock icon (MAC4) | Both `dotnet run` and the bundle show the Git Extensions logo in the Dock, not the generic icon | |
 | 14 | Interactive add (MAC4) | On `a.txt`, "Interactive add": Terminal opens with `git add -p`, and the app refreshes after it is closed | |
-| 15 | Dark mode and accents (MAC4, a decision) | Switch macOS to dark: does the app follow, and does the title bar match the theme? Decide: follow the system or keep upstream's theme choice | |
-| 16 | Font (MAC4, a decision) | Inter against San Francisco in the grid, lists and dialogs: keep Inter, or change | |
+| 15 | Dark mode (MAC4) | Choose "follow the operating system" in Settings, Colors, then switch macOS to dark: the app follows, and the title bar matches the theme (upstream's theme setting is kept, decided 2026-11-22) | |
+| 16 | Font (MAC4) | Inter in the grid, lists and dialogs reads well on the Retina screen (Inter is kept, decided 2026-11-22) | |
 | 17 | VoiceOver | Cmd+F5, then move over the toolbar: each tool button says its name; in the commit list and file lists each row reads its text | |
 | 18 | System menu bar (MAC4) | With a repository open the bar shows Start, Repository, Navigate, View, Commands, Plugins, Tools and Help (Dashboard instead of the repository's menus on the dashboard); Recent repositories lists them; View's checks match the window; Commands' items are greyed as the toolbar's; a click runs once (View > Show tags toggles once). Decide: show the keys beside the items, after checking that Cmd+Option+T then toggles once, not twice | |
 | 19 | Command line verbs | From Terminal in the smoke repository, run the built app with `commit`, `push`, `pull --quiet`, `stash`, `blame a.txt`, `filehistory a.txt`, `searchfile`, `settings` and `help`: only the verb's window shows, centred, with no browse window and no extra Dock or Cmd+Tab entry beyond the app's; closing it ends the app (`echo $?`: 0, or 255 for upstream's -1 after a cancel); `browse . -commit=<hash>` opens the browse window on that commit | |
 | 20 | New windows of 2026-11-22 | Start > Open...: "Open local repository" lists the folders, Go up and Browse work; a repository with no commits shows "This repository does not yet contain any commits." | |
+| 21 | Terminal command (question 10) | Settings, Paths: an empty "Terminal command" opens Terminal; `open -a iTerm {folder}` (with iTerm installed) opens iTerm in the repository's folder | |

@@ -266,6 +266,11 @@
             <HyperlinkButton x:Name="downloadGitForWindows" Content="Download Git" Padding="0" Command="{Binding OpenUrlCommand}"
                              CommandParameter="{x:Static settings:SettingsViewModel.DownloadGitUrl}" />
           </StackPanel>
+          <!-- The fork's own setting (decided 2026-11-22): upstream's shells are Windows only. -->
+          <StackPanel x:Name="TerminalCommandPanel" IsVisible="{Binding !IsWindows}" Spacing="8">
+            <TextBlock Text="Terminal command (empty: the system's terminal; {folder} is the repository's folder)" TextWrapping="Wrap" />
+            <TextBox x:Name="TerminalCommandBox" Text="{Binding TerminalCommand}" PlaceholderText="{Binding DefaultTerminalCommand}" />
+          </StackPanel>
           <TextBlock Text="Environment" FontWeight="SemiBold" Margin="0,8,0,0" />
           <TextBlock x:Name="HomeText" Text="{Binding HomeText}" TextWrapping="Wrap" />
           <TextBlock Text="By default, the global config file is located in the folder HOME names. (This can be overridden by setting GIT_CONFIG_GLOBAL.)" Opacity="0.7" TextWrapping="Wrap" />

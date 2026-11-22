@@ -44,6 +44,23 @@ internal sealed class SettingsViewModelTests
     }
 
     [Test]
+    public async Task The_terminal_command_should_be_stored_off_windows_only()
+    {
+        _preferences.TerminalCommand = "kitty";
+        SettingsViewModel elsewhere = New(new FakeDialogHost());
+        elsewhere.TerminalCommand.Should().Be("kitty");
+
+        elsewhere.TerminalCommand = "  alacritty --working-directory {folder} ";
+        await elsewhere.ApplyCommand.ExecuteAsync(null);
+        _preferences.TerminalCommand.Should().Be("alacritty --working-directory {folder}");
+
+        SettingsViewModel windows = New(new FakeDialogHost(), isWindows: true);
+        windows.TerminalCommand = "ignored";
+        await windows.ApplyCommand.ExecuteAsync(null);
+        _preferences.TerminalCommand.Should().Be("alacritty --working-directory {folder}", "Windows has upstream's shells");
+    }
+
+    [Test]
     public async Task Cancel_after_Apply_should_report_the_save()
     {
         FakeDialogHost host = new();

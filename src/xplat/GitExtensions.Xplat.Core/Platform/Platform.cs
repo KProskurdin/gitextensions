@@ -65,6 +65,12 @@ public sealed record TerminalCommand(string FileName, IReadOnlyList<string> Argu
     public const string FolderToken = "{folder}";
 
     /// <summary>
+    ///  The command as <see cref="Parse"/> reads it: the parts separated by spaces, a part with a space in double quotes.
+    /// </summary>
+    public string CommandLine
+        => string.Join(' ', Arguments.Prepend(FileName).Select(part => part.Contains(' ') ? $"\"{part}\"" : part));
+
+    /// <summary>
     ///  The terminal used when the user has not configured one: Terminal on macOS, cmd on Windows, and the
     ///  <c>TERMINAL</c> environment variable or <c>x-terminal-emulator</c> elsewhere.
     /// </summary>
@@ -82,6 +88,49 @@ public sealed record TerminalCommand(string FileName, IReadOnlyList<string> Argu
 
         string fileName = string.IsNullOrWhiteSpace(terminalEnvironmentValue) ? "x-terminal-emulator" : terminalEnvironmentValue.Trim();
         return new TerminalCommand(fileName, []);
+    }
+
+    /// <summary>
+    ///  The terminal command the user configured (Settings, Paths, on Linux and macOS): the program, then its arguments,
+    ///  separated by spaces, with double quotes around a part that has spaces; null when it is blank, so the default is used.
+    /// </summary>
+    public static TerminalCommand? Parse(string? commandLine)
+    {
+        List<string> parts = [];
+        System.Text.StringBuilder part = new();
+        bool quoted = false;
+        bool started = false;
+        foreach (char c in commandLine ?? "")
+        {
+            if (c == '"')
+            {
+                quoted = !quoted;
+                started = true;
+            }
+            else if (char.IsWhiteSpace(c) && !quoted)
+            {
+                if (started)
+                {
+                    parts.Add(part.ToString());
+                    part.Clear();
+                    started = false;
+                }
+            }
+            else
+            {
+                part.Append(c);
+                started = true;
+            }
+        }
+
+        if (started)
+        {
+            parts.Add(part.ToString());
+        }
+
+        return parts is [var fileName, .. var arguments] && fileName.Length > 0
+            ? new TerminalCommand(fileName, arguments)
+            : null;
     }
 }
 

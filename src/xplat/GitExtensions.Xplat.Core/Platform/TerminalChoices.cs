@@ -30,12 +30,20 @@ public static class TerminalChoices
     public delegate bool ShellFinder(string executableName, [NotNullWhen(true)] out string? path);
 
     /// <summary>
-    ///  The terminals in upstream's order (bash, cmd, pwsh, powershell), leaving out those not installed.
+    ///  The terminals in upstream's order (bash, cmd, pwsh, powershell), leaving out those not installed. Off Windows, the
+    ///  terminal <paramref name="configured"/> names (Settings, Paths; decided with the user on 2026-11-22), else the
+    ///  system's.
     /// </summary>
-    public static IReadOnlyList<TerminalChoice> For(HostPlatform platform, string? terminalEnvironmentValue, ShellFinder find)
+    public static IReadOnlyList<TerminalChoice> For(HostPlatform platform, string? terminalEnvironmentValue, ShellFinder find,
+        string? configured = null)
     {
         if (!platform.IsWindows)
         {
+            if (TerminalCommand.Parse(configured) is { } own)
+            {
+                return [new TerminalChoice(Path.GetFileName(own.FileName), "Console", own)];
+            }
+
             TerminalCommand command = TerminalCommand.Default(platform, terminalEnvironmentValue);
             string name = platform.IsMacOS ? "Terminal" : Path.GetFileName(command.FileName);
             return [new TerminalChoice(name, "Console", command)];

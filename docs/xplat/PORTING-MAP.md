@@ -3073,6 +3073,11 @@ Not ported: the embedded console tab (ConEmu), which is Windows-only.
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the embedded console tab
 (ConEmu, Windows only). Audit 2026-11-18 (on macOS; every line above checked against the code, and upstream's settings pages' designer texts and `HotkeySettingsManager` compared with the shell by a script): left only the embedded console tab (ConEmu, Windows only).
 Decided 2026-11-20 (the user): the embedded console tab stays `windows-only` (see ConsoleEmulation), so the row is `ported`.
+Added 2026-11-22 (the user's decision, `PLAN.md` section 9, question 10), the fork's own: Settings, Paths has "Terminal
+command" on Linux and macOS (`xplat.TerminalCommand` in the settings file): the program and its arguments, `{folder}` for the
+repository's folder, parts with spaces in double quotes (`TerminalCommand.Parse`); empty keeps the system's terminal, which
+the box shows as its placeholder. The button takes it after Settings is saved. Windows keeps upstream's shells. Tests:
+`TerminalChoicesTests`, `SettingsViewModelTests`, `GitSshSettingsTests`.
 
 **Revision grid rows and View menu** (`ported`). 2026-10-13: no column header row, as upstream's grid. The labels as
 `MessageColumnProvider` lays them out (`GridLabels` in core): no HEAD label, sorted as `SortRefs` (checked-out branch,

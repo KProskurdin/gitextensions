@@ -312,7 +312,7 @@ public partial class MainWindow
     private void FillTerminals()
     {
         IReadOnlyList<TerminalChoice> choices = TerminalChoices.For(HostPlatform.Current,
-            Environment.GetEnvironmentVariable("TERMINAL"), PathUtil.TryFindShellPath);
+            Environment.GetEnvironmentVariable("TERMINAL"), PathUtil.TryFindShellPath, _preferences.TerminalCommand);
         MenuEntries.Fill(((MenuFlyout)TerminalButton.Flyout!).Items, Toolbar.TerminalMenu(choices), this);
         if (TerminalChoices.Default(choices, TerminalChoices.DefaultName) is { } terminal)
         {
