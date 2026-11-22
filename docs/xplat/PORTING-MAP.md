@@ -126,7 +126,8 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/GitUI/BuildServerIntegration/BuildServerWatcher.cs` | `src/xplat/GitExtensions.Xplat.Core/BuildServer/BuildServerWatcher.cs`, `BuildServerCatalog.cs`, `BuildServerCredentialStore.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.BuildServer.cs` | `52d08e996` | ported |
 | `src/app/GitUI/UserControls/RevisionGrid/Columns/BuildStatusColumnProvider.cs`; `RevisionGridControl.cs` (build report items, cell click); `RevisionGridMenuCommands.cs` (build status toggles) | `src/xplat/GitExtensions.Xplat.Core/BuildServer/BuildStatusCell.cs`, `CommitHistory/CommitListViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml`, `MainWindow.BuildServer.cs`, `BuildStatusBrushConverter.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/BuildServerIntegrationSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml`, `SettingsWindow.BuildServer.cs` | `52d08e996` | ported |
-| `src/app/GitUI/CommandsDialogs/FormSettings.cs`, `FormSettings.Designer.cs` (page tree, title, buttons, instant save notice); `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsTreeViewUserControl.cs`, `SettingsGroupPages.cs`, `Pages/GitRootIntroductionPage.cs`, `Plugins/PluginRootIntroductionPage.cs` | `src/xplat/GitExtensions.Xplat.Core/Settings/SettingsPageTree.cs`, `SettingsPageTreeViewModel.cs`, `SettingsPageNode.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.App/SettingsWindow.Tree.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | partial |
+| `src/app/GitUI/CommandsDialogs/FormSettings.cs`, `FormSettings.Designer.cs` (page tree, title, buttons, instant save notice); `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsTreeViewUserControl.cs`, `SettingsGroupPages.cs`, `Pages/GitRootIntroductionPage.cs`, `Plugins/PluginRootIntroductionPage.cs` | `src/xplat/GitExtensions.Xplat.Core/Settings/SettingsPageTree.cs`, `SettingsPageTreeViewModel.cs`, `SettingsPageNode.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.App/SettingsWindow.Tree.cs`, `SettingsWindow.axaml(.cs)` | `52d08e996` | ported |
+| `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/ShellExtensionSettingsPage.cs`; `SettingsDialog/ShellExtension/ShellExtensionManager.cs`; `CheckSettingsLogic.cs` (`SolveGitExtensionsDir`) | `src/xplat/GitExtensions.Xplat.Core/Settings/ShellExtensionPageViewModel.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.Core/Platform/WindowsInstallation.cs`; `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml` (`ShellExtensionTab`), `ShellMenuCheckBox.cs`, `AppServices.cs` | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/SettingsPageHeader.cs`, `SettingsPageWithHeader.cs`, `DistributedSettingsPage.cs`; `Pages/DetailedSettingsPage.cs` (`gbRevisionGraph` enabled at the global level) | `src/xplat/GitExtensions.Xplat.App/SettingsSourceHeader.cs`, `SettingsWindow.Headers.cs`, `SettingsWindow.BuildServer.cs`, `SettingsWindow.axaml.cs` (revision links and plugin levels) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitConfigSettingsPage.cs`, `GitConfigBaseSettingsPage.cs`; `src/app/GitCommands/DiffMergeTools/DiffMergeToolConfigurationManager.cs` (`ConfiguredMergeTool`, `ConfiguredDiffTool`) | `src/xplat/GitExtensions.Xplat.App/SettingsWindow.GitConfig.cs`, `SettingsWindow.axaml` (`GitConfigTab`); `src/xplat/GitExtensions.Xplat.Core/Settings/GitConfigService.cs` (`ConfigScope.Effective`, `ConfigScope.System`) | `52d08e996` | ported |
 | `src/app/GitUI/CommandsDialogs/SettingsDialog/Pages/GitConfigAdvancedSettingsPage.cs` | `src/xplat/GitExtensions.Xplat.Core/Settings/GitConfigAdvancedPageViewModel.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.App/SettingsWindow.axaml` (`GitConfigAdvancedTab`), `SettingsWindow.GitConfig.cs`, `SettingsWindow.Headers.cs`, `SettingsWindow.Tree.cs` | `0174ba1cc` | ported |
@@ -165,6 +166,9 @@ what keeps a reimplementation traceable to the upstream code it copies.
 | `src/app/BugReporter/BugReportForm.cs`, `ExceptionDetails.cs`, `ExceptionDetailView.cs`; `ErrorReportUrlBuilder.cs`, `GitHubUrlBuilder.cs`, `Serialization/*.cs`, `Info/GeneralInfo.cs` (linked as is) | `src/xplat/GitExtensions.Xplat.App/BugReportWindow.axaml(.cs)`, `ExceptionDetailWindow.axaml(.cs)`, `ExceptionDetailViewModel.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.Core/Diagnostics/ExceptionDetails.cs`, `BugReportViewModel.cs` (MVVM, `MVVM.md`) | `0174ba1cc` | ported |
 | `src/app/GitUI/GitUICommands.cs` (`RunCommand`, `RunCommandBasedOnArgument`, `InitializeArguments`, the `Run...Command` methods); `src/app/GitExtensions/Program.cs` (`GetWorkingDir`, the exit code); `src/app/GitUI/CommandsDialogs/FormCommandlineHelp.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/CommandLine.cs` (the verbs, their checks, the options, the working directory, the usage text), `CloneArguments.cs`; `src/xplat/GitExtensions.Xplat.Core/Operations/GitEditorUninstall.cs`, `CommandLineHelpViewModel.cs` (FormCommandlineHelp, MVVM); `src/xplat/GitExtensions.Xplat.App/CommandLineVerbs.cs` (each verb's window on its own), `CommandLineHelpWindow.axaml(.cs)`, `MainWindow.CommandLine.cs` (the verbs run by an unseen browse window), `Program.cs`, `App.axaml.cs` | `0174ba1cc` | ported |
 | `src/app/GitUI/CommandsDialogs/FormInit.cs`, `FormInit.Designer.cs` | `src/xplat/GitExtensions.Xplat.Core/Operations/InitRepositoryViewModel.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.App/InitRepositoryWindow.axaml(.cs)`, `MainWindow.CommandLine.cs` (`InitAsync`), `MainWindow.axaml.cs` (Start menu) | `0174ba1cc` | ported |
+| `src/app/GitUI/CommandsDialogs/BrowseDialog/FormOpenDirectory.cs`, `FormOpenDirectory.Designer.cs` | `src/xplat/GitExtensions.Xplat.Core/Repository/OpenDirectoryViewModel.cs` (MVVM, `MVVM.md`); `src/xplat/GitExtensions.Xplat.App/OpenDirectoryWindow.axaml(.cs)`, `MainWindow.axaml.cs` (`PickAndOpenRepositoryAsync`) | `0174ba1cc` | ported |
+| `src/app/GitUI/UserControls/RevisionGrid/EmptyRepoControl.cs`, `EmptyRepoControl.Designer.cs`; `RevisionGridControl.cs` (`OnRevisionReadCompleted`) | `src/xplat/GitExtensions.Xplat.Core/CommitHistory/CommitListViewModel.cs` (`IsEmptyRepository`), `src/xplat/GitExtensions.Xplat.Core/Repository/BrowseToolbarViewModel.cs`; `src/xplat/GitExtensions.Xplat.App/MainWindow.axaml` (`EmptyRepoPanel`) | `0174ba1cc` | ported |
+| `src/app/GitUI/HelperDialogs/FormStatus.cs` (`ShowPassword`, `PasswordInput_PasswordEntered`), `FormProcess.cs` (`DataReceived`); `src/app/GitUI/UserControls/PasswordInput.cs`; `src/app/GitUI/ConsoleEmulation/PlainText/PlainTextConsoleCommandRunner.cs` (`WriteCommandProcessInput`) | `src/xplat/GitExtensions.Xplat.Core/Operations/ProcessViewModel.cs` (MVVM, `MVVM.md`), `GitOutputRunner.cs` (`IGitInputTarget`, prompts), `RepositoryOperationsViewModel.cs` (`SendInput`, `InputRequested`); `src/xplat/GitExtensions.Xplat.App/ProcessWindow.axaml(.cs)` | `0174ba1cc` | ported |
 
 ## Notes per row
 
@@ -583,7 +587,8 @@ upstream's.
 ## Not in this map
 
 - The repository path box and the git discovery at startup have no upstream form to port; they are
-  new code in `App.axaml.cs` and `XplatGitDiscovery.cs`.
+  new code in `App.axaml.cs` and `XplatGitDiscovery.cs`. On Windows the discovery is upstream's own `SolveGitCommand`
+  (core `Platform/WindowsGit.cs`, since 2026-11-22; see ChecklistSettingsPage).
 - The `RevisionReader` and `GitModule` engine code is used as-is from the shadow projects, not
   reimplemented, so it has no row.
 
@@ -1511,6 +1516,29 @@ extension, Git > Advanced) are left out of the tree; the Discard button (shown i
 Audit 2026-11-07 (all "not ported" lines above checked against the code): still missing: the pages the shell has no
 feature for (Console style, Shell extension, Git > Advanced). Audit 2026-11-18 (on macOS; every line above checked against the code, and upstream's settings pages' designer texts and `HotkeySettingsManager` compared with the shell by a script): left only Windows: Console style and Shell extension. The Git > Advanced page the audit named came the same day (see GitConfigAdvancedSettingsPage).
 Decided 2026-11-20 (the user): the Console style page stays `windows-only` (see ConsoleEmulation); the Shell extension page is left.
+2026-11-22, on Windows: the Shell extension page is in the tree on Windows, under Hotkeys as upstream's (see
+ShellExtensionSettingsPage); the tree has every page of upstream's but the `windows-only` Console style, so the row is
+`ported`.
+
+**ShellExtensionSettingsPage** (`ported`). Ported 2026-11-22 on Windows: upstream's page, in the tree on Windows only (the
+Explorer shell extension is Windows'). "Windows Explorer integration" with "Enable shell extension" and "Disable shell
+extension" (`regsvr32` as administrator for the 64-bit and 32-bit files, off the UI thread; the group is enabled when the
+files are found in the install folder or the app's, Enable while the extension is not registered, as upstream's
+`UpdateRegistrationStatus`); "Cascaded context menu" with "Always show all commands", upstream's 18 items, each checked (top
+level), neither (the cascaded "Git Extensions" menu) or unchecked (not in the menu), stepping through upstream's order on a
+click (checked, unchecked, neither; `ShellMenuCheckBox`), the "?" button with upstream's tooltip and manual section, and the
+"Context menu preview:" text. `CascadeShellMenuItems` and `AlwaysShowAllCommands` are upstream's registry values, read when
+the window opens and written on OK or Apply. The app's executable is `GitExtensions.exe`, as upstream's, so the extension
+starts this app with upstream's verbs (see Command line) when the install folder is this app's. Differences: upstream
+stores its own folder as the install folder and then registers the files found there, failing when it has none; the shell
+does that only when its folder has the files, else it registers the installed files and leaves the install folder, which
+then still starts the installed Git Extensions (`ShellExtensionFiles.ToRegister`); a declined elevation prompt shows no
+error (upstream shows the exception). Upstream's page is a list with check boxes; here a column of three-state check boxes.
+Not done: the shell's own build has no shell extension files (upstream's publish copies them, `Project.Publish.targets`;
+the shell has no installer), so the buttons work with an installed Git Extensions' files; nothing was tried against the
+real Explorer at the screen (rendered on Windows the same day with the machine's registration, see UI-PARITY Progress).
+Covered by `ShellExtensionPageViewModelTests`, `ShellExtensionFilesTests` (core) and
+`ShellExtensionSettingsTests` (app, Windows).
 
 **SettingsPageHeader** (`ported`). Ported 2026-10-14 (UI-PARITY U4.2): every page but the groups' introductions has
 upstream's "Settings source:" header. The pages of the user's settings show only "Global for all repositories"; the
@@ -1604,6 +1632,32 @@ The check is skipped when git was not found (the dashboard reports that; upstrea
 it), for a screenshot or benchmark run, and for the tests' windows (`MainWindow.CheckSettingsAtStartup`). Upstream's
 dialog opens on its first page, being the first in the process; the shell names the Checklist, as its settings window
 remembers the page shown last. Left, Windows only: the install and shell extension rows.
+Done 2026-11-22 on Windows: the install and shell extension rows, in upstream's places (the shell extension after the diff
+tool, the install folder after the linux tools), with upstream's texts and rules: the extension is fine when registered,
+or when its files are not installed, and needs registering when they are; the install folder (upstream's
+`GetInstallDir`, `[Software\GitExtensions\InstallDir]`) must exist, not name an `.exe`, and be the app's own folder unless a
+debugger is attached. Repair registers the extension (see ShellExtensionSettingsPage) or stores the app's folder (upstream's
+`SolveGitExtensionsDir`), then checks again. The startup check solves the install folder too, before it checks again
+(upstream's `AutoSolveAllSettings` on Windows; it runs only while "Check settings at startup" is on, and a shell run beside
+an installed Git Extensions then takes the install folder, as a second upstream copy does). Core `InstallationFacts`,
+`IWindowsInstallation` (`AppServices.WindowsInstallation`; the tests' `TestAppBuilder.NewInstallation`). Left of
+`AutoSolveAllSettings`: the linux tools folder. Covered by `SettingsChecklistTests`, `ChecklistPageViewModelTests`,
+`StartupSettingsCheckTests` and `ShellExtensionSettingsTests`.
+Done 2026-11-22 on Windows, the difference "Repair shows the page where upstream first tries to locate git, sh or PuTTY
+itself" and the linux tools above: core `Platform/WindowsGit.cs` is upstream's `SolveGitCommand` (the command typed or
+stored, each of upstream's git locations' `bin\git.exe`, then `cmd\git.exe` and `cmd\git.cmd`, then `git` and `git.cmd`,
+the first that answers `--version`) and `SolveLinuxToolsDir` (`usr\bin\` or `bin\` next to git, else nothing when `sh` is
+on the PATH), with upstream's `GetGitLocations` (`GITEXT_GIT`, Git for Windows' uninstaller entry, Git and msysgit under
+both Program Files, `C:\msysgit`, `C:\cygwin`, the per-user Git). On Windows the Checklist's repairs are upstream's: git and
+the linux tools are looked for, upstream's message says what was found (or that nothing was, and the Git page shows), and
+what was found goes on the Git page, is saved and checked again; for PuTTY its programs are looked for
+(`SshClients.FindPutty`) and the SSH page shows when not all are found. The startup check solves the linux tools before
+the install folder, as `AutoSolveAllSettings`; and at each start the app runs `SolveGitCommand` and stores the command,
+as upstream's `Program.Main` (where upstream then asks for git with `LocateMissingGit` and exits without one, the
+dashboard says git was not found, as on the other systems). Differences: upstream's loop over its git locations in
+`SolveLinuxToolsDir` checks the git command's path instead of each location's and never finds anything, so it is left
+out; `sh` in the current folder does not count as on the PATH. Covered by `WindowsGitTests`, `ChecklistPageViewModelTests`
+and `StartupSettingsCheckTests`.
 
 **FormAbout** (`ported`). Ported: name, version, operating system, runtime and git version. Not ported: the contributor list
 and the links.
@@ -2230,6 +2284,9 @@ Done 2026-11-20, on Windows: "Show console window when executing git process" (`
 `showgitcommandline`, shown on Windows only, where a console window can open). As upstream's
 `PlainTextConsoleCommandRunner` reads it for the process dialog, the shell's `GitOutputRunner` (the output window's
 operations, commits, rebases and scripts) starts git with a console window when it is on (`GitOutputRunner.StartInfo`).
+Done 2026-11-22, on Windows: the Appearance page's "Show current branch in Visual Studio"
+(`chkShowCurrentBranchInVisualStudio`, upstream's registry value `ShowCurrentBranchInVS`, which the Visual Studio extension
+reads), shown on Windows only. Left on purpose: "Auto scale user interface" (Avalonia scales by itself).
 Covered by `RemoteOperationOutputTests` and `GeneralSettingsTests`.
 
 **DiffViewerSettingsPage / FileViewer options** (`ported`). Ported 2026-10-07: the four whitespace modes (one box instead
@@ -2396,6 +2453,43 @@ working directory (--bare --shared=all)"; Create checks the folder as upstream's
 file, with upstream's messages, makes the folder when it is missing, runs upstream's `GitModule.Init(bare, shared)`, shows
 git's answer and adds the folder to the recent repositories. Before, the Start menu chose a folder and ran `git init`
 without the window. Tests: `InitRepositoryViewModelTests` (core), `CommandLineVerbsTests`.
+
+**FormOpenDirectory** (`ported`). 2026-11-22, on Windows, found by comparing upstream's designer files with this map
+(the form had no row): upstream's "Open local repository" window for the Start menu's "Open...", the dashboard's "Open
+repository", its hotkey and the working directory button's right click, which before opened the system's folder picker
+at once. The folder box with upstream's list (`GetDirectories`: the default clone folder, the open repository's parent
+folder and the recent repositories, else the repository opened last and the home folder, each ending in a separator),
+starting on its first entry; Go up (the parent folder with a separator after it, the caret at the end, enabled for an
+existing folder with a parent); "Browse..." (the system's picker at the folder typed; a folder chosen is opened at once);
+Open, also Enter, which opens a git working directory and says "The selected directory is not a valid git repository."
+otherwise, keeping the window open. Upstream's images on the three buttons and its sizes (615 wide, 450 to 800).
+Differences: the folder box has no completion of folder names as typed (upstream's `AutoCompleteSource.
+FileSystemDirectories`), so Go up's separator only ends the path. The repository is added to the recent list when it
+opens, as for every repository the app opens. Tests: `OpenDirectoryViewModelTests` (core), `OpenDirectoryWindowTests`.
+The same comparison found two more gaps, `EmptyRepoControl` and the process window's `PasswordInput` (see their notes);
+`FormQuickItemSelector` is the base of `FormQuickGitRefSelector` and `FormQuickStringSelector`, ported as `ChooseViewModel`.
+
+**EmptyRepoControl** (`ported`). 2026-11-22, on Windows (found by the same comparison as FormOpenDirectory): the revision
+grid's page for a repository without commits, in place of the grid, with upstream's rule (`OnRevisionReadCompleted`):
+the history read without a filter has no commit and no working directory and index rows stand in (they are off, or the
+repository is bare). "This repository does not yet contain any commits." with "Edit .gitignore" (upstream's
+`StartEditGitIgnoreDialog`, not the local excludes) and "Commit", both hidden in a bare repository. Before, an empty
+grid showed. Tests: `EmptyRepositoryPanelTests`.
+
+**FormStatus password input / PasswordInput** (`ported`). 2026-11-22, on Windows (found by the same comparison): the
+output window's "Show password input" and upstream's box for git's input, for what git asks on its standard input (a
+prompt that no askpass helper answers). The box shows while the operation runs when the check box is checked (stored at
+once in upstream's `ShowProcessDialogPasswordInput`), or by itself when git writes text without a line end and waits
+(upstream's `FormProcess.DataReceived` sets the check box to neither, shows the box and puts the focus in it); the text
+is hidden unless the eye shows it, and Enter or "Send input" writes it with a line end to git's standard input
+(`WriteCommandProcessInput`) and empties the box. For this, the remote operations' git now has its standard input
+redirected and kept open while it runs, as upstream's `PlainTextConsoleCommandRunner` starts it (`IGitInputTarget`; the
+other callers of `GitOutputRunner` are unchanged), and text git leaves without a line end is shown as it comes, the rest
+of the line replacing it (`GitOutputLine.IsPrompt`); upstream shows such text as it comes too. Differences: upstream's
+box takes text dropped on it; the shell's box is an ordinary text box. Tests: `ProcessInputTests` (core),
+`ProcessInputGitTests` (a real git answering a line typed to its input). Found by `DialogKeysParityTests` once FormStatus
+had a row: upstream's `CancelButton` is Abort, so Escape aborts while git runs; the output window had no cancel button
+(fixed: Abort is `IsCancel`, inactive once the operation has ended, as upstream's hidden Abort).
 
 **PluginSettingsPage / SettingControlBindings** (`ported`). Ported 2026-10-07: Settings > Plugins lists the plugins and
 shows the selected plugin's settings with the editor of upstream's binding for its type: three-state check box, text box

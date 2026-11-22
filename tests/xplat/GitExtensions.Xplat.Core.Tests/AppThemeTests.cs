@@ -145,5 +145,4 @@ internal sealed class AppThemeTests
 
     private static string RepositoryRoot([System.Runtime.CompilerServices.CallerFilePath] string file = "")
         => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file)!, "..", "..", ".."));
-
 }

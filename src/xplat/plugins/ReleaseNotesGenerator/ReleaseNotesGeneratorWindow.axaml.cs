@@ -29,6 +29,15 @@ public partial class ReleaseNotesGeneratorWindow : Window
     private readonly GitLogLineParser _parser = new();
     private IReadOnlyList<LogLine> _logLines = [];
 
+    /// <summary>
+    ///  The design-time constructor: the window's XAML only, for Avalonia's XAML previewer and runtime loader, which
+    ///  create a window without arguments. None of the code that fills the window runs, so the plugin never opens one.
+    /// </summary>
+    [Obsolete("For the XAML previewer and Avalonia's runtime loader only.")]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public ReleaseNotesGeneratorWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public ReleaseNotesGeneratorWindow(IGitModule module)
     {
         _module = module;

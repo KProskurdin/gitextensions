@@ -78,6 +78,34 @@ internal sealed class StartupSettingsCheckTests
     }
 
     [Test]
+    public async Task RunAsync_should_solve_the_install_folder_before_it_checks_again()
+    {
+        bool solved = false;
+        StartupSettingsCheck check = new(_preferences, () =>
+            {
+                _reads++;
+                return Task.FromResult(solved ? _good : _good with { UserEmail = null });
+            },
+            () => Task.FromResult<string?>("vi"), AppEditor, (name, value) => _environment[name] = value)
+        {
+            SolveLinuxToolsDir = () =>
+            {
+                solved.Should().BeFalse("upstream solves the linux tools before the install folder");
+                _environment["linux tools"] = "solved";
+                return true;
+            },
+            SolveInstallDir = () => solved = true,
+        };
+
+        bool open = await check.RunAsync();
+
+        solved.Should().BeTrue();
+        _environment.Should().ContainKey("linux tools");
+        open.Should().BeFalse("the second check finds every setting right");
+        _reads.Should().Be(2);
+    }
+
+    [Test]
     public async Task RunAsync_should_keep_a_configured_editor()
     {
         _preferences.CheckSettings = false;

@@ -37,7 +37,8 @@ internal sealed class SettingsChecklistTests
                          and not nameof(SettingsChecklist.SaveAndRescanText)
                          and not nameof(SettingsChecklist.CheckAtStartupText)))
         {
-            page.Should().Contain($"\"{field.GetRawConstantValue()}\"", field.Name);
+            // Upstream's source escapes a backslash.
+            page.Should().Contain($"\"{((string)field.GetRawConstantValue()!).Replace("\\", "\\\\")}\"", field.Name);
         }
 
         Unwrapped(designer).Should().Contain($"label11.Text = \"{SettingsChecklist.Introduction}\"")
@@ -127,6 +128,68 @@ internal sealed class SettingsChecklistTests
             .Should().Be(SettingsChecklist.OpenSshUsed);
         SettingsChecklist.Check(windows with { SshPath = "/missing/ssh" })
             .Single(entry => entry.Item == ChecklistItem.Ssh).Text.Should().Be("SSH client not found: /missing/ssh.");
+    }
+
+    [Test]
+    public void Check_should_add_the_install_and_shell_extension_rows_where_upstream_shows_them()
+    {
+        ChecklistFacts windows = _good with
+        {
+            IsWindows = true, LinuxToolsFound = true,
+            Installation = new InstallationFacts(@"C:\GitExtensions", @"C:\GitExtensions", InstallDirExists: true,
+                DebuggerAttached: false, ShellExtensionRegistered: true, ShellExtensionFilesExist: true),
+        };
+
+        IReadOnlyList<ChecklistEntry> entries = SettingsChecklist.Check(windows);
+
+        entries.Select(entry => entry.Item).Should().Equal(ChecklistItem.Git, ChecklistItem.UserName,
+            ChecklistItem.MergeTool, ChecklistItem.DiffTool, ChecklistItem.ShellExtension, ChecklistItem.LinuxTools,
+            ChecklistItem.GitExtensionsInstall, ChecklistItem.Ssh, ChecklistItem.Language);
+        entries.Should().OnlyContain(entry => entry.State == ChecklistState.Set);
+        entries[4].Text.Should().Be(SettingsChecklist.ShellExtRegistered);
+        entries[6].Text.Should().Be(SettingsChecklist.InstallDirCorrect);
+        SettingsChecklist.IsValid(windows, entries).Should().BeTrue();
+        SettingsChecklist.Check(windows with { Installation = null }).Should()
+            .NotContain(entry => entry.Item == ChecklistItem.ShellExtension || entry.Item == ChecklistItem.GitExtensionsInstall);
+        SettingsChecklist.Check(windows with { IsWindows = false }).Should()
+            .NotContain(entry => entry.Item == ChecklistItem.ShellExtension || entry.Item == ChecklistItem.GitExtensionsInstall);
+    }
+
+    [TestCase(false, false, ChecklistState.Set, SettingsChecklist.ShellExtNotInstalled)]
+    [TestCase(false, true, ChecklistState.Unset, "GitExtensionsShellEx32.dll needs to be registered in order to use the shell extensions.")]
+    [TestCase(true, false, ChecklistState.Set, SettingsChecklist.ShellExtRegistered)]
+    public void Check_should_find_the_shell_extension_registered_or_not_installed(bool registered, bool filesExist,
+        ChecklistState state, string text)
+    {
+        ChecklistFacts facts = _good with
+        {
+            IsWindows = true,
+            Installation = new InstallationFacts(@"C:\GitExtensions", @"C:\GitExtensions", InstallDirExists: true,
+                DebuggerAttached: false, registered, filesExist),
+        };
+
+        SettingsChecklist.Check(facts).Single(entry => entry.Item == ChecklistItem.ShellExtension).Should()
+            .Be(new ChecklistEntry(ChecklistItem.ShellExtension, state, text));
+    }
+
+    [TestCase("", true, false, ChecklistState.Unset, SettingsChecklist.InstallDirMissing)]
+    [TestCase(@"C:\GitExtensions\GitExtensions.exe", true, false, ChecklistState.Unset, SettingsChecklist.InstallDirFaulty)]
+    [TestCase(@"C:\GitExtensions", false, false, ChecklistState.Unset, SettingsChecklist.InstallDirFaulty)]
+    [TestCase(@"C:\Other", true, false, ChecklistState.Unset, SettingsChecklist.InstallDirFaulty)]
+    [TestCase(@"C:\Other", true, true, ChecklistState.Set, SettingsChecklist.InstallDirCorrect)]
+    [TestCase(@"C:\GitExtensions", true, false, ChecklistState.Set, SettingsChecklist.InstallDirCorrect)]
+    public void Check_should_want_the_install_folder_to_be_the_apps(string installDir, bool exists, bool debugger,
+        ChecklistState state, string text)
+    {
+        ChecklistFacts facts = _good with
+        {
+            IsWindows = true,
+            Installation = new InstallationFacts(installDir, @"C:\GitExtensions", exists, debugger,
+                ShellExtensionRegistered: false, ShellExtensionFilesExist: false),
+        };
+
+        SettingsChecklist.Check(facts).Single(entry => entry.Item == ChecklistItem.GitExtensionsInstall).Should()
+            .Be(new ChecklistEntry(ChecklistItem.GitExtensionsInstall, state, text));
     }
 
     [Test]

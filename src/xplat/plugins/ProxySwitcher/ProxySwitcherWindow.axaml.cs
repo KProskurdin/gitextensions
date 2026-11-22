@@ -25,6 +25,15 @@ public partial class ProxySwitcherWindow : Window
     private readonly SettingsSource _settings;
     private readonly IGitModule _module;
 
+    /// <summary>
+    ///  The design-time constructor: the window's XAML only, for Avalonia's XAML previewer and runtime loader, which
+    ///  create a window without arguments. None of the code that fills the window runs, so the plugin never opens one.
+    /// </summary>
+    [Obsolete("For the XAML previewer and Avalonia's runtime loader only.")]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public ProxySwitcherWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public ProxySwitcherWindow(ProxySwitcherPlugin plugin, SettingsSource settings, IGitModule module)
     {
         _plugin = plugin;

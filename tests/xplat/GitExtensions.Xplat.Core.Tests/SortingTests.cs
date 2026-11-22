@@ -66,8 +66,7 @@ internal sealed class SortingTests
         string designer = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "app", "GitUI", "CommandsDialogs",
             "SettingsDialog", "Pages", "SortingSettingsPage.Designer.cs"));
 
-        foreach (string text in (string[])
-                 [
+        foreach (string text in (string[])[
                      SortingTexts.RevisionSortWarning, .. SortingTexts.PrioritizedBranchNames.Split('\n'),
                      .. SortingTexts.PrioritizedRemoteNames.Split('\n'),
                  ])
@@ -75,8 +74,7 @@ internal sealed class SortingTests
             page.Should().Contain(text);
         }
 
-        foreach (string label in (string[])
-                 [
+        foreach (string label in (string[])[
                      "Sort revisions by", "Sort branches by", "Order branches", "Prioritized branches",
                      "Prioritized remotes"
                  ])

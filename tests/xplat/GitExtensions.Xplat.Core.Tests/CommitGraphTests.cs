@@ -147,14 +147,14 @@ internal sealed class CommitGraphTests
         string renderer = File.ReadAllText(Path.Combine(root, "src", "app", "GitUI", "UserControls", "RevisionGrid",
             "Graph", "Rendering", "GraphRenderer.cs"));
 
-        foreach (string name in (string[])
-                 ["MergeGraphLanesHavingCommonParent", "RenderGraphWithDiagonals", "StraightenGraphDiagonals"])
+        foreach (string name in (string[])[
+                     "MergeGraphLanesHavingCommonParent", "RenderGraphWithDiagonals", "StraightenGraphDiagonals",
+                 ])
         {
             settings.Should().Contain($"nameof({name}), true)");
         }
 
-        foreach (string label in (string[])
-                 [
+        foreach (string label in (string[])[
                      "Merge graph lanes having common parent", "Render graph with diagonals",
                      "Straighten graph diagonals",
                  ])

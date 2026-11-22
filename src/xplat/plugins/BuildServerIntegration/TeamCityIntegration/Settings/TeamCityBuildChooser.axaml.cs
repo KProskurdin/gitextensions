@@ -18,6 +18,15 @@ public partial class TeamCityBuildChooser : Window, IDialogWindow
     private TreeViewItem? _previouslySelectedProject;
 
     /// <summary>
+    ///  The design-time constructor: the window's XAML only, for Avalonia's XAML previewer and runtime loader, which
+    ///  create a window without arguments. None of the code that fills the window runs, so the plugin never opens one.
+    /// </summary>
+    [Obsolete("For the XAML previewer and Avalonia's runtime loader only.")]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public TeamCityBuildChooser() => InitializeComponent();
+#pragma warning restore CS8618
+
+    /// <summary>
     ///  Reads the project tree at once, as upstream's constructor does; a server that cannot be read throws.
     /// </summary>
     public TeamCityBuildChooser(string teamCityServerUrl, string teamCityProjectName, string teamCityBuildIdFilter)

@@ -27,6 +27,15 @@ public partial class GourceStartWindow : Window
     private readonly GourceStart _dialog;
     private readonly IGitModule _module;
 
+    /// <summary>
+    ///  The design-time constructor: the window's XAML only, for Avalonia's XAML previewer and runtime loader, which
+    ///  create a window without arguments. None of the code that fills the window runs, so the plugin never opens one.
+    /// </summary>
+    [Obsolete("For the XAML previewer and Avalonia's runtime loader only.")]
+#pragma warning disable CS8618 // The fields the window's data fills stay unset: no code of the window runs.
+    public GourceStartWindow() => InitializeComponent();
+#pragma warning restore CS8618
+
     public GourceStartWindow(GourceStart dialog, IGitModule module)
     {
         _dialog = dialog;
@@ -117,7 +126,7 @@ public partial class GourceStartWindow : Window
             // The avatar settings' providers send JPEG and others too; Bitmap.Save writes PNG.
             using MemoryStream stream = new(image);
             using Avalonia.Media.Imaging.Bitmap bitmap = new(stream);
-            bitmap.Save(filePath);
+            bitmap.Save(filePath, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         }
         catch
         {

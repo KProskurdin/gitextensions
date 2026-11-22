@@ -28,9 +28,11 @@ public partial class ProcessWindow : Window
 
         // View concerns: the newest line in view, and the state in the theme's colors.
         ViewModel.PropertyChanged += OnViewModelChanged;
+        ViewModel.PasswordInputFocusRequested += OnPasswordInputFocusRequested;
         Closed += (_, _) =>
         {
             ViewModel.PropertyChanged -= OnViewModelChanged;
+            ViewModel.PasswordInputFocusRequested -= OnPasswordInputFocusRequested;
             ViewModel.Detach();
         };
         ShowLastLine();
@@ -51,6 +53,10 @@ public partial class ProcessWindow : Window
                 break;
         }
     }
+
+    // Upstream focuses the box when git asks for input; it shows only once the binding has run.
+    private void OnPasswordInputFocusRequested(object? sender, EventArgs e)
+        => Avalonia.Threading.Dispatcher.UIThread.Post(() => Password.Focus());
 
     private void ShowLastLine()
     {

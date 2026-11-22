@@ -150,6 +150,19 @@ public sealed record SettingsViewModelServices
     public Func<Task<ChecklistFacts>>? ReadChecklistFacts { get; init; }
 
     /// <summary>
+    ///  What upstream's Windows installer registered (the install folder and the Explorer shell extension), for the Shell
+    ///  extension page and the Checklist on Windows; nothing is installed by default.
+    /// </summary>
+    public Platform.IWindowsInstallation WindowsInstallation { get; init; } = new Platform.InMemoryWindowsInstallation();
+
+    /// <summary>
+    ///  Where the Checklist's repairs look for git, the linux tools and PuTTY on Windows (upstream's <c>SolveGitCommand</c>,
+    ///  <c>SolveLinuxToolsDir</c> and <c>AutoFindPuttyPaths</c>); by default this Windows, and nothing elsewhere.
+    /// </summary>
+    public Platform.WindowsGitLookup? GitLookup { get; init; } =
+        OperatingSystem.IsWindows() ? Platform.WindowsGitLookup.System : null;
+
+    /// <summary>
     ///  Upstream's FormChooseTranslation, which the Checklist's language row opens.
     /// </summary>
     public Func<Task> ChooseLanguage { get; init; } = () => Task.CompletedTask;
@@ -315,6 +328,9 @@ public sealed partial class SettingsViewModel : DialogViewModel
             services.CanFindGit, services.DiffMergeTools ?? new GitDiffMergeToolCatalog(), message => ErrorText = message);
         GitConfigAdvancedPage = new GitConfigAdvancedPageViewModel(services.GitConfig, services.RepositoryPath,
             services.SupportsUpdateRefs, host.Translate);
+        ShellExtensionPage = new ShellExtensionPageViewModel(services.WindowsInstallation, ex => ErrorText = ex.Message,
+            () => services.OpenUrl(services.ManualUrl(ShellExtensionPageViewModel.HelpSubfolder,
+                ShellExtensionPageViewModel.HelpAnchor)), host.Translate);
         Fonts = [.. _fontLabels.Select(font =>
             new FontChoice(font.Font, host.Translate(font.Label), services.FontFamilies, preferences.GetFont(font.Font)))];
 
@@ -328,7 +344,11 @@ public sealed partial class SettingsViewModel : DialogViewModel
         Checklist = new ChecklistPageViewModel(new ChecklistPageServices
         {
             ReadFacts = services.ReadChecklistFacts ?? new ChecklistFactsReader(preferences, services.GitConfig,
-                services.DiffMergeTools ?? new GitDiffMergeToolCatalog(), services.RepositoryPath, isWindows).ReadAsync,
+                services.DiffMergeTools ?? new GitDiffMergeToolCatalog(), services.RepositoryPath, isWindows)
+            {
+                Installation = services.WindowsInstallation,
+            }.ReadAsync,
+            Installation = services.WindowsInstallation,
             Save = () => SaveAsync(close: false),
             GoToPage = GoToPage,
             ChooseLanguage = async () =>
@@ -341,6 +361,9 @@ public sealed partial class SettingsViewModel : DialogViewModel
             ShowError = ex => ErrorText = ex.Message,
             ReadCheckAtStartup = () => preferences.CheckSettings,
             WriteCheckAtStartup = value => preferences.CheckSettings = value,
+            Locate = isWindows && services.GitLookup is not null ? LocateAsync : null,
+            ShowMessage = (text, caption) => host.ShowMessageAsync(text, caption),
+            Translate = host.Translate,
         });
         PageTree = new SettingsPageTreeViewModel(services.PageTree with { PageTexts = PageTexts }, PluginsPage.Pages);
         PageTree.PropertyChanged += (_, e) =>
@@ -417,6 +440,11 @@ public sealed partial class SettingsViewModel : DialogViewModel
     ///  Upstream's Git > Advanced page.
     /// </summary>
     public GitConfigAdvancedPageViewModel GitConfigAdvancedPage { get; }
+
+    /// <summary>
+    ///  Upstream's Shell extension page, which the tree has on Windows only.
+    /// </summary>
+    public ShellExtensionPageViewModel ShellExtensionPage { get; }
 
     /// <summary>
     ///  The page tree, the page shown, the search box and the window title.
@@ -755,6 +783,12 @@ public sealed partial class SettingsViewModel : DialogViewModel
     [ObservableProperty]
     public partial bool ShowRepoCurrentBranch { get; set; }
 
+    /// <summary>
+    ///  Upstream's "Show current branch in Visual Studio" on the Appearance page, shown on Windows only.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool ShowCurrentBranchInVisualStudio { get; set; }
+
     [ObservableProperty]
     public partial bool ShowAuthorAvatarColumn { get; set; }
 
@@ -1080,6 +1114,13 @@ public sealed partial class SettingsViewModel : DialogViewModel
         DiffVerticalRulerPosition = p.DiffVerticalRulerPosition;
         RecentRepositoriesHistorySize = p.RecentRepositoriesHistorySize;
         ShowRepoCurrentBranch = p.ShowRepoCurrentBranch;
+        ShowCurrentBranchInVisualStudio = p.ShowCurrentBranchInVisualStudio;
+        if (IsWindows)
+        {
+            ShellExtensionPage.Load(p);
+            ShellExtensionPage.UpdateRegistrationStatus();
+        }
+
         ShowAuthorAvatarColumn = p.ShowAuthorAvatarColumn;
         ShowAuthorAvatarInCommitInfo = p.ShowAuthorAvatarInCommitInfo;
         PrioritizedBranchNames = p.PrioritizedBranchNames;
@@ -1123,19 +1164,52 @@ public sealed partial class SettingsViewModel : DialogViewModel
         SelectedSshClient = kind;
     }
 
-    // Upstream looks for PuTTY's programs when PuTTY is chosen.
-    private void FindPutty()
+    // Upstream looks for PuTTY's programs when PuTTY is chosen; true when all three are found.
+    private bool FindPutty()
     {
-        if (!IsWindows)
+        if (!IsWindows || _services.GitLookup is not { } lookup)
         {
-            return;
+            return false;
         }
 
         PuttyPaths found = SshClients.FindPutty(new PuttyPaths(Plink ?? "", Puttygen ?? "", Pageant ?? ""),
-            SshClients.PuttyLocations(Environment.GetEnvironmentVariable, Environment.Is64BitProcess), File.Exists);
+            SshClients.PuttyLocations(lookup.Environment, lookup.Is64BitProcess), lookup.FileExists);
         Plink = found.Plink;
         Puttygen = found.Puttygen;
         Pageant = found.Pageant;
+        return lookup.FileExists(found.Plink) && lookup.FileExists(found.Puttygen) && lookup.FileExists(found.Pageant);
+    }
+
+    // The Checklist's own repairs (upstream's GitFound_Click, GitBinFound_Click, SshConfig_Click): what is found goes on
+    // the Git or SSH page, from where the Checklist's save stores it.
+    private async Task<string?> LocateAsync(ChecklistItem item)
+    {
+        Platform.WindowsGitLookup lookup = _services.GitLookup!;
+        string gitCommand = GitCommand?.Trim() ?? "";
+        switch (item)
+        {
+            case ChecklistItem.Git:
+                if (await Task.Run(() => Platform.WindowsGit.SolveGitCommand(gitCommand, null, lookup)) is not { } command)
+                {
+                    return null;
+                }
+
+                GitCommand = command;
+                return command;
+            case ChecklistItem.LinuxTools:
+                if (await Task.Run(() => Platform.WindowsGit.SolveLinuxToolsDir(gitCommand, LinuxToolsDir?.Trim() ?? "",
+                        lookup)) is not { } folder)
+                {
+                    return null;
+                }
+
+                LinuxToolsDir = folder;
+                return folder;
+            case ChecklistItem.Ssh:
+                return SelectedSshClient == SshClientKind.Putty && FindPutty() ? Plink : null;
+            default:
+                return null;
+        }
     }
 
     private void StoreValues()
@@ -1170,6 +1244,14 @@ public sealed partial class SettingsViewModel : DialogViewModel
         p.RevisionGridQuickSearchTimeout = (int)(RevisionGridQuickSearchTimeout ?? DefaultQuickSearchTimeout);
         p.ShowGitStatusForArtificialCommits = ShowGitStatusForArtificialCommits;
         p.ShowRepoCurrentBranch = ShowRepoCurrentBranch;
+
+        // The Visual Studio extension and the Explorer shell extension are Windows'; their settings are stored there only.
+        if (IsWindows)
+        {
+            p.ShowCurrentBranchInVisualStudio = ShowCurrentBranchInVisualStudio;
+            ShellExtensionPage.Store(p);
+        }
+
         if (SelectedTruncatePath is { } truncate)
         {
             p.TruncatePathMethod = truncate.Method;

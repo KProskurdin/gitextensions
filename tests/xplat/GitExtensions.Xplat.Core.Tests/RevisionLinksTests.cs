@@ -107,8 +107,7 @@ internal sealed class RevisionLinksTests
             .Equal("Add GitHub templates", "Add Azure DevOps templates");
         page.Should().Contain("new(\"Add {0} templates\")").And.Contain("Name = \"<new>\"")
             .And.Contain("UseRemotesPattern = \"upstream|origin\"");
-        foreach (string label in (string[])
-                 [
+        foreach (string label in (string[])[
                      "Categories", "Name", "Enabled", "Revision data", "Search in", "Message", "Local branch name",
                      "Remote branch name", "Search pattern", "Nested pattern", "Remote data", "Use remotes",
                      "Only use the first match", "URL", "Push URL", "Links", "Add", "Remove",

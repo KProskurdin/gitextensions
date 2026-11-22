@@ -251,7 +251,9 @@ internal sealed class RepoObjectsTreeTests
 
         nodes.Single(node => node.Kind == RepoObjectKind.Stash).Image.Should().Be("EyeClosed");
         RepoObjectsTree.ShowHidden(roots, [Row("x", new RefLabel("feature/x", RefKind.Branch))], text => text);
-        (feature.IsHidden, feature.Image, feature.ToolTip).Should().Be((false, "BranchLocal", null));
+        feature.IsHidden.Should().BeFalse();
+        feature.Image.Should().Be("BranchLocal");
+        feature.ToolTip.Should().BeNull();
     }
 
     [Test]

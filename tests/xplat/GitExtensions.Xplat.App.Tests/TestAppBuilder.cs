@@ -31,6 +31,11 @@ public static class TestAppBuilder
     public static InMemoryMergeSettingsStore MergeSettings { get; } = new();
 
     /// <summary>
+    ///  The Windows installation the windows see: by default, nothing installed and the install folder the app's.
+    /// </summary>
+    public static Core.Platform.InMemoryWindowsInstallation WindowsInstallation { get; private set; } = new();
+
+    /// <summary>
     ///  The git config the windows see during the tests, so no test writes the user's global git config.
     /// </summary>
     public static FakeGitConfigService GitConfig { get; } = new();
@@ -79,6 +84,21 @@ public static class TestAppBuilder
         PluginSettings = new InMemorySettingsSource();
         AppServices.PluginSettings = new InMemoryPluginSettingsStore(PluginSettings);
     }
+
+    /// <summary>
+    ///  Gives the windows <paramref name="installation"/> as what the Windows installer registered.
+    /// </summary>
+    public static void UseWindowsInstallation(Core.Platform.InMemoryWindowsInstallation installation)
+    {
+        WindowsInstallation = installation;
+        AppServices.WindowsInstallation = installation;
+    }
+
+    /// <summary>
+    ///  Nothing installed, and the install folder the app's own, so the Checklist's install row is right.
+    /// </summary>
+    public static Core.Platform.InMemoryWindowsInstallation NewInstallation()
+        => new() { InstallDir = TestCurrentDirectory, AppDirectory = TestCurrentDirectory };
 
     /// <summary>
     ///  Gives the windows <paramref name="catalog"/> as the build server plugins, and credentials kept in memory.
@@ -133,6 +153,7 @@ public static class TestAppBuilder
         AppServices.EditorCommand = null;
         AppServices.AskPassExecutable = null;
         AppServices.DiffMergeTools = new FixedDiffMergeToolCatalog();
+        UseWindowsInstallation(NewInstallation());
         AppServices.Scripts = Scripts;
 
         // Avatars are never downloaded and their cache is a folder of the run's own.

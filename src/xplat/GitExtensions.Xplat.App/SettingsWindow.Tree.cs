@@ -27,6 +27,7 @@ public partial class SettingsWindow
         ["BuildServerIntegrationSettingsPage"] = nameof(BuildServerTab),
         ["ScriptsSettingsPage"] = nameof(ScriptsTab),
         ["HotkeysSettingsPage"] = nameof(HotkeysTab),
+        [ShellExtensionPage] = nameof(ShellExtensionTab),
         ["AdvancedSettingsPage"] = nameof(AdvancedTab),
         ["ConfirmationsSettingsPage"] = nameof(ConfirmationsTab),
         ["DetailedSettingsPage"] = nameof(DetailedTab),
@@ -67,10 +68,13 @@ public partial class SettingsWindow
     /// </summary>
     public void GoToPage(string upstreamPage) => ViewModel.PageTree.GoToPage(upstreamPage);
 
+    // Upstream's Shell extension page: the Explorer shell extension is Windows'.
+    private const string ShellExtensionPage = "ShellExtensionSettingsPage";
+
     private static SettingsPageTreeServices PageTreeServices(Func<SettingsPageNode, IEnumerable<string>> pageTexts)
         => new()
         {
-            Pages = _pageTabs.Keys.ToHashSet(),
+            Pages = _pageTabs.Keys.Where(page => page != ShellExtensionPage || OperatingSystem.IsWindows()).ToHashSet(),
             Translate = UpstreamTranslation.ByText,
             PageImage = PageImage,
             PluginImage = plugin => plugin is PluginOption { Plugin: var loaded } ? PluginHost.LoadIcon(loaded) : null,

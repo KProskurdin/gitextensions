@@ -86,7 +86,12 @@ internal sealed class MacOSIntegrationTests
         {
             string shell = Path.Combine(folder, "shell");
             File.WriteAllText(shell, $"#!/bin/sh\n{body}\n");
-            File.SetUnixFileMode(shell, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            // The tests that use it run on Linux and macOS only; the check tells the platform analyzer so.
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(shell, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+
             test(shell);
         }
         finally

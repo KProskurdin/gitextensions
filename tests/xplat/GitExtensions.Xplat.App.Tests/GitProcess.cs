@@ -24,6 +24,16 @@ internal static class GitProcess
     public static int RunAllowingFailure(string workingDir, params string[] arguments) =>
         Execute(workingDir, arguments).ExitCode;
 
+    /// <summary>
+    ///  Runs git for a check a test polls while the app's git is still working: its output, or null when git failed, as
+    ///  it can while the app's git rewrites a file it reads (on Windows, ".git/config: Permission denied").
+    /// </summary>
+    public static string? TryRun(string workingDir, params string[] arguments)
+    {
+        (int exitCode, string output, _) = Execute(workingDir, arguments);
+        return exitCode == 0 ? output : null;
+    }
+
     private static (int ExitCode, string Output, string Error) Execute(string workingDir, string[] arguments)
     {
         ProcessStartInfo info = new("git")

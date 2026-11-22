@@ -99,7 +99,7 @@ internal sealed class DiffMergeToolSettingsTests
 
     private sealed class RecordingConfig : IGitConfigService
     {
-        public Dictionary<(ConfigScope, string), string> Values { get; } = [];
+        public Dictionary<(ConfigScope Scope, string Key), string> Values { get; } = [];
 
         public Task<string> GetAsync(ConfigScope scope, string key, string? repositoryPath = null)
             => Task.FromResult(Values.GetValueOrDefault((scope, key), ""));

@@ -66,7 +66,8 @@ internal sealed class CheckoutBranchWindowTests
         Find<TextBox>(checkout, "CustomBranchNameBox").Text = "mine";
         Click(checkout, "CheckoutButton");
 
-        WaitUntil(() => _repo.Run("rev-parse", "--abbrev-ref", "HEAD").Trim() == "mine");
+        // git sets the upstream before it moves HEAD, so once HEAD names the branch its configuration is written.
+        WaitUntil(() => GitProcess.TryRun(_repo.Path, "rev-parse", "--abbrev-ref", "HEAD")?.Trim() == "mine");
         _repo.Run("rev-parse", "--abbrev-ref", "mine@{upstream}").Trim().Should().Be("origin/feature");
     }
 

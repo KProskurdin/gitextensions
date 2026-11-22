@@ -4,7 +4,6 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitCommands;
@@ -1097,9 +1096,13 @@ public partial class MainWindow : Window, ISettingsWindowHost
         }
     }
 
+    // Upstream's FormOpenDirectory.OpenModule: the Start menu's and the dashboard's "Open repository".
     private async Task PickAndOpenRepositoryAsync()
     {
-        if (await PickFolderAsync("Open repository") is { } folder)
+        OpenDirectoryWindow window = new(OpenDirectoryViewModel.ListDirectories(_preferences.DefaultCloneDestinationPath,
+            RepositoryPath, [.. _recent.Items.Select(item => item.Path)], _preferences.RecentWorkingDir,
+            EnvironmentConfiguration.GetHomeDir()));
+        if (await window.ShowDialog<bool>(this) && window.ViewModel.ChosenRepository is { } folder)
         {
             await OpenRepositoryAsync(folder);
         }
@@ -1112,13 +1115,6 @@ public partial class MainWindow : Window, ISettingsWindowHost
         {
             await OpenRepositoryAsync(created);
         }
-    }
-
-    private async Task<string?> PickFolderAsync(string title)
-    {
-        IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = title, AllowMultiple = false });
-        return folders.Count == 0 ? null : folders[0].TryGetLocalPath();
     }
 
     // Launching a file manager or terminal is a local action; a failure is shown like any other error.
@@ -1657,10 +1653,32 @@ public partial class MainWindow : Window, ISettingsWindowHost
     // Upstream checks the settings without a repository (a GitModule on an empty folder).
     private StartupSettingsCheck NewStartupSettingsCheck()
     {
+        bool isWindows = OperatingSystem.IsWindows();
         ChecklistFactsReader facts = new(_preferences, AppServices.GitConfig, AppServices.DiffMergeTools,
-            repositoryPath: null, OperatingSystem.IsWindows());
+            repositoryPath: null, isWindows)
+        {
+            Installation = AppServices.WindowsInstallation,
+        };
         return new StartupSettingsCheck(_preferences, facts.ReadAsync, facts.ReadEditorAsync, AppServices.EditorCommand,
-            Environment.SetEnvironmentVariable);
+            Environment.SetEnvironmentVariable)
+        {
+            SolveLinuxToolsDir = isWindows ? SolveLinuxToolsDir : null,
+            SolveInstallDir = isWindows ? AppServices.WindowsInstallation.SolveInstallDir : null,
+        };
+
+        bool SolveLinuxToolsDir()
+        {
+            if (!OperatingSystem.IsWindows() ||
+                Core.Platform.WindowsGit.SolveLinuxToolsDir(GitCommands.AppSettings.GitCommandValue,
+                    _preferences.LinuxToolsDir, Core.Platform.WindowsGitLookup.System) is not { } folder)
+            {
+                return false;
+            }
+
+            _preferences.LinuxToolsDir = folder;
+            _preferences.Save();
+            return true;
+        }
     }
 
     // Upstream's FileViewer settings button opens the settings dialog on its page, for the viewers of this window and of

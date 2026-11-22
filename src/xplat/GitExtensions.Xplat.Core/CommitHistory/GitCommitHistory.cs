@@ -423,13 +423,12 @@ public sealed class GitCommitHistory : ICommitHistory
             }
         });
 
+        // As upstream's grid: the commit a rebase stashed the changes in, shown during the rebase.
+        string autostashLabel = ResourceManager.TranslatedStrings.Autostash;
         try
         {
             new RevisionReader(module).GetLog(observer, revisionFilter: revision, pathFilter: pathFilter,
-                hasNotes: notes,
-
-                // As upstream's grid: the commit a rebase stashed the changes in, shown during the rebase.
-                autostashLabel: ResourceManager.TranslatedStrings.Autostash, cancellationToken: stopReading.Token);
+                hasNotes: notes, autostashLabel: autostashLabel, cancellationToken: stopReading.Token);
         }
         catch (OperationCanceledException) when (stopReading.IsCancellationRequested)
         {

@@ -123,6 +123,13 @@ public static class AppServices
     public static IDiffMergeToolCatalog DiffMergeTools { get; set; } = new GitDiffMergeToolCatalog();
 
     /// <summary>
+    ///  What upstream's Windows installer registered: the install folder and the Explorer shell extension. Nothing is
+    ///  installed on the other systems. Tests replace it, so they never read or change the machine's registration.
+    /// </summary>
+    public static IWindowsInstallation WindowsInstallation { get; set; } =
+        OperatingSystem.IsWindows() ? new WindowsInstallation() : new InMemoryWindowsInstallation();
+
+    /// <summary>
     ///  Upstream's CSS themes: the built-in ones next to the app and the user's own. Created on first use, because finding
     ///  the user's folder reads the settings.
     /// </summary>

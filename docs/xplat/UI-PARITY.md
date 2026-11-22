@@ -802,6 +802,38 @@ toolbar icons with upstream's `ToolTipText`.
   not fixed: `DiffView.ShowSettings` is static, so with two browse windows the viewer's settings item opens Settings over
   the newest window, even a closed one; a file that is one line of megabytes holds the viewer for minutes after "Show
   large file".
+- 2026-11-22, on Windows, item 6 of "Next on the Mac" below: first the Mac's work of 2026-11-20 (the command line, the
+  menu bar, the settings folder, FormInit and the rest) on Windows, unchanged: core 1462 of 1462, app 874 of 874 in 14
+  minutes 51 seconds. Then upstream's Shell extension page (`ShellExtensionPageViewModel`, MVVM; core
+  `Platform/WindowsInstallation.cs`), the Checklist's install folder and shell extension rows with their repairs, the
+  startup check's install folder solve, and the Appearance page's "Show current branch in Visual Studio", all Windows only
+  (`PORTING-MAP.md`: ShellExtensionSettingsPage, ChecklistSettingsPage, FormSettings page tree, GeneralSettingsPage).
+  `PORTING-MAP.md` now has 143 rows `ported` and none `partial`. Not done: the shell's build has no shell extension files
+  (upstream's publish copies them), so its buttons use an installed Git Extensions' files; the page and the Explorer menu
+  were not tried at the screen.
+- 2026-11-22, later, on Windows, the last differences the porting map's notes listed for Windows: the Checklist's repairs
+  of git, the linux tools and PuTTY look for them first and say what they found, as upstream's; the startup check solves
+  the linux tools folder; and every start runs upstream's `SolveGitCommand` (core `Platform/WindowsGit.cs`), so a git
+  installed where Git for Windows puts it is found without being on the PATH (the ChecklistSettingsPage note). Results:
+  core 1504 of 1504, app 878 of 878 on Windows. Not tried at the screen.
+- 2026-11-22, a real render on Windows (`XPLAT_SCREENSHOT_WINDOW=settings:<search>` on a throwaway repository, with
+  `GITEXTENSIONS_XPLAT_USER_DATA` on a throwaway folder so the settings file shared with the WinForms app was not touched;
+  the registry was only read): the Shell extension page reads this machine's registration (registered, so "Enable shell
+  extension" is off) and upstream's default menu items with the preview beside them; the list is taller than the page,
+  which scrolls. The Checklist has upstream's rows in upstream's order with the machine's state: the install folder row is
+  red, as it should be for a build run beside an installed Git Extensions, and the PuTTY row is red because the PuTTY
+  programs' paths are stored nowhere (upstream's Checklist says the same; its Repair is the new search). The Appearance
+  page shows "Show current branch in Visual Studio" checked, as the registry has it. Not tried: clicking (Enable, Repair)
+  in the real app, and the Explorer menu.
+- 2026-11-22, on Windows, a new check: the names of upstream's 154 designer files (forms and user controls) against
+  `PORTING-MAP.md`. Three had been left out of every list and are now ported: FormOpenDirectory (the Start menu's and
+  the dashboard's "Open repository" opened the system's folder picker instead of upstream's window), EmptyRepoControl
+  (a repository without commits showed an empty grid) and the process window's password input (FormStatus'
+  "Show password input" and PasswordInput, for git asking on its standard input). Adding the FormStatus row let
+  `DialogKeysParityTests` find that the output window had no Escape (upstream's Abort); fixed. The other names were base
+  classes and helpers, or ported under another name (FormQuickItemSelector). Found on the way: a race in
+  `CheckoutBranchWindowTests` (its own git failed reading `.git/config` while the app's git rewrote it; it now polls
+  with `GitProcess.TryRun`). Results on Windows: core 1520 of 1520, app 885 of 885; no build warning in fork files.
 
 ### Continuing on macOS
 
@@ -926,6 +958,11 @@ have no upstream form to compare with, so a test or a recorded check is their ev
    Visual Studio", the PuTTY windows against a real server and Pageant, Narrator, the settings folder (the shell and the
    WinForms app show the same settings, such as automatic continuous scroll), and
    `AdvancedSettingsTests`' Create Branch test, which timed out once in a full run (`SYNC-LOG.md`, 2026-11-20 evening).
+   *2026-11-22 on Windows:* the Shell extension page, the installer rows and "Show current branch in Visual Studio" are
+   done (Progress above). The settings folder's tests pass on Windows (`XplatTestUserDataTests`, 4 of 4); the shell was not
+   started against the user's settings, so both apps showing the same settings is still to see at the screen. The Create
+   Branch test passed in both full runs. Left for the screen, on Windows: the Shell extension page with the Explorer menu,
+   the PuTTY windows against a real server and Pageant, Narrator, and the shared settings.
 
 **Status 2026-11-20, night (macOS):** items 1 to 3 are done; of item 5, the settings folder, the menu bar and the command line
 (with the plugins' `RunCommand` and `Start...Dialog`) are done, and item 4 is a checklist (`MACOS.md` section 10). The same

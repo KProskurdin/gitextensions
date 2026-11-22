@@ -351,7 +351,10 @@ public sealed class HttpAvatarDownloader : IAvatarDownloader
     });
 
     private readonly SemaphoreSlim _downloads = new(MaxConcurrentDownloads);
-    private readonly ConcurrentDictionary<Uri, (DateTime Time, Task<byte[]?> Download)> _requests = new();
+
+    // A request starts once, when it is first asked for; a lazy value, unlike a stored task, is safe to await from any
+    // caller and is not started twice when two callers race to add it.
+    private readonly ConcurrentDictionary<Uri, (DateTime Time, Microsoft.VisualStudio.Threading.AsyncLazy<byte[]?> Download)> _requests = new();
 
     public async Task<byte[]?> DownloadAsync(Uri uri)
     {
@@ -361,7 +364,7 @@ public sealed class HttpAvatarDownloader : IAvatarDownloader
         }
 
         DateTime now = DateTime.UtcNow;
-        foreach ((Uri key, (DateTime time, Task<byte[]?> _)) in _requests)
+        foreach ((Uri key, (DateTime time, Microsoft.VisualStudio.Threading.AsyncLazy<byte[]?> _)) in _requests)
         {
             if (now - time > _requestCacheTime)
             {
@@ -369,7 +372,8 @@ public sealed class HttpAvatarDownloader : IAvatarDownloader
             }
         }
 
-        return await _requests.GetOrAdd(uri, _ => (now, Task.Run(() => FetchAsync(uri)))).Download;
+        return await _requests.GetOrAdd(uri, _ => (now, new Microsoft.VisualStudio.Threading.AsyncLazy<byte[]?>(
+            () => Task.Run(() => FetchAsync(uri)), joinableTaskFactory: null))).Download.GetValueAsync();
     }
 
     private async Task<byte[]?> FetchAsync(Uri uri)

@@ -6,9 +6,10 @@ namespace GitExtensions.Xplat.Core.Settings;
 ///  that finds every setting right turns the startup check off. With the check off, only the editor is solved.
 /// </summary>
 /// <remarks>
-///  Of <c>AutoSolveAllSettings</c>, the git command is the shell's git discovery at start, which runs before this; the
-///  Windows-only parts (the linux tools and the install folder) are not ported. Upstream solves the editor there only on
-///  Windows; here on every system, since the app is git's editor everywhere.
+///  Of <c>AutoSolveAllSettings</c>, the git command is the shell's git discovery at start, which runs before this (on
+///  Windows upstream's <c>SolveGitCommand</c>); the linux tools and the install folder are solved on Windows
+///  (<see cref="SolveLinuxToolsDir"/>, <see cref="SolveInstallDir"/>). Upstream solves the editor there only on Windows;
+///  here on every system, since the app is git's editor everywhere.
 /// </remarks>
 public sealed class StartupSettingsCheck(
     IAppPreferences preferences,
@@ -21,6 +22,16 @@ public sealed class StartupSettingsCheck(
     ///  Upstream's <c>CommonLogic.AmbientGitEditorEnvVariableName</c>, which git reads last for its editor.
     /// </summary>
     public const string EditorVariable = "EDITOR";
+
+    /// <summary>
+    ///  Upstream's <c>SolveGitExtensionsDir</c>, which stores the app's folder as the install folder; set on Windows only.
+    /// </summary>
+    public Func<bool>? SolveInstallDir { get; init; }
+
+    /// <summary>
+    ///  Upstream's <c>SolveLinuxToolsDir</c>, which stores the folder with <c>sh</c>; set on Windows only.
+    /// </summary>
+    public Func<bool>? SolveLinuxToolsDir { get; init; }
 
     /// <summary>
     ///  Runs the check; true when the settings should open.
@@ -38,6 +49,8 @@ public sealed class StartupSettingsCheck(
             return false;
         }
 
+        SolveLinuxToolsDir?.Invoke();
+        SolveInstallDir?.Invoke();
         await SolveEditorAsync();
         return !await CheckAsync();
     }

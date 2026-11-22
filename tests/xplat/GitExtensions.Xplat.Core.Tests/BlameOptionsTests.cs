@@ -98,8 +98,7 @@ internal sealed class BlameOptionsTests
         string gitModule = File.ReadAllText(Path.Combine(root, "src", "app", "GitCommands", "Git", "GitModule.cs"));
         BlameOptions defaults = new();
 
-        foreach ((string key, bool value) in (ValueTuple<string, bool>[])
-                 [
+        foreach ((string key, bool value) in (ValueTuple<string, bool>[])[
                      ("IgnoreWhitespaceOnBlame", defaults.IgnoreWhitespace),
                      ("DetectCopyInFileOnBlame", defaults.DetectMoveInFile),
                      ("DetectCopyInAllOnBlame", defaults.DetectMoveInAllFiles),
@@ -118,8 +117,7 @@ internal sealed class BlameOptionsTests
             .And.Contain("{ AppSettings.IgnoreWhitespaceOnBlame, \"-w\" }");
         pageCode.Should().Contain(
             "\"Could prevent blame to calculate the accurate line number when blaming previous revisions.\"");
-        foreach (string label in (string[])
-                 [
+        foreach (string label in (string[])[
                      "Blame settings", "Ignore whitespace", "Detect moved or copied lines within blamed file",
                      "Detect moved or copied lines from all files in same commit", "Display result settings",
                      "Display author first", "Show author", "Show author date", "Show author time", "Show line numbers",
@@ -129,8 +127,7 @@ internal sealed class BlameOptionsTests
             page.Should().Contain($".Text = \"{label}\";");
         }
 
-        foreach (string label in (string[])
-                 [
+        foreach (string label in (string[])[
                      "Blame settings:", "Ignore whitespace", "Detect move and copy in this file",
                      "Detect move and copy in all files", "Show author avatar",
                  ])

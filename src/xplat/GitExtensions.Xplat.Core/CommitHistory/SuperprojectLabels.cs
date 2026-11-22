@@ -73,7 +73,7 @@ public sealed record SuperprojectLabels
     /// </summary>
     public static async Task<SuperprojectLabels?> ReadAsync(IGitModule module, RefsFilter refs)
     {
-        if (module.SuperprojectModule is not { } superproject)
+        if (module.SuperprojectModule is not { } superproject || module.SubmodulePath is not { } submodulePath)
         {
             return null;
         }
@@ -82,7 +82,7 @@ public sealed record SuperprojectLabels
         (char code, ObjectId commit) = await module.GetSuperprojectCurrentCheckoutAsync().ConfigureAwait(false);
         if (code == 'U')
         {
-            ConflictData conflict = await superproject.GetConflictAsync(module.SubmodulePath).ConfigureAwait(false);
+            ConflictData conflict = await superproject.GetConflictAsync(submodulePath).ConfigureAwait(false);
             labels = labels with
             {
                 ConflictBase = HashOf(conflict.Base.ObjectId),
@@ -95,7 +95,7 @@ public sealed record SuperprojectLabels
             labels = labels with { CurrentCommit = HashOf(commit) };
         }
 
-        return labels with { Refs = await ReadRefsAsync(superproject, module.SubmodulePath.ToPosixPath(), refs).ConfigureAwait(false) };
+        return labels with { Refs = await ReadRefsAsync(superproject, submodulePath.ToPosixPath(), refs).ConfigureAwait(false) };
     }
 
     /// <summary>

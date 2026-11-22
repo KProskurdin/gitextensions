@@ -665,7 +665,22 @@
                left or right of the grid (LayoutRevisionInfo sets the columns). -->
           <Grid x:Name="RevisionsSplitGrid" Grid.Row="0" ColumnDefinitions="*,0,0">
             <Grid x:Name="RevisionGridContainer" Grid.Column="0" RowDefinitions="Auto,*">
-              <ListBox x:Name="CommitList" Grid.Row="1" Classes="revisionGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource RevisionRowTemplate}">
+              <!-- Upstream's EmptyRepoControl, in place of the grid while the repository has no commit; its buttons are
+                   hidden in a bare repository. -->
+              <StackPanel x:Name="EmptyRepoPanel" Grid.Row="1" IsVisible="{Binding IsEmptyRepository}"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+                <TextBlock x:Name="lblEmptyRepository" Text="This repository does not yet contain any commits."
+                           HorizontalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center"
+                            IsVisible="{Binding CanStartEmptyRepository}">
+                  <Button x:Name="btnEditGitIgnore" Command="{Binding EditGitIgnoreCommand}" Content="Edit .gitignore"
+                          MinWidth="134" HorizontalContentAlignment="Center" />
+                  <Button x:Name="btnOpenCommitForm" Command="{Binding CommitCommand}" Content="Commit" MinWidth="134"
+                          HorizontalContentAlignment="Center" />
+                </StackPanel>
+              </StackPanel>
+              <ListBox x:Name="CommitList" Grid.Row="1" Classes="revisionGrid" SelectionMode="Multiple" ItemTemplate="{StaticResource RevisionRowTemplate}"
+                       IsVisible="{Binding !IsEmptyRepository}">
                 <ListBox.ContextMenu>
                   <ContextMenu x:Name="CommitContextMenu">
                     <!-- Upstream's grid menu in the order RevisionGridControl's _contextMenuItems puts it in at run time

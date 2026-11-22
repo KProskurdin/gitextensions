@@ -235,6 +235,7 @@ public sealed class CommitListViewModel : ObservableObject
     private string _status = "";
     private string _repositoryName = "";
     private bool _hasMore;
+    private bool _isEmptyRepository;
     private bool _isLoading;
     private string? _errorMessage;
     private string? _detailsError;
@@ -401,6 +402,16 @@ public sealed class CommitListViewModel : ObservableObject
     {
         get => _hasMore;
         private set => SetProperty(ref _hasMore, value);
+    }
+
+    /// <summary>
+    ///  Upstream's <c>EmptyRepoControl</c> condition (<c>OnRevisionReadCompleted</c>): the history read without a filter
+    ///  has no commit, and no working directory and index rows stand in (they are off, or the repository is bare).
+    /// </summary>
+    public bool IsEmptyRepository
+    {
+        get => _isEmptyRepository;
+        private set => SetProperty(ref _isEmptyRepository, value);
     }
 
     public bool IsLoading
@@ -655,6 +666,7 @@ public sealed class CommitListViewModel : ObservableObject
         _pages = 0;
         CommitFiles = [];
         Rows = [];
+        IsEmptyRepository = false;
         HasMore = false;
         Status = "";
         RepositoryName = "";
@@ -1000,6 +1012,7 @@ public sealed class CommitListViewModel : ObservableObject
             _pages = pages;
             RepositoryName = Path.GetFileName(repositoryPath.TrimEnd('/', '\\'));
             Rows = page.Rows;
+            IsEmptyRepository = page.Rows.Count == 0 && !_filter.IsNarrowed;
             HasMore = page.HasMore && Remaining(CommitCount(page.Rows)) > 0;
             Status = PageStatus(CommitCount(page.Rows), page.HasMore);
         }
@@ -1013,6 +1026,7 @@ public sealed class CommitListViewModel : ObservableObject
             _repositoryPath = null;
             _pages = 0;
             Rows = [];
+            IsEmptyRepository = false;
             HasMore = false;
             Status = "";
             RepositoryName = "";

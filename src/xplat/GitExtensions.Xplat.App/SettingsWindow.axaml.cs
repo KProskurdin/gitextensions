@@ -91,6 +91,7 @@ public partial class SettingsWindow : Window
             CanFindGit = AppServices.CanFindGit,
             SupportsUpdateRefs = GitCommands.Git.GitVersion.Current.SupportUpdateRefs,
             DiffMergeTools = AppServices.DiffMergeTools,
+            WindowsInstallation = AppServices.WindowsInstallation,
             Translations = () => Translator.GetAllTranslations(),
             SavePagesBeforeStore = SavePagesBeforeStore,
             SavePagesAfterStore = SavePagesAfterStoreAsync,

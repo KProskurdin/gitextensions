@@ -107,8 +107,22 @@ public partial class App : Application
 
     private static GitDiscoveryResult? FindGit()
     {
+        // Upstream's Program.Main: SolveGitCommand at every start, which stores the command that runs. Upstream then asks
+        // for git (LocateMissingGit) and exits without it; the shell's dashboard says git was not found.
         if (OperatingSystem.IsWindows())
         {
+            string? command = Core.Platform.WindowsGit.SolveGitCommand(AppSettings.GitCommandValue, possibleNewPath: null,
+                Core.Platform.WindowsGitLookup.System);
+            if (command is null)
+            {
+                return new GitDiscoveryResult(GitDiscoveryStatus.NotFound, Command: null, Version: null);
+            }
+
+            if (command != AppSettings.GitCommandValue)
+            {
+                AppSettings.GitCommandValue = command;
+            }
+
             return null;
         }
 

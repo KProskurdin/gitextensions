@@ -21,6 +21,10 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     private readonly IGitOperations _operations;
     private readonly List<GitOutputLine> _output = [];
     private readonly Lock _outputLock = new();
+    private readonly Lock _inputLock = new();
+
+    // The running git's standard input, while a remote operation's git runs.
+    private TextWriter? _input;
     private bool _isBusy;
     private string _statusMessage = "";
     private string? _errorMessage;
@@ -75,6 +79,32 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
     ///  Raised when a remote operation (fetch, pull, push, clone) starts, so a view can show its output as it arrives.
     /// </summary>
     public event EventHandler? RemoteOperationStarted;
+
+    /// <summary>
+    ///  Raised when git writes text without ending the line and waits (a question), so the output window can offer its
+    ///  input box, as upstream's process dialog does.
+    /// </summary>
+    public event EventHandler? InputRequested;
+
+    /// <summary>
+    ///  Upstream's <c>PasswordInput_PasswordEntered</c>: writes a line to the running git's standard input; nothing while
+    ///  no git of a remote operation runs.
+    /// </summary>
+    public void SendInput(string text)
+    {
+        lock (_inputLock)
+        {
+            try
+            {
+                _input?.Write(text + "\n");
+                _input?.Flush();
+            }
+            catch (IOException)
+            {
+                // git has just exited and closed its input.
+            }
+        }
+    }
 
     public bool IsBusy
     {
@@ -735,7 +765,7 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
         RemoteState = RemoteOperationState.Running;
         RemoteOperationStarted?.Invoke(this, EventArgs.Empty);
 
-        OutputReporter progress = new(SynchronizationContext.Current, AppendOutput);
+        OutputReporter progress = new(SynchronizationContext.Current, AppendOutput, AttachInput);
         ErrorMessage = null;
         IsBusy = true;
         try
@@ -850,8 +880,21 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
             : target.Remote;
 
     // A console redraws a progress line in place; the line after it replaces it here too.
+    private void AttachInput(TextWriter? input)
+    {
+        lock (_inputLock)
+        {
+            _input = input;
+        }
+    }
+
     private void AppendOutput(GitOutputLine line)
     {
+        if (line.IsPrompt)
+        {
+            InputRequested?.Invoke(this, EventArgs.Empty);
+        }
+
         IReadOnlyList<string> snapshot;
         lock (_outputLock)
         {
@@ -919,11 +962,15 @@ public sealed class RepositoryChangedEventArgs(string repositoryPath, bool onlyF
 /// <summary>
 ///  Passes git's output to the view model on the context the operation started on (the UI thread in the app), in order.
 ///  Without a context the lines are passed on directly. <see cref="Progress{T}"/> is not used: without a context it posts
-///  each line to the thread pool, which can reorder them.
+///  each line to the thread pool, which can reorder them. git's standard input is passed on at once, as the view model
+///  guards it.
 /// </summary>
-internal sealed class OutputReporter(SynchronizationContext? context, Action<GitOutputLine> append)
-    : IProgress<GitOutputLine>
+internal sealed class OutputReporter(SynchronizationContext? context, Action<GitOutputLine> append,
+    Action<TextWriter?> attachInput)
+    : IProgress<GitOutputLine>, IGitInputTarget
 {
+    public void Attach(TextWriter? input) => attachInput(input);
+
     public void Report(GitOutputLine value)
     {
         if (context is null)

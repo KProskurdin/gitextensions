@@ -119,27 +119,27 @@ internal sealed class AvatarTests
     }
 
     [Test]
-    public void GetImage_should_take_the_first_image_and_keep_it_in_upstreams_cache_folder()
+    public async Task GetImage_should_take_the_first_image_and_keep_it_in_upstreams_cache_folder()
     {
         FakeDownloader downloader = new();
         byte[] image = [1, 2, 3];
         downloader.Images[AvatarService.GravatarUri(Email, 32, AvatarFallbackType.AuthorInitials, false)] = image;
         AvatarService service = new(() => new AvatarOptions(AvatarProvider.Default), _cacheFolder, downloader);
 
-        service.GetImageAsync(Email, null, 32).GetAwaiter().GetResult().Should().Equal(image);
+        (await service.GetImageAsync(Email, null, 32)).Should().Equal(image);
 
         downloader.Requests.Should().HaveCount(2);
         File.ReadAllBytes(Path.Combine(_cacheFolder, $"{Email}.32px.png")).Should().Equal(image);
 
         // Another run reads the cache instead of the network.
         FakeDownloader offline = new();
-        new AvatarService(() => new AvatarOptions(AvatarProvider.Default), _cacheFolder, offline)
-            .GetImageAsync(Email, null, 32).GetAwaiter().GetResult().Should().Equal(image);
+        (await new AvatarService(() => new AvatarOptions(AvatarProvider.Default), _cacheFolder, offline)
+            .GetImageAsync(Email, null, 32)).Should().Equal(image);
         offline.Requests.Should().BeEmpty();
     }
 
     [Test]
-    public void GetImage_should_skip_githubs_identicon_and_drop_an_expired_cache_file()
+    public async Task GetImage_should_skip_githubs_identicon_and_drop_an_expired_cache_file()
     {
         FakeDownloader downloader = new();
         byte[] identicon = [0x89, (byte)'P', (byte)'N', (byte)'G', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0xA4, 0, 0, 1, 0xA4];
@@ -151,14 +151,14 @@ internal sealed class AvatarTests
         AvatarService service = new(() => new AvatarOptions(AvatarProvider.Default, CacheDays: 13), _cacheFolder,
             downloader);
 
-        service.GetImageAsync(Email, null, 32).GetAwaiter().GetResult().Should().BeNull();
+        (await service.GetImageAsync(Email, null, 32)).Should().BeNull();
 
         File.Exists(cached).Should().BeFalse();
         downloader.Requests.Should().HaveCount(2);
     }
 
     [Test]
-    public void ClearCache_should_delete_the_files_and_tell_the_views()
+    public async Task ClearCache_should_delete_the_files_and_tell_the_views()
     {
         Directory.CreateDirectory(_cacheFolder);
         File.WriteAllBytes(Path.Combine(_cacheFolder, "a@example.com.32px.png"), [1]);
@@ -166,7 +166,7 @@ internal sealed class AvatarTests
         bool changed = false;
         service.AvatarsChanged += (_, _) => changed = true;
 
-        service.ClearCacheAsync().GetAwaiter().GetResult();
+        await service.ClearCacheAsync();
 
         Directory.GetFiles(_cacheFolder).Should().BeEmpty();
         changed.Should().BeTrue();

@@ -79,8 +79,7 @@ internal sealed class FileStatusTreeTests
     private static List<string> Describe(IReadOnlyList<FileStatusTreeNode<File>> nodes, int depth = 0)
         =>
         [
-            .. nodes.SelectMany(node => (IEnumerable<string>)
-            [
+            .. nodes.SelectMany(node => (IEnumerable<string>)[
                 $"{new string(' ', depth * 2)}{node.Kind} {node.Text}",
                 .. Describe(node.Children, depth + 1),
             ])

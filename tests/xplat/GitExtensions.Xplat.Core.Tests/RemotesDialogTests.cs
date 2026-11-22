@@ -219,4 +219,3 @@ internal sealed class RemotesDialogTests
         public IReadOnlyList<string> GetEnabledRemoteNames() => [.. _remotes.Where(r => !r.Disabled).Select(r => r.Name!)];
     }
 }
-

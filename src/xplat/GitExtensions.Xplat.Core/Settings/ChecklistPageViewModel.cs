@@ -69,6 +69,28 @@ public sealed record ChecklistPageServices
     /// </summary>
     public Action<bool> WriteCheckAtStartup { get; init; } = _ => { };
 
+    /// <summary>
+    ///  The install folder and shell extension the Windows rows repair.
+    /// </summary>
+    public Platform.IWindowsInstallation Installation { get; init; } = new Platform.InMemoryWindowsInstallation();
+
+    /// <summary>
+    ///  Upstream's own repairs on Windows: finds git, the linux tools (sh) or PuTTY for the row's setting and puts what it
+    ///  found on the window's page; null when it found nothing (for the ssh row, also when PuTTY is not the client). Without
+    ///  it, as off Windows, Repair shows the page.
+    /// </summary>
+    public Func<ChecklistItem, Task<string?>>? Locate { get; init; }
+
+    /// <summary>
+    ///  Shows upstream's message after a repair: its text and caption, already translated.
+    /// </summary>
+    public Func<string, string, Task> ShowMessage { get; init; } = (_, _) => Task.CompletedTask;
+
+    /// <summary>
+    ///  Upstream's translation of an English text.
+    /// </summary>
+    public Func<string, string> Translate { get; init; } = text => text;
+
     public required Action<Exception> ShowError { get; init; }
 }
 
@@ -78,6 +100,8 @@ public sealed record ChecklistPageServices
 /// </summary>
 public sealed partial class ChecklistPageViewModel(ChecklistPageServices services) : ObservableObject
 {
+    private const string GitPage = "GitSettingsPage";
+
     private int _run;
 
     /// <summary>
@@ -136,8 +160,18 @@ public sealed partial class ChecklistPageViewModel(ChecklistPageServices service
     {
         switch (row.Item)
         {
+            case ChecklistItem.Git when services.Locate is { } locate:
+                await LocateAsync(locate, row.Item, Platform.WindowsGit.GitCanBeRun,
+                    [Platform.WindowsGit.SolveGitCommandFailed1, Platform.WindowsGit.SolveGitCommandFailed2],
+                    Platform.WindowsGit.LocateGitCaption);
+                break;
+            case ChecklistItem.LinuxTools when services.Locate is { } locate:
+                await LocateAsync(locate, row.Item, Platform.WindowsGit.ShCanBeRun,
+                    [Platform.WindowsGit.LinuxToolsNotFound1, Platform.WindowsGit.LinuxToolsNotFound2],
+                    Platform.WindowsGit.LocateLinuxToolsCaption);
+                break;
             case ChecklistItem.Git or ChecklistItem.LinuxTools:
-                services.GoToPage("GitSettingsPage");
+                services.GoToPage(GitPage);
                 break;
             case ChecklistItem.UserName:
                 services.GoToPage("GitConfigSettingsPage");
@@ -153,8 +187,20 @@ public sealed partial class ChecklistPageViewModel(ChecklistPageServices service
                 }
 
                 break;
+
+            // Upstream's SshConfig_Click: PuTTY's programs are looked for first, and the page is shown when they are not
+            // all found (upstream does not check again here).
             case ChecklistItem.Ssh:
-                services.GoToPage("SshSettingsPage");
+                if (services.Locate is { } findPutty && await findPutty(ChecklistItem.Ssh) is not null)
+                {
+                    await services.ShowMessage(services.Translate(Platform.WindowsGit.PuttyFoundAuto),
+                        Platform.WindowsGit.PuttyCaption);
+                }
+                else
+                {
+                    services.GoToPage("SshSettingsPage");
+                }
+
                 break;
             case ChecklistItem.Language:
                 // Upstream's translationConfig_Click.
@@ -164,8 +210,49 @@ public sealed partial class ChecklistPageViewModel(ChecklistPageServices service
             case ChecklistItem.CredentialWinStore:
                 await services.OpenUri(new Uri(SettingsChecklist.CredentialWinStoreHelp));
                 break;
+
+            // Upstream's ShellExtensionsRegistered_Click and GitExtensionsInstall_Click: repaired here, then checked
+            // again. regsvr32 waits for the elevation prompt, so it runs off the UI thread.
+            case ChecklistItem.ShellExtension:
+                try
+                {
+                    await Task.Run(services.Installation.RegisterShellExtension);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+
+                await RunAsync();
+                break;
+            case ChecklistItem.GitExtensionsInstall:
+                services.Installation.SolveInstallDir();
+                await RunAsync();
+                break;
         }
     });
+
+    // Upstream's GitFound_Click and GitBinFound_Click: what was found is said, then stored and checked again; when nothing
+    // was found, the Git page shows. The git row shows that page either way.
+    private async Task LocateAsync(Func<ChecklistItem, Task<string?>> locate, ChecklistItem item, string found,
+        string[] notFound, string caption)
+    {
+        string translatedCaption = services.Translate(caption);
+        if (await locate(item) is not { } result)
+        {
+            await services.ShowMessage(
+                string.Join(Environment.NewLine, notFound.Select(services.Translate)), translatedCaption);
+            services.GoToPage(GitPage);
+            return;
+        }
+
+        await services.ShowMessage(string.Format(services.Translate(found), result), translatedCaption);
+        if (item == ChecklistItem.Git)
+        {
+            services.GoToPage(GitPage);
+        }
+
+        await SaveAndRescanCoreAsync();
+    }
 
     // Upstream's CheckAtStartup_CheckedChanged.
     partial void OnCheckAtStartupChanged(bool value) => services.WriteCheckAtStartup(value);
@@ -214,6 +301,16 @@ public sealed class ChecklistFactsReader(
 
     public Func<string, bool> FileExists { get; init; } = File.Exists;
 
+    /// <summary>
+    ///  The install folder and shell extension, read on Windows only.
+    /// </summary>
+    public Platform.IWindowsInstallation? Installation { get; init; }
+
+    /// <summary>
+    ///  Whether a debugger is attached, with which upstream accepts another install folder.
+    /// </summary>
+    public Func<bool> DebuggerAttached { get; init; } = () => System.Diagnostics.Debugger.IsAttached;
+
     public async Task<ChecklistFacts> ReadAsync()
     {
         string gitCommand = preferences.GitCommand;
@@ -242,6 +339,9 @@ public sealed class ChecklistFactsReader(
             PuttyFilesExist = FileExists(preferences.Plink) && FileExists(preferences.Puttygen) &&
                               FileExists(preferences.Pageant),
             CredentialHelper = await GlobalAsync("credential.helper"),
+            Installation = isWindows && Installation is { } installation
+                ? await Task.Run(() => ReadInstallation(installation))
+                : null,
         };
 
         async Task<string?> FirstSetAsync(IEnumerable<string> keys)
@@ -305,6 +405,14 @@ public sealed class ChecklistFactsReader(
            await gitConfig.GetAsync(ConfigScope.Local, key, repositoryPath) is { Length: > 0 } local
             ? local
             : await GlobalAsync(key);
+
+    private InstallationFacts ReadInstallation(Platform.IWindowsInstallation installation)
+    {
+        string? installDir = installation.InstallDir;
+        return new InstallationFacts(installDir, installation.AppDirectory,
+            !string.IsNullOrEmpty(installDir) && Directory.Exists(installDir), DebuggerAttached(),
+            installation.IsShellExtensionRegistered(), installation.ShellExtensionFilesExist());
+    }
 
     // Upstream's CheckGitExe: sh in the linux tools folder or on the PATH.
     private bool LinuxToolsFound(string linuxToolsDir)

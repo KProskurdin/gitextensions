@@ -158,6 +158,13 @@ public static class DiffFileMenu
         bool canStopTracking = isSingleFile && info.IsAnyTracked;
         bool canOpenFile = info.SelectedGitItemCount == 1 && info.AllFilesExist;
         bool showToLocal = !diffTools.ShouldHideToLocal(diffToolInfo);
+
+        // Upstream's canResetAddInteractively: one working directory file, not a submodule.
+        bool interactiveAddReset = info.IsAnyItemWorkTree && isSingleFile;
+
+        // Upstream's "Skip worktree" and "Assume unchanged": for the working directory's tracked files, checked while one
+        // selected file has git's flag.
+        bool indexFlags = canIgnoreFiles && info.IsAnyTracked;
         return new DiffFileMenuState(
             Submodule: rules.ShouldShowSubmoduleMenus(info),
             OpenSubmodule: items is [{ Item.IsSubmodule: true }],
@@ -199,13 +206,8 @@ public static class DiffFileMenu
             IgnoreSeparator: canIgnoreFiles || canStopTracking,
             AddToIgnore: canIgnoreFiles,
             StopTracking: canStopTracking,
-
-            // Upstream's canResetAddInteractively: one working directory file, not a submodule.
-            InteractiveAddReset: info.IsAnyItemWorkTree && isSingleFile,
-
-            // Upstream's "Skip worktree" and "Assume unchanged": for the working directory's tracked files, checked
-            // while one selected file has git's flag.
-            IndexFlags: canIgnoreFiles && info.IsAnyTracked,
+            InteractiveAddReset: interactiveAddReset,
+            IndexFlags: indexFlags,
             SkipWorktreeChecked: items.Any(item => item.Item.IsSkipWorktree),
             AssumeUnchangedChecked: items.Any(item => item.Item.IsAssumeUnchanged));
     }

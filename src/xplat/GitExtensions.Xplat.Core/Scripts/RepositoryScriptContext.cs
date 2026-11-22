@@ -75,6 +75,7 @@ public sealed class RepositoryScriptContext : IScriptContext
         => Task.Run(() =>
         {
             GitModule module = new(new GitExecutorProvider(new GitDirectoryResolver()), repositoryPath);
+
             // rev-parse --verify exits with 1 when the target names no commit.
             ExecutionResult result = module.GitExecutable.Execute(
                 new GitArgumentBuilder("rev-parse") { "--verify", "-q", $"{target}^{{commit}}".Quote() },

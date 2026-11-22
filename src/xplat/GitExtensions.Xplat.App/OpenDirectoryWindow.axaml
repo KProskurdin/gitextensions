@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitExtensions.Xplat.App"
+        xmlns:vm="using:GitExtensions.Xplat.Core.Repository"
+        x:Class="GitExtensions.Xplat.App.OpenDirectoryWindow"
+        x:DataType="vm:OpenDirectoryViewModel"
+        Title="Open local repository"
+        Width="615" MinWidth="450" MaxWidth="800" SizeToContent="Height" CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <!-- Upstream's FormOpenDirectory: the folder (upstream's list of folders), Go up, Browse and Open. Bound to
+       OpenDirectoryViewModel (PLAN.md principle 6). -->
+  <Grid Margin="9,8" ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="4" RowSpacing="6">
+    <Label x:Name="label1" Target="{Binding #_NO_TRANSLATE_Directory}" VerticalAlignment="Center" Padding="0,0,8,0">
+      <AccessText Text="_Directory:" />
+    </Label>
+    <ComboBox x:Name="_NO_TRANSLATE_Directory" Grid.Column="1" IsEditable="True" HorizontalAlignment="Stretch"
+              ItemsSource="{Binding Directories}" Text="{Binding Directory}" />
+    <Button x:Name="folderGoUpButton" Grid.Column="2" Command="{Binding GoUpCommand}" Width="26" Padding="0"
+            HorizontalContentAlignment="Center" ToolTip.Tip="Go to parent directory...">
+      <Image Source="{local:UpstreamImage NavigateUp}" Width="16" Height="16" />
+    </Button>
+    <Button x:Name="folderBrowserButton" Grid.Column="3" Command="{Binding BrowseCommand}" MinWidth="135">
+      <StackPanel Orientation="Horizontal" Spacing="4">
+        <Image Source="{local:UpstreamImage BrowseFileExplorer}" Width="16" Height="16" />
+        <AccessText Text="_Browse..." VerticalAlignment="Center" />
+      </StackPanel>
+    </Button>
+    <Button x:Name="Load" Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Command="{Binding OpenCommand}"
+            IsDefault="True" HorizontalAlignment="Stretch">
+      <StackPanel Orientation="Horizontal" Spacing="4">
+        <Image Source="{local:UpstreamImage RepoOpen}" Width="16" Height="16" />
+        <TextBlock Text="Open" VerticalAlignment="Center" />
+      </StackPanel>
+    </Button>
+  </Grid>
+</Window>

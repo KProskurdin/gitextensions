@@ -46,7 +46,9 @@ internal sealed class RemoteOperationOutputTests
 
         GitOutputRunner.Pump(new StringReader("fatal: no remote"), new ImmediateProgress(lines), collected: null);
 
-        lines.Should().Equal(new GitOutputLine("fatal: no remote", IsProgress: false));
+        // Shown as a prompt as soon as git stops writing, then as the line once git has ended.
+        lines.Should().Equal(new GitOutputLine("fatal: no remote", IsProgress: true, IsPrompt: true),
+            new GitOutputLine("fatal: no remote", IsProgress: false));
     }
 
     [Test]

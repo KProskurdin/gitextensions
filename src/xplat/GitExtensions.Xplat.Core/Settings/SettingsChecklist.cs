@@ -7,8 +7,7 @@ using GitExtensions.Extensibility.Configurations;
 namespace GitExtensions.Xplat.Core.Settings;
 
 /// <summary>
-///  A row of upstream's Checklist page, in its order. Upstream's Git Extensions install and shell extension rows check
-///  the Windows installer's registration, which this app does not have.
+///  A row of upstream's Checklist page, in its order.
 /// </summary>
 public enum ChecklistItem
 {
@@ -16,7 +15,9 @@ public enum ChecklistItem
     UserName,
     MergeTool,
     DiffTool,
+    ShellExtension,
     LinuxTools,
+    GitExtensionsInstall,
     Ssh,
     Language,
     CredentialWinStore,
@@ -33,6 +34,21 @@ public enum ChecklistState
 }
 
 public sealed record ChecklistEntry(ChecklistItem Item, ChecklistState State, string Text);
+
+/// <summary>
+///  What upstream's Windows installer registered, which the install and shell extension rows check.
+/// </summary>
+/// <param name="InstallDir">The install folder (upstream's <c>AppSettings.GetInstallDir</c>).</param>
+/// <param name="AppDirectory">The app's own folder.</param>
+/// <param name="InstallDirExists">Whether the install folder exists.</param>
+/// <param name="DebuggerAttached">Upstream accepts another install folder while a debugger is attached.</param>
+public sealed record InstallationFacts(
+    string? InstallDir,
+    string? AppDirectory,
+    bool InstallDirExists,
+    bool DebuggerAttached,
+    bool ShellExtensionRegistered,
+    bool ShellExtensionFilesExist);
 
 /// <summary>
 ///  What the checklist looks at, read by the caller (git, git config, the app's settings, the file system).
@@ -91,6 +107,11 @@ public sealed record ChecklistFacts
     public bool PuttyFilesExist { get; init; }
 
     public string? CredentialHelper { get; init; }
+
+    /// <summary>
+    ///  The installation on Windows; null when it was not read, and the install and shell extension rows are left out.
+    /// </summary>
+    public InstallationFacts? Installation { get; init; }
 }
 
 /// <summary>
@@ -145,6 +166,16 @@ public static class SettingsChecklist
 
     public const string DiffToolConfigured = "There is a difftool configured: {0}";
     public const string CredentialWinStoreDetected = "Obsolete git-credential-winstore.exe detected";
+    public const string ShellExtRegistered = "Shell extensions registered properly.";
+    public const string ShellExtNotInstalled =
+        "Shell extensions are not installed. Run the installer to install the shell extensions.";
+
+    public const string ShellExtNeedsToBeRegistered = "{0} needs to be registered in order to use the shell extensions.";
+    public const string InstallDirMissing = "Registry entry missing [Software\\GitExtensions\\InstallDir].";
+    public const string InstallDirFaulty =
+        "Invalid installation directory stored in [Software\\GitExtensions\\InstallDir].";
+
+    public const string InstallDirCorrect = "Git Extensions is properly registered.";
 
     private const string CredentialWinStore = "git-credential-winstore.exe";
 
@@ -169,7 +200,17 @@ public static class SettingsChecklist
 
         if (facts.IsWindows)
         {
+            if (facts.Installation is { } shellExtension)
+            {
+                entries.Add(CheckShellExtension(shellExtension));
+            }
+
             entries.Add(Row(ChecklistItem.LinuxTools, facts.LinuxToolsFound, LinuxToolsFound, LinuxToolsNotFound));
+            if (facts.Installation is { } install)
+            {
+                entries.Add(CheckInstall(install));
+            }
+
             entries.Add(CheckSsh(facts));
         }
 
@@ -265,6 +306,36 @@ public static class SettingsChecklist
         => string.IsNullOrEmpty(tool) || string.IsNullOrWhiteSpace(command)
             ? new ChecklistEntry(ChecklistItem.DiffTool, ChecklistState.Unset, AdviceDiffToolConfiguration)
             : new ChecklistEntry(ChecklistItem.DiffTool, ChecklistState.Set, string.Format(DiffToolConfigured, tool));
+
+    // Upstream's CheckGitExtensionRegistrySettings: without the extension's files there is nothing to register, which is
+    // fine.
+    private static ChecklistEntry CheckShellExtension(InstallationFacts facts)
+    {
+        if (facts.ShellExtensionRegistered)
+        {
+            return new ChecklistEntry(ChecklistItem.ShellExtension, ChecklistState.Set, ShellExtRegistered);
+        }
+
+        return facts.ShellExtensionFilesExist
+            ? new ChecklistEntry(ChecklistItem.ShellExtension, ChecklistState.Unset,
+                string.Format(ShellExtNeedsToBeRegistered, Platform.ShellExtensionFiles.ShellEx32Name))
+            : new ChecklistEntry(ChecklistItem.ShellExtension, ChecklistState.Set, ShellExtNotInstalled);
+    }
+
+    // Upstream's CheckGitExtensionsInstall: the stored install folder is this app's.
+    private static ChecklistEntry CheckInstall(InstallationFacts facts)
+    {
+        if (string.IsNullOrEmpty(facts.InstallDir))
+        {
+            return new ChecklistEntry(ChecklistItem.GitExtensionsInstall, ChecklistState.Unset, InstallDirMissing);
+        }
+
+        bool faulty = facts.InstallDir.EndsWith(".exe", StringComparison.Ordinal) || !facts.InstallDirExists ||
+                      (!facts.DebuggerAttached && facts.InstallDir != facts.AppDirectory);
+        return faulty
+            ? new ChecklistEntry(ChecklistItem.GitExtensionsInstall, ChecklistState.Unset, InstallDirFaulty)
+            : new ChecklistEntry(ChecklistItem.GitExtensionsInstall, ChecklistState.Set, InstallDirCorrect);
+    }
 
     private static ChecklistEntry CheckSsh(ChecklistFacts facts)
     {

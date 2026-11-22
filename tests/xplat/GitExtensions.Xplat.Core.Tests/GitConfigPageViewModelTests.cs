@@ -94,11 +94,11 @@ internal sealed class GitConfigPageViewModelTests
 
     private sealed class MemoryConfig : IGitConfigService
     {
-        public Dictionary<(ConfigScope, string), string> Values { get; } = [];
+        public Dictionary<(ConfigScope Scope, string Key), string> Values { get; } = [];
 
-        public Dictionary<(ConfigScope, string), IReadOnlyList<string>> All { get; } = [];
+        public Dictionary<(ConfigScope Scope, string Key), IReadOnlyList<string>> All { get; } = [];
 
-        public List<((ConfigScope, string) Key, string Value)> Writes { get; } = [];
+        public List<((ConfigScope Scope, string Name) Key, string Value)> Writes { get; } = [];
 
         public Task<string> GetAsync(ConfigScope scope, string key, string? repositoryPath = null)
             => Task.FromResult(Values.GetValueOrDefault((scope, key), ""));

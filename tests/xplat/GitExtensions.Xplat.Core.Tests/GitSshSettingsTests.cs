@@ -146,8 +146,7 @@ internal sealed class GitSshSettingsTests
             UpstreamSource("GitSettingsPage.cs"), UpstreamSource("GitSettingsPage.Designer.cs"), UpstreamSource("FormFixHome.cs"),
             UpstreamSource("FormFixHome.Designer.cs"), UpstreamSource("SshSettingsPage.Designer.cs"));
 
-        foreach (string text in (string[])
-                 [
+        foreach (string text in (string[])[
                      "\"{0} is set to: {1}\"", "\"{0} is not set.\"", $"\"{HomeSettings.NoHomeDirectorySpecified}\"",
                      "\"The environment variable HOME points to a directory that is not accessible:\"",
                      "\"&Use default for HOME\"", "\"&Set HOME to USERPROFILE\"", "\"&Other\"",

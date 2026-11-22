@@ -24,8 +24,11 @@ internal sealed class SettingsTreeUiTests
         SettingsWindow settings = OpenSettings();
 
         settings.PageTree.Select(node => node.Title).Should().Equal("Git Extensions", "Git", "Plugins");
-        settings.PageTree[0].Children.Select(node => node.Title).Should().Equal("General", "Appearance",
-            "Revision links", "Build server integration", "Scripts", "Hotkeys", "Advanced", "Detailed", "SSH");
+        settings.PageTree[0].Children.Select(node => node.Title).Should().Equal(
+        [
+            "General", "Appearance", "Revision links", "Build server integration", "Scripts", "Hotkeys",
+            .. OperatingSystem.IsWindows() ? (string[])["Shell extension"] : [], "Advanced", "Detailed", "SSH",
+        ]);
         Child(settings, 0, "Appearance").Children.Select(node => node.Title).Should()
             .Equal("Sorting", "Colors", "Fonts");
         Child(settings, 0, "Advanced").Children.Select(node => node.Title).Should().Equal("Confirmations");

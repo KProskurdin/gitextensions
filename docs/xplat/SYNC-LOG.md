@@ -314,3 +314,32 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   app 876 of 876 in 16 minutes 15 seconds, the test host at most 858 MB; the shadow projects 12 of 12 (3823 passed, 201
   ignored with reasons); `verify-upstream.sh` passes against `17213fe3f` (`GitCommands.Tests` 3421 passed, 174 skipped). No
   sleep during the runs. No upstream file changed; seam count unchanged. Windows and Linux were not run.
+
+### 2026-11-22: the Mac's work on Windows, the Shell extension page and the installer rows, no merge
+
+- On Windows, before any change: the whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1462 of 1462; app 874 of
+  874 in 14 minutes 51 seconds. The build shows warnings the Mac's incremental build did not, all in files the session did
+  not change (StyleCop in some core tests, `externals/`, a few core files).
+- On Windows: upstream's Shell extension page, the Checklist's install folder and shell extension rows, the startup check's
+  install folder solve and "Show current branch in Visual Studio" (`PORTING-MAP.md`, ShellExtensionSettingsPage).
+- On Windows, after: 0 errors, no new warning in the files changed; core 1490 of 1490; app 878 of 878 in 13 minutes 20
+  seconds; `GitCommands.Tests`' `XplatTestUserDataTests` 4 of 4. The other shadow projects and `verify-upstream.sh` were not
+  run. No upstream file changed; seam count unchanged. macOS and Linux were not run.
+- Later the same day, on Windows: upstream's `SolveGitCommand` and `SolveLinuxToolsDir` (at start, in the startup check
+  and in the Checklist's repairs, with PuTTY's search). 0 errors; core 1504 of 1504; app 878 of 878 in 13 minutes 27
+  seconds. No upstream file changed; seam count unchanged.
+- Then the build's warnings in fork files, 50 on a clean Windows build, now none: StyleCop layout in core tests and a few
+  core files, a missing final newline in five files, tuple names, two nullability warnings, `File.SetUnixFileMode` behind
+  an `OperatingSystem` check, the avatar requests kept as vs-threading `AsyncLazy` values instead of stored tasks
+  (VSTHRD003), the avatar tests awaiting instead of blocking, Gource's PNG through `PngBitmapEncoderOptions`, the shim's
+  `MessageBox` stand-in excused from the banned-symbol rule it exists for, the shim's thread exception sent with the
+  thread as WinForms does, and a design-time constructor on the nine plugin windows (AVLN3001, as the app's windows have).
+  The 79 left are in `externals/` and one upstream file (`Win32ApiUtil.cs`), which the fork does not edit. Every test
+  project of `GitExtensions.xplat.slnx` on Windows: all passed but upstream's `AsyncLoaderTests`'
+  `Load_performed_on_thread_pool_and_result_handled_via_callers_context` (the known Windows failure, see 2026-10 above);
+  core 1504 of 1504, app 878 of 878, `GitCommands.Tests` 3500 of 3502 (1 skipped). macOS and Linux were not run.
+- Then three upstream forms no list named, found by comparing upstream's designer files with `PORTING-MAP.md`:
+  FormOpenDirectory, EmptyRepoControl and the process window's password input (with Escape for Abort), and a race fixed
+  in `CheckoutBranchWindowTests`. The remote operations' git now has its standard input redirected while it runs, as
+  upstream's. On Windows, from a clean build: 0 errors, no warning in fork files; core 1520 of 1520; app 885 of 885 in
+  13 minutes 9 seconds. No upstream file changed; seam count unchanged. macOS and Linux were not run.

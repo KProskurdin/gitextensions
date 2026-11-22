@@ -110,7 +110,12 @@ public static class InteractivePatch
             string script = Path.Combine(folder.FullName, MacScriptFileName);
             string exitCodeFile = Path.Combine(folder.FullName, ExitCodeFileName);
             await File.WriteAllTextAsync(script, MacScript(workingDir, gitCommand, path, reset, exitCodeFile));
-            File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            // Only macOS gets here; the check tells the platform analyzer so.
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
 
             using Process? terminal = Process.Start(new ProcessStartInfo("open", ["-a", "Terminal", script]) { UseShellExecute = false });
             if (terminal is null)

@@ -132,6 +132,8 @@
           <TextBlock Text="General" FontWeight="SemiBold" />
           <CheckBox x:Name="RelativeDateCheck" IsChecked="{Binding RelativeDate}" Content="Show relative date instead of full date" />
           <CheckBox x:Name="ShowRepoBranchCheck" IsChecked="{Binding ShowRepoCurrentBranch}" Content="Show current branch names in the dashboard and the recent repositories dropdown menu" />
+          <!-- Read by the Visual Studio extension, so Windows only. -->
+          <CheckBox x:Name="chkShowCurrentBranchInVisualStudio" IsChecked="{Binding ShowCurrentBranchInVisualStudio}" IsVisible="{Binding IsWindows}" Content="Show current branch in Visual Studio" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Truncate long filenames" VerticalAlignment="Center" />
             <ComboBox x:Name="TruncatePathBox" ItemsSource="{Binding TruncatePaths}" SelectedItem="{Binding SelectedTruncatePath}" MinWidth="160" />
@@ -752,6 +754,40 @@
         </DockPanel>
       </TabItem>
       <!-- A plugin's page (upstream's PluginSettingsPage); the tree's plugin nodes choose the plugin. -->
+      <!-- Upstream's ShellExtensionSettingsPage (Windows only): registering the Explorer shell extension, and where each of
+           its menu items goes (checked: top level, neither: the cascaded menu, unchecked: not in the menu). -->
+      <TabItem x:Name="ShellExtensionTab" Header="Shell extension">
+        <StackPanel Margin="4,8" Spacing="8">
+          <TextBlock Text="Windows Explorer integration" FontWeight="SemiBold" />
+          <StackPanel x:Name="flpnlExplorerIntegration" Orientation="Horizontal" Spacing="8" IsEnabled="{Binding ShellExtensionPage.FilesExist}">
+            <Button x:Name="RegisterButton" Command="{Binding ShellExtensionPage.RegisterCommand}" IsEnabled="{Binding ShellExtensionPage.CanRegister}">
+              <AccessText Text="_Enable shell extension" />
+            </Button>
+            <Button x:Name="UnregisterButton" Command="{Binding ShellExtensionPage.UnregisterCommand}">
+              <AccessText Text="_Disable shell extension" />
+            </Button>
+          </StackPanel>
+          <TextBlock Text="Cascaded context menu" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <CheckBox x:Name="cbAlwaysShowAllCommands" IsChecked="{Binding ShellExtensionPage.AlwaysShowAllCommands}" Content="Always show all commands" />
+          <Grid ColumnDefinitions="Auto,Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+            <TextBlock x:Name="lblMenuEntries" Text="Configuration of items in the context menu" VerticalAlignment="Center" />
+            <Button x:Name="menuHelp" Grid.Column="1" Command="{Binding ShellExtensionPage.ShowHelpCommand}" Content="?" Width="24" Padding="0"
+                    HorizontalContentAlignment="Center" ToolTip.Tip="{x:Static settings:ShellExtensionPageViewModel.MenuHelp}" />
+            <TextBlock x:Name="label1" Grid.Column="2" Text="Context menu preview:" VerticalAlignment="Center" />
+            <Border Grid.Row="1" Grid.ColumnSpan="2" BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+              <ItemsControl x:Name="_NO_TRANSLATE_chlMenuEntries" ItemsSource="{Binding ShellExtensionPage.Entries}" Margin="4,2">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="settings:ShellMenuEntry">
+                    <local:ShellMenuCheckBox Content="{Binding Text}" IsChecked="{Binding State}" IsThreeState="True"
+                                             AutomationProperties.Name="{Binding Text}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+            <TextBlock x:Name="labelPreview" Grid.Row="1" Grid.Column="2" Text="{Binding ShellExtensionPage.Preview}" Margin="4,2" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
       <TabItem x:Name="PluginsTab" Header="Plugin">
         <Grid Margin="4,8">
           <DockPanel LastChildFill="True">

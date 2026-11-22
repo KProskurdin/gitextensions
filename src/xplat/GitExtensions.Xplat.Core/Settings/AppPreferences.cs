@@ -73,6 +73,12 @@ public interface IAppPreferences
     bool CloseProcessDialog { get; set; }
 
     /// <summary>
+    ///  Upstream <c>ShowProcessDialogPasswordInput</c>: the output window of a remote operation shows its input box for git
+    ///  from the start.
+    /// </summary>
+    bool ShowProcessDialogPasswordInput { get; set; }
+
+    /// <summary>
     ///  Upstream <c>showgitcommandline</c> ("Show console window when executing git process"): git started for the output
     ///  window gets a console window (Windows; elsewhere git has none).
     /// </summary>
@@ -446,6 +452,22 @@ public interface IAppPreferences
     ///  Checklist runs at startup and the settings open when something is wrong; it turns itself off once all is right.
     /// </summary>
     bool CheckSettings { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>CascadeShellMenuItems</c> (in the registry): a character per item of the Explorer shell extension's menu,
+    ///  '0' at the top level, '1' in the cascaded menu, '2' not in the menu.
+    /// </summary>
+    string CascadeShellMenuItems { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>AlwaysShowAllCommands</c> (in the registry): the shell extension's menu has every command.
+    /// </summary>
+    bool AlwaysShowAllCommands { get; set; }
+
+    /// <summary>
+    ///  Upstream <c>ShowCurrentBranchInVS</c> (in the registry), which the Visual Studio extension reads.
+    /// </summary>
+    bool ShowCurrentBranchInVisualStudio { get; set; }
 
     /// <summary>
     ///  Upstream <c>showbuildstatusiconcolumn</c>: the grid's build status column shows the status symbol.
@@ -949,6 +971,12 @@ public sealed class SettingsAppPreferences : IAppPreferences
         set => AppSettings.CloseProcessDialog = value;
     }
 
+    public bool ShowProcessDialogPasswordInput
+    {
+        get => AppSettings.ShowProcessDialogPasswordInput.Value;
+        set => AppSettings.ShowProcessDialogPasswordInput.Value = value;
+    }
+
     public bool ShowGitCommandLine
     {
         get => AppSettings.ShowGitCommandLine;
@@ -1420,6 +1448,24 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         get => AppSettings.CheckSettings;
         set => AppSettings.CheckSettings = value;
+    }
+
+    public string CascadeShellMenuItems
+    {
+        get => AppSettings.CascadeShellMenuItems;
+        set => AppSettings.CascadeShellMenuItems = value;
+    }
+
+    public bool AlwaysShowAllCommands
+    {
+        get => AppSettings.AlwaysShowAllCommands;
+        set => AppSettings.AlwaysShowAllCommands = value;
+    }
+
+    public bool ShowCurrentBranchInVisualStudio
+    {
+        get => AppSettings.ShowCurrentBranchInVisualStudio;
+        set => AppSettings.ShowCurrentBranchInVisualStudio = value;
     }
 
     public bool ShowBuildStatusIconColumn
@@ -2100,6 +2146,8 @@ public sealed class InMemoryAppPreferences : IAppPreferences
 
     public bool CloseProcessDialog { get; set; }
 
+    public bool ShowProcessDialogPasswordInput { get; set; }
+
     public bool ShowGitCommandLine { get; set; }
 
     // Upstream's defaults.
@@ -2271,6 +2319,13 @@ public sealed class InMemoryAppPreferences : IAppPreferences
     public string Translation { get; set; } = "";
 
     public bool CheckSettings { get; set; } = true;
+
+    // Upstream's defaults.
+    public string CascadeShellMenuItems { get; set; } = "110111000111111111";
+
+    public bool AlwaysShowAllCommands { get; set; }
+
+    public bool ShowCurrentBranchInVisualStudio { get; set; } = true;
 
     public bool ShowBuildStatusIconColumn { get; set; } = true;
 

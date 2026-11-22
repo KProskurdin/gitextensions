@@ -90,6 +90,9 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
                 case nameof(CommitListViewModel.HasMore):
                     OnPropertyChanged(nameof(HasMoreCommits));
                     break;
+                case nameof(CommitListViewModel.IsEmptyRepository):
+                    OnPropertyChanged(nameof(IsEmptyRepository));
+                    break;
             }
         };
         _actions.PropertyChanged += (_, e) =>
@@ -384,6 +387,16 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
     /// </summary>
     public bool CanUseSubmodules => IsOpen && _submodules?.IsBareRepository is not true;
 
+    /// <summary>
+    ///  Upstream's <c>EmptyRepoControl</c> shows in place of the grid: the repository has no commit yet.
+    /// </summary>
+    public bool IsEmptyRepository => IsRepositoryShown && _commits.IsEmptyRepository;
+
+    /// <summary>
+    ///  The empty repository's "Edit .gitignore" and "Commit", which upstream hides in a bare repository.
+    /// </summary>
+    public bool CanStartEmptyRepository => _submodules?.IsBareRepository is not true;
+
     private bool ShowsActionButton(GitActionButton button) => ActionBanner?.Buttons.Contains(button) == true;
 
     // The ahead and behind counts the push button shows (upstream's ShowAheadBehindData, on a branch).
@@ -412,6 +425,7 @@ public sealed partial class BrowseToolbarViewModel : ObservableObject
         OnPropertyChanged(nameof(SubmodulesButtonImage));
         OnPropertyChanged(nameof(SubmodulesButtonTip));
         OnPropertyChanged(nameof(CanUseSubmodules));
+        OnPropertyChanged(nameof(CanStartEmptyRepository));
     }
 
     /// <summary>

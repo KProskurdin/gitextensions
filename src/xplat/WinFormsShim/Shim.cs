@@ -301,6 +301,7 @@ public class CheckBox : Control
 /// <summary>
 ///  Lets the host application decide how message boxes raised by the shared layers are shown.
 /// </summary>
+#pragma warning disable RS0030 // This is the stand-in for the banned WinForms type, which upstream's MessageBoxes calls.
 public static class MessageBox
 {
     public static
@@ -311,6 +312,7 @@ public static class MessageBox
         MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
         => Handler?.Invoke(owner, text, caption, buttons, icon, defaultButton) ?? DialogResult.None;
 }
+#pragma warning restore RS0030
 
 /// <summary>
 ///  Lets the host application put text on its platform's clipboard.
@@ -383,7 +385,7 @@ public static class Application
     public static event System.Threading.ThreadExceptionEventHandler? ThreadException;
 
     public static void OnThreadException(Exception t) =>
-        ThreadException?.Invoke(null, new System.Threading.ThreadExceptionEventArgs(t));
+        ThreadException?.Invoke(System.Threading.Thread.CurrentThread, new System.Threading.ThreadExceptionEventArgs(t));
 
     /// <summary>
     ///  There is no message pump to run; kept so WinForms-era test helpers still compile.
