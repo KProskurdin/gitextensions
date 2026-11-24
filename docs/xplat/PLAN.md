@@ -420,18 +420,15 @@ sync that was done during the milestone.
    upstream's WinForms app built from this tree (Release, run portable on a demo repository, so no user setting is
    touched): 49 pictures in each theme (`<form>[-<page>].png`, `-dark` for the dark theme) in
    `docs/xplat/reference/windows/`: the browse window with each tab, the commit window, every settings page, and 17
-   dialogs. Rerun the script after an upstream merge that changes these forms. Left, to take by hand: the output window
-   (a scripted click does not run a dialog's command, and on this machine a remote operation stops at Pageant first) and
-   the plugins' settings pages (the `settings` verb loads no plugin; open Settings from a browse window).
-5. **On Windows, at the screen:**
-   - The Shell extension page with the Explorer menu: Enable and Disable (they ask for administrator rights and change the
-     machine's registration), and the menu's items starting this app.
-   - The Checklist's Repair buttons: git, the linux tools and PuTTY found as upstream finds them, the install folder.
-   - The PuTTY windows against a real server and Pageant.
-   - Narrator on the tool buttons and the lists' rows.
-   - Both apps showing the same settings (the settings folder is shared since 2026-11-20).
-   - The new windows of 2026-11-22: "Open local repository", the empty repository panel, and the output window's password
-     box with a real question on git's input (plink's host key question, with PuTTY as the SSH client).
+   dialogs. Rerun the script after an upstream merge that changes these forms. Taken by hand the same day, as the script
+   cannot: the output window (`FormProcess.png`: a scripted click does not run a dialog's command, and on this machine a
+   remote operation stops at Pageant first) and a plugin's settings page (`FormSettings-Plugins-Deleteobsoletebranches.png`:
+   the `settings` verb loads no plugin, so Settings was opened from a browse window).
+5. **On Windows, at the screen.** Done 2026-11-24 by the user, all passing: the Shell extension page and the Explorer
+   menu; the Checklist's Repair buttons for git, the linux tools and PuTTY (not the install folder's, which would point
+   upstream's `InstallDir` at this app; side by side, question of 2026-11-24 in M7); the PuTTY windows against a real server
+   and Pageant; Narrator on the tool buttons and the lists' rows; both apps showing the same settings; "Open local
+   repository", the empty repository panel, and the output window's input box with plink's host key question.
 
 ### 12.3 M7, packaging and distribution
 
