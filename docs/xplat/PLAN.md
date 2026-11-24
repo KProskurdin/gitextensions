@@ -421,9 +421,9 @@ sync that was done during the milestone.
    dialogs. Rerun the script after an upstream merge that changes these forms. Taken by hand the same day, as the script
    cannot: the output window (`FormProcess.png`: a scripted click does not run a dialog's command, and on this machine a
    remote operation stops at Pageant first) and a plugin's settings page (`FormSettings-Plugins-Deleteobsoletebranches.png`:
-   the `settings` verb loads no plugin, so Settings was opened from a browse window). **Due again:** the merge of
-   `bd69886b7` changed forms the pictures show (`FormCommit`, `FormStash`, `FormResolveConflicts`, the Git > Advanced
-   settings page, the revision grid's menu, the conflict banner).
+   the `settings` verb loads no plugin, so Settings was opened from a browse window). Retaken by the script on
+   2026-11-24 after the merge of `bd69886b7`, from a Release build of the merged tree: 98 pictures, 29 of them changed
+   (among them the Git > Advanced page's new value lists); the two taken by hand were not affected by the merge.
 5. **On Windows, at the screen.** Done 2026-11-24 by the user, all passing: the Shell extension page and the Explorer
    menu; the Checklist's Repair buttons for git, the linux tools and PuTTY (not the install folder's, which would point
    upstream's `InstallDir` at this app; side by side, question of 2026-11-24 in M7); the PuTTY windows against a real server

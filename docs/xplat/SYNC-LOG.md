@@ -21,8 +21,8 @@ and the items still open; the full entries before that are in git history.
 
 ## Open from the last merge
 
-Kept in `PLAN.md` section 12.2 (items 3, 4, 6 and 7): the suites on macOS and Linux, the reference pictures, and the
-ported features at the screen.
+Kept in `PLAN.md` section 12.2 (items 3, 6 and 7): the suites on macOS and Linux, and the ported features at the screen.
+The reference pictures were retaken after the merge (item 4).
 
 ## Checks
 
