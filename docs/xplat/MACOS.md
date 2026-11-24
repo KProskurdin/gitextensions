@@ -122,8 +122,8 @@ of sources:
 1. **The upstream `*.Designer.cs` and form code**: items, order, texts, icons and logic. This was always the specification,
    and it is all readable on a Mac.
 2. **Reference pictures** taken on Windows, for layout and spacing, in `docs/xplat/reference/windows/<form>[-<page>].png`
-   (decided 2026-11-22, `PLAN.md` section 9, question 14; to take, `PLAN.md` section 12.2). The folder is fork-owned, so it
-   cannot conflict with an upstream merge.
+   (decided 2026-11-22, `PLAN.md` section 9, question 14; taken 2026-11-24, `-dark` for the dark theme, by
+   `tests/xplat/reference-pictures.ps1` on Windows). The folder is fork-owned, so it cannot conflict with an upstream merge.
 3. **A Windows machine or VM**, when the first two leave a question open. Record it with the step.
 
 A difference that macOS itself causes is not a parity bug: fonts, the title bar, the menu bar's place, the Cmd key.

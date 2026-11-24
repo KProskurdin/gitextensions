@@ -95,6 +95,7 @@ tests/xplat/
   run-with-watchdog.sh     CI: runs the app with a time limit and reports its processes and stacks if it hangs
   ci-report.py             CI: turns each suite's .trx into job annotations, readable without a sign-in
   make-bench-repo.sh       builds the 5500-commit repository of the revision graph benchmark
+  reference-pictures.ps1   takes docs/xplat/reference/windows from upstream's WinForms app (Windows)
   verify-upstream.sh       runs the same against upstream/master in a temporary worktree
   port-drift.sh            lists upstream commits that touched ported files since the recorded commit
   xplat-drift.sh           flags mirrored upstream test classes (from each XplatLinux* file's "// Mirrors:" line and
@@ -105,7 +106,7 @@ docs/xplat/
   PORTING-MAP.md           one row per ported upstream file
   MVVM.md                  the MVVM pattern of the app, its gotchas and the pieces to reuse
   MACOS.md                 setup, commands and the open checks for working on a Mac
-  reference/windows/       proposed: pictures of the WinForms app, which cannot run on a Mac (section 9, question 14)
+  reference/windows/       pictures of the WinForms app, which cannot run on a Mac (question 14; tests/xplat/reference-pictures.ps1)
 GitExtensions.xplat.slnx    solution for everything above
 .github/workflows/xplat.yml CI: shadow tests on Windows, Linux and macOS, nightly upstream check (off, question 16)
 ```
@@ -415,9 +416,13 @@ sync that was done during the milestone.
    browse and settings windows (2026-11-24, by the screenshot aid, see 12.3). Not done by a person: clicking through the
    app, "New instance", and Git config's own editor started from the AppImage.
 3. **On a Mac, at the screen:** `MACOS.md`, section 10.
-4. **Reference pictures** (question 14): the WinForms app's windows on the Windows machine, into
-   `docs/xplat/reference/windows/`: at least the browse window with each tab, the commit window, every settings page, and
-   the dialogs most used (clone, push, pull, the output window); a light version, and a dark one where colors matter.
+4. **Reference pictures** (question 14). Taken 2026-11-24 on Windows by `tests/xplat/reference-pictures.ps1` from
+   upstream's WinForms app built from this tree (Release, run portable on a demo repository, so no user setting is
+   touched): 49 pictures in each theme (`<form>[-<page>].png`, `-dark` for the dark theme) in
+   `docs/xplat/reference/windows/`: the browse window with each tab, the commit window, every settings page, and 17
+   dialogs. Rerun the script after an upstream merge that changes these forms. Left, to take by hand: the output window
+   (a scripted click does not run a dialog's command, and on this machine a remote operation stops at Pageant first) and
+   the plugins' settings pages (the `settings` verb loads no plugin; open Settings from a browse window).
 5. **On Windows, at the screen:**
    - The Shell extension page with the Explorer menu: Enable and Disable (they ask for administrator rights and change the
      machine's registration), and the menu's items starting this app.
