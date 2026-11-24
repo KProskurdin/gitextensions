@@ -66,15 +66,30 @@ public static class GridMenus
         => label => label.Name == clicked.Name && label.Kind == clicked.Kind;
 
     /// <summary>
+    ///  Upstream's <c>filterRefsByTracking</c> for the right-clicked <paramref name="clicked"/> ref, which picks the
+    ///  branches to merge: that ref, and a local branch that tracks it (<c>IGitRef.IsTrackingRemote</c>).
+    /// </summary>
+    public static Func<RefLabel, bool> OnlyOrTracking(RefLabel clicked)
+    {
+        Func<RefLabel, bool> only = Only(clicked);
+        return label => only(label)
+                        || (clicked.Kind == RefKind.RemoteBranch && label.Kind == RefKind.Branch
+                            && label.Upstream == clicked.Name);
+    }
+
+    /// <summary>
     ///  The submenus for <paramref name="row"/>; <paramref name="currentBranch"/> is the checked-out branch ("" when
     ///  detached) and <paramref name="ambiguousNames"/> the names that are both a branch and a tag, which upstream merges
     ///  by their full name. <paramref name="keep"/> is upstream's <c>filterRefs</c> for a right-clicked label: the refs
-    ///  are listed as for the whole commit, then only those it keeps are offered.
+    ///  are listed as for the whole commit, then only those it keeps are offered. <paramref name="keepByTracking"/> is
+    ///  upstream's <c>filterRefsByTracking</c>, which picks the branches to merge (and whether the current branch points
+    ///  at the commit); null for <paramref name="keep"/>.
     /// </summary>
     public static GridRefMenus For(CommitRow row, string currentBranch, IReadOnlySet<string> ambiguousNames,
-        Func<RefLabel, bool>? keep = null)
+        Func<RefLabel, bool>? keep = null, Func<RefLabel, bool>? keepByTracking = null)
     {
         keep ??= _ => true;
+        keepByTracking ??= keep;
         bool isArtificial = ArtificialCommits.IsArtificial(row.Hash);
         IReadOnlyList<RefLabel> labels = row.Labels ?? [];
         RefLabel[] allBranches = [.. labels.Where(label => label.Kind is RefKind.Branch or RefKind.RemoteBranch)];
@@ -99,7 +114,7 @@ public static class GridMenus
         }
 
         bool currentBranchPointsToRevision = false;
-        foreach (RefLabel branch in withNoIdenticalRemotes.Where(keep))
+        foreach (RefLabel branch in withNoIdenticalRemotes.Where(keepByTracking))
         {
             if (IsCurrent(branch))
             {

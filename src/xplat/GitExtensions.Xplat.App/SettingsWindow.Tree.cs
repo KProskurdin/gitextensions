@@ -142,6 +142,17 @@ public partial class SettingsWindow
             yield return text.Trim();
         }
 
+        // A list's rows exist only once its page has been laid out; until then the Git > Advanced page's texts are its
+        // items', as upstream's page has its labels from the start.
+        if (root is ItemsControl list && root.LogicalChildren.Count == 0)
+        {
+            foreach (GitConfigAdvancedSetting setting in list.Items.OfType<GitConfigAdvancedSetting>()
+                         .Where(setting => setting.IsVisible))
+            {
+                yield return setting.Text;
+            }
+        }
+
         foreach (ILogical child in root.LogicalChildren)
         {
             foreach (string childText in ControlTexts(child))

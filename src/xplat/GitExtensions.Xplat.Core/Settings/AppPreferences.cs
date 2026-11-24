@@ -1186,8 +1186,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public bool AutoNormaliseBranchName
     {
-        get => AppSettings.AutoNormaliseBranchName;
-        set => AppSettings.AutoNormaliseBranchName = value;
+        get => AppSettings.AutoNormaliseBranchName.Value;
+        set => AppSettings.AutoNormaliseBranchName.Value = value;
     }
 
     public string AutoNormaliseSymbol
@@ -1300,8 +1300,8 @@ public sealed class SettingsAppPreferences : IAppPreferences
 
     public bool? DontConfirmUpdateSubmodulesOnCheckout
     {
-        get => AppSettings.DontConfirmUpdateSubmodulesOnCheckout;
-        set => AppSettings.DontConfirmUpdateSubmodulesOnCheckout = value;
+        get => AppSettings.DontConfirmUpdateSubmodulesOnCheckout.Value;
+        set => AppSettings.DontConfirmUpdateSubmodulesOnCheckout.Value = value;
     }
 
     public bool CreateLocalBranchForRemote
@@ -1917,14 +1917,14 @@ public sealed class SettingsAppPreferences : IAppPreferences
     {
         Confirmation.Amend => !AppSettings.DontConfirmAmend.Value,
         Confirmation.UndoLastCommit => !AppSettings.DontConfirmUndoLastCommit.Value,
-        Confirmation.CommitWithoutBranch => !AppSettings.DontConfirmCommitIfNoBranch,
+        Confirmation.CommitWithoutBranch => !AppSettings.DontConfirmCommitIfNoBranch.Value,
         Confirmation.Rebase => !AppSettings.DontConfirmRebase.Value,
         Confirmation.FetchAndPrune => !AppSettings.DontConfirmFetchAndPruneAll.Value,
         Confirmation.PushNewBranch => !AppSettings.DontConfirmPushNewBranch.Value,
-        Confirmation.AddTrackingRef => !AppSettings.DontConfirmAddTrackingRef,
+        Confirmation.AddTrackingRef => !AppSettings.DontConfirmAddTrackingRef.Value,
         Confirmation.DeleteUnmergedBranch => !AppSettings.DontConfirmDeleteUnmergedBranch.Value,
         Confirmation.BranchCheckout => AppSettings.ConfirmBranchCheckout.Value,
-        Confirmation.StashDrop => !AppSettings.DontConfirmStashDrop,
+        Confirmation.StashDrop => !AppSettings.DontConfirmStashDrop.Value,
         Confirmation.SwitchWorktree => !AppSettings.DontConfirmSwitchWorktree.Value,
         Confirmation.ResolveConflicts => !AppSettings.DontConfirmResolveConflicts.Value,
         Confirmation.CommitAfterConflictsResolved => !AppSettings.DontConfirmCommitAfterConflictsResolved.Value,
@@ -1943,7 +1943,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
                 AppSettings.DontConfirmUndoLastCommit.Value = !ask;
                 break;
             case Confirmation.CommitWithoutBranch:
-                AppSettings.DontConfirmCommitIfNoBranch = !ask;
+                AppSettings.DontConfirmCommitIfNoBranch.Value = !ask;
                 break;
             case Confirmation.Rebase:
                 AppSettings.DontConfirmRebase.Value = !ask;
@@ -1955,7 +1955,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
                 AppSettings.DontConfirmPushNewBranch.Value = !ask;
                 break;
             case Confirmation.AddTrackingRef:
-                AppSettings.DontConfirmAddTrackingRef = !ask;
+                AppSettings.DontConfirmAddTrackingRef.Value = !ask;
                 break;
             case Confirmation.DeleteUnmergedBranch:
                 AppSettings.DontConfirmDeleteUnmergedBranch.Value = !ask;
@@ -1964,7 +1964,7 @@ public sealed class SettingsAppPreferences : IAppPreferences
                 AppSettings.ConfirmBranchCheckout.Value = ask;
                 break;
             case Confirmation.StashDrop:
-                AppSettings.DontConfirmStashDrop = !ask;
+                AppSettings.DontConfirmStashDrop.Value = !ask;
                 break;
             case Confirmation.SwitchWorktree:
                 AppSettings.DontConfirmSwitchWorktree.Value = !ask;

@@ -42,6 +42,20 @@ public static class RewriteCommit
         });
 
     /// <summary>
+    ///  Upstream's <c>EditCommitWithFixupToolStripMenuItemClick</c> rebase after the fixup commit: interactive, with
+    ///  autosquash and autostash, onto the edited commit's <paramref name="firstParent"/>.
+    /// </summary>
+    public static ArgumentString FixupArguments(ObjectId firstParent, bool supportRebaseMerges)
+        => Commands.Rebase(new Commands.RebaseOptions
+        {
+            BranchName = firstParent.ToString(),
+            Interactive = true,
+            AutoSquash = true,
+            AutoStash = true,
+            SupportRebaseMerges = supportRebaseMerges,
+        });
+
+    /// <summary>
     ///  Upstream's <c>GIT_SEQUENCE_EDITOR</c>: turns the todo list's first <c>pick</c> into <paramref name="command"/>. It
     ///  uses GNU sed's <c>0,/re/</c> address; macOS's sed has none, so there the same change is made by perl, which macOS
     ///  ships.

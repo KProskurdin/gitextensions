@@ -172,6 +172,10 @@ internal sealed class UiPluginTests
                 default:
                     Click(dialog, "UnsetProxy_Button");
                     GitProcess.RunAllowingFailure(_repo.Path, "config", "--local", "http.proxy").Should().Be(1);
+
+                    // Upstream's a816fb0cd: unsetting a proxy that is not set is no error.
+                    Click(dialog, "UnsetProxy_Button");
+                    Find<TextBox>(dialog, "LocalProxyBox").Text.Should().BeEmpty();
                     return true;
             }
         });

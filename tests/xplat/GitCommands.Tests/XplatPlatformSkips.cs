@@ -83,7 +83,7 @@ public sealed class XplatSkipOnNonWindowsAttribute : Attribute, ITestAction
         ("GitCommandsTests_Git.CommandsTests.MergeBranchCmd", WindowsPathInput),
         ("GitCommandsTests_Git.CommandsTests.PushTagCmd", WindowsPathInput),
 
-        // Upstream since 645715232, not yet merged into the fork (2026-11-20): POSIX counterparts come with the merge.
+        // POSIX counterparts in XplatLinuxCommandsTests.
         ("GitCommandsTests_Git.CommandsTests.TryRemoveWorktree_should_let_git_remove_the_worktree", WindowsPathInput),
         ("GitCommandsTests_Git.CommandsTests.TryRemoveWorktree_should_report_both_errors_if_the_directory_cannot_be_deleted_either", WindowsFileLock),
     ];

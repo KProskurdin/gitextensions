@@ -15,7 +15,7 @@ public static class GitRevisions
     /// </summary>
     public static GitRevision Of(CommitRow row) => new(ObjectId.Parse(row.Hash))
     {
-        ParentIds = [.. (row.ParentHashes ?? []).Select(ObjectId.Parse)],
+        ParentIds = [.. (row.ParentHashes ?? []).Select(id => ObjectId.Parse(id))],
         Subject = row.Subject,
         Body = row.Body,
         HasMultiLineMessage = row.HasMultiLineMessage,

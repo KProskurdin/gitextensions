@@ -27,15 +27,18 @@ public partial class MergeBranchWindow : Window
     /// <param name="defaultBranch">The branch to merge; null for the branch the current one tracks.</param>
     /// <param name="withScripts">Runs the merge between the before and after merge scripts.</param>
     /// <param name="showConflicts">Opens the conflicts window.</param>
+    /// <param name="startCommit">Opens the commit window with the given message after a squash merge.</param>
     public MergeBranchWindow(string repositoryPath, RepositoryOperationsViewModel actions, IAppPreferences preferences,
-        string? defaultBranch, Func<string, Func<Task<bool>>, Task<bool>> withScripts, Action showConflicts)
+        string? defaultBranch, Func<string, Func<Task<bool>>, Task<bool>> withScripts, Action showConflicts,
+        Action<string?>? startCommit = null)
     {
         ViewModel = new MergeBranchViewModel(new WindowDialogHost(this), repositoryPath,
             GitModules.Open(repositoryPath),
             actions, preferences, AppServices.MergeSettings, defaultBranch, withScripts, showConflicts,
             () => ConfirmWindow.AskAsync(this, preferences, Confirmation.ResolveConflicts,
                 UpstreamTranslation.ByText(Confirmations.ResolveConflictsQuestion), "Yes",
-                UpstreamTranslation.ByText(Confirmations.ResolveConflictsCaption)));
+                UpstreamTranslation.ByText(Confirmations.ResolveConflictsCaption)),
+            startCommit ?? (_ => { }));
         DataContext = ViewModel;
         InitializeComponent();
 

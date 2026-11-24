@@ -24,6 +24,7 @@ public sealed partial class MergeBranchViewModel : DialogViewModel
     private readonly Func<string, Func<Task<bool>>, Task<bool>> _withScripts;
     private readonly Action _showConflicts;
     private readonly Func<Task<bool>> _askResolveConflicts;
+    private readonly Action<string?> _startCommit;
     private readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <param name="repositoryPath">The repository.</param>
@@ -35,12 +36,15 @@ public sealed partial class MergeBranchViewModel : DialogViewModel
     /// <param name="withScripts">Runs the merge between the before and after merge scripts.</param>
     /// <param name="showConflicts">Opens the conflicts window.</param>
     /// <param name="askResolveConflicts">Asks upstream's "resolve the conflicts now?" (it can be turned off).</param>
+    /// <param name="startCommit">Opens the commit window with the given message (null keeps its own), as upstream's
+    /// <c>StartCommitDialog</c>.</param>
     public MergeBranchViewModel(IDialogHost host, string repositoryPath, GitModule module,
         RepositoryOperationsViewModel actions, IAppPreferences preferences, IMergeSettingsStore settings,
         string? defaultBranch, Func<string, Func<Task<bool>>, Task<bool>> withScripts, Action showConflicts,
-        Func<Task<bool>> askResolveConflicts)
+        Func<Task<bool>> askResolveConflicts, Action<string?> startCommit)
         : base(host)
     {
+        _startCommit = startCommit;
         _repositoryPath = repositoryPath;
         _module = module;
         _actions = actions;
@@ -123,6 +127,14 @@ public sealed partial class MergeBranchViewModel : DialogViewModel
             dialog.Branch.Trim(), dialog.Arguments(messagePath, _module.GetPathForGitExecution)));
         if (merged)
         {
+            // git merge --squash stages the changes without a commit: unless "Do not commit" is checked, the commit
+            // window offers them, with the merge message if one was entered (shown only when there are changes).
+            if (dialog.Squash && dialog.CanSquash && !dialog.NoCommit
+                && await Task.Run(() => _module.GetAllChangedFiles().Count > 0))
+            {
+                _startCommit(dialog.AddMergeMessage ? dialog.MergeMessage : null);
+            }
+
             Host.Close(true);
             return;
         }

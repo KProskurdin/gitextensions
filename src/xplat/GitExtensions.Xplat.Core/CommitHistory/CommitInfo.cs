@@ -238,7 +238,7 @@ public sealed class CommitInfoReader
             GitModule module = CreateModule(repositoryPath);
             ObjectId objectId = ObjectId.Parse(hash);
             GitRevision revision = new(objectId) { Refs = TagsAt(module, objectId) };
-            GpgInfo? info = await new GpgInfoProvider(new GitGpgController(() => module)).LoadGpgInfoAsync(revision);
+            GpgInfo? info = await new GpgInfoProvider(new GitGpgController(() => module)).LoadGpgInfoAsync(revision, CancellationToken.None);
             return Display(info, translate);
         });
 

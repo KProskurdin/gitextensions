@@ -233,6 +233,11 @@ public sealed partial class CommitViewModel : DialogViewModel
     /// </summary>
     public event EventHandler? MessageFocusRequested;
 
+    /// <summary>
+    ///  Upstream FormCommit's <c>CommitCreated</c>: a commit has been made, before the after commit scripts run.
+    /// </summary>
+    public event EventHandler? CommitCreated;
+
     public bool UseFormCommitMessage { get; }
 
     public string MessagePlaceholder { get; }
@@ -870,6 +875,7 @@ public sealed partial class CommitViewModel : DialogViewModel
             NoVerify = false;
             Kind = CommitKind.Normal;
             await _messages.ResetAsync(_repositoryPath);
+            CommitCreated?.Invoke(this, EventArgs.Empty);
             await _services.RunScripts(ScriptEvent.AfterCommit);
         }
 

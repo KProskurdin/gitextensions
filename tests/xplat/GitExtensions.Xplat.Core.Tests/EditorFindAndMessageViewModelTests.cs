@@ -46,6 +46,24 @@ internal sealed class EditorFindAndMessageViewModelTests
     }
 
     [Test]
+    public void MessageBoxViewModel_should_raise_a_task_buttons_click_and_stay_open_when_it_does_not_close()
+    {
+        FakeDialogHost host = new();
+        int clicks = 0;
+        System.Windows.Forms.TaskDialogCommandLinkButton look = new("Look") { AllowCloseDialog = false };
+        look.Click += (_, _) => clicks++;
+        System.Windows.Forms.TaskDialogPage page = new() { Text = "Which?" };
+        page.Buttons.Add(look);
+        page.Buttons.Add(System.Windows.Forms.TaskDialogButton.Cancel);
+        MessageBoxViewModel viewModel = new(host, page);
+
+        viewModel.ChooseCommand.Execute(viewModel.Choices.Single(choice => choice.TaskButton == look));
+
+        clicks.Should().Be(1);
+        host.IsClosed.Should().BeFalse();
+    }
+
+    [Test]
     public void FindViewModel_should_title_with_the_file_and_selection_and_raise_the_searches()
     {
         FindViewModel viewModel = new(new FakeDialogHost());

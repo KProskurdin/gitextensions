@@ -59,6 +59,22 @@ internal sealed class GridMenusTests
             .Should().Contain("origin/main").And.NotContain(["main", "v1"]);
     }
 
+    [Test]
+    public void For_should_merge_the_branch_tracking_a_clicked_remote_branch()
+    {
+        RefLabel remote = new("origin/main", RefKind.RemoteBranch);
+        CommitRow row = Row(
+            new RefLabel("main", RefKind.Branch) { Upstream = "origin/main" },
+            new RefLabel("topic", RefKind.Branch),
+            remote);
+
+        GridRefMenus menus = GridMenus.For(row, "other", new HashSet<string>(), GridMenus.Only(remote),
+            GridMenus.OnlyOrTracking(remote));
+
+        Names(menus.Merge).Should().Equal("main");
+        Names(menus.Checkout).Should().Equal(["origin/main"], "the other submenus still offer the clicked ref only");
+    }
+
     [TestCase(false, false, false, false, false)]
     [TestCase(true, false, false, false, true)]
     [TestCase(true, false, true, false, false)]

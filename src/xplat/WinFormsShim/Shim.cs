@@ -435,6 +435,21 @@ public class TaskDialogButton(string? text = null)
     public string? Text { get; set; } = text;
 
     /// <summary>
+    ///  As WinForms: false keeps the dialog open when the button is pressed; <see cref="Click"/> is raised either way.
+    /// </summary>
+    public bool AllowCloseDialog { get; set; } = true;
+
+    /// <summary>
+    ///  Raised when the button is pressed, before the dialog closes.
+    /// </summary>
+    public event EventHandler? Click;
+
+    /// <summary>
+    ///  Raises <see cref="Click"/>, as pressing the button does.
+    /// </summary>
+    public void PerformClick() => Click?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
     ///  WinForms' standard Cancel button, which a dialog that allows cancelling returns when it is closed.
     /// </summary>
     public static TaskDialogButton Cancel { get; } = new("Cancel");

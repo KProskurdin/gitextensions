@@ -1,4 +1,5 @@
 using GitExtensions.Xplat.Core.CommitHistory;
+using GitExtensions.Xplat.Core.Repository;
 
 namespace GitExtensions.Xplat.App;
 
@@ -50,7 +51,24 @@ public partial class MainWindow
                 string hash = GroupFile(file) is { } grouped ? grouped.Group.Second.ToString() : row.Hash;
                 CommitDiff.IsVisible = false;
                 DiffTabBlame.IsVisible = true;
-                Run(() => DiffTabBlame.LoadAsync(path, ArtificialCommits.IsArtificial(hash) ? "HEAD" : hash, file.Path));
+                if (!ArtificialCommits.IsArtificial(hash))
+                {
+                    Run(() => DiffTabBlame.LoadAsync(path, hash, file.Path));
+                    return true;
+                }
+
+                Run(async () =>
+                {
+                    // Without a commit (a repository without commits) git has nothing to blame: upstream shows the diff.
+                    if (await Task.Run(() => GitModules.Open(path).GetCurrentCheckout().IsZero))
+                    {
+                        _diffTabBlameFile = null;
+                        ShowSelectedCommitFileDiff();
+                        return;
+                    }
+
+                    await DiffTabBlame.LoadAsync(path, "HEAD", file.Path);
+                });
                 return true;
             }
 

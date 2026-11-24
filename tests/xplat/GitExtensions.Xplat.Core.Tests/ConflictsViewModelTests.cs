@@ -21,6 +21,7 @@ internal sealed class ConflictsViewModelTests
     private readonly List<Confirmation> _confirmations = [];
     private readonly List<TaskDialogPage> _pages = [];
     private int _commitsOffered;
+    private bool _tickApplyToAll;
     private FakeGitOperations _operations = null!;
 
     [SetUp]
@@ -29,6 +30,7 @@ internal sealed class ConflictsViewModelTests
         _confirmations.Clear();
         _pages.Clear();
         _commitsOffered = 0;
+        _tickApplyToAll = false;
         _operations = new FakeGitOperations();
     }
 
@@ -93,14 +95,14 @@ internal sealed class ConflictsViewModelTests
         module.GetConflictsAsync(Arg.Any<string?>()).Returns(
             Task.FromResult<List<ConflictData>>([Conflict("a.txt")]), Task.FromResult<List<ConflictData>>([]));
         module.InTheMiddleOfConflictedMerge(Arg.Any<bool>()).Returns(true, true, false);
-        module.HandleConflictSelectSide("a.txt", ConflictsDialog.Remote).Returns(true);
+        module.HandleConflictSelectSide("a.txt", ConflictsDialog.Remote, out Arg.Any<string>()).Returns(true);
         FakeDialogHost host = new();
         ConflictsViewModel viewModel = New(host, module);
         await viewModel.LoadAsync();
 
         await viewModel.ChooseCommand.ExecuteAsync(ConflictsDialog.Remote);
 
-        module.Received(1).HandleConflictSelectSide("a.txt", ConflictsDialog.Remote);
+        module.Received(1).HandleConflictSelectSide("a.txt", ConflictsDialog.Remote, out Arg.Any<string>());
         _confirmations.Should().Equal(Confirmation.CommitAfterConflictsResolved);
         _commitsOffered.Should().Be(1);
         host.IsClosed.Should().BeTrue();
@@ -108,16 +110,23 @@ internal sealed class ConflictsViewModelTests
     }
 
     [Test]
-    public async Task A_side_that_cannot_be_chosen_should_say_so()
+    public async Task A_side_that_cannot_be_chosen_should_say_so_with_the_file_and_gits_error()
     {
         IGitModule module = Module(conflicts: [Conflict("a.txt")]);
+        module.HandleConflictSelectSide("a.txt", ConflictsDialog.Local, out Arg.Any<string>()).Returns(call =>
+        {
+            call[2] = "error: path 'a.txt' does not have our version";
+            return false;
+        });
         FakeDialogHost host = new();
         ConflictsViewModel viewModel = New(host, module);
         await viewModel.LoadAsync();
 
         await viewModel.ChooseCommand.ExecuteAsync(ConflictsDialog.Local);
 
-        host.Messages.Should().Equal(Mark + ConflictsDialog.ChooseLocalFileFailed);
+        string newLine = Environment.NewLine;
+        host.Messages.Should().Equal(
+            $"{Mark}{ConflictsDialog.ChooseLocalFileFailed}{newLine}{newLine}{string.Format(Mark + ConflictsDialog.ChooseFileFailedDetailFormat, "a.txt")}{newLine}error: path 'a.txt' does not have our version");
         host.IsClosed.Should().BeFalse();
     }
 
@@ -136,8 +145,40 @@ internal sealed class ConflictsViewModelTests
             "ours", "theirs"));
         _pages[0].Buttons.Select(button => button.Text).Should().Equal(TaskDialogButton.Cancel.Text,
             $"{Mark}{ConflictsDialog.KeepModifiedButtonText} (ours)", $"{Mark}{ConflictsDialog.DeleteFileButtonText} (theirs)",
-            Mark + ConflictsDialog.KeepBaseButtonText);
-        module.DidNotReceive().HandleConflictSelectSide(Arg.Any<string>(), Arg.Any<string>());
+            Mark + ConflictsDialog.KeepBaseButtonText, $"{Mark}{ConflictsDialog.DiffBaseWithModifiedButtonText} (ours)");
+        module.DidNotReceive().HandleConflictSelectSide(Arg.Any<string>(), Arg.Any<string>(), out Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task The_diff_link_should_open_the_difftool_on_the_stages_and_keep_the_question_open()
+    {
+        IGitModule module = Module(conflicts: [Conflict("a.txt", remote: false)]);
+        ConflictsViewModel viewModel = New(new FakeDialogHost(), module);
+        await viewModel.LoadAsync();
+        await viewModel.MergeCommand.ExecuteAsync(null);
+        TaskDialogButton diff = _pages[0].Buttons.Last();
+
+        diff.PerformClick();
+
+        diff.AllowCloseDialog.Should().BeFalse("the diff is a look at the changes, not an answer");
+        await WaitForAsync(() => module.ReceivedCalls().Any(call => call.GetMethodInfo().Name == nameof(IGitModule.OpenFilesWithDifftool)));
+        module.Received(1).OpenFilesWithDifftool(":1:a.txt", ":2:a.txt", null);
+    }
+
+    [Test]
+    public async Task Cancelling_the_question_should_not_remember_its_apply_to_all_tick()
+    {
+        IGitModule module = Module(conflicts: [Conflict("a.txt", remote: false), Conflict("b.txt", remote: false)]);
+        _tickApplyToAll = true;
+        ConflictsViewModel viewModel = New(new FakeDialogHost(), module);
+        await viewModel.LoadAsync();
+        viewModel.SelectedRows = viewModel.Rows;
+
+        await viewModel.MergeCommand.ExecuteAsync(null);
+
+        _pages.Should().HaveCount(2, "a cancelled question is no answer to apply to the next file");
+        _pages[0].Verification.Should().NotBeNull();
+        module.DidNotReceive().HandleConflictSelectSide(Arg.Any<string>(), Arg.Any<string>(), out Arg.Any<string>());
     }
 
     [Test]
@@ -170,6 +211,16 @@ internal sealed class ConflictsViewModelTests
         viewModel.Rows.Should().ContainSingle();
     }
 
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        for (int attempt = 0; attempt < 200 && !condition(); attempt++)
+        {
+            await Task.Delay(10);
+        }
+
+        condition().Should().BeTrue();
+    }
+
     private static IGitModule Module(List<ConflictData> conflicts)
     {
         IGitModule module = Substitute.For<IGitModule>();
@@ -197,6 +248,11 @@ internal sealed class ConflictsViewModelTests
                 ShowTaskDialog = page =>
                 {
                     _pages.Add(page);
+                    if (_tickApplyToAll && page.Verification is { } applyToAll)
+                    {
+                        applyToAll.Checked = true;
+                    }
+
                     return Task.FromResult<TaskDialogButton?>(null);
                 },
                 MergeSubmodule = _ => Task.FromResult(false),

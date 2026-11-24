@@ -222,6 +222,9 @@ public partial class MainWindow : IBrowseWindow
 
     Task<bool> IBrowseWindow.ResetAnotherBranchAsync(string path, string revision) => ShowResetAnotherBranchAsync(path, revision);
 
+    Task<bool> IBrowseWindow.EditCommitWithFixupAsync(string path, string revision, ObjectId firstParent)
+        => EditCommitWithFixupAsync(path, revision, firstParent);
+
     void IBrowseWindow.ExecutePlugin(IGitPlugin plugin) => ExecutePlugin(plugin);
 
     Task<bool> IBrowseWindow.RunUserScriptAsync(string path, ScriptDefinition script)

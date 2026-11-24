@@ -294,6 +294,12 @@ public interface IBrowseWindow
     Task<bool> ResetAnotherBranchAsync(string path, string revision);
 
     /// <summary>
+    ///  Upstream's EditCommitWithFixupToolStripMenuItemClick: the commit window making a fixup commit for
+    ///  <paramref name="revision"/>; once it is made, the autosquash rebase onto <paramref name="firstParent"/>.
+    /// </summary>
+    Task<bool> EditCommitWithFixupAsync(string path, string revision, ObjectId firstParent);
+
+    /// <summary>
     ///  Opens a page of the user manual.
     /// </summary>
     void ShowUserManual(string subfolder, string anchor);

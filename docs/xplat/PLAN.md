@@ -102,7 +102,7 @@ tests/xplat/
                            the XplatPlatformSkips.cs entries) that changed or disappeared, in every shadow test project
 docs/xplat/
   PLAN.md                  this file
-  SYNC-LOG.md              one row per upstream check or merge, and the items due at the next merge
+  SYNC-LOG.md              one row per upstream check or merge, and the items still open from a merge
   PORTING-MAP.md           one row per ported upstream file
   MVVM.md                  the MVVM pattern of the app, its gotchas and the pieces to reuse
   MACOS.md                 setup, commands and the open checks for working on a Mac

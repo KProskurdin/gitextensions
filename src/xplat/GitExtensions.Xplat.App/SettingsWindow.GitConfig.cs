@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using GitExtensions.Xplat.Core.Settings;
 
@@ -47,13 +48,33 @@ public partial class SettingsWindow
     }
 
     // The Config page first: it finds out whether git can be run. The Advanced page (upstream's
-    // GitConfigAdvancedSettingsPage) is read once it can.
+    // GitConfigAdvancedSettingsPage) is read once the Config page's values are in, not after its tool lists, which git
+    // can take many seconds to list.
     private async Task LoadGitConfigAsync()
     {
-        await GitConfigPage.LoadAsync(SourceHeaderOf(GitConfigTab).Level);
-        if (GitConfigPage.IsGitFound && !ViewModel.GitConfigAdvancedPage.IsLoaded)
+        TaskCompletionSource valuesShown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PropertyChangedEventHandler onChanged = (_, e) =>
         {
-            await ViewModel.GitConfigAdvancedPage.LoadAsync(SourceHeaderOf(GitConfigAdvancedTab).Level);
+            if (e.PropertyName == nameof(GitConfigPageViewModel.IsLoaded) && GitConfigPage.IsLoaded)
+            {
+                valuesShown.TrySetResult();
+            }
+        };
+        GitConfigPage.PropertyChanged += onChanged;
+        try
+        {
+            Task config = GitConfigPage.LoadAsync(SourceHeaderOf(GitConfigTab).Level);
+            await Task.WhenAny(config, valuesShown.Task);
+            if (GitConfigPage.IsGitFound && GitConfigPage.IsLoaded && !ViewModel.GitConfigAdvancedPage.IsLoaded)
+            {
+                await ViewModel.GitConfigAdvancedPage.LoadAsync(SourceHeaderOf(GitConfigAdvancedTab).Level);
+            }
+
+            await config;
+        }
+        finally
+        {
+            GitConfigPage.PropertyChanged -= onChanged;
         }
     }
 

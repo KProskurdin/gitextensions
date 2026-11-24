@@ -148,7 +148,7 @@ public sealed class FileHistoryDialog
         [
             .. rows.Select(row => new GitRevision(ObjectId.Parse(row.Hash))
             {
-                ParentIds = [.. (row.ParentHashes ?? []).Select(ObjectId.Parse)],
+                ParentIds = [.. (row.ParentHashes ?? []).Select(id => ObjectId.Parse(id))],
             })
         ];
         if (!RevisionDiffInfoProvider.TryGet(revisions, kind, out string? first, out string? second, out string? error))

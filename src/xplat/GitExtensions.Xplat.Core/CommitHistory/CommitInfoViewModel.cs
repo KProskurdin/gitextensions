@@ -158,7 +158,7 @@ public sealed partial class CommitInfoViewModel : ObservableObject
 
         if (details.Data is { } data)
         {
-            data.ChildIds = [.. childHashes.Select(ObjectId.Parse)];
+            data.ChildIds = [.. childHashes.Select(id => ObjectId.Parse(id))];
             HeaderRows = CommitInfoText.Header(data);
         }
         else

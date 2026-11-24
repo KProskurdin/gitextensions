@@ -107,6 +107,10 @@ public sealed partial class ConflictsViewModel : DialogViewModel
     private const string OpenInMergeTool = "Open in mergetool";
     private const string NoName = "...";
 
+    // git's index stages of a conflicted file's sides.
+    private const int LocalStage = 2;
+    private const int RemoteStage = 3;
+
     private readonly IGitModule _module;
     private readonly string _repositoryPath;
     private readonly RepositoryOperationsViewModel _actions;
@@ -373,6 +377,9 @@ public sealed partial class ConflictsViewModel : DialogViewModel
         }
 
         Count(selected);
+
+        // Each choice is a fresh batch: an "apply to all" left ticked by an earlier, unrelated action must not carry over.
+        _applyToAll = false;
         foreach (ConflictData item in selected)
         {
             bool canChoose = side switch
@@ -676,8 +683,8 @@ public sealed partial class ConflictsViewModel : DialogViewModel
             _othersSelected || _deletedRemotelyUnsolved > 0, _applyToAll, Host.Translate);
         (string local, string remote, string baseText) =
             _dialog.DeletedSideButtons(deletedLocally: true, Host.Translate);
-        ConflictChoice choice =
-            await SolveAsync(text, ApplyToAllText(item, _deletedLocallyUnsolved), local, remote, baseText);
+        ConflictChoice choice = await SolveAsync(text, ApplyToAllText(item, _deletedLocallyUnsolved), local, remote,
+            baseText, DiffBaseWithModified(item, item.Remote, RemoteStage, _dialog.RemoteSide));
         switch (choice)
         {
             case ConflictChoice.KeepLocal:
@@ -707,8 +714,8 @@ public sealed partial class ConflictsViewModel : DialogViewModel
             _othersSelected || _deletedLocallyUnsolved > 0, _applyToAll, Host.Translate);
         (string local, string remote, string baseText) =
             _dialog.DeletedSideButtons(deletedLocally: false, Host.Translate);
-        ConflictChoice choice =
-            await SolveAsync(text, ApplyToAllText(item, _deletedRemotelyUnsolved), local, remote, baseText);
+        ConflictChoice choice = await SolveAsync(text, ApplyToAllText(item, _deletedRemotelyUnsolved), local, remote,
+            baseText, DiffBaseWithModified(item, item.Local, LocalStage, _dialog.LocalSide));
         switch (choice)
         {
             case ConflictChoice.KeepLocal:
@@ -778,6 +785,22 @@ public sealed partial class ConflictsViewModel : DialogViewModel
         }
     }
 
+    // Upstream's GetDiffBaseWithModified: the base diffed with the side that still has the file, which is what tells
+    // keeping the modified file from deleting it; null without a base. The index stages (1 base, 2 local, 3 remote) give
+    // the difftool file names with the conflicted file's extension.
+    private (string Text, Action Show)? DiffBaseWithModified(ConflictData item, ConflictedFileData modified, int stage,
+        string modifiedSide)
+    {
+        if (item.Base.Filename is not { } baseName || modified.Filename is not { } modifiedName)
+        {
+            return null;
+        }
+
+        return ($"{Host.Translate(ConflictsDialog.DiffBaseWithModifiedButtonText)} ({modifiedSide})",
+            () => Run(() => Task.Run(() =>
+                _module.OpenFilesWithDifftool($":1:{baseName}", $":{stage}:{modifiedName}", customTool: null))));
+    }
+
     private string ApplyToAllText(ConflictData item, int unsolved)
         => unsolved > 1
             ? string.Format(Host.Translate(ConflictsDialog.SolveMergeConflictApplyToAll), item.Filename, unsolved - 1)
@@ -786,7 +809,7 @@ public sealed partial class ConflictsViewModel : DialogViewModel
     // Upstream's OpenSolveMergeConflictDialogAndExecuteSelectedMergeAction: the "Solve merge conflict" task dialog with its
     // three command links, unless "apply to all" was checked before, which repeats the last choice.
     private async Task<ConflictChoice> SolveAsync(string text, string applyToAllText, string local, string remote,
-        string keepBase)
+        string keepBase, (string Text, Action Show)? diff = null)
     {
         if (_applyToAll)
         {
@@ -809,26 +832,56 @@ public sealed partial class ConflictsViewModel : DialogViewModel
         page.Buttons.Add(localButton);
         page.Buttons.Add(remoteButton);
         page.Buttons.Add(baseButton);
+
+        // Upstream's diff link is only a look at the changes, not an answer: the dialog stays open for one, so it can
+        // never be applied to all files.
+        if (diff is { } link)
+        {
+            TaskDialogCommandLinkButton diffButton =
+                new(link.Text, Host.Translate(ConflictsDialog.DiffBaseWithModifiedButtonDescription))
+                {
+                    AllowCloseDialog = false,
+                };
+            diffButton.Click += (_, _) => link.Show();
+            page.Buttons.Add(diffButton);
+        }
+
         TaskDialogButton? chosen = await _services.ShowTaskDialog(page);
-        _applyToAll = page.Verification?.Checked ?? false;
-        _lastChoice = chosen == localButton ? ConflictChoice.KeepLocal
+        ConflictChoice answer = chosen == localButton ? ConflictChoice.KeepLocal
             : chosen == remoteButton ? ConflictChoice.KeepRemote
             : chosen == baseButton ? ConflictChoice.KeepBase
             : ConflictChoice.None;
-        return _lastChoice;
+
+        // Dismissing the dialog (Cancel/Esc) is not an answer, so neither it nor its "apply to all" tick is remembered.
+        if (answer == ConflictChoice.None)
+        {
+            return answer;
+        }
+
+        _applyToAll = page.Verification?.Checked ?? false;
+        _lastChoice = answer;
+        return answer;
     }
 
-    // Upstream's HandleConflictSelectSide, with its failure message per side.
+    // Upstream's HandleConflictSelectSide, with its failure message per side, the file and git's error.
     private async Task SelectSideAsync(string fileName, string side)
     {
-        if (!await Task.Run(() => KeepCurrentDirectory(() => _module.HandleConflictSelectSide(fileName, side))))
+        (bool succeeded, string errorMessage) = await Task.Run(() => KeepCurrentDirectory(() =>
         {
-            await Host.ShowMessageAsync(Host.Translate(side switch
+            bool result = _module.HandleConflictSelectSide(fileName, side, out string error);
+            return (result, error);
+        }));
+        if (!succeeded)
+        {
+            string failed = Host.Translate(side switch
             {
                 ConflictsDialog.Local => ConflictsDialog.ChooseLocalFileFailed,
                 ConflictsDialog.Remote => ConflictsDialog.ChooseRemoteFileFailed,
                 _ => ConflictsDialog.ChooseBaseFileFailed,
-            }), Error);
+            });
+            string detail = string.Format(Host.Translate(ConflictsDialog.ChooseFileFailedDetailFormat), fileName);
+            await Host.ShowMessageAsync(
+                $"{failed}{Environment.NewLine}{Environment.NewLine}{detail}{Environment.NewLine}{errorMessage}", Error);
         }
     }
 

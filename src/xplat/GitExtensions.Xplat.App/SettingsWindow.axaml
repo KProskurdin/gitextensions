@@ -611,28 +611,28 @@
           </StackPanel>
         </Grid>
       </TabItem>
-      <!-- Upstream's "Advanced" page under Git (GitConfigAdvancedSettingsPage): boolean git settings at the level the page
-           header chooses, three-state as upstream's (checked true, unchecked false or not set, neither for another value);
-           each text ends with its key, as upstream adds it. -->
+      <!-- Upstream's "Advanced" page under Git (GitConfigAdvancedSettingsPage): git settings at the level the page header
+           chooses, each text ending with its key as upstream adds it, its value in an editable list of the values git knows
+           (empty for not set), and upstream's help icon opening git's documentation of the key. -->
       <TabItem x:Name="GitConfigAdvancedTab" Header="Advanced">
-        <StackPanel x:Name="GitConfigAdvancedPanel" Margin="4,8" Spacing="6" IsEnabled="{Binding GitConfigPage.IsGitFound}">
-          <CheckBox x:Name="checkBoxPullRebase" Content="{Binding GitConfigAdvancedPage.PullRebase.Text}" IsChecked="{Binding GitConfigAdvancedPage.PullRebase.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.PullRebase.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkBoxFetchPrune" Content="{Binding GitConfigAdvancedPage.FetchPrune.Text}" IsChecked="{Binding GitConfigAdvancedPage.FetchPrune.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.FetchPrune.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkboxMergeAutoStash" Content="{Binding GitConfigAdvancedPage.MergeAutoStash.Text}" IsChecked="{Binding GitConfigAdvancedPage.MergeAutoStash.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.MergeAutoStash.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkBoxRebaseAutostash" Content="{Binding GitConfigAdvancedPage.RebaseAutoStash.Text}" IsChecked="{Binding GitConfigAdvancedPage.RebaseAutoStash.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.RebaseAutoStash.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkBoxRebaseAutosquash" Content="{Binding GitConfigAdvancedPage.RebaseAutoSquash.Text}" IsChecked="{Binding GitConfigAdvancedPage.RebaseAutoSquash.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.RebaseAutoSquash.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkBoxUpdateRefs" Content="{Binding GitConfigAdvancedPage.RebaseUpdateRefs.Text}" IsChecked="{Binding GitConfigAdvancedPage.RebaseUpdateRefs.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.RebaseUpdateRefs.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkBoxReReReEnabled" Content="{Binding GitConfigAdvancedPage.RerereEnabled.Text}" IsChecked="{Binding GitConfigAdvancedPage.RerereEnabled.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.RerereEnabled.IsVisible}" IsThreeState="True" />
-          <CheckBox x:Name="checkBoxReReReAutoUpdate" Content="{Binding GitConfigAdvancedPage.RerereAutoUpdate.Text}" IsChecked="{Binding GitConfigAdvancedPage.RerereAutoUpdate.IsChecked}"
-                    IsVisible="{Binding GitConfigAdvancedPage.RerereAutoUpdate.IsVisible}" IsThreeState="True" />
-        </StackPanel>
+        <ItemsControl x:Name="GitConfigAdvancedPanel" Margin="4,8" ItemsSource="{Binding GitConfigAdvancedPage.Settings}"
+                      IsEnabled="{Binding GitConfigPage.IsGitFound}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="settings:GitConfigAdvancedSetting">
+              <Grid ColumnDefinitions="*,6,180,6,Auto" Margin="0,0,0,4" IsVisible="{Binding IsVisible}">
+                <TextBlock Text="{Binding Text}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <ComboBox Grid.Column="2" Tag="{Binding Key}" IsEditable="True" HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Values}" Text="{Binding Value}"
+                          AutomationProperties.Name="{Binding Text}" />
+                <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="2" Cursor="Hand"
+                        ToolTip.Tip="{Binding HelpUrl}" CommandParameter="{Binding HelpUrl}"
+                        Command="{Binding $parent[TabItem].((settings:SettingsViewModel)DataContext).OpenUrlCommand}">
+                  <Image Source="{local:UpstreamImage information}" Width="16" Height="16" />
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </TabItem>
       <TabItem x:Name="ConfirmationsTab" Header="Confirmations">
         <DockPanel Margin="4,8" LastChildFill="True">

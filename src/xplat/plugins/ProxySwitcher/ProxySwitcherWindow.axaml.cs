@@ -7,7 +7,6 @@ using GitExtensions.Extensibility;
 using GitExtensions.Extensibility.Git;
 using GitExtensions.Extensibility.Settings;
 using GitExtensions.Xplat.Ui;
-using GitExtUtils;
 
 namespace GitExtensions.Plugins.ProxySwitcher;
 
@@ -67,8 +66,7 @@ public partial class ProxySwitcherWindow : Window
         RefreshProxy();
     }
 
-    // Upstream reads the module's cached config here, so the value it shows right after a change can be the old one; the
-    // callers invalidate the cache first.
+    // Upstream reads the module's cached config here; SetGitSetting has invalidated it after a change.
     private void RefreshProxy()
     {
         LocalProxyBox.Text = HidePassword(_module.GetEffectiveSetting(ProxySetting));
@@ -79,10 +77,10 @@ public partial class ProxySwitcherWindow : Window
 
     private static string HidePassword(string httpProxy) => PasswordRegex.Replace(httpProxy, ":****@");
 
-    // Upstream's BuildHttpProxy: "user:password@host:port", each part only when set.
+    // Upstream's BuildHttpProxy: "user:password@host:port", each part only when set. Not quoted: SetGitSetting quotes it.
     private string BuildHttpProxy()
     {
-        StringBuilder proxy = new("\"");
+        StringBuilder proxy = new();
         string username = _plugin.Username.ValueOrDefault(_settings);
         if (!string.IsNullOrEmpty(username))
         {
@@ -103,32 +101,24 @@ public partial class ProxySwitcherWindow : Window
             proxy.Append(':').Append(port);
         }
 
-        return proxy.Append('"').ToString();
+        return proxy.ToString();
     }
 
+    private GitSettingLevel SelectedSettingLevel
+        => ApplyGlobally_CheckBox.IsChecked == true ? GitSettingLevel.Global : GitSettingLevel.Local;
+
+    // Upstream's SetProxy_Button_Click: SetGitSetting, which reads the module's config again.
     private void SetProxy()
     {
-        GitArgumentBuilder args = new("config")
-        {
-            { ApplyGlobally_CheckBox.IsChecked == true, "--global" },
-            ProxySetting,
-            BuildHttpProxy(),
-        };
-        _module.GitExecutable.GetOutput(args);
-        _module.InvalidateGitSettings();
+        _module.SetGitSetting(SelectedSettingLevel, ProxySetting, BuildHttpProxy());
         RefreshProxy();
     }
 
+    // Upstream's UnsetProxy_Button_Click: git exits with 5 when the setting is not set at that level, which SetGitSetting
+    // tolerates, unlike a bare "git config --unset".
     private void UnsetProxy()
     {
-        GitArgumentBuilder args = new("config")
-        {
-            { ApplyGlobally_CheckBox.IsChecked == true, "--global" },
-            "--unset",
-            ProxySetting,
-        };
-        _module.GitExecutable.GetOutput(args);
-        _module.InvalidateGitSettings();
+        _module.SetGitSetting(SelectedSettingLevel, ProxySetting, value: null);
         RefreshProxy();
     }
 }

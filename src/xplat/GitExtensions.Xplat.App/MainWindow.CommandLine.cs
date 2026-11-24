@@ -50,7 +50,8 @@ public partial class MainWindow
     /// </summary>
     public static bool RunsCommandLineVerb(string verb)
         => verb is "add" or "addfiles" or "apply" or "applypatch" or "blame" or "blamehistory" or "filehistory"
-            or "branch" or "checkout" or "checkoutbranch" or "checkoutrevision" or "cherry" or "commit" or "init" or "merge"
+            or "branch" or "checkout" or "checkoutbranch" or "checkoutrevision" or "cherry" or "commit"
+            or CommandLine.CompareVerb or "init" or "merge"
             or "mergeconflicts" or "mergetool" or "pull" or "push" or "rebase" or "reset" or "revert" or "stash"
             or "synchronize" or "tag" or "viewdiff";
 
@@ -217,6 +218,10 @@ public partial class MainWindow
             case "tag":
                 return await ShowCreateTagAsync("HEAD");
 
+            // Upstream's RunCompareCommand: FormDiff on the two commits, an error on the console when they are not.
+            case CommandLine.CompareVerb:
+                return await CompareFromCommandLineAsync(request, path);
+
             // Upstream's StartCompareRevisionsDialog, whose FormLog is the log window here.
             case "viewdiff":
                 await new LogWindow(path, _preferences).ShowDialog(this);
@@ -224,6 +229,27 @@ public partial class MainWindow
             default:
                 return false;
         }
+    }
+
+    // Upstream's RunCompareCommand and StartCompareRevisionsDialog: the two commits in the diff window, modal.
+    private async Task<bool> CompareFromCommandLineAsync(CommandLineRequest request, string path)
+    {
+        GitModule module = GitModules.Open(path);
+        (string? error, CompareRevisions? revisions) =
+            await Task.Run(() => CommandLine.Compare(request, module.RevParse));
+        if (revisions is null)
+        {
+            await Console.Error.WriteLineAsync(error);
+            return false;
+        }
+
+        await new RevisionDiffWindow(path, revisions.First, revisions.Second, revisions.FirstDisplay,
+            revisions.SecondDisplay, _preferences)
+        {
+            MenuServices = FileListMenuServices,
+            Submodules = owner => DiffFileSubmodules(() => owner),
+        }.ShowDialog(this);
+        return true;
     }
 
     /// <summary>

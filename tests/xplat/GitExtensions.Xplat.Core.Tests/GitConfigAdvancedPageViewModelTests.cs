@@ -13,48 +13,49 @@ internal sealed class GitConfigAdvancedPageViewModelTests
     [SetUp]
     public void SetUp() => _config = new MemoryConfig();
 
-    [TestCase("true", true)]
-    [TestCase("Yes", true)]
-    [TestCase("on", true)]
-    [TestCase("1", true)]
-    [TestCase("false", false)]
-    [TestCase("NO", false)]
-    [TestCase("0", false)]
-    [TestCase("", false)]
-    [TestCase("merges", null)]
-    public void StateOf_should_read_gits_value_as_upstreams_check_box(string value, bool? state)
-        => GitConfigAdvancedPageViewModel.StateOf(value).Should().Be(state);
+    [Test]
+    public void The_page_should_list_upstreams_settings_with_their_values_and_help()
+    {
+        GitConfigAdvancedPageViewModel page = new(_config, repositoryPath: null, supportsUpdateRefs: true);
+
+        page.Settings.Select(setting => setting.Key).Should().Equal("pull.ff", "pull.rebase", "fetch.prune",
+            "merge.autostash", "rebase.autostash", "rebase.autosquash", "rebase.updaterefs", "rerere.enabled",
+            "rerere.autoupdate", "status.showuntrackedfiles", "core.untrackedcache", "core.fsmonitor");
+        page.Setting("pull.ff").Values.Should().Equal("", "false", "true", "only");
+        page.Setting("status.showuntrackedfiles").Values.Should().Equal("", "no", "normal", "all");
+        page.Setting("core.untrackedcache").HelpUrl.Should()
+            .Be("https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreuntrackedcache");
+    }
 
     [Test]
-    public async Task LoadAsync_should_show_the_levels_states_with_the_keys_in_the_texts()
+    public async Task LoadAsync_should_show_the_levels_values_with_the_keys_in_the_texts()
     {
         _config.Values[(ConfigScope.Global, "pull.rebase")] = "yes";
-        _config.Values[(ConfigScope.Global, "rebase.updaterefs")] = "true";
         _config.Values[(ConfigScope.Global, "rerere.enabled")] = "sometimes";
         GitConfigAdvancedPageViewModel page = new(_config, repositoryPath: null, supportsUpdateRefs: false,
             text => "[t]" + text);
 
         await page.LoadAsync(SettingLevel.Global);
 
-        page.Settings.Select(setting => setting.IsChecked).Should()
-            .Equal(true, false, false, false, false, true, null, false);
-        page.PullRebase.Text.Should().Be("[t]Rebase local branch when pulling (instead of merge) [pull.rebase]");
-        page.RebaseUpdateRefs.IsVisible.Should().BeFalse("upstream hides it for a git without update-refs");
+        (page.Setting("pull.rebase").Value, page.Setting("rerere.enabled").Value, page.Setting("fetch.prune").Value)
+            .Should().Be(("yes", "sometimes", ""));
+        page.Setting("pull.rebase").Text.Should().Be("[t]Rebase local branch when pulling (instead of merge) [pull.rebase]");
+        page.Setting("rebase.updaterefs").IsVisible.Should().BeFalse("upstream hides it for a git without update-refs");
     }
 
     [Test]
-    public async Task SaveAsync_should_write_only_the_changed_states_and_remove_a_key_left_neither()
+    public async Task SaveAsync_should_write_only_the_changed_values_and_remove_an_emptied_key()
     {
         _config.Values[(ConfigScope.Global, "pull.rebase")] = "yes";
         _config.Values[(ConfigScope.Global, "rerere.enabled")] = "true";
         GitConfigAdvancedPageViewModel page = new(_config, null, supportsUpdateRefs: true);
         await page.LoadAsync(SettingLevel.Global);
 
-        page.FetchPrune.IsChecked = true;
-        page.RerereEnabled.IsChecked = null;
+        page.Setting("pull.ff").Value = "only";
+        page.Setting("rerere.enabled").Value = "";
         await page.SaveAsync();
 
-        _config.Writes.Should().Equal(((ConfigScope.Global, "fetch.prune"), "true"), ((ConfigScope.Global, "rerere.enabled"), ""));
+        _config.Writes.Should().Equal(((ConfigScope.Global, "pull.ff"), "only"), ((ConfigScope.Global, "rerere.enabled"), ""));
 
         await page.SaveAsync();
 
@@ -68,13 +69,13 @@ internal sealed class GitConfigAdvancedPageViewModelTests
         GitConfigAdvancedPageViewModel page = new(_config, "repo", supportsUpdateRefs: true);
         await page.LoadAsync(SettingLevel.Local);
 
-        page.MergeAutoStash.IsChecked = false;
+        page.Setting("merge.autostash").Value = "false";
         await page.ChangeLevelAsync(SettingLevel.Effective);
-        page.MergeAutoStash.IsChecked.Should().BeFalse("the effective value is read as not set in the fake");
-        page.PullRebase.IsChecked = true;
+        page.Setting("merge.autostash").Value.Should().BeEmpty("the effective value is read as not set in the fake");
+        page.Setting("pull.rebase").Value = "true";
         await page.ChangeLevelAsync(SettingLevel.Local);
 
-        page.MergeAutoStash.IsChecked.Should().BeFalse("the level keeps what was edited there");
+        page.Setting("merge.autostash").Value.Should().Be("false", "the level keeps what was edited there");
         await page.SaveAsync();
 
         _config.Writes.Should().Equal(((ConfigScope.Local, "merge.autostash"), "false"));

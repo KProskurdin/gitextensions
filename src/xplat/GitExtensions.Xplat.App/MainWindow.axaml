@@ -732,6 +732,7 @@
                               Icon="{local:UpstreamIcon ArchiveRevision}" IsEnabled="{Binding IsCommitSelected}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" />
                     <MenuItem x:Name="GridAdvancedMenuItem" Header="_Advanced" Icon="{local:UpstreamIcon Advanced}" IsVisible="{Binding GridMenu.IsCommitItemVisible}" IsEnabled="{Binding GridMenu.IsCommitItemVisible}">
                       <MenuItem x:Name="EditCommitMenuItem" Command="{Binding RewriteSelectedCommitCommand}" CommandParameter="{x:Static ops:RewriteCommit.Edit}" Header="_Edit commit" />
+                      <MenuItem x:Name="EditCommitWithFixupMenuItem" Command="{Binding EditSelectedCommitWithFixupCommand}" Header="E_dit commit by creating a fixup commit and squash-rebase..." />
                       <MenuItem x:Name="RewordCommitMenuItem" Command="{Binding RewriteSelectedCommitCommand}" CommandParameter="{x:Static ops:RewriteCommit.Reword}" Header="_Reword commit" />
                       <MenuItem x:Name="FixupCommitMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CreateFixupCommit}" Header="Create a _fixup commit..." />
                       <MenuItem x:Name="SquashCommitMenuItem" Command="{Binding RunGridCommand}" CommandParameter="{x:Static core:GridCommand.CreateSquashCommit}" Header="Create a _squash commit..." />

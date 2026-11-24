@@ -116,6 +116,30 @@ public partial class MainWindow
         return true;
     }
 
+    // Upstream's EditCommitWithFixupToolStripMenuItemClick: the commit window making a fixup commit for the commit; once it
+    // is made, the interactive autosquash rebase onto the commit's first parent with git's output shown. Upstream's
+    // commit window is modal; the new shell's is not, so the rebase follows the window's next commit.
+    private async Task<bool> EditCommitWithFixupAsync(string path, string revision, ObjectId firstParent)
+    {
+        GitRevision? commit = await Task.Run(() => GitModules.Open(path).GetRevision(ObjectId.Parse(revision), shortFormat: false));
+        if (OpenCommitWindow() is not { } window)
+        {
+            return false;
+        }
+
+        window.StartSpecialCommit(CommitKind.Fixup, commit?.Subject ?? revision, commit?.Body ?? commit?.Subject ?? revision);
+        window.ViewModel.CommitCreated += OnFixupCommitCreated;
+        window.Closed += (_, _) => window.ViewModel.CommitCreated -= OnFixupCommitCreated;
+        return true;
+
+        void OnFixupCommitCreated(object? sender, EventArgs e)
+        {
+            window.ViewModel.CommitCreated -= OnFixupCommitCreated;
+            Run(() => _actions.RebaseWithOutputAsync(path,
+                RewriteCommit.FixupArguments(firstParent, GitVersion.Current.SupportRebaseMerges)));
+        }
+    }
+
     // Upstream's ResetAnotherBranchToHereToolStripMenuItemClick: FormResetAnotherBranch on the commit, its update-ref with
     // the output shown (which reads the repository again), then the checkout window on the branch when asked.
     private Task<bool> ShowResetAnotherBranchAsync(string path, string revision)
@@ -143,7 +167,8 @@ public partial class MainWindow
 
         HashSet<string> localBranches = [.. _repository.Branches.Where(branch => !branch.IsRemote).Select(branch => branch.Name)];
         GridRefMenus menus = GridMenus.For(row, _repository.CurrentBranch,
-            new HashSet<string>(_repository.Tags.Where(localBranches.Contains)), keep);
+            new HashSet<string>(_repository.Tags.Where(localBranches.Contains)), keep,
+            clicked is null ? null : GridMenus.OnlyOrTracking(clicked));
 
         FillCopyMenu(CopyToClipboardMenuItem, SelectedRevisions, keep);
         GridRefMenuEntries entries = Toolbar.GridRefEntries(menus);

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using GitExtensions.Extensibility.Git;
 using GitExtensions.Xplat.Core.Operations;
 using NUnit.Framework;
 
@@ -72,7 +73,7 @@ internal sealed class CommandLineTests
     [Test]
     public void Upstreams_verbs_should_all_be_known_and_a_path_should_not()
     {
-        CommandLine.Verbs.Should().HaveCount(40).And.Contain(["searchfile", "uninstall", "blamehistory"]);
+        CommandLine.Verbs.Should().HaveCount(41).And.Contain(["searchfile", "uninstall", "blamehistory", "compare"]);
         CommandLine.Verbs.Should().NotContain(["help", "/home/me/repo"]);
     }
 
@@ -98,6 +99,41 @@ internal sealed class CommandLineTests
     public void Outside_a_repository_there_should_be_no_working_directory()
         => CommandLine.WorkingDirectory(CommandLine.Parse(["settings"])!, Path.Combine(_folder, "elsewhere"))
             .Should().BeNull();
+
+    [Test]
+    public void The_working_directory_of_compare_should_be_around_the_current_directory_not_its_revisions()
+        => CommandLine.WorkingDirectory(CommandLine.Parse(["compare", Path.Combine(_folder, "repo", "sub"), "HEAD"])!,
+                Path.Combine(_folder, "elsewhere"))
+            .Should().BeNull("a revision that happens to name a folder is not where the repository is");
+
+    [Test]
+    public void Compare_should_show_a_typed_hash_short_and_a_ref_as_typed()
+    {
+        ObjectId first = ObjectId.Parse("0123456789abcdef0123456789abcdef01234567");
+        ObjectId second = ObjectId.Parse("89abcdef0123456789abcdef0123456789abcdef");
+        Dictionary<string, ObjectId> commits = new()
+        {
+            ["0123456^{commit}"] = first,
+            ["main^{commit}"] = second,
+        };
+
+        (string? error, CompareRevisions? revisions) = CommandLine.Compare(
+            CommandLine.Parse(["compare", "0123456", "main"])!, revision => commits.GetValueOrDefault(revision));
+
+        error.Should().BeNull();
+        revisions.Should().Be(new CompareRevisions(first, second, first.ToShortString(), "main"));
+    }
+
+    [TestCase(new[] { "compare", "main" }, CommandLine.CompareUsage)]
+    [TestCase(new[] { "compare", "main", "nothing" }, "No commit found matching: nothing")]
+    public void Compare_should_print_upstreams_error_for_wrong_arguments(string[] args, string expected)
+    {
+        (string? error, CompareRevisions? revisions) = CommandLine.Compare(CommandLine.Parse(args)!,
+            revision => revision == "main^{commit}" ? ObjectId.Parse("0123456789abcdef0123456789abcdef01234567") : default);
+
+        error.Should().Be(expected);
+        revisions.Should().BeNull();
+    }
 
     [Test]
     public void A_parameter_should_be_the_value_of_its_first_name_equals_argument()

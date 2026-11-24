@@ -198,11 +198,13 @@ internal sealed class GitConfigToolRowsTests
         Dispatcher.UIThread.RunJobs();
 
         Find<TabControl>(settings, "Tabs").SelectedItem.Should().Be(Find<TabItem>(settings, "GitConfigAdvancedTab"));
-        CheckBox pullRebase = Find<CheckBox>(settings, "checkBoxPullRebase");
-        (pullRebase.IsChecked, Find<CheckBox>(settings, "checkBoxReReReEnabled").IsChecked).Should().Be((true, null));
-        pullRebase.Content.Should().Be("Rebase local branch when pulling (instead of merge) [pull.rebase]");
+        ComboBox pullRebase = ValueBox(settings, "pull.rebase");
+        (pullRebase.Text, ValueBox(settings, "rerere.enabled").Text).Should().Be(("yes", "sometimes"));
+        pullRebase.Items.Cast<string>().Should().Equal("", "false", "true", "merges", "interactive");
+        settings.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text).Should()
+            .Contain("Rebase local branch when pulling (instead of merge) [pull.rebase]");
 
-        Find<CheckBox>(settings, "checkBoxFetchPrune").IsChecked = true;
+        ValueBox(settings, "fetch.prune").Text = "true";
         Save(window, settings);
 
         TestAppBuilder.GitConfig.Get(ConfigScope.Global, "fetch.prune").Should().Be("true");
@@ -237,6 +239,10 @@ internal sealed class GitConfigToolRowsTests
 
     private static void Click(Window window, string name)
         => UiClicks.Raise(Find<Button>(window, name), Button.ClickEvent);
+
+    // The Git > Advanced page's value list of a git config key.
+    private static ComboBox ValueBox(Window window, string key)
+        => window.GetLogicalDescendants().OfType<ComboBox>().First(box => Equals(box.Tag, key));
 
     private static T Find<T>(Window window, string name) where T : Control
         => window.FindControl<T>(name) ??

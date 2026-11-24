@@ -46,10 +46,22 @@ public sealed class SplitterTracker
         _splitters.Add(splitter);
         grid.SizeChanged += (_, _) =>
         {
-            if (!splitter.Restored && Length(splitter) > 0)
+            if (Length(splitter) <= 0)
+            {
+                return;
+            }
+
+            if (!splitter.Restored)
             {
                 splitter.Restored = true;
                 Restore(splitter);
+            }
+            else if (splitter.IsRestorePending)
+            {
+                // Upstream's RestorePendingSplitters: once, at the window's next size (a maximized window can be laid out
+                // at its normal size first).
+                splitter.IsRestorePending = false;
+                Restore(splitter, keepPending: false);
             }
         };
     }
@@ -68,8 +80,9 @@ public sealed class SplitterTracker
         }
     }
 
-    // Upstream's RestoreFromSettings: the distance for the size and DPI now, then the collapsed state.
-    private void Restore(Splitter splitter)
+    // Upstream's RestoreFromSettings: the distance for the size and DPI now, then the collapsed state. A stored distance
+    // that does not fit the size now is kept for one more try (upstream's IsRestorePending), not dropped.
+    private void Restore(Splitter splitter, bool keepPending = true)
     {
         SplitterSettings stored = _store.Load(_form, splitter.Name);
         double scale = Scale(splitter.Grid);
@@ -78,6 +91,10 @@ public sealed class SplitterTracker
             { } pixels)
         {
             SetDistance(splitter, pixels / scale);
+        }
+        else
+        {
+            splitter.IsRestorePending = keepPending && stored is { Size: > 0, Distance: > 0 };
         }
 
         if (splitter.Panel1Collapsed is { } collapsed && stored.Panel1Collapsed is { } wasCollapsed
@@ -145,6 +162,8 @@ public sealed class SplitterTracker
         (Func<bool> Get, Action<bool> Set)? Panel1Collapsed)
     {
         public bool Restored { get; set; }
+
+        public bool IsRestorePending { get; set; }
     }
 }
 

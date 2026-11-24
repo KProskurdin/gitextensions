@@ -599,6 +599,12 @@ public partial class MainWindow : Window, ISettingsWindowHost
                     await Task.Delay(TimeSpan.FromMilliseconds(100));
                 }
 
+                // The Git > Advanced page reads its values from git once git is found.
+                for (int wait = 0; wait < 100 && !settings.ViewModel.GitConfigAdvancedPage.IsLoaded; wait++)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
+                }
+
                 await Screenshot.SaveAsync(settings, screenshot);
                 settings.Close();
                 Close();
@@ -1860,7 +1866,16 @@ public partial class MainWindow : Window, ISettingsWindowHost
     private MergeBranchWindow NewMergeWindow(string path, string? branch)
         => new(path, _actions, _preferences, branch,
             (repository, merge) => WithScriptsAsync(repository, ScriptEvent.BeforeMerge, ScriptEvent.AfterMerge, merge),
-            ShowConflicts);
+            ShowConflicts, StartCommitWithMessage);
+
+    // Upstream's StartCommitDialog(owner, commitMessage): the commit window, with the message when one is given.
+    private void StartCommitWithMessage(string? message)
+    {
+        if (OpenCommitWindow() is { } window && message is not null)
+        {
+            window.ViewModel.Message = message;
+        }
+    }
 
     // Upstream's left panel "Rebase current branch on this branch...": the rebase window on it (StartRebaseDialog).
     private void RebaseOnSelectedBranch() =>

@@ -308,7 +308,7 @@ public sealed class GitCommitHistory : ICommitHistory
         IReadOnlyList<string> parents, string filePath, int line)
         => Task.Run(() =>
         {
-            GitRevision revision = new(ObjectId.Parse(hash)) { ParentIds = [.. parents.Select(ObjectId.Parse)] };
+            GitRevision revision = new(ObjectId.Parse(hash)) { ParentIds = [.. parents.Select(id => ObjectId.Parse(id))] };
             return new GitUI.UserControls.GitBlameParser(() => CreateModule(repositoryPath))
                 .GetOriginalLineInPreviousCommit(revision, filePath, line);
         });
@@ -456,7 +456,7 @@ public sealed class GitCommitHistory : ICommitHistory
                 IReadOnlyDictionary<string, string> untrackedIds =
                     StashRows.UntrackedCommits(stashRows, AppSettings.MaxStashesWithUntrackedFiles);
                 Dictionary<string, CommitRow> untrackedRows = reader
-                    .GetRevisionsFromList([.. untrackedIds.Values.Distinct().Select(ObjectId.Parse)], CancellationToken.None)
+                    .GetRevisionsFromList([.. untrackedIds.Values.Distinct().Select(id => ObjectId.Parse(id))], CancellationToken.None)
                     .Select(ToRow)
                     .ToDictionary(row => row.Hash);
                 untrackedByStash = untrackedIds

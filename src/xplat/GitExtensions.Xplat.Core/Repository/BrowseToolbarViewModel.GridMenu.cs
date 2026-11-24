@@ -137,6 +137,20 @@ public sealed partial class BrowseToolbarViewModel
             RewriteCommit.Arguments(parent, GitVersion.Current.SupportRebaseMerges), command));
     }
 
+    // Upstream's EditCommitWithFixupToolStripMenuItemClick: a fixup commit for the selected commit, then an autosquash
+    // rebase onto its first parent; nothing for a commit without one.
+    [RelayCommand]
+    private void EditSelectedCommitWithFixup()
+    {
+        if (OpenPath is not { } path || _commits.Selected is not { } row || ArtificialCommits.IsArtificial(row.Hash)
+            || row.ParentHashes is not [{ } first, ..] || !ObjectId.TryParse(first, out ObjectId parent) || parent.IsZero)
+        {
+            return;
+        }
+
+        Run(() => BrowseWindow.EditCommitWithFixupAsync(path, row.Hash, parent));
+    }
+
     [RelayCommand]
     private void RewriteCommitHelp() =>
         BrowseWindow.ShowUserManual(RewriteCommit.HelpSubfolder, RewriteCommit.HelpAnchor);

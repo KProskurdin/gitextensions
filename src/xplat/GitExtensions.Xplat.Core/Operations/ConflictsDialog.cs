@@ -70,6 +70,9 @@ public sealed class ConflictsDialog
     public const string DeleteFileButtonText = "Delete file";
     public const string KeepModifiedButtonText = "Keep modified";
     public const string KeepBaseButtonText = "Keep base file";
+    public const string DiffBaseWithModifiedButtonText = "Diff base with modified";
+    public const string DiffBaseWithModifiedButtonDescription =
+        "Opens the difftool. This dialog stays open, so solve conflict afterwards.";
     public const string SolveMergeConflictApplyToAll = "Apply to '{0}' and {1} other file(s)";
     public const string SolveMergeConflictCaption = "Solve merge conflict";
     public const string ChooseLocalRebaseText = "Choose local/current (theirs)";
@@ -89,6 +92,7 @@ public sealed class ConflictsDialog
     public const string ChooseBaseFileFailed = "Choose base file failed.";
     public const string ChooseLocalFileFailed = "Choose local file failed.";
     public const string ChooseRemoteFileFailed = "Choose remote file failed.";
+    public const string ChooseFileFailedDetailFormat = "File: {0}";
     public const string ErrorStartingMergetool = "Error starting mergetool: {0}";
     public const string StageFilename = "Stage '{0}'";
     public const string AskMergeConflictSolved = "Is the merge conflict solved?";

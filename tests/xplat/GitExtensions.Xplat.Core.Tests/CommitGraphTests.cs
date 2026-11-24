@@ -151,7 +151,7 @@ internal sealed class CommitGraphTests
                      "MergeGraphLanesHavingCommonParent", "RenderGraphWithDiagonals", "StraightenGraphDiagonals",
                  ])
         {
-            settings.Should().Contain($"nameof({name}), true)");
+            settings.Should().Contain($"nameof({name}), defaultValue: true)");
         }
 
         foreach (string label in (string[])[

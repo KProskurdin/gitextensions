@@ -69,6 +69,27 @@ internal sealed class MergeBranchWindowTests
     }
 
     [AvaloniaTest]
+    [TestCase(false, "Squashed feature")]
+    [TestCase(true, null)]
+    public void A_squash_merge_offers_the_commit_window_unless_told_not_to_commit(bool noCommit, string? expected)
+    {
+        List<string?> commits = [];
+        MergeBranchWindow merge = Open("feature", commits.Add);
+        Find<CheckBox>(merge, "AdvancedCheck").IsChecked = true;
+        Find<CheckBox>(merge, "SquashCheck").IsChecked = true;
+        Find<CheckBox>(merge, "NoCommitCheck").IsChecked = noCommit;
+        Find<CheckBox>(merge, "AddMergeMessageCheck").IsChecked = true;
+        Find<TextBox>(merge, "MergeMessageBox").Text = "Squashed feature";
+
+        Click(merge, "MergeButton");
+
+        WaitUntil(() => !merge.IsVisible);
+        _repo.Run("diff", "--cached", "--name-only").Trim().Should().Be("f.txt");
+        string?[] expectedCommits = expected is null ? [] : [expected];
+        commits.Should().Equal(expectedCommits);
+    }
+
+    [AvaloniaTest]
     public void A_merge_that_stops_on_conflicts_offers_the_conflicts_window()
     {
         File.WriteAllText(Path.Combine(_repo.Path, "f.txt"), "base");
@@ -94,12 +115,12 @@ internal sealed class MergeBranchWindowTests
         TestAppBuilder.Preferences.ResetConfirmations();
     }
 
-    private MergeBranchWindow Open(string? branch)
+    private MergeBranchWindow Open(string? branch, Action<string?>? startCommit = null)
     {
         Window owner = new();
         owner.Show();
         MergeBranchWindow merge = new(_repo.Path, new RepositoryOperationsViewModel(new GitOperations()),
-            TestAppBuilder.Preferences, branch, (_, run) => run(), () => { });
+            TestAppBuilder.Preferences, branch, (_, run) => run(), () => { }, startCommit);
         _ = merge.ShowDialog<bool>(owner);
         WaitUntil(() => merge.MergeLoaded.IsCompleted);
         return merge;

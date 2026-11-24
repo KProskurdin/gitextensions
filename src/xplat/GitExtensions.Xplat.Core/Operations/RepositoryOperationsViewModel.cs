@@ -515,6 +515,17 @@ public sealed class RepositoryOperationsViewModel : ObservableObject
                 _operations.RunRebaseAsync(repositoryPath, arguments, editor, output, cancellation, sequenceEditor));
     }
 
+    /// <summary>
+    ///  An interactive rebase with git's output shown, its todo list in the configured editor (upstream's
+    ///  <c>FormProcess</c> on a rebase command).
+    /// </summary>
+    public Task<bool> RebaseWithOutputAsync(string repositoryPath, ArgumentString arguments)
+    {
+        string? editor = EditorCommand;
+        return RunRemoteAsync("git rebase", "Rebased", repositoryPath,
+            (output, cancellation) => _operations.RunRebaseAsync(repositoryPath, arguments, editor, output, cancellation));
+    }
+
     public Task<bool> AbortRebaseAsync(string repositoryPath)
         => RunAsync("Rebase aborted", repositoryPath, () => _operations.AbortRebaseAsync(repositoryPath));
 

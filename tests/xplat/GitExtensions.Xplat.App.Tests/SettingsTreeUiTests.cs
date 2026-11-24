@@ -79,6 +79,20 @@ internal sealed class SettingsTreeUiTests
     }
 
     [AvaloniaTest]
+    public void The_search_box_finds_a_git_advanced_setting_before_its_page_was_shown()
+    {
+        SettingsWindow settings = OpenSettings();
+        TextBox search = Find<TextBox>(settings, "SettingsSearchBox");
+
+        search.Text = "Fast-forward behavior";
+        Dispatcher.UIThread.RunJobs();
+        PressEnter(search);
+
+        Find<TabControl>(settings, "Tabs").SelectedItem.Should().Be(Find<TabItem>(settings, "GitConfigAdvancedTab"));
+        settings.Close();
+    }
+
+    [AvaloniaTest]
     public void The_search_box_marks_the_pages_with_the_text_and_enter_shows_them_in_turn()
     {
         SettingsWindow settings = OpenSettings();

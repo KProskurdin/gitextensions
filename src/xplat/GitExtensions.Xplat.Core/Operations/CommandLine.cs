@@ -1,6 +1,13 @@
+using System.Globalization;
 using GitCommands;
+using GitExtensions.Extensibility.Git;
 
 namespace GitExtensions.Xplat.Core.Operations;
+
+/// <summary>
+///  The commits of upstream's <c>compare first second</c> verb: BASE and Compare, with the text shown for each.
+/// </summary>
+public sealed record CompareRevisions(ObjectId First, ObjectId Second, string FirstDisplay, string SecondDisplay);
 
 /// <summary>
 ///  A command line with one of upstream's verbs (<c>GitUICommands.RunCommand</c>): the verb, the arguments after it, and
@@ -63,6 +70,7 @@ public static class CommandLine
         cleanup
         clone [path]
         commit [--quiet] [--message commitmessage]
+        compare first second
         difftool filename
         filehistory filename
         fileeditor filename
@@ -96,6 +104,21 @@ public static class CommandLine
 
     private const string OptionPrefix = "--";
 
+    /// <summary>
+    ///  Upstream's <c>compare first second</c> verb (<c>RunCompareCommand</c>).
+    /// </summary>
+    public const string CompareVerb = "compare";
+
+    /// <summary>
+    ///  Upstream's <c>RunCompareCommand</c> usage line.
+    /// </summary>
+    public const string CompareUsage = "Usage: compare <first> <second>";
+
+    /// <summary>
+    ///  Upstream's <c>RunCompareCommand</c> error for a revision that is not a commit.
+    /// </summary>
+    public const string NoCommitFound = "No commit found matching: {0}";
+
     // Upstream's checks before a verb runs: these need a file after them.
     private static readonly Dictionary<string, (string Text, string Caption)> _needsFile = new(StringComparer.Ordinal)
     {
@@ -113,7 +136,7 @@ public static class CommandLine
     public static IReadOnlySet<string> Verbs { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "about", "add", "addfiles", "apply", "applypatch", "blame", "blamehistory", "branch", "browse", "checkout",
-        "checkoutbranch", "checkoutrevision", "cherry", "cleanup", "clone", "commit", "difftool", "filehistory",
+        "checkoutbranch", "checkoutrevision", "cherry", "cleanup", "clone", "commit", "compare", "difftool", "filehistory",
         "fileeditor", "formatpatch", "gitignore", "init", "merge", "mergeconflicts", "mergetool", "openrepo", "pull",
         "push", "rebase", "remotes", "revert", "reset", "searchfile", "settings", "stash", "synchronize", "tag",
         "viewdiff", "viewpatch", "uninstall",
@@ -142,7 +165,9 @@ public static class CommandLine
         string? workingDir = null;
 
         // .NET once unescaped a quote at the end of an argument badly (upstream's issue 3489).
-        if (request.Argument(0)?.TrimEnd('"') is { } argument && !string.IsNullOrWhiteSpace(argument))
+        // The arguments of "compare" are revisions, not paths: its repository is found from the current directory.
+        if (request.Verb != CompareVerb && request.Argument(0)?.TrimEnd('"') is { } argument
+            && !string.IsNullOrWhiteSpace(argument))
         {
             string? folder = Directory.Exists(argument) ? argument : Path.GetDirectoryName(argument);
             workingDir = string.IsNullOrEmpty(folder) ? null : GitModule.TryFindGitWorkingDir(folder);
@@ -153,6 +178,36 @@ public static class CommandLine
         }
 
         return workingDir ?? GitModule.TryFindGitWorkingDir(currentDirectory);
+    }
+
+    /// <summary>
+    ///  Upstream's <c>RunCompareCommand</c> checks: exactly two revisions, each a commit; the error for the console, or the
+    ///  two commits with the text shown for each (a hash typed is shown short, a ref name or expression as typed).
+    /// </summary>
+    /// <param name="revParse">Upstream's <c>IGitModule.RevParse</c>: the object, or zero when there is none.</param>
+    public static (string? Error, CompareRevisions? Revisions) Compare(CommandLineRequest request,
+        Func<string, ObjectId> revParse)
+    {
+        if (request.Arguments.Count != 2)
+        {
+            return (CompareUsage, null);
+        }
+
+        string first = request.Arguments[0];
+        string second = request.Arguments[1];
+
+        // "^{commit}" makes git verify the revision, even a full hash, and rejects objects that are not commits.
+        ObjectId firstId = revParse($"{first}^{{commit}}");
+        ObjectId secondId = revParse($"{second}^{{commit}}");
+        if (firstId.IsZero || secondId.IsZero)
+        {
+            return (string.Format(CultureInfo.CurrentCulture, NoCommitFound, firstId.IsZero ? first : second), null);
+        }
+
+        return (null, new CompareRevisions(firstId, secondId, Display(first, firstId), Display(second, secondId)));
+
+        static string Display(string revision, ObjectId id)
+            => id.ToString().StartsWith(revision, StringComparison.OrdinalIgnoreCase) ? id.ToShortString() : revision;
     }
 
     /// <summary>

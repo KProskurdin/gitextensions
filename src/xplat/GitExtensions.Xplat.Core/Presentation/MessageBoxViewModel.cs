@@ -139,6 +139,13 @@ public sealed partial class MessageBoxViewModel : DialogViewModel
     {
         if (choice.TaskButton is { } taskButton)
         {
+            // As WinForms' task dialog: the button's Click, then the dialog closes unless the button keeps it open.
+            taskButton.PerformClick();
+            if (!taskButton.AllowCloseDialog)
+            {
+                return;
+            }
+
             ChosenButton = taskButton;
             Host.Close(null);
             return;

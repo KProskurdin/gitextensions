@@ -94,6 +94,27 @@ internal sealed class GridAdvancedMenuTests
         window.Close();
     }
 
+    [AvaloniaTest]
+    public void Edit_commit_with_fixup_squashes_the_fixup_commit_into_the_selected_commit()
+    {
+        File.WriteAllText(Path.Combine(_repo.Path, "b.txt"), "fixed");
+        _repo.Run("add", "b.txt");
+        MainWindow window = OpenWindow();
+        SelectCommit(window, "second");
+
+        Click(Find<MenuItem>(window, "EditCommitWithFixupMenuItem"));
+
+        CommitWindow commit = WaitForCommitWindow(window);
+        WaitUntil(() => Find<TextBox>(commit, "CommitMessageBox").Text == "fixup! second");
+        UiClicks.Raise(Find<Button>(commit, "CommitButton"), Button.ClickEvent);
+
+        WaitUntil(() => _repo.Run("log", "--format=%s").Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .SequenceEqual(["third", "second", "first"]) && !window.IsBusy);
+        _repo.Run("show", "--name-only", "--format=", "HEAD~1").Should().Contain("b.txt");
+        commit.Close();
+        window.Close();
+    }
+
     [Test]
     public async Task The_macOS_sequence_editor_turns_only_the_first_pick_into_the_command()
     {

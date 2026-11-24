@@ -47,6 +47,24 @@ internal sealed class SplitterTrackerTests
     }
 
     [AvaloniaTest]
+    public void A_stored_distance_too_large_for_the_first_layout_is_restored_once_the_window_is_enlarged()
+    {
+        TestAppBuilder.Splitters.Store(Form, "columns", new SplitterSettings(1200, 96, 900, null, null));
+        Grid columns = new() { ColumnDefinitions = new ColumnDefinitions("200,6,*") };
+        Window window = new() { Width = 600, Height = 400, Content = columns };
+        SplitterTracker tracker = new(window, TestAppBuilder.Splitters, Form);
+        tracker.Add("columns", columns, rows: false, SplitterFixedPanel.Panel1);
+        window.Show();
+        WaitUntil(() => columns.Bounds.Width > 0);
+        columns.ColumnDefinitions[0].ActualWidth.Should().Be(200, "900 does not fit a 600 wide window");
+
+        window.Width = 1200;
+
+        WaitUntil(() => columns.ColumnDefinitions[0].ActualWidth == 900);
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void The_browse_window_restores_a_hidden_left_panel_and_keeps_its_width()
     {
         TestAppBuilder.Splitters.Store("FormBrowse", "MainSplitContainer",

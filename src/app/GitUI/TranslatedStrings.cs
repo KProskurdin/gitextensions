@@ -40,6 +40,7 @@ internal sealed class TranslatedStrings : Translate
     private readonly TranslationString _stashesText = new("Stashes");
     private readonly TranslationString _submodulesText = new("Submodules");
     private readonly TranslationString _worktreesText = new("Worktrees");
+    private readonly TranslationString _bisectText = new("Bisect");
     private readonly TranslationString _bodyNotLoaded = new("\n\nFull message text is not present in older commits.\nSelect this commit to populate the full message.");
     private readonly TranslationString _searchingFor = new("Searching for: ");
     private readonly TranslationString _loadingDataText = new("Loading data...");
@@ -148,6 +149,7 @@ the last selected commit.");
     private readonly TranslationString _deleteWorktreeConfirmation = new("Are you sure you want to delete the worktree at {0}?");
     private readonly TranslationString _deleteWorktreeCaption = new("Delete worktree");
     private readonly TranslationString _deleteWorktreeFailed = new("Failed to delete worktree: {0}");
+    private readonly TranslationString _deleteMainWorktreeRefused = new("{0} is the main worktree of the repository.\n\nDeleting it would delete the repository itself, with all of its branches and stashes, so git refuses to remove it as well.");
 
     private readonly TranslationString _createWorktree = new("Create worktree...");
     private readonly TranslationString _pruneWorktrees = new("Prune worktrees");
@@ -247,6 +249,7 @@ Copy error details to clipboard?");
     public static string Stashes => _instance.Value._stashesText.Text;
     public static string Submodules => _instance.Value._submodulesText.Text;
     public static string Worktrees => _instance.Value._worktreesText.Text;
+    public static string Bisect => _instance.Value._bisectText.Text;
 
     public static string BodyNotLoaded => _instance.Value._bodyNotLoaded.Text;
     public static string SearchingFor => _instance.Value._searchingFor.Text;
@@ -373,6 +376,7 @@ Copy error details to clipboard?");
     public static string DeleteWorktreeConfirmation => _instance.Value._deleteWorktreeConfirmation.Text;
     public static string DeleteWorktreeCaption => _instance.Value._deleteWorktreeCaption.Text;
     public static string DeleteWorktreeFailed => _instance.Value._deleteWorktreeFailed.Text;
+    public static string DeleteMainWorktreeRefused => _instance.Value._deleteMainWorktreeRefused.Text;
 
     public static string CreateWorktree => _instance.Value._createWorktree.Text;
     public static string PruneWorktrees => _instance.Value._pruneWorktrees.Text;
