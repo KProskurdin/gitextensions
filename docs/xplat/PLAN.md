@@ -19,11 +19,11 @@ Make Git Extensions run on Windows, Linux and macOS, while the fork keeps mergin
 
 | Area | State | Evidence |
 |---|---|---|
-| Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) as `net10.0` | Done | `src/xplat/*` shadow projects. Every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8). Windows 2026-11-22: `GitCommands.Tests` 3500 of 3502 (1 skipped, 1 known Windows failure in `AsyncLoaderTests`). macOS 2026-11-20: 3823 pass, 201 ignored with reasons |
-| Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason. Windows 2026-11-22: core 1527, app 885, all passing. Linux (WSL) 2026-11-22: core 1533, app 882 (one test fixed after the run), shadow projects 3823 pass, 0 fail. macOS 2026-11-20: core 1468, app 876, all passing |
+| Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) as `net10.0` | Done | `src/xplat/*` shadow projects. Every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8). On the tree merged with upstream `bd69886b7`, 2026-11-24: Windows `GitCommands.Tests` 3565 of 3567 (1 skipped, 1 known Windows failure in `AsyncLoaderTests`), the other 11 projects pass; Linux (WSL) `GitCommands.Tests` 3424 pass, 174 ignored with reasons. macOS 2026-11-20 (before the merge): 3823 pass, 201 ignored with reasons |
+| Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason, all based on `bd69886b7`. Windows 2026-11-24 (merged tree): core 1530, app 891, all passing. Linux (WSL) 2026-11-22: core 1533, app 882. macOS 2026-11-20: core 1468, app 876, all passing |
 | Upstream files | Clean but for the files in section 5 | The 13 upstream workflows are back to upstream's content; `.gitignore` (one line) and `CLAUDE.md` (fork file) are the changes at upstream paths |
 | Seams | 9 | Section 5 |
-| Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `bd69886b7` on Windows, 2026-11-24 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
+| Fork workflow | Set up but for CI | `master` mirrors `upstream/master` (moved by the user); `bd69886b7` merged into `feature/cross-os-ui` on 2026-11-24 (`c387592b0`), the fork base in `SYNC-LOG.md`; `port-drift.sh` and `xplat-drift.sh` report nothing open |
 | CI | **Off on purpose** since 2026-11-08 | `.github/workflows/xplat.yml` is commented out until the user sets CI up by hand (question 16, decided 2026-11-24). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; last run 2026-11-22) |
 
 The shared core is portable. The UI is where upstream changes most often, which is why the plan keeps the WinForms UI
@@ -132,13 +132,12 @@ by an additive file.
 Rule: a new seam needs a line in this table, a reason, and a note on whether it is an upstream
 candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on Linux too.
 
-*Status 2026-11-20 (checked on macOS against `upstream/master` `c584b9740`, 2026-11-06):* the seams patch 4 upstream files
-with 11 `XplatPatch` items (S1 4 and S2 1 in `AppSettings.cs`, S4 3 in `PathEqualityComparer.cs`, S3 1 in `DebugHelpers.cs`,
-S8 2 anchor-only in `ManagedExtensibility.cs`), and every anchor is still found there. Of the 4 files only `AppSettings.cs`
-changed upstream since the fork base `0174ba1cc` (159 lines, none of them an anchor), so S1 and S2 are the seams most likely to
-need work after a merge. Patches never cause a git conflict; a moved anchor fails the build instead. *2026-11-24:* S9 adds
-2 items in a fifth file, the Azure DevOps plugin's `ApiClient.cs`, unchanged upstream since the fork base up to
-`bd69886b7` (2026-11-24), so 13 items in all.
+*Status 2026-11-24 (fork base `bd69886b7`, merged that day):* the seams patch 5 upstream files with 13 `XplatPatch` items
+(S1 4 and S2 1 in `AppSettings.cs`, S4 3 in `PathEqualityComparer.cs`, S3 1 in `DebugHelpers.cs`, S8 2 anchor-only in
+`ManagedExtensibility.cs`, S9 2 in the Azure DevOps plugin's `ApiClient.cs`), and every anchor is found: the merged tree
+builds. The merge brought upstream's `Setting<T>` refactor of `AppSettings.cs` (`c249cc986`), which left the anchors in
+place; S1 and S2 stay the seams most likely to need work after a merge. Patches never cause a git conflict; a moved anchor
+fails the build instead.
 
 How to have fewer, in order of effect:
 
@@ -403,10 +402,8 @@ sync that was done during the milestone.
 
 ### 12.1 User actions
 
-1. Decide whether to merge `upstream/master` (`verify-upstream.sh` passed against `bd69886b7` on 2026-11-24; `SYNC-LOG.md`
-   lists what is due at the merge) and move `master`. Record the merge in `SYNC-LOG.md`.
-2. Commit the work in the working tree.
-3. Set CI up by hand, when wanted (question 16; `MACOS.md`, MAC1). It is off on purpose until then.
+1. Set CI up by hand, when wanted (question 16; `MACOS.md`, MAC1). It is off on purpose until then.
+2. The next upstream sync, when wanted (section 11.3; overdue after 3 months, i.e. after 2027-02-24).
 
 ### 12.2 Checks not run yet
 
@@ -415,7 +412,8 @@ sync that was done during the milestone.
 2. **Linux at the screen:** the suites pass in WSL (2026-11-22), and the packaged app starts under WSLg and shows the
    browse and settings windows (2026-11-24, by the screenshot aid, see 12.3). Not done by a person: clicking through the
    app, "New instance", and Git config's own editor started from the AppImage.
-3. **On a Mac, at the screen:** `MACOS.md`, section 10.
+3. **On a Mac, at the screen:** `MACOS.md`, section 10. Before that, on the tree merged with `bd69886b7`: the core, app
+   and shadow suites (last Mac run 2026-11-20, before the merge).
 4. **Reference pictures** (question 14). Taken 2026-11-24 on Windows by `tests/xplat/reference-pictures.ps1` from
    upstream's WinForms app built from this tree (Release, run portable on a demo repository, so no user setting is
    touched): 49 pictures in each theme (`<form>[-<page>].png`, `-dark` for the dark theme) in
@@ -423,12 +421,27 @@ sync that was done during the milestone.
    dialogs. Rerun the script after an upstream merge that changes these forms. Taken by hand the same day, as the script
    cannot: the output window (`FormProcess.png`: a scripted click does not run a dialog's command, and on this machine a
    remote operation stops at Pageant first) and a plugin's settings page (`FormSettings-Plugins-Deleteobsoletebranches.png`:
-   the `settings` verb loads no plugin, so Settings was opened from a browse window).
+   the `settings` verb loads no plugin, so Settings was opened from a browse window). **Due again:** the merge of
+   `bd69886b7` changed forms the pictures show (`FormCommit`, `FormStash`, `FormResolveConflicts`, the Git > Advanced
+   settings page, the revision grid's menu, the conflict banner).
 5. **On Windows, at the screen.** Done 2026-11-24 by the user, all passing: the Shell extension page and the Explorer
    menu; the Checklist's Repair buttons for git, the linux tools and PuTTY (not the install folder's, which would point
    upstream's `InstallDir` at this app; side by side, question of 2026-11-24 in M7); the PuTTY windows against a real server
    and Pageant; Narrator on the tool buttons and the lists' rows; both apps showing the same settings; "Open local
    repository", the empty repository panel, and the output window's input box with plink's host key question.
+6. **On Windows, at the screen, the features ported from `bd69886b7`** (2026-11-24; the headless tests cover their logic
+   only, and computer use was not available to run them):
+   1. Merge branches with "Squash commits" on and "Do not commit" off: the commit window opens with the merge message.
+   2. Grid menu > Advanced > "Edit commit by creating a fixup commit and squash-rebase...": committing the staged change
+      runs the rebase, which folds it into the selected commit.
+   3. A conflict where one side deleted the file, then Merge: the question has "Diff base with modified", which opens
+      the difftool and leaves the question open.
+   4. A splitter moved in a maximized commit window is where it was when the window opens maximized again.
+   5. `compare <first> <second>` from the command line opens the diff window on the two commits.
+   Done: the Git > Advanced page in the real app (screenshot aid, `XPLAT_SCREENSHOT_WINDOW=settings:Fast-forward
+   behavior`), which found two defects, both fixed: the settings search did not find the page before it was shown, and
+   its values waited for the Config page's tool lists (about 25 seconds on this machine).
+7. **Linux (WSL), on the merged tree:** the core and app suites (only `GitCommands.Tests` ran there after the merge).
 
 ### 12.3 M7, packaging and distribution
 

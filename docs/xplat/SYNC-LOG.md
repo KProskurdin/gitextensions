@@ -21,10 +21,8 @@ and the items still open; the full entries before that are in git history.
 
 ## Open from the last merge
 
-1. macOS: the shadow and fork suites have not run on the merged tree yet.
-2. At the screen: the squash merge's commit window, "Edit commit by fixup", the conflicts window's diff link, and a
-   maximized commit window's splitters (the headless tests cannot maximize). The Git > Advanced page was checked in the
-   real app on Windows (2026-11-24, `XPLAT_SCREENSHOT_WINDOW=settings:Fast-forward behavior`).
+Kept in `PLAN.md` section 12.2 (items 3, 4, 6 and 7): the suites on macOS and Linux, the reference pictures, and the
+ported features at the screen.
 
 ## Checks
 
