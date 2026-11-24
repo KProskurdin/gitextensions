@@ -12,7 +12,7 @@ and the items still open; the full entries before that are in git history.
 | Item | Value |
 |---|---|
 | Fork base (last upstream commit the fork contains) | `0174ba1cc` fix(diff): do not run git after repo closed |
-| Upstream `master` at last check | `17213fe3f` (2026-11-20, 73 commits past the fork base) |
+| Upstream `master` at last check | `bd69886b7` (2026-11-24, 76 commits past the fork base, 210 files changed) |
 | Fork changes in upstream folders (`src/app`, `src/plugins`, `tests/app`, `setup`, `eng`) | 0 |
 | Changes at other upstream paths | `.gitignore` (one line) and `CLAUDE.md`; `PLAN.md` section 5 |
 | Seams (PLAN.md section 5) | 9 |
@@ -31,7 +31,16 @@ Upstream tests that need fork work once the merge brings their commits in:
    (three pass Windows paths; one holds a file open to make a folder undeletable, which macOS and Linux allow). Write their
    POSIX counterparts once `TryRemoveWorktree` is in the fork.
 4. The 8 `RecentRepoSplitterTests` methods of `c584b9740` and earlier (Windows path inputs only) are in the skip list
-   already; nothing to do beyond confirming they still compile.
+   already; nothing to do beyond confirming they still compile. `e2bd84b07` ("distinguish filesystems") changed the class
+   again: check its new cases on Linux.
+5. New `GitModuleTests` methods (`1a80a42d3`, `a816fb0cd`, `656a626c1`, `afc512395`): run them on Linux and macOS.
+   `IsGitFsMonitorDaemon_should_return_expected` passes command lines with `C:\...\git.exe`: skip it off Windows with a
+   reason if it parses paths with the OS's separator, or leave it if it only matches text.
+6. The 16 ported files with upstream changes since their row's base (`port-drift.sh` on `bd69886b7`): port each change or
+   record why it is skipped (`PLAN.md` 11.3, step 7). Most are `c249cc986` (AppSettings' `Setting<T>` refactor) and
+   features such as "Edit commit by fixup commit & rebase" (`af8e3a7e5`), the diff dialog for two revisions
+   (`2dc467adf`), `.webp` and `.avif` images (`e2a7dc3ab`), the conflicts window's changes (`8622a8464`, `656a626c1`) and
+   two new Git > Advanced settings (`1586a6db1`, `c422c7771`).
 
 ## Checks
 
@@ -44,3 +53,4 @@ Upstream tests that need fork work once the merge brings their commits in:
 | 2026-11-13 | none | none | Measure 11.2 widened to every path: the earlier "upstream files modified 0" missed the commented-out workflows (since restored) and `.gitignore` | `PLAN.md` section 5, "Files outside the fork folders" |
 | 2026-11-20 | `17213fe3f` (73 ahead) | macOS | `verify-upstream.sh` pass after 4 skips: 12 of 12 projects, `GitCommands.Tests` 3421 passed, 174 skipped | The 4 `TryRemoveWorktree` tests skipped (item 3 above) |
 | 2026-11-24 | `afc512395` (this Windows clone; `17213fe3f` not fetched here): `ApiClient.cs` unchanged since the fork base | Windows | Azure DevOps plugin tests 60 of 60 | Seam S9 (Azure DevOps credentials off Windows); seam count 9 |
+| 2026-11-24 | `bd69886b7` (76 ahead) | Windows | `verify-upstream.sh` pass: 12 projects build; 11 pass, `GitCommands.Tests` 3565 of 3567 (1 skipped, 1 failed: the known `AsyncLoaderTests` failure on Windows). Every seam anchor found; `ApiClient.cs` (S9) unchanged. `port-drift.sh`: 147 rows, 16 with upstream changes (item 6 above). `xplat-drift.sh`: 5 mirrored classes changed (items 1, 2, 4, 5 above, and `ExecutableTests`) | `XplatLinuxExecutableTests` accepts a `TaskCanceledException` as upstream's `92716105e` does. The run needed `core.longpaths` for upstream's long test file names (passed by `GIT_CONFIG_COUNT`), and left its worktree folder (a process held a file), removed by hand |

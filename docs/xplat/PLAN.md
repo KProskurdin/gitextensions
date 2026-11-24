@@ -23,7 +23,7 @@ Make Git Extensions run on Windows, Linux and macOS, while the fork keeps mergin
 | Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason. Windows 2026-11-22: core 1527, app 885, all passing. Linux (WSL) 2026-11-22: core 1533, app 882 (one test fixed after the run), shadow projects 3823 pass, 0 fail. macOS 2026-11-20: core 1468, app 876, all passing |
 | Upstream files | Clean but for the files in section 5 | The 13 upstream workflows are back to upstream's content; `.gitignore` (one line) and `CLAUDE.md` (fork file) are the changes at upstream paths |
 | Seams | 9 | Section 5 |
-| Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `17213fe3f` on macOS, 2026-11-20 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
+| Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `bd69886b7` on Windows, 2026-11-24 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
 | CI | **Off on purpose** since 2026-11-08 | `.github/workflows/xplat.yml` is commented out until the user sets CI up by hand (question 16, decided 2026-11-24). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; last run 2026-11-22) |
 
 The shared core is portable. The UI is where upstream changes most often, which is why the plan keeps the WinForms UI
@@ -138,7 +138,7 @@ S8 2 anchor-only in `ManagedExtensibility.cs`), and every anchor is still found 
 changed upstream since the fork base `0174ba1cc` (159 lines, none of them an anchor), so S1 and S2 are the seams most likely to
 need work after a merge. Patches never cause a git conflict; a moved anchor fails the build instead. *2026-11-24:* S9 adds
 2 items in a fifth file, the Azure DevOps plugin's `ApiClient.cs`, unchanged upstream since the fork base up to
-`afc512395` (not checked against `17213fe3f`), so 13 items in all.
+`bd69886b7` (2026-11-24), so 13 items in all.
 
 How to have fewer, in order of effect:
 
@@ -403,8 +403,8 @@ sync that was done during the milestone.
 
 ### 12.1 User actions
 
-1. Decide whether to merge `upstream/master` (`verify-upstream.sh` passed against `17213fe3f` on 2026-11-20) and move
-   `master`. Record the merge in `SYNC-LOG.md`.
+1. Decide whether to merge `upstream/master` (`verify-upstream.sh` passed against `bd69886b7` on 2026-11-24; `SYNC-LOG.md`
+   lists what is due at the merge) and move `master`. Record the merge in `SYNC-LOG.md`.
 2. Commit the work in the working tree.
 3. Set CI up by hand, when wanted (question 16; `MACOS.md`, MAC1). It is off on purpose until then.
 
