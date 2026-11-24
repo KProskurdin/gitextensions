@@ -8,7 +8,8 @@ section numbers are kept, as other documents refer to them.
 
 The Mac (MacBook Air, Apple Silicon, Homebrew .NET SDK 10.0.x, Apple git) runs every suite: latest 2026-11-20, core 1468,
 app 876 and shadow projects 3823 pass, 0 fail (201 ignored with reasons), and `verify-upstream.sh` passes. The packaged
-bundle starts through `open`. **CI is off** (`PLAN.md` section 9, question 16), so Linux has no result since 2026-11-08.
+bundle starts through `open`. **CI is off** on purpose until the user sets it up by hand (`PLAN.md` section 9, question 16), so Linux is checked
+only in WSL.
 
 | Check | Result |
 |---|---|
@@ -23,7 +24,7 @@ Decided 2026-11-22 (`PLAN.md` section 9, question 12):
 
 1. The Mac and Windows are both in use for development, so each result names its OS.
 2. Windows stays reachable for the items in section 7.
-3. Linux is checked in WSL on the Windows machine, and by CI once it is on.
+3. Linux is checked in WSL on the Windows machine, and by CI once the user has set it up.
 4. Either Mac CPU works. Use `osx-arm64` on Apple Silicon and `osx-x64` on Intel. `macos-latest` in CI is arm64.
 
 ## 2. Before leaving Windows
@@ -142,12 +143,14 @@ on them from the Mac.
 ## 8. Phases
 
 MAC0 (handoff and setup), MAC2 (first results on the Mac) and MAC5 (packaging) are done but for their checks at the screen,
-which are section 10. MAC3 and MAC4 left decisions that are still in force, below. MAC1 is open.
+which are section 10. MAC3 and MAC4 left decisions that are still in force, below. MAC1 waits for the user.
 
 ### MAC1. Make CI really run
 
-CI is the only guard for Linux, and for Windows when no Windows machine is at hand. All changes are in the fork-owned
-`.github/workflows/xplat.yml`, which is commented out (`PLAN.md` section 9, question 16).
+On hold: CI is off on purpose, and the user sets it up by hand later (`PLAN.md` section 9, question 16, decided
+2026-11-24). Until then nothing here is started, and `.github/workflows/xplat.yml` stays commented out. The notes below are
+for that setup. Once on, CI is the only guard for Linux, and for Windows when no Windows machine is at hand; all changes are
+in the fork-owned `xplat.yml`.
 
 1. **User action:** turn the workflow back on and enable Actions on the fork. The nightly `upstream-merge-check` needs the
    workflow on the default branch, but `master` is a mirror of upstream and does not have it (question 13).

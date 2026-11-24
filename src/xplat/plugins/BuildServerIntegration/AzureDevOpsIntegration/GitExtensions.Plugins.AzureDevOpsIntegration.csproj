@@ -14,4 +14,16 @@
     <EmbeddedResource Remove="$(UpstreamDir)Settings\SettingsUserControl.resx" />
   </ItemGroup>
 
+  <!-- Seam S9 (docs/xplat/PLAN.md section 5): a personal access token from git's credential helper goes as Basic, not
+       Bearer, and the sign-in page Azure DevOps answers an unauthenticated request with is reported as one, not as a
+       JSON error. See XplatAzureDevOpsAuth. -->
+  <ItemGroup>
+    <XplatPatch Include="ApiClient.cs"
+                Old="_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(&quot;Bearer&quot;, bearerToken);"
+                New="_httpClient.DefaultRequestHeaders.Authorization = XplatAzureDevOpsAuth.ForStoredCredential(bearerToken);" />
+    <XplatPatch Include="ApiClient.cs"
+                Old="response.EnsureSuccessStatusCode();"
+                New="XplatAzureDevOpsAuth.EnsureJsonResponse(response);" />
+  </ItemGroup>
+
 </Project>

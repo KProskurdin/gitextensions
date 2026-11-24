@@ -22,9 +22,9 @@ Make Git Extensions run on Windows, Linux and macOS, while the fork keeps mergin
 | Shared core (`GitCommands`, `GitExtUtils`, `ResourceManager`, `GitExtensions.Extensibility`, `GitUIPluginInterfaces`) as `net10.0` | Done | `src/xplat/*` shadow projects. Every non-UI upstream test project has a shadow in `GitExtensions.xplat.slnx` (section 8). Windows 2026-11-22: `GitCommands.Tests` 3500 of 3502 (1 skipped, 1 known Windows failure in `AsyncLoaderTests`). macOS 2026-11-20: 3823 pass, 201 ignored with reasons |
 | Avalonia app | M1 to M6 done; UI parity with the WinForms app done | `src/xplat/GitExtensions.Xplat.App`. `PORTING-MAP.md`: every row `ported`, `windows-only` or skipped with a reason. Windows 2026-11-22: core 1527, app 885, all passing. Linux (WSL) 2026-11-22: core 1533, app 882 (one test fixed after the run), shadow projects 3823 pass, 0 fail. macOS 2026-11-20: core 1468, app 876, all passing |
 | Upstream files | Clean but for the files in section 5 | The 13 upstream workflows are back to upstream's content; `.gitignore` (one line) and `CLAUDE.md` (fork file) are the changes at upstream paths |
-| Seams | 8 | Section 5 |
+| Seams | 9 | Section 5 |
 | Fork workflow | Partly set up | `upstream` remote fetched; `verify-upstream.sh` passed against `17213fe3f` on macOS, 2026-11-20 (`SYNC-LOG.md`). Local `master` not moved (user decision) |
-| CI | **Off since 2026-11-08** | `.github/workflows/xplat.yml` is commented out (question 16). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; last run 2026-11-22) |
+| CI | **Off on purpose** since 2026-11-08 | `.github/workflows/xplat.yml` is commented out until the user sets CI up by hand (question 16, decided 2026-11-24). Windows and macOS are checked by local runs, Linux by WSL on the Windows machine (question 12; last run 2026-11-22) |
 
 The shared core is portable. The UI is where upstream changes most often, which is why the plan keeps the WinForms UI
 untouched and builds a second UI beside it.
@@ -125,6 +125,7 @@ by an additive file.
 | S6 | `CommonAssemblyInfo.cs` | `SupportedOSPlatform` for linux and macos added alongside `windows7.0` | NUnit 4.3 refuses an assembly whose platform list excludes the running OS | Maybe |
 | S7 | `TestAppSettingsAttribute` (test side) | Replaced with a file-lock version | Named `Semaphore` is unsupported on Unix | No, test-only |
 | S8 | `ManagedExtensibility.CurrentDomain_AssemblyResolve` (additive, `PluginAssemblyResolve.cs`) | After `Initialise`, the private handler is unsubscribed by reflection and re-subscribed behind a guard that skips satellite (`*.resources`) requests and re-entry. Anchor-only `XplatPatch` items (Old equals New) in the shadow `GitUIPluginInterfaces.csproj` pin the handler's signature and its method-group subscription, so the build fails if upstream changes either; a missing handler also throws at runtime, and `PluginAssemblyResolveTests` pins the name | Off Windows `FileVersionInfo` parses every file as PE, and for any other file builds a `BadImageFormatException` (caught inside `FileVersionInfo`); under any UI culture that asks for a satellite (`en-NL` does, not only non-English ones) its localized message asks for one, raising the handler again until the stack overflows at startup | Yes, real bug on Linux and macOS |
+| S9 | Azure DevOps plugin's `ApiClient.cs` (2 `XplatPatch` items in the shadow plugin project; logic in the additive `XplatAzureDevOpsAuth.cs`) | The password `git credential fill` returns goes as Bearer only when it is an OAuth access token (a JWT), otherwise as Basic, as git sends it; a response that is Azure DevOps's sign-in page (status 203, or HTML with a success status) throws `UnauthorizedAccessException`, so the adapter offers to open the settings | Upstream sends every stored credential as Bearer, which holds only for Git Credential Manager's OAuth token on Windows. Off Windows, git's helpers (`osxkeychain`, `libsecret`; question 6) return the personal access token the user typed, Azure DevOps answers as for an anonymous request with its sign-in page, and the build status failed with "'<' is an invalid start of a value" (seen on macOS, 2026-11-24) | Yes, probably: a PAT stored by GCM on Windows would meet the same Bearer (not checked) |
 
 Rule: a new seam needs a line in this table, a reason, and a note on whether it is an upstream
 candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on Linux too.
@@ -133,12 +134,14 @@ candidate. Seams S2, S3 and S4 are bug fixes that would help upstream users on L
 with 11 `XplatPatch` items (S1 4 and S2 1 in `AppSettings.cs`, S4 3 in `PathEqualityComparer.cs`, S3 1 in `DebugHelpers.cs`,
 S8 2 anchor-only in `ManagedExtensibility.cs`), and every anchor is still found there. Of the 4 files only `AppSettings.cs`
 changed upstream since the fork base `0174ba1cc` (159 lines, none of them an anchor), so S1 and S2 are the seams most likely to
-need work after a merge. Patches never cause a git conflict; a moved anchor fails the build instead.
+need work after a merge. Patches never cause a git conflict; a moved anchor fails the build instead. *2026-11-24:* S9 adds
+2 items in a fifth file, the Azure DevOps plugin's `ApiClient.cs`, unchanged upstream since the fork base and on
+`upstream/master`, so 13 items in all.
 
 How to have fewer, in order of effect:
 
-1. Offer the bug fixes upstream: S4, S2, S3 and S8, and the `Lazy` defect below. If they are taken, 7 of the 11 items and
-   `GitOutputEncodingWarmUp` go, leaving S1.
+1. Offer the bug fixes upstream: S4, S2, S3, S8 and S9, and the `Lazy` defect below. If they are taken, 9 of the 13 items
+   and `GitOutputEncodingWarmUp` go, leaving S1.
 2. S1 stays as it is unless upstream takes a settings store. Considered and not done: a fork-side `GitCommands.Registry` and
    `GitCommands.RegistryKey`, which C# would pick over `Microsoft.Win32`'s for upstream's `GitCommands` code and so remove the
    4 items. It would also capture `DiffMergeTools/VsDiffMerge.cs` (`Registry.LocalMachine`), and nothing in the code would
@@ -152,7 +155,7 @@ merge.
 
 | File | Change | Merge risk | Recommendation |
 |---|---|---|---|
-| `.github/workflows/xplat.yml` | Fork-owned, added by the fork; commented out (`fc4d4ba5d`) | None | Turn it back on; question 16 |
+| `.github/workflows/xplat.yml` | Fork-owned, added by the fork; commented out (`fc4d4ba5d`) | None | Stays off until the user sets CI up by hand; question 16 |
 | `.gitignore` | One line appended, `/.claude` (`735c6ae4d`, 2026-10-17) | Low: only an upstream change at the file's end conflicts | Keep and accept, or move the line to each clone's `.git/info/exclude`. User's choice |
 | `CLAUDE.md` | Added at the root by the fork | Add/add conflict if upstream ever adds one (upstream has none on 2026-10-09) | Keep; on such a conflict, merge the fork's rules into upstream's file |
 
@@ -204,7 +207,7 @@ left are base classes and helpers, or ported under another name.
 M0 (foundations), M1 (application shell), M2 (engine services), M3 (read-only browsing), M3.5 (revision graph), M4 (write
 operations), M5 (settings, themes and hotkeys) and M6 (plugins and scripts) are done: their exits are met on Windows and
 macOS by local runs, and on Linux by CI's only run (2026-11-08). The part of their exits that CI was to prove on every push
-is open with question 16. Their history is in git and in `PORTING-MAP.md`.
+waits for CI, which the user sets up by hand later (question 16). Their history is in git and in `PORTING-MAP.md`.
 
 ### M7. Packaging and distribution
 
@@ -227,8 +230,8 @@ AppImage file, not its temporary mount (`AppExecutable`). What is left is sectio
 
 Exit: the Avalonia app covers the WinForms app's features, or the decision is made to keep both.
 
-The parity part is done (section 2). Left: the decision whether the WinForms app is retired or both are kept, which needs
-the open questions of section 9 first.
+The parity part is done (section 2). Left: the decision whether the WinForms app is retired or both are kept; section 9
+has no open question left to wait for.
 
 ## 8. Testing strategy
 
@@ -253,13 +256,7 @@ with a reason. A Linux-only expectation is an `XplatLinux*.cs` test, and a macOS
 These change the plan. Each has a recommendation, but the choice is the user's. Decided questions keep their number and
 are listed with their outcome at the end, as code and the other documents refer to them.
 
-16. **CI on or off.** `fc4d4ba5d` (2026-11-08) commented out every workflow, so the fork has had no CI since its first run,
-    and Windows and Linux are checked only when someone runs them locally. The 13 upstream workflow files are restored
-    (section 5). Still open: turning the unwanted upstream workflows off on GitHub (`gh workflow disable "<name>"` for each,
-    or Settings, Actions; it needs the user's GitHub login), and whether `xplat.yml` is turned back on. *Recommendation:*
-    turn it back on; if run time or notification noise is the reason, keep `workflow_dispatch` and push to `feature/**`, and
-    drop the nightly `schedule`, which cannot run while the default branch is `master` (question 13). If CI stays off,
-    every status report says which OS ran.
+None is open.
 
 Decided:
 
@@ -286,6 +283,12 @@ Decided:
 14. Reference pictures of the WinForms app: in the repository, `docs/xplat/reference/windows/<form>[-<page>].png`, taken on
     the Windows machine (2026-11-22; section 12.2).
 15. macOS menu bar: the system menu bar, generated from the window's menu (2026-11-20, done: `SystemMenuBar`).
+16. CI: off on purpose for now; the user sets it up by hand later (2026-11-24). Until then `xplat.yml` stays commented out,
+    nobody (the user or an agent) turns it back on or "fixes" it, and every status report says which OS ran. Setting it up
+    is the user's: enabling Actions on the fork, turning the unwanted upstream workflows off on GitHub
+    (`gh workflow disable "<name>"` for each, or Settings, Actions), and turning `xplat.yml` back on. Notes for then: the
+    nightly `schedule` cannot run while the default branch is `master` (question 13), so `workflow_dispatch` and push to
+    `feature/**` are what is left; the open failures of its only run are in `MACOS.md`, MAC1.
 17. The base of the view models: CommunityToolkit.Mvvm (2026-11-13); the core's own `ObservableObject` was replaced by it.
 
 ## 10. Risks
@@ -294,7 +297,7 @@ Decided:
 |---|---|---|
 | Upstream GitUI churn breaks ported forms faster than they are ported | High | `PORTING-MAP.md` and `port-drift.sh`; port changes at each sync |
 | Avalonia API changes between majors | Medium | Pin versions in `Directory.Packages.props`; upgrade deliberately |
-| Windows or Linux breaks unnoticed while CI is off | High | Question 16; until then, local Windows runs and a status report that names the OS |
+| Windows or Linux breaks unnoticed while CI is off | High | Accepted until the user sets CI up (question 16): local runs on Windows and Linux (WSL), and a status report that names the OS |
 | The WinForms app, the parity reference, cannot run on a Mac | Medium | Designer files, then reference pictures, then a Windows machine (`MACOS.md`, section 6) |
 | Seams grow beyond what `XplatPatch` can carry | Medium | Each seam is in section 5; more than about 10 means revisiting the approach |
 | Upstream test changes make Linux counterparts stale | Medium | `xplat-drift.sh` in the nightly job; `XplatLinux*.cs` tests have the upstream test name in their comment |
@@ -377,8 +380,8 @@ merged back. Mergeability is therefore a property the project keeps, not a phase
 
 The fork then owns its own release line. Everything above still applies, and in addition:
 
-- Keep the fork's own CI running (`.github/workflows/xplat.yml`), and run `verify-upstream.sh` before each merge. Without
-  them, the first sign of drift is a failed merge.
+- Keep the fork's own CI running (`.github/workflows/xplat.yml`) once the user has set it up (question 16), and run
+  `verify-upstream.sh` before each merge. Without them, the first sign of drift is a failed merge.
 - Keep the sync log current; it is the record of how far behind the fork is.
 - The maintainer is named in section 9, question 9; name a fallback there too. A fork with no one syncing it degrades
   within a few months of upstream change.
@@ -396,11 +399,12 @@ sync that was done during the milestone.
 1. Decide whether to merge `upstream/master` (`verify-upstream.sh` passed against `17213fe3f` on 2026-11-20) and move
    `master`. Record the merge in `SYNC-LOG.md`.
 2. Commit the work in the working tree.
+3. Set CI up by hand, when wanted (question 16; `MACOS.md`, MAC1). It is off on purpose until then.
 
 ### 12.2 Checks not run yet
 
-1. **CI** (question 16): Windows' shadow tests failed and the screenshot job hung on every OS in its only run
-   (`42521621315`, 2026-11-08); the causes are not known (`MACOS.md`, MAC1).
+1. **CI** (question 16): off on purpose until the user sets it up. In its only run (`42521621315`, 2026-11-08) Windows'
+   shadow tests failed and the screenshot job hung on every OS; the causes are not known (`MACOS.md`, MAC1).
 2. **Linux at the screen:** the suites pass in WSL (2026-11-22), but the app itself has not been started on Linux since
    2026-10-11 (WSLg can show it).
 3. **On a Mac, at the screen:** `MACOS.md`, section 10.
@@ -431,8 +435,9 @@ sync that was done during the milestone.
 
 ### 12.4 M8, retirement (optional)
 
-The decision whether to retire the WinForms app or keep both, after the open questions of section 9.
+The decision whether to retire the WinForms app or keep both.
 
 ### 12.5 Open decisions (section 9)
 
-Only question 16 (CI) is open; the others were decided on 2026-11-22.
+None. Question 16 (CI) was decided on 2026-11-24: off on purpose, set up by hand by the user later. The others were
+decided by 2026-11-22.

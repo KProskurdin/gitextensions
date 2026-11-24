@@ -14,7 +14,7 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
 | Upstream commits not yet in the fork | 55 |
 | Upstream files changed since fork base | 157 |
 | Fork changes in upstream folders (`src/app`, `src/plugins`, `tests/app`, `setup`, `eng`) | 0 |
-| Seams (PLAN.md section 5) | 8 |
+| Seams (PLAN.md section 5) | 9 |
 | Next sync due | 2026-10-17 (every 2 weeks while development is active) |
 | Maintainer | not yet named (PLAN.md section 9, question 9) |
 
@@ -365,3 +365,15 @@ Add one entry per check or merge, newest first. Do not rewrite old entries; corr
   real tools, the AppImage and the installed `.deb` have not run yet; that is `PLAN.md` section 12.3, item 3.
 - On macOS after: 0 errors, no warning in fork files; core 1536 of 1536; app 884 of 884 in 13 minutes 52 seconds. No upstream
   file changed; seam count unchanged. Windows and Linux were not run.
+
+### 2026-11-24: Azure DevOps build status off Windows (seam S9), no merge
+
+- Reported on macOS on a real repository: the build server integration stopped with "Azure DevOps error ... '<' is an
+  invalid start of a value". Upstream's `ApiClient` sends the password `git credential fill` returns as a Bearer token;
+  `osxkeychain` returns the personal access token typed for the remote, which Azure DevOps does not take as one, and its
+  sign-in page (HTML) was parsed as JSON. New seam S9 (`PLAN.md` section 5): 2 `XplatPatch` items on the plugin's
+  `ApiClient.cs`, logic in `XplatAzureDevOpsAuth.cs` (a JWT goes as Bearer, anything else as Basic; the sign-in page is
+  reported as unauthorized, which offers to open the settings). `ApiClient.cs` has not changed upstream since the fork
+  base, and is the same on `upstream/master`.
+- On Windows: the Azure DevOps plugin's test project 60 of 60 (5 new). Not tried against a real Azure DevOps server; the
+  fix waits for a run on the Mac. Linux and macOS were not run. Upstream files modified 0; seam count 9.
