@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 # Publishes the cross-platform app as a self-contained build for one runtime and packs it the way that OS expects
-# (PLAN.md M7): a zip on Windows; on Linux a tarball with a .desktop entry and icon, an AppImage and a .deb; and on macOS an
-# .app bundle with an icon, as a zip and a .dmg. The macOS bundle has only an ad-hoc signature and is not notarized, so a
-# downloaded copy needs: xattr -dr com.apple.quarantine "Git Extensions.app". macOS packages can be packed only on a Mac, and
-# the AppImage and the .deb only on Linux: the tools are there, and files on NTFS have no executable bit. The Linux tarball
-# is packed on any OS.
+# (PLAN.md M7): a zip and a per-user .msi on Windows; on Linux a tarball with a .desktop entry and icon, an AppImage, a .deb
+# and an .rpm; and on macOS an .app bundle with an icon, as a zip and a .dmg. The macOS bundle has only an ad-hoc signature
+# and is not notarized, so a downloaded copy needs: xattr -dr com.apple.quarantine "Git Extensions.app". macOS packages can
+# be packed only on a Mac, the .msi only on Windows (WiX), and the AppImage, the .deb and the .rpm only on Linux: the tools
+# are there (appimagetool, dpkg-deb, rpmbuild), and files on NTFS have no executable bit. The zips and the Linux tarball
+# are packed on any OS.
 # Usage: src/xplat/eng/publish-app.sh <runtime-id> [output-folder]   (XPLAT_REPO overrides the repository root)
 #   runtime ids: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64
 #   XPLAT_VERSION       the packages' version (default 0.1)
 #   APPIMAGETOOL        the appimagetool command (default appimagetool; from https://github.com/AppImage/appimagetool). Where
 #                       FUSE is missing, as in WSL: APPIMAGETOOL="appimagetool --appimage-extract-and-run"
-#   APPIMAGE_RUNTIME    a runtime file for appimagetool; without it, appimagetool downloads one
+#   APPIMAGE_RUNTIME    a runtime file for appimagetool; without it, appimagetool downloads one. In WSL (openSUSE,
+#                       2026-11-24) that download never connected and appimagetool waited without end, while the system's
+#                       curl fetched the same file at once: curl -fsSLo runtime-x86_64
+#                       https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64
 #   XPLAT_MAINTAINER    the .deb's Maintainer field
+#   WIX_TOOLS           the folder of WiX 3's heat, candle and light (default: the NuGet cache's WiX package, at the version
+#                       Directory.Packages.props names for upstream's installer)
 # In WSL, give an output folder in the Linux file system (as ~/xplat-publish): on /mnt/c every file has mode 777, which
-# dpkg-deb refuses.
+# dpkg-deb refuses, and rpm would install as it is.
 set -euo pipefail
 
 RID="$1"
@@ -78,11 +84,24 @@ Terminal=false
 DESKTOP
 }
 
+# Gives the published app plain modes. The publish leaves 644, 744 and 777 mixed (777 for what came from /mnt in WSL), and
+# 744 stops other users from reading the files of an AppImage. Only the app host and the runtime's createdump are programs.
+normalize_linux_modes() {
+    find "$1" -type d -exec chmod 755 {} +
+    find "$1" -type f -exec chmod 644 {} +
+    local program
+    for program in GitExtensions createdump; do
+        if [[ -f "$1/$program" ]]; then
+            chmod 755 "$1/$program"
+        fi
+    done
+}
+
 # Puts the app in <root>/usr/lib/$LINUX_ID, with its .desktop entry (starting <command>) and icon under <root>/usr/share.
 stage_linux_tree() {
     mkdir -p "$1/usr/lib" "$1/usr/share/applications" "$1/usr/share/icons/hicolor/256x256/apps"
     cp -R "$STAGE/app" "$1/usr/lib/$LINUX_ID"
-    cp "$LOGO/git-extensions-logo-256px.png" "$1/usr/share/icons/hicolor/256x256/apps/$LINUX_ID.png"
+    install -m 644 "$LOGO/git-extensions-logo-256px.png" "$1/usr/share/icons/hicolor/256x256/apps/$LINUX_ID.png"
     write_desktop "$1/usr/share/applications/$LINUX_ID.desktop" "$2"
 }
 
@@ -106,7 +125,7 @@ pack_appimage() {
     rm -rf "$appdir"
     stage_linux_tree "$appdir" GitExtensions
     cp "$appdir/usr/share/applications/$LINUX_ID.desktop" "$appdir/"
-    cp "$LOGO/git-extensions-logo-256px.png" "$appdir/$LINUX_ID.png"
+    install -m 644 "$LOGO/git-extensions-logo-256px.png" "$appdir/$LINUX_ID.png"
     ln -s "$LINUX_ID.png" "$appdir/.DirIcon"
     cat > "$appdir/AppRun" <<APPRUN
 #!/bin/sh
@@ -168,6 +187,118 @@ CONTROL
     echo "$OUT/$NAME.deb"
 }
 
+# A per-user .msi from Installer.wxs (its notes say what it installs and leaves alone), with WiX 3 as upstream's installer:
+# heat lists the published files, candle and light build the package. WiX 3's tools run on the .NET Framework without
+# MSBuild, which this needs no Visual Studio for. ICE validation is off, as in upstream's Setup.wixproj: per-user file
+# components trip ICE38, ICE64 and ICE91, and the validation needs administrator rights.
+pack_msi() {
+    local arch
+    case "$RID" in
+        win-x64) arch=x64 ;;
+        win-arm64) arch=arm64 ;;
+    esac
+
+    local tools="${WIX_TOOLS:-}" wix_version
+    wix_version="$(sed -n 's/.*Include="WiX" Version="\([^"]*\)".*/\1/p' "$REPO/Directory.Packages.props")"
+    if [[ -z "$tools" ]]; then
+        tools="${NUGET_PACKAGES:-$HOME/.nuget/packages}/wix/$wix_version/tools"
+    fi
+
+    if [[ ! -f "$tools/candle.exe" ]]; then
+        echo "WiX $wix_version was not found in $tools: restore it (dotnet restore src/app/GitExtensions, which references it" \
+            "for upstream's installer), or set WIX_TOOLS." >&2
+        exit 1
+    fi
+
+    # The MSI's version has three parts.
+    local version="$VERSION"
+    if [[ "$version" != *.*.* ]]; then
+        version="$version.0"
+    fi
+
+    local work="$OUT/$NAME.wix"
+    rm -rf "$work"
+    mkdir -p "$work"
+    "$tools/heat.exe" dir "$(cygpath -w "$STAGE/app")" -nologo -cg AppFiles -dr INSTALLDIR -srd -sreg -scom -ag \
+        -var var.AppDir -out "$(cygpath -w "$work/AppFiles.wxs")"
+    "$tools/candle.exe" -nologo -arch "$arch" -dVersion="$version" -dAppDir="$(cygpath -w "$STAGE/app")" \
+        -dIcon="$(cygpath -w "$LOGO/git-extensions-logo.ico")" -out "$(cygpath -w "$work")\\" \
+        "$(cygpath -w "$HERE/Installer.wxs")" "$(cygpath -w "$work/AppFiles.wxs")"
+    rm -f "$OUT/$NAME.msi"
+    "$tools/light.exe" -nologo -sval -out "$(cygpath -w "$OUT/$NAME.msi")" \
+        "$(cygpath -w "$work/Installer.wixobj")" "$(cygpath -w "$work/AppFiles.wixobj")"
+    rm -rf "$work"
+    echo "$OUT/$NAME.msi"
+}
+
+# An .rpm with the same tree as the .deb, for openSUSE and Fedora. The dependencies name the libraries (sonames), not the
+# packages, since the distributions name their packages differently; ICU and OpenSSL are alternatives, as for the .deb. rpm's
+# own scan of the files is off: it would require what the runtime's optional libraries link to (LTTng). The build-id links
+# are off too, as another .NET app's would clash with them, and so are the distribution's post-install scripts, which strip
+# and change the runtime's files.
+pack_rpm() {
+    local root="$OUT/$NAME.rpm-root" top="$OUT/$NAME.rpmbuild" arch
+    case "$RID" in
+        linux-x64) arch=x86_64 ;;
+        linux-arm64) arch=aarch64 ;;
+    esac
+
+    if ! command -v rpmbuild >/dev/null; then
+        echo "rpmbuild was not found: install it (zypper install rpm-build, dnf install rpm-build, apt install rpm)." >&2
+        exit 1
+    fi
+
+    rm -rf "$root" "$top"
+    stage_linux_tree "$root" "$LINUX_ID"
+    mkdir -p "$root/usr/bin" "$top"
+    ln -s "../lib/$LINUX_ID/GitExtensions" "$root/usr/bin/$LINUX_ID"
+    chmod -R u=rwX,go=rX "$root"
+
+    local icu=() version
+    for version in 78 77 76 75 74 73 72 71 70 69 68 67 66; do
+        icu+=("libicuuc.so.$version()(64bit)")
+    done
+
+    cat > "$top/$LINUX_ID.spec" <<SPEC
+%define debug_package %{nil}
+%define _build_id_links none
+%define __os_install_post %{nil}
+Name: $LINUX_ID
+Version: $VERSION
+Release: 1
+Summary: Graphical user interface for git (cross-platform)
+License: GPL-3.0
+URL: https://github.com/gitextensions/gitextensions
+AutoReqProv: no
+Requires: git
+Requires: libc.so.6()(64bit), libgcc_s.so.1()(64bit), libstdc++.so.6()(64bit)
+Requires: libfontconfig.so.1()(64bit), libX11.so.6()(64bit), libICE.so.6()(64bit), libSM.so.6()(64bit)
+Requires: ($(printf '%s' "${icu[0]}"; printf ' or %s' "${icu[@]:1}"))
+Requires: (libssl.so.3()(64bit) or libssl.so.1.1()(64bit))
+
+%description
+Git Extensions' cross-platform app: browse the history, commit, merge, rebase
+and work with remotes.
+
+%install
+cp -a "$root/." "%{buildroot}/"
+
+%files
+%defattr(-,root,root,-)
+/usr/bin/$LINUX_ID
+/usr/lib/$LINUX_ID
+/usr/share/applications/$LINUX_ID.desktop
+/usr/share/icons/hicolor/256x256/apps/$LINUX_ID.png
+SPEC
+
+    rm -f "$OUT/$NAME.rpm"
+    rpmbuild -bb --quiet --target "$arch" \
+        --define "_topdir $top" --define "_rpmdir $OUT" --define "_rpmfilename $NAME.rpm" \
+        "$top/$LINUX_ID.spec"
+    rm -rf "$root" "$top"
+    echo "$OUT/$NAME.rpm"
+}
+
 rm -rf "$STAGE"
 mkdir -p "$OUT"
 
@@ -179,21 +310,30 @@ case "$RID" in
     win-*)
         (cd "$STAGE/app" && pack_zip "$OUT/$NAME.zip")
         echo "$OUT/$NAME.zip"
+
+        if [[ "$(uname -s)" != MINGW* && "$(uname -s)" != MSYS* && "$(uname -s)" != CYGWIN* ]]; then
+            echo "The .msi can be packed only on Windows; only the zip was packed." >&2
+            exit 0
+        fi
+
+        pack_msi
         ;;
     linux-*)
+        normalize_linux_modes "$STAGE/app"
         mkdir -p "$STAGE/share/applications" "$STAGE/share/icons/hicolor/256x256/apps"
-        cp "$LOGO/git-extensions-logo-256px.png" "$STAGE/share/icons/hicolor/256x256/apps/$LINUX_ID.png"
+        install -m 644 "$LOGO/git-extensions-logo-256px.png" "$STAGE/share/icons/hicolor/256x256/apps/$LINUX_ID.png"
         write_desktop "$STAGE/share/applications/$LINUX_ID.desktop" GitExtensions
         tar -C "$OUT" -czf "$OUT/$NAME.tar.gz" "$NAME"
         echo "$OUT/$NAME.tar.gz"
 
         if [[ "$(uname -s)" != Linux ]]; then
-            echo "The AppImage and the .deb can be packed only on Linux; only the tarball was packed." >&2
+            echo "The AppImage, the .deb and the .rpm can be packed only on Linux; only the tarball was packed." >&2
             exit 0
         fi
 
         pack_appimage
         pack_deb
+        pack_rpm
         ;;
     osx-*)
         BUNDLE="$STAGE/Git Extensions.app"

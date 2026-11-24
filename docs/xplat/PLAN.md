@@ -69,7 +69,8 @@ src/
   xplat/
     Directory.Build.props   common settings for all shadow and new projects
     Directory.Packages.props central package versions for xplat
-    eng/                    SharedSources.targets, XplatPatch.targets, SupportedOSPlatforms.cs, XplatFriends.cs, Generate-KeysShim.ps1
+    eng/                    SharedSources.targets, XplatPatch.targets, SupportedOSPlatforms.cs, XplatFriends.cs, Generate-KeysShim.ps1,
+                            publish-app.sh (the packages, M7), Installer.wxs (the Windows .msi)
     WinFormsShim/           stand-in WinForms types with host hooks
     GitCommands/ ...        shadow projects (same names as upstream, sources linked)
     GitExtensions.Xplat.App/   Avalonia app
@@ -214,15 +215,20 @@ waits for CI, which the user sets up by hand later (question 16). Their history 
 Exit: installable builds for Windows (existing installer), Linux (AppImage, and a `.deb` or
 `.rpm`), and macOS (`.app` in a `.dmg`), with signing as far as the platform needs.
 
-- Windows: upstream WiX installer keeps working for the WinForms app. The Avalonia app ships as a
-  separate artifact at first.
+- Windows: upstream WiX installer keeps working for the WinForms app. The Avalonia app has its own per-user installer
+  beside it (decided 2026-11-24: side by side, WiX 3 as upstream, per user).
 - Linux: AppImage first, since it needs no distro packaging.
 - macOS: code signing and notarization need an Apple developer account (question 8).
 - Shell extension and ConEmu terminal are Windows-only and stay out of the Linux/macOS builds.
 
-Done: `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it per OS: a zip for Windows; for
-Linux a tarball with a `.desktop` entry and icon, an AppImage (`appimagetool`) and a `.deb` (`dpkg-deb`, the app in
-`/usr/lib/gitextensions-xplat` and the command `gitextensions-xplat`), the last two only when run on Linux; and a
+Done: `src/xplat/eng/publish-app.sh <rid>` publishes the app self-contained and packs it per OS: for Windows a zip and,
+only when run on Windows, a per-user `.msi` (`src/xplat/eng/Installer.wxs`, built with WiX 3's `heat`, `candle` and
+`light` from the NuGet cache, so no Visual Studio is needed; into `%LOCALAPPDATA%\Programs\GitExtensions-xplat` with a
+Start menu entry; it writes nothing under upstream's `HKCU\Software\GitExtensions` and registers no shell extension, as
+upstream's `InstallDir` and its extension's CLSID belong to an installed Git Extensions); for
+Linux a tarball with a `.desktop` entry and icon, an AppImage (`appimagetool`), a `.deb` (`dpkg-deb`, the app in
+`/usr/lib/gitextensions-xplat` and the command `gitextensions-xplat`) and an `.rpm` with the same tree (`rpmbuild`, its
+dependencies by library name so one package serves openSUSE and Fedora), the last three only when run on Linux; and a
 `Git Extensions.app` bundle (`.icns`, ad-hoc signed) as a zip and a `.dmg` for macOS. The app starts itself again through the
 AppImage file, not its temporary mount (`AppExecutable`). What is left is section 12.3.
 
@@ -405,8 +411,9 @@ sync that was done during the milestone.
 
 1. **CI** (question 16): off on purpose until the user sets it up. In its only run (`42521621315`, 2026-11-08) Windows'
    shadow tests failed and the screenshot job hung on every OS; the causes are not known (`MACOS.md`, MAC1).
-2. **Linux at the screen:** the suites pass in WSL (2026-11-22), but the app itself has not been started on Linux since
-   2026-10-11 (WSLg can show it).
+2. **Linux at the screen:** the suites pass in WSL (2026-11-22), and the packaged app starts under WSLg and shows the
+   browse and settings windows (2026-11-24, by the screenshot aid, see 12.3). Not done by a person: clicking through the
+   app, "New instance", and Git config's own editor started from the AppImage.
 3. **On a Mac, at the screen:** `MACOS.md`, section 10.
 4. **Reference pictures** (question 14): the WinForms app's windows on the Windows machine, into
    `docs/xplat/reference/windows/`: at least the browse window with each tab, the commit window, every settings page, and
@@ -425,13 +432,20 @@ sync that was done during the milestone.
 
 1. Real signing and notarization, once an Apple developer account exists (question 8: not for now).
 2. Trying a downloaded, quarantined macOS package (`MACOS.md`, MAC5).
-3. The AppImage and the `.deb` on Linux (written 2026-11-22 on macOS; only their folder trees were checked there, with
-   stand-ins for the two tools): run `publish-app.sh linux-x64 ~/xplat-publish` in WSL with `appimagetool` and `dpkg-deb`
-   installed, then start the AppImage (WSLg), install the `.deb` with `apt install ./<file>.deb` on a Debian or Ubuntu, and
-   try "New instance" and Settings, Git config's own editor from each. `lintian` on the `.deb` is optional. An `.rpm` is not
-   made: openSUSE and Fedora users take the AppImage or the tarball.
-4. An installer for the Avalonia app on Windows, with the Explorer shell extension's files (built by `src/native`, which
-   needs VC++ and ATL); until then its Shell extension page works with an installed Git Extensions' files.
+3. The Linux packages. Done 2026-11-24 in WSL (openSUSE Tumbleweed, with the real `appimagetool`, `dpkg-deb` and
+   `rpmbuild`): `publish-app.sh linux-x64 ~/xplat-publish` builds all four; the AppImage starts under WSLg and opens a
+   repository; the `.rpm` installs with `zypper install --allow-unsigned-rpm`, `rpm -V` is clean, and the installed
+   `gitextensions-xplat` opens the browse and settings windows. Every package now has plain modes (folders 755, files
+   644, only the app host and `createdump` executable), which `appimagetool` asked for. Left: installing the `.deb` with
+   `apt install ./<file>.deb` on a Debian or Ubuntu (this machine has only openSUSE); "New instance" and Git config's own
+   editor from the AppImage, at the screen; `lintian` and `rpmlint` (optional). In WSL `appimagetool`'s own download of
+   its runtime never connected, so the run passed `APPIMAGE_RUNTIME` (see the script's notes).
+4. The Windows installer. Done 2026-11-24 on Windows (M7): the `.msi` installs without administrator rights beside an
+   installed Git Extensions 7.2.1.7, whose `InstallDir` stayed as it was; the installed app opens a repository (screenshot
+   aid); a 0.2 package replaces 0.1 (one product, same files); uninstalling leaves no folder, shortcut or registry key.
+   By the side-by-side decision it has no Explorer shell extension of its own: the Shell extension page works with an
+   installed Git Extensions' files. Left, optional: signing the `.msi`, and an installer UI (it installs with Windows
+   Installer's progress window only). Not tried on Windows on Arm (`win-arm64`).
 
 ### 12.4 M8, retirement (optional)
 

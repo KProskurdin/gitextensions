@@ -12,6 +12,9 @@ internal sealed class ChooseTranslationWindowTests
 {
     private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(20);
 
+    // The app's screenshot aid (Screenshot.EnvironmentVariable, internal to the app).
+    private const string ScreenshotVariable = "XPLAT_SCREENSHOT";
+
     [TearDown]
     public void TearDown() => TestAppBuilder.Preferences.Translation = ChooseTranslationWindow.English;
 
@@ -65,6 +68,36 @@ internal sealed class ChooseTranslationWindowTests
         WaitUntil(() => !window.OwnedWindows.OfType<ChooseTranslationWindow>().Any());
         TestAppBuilder.Preferences.Translation.Should().Be("English");
         window.Close();
+    }
+
+    [AvaloniaTest]
+    public void A_screenshot_run_does_not_ask_for_a_language()
+    {
+        TestAppBuilder.Preferences.Translation = "";
+        string screenshot = Path.Combine(Path.GetTempPath(), $"xplat-screenshot-{Guid.NewGuid():N}.png");
+        string? oldScreenshot = Environment.GetEnvironmentVariable(ScreenshotVariable);
+        Environment.SetEnvironmentVariable(ScreenshotVariable, screenshot);
+        try
+        {
+            MainWindow window = new(new GitDiscoveryResult(GitDiscoveryStatus.Found, "git", Version: null));
+            bool asked = false;
+            window.Show();
+
+            WaitUntil(() =>
+            {
+                asked |= window.OwnedWindows.OfType<ChooseTranslationWindow>().Any();
+                return !window.IsVisible;
+            });
+
+            asked.Should().BeFalse();
+            File.Exists(screenshot).Should().BeTrue();
+            TestAppBuilder.Preferences.Translation.Should().BeEmpty();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ScreenshotVariable, oldScreenshot);
+            File.Delete(screenshot);
+        }
     }
 
     private static void WaitUntil(Func<bool> condition)

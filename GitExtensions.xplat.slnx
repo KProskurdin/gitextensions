@@ -23,6 +23,7 @@
   </Folder>
   <Folder Name="/src/xplat/eng/">
     <File Path="src/xplat/eng/Generate-KeysShim.ps1" />
+    <File Path="src/xplat/eng/Installer.wxs" />
     <File Path="src/xplat/eng/publish-app.sh" />
     <File Path="src/xplat/eng/SharedSources.targets" />
     <File Path="src/xplat/eng/SupportedOSPlatforms.cs" />

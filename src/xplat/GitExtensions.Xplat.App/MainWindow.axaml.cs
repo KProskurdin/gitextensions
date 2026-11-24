@@ -439,8 +439,8 @@ public partial class MainWindow : Window, ISettingsWindowHost
     private async Task OnOpenedAsync()
     {
         // As upstream's Program at startup: without a language, the user chooses one first (FormChooseTranslation), and
-        // the window takes it.
-        if (string.IsNullOrEmpty(_preferences.Translation))
+        // the window takes it. Not for the screenshot aid, which is run on a fresh settings folder with no one to answer.
+        if (string.IsNullOrEmpty(_preferences.Translation) && Screenshot.RequestedFile is null)
         {
             await new ChooseTranslationWindow(_preferences).ShowDialog(this);
             GitExtensions.Xplat.Ui.UpstreamTranslation.ApplyByText(this);
