@@ -80,7 +80,8 @@ through `dotnet run --project src/xplat/GitExtensions.Xplat.App -- "$PWD"`.
 
 Things to know:
 
-- **Keep the `&&`.** `--no-build` after a failed build tests the old DLLs and reports success. That once gave a false 118 of 118.
+- **Keep the `&&`.** `--no-build` after a failed build tests the old DLLs and reports success, also when the commands are
+  joined by `;`.
 - **Call scripts through `bash`.** All six are mode `100644` in git, so `./tests/xplat/run-tests.sh` is refused. Running
   `chmod +x` and committing that is a small cleanup for the user, since it writes the index.
 - **Two output folders.** `run-tests.sh` writes to `~/xplat-artifacts`, a choice made so Linux runs would not overwrite
@@ -112,7 +113,6 @@ These live in the repository so they survive even if memory is not copied.
   `GITEXTENSIONS_XPLAT_USER_DATA=<scratch folder>` (through `open`: `open -n -W --env GITEXTENSIONS_XPLAT_USER_DATA=<folder>`).
   Tests set it themselves (`tests/xplat/XplatTestUserData.cs`); a test setup without it once deleted the user's settings file
   (2026-11-08), so after changing the test setup, hash the settings folder and `~/.gitconfig` before and after a run.
-- `--no-build` after a failed build shows old results, also when the commands are joined by `;` instead of `&&`.
 
 ## 6. Comparing with the WinForms app from a Mac
 
@@ -234,7 +234,7 @@ Parity is done (`PLAN.md` section 2). New work that needs Windows goes on sectio
 ## 10. At the screen: the checklist
 
 *Written 2026-11-20 on macOS* for a person at the Mac. Fill in the Result column (pass, fail with what was seen, or skipped
-and why), then record the results in `SYNC-LOG.md`.
+and why), then fix each failure or add it to `PLAN.md` section 12.2.
 
 **Setup, once.** A scratch data folder so the user's settings stay untouched, and a scratch repository with the files the
 checks need:

@@ -100,9 +100,9 @@ tests/xplat/
                            the XplatPlatformSkips.cs entries) that changed or disappeared, in every shadow test project
 docs/xplat/
   PLAN.md                  this file
-  SYNC-LOG.md              one entry per upstream check or merge, and the test results of each working session
+  SYNC-LOG.md              one row per upstream check or merge, and the items due at the next merge
   PORTING-MAP.md           one row per ported upstream file
-  MVVM.md                  the MVVM pattern of the app and its gotchas
+  MVVM.md                  the MVVM pattern of the app, its gotchas and the pieces to reuse
   MACOS.md                 setup, commands and the open checks for working on a Mac
   reference/windows/       proposed: pictures of the WinForms app, which cannot run on a Mac (section 9, question 14)
 GitExtensions.xplat.slnx    solution for everything above
@@ -135,8 +135,8 @@ with 11 `XplatPatch` items (S1 4 and S2 1 in `AppSettings.cs`, S4 3 in `PathEqua
 S8 2 anchor-only in `ManagedExtensibility.cs`), and every anchor is still found there. Of the 4 files only `AppSettings.cs`
 changed upstream since the fork base `0174ba1cc` (159 lines, none of them an anchor), so S1 and S2 are the seams most likely to
 need work after a merge. Patches never cause a git conflict; a moved anchor fails the build instead. *2026-11-24:* S9 adds
-2 items in a fifth file, the Azure DevOps plugin's `ApiClient.cs`, unchanged upstream since the fork base and on
-`upstream/master`, so 13 items in all.
+2 items in a fifth file, the Azure DevOps plugin's `ApiClient.cs`, unchanged upstream since the fork base up to
+`afc512395` (not checked against `17213fe3f`), so 13 items in all.
 
 How to have fewer, in order of effect:
 

@@ -1,379 +1,46 @@
 # Upstream sync log
 
-Record of every check against upstream (`gitextensions/gitextensions`, `upstream/master`) and every
-merge of upstream into the fork. Procedure and targets: `docs/xplat/PLAN.md` section 11.
+Record of every check against upstream (`gitextensions/gitextensions`, `upstream/master`) and every merge of upstream into
+the fork. Procedure and targets: `docs/xplat/PLAN.md` section 11.
 
-Add one entry per check or merge, newest first. Do not rewrite old entries; correct them with a new entry.
+Add one row per check or merge to the table below, newest last: what was checked, on which OS, the result, and what changed
+in the fork because of it. Work on the fork itself is recorded in git history, not here. Trimmed on 2026-11-24 to the checks
+and the items still open; the full entries before that are in git history.
 
 ## Current state
 
 | Item | Value |
 |---|---|
 | Fork base (last upstream commit the fork contains) | `0174ba1cc` fix(diff): do not run git after repo closed |
-| Upstream `master` at last check | `c584b9740` fix(RevisionGrid): draw bisect ref labels (2026-11-08) |
-| Upstream commits not yet in the fork | 55 |
-| Upstream files changed since fork base | 157 |
+| Upstream `master` at last check | `17213fe3f` (2026-11-20, 73 commits past the fork base) |
 | Fork changes in upstream folders (`src/app`, `src/plugins`, `tests/app`, `setup`, `eng`) | 0 |
+| Changes at other upstream paths | `.gitignore` (one line) and `CLAUDE.md`; `PLAN.md` section 5 |
 | Seams (PLAN.md section 5) | 9 |
-| Next sync due | 2026-10-17 (every 2 weeks while development is active) |
-| Maintainer | not yet named (PLAN.md section 9, question 9) |
+| Next sync | When the maintainer chooses (PLAN.md section 9, question 9); overdue after 3 months without one |
+| Maintainer | KProskurdin (PLAN.md section 9, question 9) |
 
-## Entries
+## Due at the next merge
 
-### 2026-10-06: porting map review for the new rows, no merge
+Upstream tests that need fork work once the merge brings their commits in:
 
-- Upstream checked: `52d08e996` (unchanged since the last entry; `git fetch upstream` brought nothing new).
-- New rows written against the fork base and reviewed against `52d08e996`: `FormResolveConflicts` (`a4d51838f`, conflict
-  description texts: skipped, the port shows none), `FilterInfo` (`c16194306`, agent session refs: ported, the all-branches
-  view excludes them), `FormRevisionFilter` (`72373e530`, simplify merges only with full history: skipped, neither option is
-  ported). The other new rows (`FormGitCommandLog`, `FormRemoteProcess`/`FormProcess`, `FormSettings`, `FormAbout`,
-  `Dashboard`, `RepoObjectsTree`, `HotkeySettingsManager`, `FormGitIgnore`/`FormAddToGitIgnore`) had no upstream changes.
-- `port-drift.sh`: 34 rows, 0 with upstream changes since their base, 0 stale.
-- `xplat-drift.sh`: the two items decided on 2026-10-04 (`PathUtilTest`, `GitModuleWorktreeTests`); no new ones.
-- Measures (PLAN.md 11.2): upstream files modified 0 (`git status` of `src/app`, `src/plugins`, `tests/app`, `setup`, `eng`
-  is empty); seam count 7; no new upstream file read through reflection or copied. New reuse of upstream code as is:
-  `RepositoryHistoryManager`, `CommandLog`, `PatchManager.GetSelectedLinesAsPatch`, `Commands.Push`/`PushTag`,
-  `GitModule.PullCmd`/`FetchCmd`, and the upstream setting keys listed in `PORTING-MAP.md` (FormSettings row).
-- Local `master` not moved; nothing committed.
+1. `648dd4cc7` (`PathUtilTest`, "prefer configured LinuxToolsDir"): a Windows-only test of the `bash.exe` lookup. Add the
+   new method to `XplatPlatformSkips.cs` with reason `WindowsOnlyFeature`; no Linux counterpart.
+2. `065da3680` (`GitModuleWorktreeTests`, "never offer to delete main worktree"): platform neutral, no skip. Run it on
+   Linux to confirm.
+3. `645715232` (`fix(worktree): remove using git`, `TryRemoveWorktree`): 4 tests are already in `XplatPlatformSkips.cs`
+   (three pass Windows paths; one holds a file open to make a folder undeletable, which macOS and Linux allow). Write their
+   POSIX counterparts once `TryRemoveWorktree` is in the fork.
+4. The 8 `RecentRepoSplitterTests` methods of `c584b9740` and earlier (Windows path inputs only) are in the skip list
+   already; nothing to do beyond confirming they still compile.
 
-### 2026-10-04: mirrored test review, no merge
+## Checks
 
-- `xplat-drift.sh` flagged two mirrored classes against `upstream/master`, both changed after the fork base `0174ba1cc`.
-- `648dd4cc7` (`PathUtilTest`, "prefer configured LinuxToolsDir"): adds a Windows-only test of `bash.exe` lookup under the
-  Git for Windows install. Decision: no Linux counterpart; when this commit is merged, add the new method to
-  `XplatPlatformSkips.cs` with reason `WindowsOnlyFeature`. Its production change is in `PathUtil.cs`, a shared file.
-- `065da3680` (`GitModuleWorktreeTests`, "never offer to delete main worktree"): adds a platform-neutral test that the first
-  worktree is the main one. Decision: no skip needed; the behavior it protects is in the WinForms left panel, which the
-  shadow projects do not compile. Run it on Linux at the merge to confirm.
-- The drift report stays red until the merge brings these commits into the fork. Nothing in the fork changes for them now.
-
-### 2026-10-03: porting map review against upstream, no merge
-
-- Upstream checked: `52d08e996`. `port-drift.sh` reported 4 of the 7 write-operation rows and the two read rows
-  with upstream changes since `0174ba1cc`: GPG display, grid tooltip, `FormCommit` layout, `FormClone` submodule option.
-- Each change was read and skipped with a reason in `PORTING-MAP.md`. All nine rows now use `52d08e996` as their base.
-- `xplat-drift.sh` (mirrored tests) was not re-run in this entry; it still reports `PathUtilTest` and
-  `GitModuleWorktreeTests`, which are open items from the earlier check.
-- No merge. Local `master` is still at `0174ba1cc`.
-
-### 2026-10-03: verification against upstream, no merge
-
-- Upstream checked: `52d08e996`, 17 commits ahead of the fork base.
-- Command: `bash tests/xplat/verify-upstream.sh` (builds and tests the shadow projects against
-  upstream in a temporary worktree; the working tree and local branches are not touched).
-- Result: pass on Linux (WSL openSUSE): 3369 passed, 0 failed, 144 skipped (Windows-only, with
-  reasons), 3513 total. Windows was not run for this check.
-- Seams: all 7 anchors present in `52d08e996`; the upstream change to `AppSettings.cs` is a new
-  property with no overlap with the seams.
-- Measures (PLAN.md 11.2): upstream files modified 0; seam count 7 (target at most 10); anchors
-  intact yes; shadow build and tests pass yes; time to sync: not measured (no merge yet);
-  ported forms out of date: none (no forms ported yet).
-- Notes: this was a dry run. The fork is not merged with upstream yet. Local `master` is still at
-  `0174ba1cc`; the user has not asked for it to be moved, and automation must not move it.
-- Next: merge `upstream/master` into the fork branch when the user decides to do so, and record
-  that merge as a new entry.
-
-### 2026-10-11: verification against upstream, no merge (end of M0 to M6)
-
-- Upstream checked: `afc512395`, 18 commits ahead of the fork base (`0174ba1cc`).
-- Command: the steps of `tests/xplat/verify-upstream.sh`, run by hand on Windows. The script's own `git fetch` failed: the
-  repository's `.git/config` had `http.proxy = :8080`, left there by a failed app test run of the same day (the ProxySwitcher
-  plugin test ran against the process's working directory after a repository failed to open; the same run fetched a branch
-  `pr/n7_ann/feature` into the repository). The fetch ran with `-c http.proxy=`, and the worktree was checked out with
-  `core.longpaths` because upstream's snapshot file names are too long for Windows' default limit. Since then the app tests
-  run from an empty temporary folder with `GIT_CEILING_DIRECTORIES` set, so a git command without a repository cannot reach
-  the repository the tests start from. The proxy line and the branch are still in the repository: removing them was left to
-  the user.
-- Result on Windows: 3506 passed, 1 failed (`Load_performed_on_thread_pool_and_result_handled_via_callers_context`, the
-  known Windows failure in `AsyncLoaderTests`), 1 skipped, 3508 total. Linux was not run for this check.
-- `port-drift.sh`: 93 rows, 0 with upstream changes since their base, 0 stale.
-- Measures (PLAN.md 11.2): upstream files modified 0; seam count 7; anchors intact yes (the shadow build passes on
-  `afc512395`); shadow build and tests pass yes (with the known failure); ported forms out of date: none.
-- Fork tests the same day: 384 core and 276 app on Windows; 384 core on Linux (WSL). The Linux app run was stopped by the
-  host for lack of memory and has to be repeated.
-- No merge. Local `master` is not moved.
-
-### 2026-11-08: first full test run on macOS, no merge
-
-- Machine: MacBook Air, Apple Silicon, macOS 27.2, Apple git 2.54, Homebrew .NET SDK 10.0.401.
-- Results on macOS, all from one tree: core 900 of 900; app 704 of 704; shadow projects 3821 pass, 0 fail, 201 ignored with
-  reasons. Windows and Linux were not run for this: the first CI run will be their check. Details in `MACOS.md`, MAC2.
-- **Found: `run-tests.sh` deleted the user's real settings file on every run off Windows** (the test attribute, and the shim's
-  data folder). The user's settings on this Mac were lost on 2026-11-08, and the scratch repository of a smoke run was then
-  written into the recent list, which was corrected by hand to this repository. Fixed, and checked by hash on every suite.
-- Found: the open worktree was not recognized when the repository's path goes through a link, so it could be deleted. Fixed.
-- Upstream checked: `c584b9740`, 55 commits ahead of the fork base. `tests/xplat/verify-upstream.sh` on macOS: 3902 passed,
-  0 failed, 222 ignored. That is after adding the 8 new `RecentRepoSplitterTests` methods (21 cases, Windows path inputs only)
-  to the skip list, and fixing the script for macOS's linked temporary folder. Windows and Linux were not run for this check.
-- `port-drift.sh`: 132 rows, 12 with upstream changes since their base, 0 stale; none reviewed yet. `xplat-drift.sh` not run:
-  it needs bash 4 or newer.
-- Measures (PLAN.md 11.2): upstream files modified 0; seam count 8, all in the section 5 table, no new one; anchors intact yes;
-  shadow build and tests pass yes; ported forms out of date: the 12 rows above.
-- Local changes only; `master` is not moved. The `upstream` remote was added, as `MACOS.md` section 3 says.
-
-### 2026-11-08: after MAC3 to MAC5, no merge
-
-- `tests/xplat/verify-upstream.sh` on `c584b9740` on macOS: 3902 passed, 0 failed, 222 ignored. Upstream files modified 0, seam count 8.
-- On macOS: core 912, shadow projects 3821 pass and 201 ignored, then app 718 of 718 after the last change, which touched only the
-  commit window's completion and app tests. The settings folder and `~/.gitconfig` were unchanged by hash in each run. Windows and
-  Linux were not run.
-
-### 2026-11-08: after the Settings, editor, git-grep, toolbar and blame slices of `UI-PARITY.md`'s Mac list, no merge
-
-- On macOS, from one tree: core 929 of 929; app 738 of 738 (one more is Windows only); shadow projects 3821 pass, 201 ignored. The settings
-  folder and `~/.gitconfig` were unchanged by hash through each suite.
-- `verify-upstream.sh` on `c584b9740` last ran before the toolbar and blame slices, which changed only `GitExtensions.Xplat.App` and
-  `GitExtensions.Xplat.Core` and their tests, none of which that script builds: 3902 passed, 0 failed, 222 ignored. `port-drift.sh`: 133 rows, 12
-  with upstream changes. Windows and Linux were not run.
-
-### 2026-11-08: after the dialogs of `UI-PARITY.md`'s Mac list and the first CI results, no merge
-
-- On macOS, from one tree: core 956 of 956; app 752 of 752 (one more is Windows only). The settings folder and `~/.gitconfig` were unchanged by hash
-  through the app run. Shadow projects were not run again: nothing they build changed since 3821 passed, 201 ignored. All 12 also pass on a clone with
-  Windows line endings of `5ea555567`, on macOS. `verify-upstream.sh` was not run again, for the same reason. `port-drift.sh`: 134 rows, 12 with upstream
-  changes. Windows and Linux were not run locally; CI's first run is in `MACOS.md`, MAC1.
-
-### 2026-11-09: after the revision grid slice of `UI-PARITY.md`'s Mac list, no merge
-
-- The grid's session refs ("Show session checkpoints") and the superproject's labels and refs in a submodule; the "Revision grid rows and
-  View menu" row of `PORTING-MAP.md` is now `ported`.
-- On macOS, from one tree: core 961 of 961; app 755 of 755 (one more is Windows only), then 22 grid tests again after a last cleanup in
-  `CommitListViewModel`. The settings folder and `~/.gitconfig` were unchanged by hash through the app run. Shadow projects and
-  `verify-upstream.sh` were not run again: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed. Upstream files
-  modified 0, seam count 8. Windows and Linux were not run.
-
-### 2026-11-09: after most of item 5 of `UI-PARITY.md`'s Mac list, no merge
-
-- Git's `commit.template`, the plugin templates' icons, the action bars' icon, the pull request files' icons, the filter boxes'
-  drop-down width, the plugin load error's copy, `GetService` and `BrowseRepo` for plugins, and the commit info translations. Rows
-  now `ported`: Commit templates, FormBisect, ViewPullRequestsForm, FilterToolBar, PluginRegistry. Left of item 5: `RunCommand` and
-  the command line verbs, to be decided.
-- On macOS, from one tree: core 972 of 972; app 763 of 763 (one more is Windows only). The settings folder and `~/.gitconfig` were
-  unchanged by hash through the app run. Shadow projects and `verify-upstream.sh` were not run again: only `GitExtensions.Xplat.App`
-  and `GitExtensions.Xplat.Core` and their tests changed. Upstream files modified 0, seam count 8. Windows and Linux were not run.
-
-### 2026-11-09 and 10: after item 6 of `UI-PARITY.md`'s Mac list, no merge
-
-- The command line verbs and `RunCommand` are recorded as not ported for now (decided 2026-11-09). Item 6: the Colors page's "Open theme
-  folder" (upstream has no theme editor since 2019), the spelling checker with "Mark ill formed lines" and the dictionary setting, and the
-  output history. New shadow project: `src/xplat/NetSpell.SpellChecker` compiles `externals/NetSpell.SpellChecker` unchanged; upstream's
-  `.dic` files are copied next to the app. Rows now `ported`: ThemeModule, OutputHistory (new).
-- On macOS, from one tree: core 994 of 994; app 772 of 772 (one more is Windows only); shadow projects 3821 pass, 0 fail, 201 ignored, of
-  4022. The settings folder and `~/.gitconfig` were unchanged by hash through the app and shadow runs, and the tests wrote no NetSpell user
-  word list. The whole `GitExtensions.xplat.slnx` builds. `verify-upstream.sh` was not run again. Upstream files modified 0, seam count 8.
-  `port-drift.sh`: 135 rows, 12 with upstream changes. Windows and Linux were not run.
-
-### 2026-11-13: review of the commits since `MACOS.md` against the plan, no merge
-
-- Reviewed `04d868edd..34744f906`. The 2026-11-10 commits were made on Windows (staging reads only the changed files; opening reads the
-  state while the commits load, without `git submodule status`; the Dock icon outside a bundle; solution items). Each is in `PORTING-MAP.md`
-  or `MACOS.md`; `UI-PARITY.md`'s Progress has an entry for them now.
-- **Correction to the entries of 2026-11-09 and 10:** "Upstream files modified 0" was wrong. `fc4d4ba5d` (2026-11-08) comments out the 13
-  upstream workflows in `.github/workflows/`, and `.gitignore` has a fork line since `735c6ae4d`. The measure only looked at the code folders.
-  `PLAN.md` section 11.2 now checks every path; the files are listed in section 5 and the choice is section 9, question 16. Seam count 8.
-- CI: off since `fc4d4ba5d`, so no run since `42521621315`.
-- On Windows, from `34744f906` with these doc changes only: the whole `GitExtensions.xplat.slnx` builds with 0 errors (warnings include SA1518 in
-  `PushWindowTests.cs`, no final newline). Core 992 pass of 1001, 9 not run on Windows. App, the classes touched since 2026-11-08 only
-  (`ApplicationMenuTests`, `MainWindowTests`, `GitOperationsTests`, `CommitTemplateFileTests`, `LeftPanelTests`, submodule tree): 187 of 187.
-  The full app suite, the shadow projects and `verify-upstream.sh` were not run. Linux and macOS were not run.
-
-### 2026-11-20: first Windows check after the macOS work of 2026-11-18 to 20, no merge
-
-- Checked `dcc0e441d` plus uncommitted fixes, on Windows. Details: `PLAN.md` section 12.6, step 5, the note of 2026-11-20.
-- Found and fixed: a click handler back in `DiffView` ("Add selection to commit message" is a view model command now); a core test
-  that expected backslashes in a POSIX path on Windows (written on the Mac); analyzer warnings in the files changed on 2026-11-19
-  (VSTHRD001 in `OutputReporter` muted with its reason); and the left panel losing the keyboard focus when a refresh fills the tree
-  again, which made `LeftPanelTests`' multi-select test fail only in full runs (`PORTING-MAP.md`, RepoObjectsTree).
-- On Windows, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1410 of 1410; app 813 of 813 (816, 3 are
-  macOS only). Before the fixes: core 1406 of 1407, app 810 of 811, then 811 of 812 (the same multi-select test). Shadow projects and
-  `verify-upstream.sh` were not run: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed. The fixes
-  touch no upstream file; seam count unchanged. CI is still off. Linux and macOS were not run.
-
-### 2026-11-20, later: Windows-only parity items of `UI-PARITY.md`, no merge
-
-- Done on Windows: the Git page's "Download Git" link and upstream's HOME check after a save (FormFixHome's search); "Show
-  console window when executing git process"; the PuTTY prompts of the output window and the clone window, with upstream's
-  FormPuttyError. Decided with the user: the Console tab (ConEmu, Mintty) stays `windows-only`. `PORTING-MAP.md` has 3
-  `partial` rows left (the Shell extension page, and `RunCommand` with the command line verbs, set aside 2026-11-09).
-- On Windows, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1434 of 1434; app 817 of 817
-  (820, 3 are macOS only). `port-drift.sh`: 141 rows, 0 with upstream changes since their base. Shadow projects and
-  `verify-upstream.sh` were not run: only `GitExtensions.Xplat.App` and `GitExtensions.Xplat.Core` and their tests changed,
-  and no upstream file. The PuTTY prompts were not tried against a real PuTTY server. Linux and macOS were not run.
-
-### 2026-11-20, evening: the commit window's next file, two flaky tests and the test host's memory, no merge
-
-- Fixed on Windows (found by the user): after a stage or unstage the commit window selected nothing, so the diff kept
-  showing the file that had moved; it now selects the next file as upstream does (`PORTING-MAP.md`, FormCommit).
-- Full `GitExtensions.xplat.slnx` run on Windows, on `d82a23c8b`: 6236 passed, 3 failed, 2 skipped of 6241. The known
-  `AsyncLoaderTests` failure in `GitCommands.Tests`, and two headless tests that failed only in that run, with all 14
-  test projects at once: `LeftPanelTests`' search test (fixed: it held a tree node a refresh had replaced, and the window
-  could select such a node too; `PORTING-MAP.md`, RepoObjectsTree) and `AdvancedSettingsTests`' new branch name test
-  (the Create Branch window did not finish loading in 20 seconds; not reproduced in 8 runs, two of them under load, and
-  not changed).
-- A second full run was stopped by Claude Code for lack of memory: the app test host had grown to 7.4 GB. The cause was
-  in the tests: most end with their window open, an open window stays in Avalonia's render loop, and each main window
-  joins the app's shared output history, so every window kept the ones before it (about 18 MB per test). The recent
-  repositories list, shared by all tests, also grew with each opened repository, and a late test's Start menu and
-  dashboard listed hundreds of entries. New `tests/xplat/GitExtensions.Xplat.App.Tests/TestIsolation.cs`, an assembly test
-  action: it closes the windows a test left open, and gives each test its own output history and recent list.
-  `A_large_file_waits_for_a_click` wrote its 5 MB as one line, which the headless view took about 4 minutes to lay out; it
-  now writes lines of a kilobyte. No product code changed for this.
-- App suite on Windows after the changes: 818 of 818 in 13 minutes (27 to 29 before); the tests' own time 796 seconds
-  (1630 before); live managed memory stays between 40 and 110 MB, the test host's working set about 600 MB. Left as they
-  are: `The_tool_catalog_lists_what_git_finds_without_terminal_tools` (26 seconds: git's `--tool-help` takes 13 seconds
-  per list on Windows, and upstream's cache runs the two one after the other); merging tests to save the second each
-  spends opening a window (not done: about 12% at most, and one behaviour per test is the rule).
-- Found, not fixed: `DiffView.ShowSettings` is static and set by every new main window, so with two windows open a
-  viewer's settings item opens Settings over the newer one, even after it closed; and a file that is one very long line
-  (several megabytes) holds the viewer for minutes after "Show large file".
-- Core 1435 of 1435 in the full run. Shadow projects passed but for the known failure. `verify-upstream.sh` was not run:
-  no upstream file changed. Linux and macOS were not run.
-
-### 2026-11-20, late: the macOS check of the Windows work, and two viewer fixes, no merge
-
-- On macOS (MacBook Air, Apple Silicon, macOS 27.2, Apple git 2.54, .NET SDK 10.0.401), from `4587038c7` unchanged: the
-  whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1441 of 1441; app 819 of 820 in 14 minutes 34 seconds. The
-  failure was `ThemedImagesTests.The_adapted_pictures_are_those_upstream_adapts`, because that run was built into a folder
-  outside the repository and the test looks for `src/app` above its own folder; it passes from `artifacts/`.
-- Fixed (`UI-PARITY.md`, "Next on the Mac", items 2 and 3; `PORTING-MAP.md`, FileViewer): the viewer's settings button
-  used a static every new browse window set, and is now opened by the browse window that owns the viewer's window; and a
-  line with many colored parts (syntax runs or find's marks) took time growing with their square, so past 1,000 parts a
-  line keeps its own color. The slowness of a one-line 5 MB file in headless tests was Avalonia's headless text shaper:
-  with Skia's shaping, as the app has it, such a plain line takes about a second. New tests: `DiffViewSettingsTests` (3)
-  and `DiffTextViewLongLineTests` (2), each failing on the code before its fix.
-- On macOS after the fixes, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings;
-  core 1441 of 1441; app 825 of 825 in 15 minutes 4 seconds (`caffeinate -dis`, no sleep in `pmset -g log` during the
-  run), the test host's resident memory at most 836 MB (Windows: 13 minutes, about 600 MB). No upstream file changed;
-  seam count unchanged. Not tried at the screen in the real app. Windows and Linux were not run.
-- Shadow projects on macOS: 12 of 12 pass (`GitCommands.Tests` 3381 passed, 149 skipped of 3530).
-- `verify-upstream.sh` on macOS against `upstream/master` `17213fe3f` (73 commits past the fork's base `0174ba1cc`) first
-  failed: 4 tests in `GitCommands.Tests`, all new with upstream's `645715232` (`fix(worktree): remove using git`,
-  `TryRemoveWorktree`). Three pass Windows paths (`C:\repos\...`, `\\wsl$\...`); one makes a folder undeletable by
-  holding a file open with `FileShare.None`, which macOS and Linux do not prevent, so the deletion succeeds and the code
-  goes on to `worktree prune`. Not a broken seam. Both methods are now in `XplatPlatformSkips.cs` (Windows path input;
-  Windows file lock). Their POSIX counterparts cannot compile in the fork before the merge brings `TryRemoveWorktree`,
-  so they are for the merge (`PLAN.md` 12.1). After: `verify-upstream.sh` passes, 12 of 12 (`GitCommands.Tests` 3419
-  passed, 174 skipped of 3593), and the fork's `GitCommands.Tests` still 3381 passed, 149 skipped.
-
-### 2026-11-20, night: the settings folder, the macOS menu bar, the command line verbs, no merge
-
-- On macOS, chosen by the user from `UI-PARITY.md` "Next on the Mac" item 5: on Windows the shim's `UserAppDataPath` is
-  WinForms' folder, so the shell and the WinForms app share `%APPDATA%\GitExtensions\GitExtensions\GitExtensions.settings`
-  (macOS and Linux keep theirs; nothing is moved); the browse window's menus are in the macOS menu bar (`SystemMenuBar`,
-  `PLAN.md` question 15); upstream's command line is ported, every verb and `browse`'s filters (`PORTING-MAP.md`, Command
-  line). `MACOS.md` section 10 is a new checklist for the checks that need a person at the Mac (rows 1 to 19).
-- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings (the one SA1515 of the
-  run below fixed after it); core 1461 of 1461; app 865 of 865 in 17 minutes 54 seconds, the test host at most 827 MB; the
-  shadow projects 12 of 12; `verify-upstream.sh` passes against `17213fe3f`. No sleep during the runs. No upstream file
-  changed; seam count unchanged.
-- Not tried at the screen: the menu bar itself (a rendered window of the real app had no menu row, so macOS took the menus)
-  and the verbs' windows. In the real app `commit --quiet` in a clean repository exited 0 after 2 seconds with no window, and
-  `about` and `stash` opened and stayed open. The settings folder's check is Windows only. Windows and Linux were not run.
-
-### 2026-11-20, late night: the plugins' RunCommand and Start...Dialog methods, no merge
-
-- On macOS: every `IGitUICommands` method that threw now runs the browse window's flow and returns its answer, as
-  upstream's, waiting in a nested dispatcher frame (`ModalWindow.Wait`); `RunCommand` runs a command line verb on the open
-  repository. Only `ShowModelessForm` (a WinForms form) still throws. `PORTING-MAP.md`, GitUICommands (plugin side), now
-  `ported`. Small changes to the browse window's flows, the menus unchanged: the quick pull and push and the pull and push
-  dialogs answer whether they ran, the pull dialog takes a remote, branch and action, and cherry pick, revert, archive and the
-  special commits have variants taking the revision.
-- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings; core 1461 of 1461; app
-  868 of 868 in 13 minutes 22 seconds, the test host at most 862 MB; the shadow projects 12 of 12; `verify-upstream.sh`
-  passes against `17213fe3f`. No sleep during the runs. No upstream file changed; seam count unchanged. Not tried with a
-  third-party plugin or at the screen. Windows and Linux were not run.
-
-### 2026-11-20, night: FormInit, the command line's and plugins' last options, a flaky test, no merge
-
-- On macOS: upstream's FormInit (`InitRepositoryWindow`, MVVM) for the Start menu, the `init` verb and the plugins'
-  `StartInitializeDialog`; the command line's `commit --message`, `blame file line`, `filehistory`'s revision check and
-  `--filter-by-revision`, `-commit=`'s second commit and `--pathFilter=`'s file history mode; the plugins' `forceWithLease`,
-  `lineNumber`, `FirstId` and file history mode (`PORTING-MAP.md`, Command line, GitUICommands plugin side, FormInit).
-- Flaky tests: core `DashboardViewModelTests`' delete-category test fixed (it checked the window's notice before the
-  command had sent it). The App tests that failed only in full runs (`The_filter_menu_shows_upstreams_hotkeys`,
-  `CommitFileListsTests`' folder tree test, `CommitDialogSettingsTests`' Option+Esc) were not reproduced and are left; a
-  hotkey leak from `MainWindowTests` was ruled out.
-- `PORTING-MAP.md`: the Git/SSH and General settings page rows were `partial` in the table while their notes said `ported`
-  since the Windows session; now `ported`. One `partial` row is left (the settings tree's Shell extension page, Windows).
-- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings (an incremental build;
-  a clean build shows the existing warnings of other projects, none in the files changed); core 1467 of 1467; app 873 of
-  873 in 15 minutes 25 seconds, the test host at most 757 MB; the shadow projects 12 of 12; `verify-upstream.sh` passes
-  against `17213fe3f`. No sleep during the runs. No upstream file changed; seam count unchanged. Windows and Linux were not
-  run.
-
-### 2026-11-20, late night: the porting map's audit, its gaps, the last differences, the flaky tests, no merge
-
-- On macOS: the porting map's latest "not ported" lines checked against the code (an "Audit 2026-11-20" line in each note
-  concerned): most were stale; done the same night: reflog sorting by a column, the autostash row's label, the file
-  history's revert window. The command line's last differences: the usage text in upstream's own window
-  (`CommandLineHelpWindow`), `settings`' exit code, `cherry` on no commit, `reset files` as upstream's (folders, new files
-  deleted when asked); for plugins, `StartBrowseDialog` opens another browse window and `offerCommit` is passed on.
-- Flaky tests: four full App runs in a row (with builds beside them) gave 4 x 872 passed, 0 failed; the three that failed
-  only in full runs did not appear (memory note and `PORTING-MAP.md` unchanged for them).
-- On macOS, from one tree: the whole `GitExtensions.xplat.slnx` builds with 0 errors and 0 warnings; core 1468 of 1468;
-  app 876 of 876 in 16 minutes 15 seconds, the test host at most 858 MB; the shadow projects 12 of 12 (3823 passed, 201
-  ignored with reasons); `verify-upstream.sh` passes against `17213fe3f` (`GitCommands.Tests` 3421 passed, 174 skipped). No
-  sleep during the runs. No upstream file changed; seam count unchanged. Windows and Linux were not run.
-
-### 2026-11-22: the Mac's work on Windows, the Shell extension page and the installer rows, no merge
-
-- On Windows, before any change: the whole `GitExtensions.xplat.slnx` builds with 0 errors; core 1462 of 1462; app 874 of
-  874 in 14 minutes 51 seconds. The build shows warnings the Mac's incremental build did not, all in files the session did
-  not change (StyleCop in some core tests, `externals/`, a few core files).
-- On Windows: upstream's Shell extension page, the Checklist's install folder and shell extension rows, the startup check's
-  install folder solve and "Show current branch in Visual Studio" (`PORTING-MAP.md`, ShellExtensionSettingsPage).
-- On Windows, after: 0 errors, no new warning in the files changed; core 1490 of 1490; app 878 of 878 in 13 minutes 20
-  seconds; `GitCommands.Tests`' `XplatTestUserDataTests` 4 of 4. The other shadow projects and `verify-upstream.sh` were not
-  run. No upstream file changed; seam count unchanged. macOS and Linux were not run.
-- Later the same day, on Windows: upstream's `SolveGitCommand` and `SolveLinuxToolsDir` (at start, in the startup check
-  and in the Checklist's repairs, with PuTTY's search). 0 errors; core 1504 of 1504; app 878 of 878 in 13 minutes 27
-  seconds. No upstream file changed; seam count unchanged.
-- Then the build's warnings in fork files, 50 on a clean Windows build, now none: StyleCop layout in core tests and a few
-  core files, a missing final newline in five files, tuple names, two nullability warnings, `File.SetUnixFileMode` behind
-  an `OperatingSystem` check, the avatar requests kept as vs-threading `AsyncLazy` values instead of stored tasks
-  (VSTHRD003), the avatar tests awaiting instead of blocking, Gource's PNG through `PngBitmapEncoderOptions`, the shim's
-  `MessageBox` stand-in excused from the banned-symbol rule it exists for, the shim's thread exception sent with the
-  thread as WinForms does, and a design-time constructor on the nine plugin windows (AVLN3001, as the app's windows have).
-  The 79 left are in `externals/` and one upstream file (`Win32ApiUtil.cs`), which the fork does not edit. Every test
-  project of `GitExtensions.xplat.slnx` on Windows: all passed but upstream's `AsyncLoaderTests`'
-  `Load_performed_on_thread_pool_and_result_handled_via_callers_context` (the known Windows failure, see 2026-10 above);
-  core 1504 of 1504, app 878 of 878, `GitCommands.Tests` 3500 of 3502 (1 skipped). macOS and Linux were not run.
-- Then three upstream forms no list named, found by comparing upstream's designer files with `PORTING-MAP.md`:
-  FormOpenDirectory, EmptyRepoControl and the process window's password input (with Escape for Abort), and a race fixed
-  in `CheckoutBranchWindowTests`. The remote operations' git now has its standard input redirected while it runs, as
-  upstream's. On Windows, from a clean build: 0 errors, no warning in fork files; core 1520 of 1520; app 885 of 885 in
-  13 minutes 9 seconds. No upstream file changed; seam count unchanged. macOS and Linux were not run.
-- Then the user's decisions on `PLAN.md` questions 7 to 10 and 12 to 14 and on macOS's dark mode and font, recorded in
-  `PLAN.md` and `MACOS.md`; only question 16 (CI) is open. Question 10 brought a terminal command setting for Linux and
-  macOS (`PORTING-MAP.md`, Terminals). On Windows after it: core 1527 of 1527, app 885 of 885.
-- **Linux**, the first run since CI's only one (2026-11-08), in WSL on the Windows machine (openSUSE Tumbleweed, .NET SDK
-  10.0.112 in `~/.dotnet`, git 2.56.0), from the Windows working tree with the build output in `~/xplat-artifacts`: core
-  1533 of 1533 (37 seconds with the build); app 881 of 882 in 4 minutes 18 seconds; the shadow projects 3823 pass, 0 fail,
-  201 ignored with reasons (`GitCommands.Tests` 3383 and 149). The app failure was a test that found upstream's sources by
-  walking up from its build output, which `~/xplat-artifacts` puts outside the repository (seen once on the Mac too):
-  `ThemedImagesTests` now finds the repository from its source file, and passes on Linux and Windows. No product failure
-  on Linux.
-
-### 2026-11-22, evening: Linux packages, no merge
-
-- On macOS: `publish-app.sh` also packs an AppImage (`appimagetool`) and a `.deb` (`dpkg-deb`) for `linux-*`, only when run on
-  Linux; the tarball is still packed on any OS (`PLAN.md` M7 and section 12.3). The app now starts itself again (new
-  instance, restart, git's editor and password prompt, scripts) through `AppExecutable`, which in an AppImage is the
-  AppImage file instead of its temporary mount (`PORTING-MAP.md`, Linux notes).
-- Checked on macOS only: a real `linux-x64` publish with `uname` reporting Linux and stand-ins for `appimagetool` and
-  `dpkg-deb`, which listed the AppDir (`AppRun`, the entry, the icon, `.DirIcon`) and the `.deb`'s tree and control file. The
-  real tools, the AppImage and the installed `.deb` have not run yet; that is `PLAN.md` section 12.3, item 3.
-- On macOS after: 0 errors, no warning in fork files; core 1536 of 1536; app 884 of 884 in 13 minutes 52 seconds. No upstream
-  file changed; seam count unchanged. Windows and Linux were not run.
-
-### 2026-11-24: Azure DevOps build status off Windows (seam S9), no merge
-
-- Reported on macOS on a real repository: the build server integration stopped with "Azure DevOps error ... '<' is an
-  invalid start of a value". Upstream's `ApiClient` sends the password `git credential fill` returns as a Bearer token;
-  `osxkeychain` returns the personal access token typed for the remote, which Azure DevOps does not take as one, and its
-  sign-in page (HTML) was parsed as JSON. New seam S9 (`PLAN.md` section 5): 2 `XplatPatch` items on the plugin's
-  `ApiClient.cs`, logic in `XplatAzureDevOpsAuth.cs` (a JWT goes as Bearer, anything else as Basic; the sign-in page is
-  reported as unauthorized, which offers to open the settings). `ApiClient.cs` has not changed upstream since the fork
-  base, and is the same on `upstream/master`.
-- On Windows: the Azure DevOps plugin's test project 60 of 60 (5 new). Not tried against a real Azure DevOps server; the
-  fix waits for a run on the Mac. Linux and macOS were not run. Upstream files modified 0; seam count 9.
+| Date | Upstream | OS | Result | Fork changes |
+|---|---|---|---|---|
+| 2026-10-03 | `52d08e996` (17 ahead) | Linux (WSL) | `verify-upstream.sh` pass: 3369 passed, 144 skipped with reasons. The 4 upstream changes to mapped files (GPG display, grid tooltip, `FormCommit` layout, `FormClone` submodule option) read and skipped with reasons in `PORTING-MAP.md` | Every row rebased to `52d08e996`; seam count 7 |
+| 2026-10-06 | `52d08e996` | Windows | `port-drift.sh`: 34 rows, none with upstream changes | None |
+| 2026-10-11 | `afc512395` (18 ahead) | Windows | The script's steps by hand: 3506 passed, 1 failed (the known `AsyncLoaderTests` failure on Windows); `port-drift.sh`: 93 rows, none with upstream changes | The app tests run from an empty temporary folder with `GIT_CEILING_DIRECTORIES`, after a test run wrote `http.proxy` and a branch into this repository (since removed) |
+| 2026-11-08 | `c584b9740` (55 ahead) | macOS | `verify-upstream.sh` pass: 3902 passed, 222 ignored; `port-drift.sh`: 132 rows, 12 with upstream changes | 8 `RecentRepoSplitterTests` methods skipped (Windows paths); the script fixed for macOS's linked temporary folder; seam count 8 |
+| 2026-11-13 | none | none | Measure 11.2 widened to every path: the earlier "upstream files modified 0" missed the commented-out workflows (since restored) and `.gitignore` | `PLAN.md` section 5, "Files outside the fork folders" |
+| 2026-11-20 | `17213fe3f` (73 ahead) | macOS | `verify-upstream.sh` pass after 4 skips: 12 of 12 projects, `GitCommands.Tests` 3421 passed, 174 skipped | The 4 `TryRemoveWorktree` tests skipped (item 3 above) |
+| 2026-11-24 | `afc512395` (this Windows clone; `17213fe3f` not fetched here): `ApiClient.cs` unchanged since the fork base | Windows | Azure DevOps plugin tests 60 of 60 | Seam S9 (Azure DevOps credentials off Windows); seam count 9 |
